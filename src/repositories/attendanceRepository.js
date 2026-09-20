@@ -58,6 +58,39 @@ function updateStatus(attendanceRecordId, status) {
   return findById(attendanceRecordId);
 }
 
+// اصلاح دستی یک رکورد توسط ادمین (فاز ۳: دستور /fix_record ، فاز ۸: پنل وب).
+// فقط لایه بالاتر (هندلر بات) مسئول محدود کردن این عملیات به نقش ادمین
+// و ثبت اجباری «چه‌کسی/چه‌زمانی/چرا» در audit_log است؛ این تابع فقط خود آپدیت را انجام می‌دهد.
+function manualUpdate(attendanceRecordId, fields) {
+  const db = getDb();
+  const allowed = ['check_in_time', 'check_out_time', 'status'];
+  const keys = Object.keys(fields).filter((k) => allowed.includes(k) && fields[k] !== undefined);
+  if (keys.length === 0) return findById(attendanceRecordId);
+
+  const setClause = keys.map((k) => `${k} = ?`).join(', ');
+  const values = keys.map((k) => fields[k]);
+  db.prepare(
+    `UPDATE attendance_records SET ${setClause}, updated_at = datetime('now') WHERE id = ?`
+  ).run(...values, attendanceRecordId);
+  return findById(attendanceRecordId);
+}
+
+// همه رکوردهای امروز (برای گزارش پایان روز و بررسی «ورود دیرهنگام»/«ناقص»)
+function listAllToday() {
+  const db = getDb();
+  return db.prepare('SELECT * FROM attendance_records WHERE record_date = ?').all(todayDateString());
+}
+
+// رکوردهای «ناقص» تاریخ مشخص که خروج ثبت نشده (برای Job بستن خودکار پایان روز)
+function listOpenRecordsByDate(dateStr) {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT * FROM attendance_records WHERE record_date = ? AND check_in_time IS NOT NULL AND check_out_time IS NULL`
+    )
+    .all(dateStr);
+}
+
 module.exports = {
   findTodayRecord,
   findById,
@@ -65,4 +98,7 @@ module.exports = {
   recordCheckIn,
   recordCheckOut,
   updateStatus,
+  manualUpdate,
+  listAllToday,
+  listOpenRecordsByDate,
 };

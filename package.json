@@ -5,9 +5,11 @@
   "private": true,
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
+    "start": "node src/index.js",
+    "start:api-only": "node src/server.js",
     "init-db": "node src/db/init.js",
-    "dev": "node --watch src/server.js"
+    "create-admin": "node src/scripts/createAdmin.js",
+    "dev": "node --watch src/index.js"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -15,6 +17,8 @@
   "dependencies": {
     "better-sqlite3": "^11.3.0",
     "dotenv": "^16.4.5",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "node-telegram-bot-api": "^0.66.0",
+    "node-cron": "^3.0.3"
   }
 }
