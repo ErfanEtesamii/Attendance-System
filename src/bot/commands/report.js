@@ -2,16 +2,11 @@ const { getRegisteredUser, notRegisteredMessage } = require('../auth');
 const attendanceRepository = require('../../repositories/attendanceRepository');
 const { summarizeRange, formatMinutes } = require('../../utils/workHours');
 const { todayDateString } = require('../../utils/serverTime');
+const { jalaliMonthToDateRange } = require('../../utils/jalali');
 
 function daysAgoDateString(days) {
   const d = new Date();
   d.setDate(d.getDate() - days);
-  return d.toISOString().slice(0, 10);
-}
-
-function firstOfMonthDateString() {
-  const d = new Date();
-  d.setDate(1);
   return d.toISOString().slice(0, 10);
 }
 
@@ -24,8 +19,9 @@ async function handleReport(bot, msg) {
   }
 
   const today = todayDateString();
+  const jalaliMonth = jalaliMonthToDateRange();
   const weekRecords = attendanceRepository.listByUserAndRange(user.id, daysAgoDateString(6), today);
-  const monthRecords = attendanceRepository.listByUserAndRange(user.id, firstOfMonthDateString(), today);
+  const monthRecords = attendanceRepository.listByUserAndRange(user.id, jalaliMonth.from, jalaliMonth.to);
 
   const weekSummary = summarizeRange(weekRecords);
   const monthSummary = summarizeRange(monthRecords);
@@ -39,7 +35,7 @@ async function handleReport(bot, msg) {
     `  تعداد خروج زودهنگام: ${weekSummary.earlyLeaveCount}`,
     `  رکورد ناقص: ${weekSummary.incompleteCount}`,
     '',
-    '📆 از ابتدای ماه جاری:',
+    `📆 از ابتدای ${jalaliMonth.label} تا امروز:`,
     `  ساعت مفید کاری: ${formatMinutes(monthSummary.totalEffective)}`,
     `  تعداد تأخیر: ${monthSummary.lateCount}`,
     `  تعداد خروج زودهنگام: ${monthSummary.earlyLeaveCount}`,

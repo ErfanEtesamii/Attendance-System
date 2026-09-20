@@ -47,8 +47,8 @@ const config = {
     dailyReport: process.env.CRON_DAILY_REPORT || '0 17 * * 6,0,1,2,3',
     // گزارش هفتگی (شروع هفته کاری - شنبه صبح)
     weeklyReport: process.env.CRON_WEEKLY_REPORT || '0 8 * * 6',
-    // گزارش ماهانه (اول ماه میلادی - در صورت نیاز به تقویم شمسی باید جداگانه پیاده‌سازی شود)
-    monthlyReport: process.env.CRON_MONTHLY_REPORT || '0 8 1 * *',
+    // بررسی روزانه برای گزارش ماهانه شمسی (خود Job فقط در روز اول ماه شمسی واقعاً گزارش می‌فرستد)
+    monthlyReport: process.env.CRON_MONTHLY_REPORT || '0 8 * * *',
     // بستن خودکار رکوردهای بدون خروج ثبت‌شده در پایان روز (وضعیت «ناقص»)
     autoCloseIncomplete: process.env.CRON_AUTO_CLOSE_INCOMPLETE || '59 23 * * *',
   },

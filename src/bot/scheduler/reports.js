@@ -2,16 +2,11 @@ const usersRepository = require('../../repositories/usersRepository');
 const attendanceRepository = require('../../repositories/attendanceRepository');
 const { summarizeRange, summarizeRecord, formatMinutes } = require('../../utils/workHours');
 const { todayDateString } = require('../../utils/serverTime');
+const { jalaliMonthRange } = require('../../utils/jalali');
 
 function daysAgoDateString(days) {
   const d = new Date();
   d.setDate(d.getDate() - days);
-  return d.toISOString().slice(0, 10);
-}
-
-function firstOfMonthDateString() {
-  const d = new Date();
-  d.setDate(1);
   return d.toISOString().slice(0, 10);
 }
 
@@ -72,13 +67,12 @@ async function sendWeeklyReport(bot) {
 }
 
 async function sendMonthlyReport(bot) {
-  const today = todayDateString();
-  const from = firstOfMonthDateString();
+  const range = jalaliMonthRange({ previous: true });
   await sendToManagersAndAdmins(bot, (recipient, team) => {
     if (team.length === 0) return null;
-    const lines = ['🗓 گزارش ماهانه (ماه میلادی جاری)', ''];
+    const lines = [`🗓 گزارش ماهانه — ${range.label}`, ''];
     for (const member of team) {
-      const records = attendanceRepository.listByUserAndRange(member.id, from, today);
+      const records = attendanceRepository.listByUserAndRange(member.id, range.from, range.to);
       const summary = summarizeRange(records);
       lines.push(`• ${member.full_name}: ${formatMinutes(summary.totalEffective)} | تأخیر: ${summary.lateCount}`);
     }

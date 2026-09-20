@@ -8,6 +8,7 @@ const { checkLateCheckins, checkRepeatedLateness } = require('./lateCheckinRemin
 const { checkCheckoutReminders } = require('./checkoutReminder');
 const { autoCloseIncompleteRecords } = require('./autoCloseIncomplete');
 const { sendDailyReport, sendWeeklyReport, sendMonthlyReport } = require('./reports');
+const { isFirstDayOfJalaliMonth } = require('../../utils/jalali');
 
 function startSchedulers(bot) {
   cron.schedule(config.cron.lateCheckinCheck, () => {
@@ -27,7 +28,10 @@ function startSchedulers(bot) {
     sendWeeklyReport(bot).catch((err) => console.error('[scheduler] weeklyReport error:', err));
   });
 
+  // گزارش ماهانه بر اساس تقویم شمسی: چون روز شروع ماه شمسی روی تقویم میلادی هر سال جابه‌جا می‌شود،
+  // این Job هر روز اجرا می‌شود ولی فقط وقتی «امروز روز اول یک ماه شمسی است» گزارش ماه شمسی قبلی را ارسال می‌کند.
   cron.schedule(config.cron.monthlyReport, () => {
+    if (!isFirstDayOfJalaliMonth()) return;
     sendMonthlyReport(bot).catch((err) => console.error('[scheduler] monthlyReport error:', err));
   });
 

@@ -111,6 +111,8 @@ src/bot/
 src/scripts/createAdmin.js  # one-off script to bootstrap the very first admin
 src/utils/workHours.js      # lightweight late/early/effective-hours math used by the bot's reports
                              # (a preliminary stand-in for the full Phase 5 calculation engine)
+src/utils/jalali.js         # Jalali (Persian) calendar helpers — monthly reports/summaries use the
+                             # Jalali month, not the Gregorian one
 ```
 
 ### Getting a bot token
@@ -160,14 +162,13 @@ The bot only responds to operational commands for users present in the `users` t
 - Repeated-lateness alert to the direct manager (threshold configurable via `REPEATED_LATENESS_THRESHOLD`)
 - End-of-day report to every manager/admin (their own team's status)
 - Weekly report (start of the work week)
-- Monthly report (**Gregorian calendar month** — see the note below)
+- Monthly report (**Jalali/Persian calendar month** — runs daily internally, only actually sends on the first day of a new Jalali month, covering the just-finished Jalali month)
 - End-of-day auto-close: any record with a check-in but no check-out is marked `incomplete` for an admin to review
 
 All the cron expressions and thresholds above are configurable in `.env` (`CRON_*`, `WORK_DAY_START`, `WORK_DAY_END`, `LATE_CHECKIN_GRACE_MINUTES`, `CHECKOUT_REMINDER_MINUTES_BEFORE`, `REPEATED_LATENESS_THRESHOLD`). **The shipped defaults assume a Saturday–Wednesday work week — double-check and adjust them for the company's actual working days before deploying.**
 
 ### ⚠️ Known simplifications in this phase (flagged for your decision)
 
-- **Monthly report calendar**: `CRON_MONTHLY_REPORT` and the `/report` "since the start of the month" figure both use the **Gregorian** calendar (1st of the month). If the company wants Jalali (Persian) month boundaries instead, that needs a date-conversion library (e.g. `jalaali-js`) and isn't implemented yet — let us know and it can be added as a small follow-up.
 - **Late/early/effective-hours math** used by `/report`, `/team_report`, and the scheduled reports lives in `src/utils/workHours.js`. It's a lightweight stand-in so the bot has something real to report on; the full calculation engine (overtime rules, holiday handling in the math, etc.) is Phase 5 per the spec and will likely refine or replace this file.
 - **Menu Button / Mini App**: the code will set a `web_app` menu button only if `MINI_APP_URL` is filled in `.env`. Leave it empty until Phase 4 builds the real Mini App page.
 - **Conversation state** (`/leave`, `/add_employee`, `/fix_record`) is kept in memory, not the database — if the bot process restarts mid-conversation, the user just needs to re-run the command. This was a reasonable simplification for Phase 3; say so if you'd rather it survive restarts.
