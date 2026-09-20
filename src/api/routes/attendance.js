@@ -1,6 +1,5 @@
-// اسکلت اولیه مسیرهای ثبت تردد.
-// توجه مهم: در فاز ۲، networkRestrictionPlaceholder با middleware واقعی جایگزین می‌شود
-// و پیش از رسیدن به این هندلرها، IP درخواست بررسی خواهد شد.
+// مسیرهای ثبت تردد. تمام این مسیرها زیر پیشوند /attendance هستند و طبق فاز ۲
+// باید از چک IP شبکه داخلی عبور کنند.
 
 const express = require('express');
 const router = express.Router();
@@ -8,9 +7,12 @@ const attendanceRepository = require('../../repositories/attendanceRepository');
 const breakRepository = require('../../repositories/breakRepository');
 const usersRepository = require('../../repositories/usersRepository');
 const auditRepository = require('../../repositories/auditRepository');
-const { networkRestrictionPlaceholder } = require('../../middleware/networkRestriction');
+const { networkRestriction } = require('../../middleware/networkRestriction');
 
-router.use(networkRestrictionPlaceholder);
+// نکته مهم: این middleware را با مسیر '/attendance' اسکوپ می‌کنیم (نه router.use(fn) بدون مسیر)،
+// چون این روتر با router.use(require('./attendance')) بدون پیشوند به روتر اصلی وصل می‌شود
+// و اگر بدون مسیر ثبت شود، روی تمام مسیرهای دیگر (مثل /users یا /audit-log) هم اجرا می‌شود.
+router.use('/attendance', networkRestriction);
 
 function requireActiveUser(req, res, next) {
   const userId = req.body?.userId || req.query.userId;

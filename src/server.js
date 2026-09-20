@@ -9,6 +9,13 @@ function createApp() {
   getDb();
 
   const app = express();
+
+  // فقط وقتی TRUST_PROXY=true باشد به X-Forwarded-For اعتماد می‌شود.
+  // این تنظیم مستقیماً روی صحت middleware محدودیت شبکه (فاز ۲) اثر دارد؛ توضیح در README.
+  if (config.trustProxy) {
+    app.set('trust proxy', 'loopback'); // فقط پراکسی روی همان سرور (127.0.0.1) قابل‌اعتماد است
+  }
+
   app.use(express.json());
 
   // مسیرهای API زیر /api قرار می‌گیرند تا در فاز ۴ به‌سادگی از Mini App صدا زده شوند
