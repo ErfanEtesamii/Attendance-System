@@ -1,6 +1,6 @@
-# Farazhonar Telegram Attendance System — Phase 1, 2 & 3
+# Farazhonar Telegram Attendance System — Phase 1, 2, 3 & 4
 
-This repo currently covers **Phase 1** (base infrastructure, database, API skeleton), **Phase 2** (internal-network IP restriction), and **Phase 3** (the Telegram bot, in polling mode). Later phases (Mini App, the full work-hours calculation engine, richer reporting, the web admin panel) will be added on top of this skeleton as separate prompts/PRs.
+This repo currently covers **Phase 1** (base infrastructure, database, API skeleton), **Phase 2** (internal-network IP restriction), **Phase 3** (the Telegram bot, in polling mode), and **Phase 4** (the Telegram Mini App — employee web UI). Later phases (the full work-hours calculation engine per spec, richer reporting/exports, the web admin panel) will be added on top of this skeleton as separate prompts/PRs.
 
 ## Why these technologies?
 - **Node.js + Express**: simple to install and run on Windows, and drops easily into a Windows Service via NSSM (the same approach used for the company's OrderSync project).
@@ -191,5 +191,69 @@ npm start          # runs src/index.js: API server + bot together
 
 If you only want the HTTP API without the bot (e.g. while testing), use `npm run start:api-only`.
 
+## Phase 4 — Telegram Mini App (employee web UI)
+
+A self-contained, no-build-step web app served as static files from the same Node process (`express.static`), so it needs nothing extra in production beyond the subdomain + SSL certificate already covered in the project spec.
+
+```
+public/
+  index.html      # single page: bottom-nav tabs (Today / History / Report / Leave / Profile)
+  css/style.css   # uses Telegram theme CSS variables (--tg-theme-*), light/dark aware
+  js/app.js       # vanilla JS, calls Telegram.WebApp SDK + the /api/miniapp/* endpoints below
+```
+
+### Real authentication (this was the missing piece flagged in Phase 1/3)
+
+Every `/api/miniapp/*` route now goes through `src/middleware/telegramAuth.js`, which verifies the
+Mini App's `initData` string against the official Telegram algorithm
+(`src/utils/telegramInitData.js` — HMAC-SHA256 with the bot token, `auth_date` freshness check,
+timing-safe comparison). The resolved `req.miniAppUser` (looked up by `telegram_user_id`) is what
+every handler uses — **never** a `userId` taken from the request body — so an employee can't act on
+someone else's behalf by editing the JS in their browser dev tools. This is a stricter, real version
+of the same protection the old `/api/attendance/*` and `/api/users/*` routes still lack (they remain
+as an internal skeleton per Phase 1's original scope; give them the same treatment before exposing
+them to anything other than the bot/admin panel).
+
+The client sends `initData` (obtained from `Telegram.WebApp.initData`, untouched) in the
+`X-Telegram-Init-Data` header on every request — it never parses or trusts it locally.
+
+### New API routes (`src/api/routes/miniapp.js`)
+
+| Route | Notes |
+|---|---|
+| `GET /api/miniapp/me` | Read-only profile |
+| `GET /api/miniapp/today` | Today's record + open break + live summary |
+| `POST /api/miniapp/check-in` / `check-out` | Also pass through Phase 2's `networkRestriction` |
+| `POST /api/miniapp/break/start` / `break/end` | Same network check |
+| `GET /api/miniapp/history?days=30` | Past N days (max 90), each with a `summary` (see `workHours.js`) |
+| `GET /api/miniapp/report?period=week\|month` | Aggregate via `workHours.summarizeRange` |
+| `POST /api/miniapp/leave`, `GET /api/miniapp/leave` | Submit / list own leave-mission requests |
+| `POST /api/miniapp/dispute`, `GET /api/miniapp/dispute` | New — employee can flag a record for admin review without an in-person visit (spec §5, "اعتراض به رکورد") |
+
+`networkRestriction.js` was adjusted so its mission-exception lookup prefers `req.miniAppUser.id`
+(the verified identity) over any raw `userId` in the body/query, now that a verified identity is
+available on Mini App routes.
+
+### New database table
+
+`record_disputes` (`user_id`, `attendance_record_id` nullable, `message`, `status: open|resolved`) —
+backs the dispute feature above. Added to `src/db/schema.js` and has its own repository
+(`src/repositories/disputeRepository.js`, including `listOpen()` for the future admin panel).
+
+### Manual test checklist (Phase 4)
+
+1. Fill in `MINI_APP_URL` in `.env` (the real `https://attendance.farazhonar.com/` once DNS/SSL are live) and restart — the bot's menu button will now open it.
+2. Open the bot in Telegram, tap the menu button → the page should load and immediately show today's status for the logged-in Telegram account.
+3. As an unregistered Telegram account: should see the "not registered" screen with the numeric Telegram ID, matching what `/start` shows in the bot.
+4. Tap through Check-in → Start lunch → End lunch → Check-out; confirm the live timer and the today card update after each action.
+5. From a network **outside** the allowed CIDR (e.g. mobile data, not company Wi-Fi): check-in should be rejected with the "only from inside the company network" message, and an `attendance_rejected_ip` row should appear in `audit_log`.
+6. Switch to History/Report/Leave/Profile tabs; submit a leave request and a dispute; confirm they show up in the lists and (for leave) in `/pending_leaves` on the bot side.
+
+### ⚠️ Known simplification carried over from Phase 3
+
+`workHours.js` is still the lightweight stand-in described in the Phase 3 section — the Mini App's
+"Report" tab and history summaries use it too. It will be refined/replaced in Phase 5 per the spec
+without needing route or UI changes (same `effectiveMinutes` / `lateMinutes` / etc. shape).
+
 ## Next step
-Phase 4: the Telegram Mini App (employee web UI), served over HTTPS from the same local server, using the subdomain + DNS-01 certificate described in the project spec.
+Phase 5: the full work-hours calculation engine (overtime rules, holiday-aware math) per the project spec — refining `workHours.js` into the official version used everywhere it's currently a stand-in.

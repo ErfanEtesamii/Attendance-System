@@ -68,6 +68,19 @@ const SCHEMA_STATEMENTS = [
     title TEXT NOT NULL
   );`,
 
+  // RecordDisputes: اعتراض کارمند به یک رکورد (فاز ۴ - بخش پنل کاربری Mini App)
+  // یک کارمند می‌تواند نسبت به یک رکورد مشخص (یا به‌طور کلی) اعتراض ثبت کند تا ادمین بررسی/اصلاح کند.
+  `CREATE TABLE IF NOT EXISTS record_disputes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    attendance_record_id INTEGER REFERENCES attendance_records(id),
+    message TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'open' -- 'open' | 'resolved'
+      CHECK (status IN ('open','resolved')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );`,
+
   // AuditLog: لاگ غیرقابل‌ویرایش تمام رویدادهای حساس
   `CREATE TABLE IF NOT EXISTS audit_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -82,6 +95,7 @@ const SCHEMA_STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS idx_attendance_user_date ON attendance_records(user_id, record_date);`,
   `CREATE INDEX IF NOT EXISTS idx_leave_user_status ON leave_requests(user_id, status);`,
   `CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_log(user_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_dispute_user ON record_disputes(user_id);`,
 ];
 
 module.exports = { SCHEMA_STATEMENTS };

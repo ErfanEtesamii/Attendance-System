@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>حضور و غیاب فرازهنر</title>
+<link rel="stylesheet" href="/css/style.css" />
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+
+  <div id="not-registered" class="screen hidden">
+    <div class="card center-card">
+      <h2>عدم ثبت در سیستم</h2>
+      <p>شما هنوز در سیستم حضور و غیاب ثبت نشده‌اید.</p>
+      <p>این عدد را برای ادمین ارسال کنید تا شما را ثبت کند:</p>
+      <div class="tg-id-box" id="tg-id-box">-</div>
+    </div>
+  </div>
+
+  <div id="app" class="hidden">
+    <header class="app-header">
+      <div class="app-title">حضور و غیاب فرازهنر</div>
+      <div class="app-subtitle" id="user-name">—</div>
+    </header>
+
+    <main id="views">
+
+      <!-- صفحه اصلی: وضعیت امروز -->
+      <section id="view-today" class="view">
+        <div class="card status-card">
+          <div class="status-label" id="status-label">در حال بارگذاری…</div>
+          <div class="timer" id="timer">--:--:--</div>
+          <div class="today-summary" id="today-summary"></div>
+        </div>
+
+        <div class="actions" id="today-actions"></div>
+
+        <div class="card" id="today-times-card">
+          <div class="row"><span>ساعت ورود</span><span id="ti-checkin">—</span></div>
+          <div class="row"><span>مجموع استراحت</span><span id="ti-breaks">—</span></div>
+          <div class="row"><span>ساعت خروج</span><span id="ti-checkout">—</span></div>
+        </div>
+      </section>
+
+      <!-- تاریخچه -->
+      <section id="view-history" class="view hidden">
+        <h3 class="view-title">تاریخچه (۳۰ روز اخیر)</h3>
+        <div id="history-list" class="list"></div>
+      </section>
+
+      <!-- گزارش شخصی -->
+      <section id="view-report" class="view hidden">
+        <div class="tabs-inline">
+          <button class="tab-btn active" data-period="week">هفته جاری</button>
+          <button class="tab-btn" data-period="month">ماه جاری</button>
+        </div>
+        <div class="card" id="report-card"></div>
+      </section>
+
+      <!-- مرخصی / مأموریت -->
+      <section id="view-leave" class="view hidden">
+        <h3 class="view-title">درخواست مرخصی / مأموریت</h3>
+        <form id="leave-form" class="card form">
+          <label>نوع
+            <select name="leaveType">
+              <option value="leave">مرخصی</option>
+              <option value="mission">مأموریت</option>
+            </select>
+          </label>
+          <label>از تاریخ
+            <input type="date" name="startDate" required />
+          </label>
+          <label>تا تاریخ
+            <input type="date" name="endDate" required />
+          </label>
+          <label>توضیح
+            <textarea name="reason" rows="2" placeholder="اختیاری"></textarea>
+          </label>
+          <button type="submit" class="btn primary">ارسال درخواست</button>
+          <div class="form-msg" id="leave-msg"></div>
+        </form>
+
+        <h3 class="view-title">درخواست‌های من</h3>
+        <div id="leave-list" class="list"></div>
+      </section>
+
+      <!-- پروفایل -->
+      <section id="view-profile" class="view hidden">
+        <div class="card">
+          <div class="row"><span>نام</span><span id="pf-name">—</span></div>
+          <div class="row"><span>کد پرسنلی</span><span id="pf-code">—</span></div>
+          <div class="row"><span>دپارتمان</span><span id="pf-dept">—</span></div>
+          <div class="row"><span>نقش</span><span id="pf-role">—</span></div>
+        </div>
+
+        <h3 class="view-title">اعتراض به یک رکورد</h3>
+        <form id="dispute-form" class="card form">
+          <label>توضیح اعتراض / مغایرت
+            <textarea name="message" rows="3" placeholder="مثلاً: دیروز به‌خاطر قطعی اینترنت نتوانستم خروج ثبت کنم." required></textarea>
+          </label>
+          <button type="submit" class="btn secondary">ارسال به ادمین</button>
+          <div class="form-msg" id="dispute-msg"></div>
+        </form>
+      </section>
+
+    </main>
+
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-view="today">امروز</button>
+      <button class="nav-btn" data-view="history">تاریخچه</button>
+      <button class="nav-btn" data-view="report">گزارش</button>
+      <button class="nav-btn" data-view="leave">مرخصی</button>
+      <button class="nav-btn" data-view="profile">پروفایل</button>
+    </nav>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

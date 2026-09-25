@@ -1,3 +1,4 @@
+const path = require('path');
 const express = require('express');
 const config = require('./config');
 const { getDb } = require('./db/connection');
@@ -18,7 +19,11 @@ function createApp() {
 
   app.use(express.json());
 
-  // مسیرهای API زیر /api قرار می‌گیرند تا در فاز ۴ به‌سادگی از Mini App صدا زده شوند
+  // فاز ۴: فایل‌های استاتیک Telegram Mini App (public/index.html و ...).
+  // این پوشه از ریشه‌ی همین دامنه/ساب‌دامنه سرو می‌شود، مثلاً https://attendance.farazhonar.com/
+  app.use(express.static(path.join(__dirname, '..', 'public')));
+
+  // مسیرهای API زیر /api قرار می‌گیرند تا از Mini App و بات صدا زده شوند
   app.use('/api', apiRoutes);
 
   app.use(notFoundHandler);

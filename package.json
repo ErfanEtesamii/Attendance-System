@@ -1,7 +1,7 @@
 {
   "name": "farazhonar-attendance-backend",
-  "version": "0.1.0",
-  "description": "بک‌اند سیستم حضور و غیاب تلگرامی شرکت فرازهنر - فاز ۱: زیرساخت پایه، دیتابیس و اسکلت API",
+  "version": "0.4.0",
+  "description": "سیستم حضور و غیاب تلگرامی شرکت فرازهنر - فاز ۱ تا ۴: بک‌اند، بات تلگرام (Polling) و Telegram Mini App",
   "private": true,
   "main": "src/server.js",
   "scripts": {
