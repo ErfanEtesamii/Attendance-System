@@ -1,8 +1,23 @@
 const usersRepository = require('../../repositories/usersRepository');
 const attendanceRepository = require('../../repositories/attendanceRepository');
+const holidaysRepository = require('../../repositories/holidaysRepository');
+const leaveRepository = require('../../repositories/leaveRepository');
 const { summarizeRange, summarizeRecord, formatMinutes } = require('../../utils/workHours');
 const { todayDateString } = require('../../utils/serverTime');
 const { jalaliMonthRange } = require('../../utils/jalali');
+
+// برچسب درست برای روزی که کارمند ورود ثبت نکرده: تعطیل رسمی / مرخصی تأییدشده / واقعاً غایب.
+// اول status رکورد placeholder (اگر Job صبحگاهی markNonWorkingDays آن را ساخته باشد) چک می‌شود؛
+// در غیر این صورت به‌صورت مستقل از holidaysRepository/leaveRepository هم چک می‌کنیم تا حتی اگر آن
+// Job اجرا نشده باشد (یا مرخصی همان روز تأیید شده باشد)، گزارش باز هم اشتباه «غایب» نگوید.
+function absenceLabel(userId, dateStr, record) {
+  const status = record ? record.status : null;
+  if (status === 'holiday' || holidaysRepository.isHoliday(dateStr)) return 'تعطیل رسمی';
+  if (status === 'leave' || leaveRepository.hasApprovedLeaveOnDate(userId, dateStr, 'leave')) {
+    return 'مرخصی تأییدشده';
+  }
+  return 'غایب / بدون ثبت ورود';
+}
 
 function daysAgoDateString(days) {
   const d = new Date();
@@ -40,7 +55,7 @@ async function sendDailyReport(bot) {
     for (const member of team) {
       const record = attendanceRepository.findTodayRecord(member.id);
       if (!record || !record.check_in_time) {
-        lines.push(`• ${member.full_name}: غایب / بدون ثبت ورود`);
+        lines.push(`• ${member.full_name}: ${absenceLabel(member.id, today, record)}`);
         continue;
       }
       const summary = summarizeRecord(record);

@@ -1,7 +1,10 @@
 const { getRegisteredUser, notRegisteredMessage } = require('../auth');
 const attendanceRepository = require('../../repositories/attendanceRepository');
 const breakRepository = require('../../repositories/breakRepository');
+const holidaysRepository = require('../../repositories/holidaysRepository');
+const leaveRepository = require('../../repositories/leaveRepository');
 const { summarizeRecord, formatMinutes } = require('../../utils/workHours');
+const { todayDateString } = require('../../utils/serverTime');
 
 function formatTime(isoString) {
   return new Date(isoString).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
@@ -17,6 +20,16 @@ async function handleStatus(bot, msg) {
 
   const record = attendanceRepository.findTodayRecord(user.id);
   if (!record || !record.check_in_time) {
+    const today = todayDateString();
+    const status = record ? record.status : null;
+    if (status === 'holiday' || holidaysRepository.isHoliday(today)) {
+      await bot.sendMessage(chatId, '📍 وضعیت شما: امروز تعطیل رسمی است.');
+      return;
+    }
+    if (status === 'leave' || leaveRepository.hasApprovedLeaveOnDate(user.id, today, 'leave')) {
+      await bot.sendMessage(chatId, '📍 وضعیت شما: امروز مرخصی تأییدشده دارید.');
+      return;
+    }
     await bot.sendMessage(chatId, '📍 وضعیت شما: خارج از شرکت (امروز هنوز ورود ثبت نشده است).');
     return;
   }

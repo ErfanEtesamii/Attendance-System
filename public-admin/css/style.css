@@ -147,6 +147,8 @@ tbody tr:last-child td { border-bottom: none; }
 .badge.checked_out { background: var(--primary-soft); color: var(--primary); }
 .badge.not_checked_in { background: #f1f1f6; color: var(--muted); }
 .badge.incomplete { background: var(--red-soft); color: var(--red); }
+.badge.holiday { background: var(--amber-soft); color: var(--amber); }
+.badge.leave { background: var(--amber-soft); color: var(--amber); }
 .badge.employee { background: #f1f1f6; color: var(--muted); }
 .badge.manager { background: var(--amber-soft); color: var(--amber); }
 .badge.admin { background: var(--primary-soft); color: var(--primary); }

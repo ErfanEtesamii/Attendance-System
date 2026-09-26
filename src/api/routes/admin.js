@@ -65,12 +65,19 @@ router.get('/admin/users', (req, res) => {
   let users = usersRepository.listUsers({});
   if (allowedIds !== null) users = users.filter((u) => allowedIds.includes(u.id));
 
+  const today = todayDateString();
   const withToday = users.map((u) => {
     const record = attendanceRepository.findTodayRecord(u.id);
     let todayStatus = 'not_checked_in';
     if (record) {
       todayStatus = record.check_out_time ? 'checked_out' : 'checked_in';
       if (record.status === 'incomplete') todayStatus = 'incomplete';
+      if (record.status === 'holiday') todayStatus = 'holiday';
+      if (record.status === 'leave') todayStatus = 'leave';
+    } else if (holidaysRepository.isHoliday(today)) {
+      todayStatus = 'holiday';
+    } else if (leaveRepository.hasApprovedLeaveOnDate(u.id, today, 'leave')) {
+      todayStatus = 'leave';
     }
     return {
       id: u.id,

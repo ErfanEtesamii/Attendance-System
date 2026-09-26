@@ -3,7 +3,7 @@
 // اسکجولرهای یادآوری اثر می‌گذارند - بدون نیاز به ویرایش .env یا ری‌استارت سرور،
 // چون هر بار مستقیم از دیتابیس خوانده می‌شوند، نه یک بار در زمان بالا آمدن پروسه.
 
-const { getDb } = require('./connection');
+const { getDb } = require('../db/connection');
 const config = require('../config');
 
 const KEY_MAP = {

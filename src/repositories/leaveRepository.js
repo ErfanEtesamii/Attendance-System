@@ -47,18 +47,24 @@ function setStatus(id, status, approverId) {
   return findById(id);
 }
 
-// آیا برای این کاربر در این تاریخ یک «مأموریت تأییدشده» وجود دارد؟
-// در فاز ۷ این تابع برای معاف کردن کاربر از چک IP فاز ۲ استفاده می‌شود.
-function hasApprovedMissionOnDate(userId, dateStr) {
+// آیا برای این کاربر در این تاریخ یک درخواست تأییدشده از نوع مشخص وجود دارد؟
+// نسخه عمومی؛ هم برای مأموریت (استثنای فاز ۲) و هم برای مرخصی (رفع گپ «غایب» فاز ۵) استفاده می‌شود.
+function hasApprovedLeaveOnDate(userId, dateStr, leaveType) {
   const db = getDb();
   const row = db
     .prepare(
       `SELECT * FROM leave_requests
-       WHERE user_id = ? AND leave_type = 'mission' AND status = 'approved'
+       WHERE user_id = ? AND leave_type = ? AND status = 'approved'
          AND ? BETWEEN start_date AND end_date`
     )
-    .get(userId, dateStr);
+    .get(userId, leaveType, dateStr);
   return Boolean(row);
+}
+
+// آیا برای این کاربر در این تاریخ یک «مأموریت تأییدشده» وجود دارد؟
+// در فاز ۷ این تابع برای معاف کردن کاربر از چک IP فاز ۲ استفاده می‌شود.
+function hasApprovedMissionOnDate(userId, dateStr) {
+  return hasApprovedLeaveOnDate(userId, dateStr, 'mission');
 }
 
 module.exports = {
@@ -69,4 +75,5 @@ module.exports = {
   listByUser,
   setStatus,
   hasApprovedMissionOnDate,
+  hasApprovedLeaveOnDate,
 };

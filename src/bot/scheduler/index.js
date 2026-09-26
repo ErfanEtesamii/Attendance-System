@@ -7,6 +7,7 @@ const config = require('../../config');
 const { checkLateCheckins, checkRepeatedLateness } = require('./lateCheckinReminder');
 const { checkCheckoutReminders } = require('./checkoutReminder');
 const { autoCloseIncompleteRecords } = require('./autoCloseIncomplete');
+const { markNonWorkingDays } = require('./markNonWorkingDays');
 const { sendDailyReport, sendWeeklyReport, sendMonthlyReport } = require('./reports');
 const { isFirstDayOfJalaliMonth } = require('../../utils/jalali');
 
@@ -37,6 +38,10 @@ function startSchedulers(bot) {
 
   cron.schedule(config.cron.autoCloseIncomplete, () => {
     autoCloseIncompleteRecords().catch((err) => console.error('[scheduler] autoCloseIncomplete error:', err));
+  });
+
+  cron.schedule(config.cron.markNonWorkingDays, () => {
+    markNonWorkingDays().catch((err) => console.error('[scheduler] markNonWorkingDays error:', err));
   });
 
   console.log('[bot] تمام Jobهای زمان‌بندی‌شده فعال شدند.');

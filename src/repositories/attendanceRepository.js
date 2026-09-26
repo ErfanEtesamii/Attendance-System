@@ -75,6 +75,20 @@ function manualUpdate(attendanceRecordId, fields) {
   return findById(attendanceRecordId);
 }
 
+// برای روزهای غیرکاری (تعطیل رسمی/مرخصی تأییدشده): اگر کارمند هنوز هیچ رکوردی برای این تاریخ
+// ندارد، یک رکورد placeholder با status مناسب می‌سازد (بدون check_in_time) تا در گزارش‌ها به‌جای
+// «غایب» به‌درستی نمایش داده شود. اگر رکوردی از قبل هست (مثلاً با وجود تعطیلی/مرخصی سر کار آمده و
+// ورود ثبت کرده)، به لطف UNIQUE(user_id, record_date) دست‌نخورده باقی می‌ماند.
+function ensureNonWorkingDayRecord(userId, dateStr, status) {
+  const db = getDb();
+  const result = db
+    .prepare(
+      `INSERT OR IGNORE INTO attendance_records (user_id, record_date, status) VALUES (?, ?, ?)`
+    )
+    .run(userId, dateStr, status);
+  return result.changes > 0;
+}
+
 // همه رکوردهای امروز (برای گزارش پایان روز و بررسی «ورود دیرهنگام»/«ناقص»)
 function listAllToday() {
   const db = getDb();
@@ -101,4 +115,5 @@ module.exports = {
   manualUpdate,
   listAllToday,
   listOpenRecordsByDate,
+  ensureNonWorkingDayRecord,
 };

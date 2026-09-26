@@ -58,6 +58,7 @@
   const ROLE_LABELS = { employee: 'کارمند', manager: 'مدیر دپارتمان', admin: 'ادمین کل' };
   const TODAY_LABELS = {
     not_checked_in: 'هنوز نیامده', checked_in: 'حاضر', checked_out: 'خارج شده', incomplete: 'ناقص',
+    holiday: 'تعطیل رسمی', leave: 'مرخصی',
   };
 
   // ---------- ورود با تلگرام ----------
