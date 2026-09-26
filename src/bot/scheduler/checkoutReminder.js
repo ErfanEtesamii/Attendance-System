@@ -1,6 +1,6 @@
-const config = require('../../config');
 const usersRepository = require('../../repositories/usersRepository');
 const attendanceRepository = require('../../repositories/attendanceRepository');
+const settingsRepository = require('../../repositories/settingsRepository');
 const { todayDateString } = require('../../utils/serverTime');
 const { timeStringToMinutes, minutesSinceMidnight } = require('../../utils/workHours');
 
@@ -8,9 +8,11 @@ const remindedToday = new Set(); // key: `${date}:${userId}`
 
 async function checkCheckoutReminders(bot) {
   const now = new Date();
-  const reminderLine = timeStringToMinutes(config.workDayEnd) - config.checkoutReminderMinutesBefore;
+  const settings = settingsRepository.getAll();
+  const workEndMinutes = timeStringToMinutes(settings.workDayEnd);
+  const reminderLine = workEndMinutes - settings.checkoutReminderMinutesBefore;
   const nowMinutes = minutesSinceMidnight(now);
-  if (nowMinutes < reminderLine || nowMinutes > timeStringToMinutes(config.workDayEnd)) return;
+  if (nowMinutes < reminderLine || nowMinutes > workEndMinutes) return;
 
   const today = todayDateString();
   const activeUsers = usersRepository.listUsers({ onlyActive: true });

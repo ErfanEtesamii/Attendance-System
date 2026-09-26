@@ -3,7 +3,7 @@
 // و همان زمان جایگزین/تکمیل این فایل خواهد شد. منطق تشخیص تأخیر/زودتر رفتن اینجا
 // عمداً ساده نگه داشته شده تا فقط برای گزارش‌دهی و یادآوری در فاز ۳ کافی باشد.
 
-const config = require('../config');
+const settingsRepository = require('../repositories/settingsRepository');
 const breakRepository = require('../repositories/breakRepository');
 
 function timeStringToMinutes(hhmm) {
@@ -40,8 +40,9 @@ function summarizeRecord(record) {
   const checkOut = record.check_out_time ? new Date(record.check_out_time) : null;
   const breakMinutes = breakRepository.totalBreakMinutes(record.id);
 
-  const workStart = timeStringToMinutes(config.workDayStart);
-  const workEnd = timeStringToMinutes(config.workDayEnd);
+  const settings = settingsRepository.getAll();
+  const workStart = timeStringToMinutes(settings.workDayStart);
+  const workEnd = timeStringToMinutes(settings.workDayEnd);
   const checkInMinutes = minutesSinceMidnight(checkIn);
 
   if (checkInMinutes > workStart) {

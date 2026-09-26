@@ -81,6 +81,15 @@ const SCHEMA_STATEMENTS = [
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );`,
 
+  // Settings: تنظیمات سیستم که از پنل مدیریتی وب (فاز ۸) قابل تغییر است، بدون نیاز به
+  // ویرایش .env و ری‌استارت سرور. مقدار پیش‌فرض هر کلید همان چیزی است که در config.js
+  // از .env خوانده می‌شود؛ فقط وقتی این جدول رکوردی برای یک کلید دارد، آن مقدار override می‌کند.
+  `CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );`,
+
   // AuditLog: لاگ غیرقابل‌ویرایش تمام رویدادهای حساس
   `CREATE TABLE IF NOT EXISTS audit_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

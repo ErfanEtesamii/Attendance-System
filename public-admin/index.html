@@ -38,6 +38,15 @@
         <button class="nav-item" data-view="employees">
           <span class="nav-icon">☰</span> کارمندان
         </button>
+        <button class="nav-item" data-view="leave">
+          <span class="nav-icon">🗓</span> مرخصی
+        </button>
+        <button class="nav-item admin-only" data-view="settings">
+          <span class="nav-icon">⚙</span> تنظیمات
+        </button>
+        <button class="nav-item admin-only" data-view="audit">
+          <span class="nav-icon">📜</span> گزارش رویدادها
+        </button>
       </nav>
 
       <div class="sidebar-footer">
@@ -138,13 +147,95 @@
           <div class="card">
             <h3>۳۰ روز اخیر</h3>
             <div id="pf-summary" class="row-list"></div>
-            <h3 class="mt">رکوردهای اخیر</h3>
+            <h3 class="mt">رکوردهای اخیر <span class="muted" style="font-weight:400;">(برای اصلاح کلیک کنید)</span></h3>
             <div id="pf-records" class="list"></div>
           </div>
         </div>
       </section>
 
+      <!-- صف مرخصی و مأموریت -->
+      <section id="view-leave" class="view hidden">
+        <div class="view-header">
+          <h2>درخواست‌های مرخصی و مأموریت</h2>
+          <select id="leave-status-filter">
+            <option value="pending">در انتظار</option>
+            <option value="approved">تأییدشده</option>
+            <option value="rejected">ردشده</option>
+            <option value="all">همه</option>
+          </select>
+        </div>
+        <div id="leave-list" class="list wide"></div>
+      </section>
+
+      <!-- تنظیمات سیستم -->
+      <section id="view-settings" class="view hidden">
+        <div class="view-header"><h2>تنظیمات سیستم</h2></div>
+
+        <div class="grid-2">
+          <div class="card">
+            <h3>ساعت کاری و آستانه‌ها</h3>
+            <form id="settings-form" class="form">
+              <label>ساعت شروع کاری <input type="time" name="workDayStart" /></label>
+              <label>ساعت پایان کاری <input type="time" name="workDayEnd" /></label>
+              <label>مهلت مجاز تأخیر (دقیقه) <input type="number" min="0" name="lateCheckinGraceMinutes" /></label>
+              <label>یادآوری خروج، چند دقیقه قبل از پایان کار <input type="number" min="0" name="checkoutReminderMinutesBefore" /></label>
+              <label>آستانه هشدار تأخیر مکرر (تعداد روز در ۳۰ روز اخیر) <input type="number" min="1" name="repeatedLatenessThreshold" /></label>
+              <button type="submit" class="btn primary">ذخیره تنظیمات</button>
+              <div class="form-msg" id="settings-msg"></div>
+            </form>
+          </div>
+
+          <div class="card">
+            <h3>تقویم تعطیلات رسمی</h3>
+            <form id="holiday-form" class="form-row">
+              <input type="date" name="date" required />
+              <input type="text" name="title" placeholder="عنوان تعطیلی" required />
+              <button type="submit" class="btn ghost">+ افزودن</button>
+            </form>
+            <div class="form-msg" id="holiday-msg"></div>
+            <div id="holiday-list" class="list mt"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- گزارش رویدادها (Audit Log) -->
+      <section id="view-audit" class="view hidden">
+        <div class="view-header"><h2>گزارش رویدادها (Audit Log)</h2></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>زمان</th><th>کاربر</th><th>رویداد</th><th>جزئیات</th></tr></thead>
+            <tbody id="audit-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
     </main>
+  </div>
+
+  <!-- مودال اصلاح دستی رکورد -->
+  <div id="fix-record-modal" class="modal-backdrop hidden">
+    <div class="modal">
+      <h3>اصلاح رکورد تردد</h3>
+      <form id="fix-record-form" class="form">
+        <label>ساعت ورود <input type="datetime-local" name="checkInTime" /></label>
+        <label>ساعت خروج <input type="datetime-local" name="checkOutTime" /></label>
+        <label>وضعیت
+          <select name="status">
+            <option value="normal">عادی</option>
+            <option value="late">تأخیر</option>
+            <option value="incomplete">ناقص</option>
+            <option value="leave">مرخصی</option>
+            <option value="holiday">تعطیل</option>
+          </select>
+        </label>
+        <label>دلیل اصلاح (اجباری) <textarea name="reason" rows="2" required></textarea></label>
+        <div class="modal-actions">
+          <button type="button" id="cancel-fix" class="btn ghost">انصراف</button>
+          <button type="submit" class="btn primary">ذخیره اصلاح</button>
+        </div>
+        <div class="form-msg" id="fix-msg"></div>
+      </form>
+    </div>
   </div>
 
   <!-- مودال افزودن کارمند -->

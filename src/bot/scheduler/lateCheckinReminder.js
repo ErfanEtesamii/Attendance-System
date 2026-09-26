@@ -2,11 +2,11 @@
 // ⚠️ چون موتور محاسبه رسمی (فاز ۵) هنوز ساخته نشده، اینجا خودمان با workHours.js
 // به‌صورت سبک تشخیص می‌دهیم که آیا کارمند دیر آمده یا اصلاً نیامده.
 
-const config = require('../../config');
 const usersRepository = require('../../repositories/usersRepository');
 const attendanceRepository = require('../../repositories/attendanceRepository');
 const leaveRepository = require('../../repositories/leaveRepository');
 const holidaysRepository = require('../../repositories/holidaysRepository');
+const settingsRepository = require('../../repositories/settingsRepository');
 const auditRepository = require('../../repositories/auditRepository');
 const { todayDateString } = require('../../utils/serverTime');
 const { timeStringToMinutes, minutesSinceMidnight, summarizeRange } = require('../../utils/workHours');
@@ -23,7 +23,8 @@ function daysAgoDateString(days) {
 
 async function checkLateCheckins(bot) {
   const now = new Date();
-  const graceLine = timeStringToMinutes(config.workDayStart) + config.lateCheckinGraceMinutes;
+  const settings = settingsRepository.getAll();
+  const graceLine = timeStringToMinutes(settings.workDayStart) + settings.lateCheckinGraceMinutes;
   if (minutesSinceMidnight(now) < graceLine) return;
 
   const today = todayDateString();
@@ -69,7 +70,7 @@ async function checkRepeatedLateness(bot) {
     const records = attendanceRepository.listByUserAndRange(user.id, daysAgoDateString(29), today);
     const summary = summarizeRange(records);
 
-    if (summary.lateCount >= config.repeatedLatenessThreshold) {
+    if (summary.lateCount >= settingsRepository.getAll().repeatedLatenessThreshold) {
       alertedManagerThisMonth.add(alertKey);
       auditRepository.logEvent({
         userId: manager.id,

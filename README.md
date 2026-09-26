@@ -338,10 +338,32 @@ the fastest way for me to fix it.
 7. Create a second user with `role: manager` and a `manager_id` pointing at one employee; log in as them — should see only that one employee, no "Add employee" button, and a disabled (view-only) profile form.
 8. Try opening `/admin/` in a private/incognito window without logging in — API calls should 401 and the login card should show, not the dashboard.
 
-## Next step (after Phase 8 is confirmed working)
-The rest of Phase 8 (leave-request approval queue, manual record correction with reason logging,
-system settings screen, audit-trail viewer) or Phase 5 (full work-hours engine) — whichever you'd
-like to continue with once you've tried this out.
+## Phase 8 — now much more complete
+
+Beyond the auth/dashboard/employees slice from before, this round added:
+
+- **Leave & mission approval queue** (`GET/POST /api/admin/leave-requests...`) — manager-scoped, admin sees all; approving/rejecting notifies the employee on Telegram via the new `src/bot/notifier.js` (a polling-free bot instance just for outbound messages, since the API process may run without the polling bot attached).
+- **Manual attendance-record correction** (`PATCH /api/admin/attendance-records/:id`) — admin-only, reason required (rejected with 400 otherwise), logged to `audit_log` with the reason text, and notifies the employee. Reachable by clicking any row under an employee's "Recent records" in their profile.
+- **Holidays CRUD** (`GET/POST/DELETE /api/admin/holidays`) — the `holidaysRepository.js` already existed from Phase 1 but was never wired to any route until now.
+- **Runtime-editable system settings** (`GET/PATCH /api/admin/settings`) — work-day start/end, late-checkin grace period, checkout-reminder lead time, repeated-lateness threshold. These are now stored in a new `settings` table (falls back to the `.env`-derived defaults when a key has never been set) and **read fresh on every calculation/reminder check** — `workHours.js`, `lateCheckinReminder.js`, and `checkoutReminder.js` were all switched from reading `config.*` directly to `settingsRepository.getAll()`, so a change from the panel takes effect immediately, no restart needed.
+- **Audit-log viewer** (`GET /api/admin/audit-log`) — admin-only, joined with the acting user's name.
+- New sidebar tabs: **مرخصی** (visible to managers too, scoped) and **تنظیمات** / **گزارش رویدادها** (admin-only, hidden client-side *and* enforced server-side via `requireFullAdmin`).
+
+### ⚠️ Same testing caveat as last round
+
+`node_modules` is still not reinstallable in this sandbox (no network access), so this batch is again **syntax-checked only** (`node --check` on every new/changed file), not run end-to-end. The patterns used (route shape, repository calls, `requireFullAdmin` gating) mirror what Phase 4's admin/mini-app auth already proved works live. Please run the checklist below after `npm install` and report back anything that errors.
+
+### Manual test checklist (this round's additions)
+
+1. As a manager (not admin): open "مرخصی" — should see only your team's requests; approve one — the requester should get a Telegram DM, and the row should move out of the "pending" filter.
+2. As a manager: confirm "تنظیمات" and "گزارش رویدادها" are not in the sidebar at all.
+3. As admin: open an employee's profile, click a recent record, change the check-out time and status, type a reason, save — confirm the change reflects in "۳۰ روز اخیر" numbers, a row appears in `audit_log`, and the employee gets a Telegram DM with your reason text.
+4. As admin: add a holiday, confirm it appears in the list and can be deleted.
+5. As admin: change "ساعت پایان کاری" in تنظیمات, save, then check-out an employee near the new time — the checkout-reminder scheduler should use the new time without a server restart (can verify faster by lowering `checkoutReminderMinutesBefore` and watching the console log timing, or just trust the code path since it now calls `settingsRepository.getAll()` fresh each run).
+6. As admin: open "گزارش رویدادها" — should show recent events (logins, employee edits, leave decisions, record fixes) with the acting user's name resolved.
+
+## Next step
+Phase 8's originally-scoped items are now all present. What's left project-wide: Phase 5 (replace the still-lightweight `workHours.js` with the full official engine — though its settings are now at least runtime-configurable), Phase 6 (actual Excel/PDF export files, not just JSON), and Phase 9 (rate limiting, automated SSL renewal script, final installation docs, NSSM setup script).
 
 ## Direct HTTPS (no reverse proxy) — was missing, now implemented
 

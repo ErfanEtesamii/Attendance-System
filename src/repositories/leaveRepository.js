@@ -21,6 +21,17 @@ function listPending() {
   return db.prepare("SELECT * FROM leave_requests WHERE status = 'pending' ORDER BY created_at").all();
 }
 
+// برای پنل مدیریتی وب (فاز ۸): تاریخچه کامل یا فیلترشده بر اساس وضعیت
+function listAll({ status } = {}) {
+  const db = getDb();
+  if (status) {
+    return db
+      .prepare('SELECT * FROM leave_requests WHERE status = ? ORDER BY created_at DESC')
+      .all(status);
+  }
+  return db.prepare('SELECT * FROM leave_requests ORDER BY created_at DESC').all();
+}
+
 function listByUser(userId) {
   const db = getDb();
   return db.prepare('SELECT * FROM leave_requests WHERE user_id = ? ORDER BY created_at DESC').all(userId);
@@ -54,6 +65,7 @@ module.exports = {
   createLeaveRequest,
   findById,
   listPending,
+  listAll,
   listByUser,
   setStatus,
   hasApprovedMissionOnDate,
