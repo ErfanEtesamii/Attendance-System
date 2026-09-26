@@ -342,3 +342,12 @@ the fastest way for me to fix it.
 The rest of Phase 8 (leave-request approval queue, manual record correction with reason logging,
 system settings screen, audit-trail viewer) or Phase 5 (full work-hours engine) — whichever you'd
 like to continue with once you've tried this out.
+
+## Direct HTTPS (no reverse proxy) — was missing, now implemented
+
+`src/server.js` now creates an `https.createServer()` when `SSL_CERT_PATH` and `SSL_KEY_PATH` are
+both set in `.env` (falls back to plain `http.createServer()` otherwise, with a console warning if
+that happens in `NODE_ENV=production`). This is what makes the earlier "Node handles TLS itself, no
+IIS/nginx" architecture decision actually real in code — until this change, the server only ever
+spoke plain HTTP. Point both env vars at the `fullchain`/`privkey` files produced by your DNS-01
+issuance for `attendance.farazhonar.com` and restart the service.

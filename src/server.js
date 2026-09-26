@@ -1,4 +1,7 @@
 const path = require('path');
+const fs = require('fs');
+const http = require('http');
+const https = require('https');
 const express = require('express');
 const config = require('./config');
 const { getDb } = require('./db/connection');
@@ -47,9 +50,35 @@ function createApp() {
 
 function start() {
   const app = createApp();
-  const server = app.listen(config.port, () => {
-    console.log(`سرور بک‌اند حضور و غیاب روی پورت ${config.port} در حال اجراست (env: ${config.nodeEnv})`);
-  });
+
+  // اگر مسیر گواهی SSL تنظیم شده باشد، مستقیماً HTTPS بالا می‌آید (بدون IIS/nginx جلوی آن)؛
+  // این همان تصمیم معماری نهایی پروژه است (سرور محلی، بدون ریورس‌پراکسی).
+  // اگر خالی باشد (مثلاً توسعه‌ی محلی روی سیستم شخصی)، به HTTP ساده برمی‌گردیم.
+  let server;
+  if (config.sslCertPath && config.sslKeyPath) {
+    if (!fs.existsSync(config.sslCertPath) || !fs.existsSync(config.sslKeyPath)) {
+      throw new Error(
+        `فایل گواهی SSL پیدا نشد. مسیرهای تنظیم‌شده را بررسی کنید:\n  SSL_CERT_PATH=${config.sslCertPath}\n  SSL_KEY_PATH=${config.sslKeyPath}`
+      );
+    }
+    const credentials = {
+      cert: fs.readFileSync(config.sslCertPath, 'utf8'),
+      key: fs.readFileSync(config.sslKeyPath, 'utf8'),
+    };
+    server = https.createServer(credentials, app).listen(config.port, () => {
+      console.log(`سرور بک‌اند حضور و غیاب با HTTPS روی پورت ${config.port} در حال اجراست (env: ${config.nodeEnv})`);
+    });
+  } else {
+    if (config.nodeEnv === 'production') {
+      console.warn(
+        '⚠️ SSL_CERT_PATH/SSL_KEY_PATH تنظیم نشده‌اند - سرور با HTTP ساده بالا می‌آید. ' +
+          'Telegram Mini App و Login Widget بدون HTTPS معتبر کار نخواهند کرد.'
+      );
+    }
+    server = http.createServer(app).listen(config.port, () => {
+      console.log(`سرور بک‌اند حضور و غیاب روی پورت ${config.port} در حال اجراست (env: ${config.nodeEnv})`);
+    });
+  }
 
   // خاموشی مرتب (graceful shutdown) - مهم برای اجرا زیر NSSM در فاز ۹
   const shutdown = () => {
