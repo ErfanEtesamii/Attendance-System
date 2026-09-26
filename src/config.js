@@ -21,6 +21,20 @@ const config = {
   // اگر خالی باشد، دکمه Menu تنظیم نمی‌شود.
   miniAppUrl: process.env.MINI_APP_URL || '',
 
+  // ===== فاز ۸: پنل مدیریتی وب (ورود با Telegram Login Widget) =====
+
+  // یوزرنیم بات (بدون @)، لازم برای ویجت «ورود با تلگرام» در صفحه لاگین پنل ادمین.
+  telegramBotUsername: process.env.TELEGRAM_BOT_USERNAME || '',
+
+  // کلید امضای session پنل ادمین. حتماً در production یک مقدار تصادفی و طولانی در .env بگذارید؛
+  // در توسعه اگر خالی باشد یک مقدار پیش‌فرض (ناامن) استفاده می‌شود تا فقط توسعه راحت باشد.
+  adminSessionSecret:
+    process.env.ADMIN_SESSION_SECRET ||
+    (process.env.NODE_ENV === 'production' ? '' : 'dev-only-insecure-secret-change-me'),
+
+  // مدت اعتبار session ورود مدیر به پنل وب (روز)
+  adminSessionMaxAgeDays: parseInt(process.env.ADMIN_SESSION_MAX_AGE_DAYS || '7', 10),
+
   // ساعت شروع/پایان رسمی کار، برای تشخیص تأخیر/زودتر رفتن/اضافه‌کاری و یادآوری‌ها.
   // فرمت HH:mm بر اساس ساعت سرور. محاسبه کامل و نهایی در فاز ۵ انجام می‌شود؛
   // این مقدار همان‌جا هم دوباره استفاده خواهد شد.

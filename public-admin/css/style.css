@@ -1,0 +1,201 @@
+:root {
+  --bg: #f3f4f8;
+  --surface: #ffffff;
+  --text: #1a1d29;
+  --muted: #7b7f92;
+  --border: #e7e8f0;
+  --primary: #5b5bf0;
+  --primary-dark: #4646d6;
+  --primary-soft: rgba(91, 91, 240, 0.1);
+  --green: #1fae65;
+  --green-soft: rgba(31, 174, 101, 0.12);
+  --red: #e5484d;
+  --red-soft: rgba(229, 72, 77, 0.12);
+  --amber: #d78f13;
+  --amber-soft: rgba(215, 143, 19, 0.12);
+  --radius: 16px;
+  --shadow: 0 6px 24px rgba(20, 20, 50, 0.06);
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; height: 100%;
+  font-family: "Vazirmatn", Tahoma, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+.hidden { display: none !important; }
+button { font-family: inherit; }
+
+/* ---------- برندینگ مشترک ---------- */
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-mark {
+  width: 38px; height: 38px; border-radius: 11px;
+  background: linear-gradient(135deg, var(--primary), #8a5bf0);
+  color: #fff; display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 14px;
+  box-shadow: 0 4px 14px rgba(91,91,240,0.35);
+}
+.brand-name { font-weight: 800; font-size: 16px; }
+
+/* ---------- صفحه ورود ---------- */
+.login-screen {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(91,91,240,0.12), transparent 40%),
+    radial-gradient(circle at 85% 80%, rgba(138,91,240,0.12), transparent 40%),
+    var(--bg);
+  padding: 20px;
+}
+.login-card {
+  background: var(--surface);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+  padding: 40px 34px;
+  max-width: 380px;
+  width: 100%;
+  text-align: center;
+}
+.login-card .brand { justify-content: center; margin-bottom: 18px; }
+.login-card h1 { font-size: 19px; margin: 6px 0 6px; }
+.muted { color: var(--muted); font-size: 13px; }
+.login-card p.muted { margin-bottom: 22px; }
+#telegram-login-container { display: flex; justify-content: center; min-height: 40px; }
+.error-msg { color: var(--red); font-size: 13px; margin-top: 14px; min-height: 16px; }
+
+/* ---------- چیدمان اصلی ---------- */
+.app-shell { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: 240px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  padding: 22px 18px;
+  display: flex; flex-direction: column;
+  position: sticky; top: 0; height: 100vh;
+}
+.side-nav { margin-top: 30px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  border: none; background: none; text-align: right;
+  padding: 11px 12px; border-radius: 12px;
+  font-size: 14px; color: var(--muted); cursor: pointer; font-weight: 600;
+}
+.nav-item:hover { background: var(--primary-soft); color: var(--primary); }
+.nav-item.active { background: var(--primary); color: #fff; }
+.nav-icon { font-size: 15px; width: 18px; text-align: center; }
+
+.sidebar-footer { border-top: 1px solid var(--border); padding-top: 14px; }
+.me-box { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.me-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(135deg, #8a5bf0, var(--primary));
+  color: #fff; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 13px; flex-shrink: 0;
+}
+.me-avatar.large { width: 56px; height: 56px; font-size: 20px; }
+.me-name { font-size: 13px; font-weight: 700; }
+.me-role { font-size: 11px; color: var(--muted); }
+
+.main { flex: 1; padding: 28px 34px; max-width: 1100px; }
+
+.view-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 22px;
+}
+.view-header h2 { margin: 0; font-size: 21px; }
+
+/* ---------- کارت‌ها و آمار ---------- */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px 22px;
+  margin-bottom: 18px;
+}
+.card h3 { margin: 0 0 12px; font-size: 14px; color: var(--muted); }
+.card h3.mt { margin-top: 18px; }
+
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+.stat-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 22px;
+  border-top: 4px solid var(--primary);
+}
+.stat-card.accent-green { border-top-color: var(--green); }
+.stat-card.accent-red { border-top-color: var(--red); }
+.stat-value { font-size: 30px; font-weight: 800; }
+.stat-label { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 860px) { .grid-2 { grid-template-columns: 1fr; } .sidebar { display: none; } }
+
+/* ---------- جدول ---------- */
+.table-wrap { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th { text-align: right; padding: 13px 16px; color: var(--muted); font-weight: 700; font-size: 12px; border-bottom: 1px solid var(--border); }
+td { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+tbody tr { cursor: pointer; transition: background 0.12s; }
+tbody tr:hover { background: var(--primary-soft); }
+tbody tr:last-child td { border-bottom: none; }
+
+.badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+.badge.checked_in { background: var(--green-soft); color: var(--green); }
+.badge.checked_out { background: var(--primary-soft); color: var(--primary); }
+.badge.not_checked_in { background: #f1f1f6; color: var(--muted); }
+.badge.incomplete { background: var(--red-soft); color: var(--red); }
+.badge.employee { background: #f1f1f6; color: var(--muted); }
+.badge.manager { background: var(--amber-soft); color: var(--amber); }
+.badge.admin { background: var(--primary-soft); color: var(--primary); }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-left: 6px; }
+.dot.on { background: var(--green); } .dot.off { background: #c7c9d6; }
+
+/* ---------- پروفایل ---------- */
+.profile-head { display: flex; align-items: center; gap: 16px; }
+.profile-head h2 { margin: 0 0 3px; }
+.row-list .row { display: flex; justify-content: space-between; padding: 7px 0; font-size: 13.5px; border-bottom: 1px solid var(--border); }
+.row-list .row:last-child { border-bottom: none; }
+.list { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; }
+.list-item { font-size: 12.5px; padding: 8px 10px; border-radius: 10px; background: var(--bg); display: flex; justify-content: space-between; }
+
+/* ---------- فرم‌ها ---------- */
+.form { display: flex; flex-direction: column; gap: 12px; }
+.form label { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.form input, .form select {
+  border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px;
+  font-size: 13.5px; font-family: inherit; background: var(--bg); color: var(--text);
+}
+.form .checkbox-row { flex-direction: row; align-items: center; gap: 8px; }
+.form .checkbox-row input { width: auto; }
+.form-msg { font-size: 12.5px; min-height: 16px; }
+.form-msg.ok { color: var(--green); }
+.form-msg.err { color: var(--red); }
+
+/* ---------- دکمه‌ها ---------- */
+.btn {
+  border: none; border-radius: 11px; padding: 10px 18px; font-size: 13.5px;
+  font-weight: 700; cursor: pointer;
+}
+.btn.primary { background: var(--primary); color: #fff; }
+.btn.primary:hover { background: var(--primary-dark); }
+.btn.ghost { background: var(--primary-soft); color: var(--primary); }
+.btn.ghost.small { padding: 7px 12px; font-size: 12.5px; width: 100%; }
+
+/* ---------- مودال ---------- */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(20,20,40,0.42);
+  display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px;
+}
+.modal { background: var(--surface); border-radius: var(--radius); padding: 24px; max-width: 420px; width: 100%; box-shadow: var(--shadow); }
+.modal h3 { margin-top: 0; }
+.modal-actions { display: flex; gap: 10px; margin-top: 4px; }
+.modal-actions .btn { flex: 1; }
+
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: rgba(20,20,30,0.9); color: #fff; padding: 10px 18px;
+  border-radius: 20px; font-size: 13px; z-index: 200;
+}

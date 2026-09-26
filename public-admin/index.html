@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>پنل مدیریتی | حضور و غیاب فرازهنر</title>
+<link rel="stylesheet" href="/admin/css/style.css" />
+</head>
+<body>
+
+  <!-- صفحه ورود -->
+  <div id="login-screen" class="login-screen">
+    <div class="login-card">
+      <div class="brand">
+        <div class="brand-mark">فه</div>
+        <div class="brand-name">فرازهنر</div>
+      </div>
+      <h1>پنل مدیریتی حضور و غیاب</h1>
+      <p class="muted">برای ورود، با حساب تلگرامی که در بات ثبت شده وارد شوید.</p>
+      <div id="telegram-login-container"></div>
+      <p id="login-error" class="error-msg"></p>
+    </div>
+  </div>
+
+  <!-- برنامه اصلی -->
+  <div id="app-shell" class="app-shell hidden">
+
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">فه</div>
+        <div class="brand-name">فرازهنر</div>
+      </div>
+
+      <nav class="side-nav">
+        <button class="nav-item active" data-view="dashboard">
+          <span class="nav-icon">◧</span> داشبورد
+        </button>
+        <button class="nav-item" data-view="employees">
+          <span class="nav-icon">☰</span> کارمندان
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="me-box">
+          <div class="me-avatar" id="me-avatar">—</div>
+          <div>
+            <div class="me-name" id="me-name">—</div>
+            <div class="me-role" id="me-role">—</div>
+          </div>
+        </div>
+        <button id="logout-btn" class="btn ghost small">خروج</button>
+      </div>
+    </aside>
+
+    <main class="main">
+
+      <!-- داشبورد -->
+      <section id="view-dashboard" class="view">
+        <div class="view-header">
+          <h2>داشبورد</h2>
+          <span class="muted" id="dashboard-date"></span>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-value" id="stat-total">—</div>
+            <div class="stat-label">تعداد کارمندان فعال</div>
+          </div>
+          <div class="stat-card accent-green">
+            <div class="stat-value" id="stat-present">—</div>
+            <div class="stat-label">حاضر همین الان</div>
+          </div>
+          <div class="stat-card accent-red">
+            <div class="stat-value" id="stat-incomplete">—</div>
+            <div class="stat-label">رکورد ناقص امروز</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- لیست کارمندان -->
+      <section id="view-employees" class="view hidden">
+        <div class="view-header">
+          <h2>کارمندان</h2>
+          <button id="add-employee-btn" class="btn primary">+ افزودن کارمند</button>
+        </div>
+
+        <div class="table-wrap">
+          <table id="employees-table">
+            <thead>
+              <tr>
+                <th>نام</th>
+                <th>دپارتمان</th>
+                <th>نقش</th>
+                <th>وضعیت امروز</th>
+                <th>فعال</th>
+              </tr>
+            </thead>
+            <tbody id="employees-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- پروفایل کارمند -->
+      <section id="view-profile" class="view hidden">
+        <div class="view-header">
+          <button id="back-to-employees" class="btn ghost small">→ بازگشت</button>
+        </div>
+
+        <div class="profile-head card">
+          <div class="me-avatar large" id="pf-avatar">—</div>
+          <div>
+            <h2 id="pf-name">—</h2>
+            <div class="muted" id="pf-subtitle">—</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <h3>اطلاعات پروفایل</h3>
+            <form id="profile-form" class="form">
+              <label>نام و نام‌خانوادگی <input name="fullName" required /></label>
+              <label>کد پرسنلی <input name="personnelCode" /></label>
+              <label>دپارتمان <input name="department" /></label>
+              <label>نقش
+                <select name="role">
+                  <option value="employee">کارمند</option>
+                  <option value="manager">مدیر دپارتمان</option>
+                  <option value="admin">ادمین کل</option>
+                </select>
+              </label>
+              <label>آیدی عددی تلگرام <input name="telegramUserId" /></label>
+              <label class="checkbox-row"><input type="checkbox" name="isActive" /> فعال</label>
+              <button type="submit" class="btn primary">ذخیره تغییرات</button>
+              <div class="form-msg" id="profile-msg"></div>
+            </form>
+          </div>
+
+          <div class="card">
+            <h3>۳۰ روز اخیر</h3>
+            <div id="pf-summary" class="row-list"></div>
+            <h3 class="mt">رکوردهای اخیر</h3>
+            <div id="pf-records" class="list"></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- مودال افزودن کارمند -->
+  <div id="add-modal" class="modal-backdrop hidden">
+    <div class="modal">
+      <h3>افزودن کارمند جدید</h3>
+      <form id="add-employee-form" class="form">
+        <label>نام و نام‌خانوادگی <input name="fullName" required /></label>
+        <label>کد پرسنلی <input name="personnelCode" /></label>
+        <label>دپارتمان <input name="department" /></label>
+        <label>نقش
+          <select name="role">
+            <option value="employee">کارمند</option>
+            <option value="manager">مدیر دپارتمان</option>
+            <option value="admin">ادمین کل</option>
+          </select>
+        </label>
+        <label>آیدی عددی تلگرام (اختیاری - بعداً هم قابل تنظیم است)
+          <input name="telegramUserId" placeholder="مثلاً 123456789" />
+        </label>
+        <div class="modal-actions">
+          <button type="button" id="cancel-add" class="btn ghost">انصراف</button>
+          <button type="submit" class="btn primary">افزودن</button>
+        </div>
+        <div class="form-msg" id="add-msg"></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="/admin/js/app.js"></script>
+</body>
+</html>

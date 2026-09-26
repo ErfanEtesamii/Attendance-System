@@ -1,11 +1,16 @@
 const { getDb } = require('../db/connection');
 
-function listUsers({ onlyActive = false } = {}) {
+function listUsers({ onlyActive = false, managerId = null } = {}) {
   const db = getDb();
-  const sql = onlyActive
-    ? 'SELECT * FROM users WHERE is_active = 1 ORDER BY full_name'
-    : 'SELECT * FROM users ORDER BY full_name';
-  return db.prepare(sql).all();
+  const conditions = [];
+  const params = [];
+  if (onlyActive) conditions.push('is_active = 1');
+  if (managerId != null) {
+    conditions.push('manager_id = ?');
+    params.push(managerId);
+  }
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  return db.prepare(`SELECT * FROM users ${where} ORDER BY full_name`).all(...params);
 }
 
 function findById(id) {
