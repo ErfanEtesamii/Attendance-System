@@ -1,6 +1,6 @@
-# Farazhonar Telegram Attendance System — Phase 1, 2, 3 & 4
+# Farazhonar Telegram Attendance System — Phase 1, 2, 3, 4 & 8 (partial)
 
-This repo currently covers **Phase 1** (base infrastructure, database, API skeleton), **Phase 2** (internal-network IP restriction), **Phase 3** (the Telegram bot, in polling mode), and **Phase 4** (the Telegram Mini App — employee web UI). Later phases (the full work-hours calculation engine per spec, richer reporting/exports, the web admin panel) will be added on top of this skeleton as separate prompts/PRs.
+This repo currently covers **Phase 1** (base infrastructure, database, API skeleton), **Phase 2** (internal-network IP restriction), **Phase 3** (the Telegram bot, in polling mode), **Phase 4** (the Telegram Mini App — employee web UI), and a first slice of **Phase 8** (the web admin panel — auth, employee list, employee profile, add employee). The rest of Phase 8 (leave-request approvals, manual record correction, system settings, audit-trail viewer) plus Phase 5–7 and 9 will be added on top of this skeleton as separate prompts/PRs.
 
 ## Why these technologies?
 - **Node.js + Express**: simple to install and run on Windows, and drops easily into a Windows Service via NSSM (the same approach used for the company's OrderSync project).
@@ -257,3 +257,88 @@ without needing route or UI changes (same `effectiveMinutes` / `lateMinutes` / e
 
 ## Next step
 Phase 5: the full work-hours calculation engine (overtime rules, holiday-aware math) per the project spec — refining `workHours.js` into the official version used everywhere it's currently a stand-in.
+
+## Phase 8 (partial) — Web admin panel
+
+Served as static files from the same Node process at `/admin/` (e.g. `https://attendance.farazhonar.com/admin/`), same no-build-step philosophy as the Mini App:
+
+```
+public-admin/
+  index.html      # login screen (Telegram Login Widget) + sidebar app shell
+  css/style.css   # a from-scratch dashboard look: sidebar nav, stat cards, table, modal
+  js/app.js       # vanilla JS, session-cookie based, calls /api/admin/* below
+```
+
+### Login: Telegram Login Widget (not the same mechanism as the Mini App!)
+
+The Mini App (Phase 4) verifies `initData` on every request using the `WebAppData`-keyed HMAC
+algorithm. The admin panel is a normal browser page (not inside Telegram), so it uses Telegram's
+separate **Login Widget** flow instead — a different verification algorithm
+(`src/utils/telegramLoginAuth.js`: `secret_key = SHA256(bot_token)`, not HMAC-keyed). Do not mix
+the two up or reuse one verifier for the other's data.
+
+Flow: `public-admin/js/app.js` fetches `GET /api/admin/public-config` for the bot's username (so
+the HTML never hardcodes it), injects Telegram's widget script, and on successful Telegram auth
+posts the widget's payload to `POST /api/admin/auth/telegram`. The server verifies it, looks the
+Telegram ID up in `users`, and — **only if that user's `role` is `manager` or `admin`** — issues a
+signed, `HttpOnly` session cookie (`src/utils/session.js`: stateless, HMAC-signed, no session table
+needed). All other `/api/admin/*` routes require that cookie (`src/middleware/adminAuth.js`).
+
+⚠️ **`ADMIN_SESSION_SECRET` must be set to a real random value in production** — `createApp()` now
+refuses to start in production without one (same philosophy as the existing `TRUST_PROXY` guard).
+Generate one with e.g. `openssl rand -hex 32`. You'll also need `TELEGRAM_BOT_USERNAME` set, and the
+bot's domain registered with BotFather (`/setdomain`) pointing at the Mini App's HTTPS subdomain,
+or the widget will refuse to render.
+
+### Role scoping
+
+- `role: admin` — sees and edits everyone.
+- `role: manager` — sees only employees whose `manager_id` is their own `id` (read-only: the
+  "Add employee" button is hidden and the profile form is disabled client-side, **and** enforced
+  again server-side via `requireFullAdmin` — never rely on the client-side hiding alone).
+- `role: employee` — Telegram Login succeeds but the server rejects with 403 (no panel access);
+  they only ever use the Mini App / bot.
+
+### New API routes (`src/api/routes/admin.js`, `adminAuth.js`)
+
+| Route | Notes |
+|---|---|
+| `GET /api/admin/public-config` | Unauthenticated — just the bot username for the login widget |
+| `POST /api/admin/auth/telegram` | Verifies the widget payload, sets the session cookie |
+| `POST /api/admin/auth/logout` | Clears the cookie |
+| `GET /api/admin/me` | Current logged-in admin/manager |
+| `GET /api/admin/dashboard` | Counts: active employees, present now, incomplete-today (scoped) |
+| `GET /api/admin/users` | Employee list + each one's today status (scoped) |
+| `POST /api/admin/users` | Add employee — **admin-only** |
+| `GET /api/admin/users/:id` | Full profile + last-30-days summary + recent records (scoped) |
+| `PATCH /api/admin/users/:id` | Edit profile — **admin-only** |
+
+`usersRepository.listUsers()` now accepts a `managerId` filter to back the manager-scoping above.
+
+### ⚠️ Not yet re-run end-to-end after this change
+
+Unlike Phase 4 (which was tested live: server boot, real HTTP requests, a simulated valid
+`initData`, the full happy path), this Phase 8 slice was **only syntax-checked** (`node --check` on
+every new/changed file) — `node_modules` had been removed before packaging the Phase 4 delivery and
+this sandbox has no network access to reinstall them this round. The Telegram Login Widget's
+verification algorithm was implemented directly from Telegram's documented spec and mirrors the
+already-tested `telegramInitData.js` pattern closely, and every repository/util function it calls
+already exists and is used elsewhere (`usersRepository`, `attendanceRepository`, `workHours`), but
+please run the checklist below yourself after `npm install` and tell me if anything errors — that's
+the fastest way for me to fix it.
+
+### Manual test checklist (Phase 8)
+
+1. `npm install`, set `TELEGRAM_BOT_USERNAME` + `ADMIN_SESSION_SECRET` (+ existing `TELEGRAM_BOT_TOKEN`) in `.env`, `npm run init-db`, `npm start`.
+2. Register your own Telegram account as a user with `role: admin` (via `/add_employee` in the bot, or directly in the DB for a first bootstrap admin).
+3. Open `http://localhost:3000/admin/` (or the real subdomain once live) — should show the login card with a real Telegram login button (needs the bot's domain set via BotFather `/setdomain`, and HTTPS in production — Telegram's widget refuses plain HTTP except on `localhost`).
+4. Log in — should land on the dashboard, with your name/role in the sidebar.
+5. Go to Employees, click "+ Add employee", submit — new row should appear.
+6. Click a row — should open that employee's profile with editable fields and their last-30-days summary/recent records.
+7. Create a second user with `role: manager` and a `manager_id` pointing at one employee; log in as them — should see only that one employee, no "Add employee" button, and a disabled (view-only) profile form.
+8. Try opening `/admin/` in a private/incognito window without logging in — API calls should 401 and the login card should show, not the dashboard.
+
+## Next step (after Phase 8 is confirmed working)
+The rest of Phase 8 (leave-request approval queue, manual record correction with reason logging,
+system settings screen, audit-trail viewer) or Phase 5 (full work-hours engine) — whichever you'd
+like to continue with once you've tried this out.
