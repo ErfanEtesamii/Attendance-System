@@ -8,11 +8,14 @@ const breakRepository = require('../../repositories/breakRepository');
 const usersRepository = require('../../repositories/usersRepository');
 const auditRepository = require('../../repositories/auditRepository');
 const { networkRestriction } = require('../../middleware/networkRestriction');
+const { attendanceActionLimiter } = require('../../middleware/rateLimiter');
 
 // نکته مهم: این middleware را با مسیر '/attendance' اسکوپ می‌کنیم (نه router.use(fn) بدون مسیر)،
 // چون این روتر با router.use(require('./attendance')) بدون پیشوند به روتر اصلی وصل می‌شود
 // و اگر بدون مسیر ثبت شود، روی تمام مسیرهای دیگر (مثل /users یا /audit-log) هم اجرا می‌شود.
 router.use('/attendance', networkRestriction);
+// فاز ۹: محدودیت نرخ درخواست روی همان مسیرهای حساس ثبت تردد (ضد اسپم/کلیک مکرر)
+router.use('/attendance', attendanceActionLimiter);
 
 function requireActiveUser(req, res, next) {
   const userId = req.body?.userId || req.query.userId;

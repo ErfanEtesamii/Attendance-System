@@ -10,6 +10,7 @@ const router = express.Router();
 
 const { telegramAuth } = require('../../middleware/telegramAuth');
 const { networkRestriction } = require('../../middleware/networkRestriction');
+const { createRateLimiter } = require('../../middleware/rateLimiter');
 
 const attendanceRepository = require('../../repositories/attendanceRepository');
 const breakRepository = require('../../repositories/breakRepository');
@@ -27,6 +28,24 @@ router.use('/miniapp/check-in', networkRestriction);
 router.use('/miniapp/check-out', networkRestriction);
 router.use('/miniapp/break/start', networkRestriction);
 router.use('/miniapp/break/end', networkRestriction);
+
+// فاز ۹: rate limiting روی همین چهار مسیر حساس (ضد اسپم/کلیک مکرر روی دکمه‌ها).
+// کلید محدودسازی، شناسه‌ی کاربر تلگرام (نه IP) است: چون همه‌ی کارمندان از پشت همان یک IP/رنج
+// داخلی شرکت وصل می‌شوند، محدودسازی بر اساس IP باعث می‌شد کل شرکت یک سطل مشترک داشته باشد.
+// req.miniAppUser تا اینجا قطعاً توسط telegramAuth ست شده (بالاتر از این middlewareها اجرا می‌شود).
+function miniAppRateLimitKey(req) {
+  return `miniapp:${req.miniAppUser?.id}`;
+}
+const miniAppActionLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 20,
+  message: 'تعداد تلاش‌ برای ثبت تردد بیش از حد مجاز است. لطفاً یک دقیقه صبر کنید.',
+  keyFn: miniAppRateLimitKey,
+});
+router.use('/miniapp/check-in', miniAppActionLimiter);
+router.use('/miniapp/check-out', miniAppActionLimiter);
+router.use('/miniapp/break/start', miniAppActionLimiter);
+router.use('/miniapp/break/end', miniAppActionLimiter);
 
 function dateDaysAgo(days) {
   const d = new Date();

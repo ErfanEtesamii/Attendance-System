@@ -15,6 +15,7 @@ const settingsRepository = require('../../repositories/settingsRepository');
 const workHours = require('../../utils/workHours');
 const { todayDateString } = require('../../utils/serverTime');
 const { notifyUser } = require('../../bot/notifier');
+const { sendCsv } = require('../../utils/csv');
 
 router.use('/admin', requireAdminAuth);
 
@@ -121,6 +122,31 @@ router.post('/admin/users', requireFullAdmin, (req, res) => {
   });
 
   res.status(201).json(user);
+});
+
+// ---------- فاز ۶: خروجی CSV کارمندان (باید قبل از /admin/users/:id ثبت شود، وگرنه
+// اکسپرس "export" را به‌عنوان مقدار :id تفسیر می‌کند) ----------
+
+router.get('/admin/users/export', (req, res) => {
+  const allowedIds = scopedUserIds(req.adminUser);
+  let users = usersRepository.listUsers({});
+  if (allowedIds !== null) users = users.filter((u) => allowedIds.includes(u.id));
+
+  const rows = users.map((u) => [
+    u.full_name,
+    u.personnel_code || '',
+    u.department || '',
+    u.role,
+    u.telegram_user_id || '',
+    u.is_active ? 'فعال' : 'غیرفعال',
+  ]);
+
+  sendCsv(
+    res,
+    'employees.csv',
+    ['نام کارمند', 'کد پرسنلی', 'دپارتمان', 'نقش', 'آیدی تلگرام', 'وضعیت'],
+    rows
+  );
 });
 
 // ---------- پروفایل یک کارمند ----------
@@ -340,6 +366,72 @@ router.get('/admin/audit-log', requireFullAdmin, (req, res) => {
     return { ...r, userFullName: u ? u.full_name : null };
   });
   res.json(enriched);
+});
+
+// ---------- فاز ۶: خروجی اکسل (CSV) ----------
+// نکته: خروجی CSV با BOM است، نه .xlsx باینری واقعی - توضیح کامل در src/utils/csv.js.
+// این سه مسیر همان محدوده‌ی داده‌ای (scoping بر اساس نقش) مسیرهای JSON بالا را رعایت می‌کنند.
+
+router.get('/admin/reports/export', (req, res) => {
+  const { from, to, userId } = req.query;
+  if (!from || !to) {
+    return res.status(400).json({ error: 'پارامترهای from و to (به‌فرمت YYYY-MM-DD) الزامی‌اند.' });
+  }
+
+  const allowedIds = scopedUserIds(req.adminUser);
+  let team = usersRepository.listUsers({});
+  if (allowedIds !== null) team = team.filter((u) => allowedIds.includes(u.id));
+  if (userId) team = team.filter((u) => String(u.id) === String(userId));
+
+  const rows = team.map((member) => {
+    const records = attendanceRepository.listByUserAndRange(member.id, from, to);
+    const summary = workHours.summarizeRange(records);
+    return [
+      member.full_name,
+      member.personnel_code || '',
+      member.department || '',
+      summary.dayCount,
+      Math.round(summary.totalEffective),
+      summary.lateCount,
+      summary.earlyLeaveCount,
+      summary.incompleteCount,
+    ];
+  });
+
+  auditRepository.logEvent({
+    userId: req.adminUser.id,
+    action: 'report_exported',
+    details: { source: 'admin_panel', from, to, userId: userId || null },
+  });
+
+  sendCsv(
+    res,
+    `attendance-report_${from}_${to}.csv`,
+    [
+      'نام کارمند',
+      'کد پرسنلی',
+      'دپارتمان',
+      'تعداد روز رکورد',
+      'مجموع دقیقه مفید',
+      'تعداد تأخیر',
+      'تعداد خروج زودهنگام',
+      'تعداد روز ناقص',
+    ],
+    rows
+  );
+});
+
+router.get('/admin/audit-log/export', requireFullAdmin, (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit, 10) || 500, 2000);
+  const rows = (req.query.userId
+    ? auditRepository.listByUser(req.query.userId, limit)
+    : auditRepository.listRecent(limit)
+  ).map((r) => {
+    const u = r.user_id ? usersRepository.findById(r.user_id) : null;
+    return [r.id, r.occurred_at, u ? u.full_name : '', r.action, r.ip_address || '', r.details || ''];
+  });
+
+  sendCsv(res, 'audit-log.csv', ['ردیف', 'زمان', 'کارمند', 'عملیات', 'IP', 'جزئیات'], rows);
 });
 
 module.exports = router;

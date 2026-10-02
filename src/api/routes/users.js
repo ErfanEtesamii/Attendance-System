@@ -1,11 +1,18 @@
 // این مسیرها اسکلت اولیه API کاربران هستند طبق الزام فاز ۱:
 // «یک لایه API داخلی بساز حتی اگر فعلاً مصرف‌کننده‌ای نداشته باشد».
-// احراز هویت/سطح دسترسی (ادمین/مدیر) در فازهای بعد (بات و پنل وب) روی همین مسیرها اعمال می‌شود.
-
+//
+// فاز ۹: این مسیرها هیچ مصرف‌کننده‌ی واقعی‌ای ندارند (بات مستقیماً از usersRepository استفاده
+// می‌کند، نه از این API؛ پنل وب هم از /api/admin/users استفاده می‌کند نه از این‌ها) ولی تا امروز
+// بدون هیچ احراز هویتی روی شبکه در دسترس بودند - یعنی هر کسی داخل شبکه شرکت می‌توانست لیست کامل
+// کارمندان را بخواند یا حتی کاربر بسازد/حذف کند. همان سطح محافظتی /api/admin/* (requireAdminAuth)
+// را اینجا هم اعمال می‌کنیم.
 const express = require('express');
 const router = express.Router();
 const usersRepository = require('../../repositories/usersRepository');
 const auditRepository = require('../../repositories/auditRepository');
+const { requireAdminAuth, requireFullAdmin } = require('../../middleware/adminAuth');
+
+router.use('/users', requireAdminAuth);
 
 router.get('/users', (req, res) => {
   const onlyActive = req.query.active === 'true';
@@ -18,7 +25,7 @@ router.get('/users/:id', (req, res) => {
   res.json(user);
 });
 
-router.post('/users', (req, res) => {
+router.post('/users', requireFullAdmin, (req, res) => {
   const { telegramUserId, fullName, personnelCode, department, role, managerId } = req.body || {};
 
   if (!fullName) {
@@ -44,7 +51,7 @@ router.post('/users', (req, res) => {
   res.status(201).json(user);
 });
 
-router.patch('/users/:id', (req, res) => {
+router.patch('/users/:id', requireFullAdmin, (req, res) => {
   const existing = usersRepository.findById(req.params.id);
   if (!existing) return res.status(404).json({ error: 'کاربر یافت نشد.' });
 
@@ -60,7 +67,7 @@ router.patch('/users/:id', (req, res) => {
   res.json(updated);
 });
 
-router.delete('/users/:id', (req, res) => {
+router.delete('/users/:id', requireFullAdmin, (req, res) => {
   const existing = usersRepository.findById(req.params.id);
   if (!existing) return res.status(404).json({ error: 'کاربر یافت نشد.' });
 

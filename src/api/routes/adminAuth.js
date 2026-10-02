@@ -9,12 +9,14 @@ const auditRepository = require('../../repositories/auditRepository');
 const { verifyLoginWidgetData } = require('../../utils/telegramLoginAuth');
 const { createSessionToken } = require('../../utils/session');
 const { SESSION_COOKIE_NAME, requireAdminAuth } = require('../../middleware/adminAuth');
+const { adminLoginLimiter } = require('../../middleware/rateLimiter');
 
 router.get('/admin/public-config', (req, res) => {
   res.json({ botUsername: config.telegramBotUsername });
 });
 
-router.post('/admin/auth/telegram', (req, res) => {
+// فاز ۹: rate limiting روی لاگین ادمین (ضد brute-force روی تأیید Telegram Login Widget)
+router.post('/admin/auth/telegram', adminLoginLimiter, (req, res) => {
   if (!config.telegramBotToken) {
     return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN روی سرور تنظیم نشده است.' });
   }
