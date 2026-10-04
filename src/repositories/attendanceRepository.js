@@ -105,7 +105,57 @@ function listOpenRecordsByDate(dateStr) {
     .all(dateStr);
 }
 
+// ساخت دستی رکورد توسط ادمین (پنل وب) - زمان‌ها از ادمین می‌آیند، نه ساعت سرور.
+// لایه route مسئول الزام دلیل و ثبت در audit_log است.
+function createManual({ userId, recordDate, checkInTime, checkOutTime, status }) {
+  const db = getDb();
+  const result = db
+    .prepare(
+      `INSERT INTO attendance_records (user_id, record_date, check_in_time, check_out_time, status)
+       VALUES (?, ?, ?, ?, ?)`
+    )
+    .run(userId, recordDate, checkInTime || null, checkOutTime || null, status || 'normal');
+  return findById(result.lastInsertRowid);
+}
+
+// حذف کامل یک رکورد و استراحت‌های وابسته‌اش (فقط ادمین کل، با دلیل و audit)
+function removeWithBreaks(id) {
+  const db = getDb();
+  const tx = db.transaction((recordId) => {
+    db.prepare('DELETE FROM break_records WHERE attendance_record_id = ?').run(recordId);
+    db.prepare('DELETE FROM record_disputes WHERE attendance_record_id = ?').run(recordId);
+    db.prepare('DELETE FROM attendance_records WHERE id = ?').run(recordId);
+  });
+  tx(id);
+}
+
+// جستجوی رکوردها با فیلتر (پنل وب). userIds=null یعنی بدون محدودیت کاربر.
+function search({ from, to, userIds = null, status = null, limit = 500 }) {
+  const db = getDb();
+  const where = ['r.record_date BETWEEN ? AND ?'];
+  const params = [from, to];
+  if (userIds !== null) {
+    if (!userIds.length) return [];
+    where.push(`r.user_id IN (${userIds.map(() => '?').join(',')})`);
+    params.push(...userIds);
+  }
+  if (status) {
+    where.push('r.status = ?');
+    params.push(status);
+  }
+  return db
+    .prepare(
+      `SELECT r.* FROM attendance_records r
+       WHERE ${where.join(' AND ')}
+       ORDER BY r.record_date DESC, r.id DESC LIMIT ?`
+    )
+    .all(...params, limit);
+}
+
 module.exports = {
+  createManual,
+  removeWithBreaks,
+  search,
   findTodayRecord,
   findById,
   listByUserAndRange,

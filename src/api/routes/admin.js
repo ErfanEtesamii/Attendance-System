@@ -88,6 +88,8 @@ router.get('/admin/users', (req, res) => {
       role: u.role,
       isActive: !!u.is_active,
       telegramUserId: u.telegram_user_id,
+      managerId: u.manager_id,
+      createdAt: u.created_at,
       todayStatus,
     };
   });
@@ -193,6 +195,25 @@ router.patch('/admin/users/:id', requireFullAdmin, (req, res) => {
 
   const { fullName, personnelCode, department, role, managerId, isActive, telegramUserId } =
     req.body || {};
+  // جلوگیری از قفل شدن پنل: ادمین نباید خودش را غیرفعال یا تنزل نقش کند
+  if (id === req.adminUser.id) {
+    if (isActive !== undefined && !isActive) {
+      return res.status(400).json({ error: 'نمی‌توانید حساب خودتان را غیرفعال کنید.' });
+    }
+    if (role !== undefined && role !== 'admin') {
+      return res.status(400).json({ error: 'نمی‌توانید نقش خودتان را تغییر دهید.' });
+    }
+  }
+  if (telegramUserId) {
+    const other = usersRepository.findByTelegramId(String(telegramUserId));
+    if (other && other.id !== id) {
+      return res.status(409).json({ error: 'این آیدی تلگرام برای کارمند دیگری ثبت شده است.' });
+    }
+  }
+  if (managerId && Number(managerId) === id) {
+    return res.status(400).json({ error: 'کارمند نمی‌تواند مدیر خودش باشد.' });
+  }
+
   const fields = {};
   if (fullName !== undefined) fields.full_name = fullName;
   if (personnelCode !== undefined) fields.personnel_code = personnelCode;
@@ -202,7 +223,15 @@ router.patch('/admin/users/:id', requireFullAdmin, (req, res) => {
   if (isActive !== undefined) fields.is_active = isActive ? 1 : 0;
   if (telegramUserId !== undefined) fields.telegram_user_id = telegramUserId || null;
 
-  const updated = usersRepository.updateUser(id, fields);
+  let updated;
+  try {
+    updated = usersRepository.updateUser(id, fields);
+  } catch (err) {
+    if (String(err.message).includes('UNIQUE')) {
+      return res.status(409).json({ error: 'کد پرسنلی یا آیدی تلگرام تکراری است.' });
+    }
+    throw err;
+  }
 
   auditRepository.logEvent({
     userId: req.adminUser.id,
@@ -285,6 +314,14 @@ router.patch('/admin/attendance-records/:id', requireFullAdmin, (req, res) => {
     return res.status(400).json({ error: 'ذکر دلیل اصلاح الزامی است.' });
   }
 
+  if (status !== undefined && !['normal', 'late', 'incomplete', 'leave', 'holiday'].includes(status)) {
+    return res.status(400).json({ error: 'وضعیت نامعتبر است.' });
+  }
+  for (const v of [checkInTime, checkOutTime]) {
+    if (v && Number.isNaN(new Date(v).getTime())) {
+      return res.status(400).json({ error: 'ساعت نامعتبر است.' });
+    }
+  }
   const fields = {};
   if (checkInTime !== undefined) fields.check_in_time = checkInTime;
   if (checkOutTime !== undefined) fields.check_out_time = checkOutTime;
@@ -356,10 +393,9 @@ router.patch('/admin/settings', requireFullAdmin, (req, res) => {
 // ---------- Audit Log (فقط ادمین کل) ----------
 
 router.get('/admin/audit-log', requireFullAdmin, (req, res) => {
-  const limit = Math.min(parseInt(req.query.limit, 10) || 100, 500);
-  const rows = req.query.userId
-    ? auditRepository.listByUser(req.query.userId, limit)
-    : auditRepository.listRecent(limit);
+  const limit = Math.min(parseInt(req.query.limit, 10) || 100, 1000);
+  const { userId, action, from, to, q } = req.query;
+  const rows = auditRepository.search({ userId, action, from, to, q, limit });
 
   const enriched = rows.map((r) => {
     const u = r.user_id ? usersRepository.findById(r.user_id) : null;

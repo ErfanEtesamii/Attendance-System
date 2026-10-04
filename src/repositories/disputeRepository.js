@@ -37,4 +37,14 @@ function setStatus(id, status) {
   return findById(id);
 }
 
-module.exports = { createDispute, findById, listByUser, listOpen, setStatus };
+function listAll({ status } = {}) {
+  const db = getDb();
+  if (status) {
+    return db
+      .prepare('SELECT * FROM record_disputes WHERE status = ? ORDER BY created_at DESC')
+      .all(status);
+  }
+  return db.prepare('SELECT * FROM record_disputes ORDER BY created_at DESC').all();
+}
+
+module.exports = { listAll, createDispute, findById, listByUser, listOpen, setStatus };

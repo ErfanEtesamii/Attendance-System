@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#1b1c2c" />
 <title>پنل مدیریتی | حضور و غیاب فرازهنر</title>
 <link rel="stylesheet" href="/admin/css/style.css" />
 </head>
@@ -11,9 +12,10 @@
   <!-- صفحه ورود -->
   <div id="login-screen" class="login-screen">
     <div class="login-card">
-      <div class="brand">
-        <div class="brand-mark">فه</div>
-        <div class="brand-name">فرازهنر</div>
+      <div class="brand brand-center">
+        <div class="brand-mark">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        </div>
       </div>
       <h1>پنل مدیریتی حضور و غیاب</h1>
       <p class="muted">برای ورود، با حساب تلگرامی که در بات ثبت شده وارد شوید.</p>
@@ -25,248 +27,61 @@
   <!-- برنامه اصلی -->
   <div id="app-shell" class="app-shell hidden">
 
-    <aside class="sidebar">
+    <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+    <aside class="sidebar" id="sidebar">
       <div class="brand">
-        <div class="brand-mark">فه</div>
-        <div class="brand-name">فرازهنر</div>
+        <div class="brand-mark">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        </div>
+        <div>
+          <div class="brand-name">فرازهنر</div>
+          <div class="brand-sub">پنل مدیریتی</div>
+        </div>
       </div>
 
-      <nav class="side-nav">
-        <button class="nav-item active" data-view="dashboard">
-          <span class="nav-icon">◧</span> داشبورد
-        </button>
-        <button class="nav-item" data-view="employees">
-          <span class="nav-icon">☰</span> کارمندان
-        </button>
-        <button class="nav-item" data-view="leave">
-          <span class="nav-icon">🗓</span> مرخصی
-        </button>
-        <button class="nav-item admin-only" data-view="settings">
-          <span class="nav-icon">⚙</span> تنظیمات
-        </button>
-        <button class="nav-item admin-only" data-view="audit">
-          <span class="nav-icon">📜</span> گزارش رویدادها
-        </button>
-      </nav>
+      <nav class="side-nav" id="side-nav"></nav>
 
       <div class="sidebar-footer">
         <div class="me-box">
-          <div class="me-avatar" id="me-avatar">—</div>
-          <div>
+          <div class="avatar" id="me-avatar">—</div>
+          <div class="me-text">
             <div class="me-name" id="me-name">—</div>
             <div class="me-role" id="me-role">—</div>
           </div>
         </div>
-        <button id="logout-btn" class="btn ghost small">خروج</button>
+        <button id="logout-btn" class="icon-btn" title="خروج" aria-label="خروج">
+          <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        </button>
       </div>
     </aside>
 
-    <main class="main">
-
-      <!-- داشبورد -->
-      <section id="view-dashboard" class="view">
-        <div class="view-header">
-          <h2>داشبورد</h2>
-          <span class="muted" id="dashboard-date"></span>
+    <div class="content">
+      <header class="topbar">
+        <button id="menu-btn" class="icon-btn menu-btn" aria-label="منو">
+          <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+        <div class="search-box">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input id="global-search" type="search" placeholder="جستجوی کارمند (نام یا کد پرسنلی)…" autocomplete="off" />
+          <div id="search-results" class="search-results hidden"></div>
         </div>
+        <div class="topbar-date" id="topbar-date"></div>
+        <button id="refresh-btn" class="icon-btn" title="تازه‌سازی" aria-label="تازه‌سازی">
+          <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg>
+        </button>
+      </header>
 
-        <div class="stat-grid">
-          <div class="stat-card">
-            <div class="stat-value" id="stat-total">—</div>
-            <div class="stat-label">تعداد کارمندان فعال</div>
-          </div>
-          <div class="stat-card accent-green">
-            <div class="stat-value" id="stat-present">—</div>
-            <div class="stat-label">حاضر همین الان</div>
-          </div>
-          <div class="stat-card accent-red">
-            <div class="stat-value" id="stat-incomplete">—</div>
-            <div class="stat-label">رکورد ناقص امروز</div>
-          </div>
-        </div>
-      </section>
-
-      <!-- لیست کارمندان -->
-      <section id="view-employees" class="view hidden">
-        <div class="view-header">
-          <h2>کارمندان</h2>
-          <button id="add-employee-btn" class="btn primary">+ افزودن کارمند</button>
-        </div>
-
-        <div class="table-wrap">
-          <table id="employees-table">
-            <thead>
-              <tr>
-                <th>نام</th>
-                <th>دپارتمان</th>
-                <th>نقش</th>
-                <th>وضعیت امروز</th>
-                <th>فعال</th>
-              </tr>
-            </thead>
-            <tbody id="employees-tbody"></tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- پروفایل کارمند -->
-      <section id="view-profile" class="view hidden">
-        <div class="view-header">
-          <button id="back-to-employees" class="btn ghost small">→ بازگشت</button>
-        </div>
-
-        <div class="profile-head card">
-          <div class="me-avatar large" id="pf-avatar">—</div>
-          <div>
-            <h2 id="pf-name">—</h2>
-            <div class="muted" id="pf-subtitle">—</div>
-          </div>
-        </div>
-
-        <div class="grid-2">
-          <div class="card">
-            <h3>اطلاعات پروفایل</h3>
-            <form id="profile-form" class="form">
-              <label>نام و نام‌خانوادگی <input name="fullName" required /></label>
-              <label>کد پرسنلی <input name="personnelCode" /></label>
-              <label>دپارتمان <input name="department" /></label>
-              <label>نقش
-                <select name="role">
-                  <option value="employee">کارمند</option>
-                  <option value="manager">مدیر دپارتمان</option>
-                  <option value="admin">ادمین کل</option>
-                </select>
-              </label>
-              <label>آیدی عددی تلگرام <input name="telegramUserId" /></label>
-              <label class="checkbox-row"><input type="checkbox" name="isActive" /> فعال</label>
-              <button type="submit" class="btn primary">ذخیره تغییرات</button>
-              <div class="form-msg" id="profile-msg"></div>
-            </form>
-          </div>
-
-          <div class="card">
-            <h3>۳۰ روز اخیر</h3>
-            <div id="pf-summary" class="row-list"></div>
-            <h3 class="mt">رکوردهای اخیر <span class="muted" style="font-weight:400;">(برای اصلاح کلیک کنید)</span></h3>
-            <div id="pf-records" class="list"></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- صف مرخصی و مأموریت -->
-      <section id="view-leave" class="view hidden">
-        <div class="view-header">
-          <h2>درخواست‌های مرخصی و مأموریت</h2>
-          <select id="leave-status-filter">
-            <option value="pending">در انتظار</option>
-            <option value="approved">تأییدشده</option>
-            <option value="rejected">ردشده</option>
-            <option value="all">همه</option>
-          </select>
-        </div>
-        <div id="leave-list" class="list wide"></div>
-      </section>
-
-      <!-- تنظیمات سیستم -->
-      <section id="view-settings" class="view hidden">
-        <div class="view-header"><h2>تنظیمات سیستم</h2></div>
-
-        <div class="grid-2">
-          <div class="card">
-            <h3>ساعت کاری و آستانه‌ها</h3>
-            <form id="settings-form" class="form">
-              <label>ساعت شروع کاری <input type="time" name="workDayStart" /></label>
-              <label>ساعت پایان کاری <input type="time" name="workDayEnd" /></label>
-              <label>مهلت مجاز تأخیر (دقیقه) <input type="number" min="0" name="lateCheckinGraceMinutes" /></label>
-              <label>یادآوری خروج، چند دقیقه قبل از پایان کار <input type="number" min="0" name="checkoutReminderMinutesBefore" /></label>
-              <label>آستانه هشدار تأخیر مکرر (تعداد روز در ۳۰ روز اخیر) <input type="number" min="1" name="repeatedLatenessThreshold" /></label>
-              <button type="submit" class="btn primary">ذخیره تنظیمات</button>
-              <div class="form-msg" id="settings-msg"></div>
-            </form>
-          </div>
-
-          <div class="card">
-            <h3>تقویم تعطیلات رسمی</h3>
-            <form id="holiday-form" class="form-row">
-              <input type="date" name="date" required />
-              <input type="text" name="title" placeholder="عنوان تعطیلی" required />
-              <button type="submit" class="btn ghost">+ افزودن</button>
-            </form>
-            <div class="form-msg" id="holiday-msg"></div>
-            <div id="holiday-list" class="list mt"></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- گزارش رویدادها (Audit Log) -->
-      <section id="view-audit" class="view hidden">
-        <div class="view-header"><h2>گزارش رویدادها (Audit Log)</h2></div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>زمان</th><th>کاربر</th><th>رویداد</th><th>جزئیات</th></tr></thead>
-            <tbody id="audit-tbody"></tbody>
-          </table>
-        </div>
-      </section>
-
-    </main>
-  </div>
-
-  <!-- مودال اصلاح دستی رکورد -->
-  <div id="fix-record-modal" class="modal-backdrop hidden">
-    <div class="modal">
-      <h3>اصلاح رکورد تردد</h3>
-      <form id="fix-record-form" class="form">
-        <label>ساعت ورود <input type="datetime-local" name="checkInTime" /></label>
-        <label>ساعت خروج <input type="datetime-local" name="checkOutTime" /></label>
-        <label>وضعیت
-          <select name="status">
-            <option value="normal">عادی</option>
-            <option value="late">تأخیر</option>
-            <option value="incomplete">ناقص</option>
-            <option value="leave">مرخصی</option>
-            <option value="holiday">تعطیل</option>
-          </select>
-        </label>
-        <label>دلیل اصلاح (اجباری) <textarea name="reason" rows="2" required></textarea></label>
-        <div class="modal-actions">
-          <button type="button" id="cancel-fix" class="btn ghost">انصراف</button>
-          <button type="submit" class="btn primary">ذخیره اصلاح</button>
-        </div>
-        <div class="form-msg" id="fix-msg"></div>
-      </form>
+      <main class="page" id="page"></main>
     </div>
   </div>
 
-  <!-- مودال افزودن کارمند -->
-  <div id="add-modal" class="modal-backdrop hidden">
-    <div class="modal">
-      <h3>افزودن کارمند جدید</h3>
-      <form id="add-employee-form" class="form">
-        <label>نام و نام‌خانوادگی <input name="fullName" required /></label>
-        <label>کد پرسنلی <input name="personnelCode" /></label>
-        <label>دپارتمان <input name="department" /></label>
-        <label>نقش
-          <select name="role">
-            <option value="employee">کارمند</option>
-            <option value="manager">مدیر دپارتمان</option>
-            <option value="admin">ادمین کل</option>
-          </select>
-        </label>
-        <label>آیدی عددی تلگرام (اختیاری - بعداً هم قابل تنظیم است)
-          <input name="telegramUserId" placeholder="مثلاً 123456789" />
-        </label>
-        <div class="modal-actions">
-          <button type="button" id="cancel-add" class="btn ghost">انصراف</button>
-          <button type="submit" class="btn primary">افزودن</button>
-        </div>
-        <div class="form-msg" id="add-msg"></div>
-      </form>
-    </div>
-  </div>
-
+  <div id="modal-root"></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script src="/admin/js/app.js"></script>
+  <script src="/admin/js/core.js"></script>
+  <script src="/admin/js/views-main.js"></script>
+  <script src="/admin/js/views-ops.js"></script>
+  <script src="/admin/js/views-admin.js"></script>
+  <script>AP.boot();</script>
 </body>
 </html>

@@ -25,4 +25,29 @@ function listRecent(limit = 200) {
   return db.prepare('SELECT * FROM audit_log ORDER BY occurred_at DESC LIMIT ?').all(limit);
 }
 
-module.exports = { logEvent, listByUser, listRecent };
+// جستجوی چندفیلتری برای پنل وب (فقط خواندنی - لاگ همچنان غیرقابل‌ویرایش است)
+function search({ userId, action, from, to, q, limit = 200 } = {}) {
+  const db = getDb();
+  const where = [];
+  const params = [];
+  if (userId) { where.push('user_id = ?'); params.push(userId); }
+  if (action) { where.push('action = ?'); params.push(action); }
+  if (from) { where.push('date(occurred_at) >= ?'); params.push(from); }
+  if (to) { where.push('date(occurred_at) <= ?'); params.push(to); }
+  if (q) {
+    where.push('(details LIKE ? OR action LIKE ? OR ip_address LIKE ?)');
+    params.push(`%${q}%`, `%${q}%`, `%${q}%`);
+  }
+  const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  return db
+    .prepare(`SELECT * FROM audit_log ${clause} ORDER BY occurred_at DESC, id DESC LIMIT ?`)
+    .all(...params, limit);
+}
+
+function listActions() {
+  return getDb()
+    .prepare('SELECT action, COUNT(*) AS count FROM audit_log GROUP BY action ORDER BY count DESC')
+    .all();
+}
+
+module.exports = { logEvent, listByUser, listRecent, search, listActions };

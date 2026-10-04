@@ -373,3 +373,12 @@ that happens in `NODE_ENV=production`). This is what makes the earlier "Node han
 IIS/nginx" architecture decision actually real in code — until this change, the server only ever
 spoke plain HTTP. Point both env vars at the `fullchain`/`privkey` files produced by your DNS-01
 issuance for `attendance.farazhonar.com` and restart the service.
+
+## Admin panel — full control (new)
+
+`public-admin/` was rebuilt (dark navy/green theme, same as the Mini App) and `src/api/routes/adminPanel.js` adds the backing endpoints:
+
+- **Pages:** dashboard (live KPIs, 14-day trend, departments, top late), live board (auto-refresh), employees, employee file (stats, attendance with IPs/breaks, leave, disputes, edit, team, activity), attendance records (filters + CSV), leave/mission queue, disputes inbox, analytics reports, broadcast messages, settings + holidays, audit log (filters + CSV), system info + DB backup download.
+- **Control (admin only, reason required + audited):** create/edit/delete attendance records, add/edit/delete breaks, create/edit/override/delete leave requests, resolve/reopen disputes (employee notified on Telegram), direct and broadcast Telegram messages.
+- **Managers** see only their own team and can approve leave, resolve disputes and message their team; everything else is hidden in the UI and refused by the server.
+- Safety guards: an admin cannot deactivate or demote themselves; duplicate Telegram ID / personnel code returns 409.

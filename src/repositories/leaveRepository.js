@@ -67,7 +67,32 @@ function hasApprovedMissionOnDate(userId, dateStr) {
   return hasApprovedLeaveOnDate(userId, dateStr, 'mission');
 }
 
+function remove(id) {
+  getDb().prepare('DELETE FROM leave_requests WHERE id = ?').run(id);
+}
+
+// ویرایش/تغییر تصمیم توسط ادمین کل (پنل وب)
+function updateManual(id, fields, approverId) {
+  const db = getDb();
+  const allowed = ['start_date', 'end_date', 'leave_type', 'status', 'reason'];
+  const keys = Object.keys(fields).filter((k) => allowed.includes(k) && fields[k] !== undefined);
+  if (!keys.length) return findById(id);
+  const sets = keys.map((k) => `${k} = ?`);
+  const values = keys.map((k) => fields[k]);
+  if (fields.status) {
+    sets.push('approver_id = ?');
+    values.push(approverId || null);
+  }
+  db.prepare(`UPDATE leave_requests SET ${sets.join(', ')}, updated_at = datetime('now') WHERE id = ?`).run(
+    ...values,
+    id
+  );
+  return findById(id);
+}
+
 module.exports = {
+  remove,
+  updateManual,
   createLeaveRequest,
   findById,
   listPending,

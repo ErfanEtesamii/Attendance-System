@@ -26,4 +26,17 @@ async function notifyUser(telegramUserId, text) {
   }
 }
 
-module.exports = { notifyUser };
+// مثل notifyUser ولی نتیجه (موفق/ناموفق) را برمی‌گرداند - برای پیام مستقیم/گروهی پنل ادمین
+async function sendMessage(telegramUserId, text) {
+  const bot = getNotifierBot();
+  if (!bot || !telegramUserId) return false;
+  try {
+    await bot.sendMessage(telegramUserId, text);
+    return true;
+  } catch (err) {
+    console.error('[notifier] خطا در ارسال پیام:', err.message);
+    return false;
+  }
+}
+
+module.exports = { notifyUser, sendMessage };

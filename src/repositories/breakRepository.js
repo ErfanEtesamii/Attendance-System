@@ -44,7 +44,43 @@ function totalBreakMinutes(attendanceRecordId) {
   return Math.round(totalMs / 60000);
 }
 
+function findById(id) {
+  const db = getDb();
+  return db.prepare('SELECT * FROM break_records WHERE id = ?').get(id);
+}
+
+function createManual({ attendanceRecordId, breakType, startTime, endTime }) {
+  const db = getDb();
+  const result = db
+    .prepare(
+      `INSERT INTO break_records (attendance_record_id, break_type, start_time, end_time)
+       VALUES (?, ?, ?, ?)`
+    )
+    .run(attendanceRecordId, breakType || 'lunch', startTime, endTime || null);
+  return findById(result.lastInsertRowid);
+}
+
+function updateManual(id, fields) {
+  const db = getDb();
+  const allowed = ['break_type', 'start_time', 'end_time'];
+  const keys = Object.keys(fields).filter((k) => allowed.includes(k) && fields[k] !== undefined);
+  if (!keys.length) return findById(id);
+  db.prepare(`UPDATE break_records SET ${keys.map((k) => `${k} = ?`).join(', ')} WHERE id = ?`).run(
+    ...keys.map((k) => fields[k]),
+    id
+  );
+  return findById(id);
+}
+
+function remove(id) {
+  getDb().prepare('DELETE FROM break_records WHERE id = ?').run(id);
+}
+
 module.exports = {
+  findById,
+  createManual,
+  updateManual,
+  remove,
   listByAttendanceRecord,
   findOpenBreak,
   startBreak,
