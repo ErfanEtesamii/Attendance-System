@@ -1,0 +1,26 @@
+{
+  "name": "farazhonar-attendance-backend",
+  "version": "0.4.0",
+  "description": "سیستم حضور و غیاب تلگرامی شرکت فرازهنر - فاز ۱ تا ۴: بک‌اند، بات تلگرام (Polling) و Telegram Mini App",
+  "private": true,
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "start:api-only": "node src/server.js",
+    "init-db": "node src/db/init.js",
+    "create-admin": "node src/scripts/createAdmin.js",
+    "seed-employees": "node src/scripts/seedEmployees.js",
+    "dev": "node --watch src/index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jalaali-js": "^1.2.8",
+    "node-cron": "^3.0.3",
+    "node-telegram-bot-api": "^0.66.0"
+  }
+}
