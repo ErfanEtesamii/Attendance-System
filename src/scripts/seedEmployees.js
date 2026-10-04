@@ -1,5 +1,5 @@
 // اسکریپت ساخت/به‌روزرسانی کارمندان بر اساس چارت سازمانی.
-// کد پرسنلی: رقم اول = شماره تیم، دو رقم بعد = ردیف در تیم (۰۱ = سرپرست بخش).
+// کد پرسنلی: رقم اول = شماره تیم، دو رقم بعد = ردیف در تیم (۰۱ = مدیر بخش).
 //
 // استفاده:
 //   node src/scripts/seedEmployees.js            # فقط پیش‌نمایش (چیزی نوشته نمی‌شود)
@@ -64,7 +64,7 @@ function main() {
       department: t.department, role: 'manager', managerId: null,
     });
     stats[m.action]++;
-    console.log(`  ${code(t.n, 1)}  ${t.manager}  (سرپرست)  — ${m.action}`);
+    console.log(`  ${code(t.n, 1)}  ${t.manager}  (مدیر)  — ${m.action}`);
 
     t.members.forEach((name, i) => {
       const c = code(t.n, i + 2);
