@@ -8,6 +8,11 @@
   if (tg) {
     tg.ready();
     tg.expand();
+    try {
+      tg.setHeaderColor('#1b1c2c');
+      tg.setBackgroundColor('#1b1c2c');
+      if (tg.setBottomBarColor) tg.setBottomBarColor('#1b1c2c');
+    } catch (_) { /* نسخه‌های قدیمی تلگرام */ }
   }
 
   // initData خام (امضاشده توسط تلگرام) - همین رشته مستقیم برای سرور فرستاده می‌شود
@@ -120,6 +125,13 @@
     state.timerInterval = setInterval(tick, 1000);
   }
 
+  const ICONS = {
+    in: '<svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>',
+    out: '<svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
+    lunch: '<svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8zM6 1v3M10 1v3M14 1v3"/></svg>',
+    resume: '<svg viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z"/></svg>',
+  };
+
   function renderTodayActions() {
     const box = $('#today-actions');
     box.innerHTML = '';
@@ -127,25 +139,32 @@
     const r = state.today && state.today.record;
     const openBreak = state.today && state.today.openBreak;
 
-    function addBtn(label, cls, handler) {
+    function addTile({ title, sub, color, icon, wide, handler }) {
       const b = document.createElement('button');
-      b.className = 'btn ' + cls;
-      b.textContent = label;
+      b.className = 'action-tile t-' + color + (wide ? ' wide' : '');
+      b.innerHTML = `
+        <span class="tile-icon">${ICONS[icon]}</span>
+        <span class="tile-text">
+          <span class="tile-title">${title}</span>
+          <span class="tile-sub">${sub}</span>
+        </span>`;
       b.addEventListener('click', handler);
       box.appendChild(b);
     }
 
     if (!r) {
       box.classList.add('single');
-      addBtn('ثبت ورود', 'primary', () => doAction('/check-in', {}, 'ورود ثبت شد.'));
+      addTile({
+        title: 'ثبت ورود', sub: 'شروع روز کاری', color: 'green', icon: 'in', wide: true,
+        handler: () => doAction('/check-in', {}, 'ورود ثبت شد.'),
+      });
       return;
     }
 
     if (r.check_out_time) {
       box.classList.add('single');
       const done = document.createElement('div');
-      done.className = 'card';
-      done.style.textAlign = 'center';
+      done.className = 'card done-card';
       done.textContent = 'امروز به پایان رسید. تا فردا خوش باشید 🌤️';
       box.appendChild(done);
       return;
@@ -153,12 +172,21 @@
 
     if (openBreak) {
       box.classList.add('single');
-      addBtn('پایان استراحت', 'warning', () => doAction('/break/end', {}, 'استراحت پایان یافت.'));
+      addTile({
+        title: 'پایان استراحت', sub: 'بازگشت به کار', color: 'orange', icon: 'resume', wide: true,
+        handler: () => doAction('/break/end', {}, 'استراحت پایان یافت.'),
+      });
       return;
     }
 
-    addBtn('شروع ناهار', 'secondary', () => doAction('/break/start', { breakType: 'lunch' }, 'استراحت ناهار شروع شد.'));
-    addBtn('ثبت خروج', 'danger', () => doAction('/check-out', {}, 'خروج ثبت شد.'));
+    addTile({
+      title: 'شروع ناهار', sub: 'ثبت استراحت', color: 'orange', icon: 'lunch',
+      handler: () => doAction('/break/start', { breakType: 'lunch' }, 'استراحت ناهار شروع شد.'),
+    });
+    addTile({
+      title: 'ثبت خروج', sub: 'پایان روز کاری', color: 'red', icon: 'out',
+      handler: () => doAction('/check-out', {}, 'خروج ثبت شد.'),
+    });
   }
 
   async function doAction(path, body, successMsg) {
@@ -169,6 +197,11 @@
     } catch (err) {
       showToast(err.message);
     }
+  }
+
+  function setStatus(label, cls) {
+    $('#status-label').textContent = label;
+    $('#status-pill').className = 'status-pill ' + cls;
   }
 
   async function loadToday() {
@@ -185,25 +218,40 @@
     }, 0);
     $('#ti-breaks').textContent = totalBreak > 0 ? fmtDuration(totalBreak) : '—';
 
+    const TARGET_MIN = 8 * 60;
+    const timerEl = $('#timer');
+    let progressMin = 0;
+
     if (!r) {
-      $('#status-label').textContent = 'هنوز ورود ثبت نشده';
+      setStatus('هنوز ورود ثبت نشده', '');
       stopTimer();
-      $('#timer').textContent = '--:--:--';
-      $('#today-summary').textContent = '';
+      timerEl.textContent = '--:--:--';
+      timerEl.classList.remove('is-text');
+      $('#today-summary').textContent = 'برای شروع، ورود خود را ثبت کنید';
     } else if (r.check_out_time) {
-      $('#status-label').textContent = '✅ خروج ثبت شد';
+      setStatus('خروج ثبت شد', 'is-done');
       stopTimer();
-      $('#timer').textContent = fmtDuration(data.summary?.effectiveMinutes);
+      progressMin = data.summary?.effectiveMinutes || 0;
+      timerEl.textContent = fmtDuration(data.summary?.effectiveMinutes);
+      timerEl.classList.add('is-text');
       $('#today-summary').textContent = 'ساعت مفید کاری امروز';
     } else if (data.openBreak) {
-      $('#status-label').textContent = '🍽️ در حال استراحت';
+      setStatus('در حال استراحت', 'is-break');
       startTimer(data.openBreak.start_time);
+      timerEl.classList.remove('is-text');
+      progressMin = (Date.now() - new Date(r.check_in_time).getTime()) / 60000 - totalBreak;
       $('#today-summary').textContent = 'مدت استراحت جاری';
     } else {
-      $('#status-label').textContent = '🟢 حاضر در شرکت';
+      setStatus('حاضر در شرکت', 'is-active');
       startTimer(r.check_in_time);
+      timerEl.classList.remove('is-text');
+      progressMin = (Date.now() - new Date(r.check_in_time).getTime()) / 60000 - totalBreak;
       $('#today-summary').textContent = 'مدت حضور از لحظه ورود';
     }
+
+    const pct = Math.max(0, Math.min(100, Math.round((progressMin / TARGET_MIN) * 100)));
+    $('#progress-bar').style.width = pct + '%';
+    $('#progress-text').textContent = pct.toLocaleString('fa-IR') + '٪ از ۸ ساعت';
 
     renderTodayActions();
   }
@@ -255,11 +303,12 @@
     try {
       const r = await api('/report?period=' + period);
       card.innerHTML = `
-        <div class="row"><span>مجموع ساعت مفید</span><span>${fmtDuration(r.totalEffective)}</span></div>
-        <div class="row"><span>تعداد روزهای کاری</span><span>${r.dayCount}</span></div>
-        <div class="row"><span>تعداد تأخیر</span><span>${r.lateCount}</span></div>
-        <div class="row"><span>تعداد خروج زودهنگام</span><span>${r.earlyLeaveCount}</span></div>
-        <div class="row"><span>رکوردهای ناقص</span><span>${r.incompleteCount}</span></div>`;
+        <div class="report-head"><span>شاخص</span><span>مقدار</span></div>
+        <div class="row"><span class="row-label">مجموع ساعت مفید</span><span class="row-value">${fmtDuration(r.totalEffective)}</span></div>
+        <div class="row"><span class="row-label">تعداد روزهای کاری</span><span class="row-value">${r.dayCount}</span></div>
+        <div class="row"><span class="row-label">تعداد تأخیر</span><span class="row-value">${r.lateCount}</span></div>
+        <div class="row"><span class="row-label">تعداد خروج زودهنگام</span><span class="row-value">${r.earlyLeaveCount}</span></div>
+        <div class="row"><span class="row-label">رکوردهای ناقص</span><span class="row-value">${r.incompleteCount}</span></div>`;
     } catch (err) {
       card.innerHTML = err.message;
     }
@@ -326,6 +375,8 @@
   async function loadProfile() {
     if (!state.me) return;
     $('#pf-name').textContent = state.me.fullName || '—';
+    $('#pf-name-big').textContent = state.me.fullName || '—';
+    $('#pf-avatar').textContent = (state.me.fullName || '؟').trim().charAt(0);
     $('#pf-code').textContent = state.me.personnelCode || '—';
     $('#pf-dept').textContent = state.me.department || '—';
     const roleLabels = { employee: 'کارمند', manager: 'مدیر دپارتمان', admin: 'ادمین کل' };
@@ -366,6 +417,9 @@
     try {
       state.me = await api('/me');
       $('#user-name').textContent = state.me.fullName;
+      try {
+        $('#header-date').textContent = new Date().toLocaleDateString('fa-IR', { weekday: 'long', month: 'long', day: 'numeric' });
+      } catch (_) { /* ignore */ }
       $('#app').classList.remove('hidden');
       await loadToday();
     } catch (err) {
