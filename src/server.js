@@ -30,7 +30,10 @@ function createApp() {
   }
 
   app.use(express.json());
-
+  app.use((req, res, next) => {
+  console.log(new Date().toISOString(), req.ip, req.method, req.originalUrl);
+  next();
+  });
   // فاز ۴: فایل‌های استاتیک Telegram Mini App (public/index.html و ...).
   // این پوشه از ریشه‌ی همین دامنه/ساب‌دامنه سرو می‌شود، مثلاً https://attendance.farazhonar.com/
   app.use(express.static(path.join(__dirname, '..', 'public')));
