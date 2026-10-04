@@ -349,6 +349,7 @@
           <div class="header-actions">
             ${u.telegramUserId ? `<button class="btn ghost" id="pf-msg">${icon('mail')} پیام تلگرام</button>` : ''}
             ${AP.state.isAdmin ? `<button class="btn ghost" id="pf-rec">${icon('plus')} ثبت دستی تردد</button><button class="btn ghost" id="pf-leave">${icon('leave')} ثبت مرخصی</button>` : ''}
+            ${AP.state.isAdmin && u.id !== AP.state.me.id ? `<button class="btn danger" id="pf-del">حذف کارمند</button>` : ''}
           </div>
         </div>
 
@@ -457,6 +458,33 @@
           $$('[data-go]', page).forEach((b) => b.addEventListener('click', () => AP.go(b.dataset.go)));
           const msg = $('#pf-msg', page); if (msg) msg.addEventListener('click', () => AP.openMessage(u.id));
           const rec = $('#pf-rec', page); if (rec) rec.addEventListener('click', () => AP.openCreateRecord({ userId: u.id }));
+          const del = $('#pf-del', page);
+          if (del) del.addEventListener('click', async () => {
+            const first = await AP.confirmBox({
+              title: 'حذف کارمند', danger: true, confirmText: 'حذف',
+              message: `آیا از حذف «${u.fullName}» مطمئن هستید؟`,
+            });
+            if (!first) return;
+            try {
+              await AP.api(`/admin/users/${u.id}`, { method: 'DELETE' });
+            } catch (err) {
+              if (err.status === 409 && err.data && err.data.code === 'HAS_HISTORY') {
+                const c = err.data.counts;
+                const second = await AP.confirmBox({
+                  title: 'حذف دائمی همراه با سوابق', danger: true, confirmText: 'حذف دائمی همه',
+                  message: `«${u.fullName}» دارای ${fmt.num(c.attendance)} رکورد تردد، ${fmt.num(c.leave)} درخواست مرخصی/مأموریت و ${fmt.num(c.disputes)} اعتراض است. با ادامه، همه‌ی این سوابق برای همیشه پاک می‌شوند و قابل بازگشت نیست. اگر فقط می‌خواهید دسترسی او قطع شود، به‌جای حذف، در تب «اطلاعات و ویرایش» تیک «حساب فعال است» را بردارید.`,
+                });
+                if (!second) return;
+                if (!(await AP.attempt(() => AP.api(`/admin/users/${u.id}?force=1`, { method: 'DELETE' })))) return;
+              } else {
+                AP.toast(err.message, true);
+                return;
+              }
+            }
+            AP.toast('کارمند حذف شد.');
+            AP.state.users = null;
+            AP.go('employees');
+          });
           const lv = $('#pf-leave', page); if (lv) lv.addEventListener('click', () => AP.openLeaveCreate({ userId: u.id }));
         },
       };

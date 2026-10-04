@@ -242,6 +242,47 @@ router.patch('/admin/users/:id', requireFullAdmin, (req, res) => {
   res.json(updated);
 });
 
+// ---------- حذف کارمند (فقط ادمین کل) ----------
+// بدون ?force=1: اگر کارمند سابقه‌ی تردد/مرخصی/اعتراض داشته باشد، ۴۰۹ با شمارش سوابق برمی‌گردد
+// تا پنل هشدار بدهد. با ?force=1: حذف دائمی همراه با سوابق.
+
+router.delete('/admin/users/:id', requireFullAdmin, (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const user = usersRepository.findById(id);
+  if (!user) return res.status(404).json({ error: 'کارمند یافت نشد.' });
+  if (id === req.adminUser.id) {
+    return res.status(400).json({ error: 'نمی‌توانید حساب خودتان را حذف کنید.' });
+  }
+
+  const counts = usersRepository.getHistoryCounts(id);
+  const hasHistory = counts.attendance + counts.leave + counts.disputes > 0;
+  if (hasHistory && req.query.force !== '1') {
+    return res.status(409).json({
+      code: 'HAS_HISTORY',
+      counts,
+      error: 'این کارمند سوابق ثبت‌شده دارد.',
+    });
+  }
+
+  usersRepository.deleteUserPermanently(id);
+
+  auditRepository.logEvent({
+    userId: req.adminUser.id,
+    action: 'employee_deleted',
+    ipAddress: req.ip,
+    details: {
+      source: 'admin_panel',
+      targetUserId: id,
+      fullName: user.full_name,
+      personnelCode: user.personnel_code,
+      telegramUserId: user.telegram_user_id,
+      removed: counts,
+    },
+  });
+
+  res.json({ ok: true, removed: counts });
+});
+
 // ---------- صف تأیید مرخصی/مأموریت ----------
 
 router.get('/admin/leave-requests', (req, res) => {

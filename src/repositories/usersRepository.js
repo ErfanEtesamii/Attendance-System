@@ -50,6 +50,43 @@ function deactivateUser(id) {
   return updateUser(id, { is_active: 0 });
 }
 
+
+// تعداد سوابق وابسته به کاربر (برای هشدار قبل از حذف)
+function getHistoryCounts(id) {
+  const db = getDb();
+  const n = (sql) => db.prepare(sql).get(id).n;
+  return {
+    attendance: n('SELECT COUNT(*) n FROM attendance_records WHERE user_id = ?'),
+    leave: n('SELECT COUNT(*) n FROM leave_requests WHERE user_id = ?'),
+    disputes: n('SELECT COUNT(*) n FROM record_disputes WHERE user_id = ?'),
+    subordinates: n('SELECT COUNT(*) n FROM users WHERE manager_id = ?'),
+  };
+}
+
+// حذف دائمی کاربر همراه با سوابقش (تردد، استراحت، مرخصی، اعتراض). در یک تراکنش انجام می‌شود.
+// - زیرمجموعه‌های او بدون سرپرست می‌شوند (manager_id = NULL)
+// - درخواست‌های مرخصی دیگران که او تأییدشان کرده باقی می‌ماند (approver_id = NULL)
+// - رکوردهای audit_log حذف نمی‌شوند؛ فقط ارتباطشان با کاربر قطع می‌شود (user_id = NULL)
+function deleteUserPermanently(id) {
+  const db = getDb();
+  const tx = db.transaction((userId) => {
+    db.prepare('UPDATE users SET manager_id = NULL WHERE manager_id = ?').run(userId);
+    db.prepare('UPDATE leave_requests SET approver_id = NULL WHERE approver_id = ?').run(userId);
+    db.prepare(
+      `DELETE FROM record_disputes WHERE user_id = ?
+         OR attendance_record_id IN (SELECT id FROM attendance_records WHERE user_id = ?)`
+    ).run(userId, userId);
+    db.prepare(
+      'DELETE FROM break_records WHERE attendance_record_id IN (SELECT id FROM attendance_records WHERE user_id = ?)'
+    ).run(userId);
+    db.prepare('DELETE FROM attendance_records WHERE user_id = ?').run(userId);
+    db.prepare('DELETE FROM leave_requests WHERE user_id = ?').run(userId);
+    db.prepare('UPDATE audit_log SET user_id = NULL WHERE user_id = ?').run(userId);
+    db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+  });
+  tx(id);
+}
+
 module.exports = {
   listUsers,
   findById,
@@ -57,4 +94,6 @@ module.exports = {
   createUser,
   updateUser,
   deactivateUser,
+  getHistoryCounts,
+  deleteUserPermanently,
 };
