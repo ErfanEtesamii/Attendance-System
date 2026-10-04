@@ -62,7 +62,7 @@ async function handleAddEmployeeText(bot, msg, sess) {
         inline_keyboard: [
           [
             { text: 'کارمند', callback_data: 'add_emp_role:employee' },
-            { text: 'مدیر دپارتمان', callback_data: 'add_emp_role:manager' },
+            { text: 'سرپرست', callback_data: 'add_emp_role:manager' },
             { text: 'ادمین کل', callback_data: 'add_emp_role:admin' },
           ],
         ],
@@ -75,12 +75,12 @@ async function handleAddEmployeeText(bot, msg, sess) {
     let managerId = null;
     if (text !== '-') {
       if (!/^\d+$/.test(text)) {
-        await bot.sendMessage(chatId, 'آیدی تلگرام مدیر باید عدد باشد یا "-" باشد. دوباره وارد کنید:');
+        await bot.sendMessage(chatId, 'آیدی تلگرام سرپرست باید عدد باشد یا "-" باشد. دوباره وارد کنید:');
         return;
       }
       const manager = usersRepository.findByTelegramId(text);
       if (!manager) {
-        await bot.sendMessage(chatId, 'کاربری با این آیدی تلگرام به‌عنوان مدیر پیدا نشد. دوباره وارد کنید یا "-" بزنید:');
+        await bot.sendMessage(chatId, 'کاربری با این آیدی تلگرام به‌عنوان سرپرست پیدا نشد. دوباره وارد کنید یا "-" بزنید:');
         return;
       }
       managerId = manager.id;
@@ -103,7 +103,7 @@ async function handleAddEmployeeCallback(bot, query, sess) {
   }
 
   session.update(chatId, { step: 5, data });
-  await bot.sendMessage(chatId, 'آیدی تلگرام مدیر مستقیم را وارد کنید (یا "-" اگر ندارد):');
+  await bot.sendMessage(chatId, 'آیدی تلگرام سرپرست مستقیم را وارد کنید (یا "-" اگر ندارد):');
 }
 
 async function finalizeAddEmployee(bot, chatId, data) {

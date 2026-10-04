@@ -211,7 +211,7 @@
           <datalist id="dept-list">${[...new Set(users.map((x) => x.department).filter(Boolean))].map((d) => `<option value="${esc(d)}">`).join('')}</datalist></label>
         <label class="field"><span>نقش</span><select name="role">
           ${Object.entries(AP.ROLE).map(([k, v]) => `<option value="${k}" ${u && u.role === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
-        <label class="field"><span>مدیر مستقیم</span><select name="managerId"><option value="">— ندارد —</option>
+        <label class="field"><span>سرپرست مستقیم</span><select name="managerId"><option value="">— ندارد —</option>
           ${managers.map((m) => `<option value="${m.id}" ${u && u.managerId === m.id ? 'selected' : ''}>${esc(m.fullName)}</option>`).join('')}</select></label>
         <label class="field"><span>آیدی عددی تلگرام</span><input name="telegramUserId" class="ltr" inputmode="numeric" value="${esc(u ? u.telegramUserId || '' : '')}" /></label>
         ${u ? `<label class="check-row full" style="grid-column:1/-1"><input type="checkbox" name="isActive" ${u.isActive ? 'checked' : ''} /> حساب فعال است</label>` : ''}
@@ -240,7 +240,7 @@
           <label class="field"><span>وضعیت حساب</span><select id="f-active"><option value="">همه</option><option value="1">فعال</option><option value="0">غیرفعال</option></select></label>
         </div>
         <div class="card flush"><div class="table-wrap"><table>
-          <thead><tr><th>کارمند</th><th>کد پرسنلی</th><th>دپارتمان</th><th>نقش</th><th>مدیر مستقیم</th><th>وضعیت امروز</th><th>آیدی تلگرام</th><th>حساب</th></tr></thead>
+          <thead><tr><th>کارمند</th><th>کد پرسنلی</th><th>دپارتمان</th><th>نقش</th><th>سرپرست مستقیم</th><th>وضعیت امروز</th><th>آیدی تلگرام</th><th>حساب</th></tr></thead>
           <tbody id="emp-body"></tbody></table></div></div>`;
       const todayMap = { not_checked_in: 'absent', checked_in: 'present', checked_out: 'checked_out', incomplete: 'incomplete', holiday: 'holiday', leave: 'leave' };
       return {
@@ -344,7 +344,7 @@
               ${u.isActive ? AP.badge('green', 'فعال') : AP.badge('red', 'غیرفعال')}
               ${AP.stateBadge(todayKey)}
             </div>
-            <div class="muted mt" style="margin-top:10px;font-size:12.5px">مدیر مستقیم: ${esc(u.managerName || '—')} · عضویت از ${esc(fmt.dateLong(u.createdAt))}</div>
+            <div class="muted mt" style="margin-top:10px;font-size:12.5px">سرپرست مستقیم: ${esc(u.managerName || '—')} · عضویت از ${esc(fmt.dateLong(u.createdAt))}</div>
           </div>
           <div class="header-actions">
             ${u.telegramUserId ? `<button class="btn ghost" id="pf-msg">${icon('mail')} پیام تلگرام</button>` : ''}

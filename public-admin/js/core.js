@@ -117,7 +117,7 @@
     },
   });
 
-  AP.ROLE = { employee: 'کارمند', manager: 'مدیر دپارتمان', admin: 'ادمین کل' };
+  AP.ROLE = { employee: 'کارمند', manager: 'سرپرست', admin: 'ادمین کل' };
   AP.STATE_LABEL = {
     present: 'حاضر', on_break: 'در استراحت', checked_out: 'خارج شده', absent: 'غایب / نیامده',
     leave: 'مرخصی', holiday: 'تعطیل', incomplete: 'ناقص',

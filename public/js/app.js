@@ -379,7 +379,7 @@
     $('#pf-avatar').textContent = (state.me.fullName || '؟').trim().charAt(0);
     $('#pf-code').textContent = state.me.personnelCode || '—';
     $('#pf-dept').textContent = state.me.department || '—';
-    const roleLabels = { employee: 'کارمند', manager: 'مدیر دپارتمان', admin: 'ادمین کل' };
+    const roleLabels = { employee: 'کارمند', manager: 'سرپرست', admin: 'ادمین کل' };
     $('#pf-role').textContent = roleLabels[state.me.role] || state.me.role;
   }
 

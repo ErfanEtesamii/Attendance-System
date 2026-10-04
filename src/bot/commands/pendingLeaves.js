@@ -11,7 +11,7 @@ async function handlePendingLeaves(bot, msg) {
     return;
   }
   if (!hasRole(user, ['admin', 'manager'])) {
-    await bot.sendMessage(chatId, '⛔️ این دستور فقط برای مدیران و ادمین قابل استفاده است.');
+    await bot.sendMessage(chatId, '⛔️ این دستور فقط برای سرپرستان و ادمین قابل استفاده است.');
     return;
   }
 

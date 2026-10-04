@@ -9,7 +9,7 @@ async function handleListEmployees(bot, msg) {
     return;
   }
   if (!hasRole(user, ['admin', 'manager'])) {
-    await bot.sendMessage(chatId, '⛔️ این دستور فقط برای مدیران و ادمین قابل استفاده است.');
+    await bot.sendMessage(chatId, '⛔️ این دستور فقط برای سرپرستان و ادمین قابل استفاده است.');
     return;
   }
 
@@ -23,7 +23,7 @@ async function handleListEmployees(bot, msg) {
 
   const lines = scoped.map((u) => {
     const status = u.is_active ? '🟢 فعال' : '🔴 غیرفعال';
-    const roleLabel = { employee: 'کارمند', manager: 'مدیر', admin: 'ادمین' }[u.role] || u.role;
+    const roleLabel = { employee: 'کارمند', manager: 'سرپرست', admin: 'ادمین' }[u.role] || u.role;
     return `${u.full_name} — ${roleLabel} — ${u.department || 'بدون دپارتمان'} — ${status}`;
   });
 
