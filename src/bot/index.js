@@ -109,8 +109,14 @@ async function configureBotUi(bot) {
   // Mini App واقعی در فاز ۴ ساخته می‌شود؛ تا آن زمان این دکمه عمداً تنظیم نمی‌شود.
   if (config.miniAppUrl) {
     try {
+      // توجه: node-telegram-bot-api فقط reply_markup را خودکار JSON.stringify می‌کند،
+      // نه menu_button را - باید دستی تبدیلش کنیم وگرنه تلگرام این فیلد را نادیده می‌گیرد.
       await bot.setChatMenuButton({
-        menu_button: { type: 'web_app', text: 'Panel', web_app: { url: config.miniAppUrl } },
+        menu_button: JSON.stringify({
+          type: 'web_app',
+          text: 'حضور و غیاب',
+          web_app: { url: config.miniAppUrl },
+        }),
       });
     } catch (err) {
       console.error('[bot] خطا در تنظیم دکمه منو:', err.message);
