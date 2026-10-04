@@ -20,6 +20,11 @@
       <h1>پنل مدیریتی حضور و غیاب</h1>
       <p class="muted">برای ورود، با حساب تلگرامی که در بات ثبت شده وارد شوید.</p>
       <div id="telegram-login-container"></div>
+      <div class="code-login" style="margin-top:20px">
+        <p class="muted">یا کد ورود را از بات بگیرید (در بات دستور <code>/panel</code> را بزنید):</p>
+        <input id="code-input" type="text" inputmode="numeric" maxlength="8" autocomplete="one-time-code" placeholder="کد ۸ رقمی" dir="ltr" style="width:100%;padding:12px;border-radius:10px;text-align:center;font-size:18px;letter-spacing:4px">
+        <button id="code-login-btn" type="button" style="width:100%;margin-top:10px;padding:12px;border-radius:10px;border:0;cursor:pointer;font-size:15px">ورود با کد</button>
+      </div>
       <p id="login-error" class="error-msg"></p>
     </div>
   </div>

@@ -73,6 +73,19 @@
     }
   };
 
+  async function loginWithCode() {
+    $('#login-error').textContent = '';
+    try {
+      const result = await api('/admin/auth/code', { method: 'POST', body: { code: $('#code-input').value.trim() } });
+      state.me = result.user;
+      enterApp();
+    } catch (err) {
+      $('#login-error').textContent = err.message;
+    }
+  }
+  $('#code-login-btn').addEventListener('click', loginWithCode);
+  $('#code-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') loginWithCode(); });
+
   async function setupLoginWidget() {
     try {
       const cfg = await api('/admin/public-config');

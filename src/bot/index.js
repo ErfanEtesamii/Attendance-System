@@ -4,6 +4,7 @@ const session = require('./session');
 const { startSchedulers } = require('./scheduler');
 
 const { handleStart } = require('./commands/start');
+const { handlePanelLogin } = require('./commands/panelLogin');
 const { handleHelp } = require('./commands/help');
 const { handleStatus } = require('./commands/status');
 const { handleReport } = require('./commands/report');
@@ -34,6 +35,7 @@ function createBot() {
 
   bot.onText(/^\/start/, (msg) => handleStart(bot, msg));
   bot.onText(/^\/help/, (msg) => handleHelp(bot, msg));
+  bot.onText(/^\/panel/, (msg) => handlePanelLogin(bot, msg));
   bot.onText(/^\/status/, (msg) => handleStatus(bot, msg));
   bot.onText(/^\/report/, (msg) => handleReport(bot, msg));
   bot.onText(/^\/leave/, (msg) => handleLeaveCommand(bot, msg));

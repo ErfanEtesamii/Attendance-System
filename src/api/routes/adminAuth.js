@@ -8,8 +8,41 @@ const usersRepository = require('../../repositories/usersRepository');
 const auditRepository = require('../../repositories/auditRepository');
 const { verifyLoginWidgetData } = require('../../utils/telegramLoginAuth');
 const { createSessionToken } = require('../../utils/session');
+const { consumeCode } = require('../../utils/panelLoginCodes');
 const { SESSION_COOKIE_NAME, requireAdminAuth } = require('../../middleware/adminAuth');
 const { adminLoginLimiter } = require('../../middleware/rateLimiter');
+
+
+function startSession(res, user) {
+  const maxAgeSeconds = config.adminSessionMaxAgeDays * 24 * 60 * 60;
+  const token = createSessionToken({ userId: user.id }, config.adminSessionSecret, maxAgeSeconds);
+  const cookieParts = [
+    `${SESSION_COOKIE_NAME}=${encodeURIComponent(token)}`,
+    'HttpOnly',
+    'Path=/',
+    'SameSite=Lax',
+    `Max-Age=${maxAgeSeconds}`,
+  ];
+  if (config.nodeEnv === 'production') cookieParts.push('Secure');
+  res.setHeader('Set-Cookie', cookieParts.join('; '));
+}
+
+// ورود با کد یک‌بارمصرف دریافتی از بات (دستور /panel) — جایگزین ویجت وقتی telegram.org در دسترس نیست
+router.post('/admin/auth/code', adminLoginLimiter, (req, res) => {
+  const userId = consumeCode(req.body && req.body.code);
+  const user = userId ? usersRepository.findById(userId) : null;
+  if (!user || !user.is_active || !['manager', 'admin'].includes(user.role)) {
+    return res.status(401).json({ error: 'کد نامعتبر یا منقضی شده است. در بات دوباره /panel بزنید.' });
+  }
+  startSession(res, user);
+  auditRepository.logEvent({
+    userId: user.id,
+    action: 'admin_panel_login',
+    ipAddress: req.ip,
+    details: { source: 'bot_one_time_code' },
+  });
+  res.json({ ok: true, user: { id: user.id, fullName: user.full_name, role: user.role } });
+});
 
 router.get('/admin/public-config', (req, res) => {
   res.json({ botUsername: config.telegramBotUsername });
