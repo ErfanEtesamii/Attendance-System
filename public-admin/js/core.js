@@ -435,6 +435,21 @@
     }
   };
 
+  // ---------- ورود با کد یک‌بارمصرف بات (/panel) ----------
+  async function loginWithCode() {
+    const errEl = $('#login-error');
+    errEl.textContent = '';
+    try {
+      const result = await AP.api('/admin/auth/code', { method: 'POST', body: { code: $('#code-input').value.trim() } });
+      AP.state.me = result.user;
+      enterApp();
+    } catch (err) {
+      errEl.textContent = err.message;
+    }
+  }
+  $('#code-login-btn').addEventListener('click', loginWithCode);
+  $('#code-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') loginWithCode(); });
+
   async function setupLoginWidget() {
     try {
       const cfg = await AP.api('/admin/public-config');
