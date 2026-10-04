@@ -110,7 +110,7 @@ async function configureBotUi(bot) {
   if (config.miniAppUrl) {
     try {
       await bot.setChatMenuButton({
-        menu_button: { type: 'web_app', text: 'حضور و غیاب', web_app: { url: config.miniAppUrl } },
+        menu_button: { type: 'web_app', text: 'Panel', web_app: { url: config.miniAppUrl } },
       });
     } catch (err) {
       console.error('[bot] خطا در تنظیم دکمه منو:', err.message);
