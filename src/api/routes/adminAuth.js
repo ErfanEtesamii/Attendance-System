@@ -1,4 +1,8 @@
-// مسیرهای ورود/خروج پنل مدیریتی وب از طریق Telegram Login Widget (فاز ۸).
+// مسیرهای ورود/خروج پنل وب. چهار راه ورود، همه برای هر سه نقش (ادمین/سرپرست/کارمند):
+//   1) webapp  — دکمه‌ی «پنل» داخل بات (Telegram Web App؛ امضای initData تأیید می‌شود)
+//   2) token   — لینک یک‌بارمصرف «باز کردن در مرورگر» از بات
+//   3) code    — کد ۸ رقمی یک‌بارمصرف از بات (دستور /panel)
+//   4) telegram — Telegram Login Widget (روی شبکه‌های فیلتر ممکن است لود نشود)
 
 const express = require('express');
 const router = express.Router();
@@ -7,11 +11,11 @@ const config = require('../../config');
 const usersRepository = require('../../repositories/usersRepository');
 const auditRepository = require('../../repositories/auditRepository');
 const { verifyLoginWidgetData } = require('../../utils/telegramLoginAuth');
+const { verifyInitData } = require('../../utils/telegramInitData');
 const { createSessionToken } = require('../../utils/session');
-const { consumeCode } = require('../../utils/panelLoginCodes');
+const { consumeCode, consumeLinkToken } = require('../../utils/panelLoginCodes');
 const { SESSION_COOKIE_NAME, requireAdminAuth } = require('../../middleware/adminAuth');
-const { adminLoginLimiter } = require('../../middleware/rateLimiter');
-
+const { adminLoginLimiter, panelAutoLoginLimiter } = require('../../middleware/rateLimiter');
 
 function startSession(res, user) {
   const maxAgeSeconds = config.adminSessionMaxAgeDays * 24 * 60 * 60;
@@ -27,79 +31,85 @@ function startSession(res, user) {
   res.setHeader('Set-Cookie', cookieParts.join('; '));
 }
 
-// ورود با کد یک‌بارمصرف دریافتی از بات (دستور /panel) — جایگزین ویجت وقتی telegram.org در دسترس نیست
-router.post('/admin/auth/code', adminLoginLimiter, (req, res) => {
-  const userId = consumeCode(req.body && req.body.code);
-  const user = userId ? usersRepository.findById(userId) : null;
-  if (!user || !user.is_active || !['manager', 'admin'].includes(user.role)) {
-    return res.status(401).json({ error: 'کد نامعتبر یا منقضی شده است. در بات دوباره /panel بزنید.' });
-  }
+function finishLogin(req, res, user, source) {
   startSession(res, user);
   auditRepository.logEvent({
     userId: user.id,
     action: 'admin_panel_login',
     ipAddress: req.ip,
-    details: { source: 'bot_one_time_code' },
+    details: { source, role: user.role },
   });
-  res.json({ ok: true, user: { id: user.id, fullName: user.full_name, role: user.role } });
+  res.json({
+    ok: true,
+    user: { id: user.id, fullName: user.full_name, role: user.role, department: user.department },
+  });
+}
+
+function usableUser(user) {
+  return !!user && !!user.is_active && ['employee', 'manager', 'admin'].includes(user.role);
+}
+
+// ورود با دکمه‌ی «پنل» داخل بات (Web App)
+router.post('/admin/auth/webapp', panelAutoLoginLimiter, (req, res) => {
+  if (!config.telegramBotToken) {
+    return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN روی سرور تنظیم نشده است.' });
+  }
+  const verified = verifyInitData(req.body && req.body.initData, config.telegramBotToken);
+  if (!verified) {
+    return res.status(401).json({ error: 'اطلاعات ورود تلگرام نامعتبر یا منقضی‌شده است. دکمه‌ی «پنل» را دوباره بزنید.' });
+  }
+  const telegramUserId = String(verified.telegramUser.id);
+  const user = usersRepository.findByTelegramId(telegramUserId);
+  if (!usableUser(user)) {
+    return res.status(403).json({ error: 'این حساب تلگرام در سیستم ثبت نیست.', telegramUserId });
+  }
+  finishLogin(req, res, user, 'telegram_web_app');
+});
+
+// ورود با لینک یک‌بارمصرف بات (باز کردن در مرورگر)
+router.post('/admin/auth/token', panelAutoLoginLimiter, (req, res) => {
+  const userId = consumeLinkToken(req.body && req.body.token);
+  const user = userId ? usersRepository.findById(userId) : null;
+  if (!usableUser(user)) {
+    return res.status(401).json({ error: 'لینک نامعتبر یا منقضی شده است. در بات دوباره /panel بزنید.' });
+  }
+  finishLogin(req, res, user, 'bot_one_time_link');
+});
+
+// ورود با کد ۸ رقمی (دستور /panel)
+router.post('/admin/auth/code', adminLoginLimiter, (req, res) => {
+  const userId = consumeCode(req.body && req.body.code);
+  const user = userId ? usersRepository.findById(userId) : null;
+  if (!usableUser(user)) {
+    return res.status(401).json({ error: 'کد نامعتبر یا منقضی شده است. در بات دوباره /panel بزنید.' });
+  }
+  finishLogin(req, res, user, 'bot_one_time_code');
 });
 
 router.get('/admin/public-config', (req, res) => {
   res.json({ botUsername: config.telegramBotUsername });
 });
 
-// فاز ۹: rate limiting روی لاگین ادمین (ضد brute-force روی تأیید Telegram Login Widget)
+// فاز ۹: rate limiting روی لاگین (ضد brute-force)
 router.post('/admin/auth/telegram', adminLoginLimiter, (req, res) => {
   if (!config.telegramBotToken) {
     return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN روی سرور تنظیم نشده است.' });
   }
-
   const verified = verifyLoginWidgetData(req.body, config.telegramBotToken);
   if (!verified) {
     return res.status(401).json({ error: 'اطلاعات ورود تلگرام نامعتبر یا منقضی‌شده است.' });
   }
-
   const telegramUserId = String(verified.id);
   const user = usersRepository.findByTelegramId(telegramUserId);
-
-  if (!user || !user.is_active) {
+  if (!usableUser(user)) {
     return res.status(403).json({ error: 'این حساب تلگرام در سیستم ثبت نیست.', telegramUserId });
   }
-  if (!['manager', 'admin'].includes(user.role)) {
-    return res
-      .status(403)
-      .json({ error: 'شما نقش مدیر یا ادمین ندارید و دسترسی به این پنل ندارید.' });
-  }
-
-  const maxAgeSeconds = config.adminSessionMaxAgeDays * 24 * 60 * 60;
-  const token = createSessionToken({ userId: user.id }, config.adminSessionSecret, maxAgeSeconds);
-
-  const cookieParts = [
-    `${SESSION_COOKIE_NAME}=${encodeURIComponent(token)}`,
-    'HttpOnly',
-    'Path=/',
-    'SameSite=Lax',
-    `Max-Age=${maxAgeSeconds}`,
-  ];
-  if (config.nodeEnv === 'production') cookieParts.push('Secure');
-  res.setHeader('Set-Cookie', cookieParts.join('; '));
-
-  auditRepository.logEvent({
-    userId: user.id,
-    action: 'admin_panel_login',
-    ipAddress: req.ip,
-    details: { source: 'telegram_login_widget' },
-  });
-
-  res.json({ ok: true, user: { id: user.id, fullName: user.full_name, role: user.role } });
+  finishLogin(req, res, user, 'telegram_login_widget');
 });
 
 router.post('/admin/auth/logout', requireAdminAuth, (req, res) => {
   auditRepository.logEvent({ userId: req.adminUser.id, action: 'admin_panel_logout' });
-  res.setHeader(
-    'Set-Cookie',
-    `${SESSION_COOKIE_NAME}=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0`
-  );
+  res.setHeader('Set-Cookie', `${SESSION_COOKIE_NAME}=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0`);
   res.json({ ok: true });
 });
 

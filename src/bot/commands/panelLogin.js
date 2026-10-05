@@ -1,7 +1,12 @@
-// /panel — صدور کد ورود یک‌بارمصرف برای پنل مدیریتی وب (فقط مدیر/ادمین، فقط چت خصوصی).
-const { getRegisteredUser, hasRole, notRegisteredMessage } = require('../auth');
-const { issueCode } = require('../../utils/panelLoginCodes');
+// /panel — ورود به پنل وب برای هر سه نقش (ادمین / سرپرست / کارمند)، فقط در چت خصوصی.
+// سه راه ورود در یک پیام:
+//   ۱) دکمه‌ی «ورود به پنل» (Web App داخل تلگرام — بدون کد)
+//   ۲) دکمه‌ی «باز کردن در مرورگر» (لینک یک‌بارمصرف ۵ دقیقه‌ای)
+//   ۳) کد ۸ رقمی یک‌بارمصرف (برای تایپ دستی در صفحه‌ی ورود)
+const { getRegisteredUser, notRegisteredMessage } = require('../auth');
+const { issueCode, issueLinkToken } = require('../../utils/panelLoginCodes');
 const auditRepository = require('../../repositories/auditRepository');
+const { ROLE_LABELS, ROLE_ACCESS, panelUrl, panelWebAppButton, persistentKeyboard } = require('../panelLinks');
 
 async function handlePanelLogin(bot, msg) {
   const chatId = msg.chat.id;
@@ -14,18 +19,38 @@ async function handlePanelLogin(bot, msg) {
     await bot.sendMessage(chatId, notRegisteredMessage(msg.from.id), { parse_mode: 'Markdown' });
     return;
   }
-  if (!hasRole(user, ['manager', 'admin'])) {
-    await bot.sendMessage(chatId, 'شما به پنل مدیریتی دسترسی ندارید.');
+  if (!panelUrl()) {
+    await bot.sendMessage(chatId, 'آدرس پنل روی سرور تنظیم نشده است (MINI_APP_URL). به ادمین اطلاع دهید.');
     return;
   }
 
-  const { code, expiresInSeconds } = issueCode(user.id);
-  auditRepository.logEvent({ userId: user.id, action: 'admin_panel_code_issued' });
-  await bot.sendMessage(
-    chatId,
-    `🔐 کد ورود به پنل مدیریتی:\n\n\`${code}\`\n\nاین کد ${expiresInSeconds / 60} دقیقه اعتبار دارد و فقط یک‌بار قابل استفاده است. آن را به کسی ندهید.`,
-    { parse_mode: 'Markdown' }
-  );
+  const { code, expiresInSeconds: codeTtl } = issueCode(user.id);
+  const { token, expiresInSeconds: linkTtl } = issueLinkToken(user.id);
+  auditRepository.logEvent({ userId: user.id, action: 'admin_panel_code_issued', details: { role: user.role } });
+
+  const buttons = [];
+  const webApp = panelWebAppButton();
+  if (webApp) buttons.push([webApp]);
+  buttons.push([{ text: '🌐 باز کردن در مرورگر', url: panelUrl({ token }) }]);
+
+  const text = [
+    `🖥 پنل حضور و غیاب — دسترسی شما: ${ROLE_LABELS[user.role] || user.role}`,
+    ROLE_ACCESS[user.role] || '',
+    '',
+    'برای ورود یکی از دکمه‌های زیر را بزنید.',
+    `لینک مرورگر ${linkTtl / 60} دقیقه اعتبار دارد و فقط یک‌بار کار می‌کند؛ آن را برای کسی نفرستید.`,
+    '',
+    `کد ورود دستی (برای صفحه‌ی ورود): \`${code}\` — ${codeTtl / 60} دقیقه اعتبار.`,
+  ].filter((l, i, a) => l !== '' || a[i - 1] !== '').join('\n');
+
+  await bot.sendMessage(chatId, text, {
+    parse_mode: 'Markdown',
+    reply_markup: { inline_keyboard: buttons },
+  });
+
+  // کیبورد ثابتِ «پنل / ثبت تردد» را هم زیر چت فعال می‌کنیم تا دفعه‌ی بعد نیازی به تایپ دستور نباشد
+  const kb = persistentKeyboard();
+  if (kb) await bot.sendMessage(chatId, 'دکمه‌ی «🖥 پنل» حالا پایین صفحه‌ی چت همیشه در دسترس است.', { reply_markup: kb });
 }
 
 module.exports = { handlePanelLogin };

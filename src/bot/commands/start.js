@@ -1,4 +1,5 @@
 const { getRegisteredUser, notRegisteredMessage } = require('../auth');
+const { persistentKeyboard } = require('../panelLinks');
 
 async function handleStart(bot, msg) {
   const chatId = msg.chat.id;
@@ -17,7 +18,9 @@ async function handleStart(bot, msg) {
     '',
     'دستورات قابل استفاده را با /help ببینید.',
   ];
-  await bot.sendMessage(chatId, lines.join('\n'));
+  const kb = persistentKeyboard();
+  if (kb) lines.push('', 'برای ورود به پنل، دکمه‌ی «🖥 پنل» را در پایین صفحه بزنید (یا /panel).');
+  await bot.sendMessage(chatId, lines.join('\n'), kb && msg.chat.type === 'private' ? { reply_markup: kb } : {});
 }
 
 module.exports = { handleStart };

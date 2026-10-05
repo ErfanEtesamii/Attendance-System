@@ -110,6 +110,7 @@ async function configureBotUi(bot) {
     { command: 'status', description: 'وضعیت لحظه‌ای من' },
     { command: 'report', description: 'گزارش شخصی' },
     { command: 'leave', description: 'ثبت درخواست مرخصی/مأموریت' },
+    { command: 'panel', description: 'ورود به پنل' },
     { command: 'help', description: 'راهنما' },
   ]);
 

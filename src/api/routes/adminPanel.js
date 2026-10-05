@@ -12,7 +12,7 @@ const router = express.Router();
 
 const config = require('../../config');
 const { getDb } = require('../../db/connection');
-const { requireAdminAuth, requireFullAdmin } = require('../../middleware/adminAuth');
+const { requireAdminAuth, requireStaff, requireFullAdmin } = require('../../middleware/adminAuth');
 const usersRepository = require('../../repositories/usersRepository');
 const attendanceRepository = require('../../repositories/attendanceRepository');
 const breakRepository = require('../../repositories/breakRepository');
@@ -35,6 +35,7 @@ const STATUSES = ['normal', 'late', 'incomplete', 'leave', 'holiday'];
 
 function scopedUserIds(adminUser) {
   if (adminUser.role === 'admin') return null;
+  if (adminUser.role === 'employee') return [adminUser.id]; // کارمند فقط خودش
   return usersRepository.listUsers({ managerId: adminUser.id }).map((u) => u.id);
 }
 
@@ -432,12 +433,13 @@ router.get('/admin/attendance-records/:id', (req, res) => {
   res.json({ ...enrichRecord(record), history, disputes });
 });
 
-router.post('/admin/attendance-records', requireFullAdmin, (req, res) => {
+router.post('/admin/attendance-records', requireStaff, (req, res) => {
   const reason = requireReason(req, res);
   if (!reason) return;
   const { userId, date, checkInTime, checkOutTime, status } = req.body || {};
   const user = usersRepository.findById(parseInt(userId, 10));
   if (!user) return res.status(404).json({ error: 'کارمند یافت نشد.' });
+  if (!canAccessUser(req.adminUser, user.id)) return res.status(403).json({ error: 'به این کارمند دسترسی ندارید.' });
   if (!DATE_RE.test(date || '')) return res.status(400).json({ error: 'تاریخ نامعتبر است (YYYY-MM-DD).' });
   const ci = isoOrNull(checkInTime);
   const co = isoOrNull(checkOutTime);
@@ -459,11 +461,12 @@ router.post('/admin/attendance-records', requireFullAdmin, (req, res) => {
   res.status(201).json(enrichRecord(created));
 });
 
-router.delete('/admin/attendance-records/:id', requireFullAdmin, (req, res) => {
+router.delete('/admin/attendance-records/:id', requireStaff, (req, res) => {
   const reason = requireReason(req, res);
   if (!reason) return;
   const record = attendanceRepository.findById(parseInt(req.params.id, 10));
   if (!record) return res.status(404).json({ error: 'رکورد یافت نشد.' });
+  if (!canAccessUser(req.adminUser, record.user_id)) return res.status(403).json({ error: 'به این کارمند دسترسی ندارید.' });
   attendanceRepository.removeWithBreaks(record.id);
   audit(req, 'attendance_record_deleted', {
     recordId: record.id, targetUserId: record.user_id, date: record.record_date,
@@ -474,11 +477,12 @@ router.delete('/admin/attendance-records/:id', requireFullAdmin, (req, res) => {
 
 // ---------- استراحت‌ها ----------
 
-router.post('/admin/attendance-records/:id/breaks', requireFullAdmin, (req, res) => {
+router.post('/admin/attendance-records/:id/breaks', requireStaff, (req, res) => {
   const reason = requireReason(req, res);
   if (!reason) return;
   const record = attendanceRepository.findById(parseInt(req.params.id, 10));
   if (!record) return res.status(404).json({ error: 'رکورد یافت نشد.' });
+  if (!canAccessUser(req.adminUser, record.user_id)) return res.status(403).json({ error: 'به این کارمند دسترسی ندارید.' });
   const { breakType, startTime, endTime } = req.body || {};
   const st = isoOrNull(startTime);
   const en = isoOrNull(endTime);
@@ -494,11 +498,13 @@ router.post('/admin/attendance-records/:id/breaks', requireFullAdmin, (req, res)
   res.status(201).json(created);
 });
 
-router.patch('/admin/break-records/:id', requireFullAdmin, (req, res) => {
+router.patch('/admin/break-records/:id', requireStaff, (req, res) => {
   const reason = requireReason(req, res);
   if (!reason) return;
   const br = breakRepository.findById(parseInt(req.params.id, 10));
   if (!br) return res.status(404).json({ error: 'استراحت یافت نشد.' });
+  const ownerRec = attendanceRepository.findById(br.attendance_record_id);
+  if (!ownerRec || !canAccessUser(req.adminUser, ownerRec.user_id)) return res.status(403).json({ error: 'به این کارمند دسترسی ندارید.' });
   const { breakType, startTime, endTime } = req.body || {};
   const fields = {};
   if (breakType !== undefined) fields.break_type = breakType === 'short_break' ? 'short_break' : 'lunch';
@@ -520,11 +526,13 @@ router.patch('/admin/break-records/:id', requireFullAdmin, (req, res) => {
   res.json(updated);
 });
 
-router.delete('/admin/break-records/:id', requireFullAdmin, (req, res) => {
+router.delete('/admin/break-records/:id', requireStaff, (req, res) => {
   const reason = requireReason(req, res);
   if (!reason) return;
   const br = breakRepository.findById(parseInt(req.params.id, 10));
   if (!br) return res.status(404).json({ error: 'استراحت یافت نشد.' });
+  const ownerRec = attendanceRepository.findById(br.attendance_record_id);
+  if (!ownerRec || !canAccessUser(req.adminUser, ownerRec.user_id)) return res.status(403).json({ error: 'به این کارمند دسترسی ندارید.' });
   breakRepository.remove(br.id);
   const record = attendanceRepository.findById(br.attendance_record_id);
   audit(req, 'break_record_deleted', {
@@ -644,10 +652,11 @@ router.post('/admin/disputes/:id/:action(resolve|reopen)', (req, res) => {
 
 // ---------- مرخصی/مأموریت: کنترل کامل ادمین ----------
 
-router.post('/admin/leave-requests', requireFullAdmin, (req, res) => {
+router.post('/admin/leave-requests', requireStaff, (req, res) => {
   const { userId, startDate, endDate, leaveType, reason, status } = req.body || {};
   const user = usersRepository.findById(parseInt(userId, 10));
   if (!user) return res.status(404).json({ error: 'کارمند یافت نشد.' });
+  if (!canAccessUser(req.adminUser, user.id)) return res.status(403).json({ error: 'به این کارمند دسترسی ندارید.' });
   if (!DATE_RE.test(startDate || '') || !DATE_RE.test(endDate || '') || endDate < startDate) {
     return res.status(400).json({ error: 'بازه‌ی تاریخ نامعتبر است.' });
   }
@@ -660,9 +669,10 @@ router.post('/admin/leave-requests', requireFullAdmin, (req, res) => {
   res.status(201).json(saved);
 });
 
-router.patch('/admin/leave-requests/:id', requireFullAdmin, (req, res) => {
+router.patch('/admin/leave-requests/:id', requireStaff, (req, res) => {
   const reqRow = leaveRepository.findById(parseInt(req.params.id, 10));
   if (!reqRow) return res.status(404).json({ error: 'درخواست یافت نشد.' });
+  if (!canAccessUser(req.adminUser, reqRow.user_id)) return res.status(403).json({ error: 'به این کارمند دسترسی ندارید.' });
   const { status, startDate, endDate, leaveType, reason } = req.body || {};
   const fields = {};
   if (status !== undefined) {
@@ -691,9 +701,10 @@ router.patch('/admin/leave-requests/:id', requireFullAdmin, (req, res) => {
   res.json(updated);
 });
 
-router.delete('/admin/leave-requests/:id', requireFullAdmin, (req, res) => {
+router.delete('/admin/leave-requests/:id', requireStaff, (req, res) => {
   const reqRow = leaveRepository.findById(parseInt(req.params.id, 10));
   if (!reqRow) return res.status(404).json({ error: 'درخواست یافت نشد.' });
+  if (!canAccessUser(req.adminUser, reqRow.user_id)) return res.status(403).json({ error: 'به این کارمند دسترسی ندارید.' });
   leaveRepository.remove(reqRow.id);
   audit(req, 'leave_request_deleted_by_admin', { requestId: reqRow.id, targetUserId: reqRow.user_id });
   res.json({ ok: true });

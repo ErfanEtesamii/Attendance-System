@@ -5,7 +5,7 @@
   'use strict';
 
   const AP = (window.AP = {
-    state: { me: null, isAdmin: false, users: null, counts: { leave: 0, disputes: 0 } },
+    state: { me: null, isAdmin: false, isStaff: false, isEmployee: false, users: null, counts: { leave: 0, disputes: 0 } },
     views: {},
     nav: [],
     onLeave: null,
@@ -190,6 +190,12 @@
   };
 
   AP.loadUsers = async function loadUsers(force) {
+    if (AP.state.isEmployee) {
+      // کارمند به لیست کارمندان دسترسی ندارد؛ فقط خودش
+      const m = AP.state.me;
+      AP.state.users = [{ id: m.id, fullName: m.fullName, personnelCode: null, department: m.department, role: m.role, isActive: true, managerId: null, telegramUserId: null }];
+      return AP.state.users;
+    }
     if (!AP.state.users || force) AP.state.users = await AP.api('/admin/users');
     return AP.state.users;
   };
@@ -303,21 +309,30 @@
     return { id: m[0] || 'dashboard', param: m[1] || null };
   }
 
+  // صفحه‌ی اول هر نقش: کارمند → پروفایل خودش، سرپرست/ادمین → داشبورد
+  AP.homeRoute = function homeRoute() {
+    return AP.state.isEmployee ? { id: 'profile', param: AP.state.me.id } : { id: 'dashboard', param: null };
+  };
+
   async function route() {
     if (!AP.state.me) return;
     let { id, param } = parseHash();
     let def = AP.views[id];
-    if (!def || (def.admin && !AP.state.isAdmin)) {
-      id = 'dashboard';
-      param = null;
-      def = AP.views.dashboard;
+    // کارمند فقط به صفحه‌هایی که صریحاً employee:true دارند می‌رسد (امن‌به‌صورت‌پیش‌فرض)
+    if (!def || (def.admin && !AP.state.isAdmin) || (AP.state.isEmployee && !def.employee)) {
+      const home = AP.homeRoute();
+      id = home.id;
+      param = home.param;
+      def = AP.views[id];
     }
+    if (AP.state.isEmployee && id === 'profile') param = AP.state.me.id; // فقط پروفایل خودش
     if (AP.onLeave) { try { AP.onLeave(); } catch (_) {} AP.onLeave = null; }
     AP.currentRoute = { id, param };
     const token = ++routeToken;
 
     // وضعیت فعال ناوبری
-    $$('.nav-item').forEach((b) => b.classList.toggle('active', b.dataset.view === (def.navId || id)));
+    const navKey = AP.state.isEmployee && id === 'profile' ? 'profile' : (def.navId || id);
+    $$('.nav-item').forEach((b) => b.classList.toggle('active', b.dataset.view === navKey));
     closeSidebar();
 
     const page = $('#page');
@@ -362,15 +377,17 @@
 
   function buildNav() {
     const groups = {};
-    AP.nav
-      .filter((n) => !n.admin || AP.state.isAdmin)
-      .forEach((n) => { (groups[n.group] = groups[n.group] || []).push(n); });
+    const items = AP.state.isEmployee
+      ? [{ id: 'profile', icon: 'employees', label: 'پروفایل من', group: 'پنل من', param: AP.state.me.id },
+         ...AP.nav.filter((n) => AP.views[n.id] && AP.views[n.id].employee)]
+      : AP.nav.filter((n) => !n.admin || AP.state.isAdmin);
+    items.forEach((n) => { (groups[n.group] = groups[n.group] || []).push(n); });
     $('#side-nav').innerHTML = Object.keys(groups)
       .map((g) => `<div class="nav-group">${esc(g)}</div>${groups[g]
-        .map((n) => `<button class="nav-item" data-view="${n.id}">${AP.icon(n.icon)}<span>${esc(n.label)}</span>${n.counter ? '<span class="nav-count hidden"></span>' : ''}</button>`)
+        .map((n) => `<button class="nav-item" data-view="${n.id}"${n.param != null ? ` data-param="${n.param}"` : ''}>${AP.icon(n.icon)}<span>${esc(n.label)}</span>${n.counter ? '<span class="nav-count hidden"></span>' : ''}</button>`)
         .join('')}`)
       .join('');
-    $$('.nav-item').forEach((b) => b.addEventListener('click', () => AP.go(b.dataset.view)));
+    $$('.nav-item').forEach((b) => b.addEventListener('click', () => AP.go(b.dataset.view, b.dataset.param)));
   }
 
   function setupSearch() {
@@ -404,6 +421,10 @@
     $('#app-shell').classList.remove('hidden');
     const me = AP.state.me;
     AP.state.isAdmin = me.role === 'admin';
+    AP.state.isStaff = me.role === 'admin' || me.role === 'manager';
+    AP.state.isEmployee = me.role === 'employee';
+    $('.brand-sub').textContent = AP.state.isAdmin ? 'پنل مدیریتی' : AP.state.isStaff ? 'پنل سرپرست' : 'پنل کارمند';
+    if (AP.state.isEmployee) $('.search-box').classList.add('hidden'); // کارمند کس دیگری را جستجو نمی‌کند
     $('#me-avatar').textContent = AP.initials(me.fullName);
     $('#me-name').textContent = me.fullName;
     $('#me-role').textContent = AP.ROLE[me.role] || me.role;
@@ -421,6 +442,11 @@
       location.reload();
     });
     AP.refreshCounts();
+    // ?go=<صفحه> از دکمه‌های بات (مثلاً دکمه‌ی پیام شبانه → مرور شبانه)
+    const go = AP.launch && AP.launch.go;
+    if (go && AP.views[go] && !(AP.views[go].admin && !AP.state.isAdmin) && !(AP.state.isEmployee && !AP.views[go].employee)) {
+      history.replaceState(null, '', `#/${go}`);
+    }
     await route();
   }
 
@@ -470,7 +496,41 @@
     }
   }
 
+  // پارامترهای ورود از بات: ?t=<توکن یک‌بارمصرف> ، #tgWebAppData=<initData تلگرام> ، ?go=<صفحه>
+  function takeLaunchParams() {
+    const url = new URL(location.href);
+    const token = url.searchParams.get('t');
+    const go = url.searchParams.get('go');
+    const hash = location.hash.replace(/^#/, '');
+    // initData را مستقیم از hash می‌خوانیم (نیازی به telegram-web-app.js نیست که روی شبکه‌های فیلتر لود نمی‌شود)
+    const initData = hash.includes('tgWebAppData=') ? new URLSearchParams(hash).get('tgWebAppData') : null;
+    if (token || go || initData) {
+      url.searchParams.delete('t');
+      url.searchParams.delete('go');
+      history.replaceState(null, '', url.pathname + url.search); // توکن/initData از آدرس پاک شود
+    }
+    return { token, go, initData };
+  }
+
   AP.boot = async function boot() {
+    const launch = takeLaunchParams();
+    AP.launch = launch;
+
+    // ورود تازه از بات همیشه بر کوکی قدیمی ارجح است (مثلاً حساب تلگرام دیگری روی همین دستگاه کوکی گذاشته)
+    const viaBot = launch.token
+      ? ['/admin/auth/token', { token: launch.token }]
+      : launch.initData ? ['/admin/auth/webapp', { initData: launch.initData }] : null;
+    if (viaBot) {
+      try {
+        const result = await AP.api(viaBot[0], { method: 'POST', body: viaBot[1] });
+        AP.state.me = result.user;
+        return enterApp();
+      } catch (err) {
+        $('#login-error').textContent = err.message;
+        return setupLoginWidget(); // با کوکی قدیمی وارد نمی‌کنیم؛ کاربر باید دوباره از بات وارد شود
+      }
+    }
+
     try {
       const me = await AP.api('/admin/me');
       AP.state.me = { id: me.id, fullName: me.fullName, role: me.role, department: me.department };

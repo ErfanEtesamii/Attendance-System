@@ -47,7 +47,7 @@
   AP.openRecord = async function openRecord(id) {
     let r;
     try { r = await AP.api(`/admin/attendance-records/${id}`); } catch (err) { return AP.toast(err.message, true); }
-    const admin = AP.state.isAdmin;
+    const admin = AP.state.isStaff; // سرپرست روی تیم خودش (سرور اسکوپ را اعمال می‌کند)، ادمین روی همه
     const u = r.user || {};
 
     const statusOpts = Object.entries(AP.STATUS_LABEL)
@@ -105,7 +105,7 @@
 
       ${r.disputes.length ? `<div class="section-title">اعتراض‌های مرتبط</div>${r.disputes.map((d) => `<div class="item" style="margin-bottom:8px"><div class="grow">${AP.badge(d.status, d.status === 'open' ? 'باز' : 'بسته')}<p class="text">${esc(d.message)}</p></div></div>`).join('')}` : ''}
 
-      ${admin && r.history.length ? `<div class="section-title">تاریخچه‌ی تغییرات</div><div class="kv">${r.history.map((h) => `
+      ${AP.state.isAdmin && r.history && r.history.length ? `<div class="section-title">تاریخچه‌ی تغییرات</div><div class="kv">${r.history.map((h) => `
         <div class="kv-row"><span>${esc(h.userFullName || '—')} · ${esc(h.action)}</span><span class="muted">${esc(fmt.dateTime(h.occurred_at))}</span></div>`).join('')}</div>` : ''}`;
 
     AP.modal({
@@ -212,6 +212,7 @@
   const attUi = { from: null, to: null, userId: '', department: '', status: '', q: '' };
 
   AP.view('attendance', {
+    employee: true,
     nav: { icon: 'attendance', label: 'رکوردهای تردد', group: 'کارمندان و تردد' },
     async render() {
       attUi.from = attUi.from || fmt.daysAgo(6);
@@ -226,7 +227,7 @@
           <div><h2>رکوردهای تردد</h2><div class="sub">${fmt.num(data.count)} رکورد · از ${esc(fmt.dateLong(data.from))} تا ${esc(fmt.dateLong(data.to))}</div></div>
           <div class="header-actions">
             <a class="btn ghost" href="/api/admin/attendance/export?${qs()}" download>${icon('download')} خروجی CSV</a>
-            ${AP.state.isAdmin ? `<button class="btn primary" id="att-new">${icon('plus')} ثبت دستی</button>` : ''}
+            ${AP.state.isStaff ? `<button class="btn primary" id="att-new">${icon('plus')} ثبت دستی</button>` : ''}
           </div>
         </div>
         <form class="filters" id="att-filters">
@@ -334,13 +335,14 @@
 
   const leaveUi = { status: 'pending' };
   AP.view('leave', {
+    employee: true,
     nav: { icon: 'leave', label: 'مرخصی و مأموریت', group: 'درخواست‌ها', counter: true },
     async render() {
       const items = await AP.api(`/admin/leave-requests?status=${leaveUi.status}`);
       const html = `
         <div class="view-header">
           <div><h2>مرخصی و مأموریت</h2><div class="sub">${fmt.num(items.length)} درخواست</div></div>
-          <div class="header-actions">${AP.state.isAdmin ? `<button class="btn primary" id="lv-new">${icon('plus')} ثبت برای کارمند</button>` : ''}</div>
+          <div class="header-actions">${AP.state.isStaff ? `<button class="btn primary" id="lv-new">${icon('plus')} ثبت برای کارمند</button>` : ''}</div>
         </div>
         <div class="chips" id="lv-chips">${[['pending', 'در انتظار'], ['approved', 'تأییدشده'], ['rejected', 'ردشده'], ['all', 'همه']]
           .map(([k, l]) => `<button class="chip ${k === leaveUi.status ? 'active' : ''}" data-s="${k}">${l}</button>`).join('')}</div>
@@ -354,8 +356,8 @@
               ${l.reason ? `<p class="text">${esc(l.reason)}</p>` : ''}
             </div>
             <div class="row-actions">
-              ${l.status === 'pending' ? `<button class="btn success small" data-act="approve" data-id="${l.id}">${icon('check')} تأیید</button><button class="btn danger small" data-act="reject" data-id="${l.id}">${icon('x')} رد</button>` : ''}
-              ${AP.state.isAdmin ? `<button class="btn ghost small" data-edit="${l.id}">${icon('edit')} ویرایش</button>` : ''}
+              ${l.status === 'pending' && AP.state.isStaff ? `<button class="btn success small" data-act="approve" data-id="${l.id}">${icon('check')} تأیید</button><button class="btn danger small" data-act="reject" data-id="${l.id}">${icon('x')} رد</button>` : ''}
+              ${AP.state.isStaff ? `<button class="btn ghost small" data-edit="${l.id}">${icon('edit')} ویرایش</button>` : ''}
             </div></div>`).join('') : `<div class="card">${emptyBox('درخواستی وجود ندارد.')}</div>`}</div>`;
       return {
         html,
@@ -383,11 +385,12 @@
   // ======================================================
   const dispUi = { status: 'open' };
   AP.view('disputes', {
+    employee: true,
     nav: { icon: 'disputes', label: 'اعتراض‌ها', group: 'درخواست‌ها', counter: true },
     async render() {
       const items = await AP.api(`/admin/disputes${dispUi.status === 'all' ? '' : `?status=${dispUi.status}`}`);
       const html = `
-        <div class="view-header"><div><h2>اعتراض‌های کارمندان</h2><div class="sub">${fmt.num(items.length)} مورد</div></div></div>
+        <div class="view-header"><div><h2>${AP.state.isEmployee ? 'اعتراض‌های من' : 'اعتراض‌های کارمندان'}</h2><div class="sub">${fmt.num(items.length)} مورد</div></div></div>
         <div class="chips" id="d-chips">${[['open', 'باز'], ['resolved', 'بسته‌شده'], ['all', 'همه']]
           .map(([k, l]) => `<button class="chip ${k === dispUi.status ? 'active' : ''}" data-s="${k}">${l}</button>`).join('')}</div>
         <div class="list">${items.length ? items.map((d) => `
@@ -401,8 +404,8 @@
               ${d.record ? `<div class="meta">رکورد مرتبط: <a href="#" data-rec="${d.record.id}" style="color:var(--green)">${esc(fmt.dateLong(d.record.date))}</a></div>` : ''}
             </div>
             <div class="row-actions">
-              ${d.status === 'open' ? `<button class="btn success small" data-resolve="${d.id}">${icon('check')} بستن و پاسخ</button>` : `<button class="btn ghost small" data-reopen="${d.id}">بازگشایی</button>`}
-              ${d.employee && AP.state.isAdmin ? `<button class="btn ghost small" data-new="${d.employee.id}">ثبت/اصلاح تردد</button>` : ''}
+              ${!AP.state.isStaff ? '' : d.status === 'open' ? `<button class="btn success small" data-resolve="${d.id}">${icon('check')} بستن و پاسخ</button>` : `<button class="btn ghost small" data-reopen="${d.id}">بازگشایی</button>`}
+              ${d.employee && AP.state.isStaff ? `<button class="btn ghost small" data-new="${d.employee.id}">ثبت/اصلاح تردد</button>` : ''}
             </div></div>`).join('') : `<div class="card">${emptyBox('اعتراضی وجود ندارد.')}</div>`}</div>`;
       return {
         html,

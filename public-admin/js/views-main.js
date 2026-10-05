@@ -170,7 +170,7 @@
                 <td class="num">${r.state === 'on_break' ? 'از ' + fmt.clock(r.openBreak.start_time) : r.breakMinutes ? fmt.min(r.breakMinutes) : '—'}</td>
                 <td><span class="ltr muted">${esc(rec && rec.check_in_ip ? rec.check_in_ip : '—')}</span></td>
                 <td><div class="row-actions">
-                  ${AP.state.isAdmin ? (rec ? `<button class="btn ghost small" data-rec="${rec.id}">رکورد</button>`
+                  ${AP.state.isStaff ? (rec ? `<button class="btn ghost small" data-rec="${rec.id}">رکورد</button>`
                     : `<button class="btn ghost small" data-new="${r.user.id}">ثبت دستی</button>`) : ''}
                   ${r.user.telegramUserId ? `<button class="btn ghost small" data-msg="${r.user.id}" title="ارسال پیام تلگرام">${AP.icon('mail')}</button>` : ''}
                 </div></td></tr>`;
@@ -303,6 +303,7 @@
   const profileUi = { days: 30, tab: 'attendance' };
 
   AP.view('profile', {
+    employee: true,
     navId: 'employees',
     async render(param) {
       if (!param) throw new Error('کارمندی انتخاب نشده است.');
@@ -331,7 +332,7 @@
       if (!tabs.some((t) => t[0] === profileUi.tab)) profileUi.tab = 'attendance';
 
       const html = `
-        <div class="view-header"><button class="btn ghost small" data-go="employees">→ بازگشت به کارمندان</button></div>
+        ${AP.state.isEmployee ? '' : '<div class="view-header"><button class="btn ghost small" data-go="employees">→ بازگشت به کارمندان</button></div>'}
 
         <div class="card profile-head">
           ${AP.avatar(u.fullName, 'lg')}
@@ -347,8 +348,8 @@
             <div class="muted mt" style="margin-top:10px;font-size:12.5px">سرپرست مستقیم: ${esc(u.managerName || '—')} · عضویت از ${esc(fmt.dateLong(u.createdAt))}</div>
           </div>
           <div class="header-actions">
-            ${u.telegramUserId ? `<button class="btn ghost" id="pf-msg">${icon('mail')} پیام تلگرام</button>` : ''}
-            ${AP.state.isAdmin ? `<button class="btn ghost" id="pf-rec">${icon('plus')} ثبت دستی تردد</button><button class="btn ghost" id="pf-leave">${icon('leave')} ثبت مرخصی</button>` : ''}
+            ${u.telegramUserId && AP.state.isStaff ? `<button class="btn ghost" id="pf-msg">${icon('mail')} پیام تلگرام</button>` : ''}
+            ${AP.state.isStaff ? `<button class="btn ghost" id="pf-rec">${icon('plus')} ثبت دستی تردد</button><button class="btn ghost" id="pf-leave">${icon('leave')} ثبت مرخصی</button>` : ''}
             ${AP.state.isAdmin && u.id !== AP.state.me.id ? `<button class="btn danger" id="pf-del">حذف کارمند</button>` : ''}
           </div>
         </div>
@@ -393,7 +394,7 @@
             <div class="item"><div class="grow"><div class="title">${AP.badge(l.leave_type === 'mission' ? 'mission' : 'leave', AP.LEAVE_TYPE[l.leave_type])} ${AP.badge(l.status, AP.LEAVE_STATUS[l.status])}</div>
               <div class="meta">${esc(fmt.dateLong(l.start_date))} تا ${esc(fmt.dateLong(l.end_date))} · ثبت: ${esc(fmt.dateTime(l.created_at))}</div>
               ${l.reason ? `<p class="text">${esc(l.reason)}</p>` : ''}</div>
-              ${AP.state.isAdmin ? `<button class="btn ghost small" data-leave="${l.id}">ویرایش</button>` : ''}</div>`).join('')}</div>`;
+              ${AP.state.isStaff ? `<button class="btn ghost small" data-leave="${l.id}">ویرایش</button>` : ''}</div>`).join('')}</div>`;
         },
         disputes() {
           if (!d.disputes.length) return `<div class="card">${emptyBox('اعتراضی ثبت نشده است.')}</div>`;

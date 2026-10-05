@@ -9,6 +9,7 @@
 // (بدون ریورس‌پراکسی، TRUST_PROXY=false در production)، req.ip همان IP واقعی مبدأ است.
 
 const buckets = new Map(); // key -> { count, resetAt }
+let limiterSeq = 0; // هر limiter شمارنده‌ی مستقل خودش را دارد (قبلاً همه فقط با IP کلید می‌خوردند و شمارنده‌ی مشترک داشتند)
 
 function cleanupExpired(now) {
   for (const [key, bucket] of buckets) {
@@ -24,12 +25,14 @@ function cleanupExpired(now) {
  * @param {(req: import('express').Request) => string} [opts.keyFn] - تابع تولید کلید (پیش‌فرض: IP)
  */
 function createRateLimiter({ windowMs, max, message, keyFn }) {
+  limiterSeq += 1;
+  const limiterId = limiterSeq;
   return function rateLimiter(req, res, next) {
     const now = Date.now();
     // هر چند صد درخواست یک‌بار، سطل‌های منقضی‌شده را پاک می‌کنیم تا حافظه نشتی نداشته باشد
     if (buckets.size > 5000) cleanupExpired(now);
 
-    const key = (keyFn ? keyFn(req) : req.ip) || 'unknown';
+    const key = `${limiterId}:${(keyFn ? keyFn(req) : req.ip) || 'unknown'}`;
     let bucket = buckets.get(key);
 
     if (!bucket || bucket.resetAt <= now) {
@@ -65,4 +68,12 @@ const adminLoginLimiter = createRateLimiter({
   message: 'تعداد تلاش‌های ورود بیش از حد مجاز است. لطفاً ۱۵ دقیقه دیگر دوباره تلاش کنید.',
 });
 
-module.exports = { createRateLimiter, attendanceActionLimiter, adminLoginLimiter };
+// ورود خودکار از دکمه‌ی «پنل» بات (initData امضاشده / لینک یک‌بارمصرف ۱۹۲ بیتی): قابل حدس‌زدن نیست،
+// ولی چون همه‌ی کارمندان یک شرکت ممکن است پشت یک IP باشند، سقف باید سخاوتمندانه‌تر از کد/ویجت باشد.
+const panelAutoLoginLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 120,
+  message: 'تعداد تلاش‌های ورود بیش از حد مجاز است. لطفاً چند دقیقه دیگر دوباره تلاش کنید.',
+});
+
+module.exports = { createRateLimiter, attendanceActionLimiter, adminLoginLimiter, panelAutoLoginLimiter };

@@ -12,7 +12,9 @@ const usersRepository = require('../../repositories/usersRepository');
 const auditRepository = require('../../repositories/auditRepository');
 const { requireAdminAuth, requireFullAdmin } = require('../../middleware/adminAuth');
 
-router.use('/users', requireAdminAuth);
+// فقط ادمین کل: قبلاً سرپرست هم با requireAdminAuth می‌توانست لیست کامل همه‌ی کارمندان را از این مسیر بخواند
+// (در حالی که پنل برای سرپرست فقط تیم خودش را نشان می‌دهد). پنل از /api/admin/users (اسکوپ‌شده) استفاده می‌کند.
+router.use('/users', requireAdminAuth, requireFullAdmin);
 
 router.get('/users', (req, res) => {
   const onlyActive = req.query.active === 'true';

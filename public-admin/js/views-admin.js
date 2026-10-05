@@ -34,6 +34,7 @@
   // ======================================================
   const repUi = { from: null, to: null, department: '', sort: 'totalEffective', dir: -1 };
   AP.view('reports', {
+    employee: true,
     nav: { icon: 'reports', label: 'گزارش‌های تحلیلی', group: 'گزارش‌ها' },
     async render() {
       repUi.from = repUi.from || fmt.daysAgo(29);

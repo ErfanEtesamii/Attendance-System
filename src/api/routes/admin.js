@@ -5,7 +5,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { requireAdminAuth, requireFullAdmin } = require('../../middleware/adminAuth');
+const { requireAdminAuth, requireStaff, requireFullAdmin } = require('../../middleware/adminAuth');
 const usersRepository = require('../../repositories/usersRepository');
 const attendanceRepository = require('../../repositories/attendanceRepository');
 const auditRepository = require('../../repositories/auditRepository');
@@ -22,6 +22,7 @@ router.use('/admin', requireAdminAuth);
 function scopedUserIds(adminUser) {
   // ادمین کل همه را می‌بیند؛ مدیر دپارتمان فقط اعضای تیم خودش را
   if (adminUser.role === 'admin') return null; // null یعنی بدون فیلتر
+  if (adminUser.role === 'employee') return [adminUser.id]; // کارمند فقط خودش
   return usersRepository.listUsers({ managerId: adminUser.id }).map((u) => u.id);
 }
 
@@ -347,10 +348,14 @@ router.post('/admin/leave-requests/:id/:decision(approve|reject)', (req, res) =>
 
 // ---------- اصلاح دستی رکورد تردد (فقط ادمین کل) ----------
 
-router.patch('/admin/attendance-records/:id', requireFullAdmin, (req, res) => {
+router.patch('/admin/attendance-records/:id', requireStaff, (req, res) => {
   const id = parseInt(req.params.id, 10);
   const record = attendanceRepository.findById(id);
   if (!record) return res.status(404).json({ error: 'رکورد یافت نشد.' });
+  const allowedIds = scopedUserIds(req.adminUser);
+  if (allowedIds !== null && !allowedIds.includes(record.user_id)) {
+    return res.status(403).json({ error: 'به این کارمند دسترسی ندارید.' });
+  }
 
   const { checkInTime, checkOutTime, status, reason } = req.body || {};
   if (!reason || !reason.trim()) {
@@ -382,7 +387,7 @@ router.patch('/admin/attendance-records/:id', requireFullAdmin, (req, res) => {
   if (employee?.telegram_user_id) {
     notifyUser(
       employee.telegram_user_id,
-      `رکورد تردد شما در تاریخ ${record.record_date} توسط ادمین اصلاح شد.\nدلیل: ${reason.trim()}`
+      `رکورد تردد شما در تاریخ ${record.record_date} توسط ${req.adminUser.role === 'admin' ? 'ادمین' : 'سرپرست'} اصلاح شد.\nدلیل: ${reason.trim()}`
     );
   }
 

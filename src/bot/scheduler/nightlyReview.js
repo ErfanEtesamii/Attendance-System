@@ -2,7 +2,6 @@
 // تعداد درخواست مرخصی/مأموریت و اعتراض‌های منتظر پاسخ. (ادمین کل این پیام را نمی‌گیرد؛ او گزارش
 // پایان روز را دارد.)
 
-const config = require('../../config');
 const usersRepository = require('../../repositories/usersRepository');
 const leaveRepository = require('../../repositories/leaveRepository');
 const disputeRepository = require('../../repositories/disputeRepository');
@@ -10,17 +9,9 @@ const holidaysRepository = require('../../repositories/holidaysRepository');
 const { reviewDay, summarize } = require('../../utils/dayReview');
 const { formatMinutes } = require('../../utils/workHours');
 const { todayDateString } = require('../../utils/serverTime');
+const { panelWebAppButton } = require('../panelLinks');
 
 const MAX_ATTENTION_LINES = 25;
-
-function panelUrl() {
-  if (!config.miniAppUrl) return null;
-  try {
-    return new URL('admin/#/nightly', config.miniAppUrl).toString();
-  } catch (_) {
-    return null;
-  }
-}
 
 function clock(iso) {
   return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
@@ -83,14 +74,13 @@ async function sendNightlyReview(bot) {
     .listUsers({ onlyActive: true })
     .filter((u) => u.role === 'manager' && u.telegram_user_id);
 
-  const url = panelUrl();
+  // دکمه‌ی Web App: بدون کد/لینک، مستقیم وارد پنل و صفحه‌ی مرور شبانه می‌شود
+  const button = panelWebAppButton({ view: 'nightly', text: '🖥 باز کردن مرور شبانه در پنل' });
   for (const sup of supervisors) {
     const team = usersRepository.listUsers({ onlyActive: true, managerId: sup.id });
     if (team.length === 0) continue;
     try {
-      const options = url
-        ? { reply_markup: { inline_keyboard: [[{ text: '🖥 باز کردن مرور شبانه در پنل', url }]] } }
-        : {};
+      const options = button ? { reply_markup: { inline_keyboard: [[button]] } } : {};
       // eslint-disable-next-line no-await-in-loop
       await bot.sendMessage(sup.telegram_user_id, buildNightlyMessage(sup, team, today), options);
     } catch (err) {

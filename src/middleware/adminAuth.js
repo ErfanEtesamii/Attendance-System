@@ -1,7 +1,12 @@
-// middleware احراز هویت پنل مدیریتی وب (فاز ۸).
-// برخلاف Mini App (که هر بار initData تلگرام را تأیید می‌کند)، اینجا فقط لحظه‌ی لاگین
-// از طریق Telegram Login Widget تأیید می‌شود (adminAuth.js route) و بعد از آن یک
-// کوکی session امضاشده (src/utils/session.js) هویت را برای درخواست‌های بعدی نگه می‌دارد.
+// middleware احراز هویت پنل وب (فاز ۸ + دسترسی سه‌سطحی).
+// برخلاف Mini App (که هر بار initData تلگرام را تأیید می‌کند)، اینجا فقط لحظه‌ی لاگین تأیید می‌شود
+// (adminAuth.js route) و بعد از آن یک کوکی session امضاشده هویت را برای درخواست‌های بعدی نگه می‌دارد.
+//
+// سه سطح دسترسی:
+//   admin    — همه‌چیز
+//   manager  — «سرپرست»: فقط تیم خودش (اسکوپ با manager_id در هر route)
+//   employee — فقط خودش، و فقط از طریق «لیست سفید» پایین. هر مسیری که اینجا نیامده باشد
+//              برای کارمند ۴۰۳ است (امن‌به‌صورت‌پیش‌فرض: route جدیدی که بعداً اضافه شود، بسته می‌ماند).
 
 const config = require('../config');
 const usersRepository = require('../repositories/usersRepository');
@@ -9,6 +14,28 @@ const { verifySessionToken } = require('../utils/session');
 const { parseCookies } = require('../utils/cookies');
 
 const SESSION_COOKIE_NAME = 'attendance_admin_session';
+
+// فقط خواندنِ داده‌های خود کارمند. (اسکوپ «فقط خودش» در scopedUserIds هر route اعمال می‌شود.)
+const EMPLOYEE_ALLOWED = [
+  ['GET', /^\/admin\/me$/],
+  ['GET', /^\/admin\/attendance$/],
+  ['GET', /^\/admin\/attendance\/export$/],
+  ['GET', /^\/admin\/attendance-records\/\d+$/],
+  ['GET', /^\/admin\/users\/\d+\/details$/],
+  ['GET', /^\/admin\/leave-requests$/],
+  ['GET', /^\/admin\/disputes$/],
+  ['GET', /^\/admin\/reports\/summary$/],
+  ['POST', /^\/admin\/auth\/logout$/],
+];
+
+function requestPath(req) {
+  return req.originalUrl.split('?')[0].replace(/^\/api(?=\/)/, '').replace(/\/+$/, '');
+}
+
+function employeeMayAccess(req) {
+  const p = requestPath(req);
+  return EMPLOYEE_ALLOWED.some(([method, re]) => method === req.method && re.test(p));
+}
 
 function requireAdminAuth(req, res, next) {
   const cookies = parseCookies(req);
@@ -20,15 +47,27 @@ function requireAdminAuth(req, res, next) {
   }
 
   const user = usersRepository.findById(session.userId);
-  if (!user || !user.is_active || !['manager', 'admin'].includes(user.role)) {
-    return res.status(403).json({ error: 'دسترسی به پنل مدیریتی ندارید.' });
+  if (!user || !user.is_active || !['employee', 'manager', 'admin'].includes(user.role)) {
+    return res.status(403).json({ error: 'دسترسی به پنل ندارید.' });
+  }
+
+  if (user.role === 'employee' && !employeeMayAccess(req)) {
+    return res.status(403).json({ error: 'این بخش برای کارمندان در دسترس نیست.' });
   }
 
   req.adminUser = user;
   next();
 }
 
-// برای اکشن‌هایی که فقط ادمین کل مجاز است (نه مدیر دپارتمان)، مثل افزودن/ویرایش کارمند
+// برای اکشن‌های مدیریتی: سرپرست (فقط روی تیم خودش؛ اسکوپ را خود route چک می‌کند) و ادمین
+function requireStaff(req, res, next) {
+  if (!req.adminUser || !['manager', 'admin'].includes(req.adminUser.role)) {
+    return res.status(403).json({ error: 'این عملیات فقط برای سرپرست یا ادمین مجاز است.' });
+  }
+  next();
+}
+
+// برای اکشن‌هایی که فقط ادمین کل مجاز است (مدیریت کاربران، تنظیمات، لاگ، سیستم، ارسال همگانی)
 function requireFullAdmin(req, res, next) {
   if (!req.adminUser || req.adminUser.role !== 'admin') {
     return res.status(403).json({ error: 'این عملیات فقط برای ادمین کل مجاز است.' });
@@ -36,4 +75,4 @@ function requireFullAdmin(req, res, next) {
   next();
 }
 
-module.exports = { requireAdminAuth, requireFullAdmin, SESSION_COOKIE_NAME };
+module.exports = { requireAdminAuth, requireStaff, requireFullAdmin, SESSION_COOKIE_NAME, EMPLOYEE_ALLOWED };
