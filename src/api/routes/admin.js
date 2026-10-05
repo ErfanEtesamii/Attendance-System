@@ -322,13 +322,14 @@ router.post('/admin/leave-requests/:id/:decision(approve|reject)', (req, res) =>
     return res.status(403).json({ error: 'این کارمند زیرمجموعه شما نیست.' });
   }
 
+  const note = ((req.body && req.body.note) || '').toString().trim().slice(0, 500);
   const newStatus = decision === 'approve' ? 'approved' : 'rejected';
   const updated = leaveRepository.setStatus(requestId, newStatus, req.adminUser.id);
 
   auditRepository.logEvent({
     userId: req.adminUser.id,
     action: newStatus === 'approved' ? 'leave_request_approved' : 'leave_request_rejected',
-    details: { source: 'admin_panel', requestId, employeeId: request.user_id },
+    details: { source: 'admin_panel', requestId, employeeId: request.user_id, note: note || undefined },
   });
 
   if (employee?.telegram_user_id) {
@@ -336,7 +337,8 @@ router.post('/admin/leave-requests/:id/:decision(approve|reject)', (req, res) =>
     const statusLabel = newStatus === 'approved' ? 'تأیید شد ✅' : 'رد شد ❌';
     notifyUser(
       employee.telegram_user_id,
-      `درخواست ${typeLabel} شما (${request.start_date} تا ${request.end_date}) ${statusLabel}`
+      `درخواست ${typeLabel} شما (${request.start_date} تا ${request.end_date}) ${statusLabel}` +
+        (note ? `\nپاسخ ${req.adminUser.role === 'admin' ? 'ادمین' : 'سرپرست'}: ${note}` : '')
     );
   }
 

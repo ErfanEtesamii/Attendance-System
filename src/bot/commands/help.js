@@ -11,6 +11,7 @@ const MANAGER_COMMANDS = [
   '/list_employees — لیست اعضای تیم من',
   '/team_report — گزارش تیم من',
   '/pending_leaves — درخواست‌های مرخصی در انتظار تأیید تیم من',
+  '/pending_disputes — اعتراض‌های باز تیم من (پاسخ و بستن)',
 ];
 
 const ADMIN_COMMANDS = [
@@ -18,6 +19,7 @@ const ADMIN_COMMANDS = [
   '/list_employees — لیست همه کارمندان',
   '/team_report — گزارش کل تیم‌ها',
   '/pending_leaves — همه درخواست‌های مرخصی در انتظار',
+  '/pending_disputes — همه اعتراض‌های باز',
   '/fix_record — اصلاح دستی یک رکورد تردد',
 ];
 

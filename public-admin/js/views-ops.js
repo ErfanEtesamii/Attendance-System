@@ -363,8 +363,12 @@
           $('#lv-chips', page).addEventListener('click', (e) => { const c = e.target.closest('[data-s]'); if (c) { leaveUi.status = c.dataset.s; AP.refresh(); } });
           $$('[data-act]', page).forEach((b) => b.addEventListener('click', async () => {
             const approve = b.dataset.act === 'approve';
-            if (!approve && !(await AP.confirmBox({ title: 'رد درخواست', message: 'درخواست رد شود و به کارمند اطلاع داده شود؟', confirmText: 'رد کن', danger: true }))) return;
-            const ok = await AP.attempt(() => AP.api(`/admin/leave-requests/${b.dataset.id}/${b.dataset.act}`, { method: 'POST' }), approve ? 'تأیید شد.' : 'رد شد.');
+            let note = '';
+            if (!approve) {
+              note = await AP.askReason({ title: 'رد درخواست', label: 'دلیل رد (اختیاری — برای کارمند در تلگرام ارسال می‌شود)', confirmText: 'رد کن', danger: true, required: false });
+              if (note === null) return;
+            }
+            const ok = await AP.attempt(() => AP.api(`/admin/leave-requests/${b.dataset.id}/${b.dataset.act}`, { method: 'POST', body: { note } }), approve ? 'تأیید شد.' : 'رد شد.');
             if (ok) { AP.refresh(); AP.refreshCounts(); }
           }));
           $$('[data-edit]', page).forEach((b) => b.addEventListener('click', () => AP.openLeaveEditor(b.dataset.edit)));
@@ -414,6 +418,121 @@
           }));
           $$('[data-reopen]', page).forEach((b) => b.addEventListener('click', async () => {
             const ok = await AP.attempt(() => AP.api(`/admin/disputes/${b.dataset.reopen}/reopen`, { method: 'POST', body: {} }), 'اعتراض دوباره باز شد.');
+            if (ok) { AP.refresh(); AP.refreshCounts(); }
+          }));
+        },
+      };
+    },
+  });
+  // ======================================================
+  // مرور شبانه: وضعیت تیم + مرخصی‌ها + اعتراض‌ها در یک صفحه
+  // ======================================================
+  const nightUi = { date: null, filter: 'attention' };
+  AP.view('nightly', {
+    nav: { icon: 'clock', label: 'مرور شبانه', group: 'نمای کلی', counter: true },
+    async render() {
+      const q = nightUi.date ? `?date=${encodeURIComponent(nightUi.date)}` : '';
+      const [data, leaves, disputes] = await Promise.all([
+        AP.api(`/admin/nightly-review${q}`),
+        AP.api('/admin/leave-requests?status=pending'),
+        AP.api('/admin/disputes?status=open'),
+      ]);
+      nightUi.date = data.date;
+      const t = data.totals;
+      const order = { absent: 0, incomplete: 1, present: 2, checked_out: 3, leave: 4, holiday: 5 };
+      const rows = [...data.rows].sort((a, b) =>
+        (b.needsAttention - a.needsAttention) || ((order[a.state] ?? 9) - (order[b.state] ?? 9)) || a.user.fullName.localeCompare(b.user.fullName, 'fa'));
+      const chips = [['attention', 'نیازمند بررسی', t.attention], ['all', 'همه', t.total]];
+      if (!chips.some((c) => c[0] === nightUi.filter)) nightUi.filter = 'attention';
+
+      const leaveItems = leaves.map((l) => `
+        <div class="item">
+          ${AP.avatar(l.employee ? l.employee.fullName : '?', '')}
+          <div class="grow">
+            <div class="title"><a href="#/profile/${l.employee ? l.employee.id : ''}" style="color:inherit">${esc(l.employee ? l.employee.fullName : '—')}</a>
+              ${AP.badge(l.leaveType === 'mission' ? 'mission' : 'leave', AP.LEAVE_TYPE[l.leaveType])}</div>
+            <div class="meta">${esc(fmt.dateLong(l.startDate))} تا ${esc(fmt.dateLong(l.endDate))} · ثبت: ${esc(fmt.dateTime(l.createdAt))}</div>
+            ${l.reason ? `<p class="text">${esc(l.reason)}</p>` : ''}
+          </div>
+          <div class="row-actions">
+            <button class="btn success small" data-act="approve" data-id="${l.id}">${icon('check')} تأیید</button>
+            <button class="btn danger small" data-act="reject" data-id="${l.id}">${icon('x')} رد</button>
+          </div></div>`).join('');
+
+      const disputeItems = disputes.map((d) => `
+        <div class="item">
+          ${AP.avatar(d.employee ? d.employee.fullName : '?', 'purple')}
+          <div class="grow">
+            <div class="title"><a href="#/profile/${d.employee ? d.employee.id : ''}" style="color:inherit">${esc(d.employee ? d.employee.fullName : '—')}</a>
+              <span class="muted" style="font-weight:400;font-size:12px">${esc(fmt.dateTime(d.createdAt))}</span></div>
+            <p class="text">${esc(d.message)}</p>
+            ${d.record ? `<div class="meta">رکورد مرتبط: <a href="#" data-rec="${d.record.id}" style="color:var(--green)">${esc(fmt.dateLong(d.record.date))}</a></div>` : ''}
+          </div>
+          <div class="row-actions">
+            <button class="btn success small" data-resolve="${d.id}">${icon('check')} بستن و پاسخ</button>
+          </div></div>`).join('');
+
+      const html = `
+        <div class="view-header">
+          <div><h2>مرور شبانه</h2>
+            <div class="sub">${esc(fmt.dateLong(data.date))}${data.holiday ? ' · تعطیل رسمی' : ''} · ${fmt.num(t.total)} نفر · ${fmt.num(t.attention)} مورد نیازمند بررسی</div></div>
+          <div class="header-actions">
+            <label class="field" style="margin:0"><input type="date" id="nt-date" value="${esc(data.date)}" max="${esc(data.today)}" /></label>
+          </div>
+        </div>
+        <div class="chips" id="nt-chips">${chips.map(([k, l, c]) => `<button class="chip ${k === nightUi.filter ? 'active' : ''}" data-f="${k}">${esc(l)}<b>${fmt.num(c)}</b></button>`).join('')}
+          <span class="muted" style="margin-inline-start:8px;font-size:12.5px">حاضر: ${fmt.num(t.present)} · متأخر: ${fmt.num(t.late)} · بدون خروج: ${fmt.num(t.noCheckout)} · غایب: ${fmt.num(t.absent)} · مرخصی: ${fmt.num(t.leave)}</span></div>
+        <div class="card flush"><div class="table-wrap"><table>
+          <thead><tr><th>کارمند</th><th>وضعیت</th><th>ورود</th><th>خروج</th><th>ساعت مفید</th><th>نکات</th><th>عملیات</th></tr></thead>
+          <tbody id="nt-body"></tbody></table></div></div>
+
+        <div class="view-header" style="margin-top:26px"><div><h2>مرخصی و مأموریت منتظر پاسخ</h2><div class="sub">${fmt.num(leaves.length)} درخواست</div></div></div>
+        <div class="list">${leaves.length ? leaveItems : `<div class="card">${emptyBox('درخواستی در انتظار نیست.')}</div>`}</div>
+
+        <div class="view-header" style="margin-top:26px"><div><h2>اعتراض‌های باز</h2><div class="sub">${fmt.num(disputes.length)} مورد</div></div></div>
+        <div class="list">${disputes.length ? disputeItems : `<div class="card">${emptyBox('اعتراض بازی وجود ندارد.')}</div>`}</div>`;
+
+      return {
+        html,
+        mount(page) {
+          const body = $('#nt-body', page);
+          const chipsEl = $('#nt-chips', page);
+          const draw = () => {
+            $$('.chip', chipsEl).forEach((c) => c.classList.toggle('active', c.dataset.f === nightUi.filter));
+            const list = nightUi.filter === 'attention' ? rows.filter((r) => r.needsAttention) : rows;
+            body.innerHTML = list.length ? list.map((r) => `<tr>
+              <td><a class="cell-user" href="#/profile/${r.user.id}" style="color:inherit;text-decoration:none">${AP.avatar(r.user.fullName, 'sm')}
+                <span><b>${esc(r.user.fullName)}</b><small>${esc(r.user.department || '—')}</small></span></a></td>
+              <td>${AP.stateBadge(r.state)} ${r.onMission ? AP.badge('mission', 'مأموریت') : ''}</td>
+              <td class="num">${r.checkIn ? fmt.clock(r.checkIn) : '—'}</td>
+              <td class="num">${r.checkOut ? fmt.clock(r.checkOut) : '—'}</td>
+              <td class="num">${r.effectiveMinutes != null ? fmt.min(r.effectiveMinutes) : '—'}</td>
+              <td>${r.lateMinutes > 0 ? AP.badge('late', `تأخیر ${fmt.min(r.lateMinutes)}`) : ''} ${r.noCheckout ? AP.badge('incomplete', 'بدون ثبت خروج') : ''}</td>
+              <td><div class="row-actions">
+                ${r.user.telegramUserId ? `<button class="btn ghost small" data-msg="${r.user.id}" title="ارسال پیام تلگرام">${icon('mail')}</button>` : ''}
+              </div></td></tr>`).join('')
+              : `<tr><td colspan="7">${emptyBox(nightUi.filter === 'attention' ? 'مورد نیازمند بررسی‌ای نیست. ✅' : 'کارمندی برای نمایش نیست.')}</td></tr>`;
+          };
+          draw();
+          chipsEl.addEventListener('click', (e) => { const c = e.target.closest('[data-f]'); if (c) { nightUi.filter = c.dataset.f; draw(); } });
+          body.addEventListener('click', (e) => { const m = e.target.closest('[data-msg]'); if (m) AP.openMessage(m.dataset.msg); });
+          $('#nt-date', page).addEventListener('change', (e) => { if (e.target.value) { nightUi.date = e.target.value; AP.refresh(); } });
+
+          $$('[data-rec]', page).forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); AP.openRecord(a.dataset.rec); }));
+          $$('[data-act]', page).forEach((b) => b.addEventListener('click', async () => {
+            const approve = b.dataset.act === 'approve';
+            let note = '';
+            if (!approve) {
+              note = await AP.askReason({ title: 'رد درخواست', label: 'دلیل رد (اختیاری — برای کارمند در تلگرام ارسال می‌شود)', confirmText: 'رد کن', danger: true, required: false });
+              if (note === null) return;
+            }
+            const ok = await AP.attempt(() => AP.api(`/admin/leave-requests/${b.dataset.id}/${b.dataset.act}`, { method: 'POST', body: { note } }), approve ? 'تأیید شد.' : 'رد شد.');
+            if (ok) { AP.refresh(); AP.refreshCounts(); }
+          }));
+          $$('[data-resolve]', page).forEach((b) => b.addEventListener('click', async () => {
+            const note = await AP.askReason({ title: 'بستن اعتراض', label: 'پاسخ به کارمند (اختیاری — در تلگرام ارسال می‌شود)', confirmText: 'بستن اعتراض', required: false });
+            if (note === null) return;
+            const ok = await AP.attempt(() => AP.api(`/admin/disputes/${b.dataset.resolve}/resolve`, { method: 'POST', body: { note } }), 'اعتراض بسته شد.');
             if (ok) { AP.refresh(); AP.refreshCounts(); }
           }));
         },

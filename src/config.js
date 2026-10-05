@@ -71,6 +71,8 @@ const config = {
     weeklyReport: process.env.CRON_WEEKLY_REPORT || '0 8 * * 6',
     // بررسی روزانه برای گزارش ماهانه شمسی (خود Job فقط در روز اول ماه شمسی واقعاً گزارش می‌فرستد)
     monthlyReport: process.env.CRON_MONTHLY_REPORT || '0 8 * * *',
+    // پیام مرور شبانه برای سرپرستان: وضعیت تیم + درخواست‌ها/اعتراض‌های منتظر پاسخ
+    nightlyReview: process.env.CRON_NIGHTLY_REVIEW || '0 20 * * 6,0,1,2,3',
     // بستن خودکار رکوردهای بدون خروج ثبت‌شده در پایان روز (وضعیت «ناقص»)
     autoCloseIncomplete: process.env.CRON_AUTO_CLOSE_INCOMPLETE || '59 23 * * *',
     // علامت‌گذاری روزهای تعطیل رسمی/مرخصی تأییدشده، قبل از شروع پنجره ثبت ورود (رفع گپ «غایب» فاز ۵)

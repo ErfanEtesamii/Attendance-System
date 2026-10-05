@@ -9,6 +9,7 @@ const { checkCheckoutReminders } = require('./checkoutReminder');
 const { autoCloseIncompleteRecords } = require('./autoCloseIncomplete');
 const { markNonWorkingDays } = require('./markNonWorkingDays');
 const { sendDailyReport, sendWeeklyReport, sendMonthlyReport } = require('./reports');
+const { sendNightlyReview } = require('./nightlyReview');
 const { isFirstDayOfJalaliMonth } = require('../../utils/jalali');
 
 function startSchedulers(bot) {
@@ -23,6 +24,10 @@ function startSchedulers(bot) {
 
   cron.schedule(config.cron.dailyReport, () => {
     sendDailyReport(bot).catch((err) => console.error('[scheduler] dailyReport error:', err));
+  });
+
+  cron.schedule(config.cron.nightlyReview, () => {
+    sendNightlyReview(bot).catch((err) => console.error('[scheduler] nightlyReview error:', err));
   });
 
   cron.schedule(config.cron.weeklyReport, () => {

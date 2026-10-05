@@ -21,6 +21,7 @@ const holidaysRepository = require('../../repositories/holidaysRepository');
 const disputeRepository = require('../../repositories/disputeRepository');
 const auditRepository = require('../../repositories/auditRepository');
 const workHours = require('../../utils/workHours');
+const dayReview = require('../../utils/dayReview');
 const { todayDateString, nowIso } = require('../../utils/serverTime');
 const { sendMessage } = require('../../bot/notifier');
 const { sendCsv } = require('../../utils/csv');
@@ -339,6 +340,23 @@ router.get('/admin/live', (req, res) => {
   res.json({ date: today, serverTime: nowIso(), holiday, rows });
 });
 
+// ---------- مرور شبانه: وضعیت یک روز برای تیم سرپرست (ادمین: همه) ----------
+
+router.get('/admin/nightly-review', (req, res) => {
+  const today = todayDateString();
+  let date = DATE_RE.test(req.query.date || '') ? req.query.date : today;
+  if (date > today) date = today;
+  const users = visibleUsers(req.adminUser, { onlyActive: true });
+  const rows = dayReview.reviewDay(users, date);
+  res.json({
+    date,
+    today,
+    holiday: holidaysRepository.isHoliday(date),
+    totals: dayReview.summarize(rows),
+    rows,
+  });
+});
+
 // ---------- جستجو و مرور همه‌ی رکوردهای تردد ----------
 
 function filteredAttendance(req) {
@@ -618,7 +636,7 @@ router.post('/admin/disputes/:id/:action(resolve|reopen)', (req, res) => {
   if (resolving && employee?.telegram_user_id) {
     sendMessage(
       employee.telegram_user_id,
-      `اعتراض شما بررسی و بسته شد ✅${note ? `\nپاسخ ادمین: ${note}` : ''}`
+      `اعتراض شما بررسی و بسته شد ✅${note ? `\nپاسخ ${req.adminUser.role === 'admin' ? 'ادمین' : 'سرپرست'}: ${note}` : ''}`
     );
   }
   res.json(updated);

@@ -17,6 +17,7 @@ const {
 const { handleListEmployees } = require('./commands/listEmployees');
 const { handleTeamReport } = require('./commands/teamReport');
 const { handlePendingLeaves, handlePendingLeavesCallback } = require('./commands/pendingLeaves');
+const { handlePendingDisputes, handleDisputeCallback, handleDisputeReplyText } = require('./commands/pendingDisputes');
 const {
   handleFixRecordCommand,
   handleFixRecordText,
@@ -44,6 +45,7 @@ function createBot() {
   bot.onText(/^\/list_employees/, (msg) => handleListEmployees(bot, msg));
   bot.onText(/^\/team_report/, (msg) => handleTeamReport(bot, msg));
   bot.onText(/^\/pending_leaves/, (msg) => handlePendingLeaves(bot, msg));
+  bot.onText(/^\/pending_disputes/, (msg) => handlePendingDisputes(bot, msg));
   bot.onText(/^\/fix_record/, (msg) => handleFixRecordCommand(bot, msg));
 
   // پیام‌های متنی معمولی: فقط وقتی مکالمه چندمرحله‌ای فعالی وجود دارد پردازش می‌شوند.
@@ -56,6 +58,7 @@ function createBot() {
     if (sess.flow === 'leave') return handleLeaveText(bot, msg, sess);
     if (sess.flow === 'add_employee') return handleAddEmployeeText(bot, msg, sess);
     if (sess.flow === 'fix_record') return handleFixRecordText(bot, msg, sess);
+    if (sess.flow === 'dispute_reply') return handleDisputeReplyText(bot, msg, sess);
   });
 
   bot.on('callback_query', async (query) => {
@@ -65,6 +68,9 @@ function createBot() {
     try {
       if (query.data.startsWith('leave_approve:') || query.data.startsWith('leave_reject:')) {
         return await handlePendingLeavesCallback(bot, query);
+      }
+      if (query.data.startsWith('dispute_close:') || query.data.startsWith('dispute_reply:')) {
+        return await handleDisputeCallback(bot, query);
       }
       if (query.data.startsWith('leave_type:') || query.data.startsWith('leave_confirm:') || query.data === 'leave_cancel') {
         if (!sess || sess.flow !== 'leave') return bot.answerCallbackQuery(query.id);

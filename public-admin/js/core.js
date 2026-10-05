@@ -350,8 +350,8 @@
         AP.api('/admin/leave-requests?status=pending'),
         AP.api('/admin/disputes?status=open'),
       ]);
-      AP.state.counts = { leave: leave.length, disputes: disputes.length };
-      ['leave', 'disputes'].forEach((k) => {
+      AP.state.counts = { leave: leave.length, disputes: disputes.length, nightly: leave.length + disputes.length };
+      ['leave', 'disputes', 'nightly'].forEach((k) => {
         const el = $(`.nav-item[data-view="${k}"] .nav-count`);
         if (!el) return;
         el.textContent = fmt.num(AP.state.counts[k]);
