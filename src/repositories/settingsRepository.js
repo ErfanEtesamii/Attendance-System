@@ -48,6 +48,55 @@ function update(fields) {
   return getAll();
 }
 
+// ---------- API تنظیمات با متادیتا (S3-1b) ----------
+// یک آیتم = متادیتای رجیستری + مقدار مؤثر فعلی. کلید ناشناخته ⇒ null.
+function buildItem(def, stored) {
+  const value = registry.deserialize(def.key, stored ? stored.value : undefined);
+  const dflt = registry.defaultOf(def.key);
+  const item = {
+    key: def.key,
+    type: def.type,
+    group: def.group,
+    groupLabel: registry.GROUP_LABELS[def.group],
+    description: def.description,
+    value,
+    default: dflt,
+    isDefault: value === dflt,
+    updatedAt: stored ? stored.updated_at : null,
+  };
+  if (def.min !== undefined) item.min = def.min;
+  if (def.max !== undefined) item.max = def.max;
+  if (def.values !== undefined) item.values = def.values;
+  return item;
+}
+
+function getItems() {
+  const rows = getDb().prepare('SELECT key, value, updated_at FROM settings').all();
+  const byDbKey = new Map(rows.map((r) => [r.key, r]));
+  return registry.REGISTRY.map((def) => buildItem(def, byDbKey.get(def.dbKey)));
+}
+
+function getItem(camelKey) {
+  const def = registry.getDef(camelKey);
+  if (!def) return null;
+  const row = getDb().prepare('SELECT value, updated_at FROM settings WHERE key = ?').get(def.dbKey);
+  return buildItem(def, row);
+}
+
+// ذخیره‌ی یک مقدار «از قبل معتبر» (خروجی registry.validate). نامعتبر ⇒ خطا (مسیر API پیش‌تر ۴۰۰ می‌دهد)
+function setValue(camelKey, value) {
+  const result = registry.validate(camelKey, value);
+  if (!result.ok) throw new Error(`مقدار نامعتبر برای ${camelKey}: ${result.error}`);
+  getDb().prepare(UPSERT_SQL).run(dbKeyOf(camelKey), registry.serialize(camelKey, result.value));
+  return getItem(camelKey);
+}
+
+// بازگشت به پیش‌فرض = حذف ردیف ذخیره‌شده (تا اگر پیش‌فرضِ .env عوض شد، همان دنبال شود). خروجی: آیا ردیفی حذف شد
+function resetValue(camelKey) {
+  const info = getDb().prepare('DELETE FROM settings WHERE key = ?').run(dbKeyOf(camelKey));
+  return info.changes > 0;
+}
+
 // خواندن سبکِ فقط یک کلید (برای مسیر ثبت تردد). نبودن/خرابی مقدار ⇒ false (خاموش)
 function isBlockOnSharedDeviceEnabled() {
   return registry.deserialize('blockOnSharedDevice', readRaw('blockOnSharedDevice')) === true;
@@ -94,5 +143,5 @@ function bumpGlobalSessionEpoch() {
 }
 
 module.exports = {
-  getAll, update, isBlockOnSharedDeviceEnabled, isAuditArchiveEnabled, getAuditRetentionMonths, getCleanupRetention, getGlobalSessionEpoch, bumpGlobalSessionEpoch,
+  getAll, update, getItems, getItem, setValue, resetValue, isBlockOnSharedDeviceEnabled, isAuditArchiveEnabled, getAuditRetentionMonths, getCleanupRetention, getGlobalSessionEpoch, bumpGlobalSessionEpoch,
 };

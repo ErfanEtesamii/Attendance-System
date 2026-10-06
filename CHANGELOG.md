@@ -4,6 +4,15 @@
 
 ## [Unreleased] — بخش ۳ (موتور محاسبه و تنظیمات)
 
+### S3-1b — API تنظیمات با متادیتا، ذخیره با دلیل اجباری و reset
+- **`GET /api/admin/settings/items`** (سرپرست/ادمین): `{ items, groups }`؛ هر آیتم: `key, type, group, groupLabel, description, value, default, isDefault, updatedAt` و (در صورت وجود) `min/max/values`.
+- **`PUT /api/admin/settings/:key`** `{ value, reason }` (فقط ادمین کل): دلیل اجباری و مقدار نامعتبر ⇒ ۴۰۰ (پیام فارسی، بدون هیچ تغییر)، کلید ناشناخته ⇒ ۴۰۴. مقدار برابر با مقدار فعلی ⇒ `changed:false` بدون نوشتن و بدون audit.
+- **`POST /api/admin/settings/:key/reset`** `{ reason }` (فقط ادمین کل): ردیف ذخیره‌شده‌ی آن کلید حذف می‌شود تا پیش‌فرض (و در صورت تغییر، پیش‌فرضِ `.env`) دنبال شود؛ ردیفی نبود ⇒ `changed:false`.
+- **audit**: اکشن `settings_updated` (PUT) و `settings_reset` با همان قالب details قبلی (`source`, `fields`) به‌علاوه‌ی `changes: { key: { before, after } }` و `reason`. `PATCH /api/admin/settings` (که UI فعلی می‌زند) هم اکنون `changes` قبل/بعد را در details می‌گذارد؛ پذیرش، پاسخ و بدون‌دلیل‌بودنش بدون تغییر است.
+- **`settingsRepository`**: `getItems/getItem/setValue/resetValue` (SQL فقط آنجا). `GET/PATCH /api/admin/settings` و UI بدون تغییر.
+- بدون migration، بدون وابستگی جدید.
+- تست: `test/settingsApi.test.js` (۴ تست: لیست و متادیتا + سازگاری GET قدیمی، ذخیره/۴۰۰/audit/no-op، reset، دسترسی/۴۰۴/CSRF و PATCH قدیمی). `npm test`: ۲۸۰ سبز.
+
 ### S3-1a — رجیستری تنظیمات + اعتبارسنجی (بدون API/UI)
 - **`src/utils/settingsRegistry.js`** (جدید، خالص و بدون SQL): هر تنظیم یک خط `def(key, dbKey, type, { default, fallback, min, max, values, group, description })`. انواع: `number` (صحیح با بازه) | `boolean` | `time` (HH:MM؛ `8:00` ⇒ `08:00`) | `cron` (با `node-cron` validate) | `enum` | `string`. توضیح فارسی و `group` (برچسب‌ها در `GROUP_LABELS`) برای صفحه‌ی گروه‌بندی‌شده‌ی S3-9a. `validate(key, raw)` ⇒ `{ok,value}|{ok:false,error}` (برای S3-1b)، `deserialize` (خراب/خارج از بازه ⇒ پیش‌فرض، هرگز NaN)، `serialize`، `defaultOf` (پیش‌فرض از `config`/`.env` و در صورت نامعتبر بودن `fallback` ثابت تا غلط تایپی در `.env` سرور را خراب نکند) و `selfCheck()` (کلید تکراری/پیش‌فرض نامعتبر و ...).
 - **`settingsRepository`**: `KEY_MAP/INT_RANGES/BOOLEAN_KEYS/DEFAULTS` حذف و همه از رجیستری ساخته می‌شود؛ API عمومی و ترتیب/نام کلیدهای `getAll()` بدون تغییر. هر ۱۱ کلید فعلی (۵ کلید اصلی + ۶ کلید S2) منتقل شد. رفتار `update`: نامعتبر/خالی/ناشناخته **همچنان نادیده** (۴۰۰ در S3-1b).
