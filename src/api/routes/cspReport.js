@@ -4,7 +4,7 @@ const express = require('express');
 const router = express.Router();
 const { createRateLimiter } = require('../../middleware/rateLimiter');
 
-const limiter = createRateLimiter({ windowMs: 60 * 1000, max: 30, message: 'rate limited' });
+const limiter = createRateLimiter({ name: 'csp-report', windowMs: 60 * 1000, max: 30, message: 'rate limited', audit: false });
 const parser = express.json({ limit: '16kb', type: ['application/csp-report', 'application/reports+json', 'application/json'] });
 
 const seen = new Set();

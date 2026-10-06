@@ -36,7 +36,10 @@ function userTables(db) {
 // فقط روی ستون‌های اصلی باشد؛ خودِ ۰۰۲ در تست جدا (migration 002) بررسی می‌شود.
 function snapshot(db) {
   const out = {};
-  for (const t of userTables(db)) {
+  // rate_limit_hits (migration ۰۰۳) و job_runs/monitor_alerts/monitor_state (migration ۰۰۴) جدول‌های جدیدِ عملیاتی‌اند (داده‌ی کاربری نیستند)
+  // پس از مقایسه‌ی «بدون تغییر داده» کنار می‌مانند
+  const OPERATIONAL = ['rate_limit_hits', 'job_runs', 'monitor_alerts', 'monitor_state'];
+  for (const t of userTables(db).filter((n) => !OPERATIONAL.includes(n))) {
     out[t] = db.prepare(`SELECT * FROM "${t}" ORDER BY rowid`).all().map((r) => {
       const row = { ...r };
       if (t === 'users') delete row.session_version;
@@ -84,19 +87,19 @@ describe('migration runner — پایه', () => {
   test('دیتابیس خالی: baseline اعمال و ثبت می‌شود، اجرای دوم هیچ کاری نمی‌کند', () => {
     const db = newDb();
     const r1 = migrate(db, {});
-    assert.deepEqual(r1.applied, ['001_baseline', '002_session_version']);
+    assert.deepEqual(r1.applied, ['001_baseline', '002_session_version', '003_rate_limits', '004_monitoring']);
     assert.equal(r1.backupPath, null, 'روی دیتابیس خالی بک‌آپ لازم نیست');
     for (const t of ['users', 'attendance_records', 'break_records', 'leave_requests', 'holidays', 'record_disputes', 'settings', 'audit_log']) {
       assert.ok(userTables(db).includes(t), `جدول ${t} باید ساخته شود`);
     }
     const row = db.prepare('SELECT * FROM schema_migrations').all();
-    assert.equal(row.length, 2);
+    assert.equal(row.length, 4);
     assert.equal(row[0].name, '001_baseline');
     assert.match(row[0].checksum, /^[0-9a-f]{64}$/);
 
     const r2 = migrate(db, {});
     assert.deepEqual(r2.applied, []);
-    assert.equal(db.prepare('SELECT COUNT(*) n FROM schema_migrations').get().n, 2);
+    assert.equal(db.prepare('SELECT COUNT(*) n FROM schema_migrations').get().n, 4);
   });
 
   test('دیتابیس قدیمی با داده: adopt می‌شود، هیچ داده‌ای تغییر نمی‌کند، بک‌آپ سالم گرفته می‌شود', () => {
@@ -106,7 +109,7 @@ describe('migration runner — پایه', () => {
 
     const logs = [];
     const res = migrate(db, { backupDir, log: (m) => logs.push(m) });
-    assert.deepEqual(res.applied, ['001_baseline', '002_session_version']);
+    assert.deepEqual(res.applied, ['001_baseline', '002_session_version', '003_rate_limits', '004_monitoring']);
     assert.deepEqual(snapshot(db), before, 'محتوای همه جدول‌ها باید دقیقاً یکسان بماند');
 
     // بک‌آپ: فایل معتبر با همان داده‌ها

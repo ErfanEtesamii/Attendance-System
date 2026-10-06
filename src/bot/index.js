@@ -2,6 +2,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const config = require('../config');
 const session = require('./session');
 const { startSchedulers } = require('./scheduler');
+const { instrumentBot } = require('../utils/botHealth');
 
 const { handleStart } = require('./commands/start');
 const { handlePanelLogin } = require('./commands/panelLogin');
@@ -33,6 +34,8 @@ function createBot() {
   }
 
   const bot = new TelegramBot(config.telegramBotToken, { polling: true });
+  // بخش ۲-ج۱: نبض واقعی polling برای /api/health و watchdog (متد getUpdates پیچیده می‌شود)
+  instrumentBot(bot);
 
   bot.onText(/^\/start/, (msg) => handleStart(bot, msg));
   bot.onText(/^\/help/, (msg) => handleHelp(bot, msg));

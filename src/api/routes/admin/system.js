@@ -16,6 +16,9 @@ const { sendMessage } = require('../../../bot/notifier');
 const settingsRepository = require('../../../repositories/settingsRepository');
 const { buildClearCookie } = require('../../../utils/sessionCookie');
 const { audit, requireReason } = require('./common');
+const systemHealth = require('../../../utils/systemHealth');
+const jobRunsRepository = require('../../../repositories/jobRunsRepository');
+const monitorRepository = require('../../../repositories/monitorRepository');
 
 // ---------- ارسال پیام گروهی (فقط ادمین کل) ----------
 
@@ -109,6 +112,38 @@ router.get('/admin/system', requireFullAdmin, (req, res) => {
     },
     cron: config.cron,
   });
+});
+
+// ---------- وضعیت سیستم (بخش ۲-ج۱؛ فقط ادمین کل) ----------
+// سلامت دیتابیس/بات/دیسک/بک‌آپ/Jobها + تاریخچه‌ی اجراها و آخرین خطاها + هشدارهای فعال.
+// ?deep=1 ⇒ PRAGMA quick_check هم اجرا می‌شود (روی دیتابیس بزرگ کند است؛ پیش‌فرض خاموش).
+router.get('/admin/system/status', requireFullAdmin, (req, res) => {
+  const report = systemHealth.collect({ deep: req.query.deep === '1' });
+  const cronMap = config.cron;
+  const latest = new Map((report.checks.jobs.latest || []).map((j) => [j.job, j]));
+  const lastSuccess = new Map();
+  try {
+    jobRunsRepository.lastSuccessPerJob().forEach((r) => lastSuccess.set(r.job_name, r.last_success_at));
+  } catch (_) { /* خطای دیتابیس در report.checks.db دیده می‌شود */ }
+
+  const jobNames = [...Object.keys(cronMap), ...(config.monitor.watchdogEnabled ? ['watchdog'] : [])];
+  const jobs = jobNames.map((name) => ({
+    name,
+    cron: name === 'watchdog' ? config.monitor.watchdogCron : cronMap[name],
+    lastResult: latest.get(name) || null,
+    lastSuccessAt: lastSuccess.get(name) || null,
+  }));
+
+  let recentErrors = [];
+  let recentRuns = [];
+  let alerts = [];
+  try {
+    recentErrors = jobRunsRepository.recentErrors(20);
+    recentRuns = jobRunsRepository.recent(30);
+    alerts = monitorRepository.listAlerts().filter((a) => a.state === 'firing');
+  } catch (_) { /* همان */ }
+
+  res.json({ ...report, jobs, recentErrors, recentRuns, activeAlerts: alerts, watchdog: { enabled: config.monitor.watchdogEnabled, cron: config.monitor.watchdogCron, throttleMinutes: config.monitor.alertThrottleMinutes } });
 });
 
 router.get('/admin/system/backup', requireFullAdmin, async (req, res) => {

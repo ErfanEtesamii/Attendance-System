@@ -37,6 +37,7 @@ function miniAppRateLimitKey(req) {
   return `miniapp:${req.miniAppUser?.id}`;
 }
 const miniAppActionLimiter = createRateLimiter({
+  name: 'miniapp-action',
   windowMs: 60 * 1000,
   max: 20,
   message: 'تعداد تلاش‌ برای ثبت تردد بیش از حد مجاز است. لطفاً یک دقیقه صبر کنید.',

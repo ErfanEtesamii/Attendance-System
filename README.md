@@ -43,6 +43,8 @@ npm start                   # API + بات در یک پروسه
 | `DB_PATH` | مسیر فایل دیتابیس (پیش‌فرض `./data/attendance.db`) |
 | `CSP_MODE` | `report-only` (پیش‌فرض) / `enforce` / `off` — سیاست CSP؛ [`docs/SECURITY.md`](docs/SECURITY.md) |
 | `ADMIN_COOKIE_SAMESITE` | `strict` (پیش‌فرض) یا `lax` برای بازگشت اضطراری |
+| `RATE_LIMIT_STORE` | `sqlite` (پیش‌فرض: شمارنده‌ی ماندگار، با ری‌استارت صفر نمی‌شود) یا `memory`؛ [`docs/SECURITY.md`](docs/SECURITY.md) بخش ۷ |
+| `WATCHDOG_ENABLED` / `CRON_WATCHDOG` / `ALERT_THROTTLE_MINUTES` / `MONITOR_*` | مانیتورینگ و هشدار تلگرامی به ادمین‌ها (دیسک، polling، Job، بک‌آپ)؛ [`docs/MONITORING.md`](docs/MONITORING.md) |
 | `CSP_PANEL_UNSAFE_EVAL` / `HSTS_MAX_AGE_SECONDS` / `CSRF_EXTRA_ORIGINS` | تنظیمات پیشرفته‌ی امنیت وب (پیش‌فرض‌ها معمولاً کافی‌اند) |
 
 > ⚠️ `.env`، پوشه‌ی `.ssl/` و فایل‌های `data/*.db` هرگز commit یا در zip تحویلی گذاشته نشوند. برای ساخت بسته‌ی تحویل از `npm run package` استفاده کنید (رازها را خودکار حذف می‌کند) و قبل از commit/ارسال `npm run secret-scan` بزنید. در production اگر `ADMIN_SESSION_SECRET` کمتر از ۳۲ نویسه یا نمونه باشد سرور بالا نمی‌آید. جزئیات و چک‌لیست «اگر راز لو رفت»: [`docs/SECRETS.md`](docs/SECRETS.md).
@@ -118,7 +120,7 @@ docs/                      ARCHITECTURE.md، SECURITY.md (هدرها/CSP/کوک�
 
 | مسیر | توضیح |
 |---|---|
-| `GET /health` | سلامت سرویس (عمومی) |
+| `GET /health` | سلامت سرویس (عمومی): فقط `status` (`ok`/`degraded`) و `time` |
 | `GET /miniapp/me`، `/today`، `/history`، `/report` | داده‌ی کارمند (پشت `telegramAuth`) |
 | `POST /miniapp/check-in`، `/check-out`، `/break/start`، `/break/end` | ثبت تردد (+ شبکه + rate limit) |
 | `GET/POST /miniapp/leave`، `GET/POST /miniapp/dispute` | مرخصی/مأموریت و اعتراض |
@@ -131,7 +133,7 @@ docs/                      ARCHITECTURE.md، SECURITY.md (هدرها/CSP/کوک�
 | `GET /admin/reports/summary`، `/reports/export` | گزارش (CSV) |
 | `GET/POST/DELETE /admin/holidays`، `GET/PATCH /admin/settings` | تعطیلات و تنظیمات |
 | `GET /admin/audit-log`، `/audit-log/export`، `/audit-actions` | Audit Log (فقط ادمین) |
-| `POST /admin/broadcast`، `GET /admin/system`، `/system/backup` | سیستم (فقط ادمین) |
+| `POST /admin/broadcast`، `GET /admin/system`، `/system/status`، `/system/backup` | سیستم و وضعیت/مانیتورینگ (فقط ادمین) |
 
 > مسیرهای قدیمی فاز ۱ (`/api/users*`، `/api/attendance/*`، `/api/audit-log`) در نسخه‌ی `1.0.0-rc.1` حذف شدند (بدون مصرف‌کننده و بدون احراز هویت درست). دلیل در `CHANGELOG.md`.
 
@@ -139,7 +141,7 @@ docs/                      ARCHITECTURE.md، SECURITY.md (هدرها/CSP/کوک�
 
 Polling (بدون webhook و بدون پورت ورودی). دستورها: `/start`، `/status`، `/report`، `/leave`، `/help` برای همه؛ `/add_employee`، `/fix_record` فقط ادمین؛ `/list_employees`، `/team_report`، `/pending_leaves` برای سرپرست (تیم خودش) و ادمین؛ دکمه‌ی ورود به پنل. حالت گفتگوهای چندمرحله‌ای در حافظه است و با ری‌استارت پروسه از بین می‌رود.
 
-Jobهای `node-cron` (`src/bot/scheduler/`): یادآور تأخیر و خروج، علامت‌گذاری تعطیل/مرخصی، بستن رکوردهای ناقص، گزارش روزانه/هفتگی/ماهانه (ماه شمسی)، مرور شبانه. عبارات `CRON_*` و ساعت‌ها در `.env` قابل تنظیم‌اند؛ **پیش‌فرض‌ها شنبه تا چهارشنبه را فرض می‌کنند — با روزهای کاری واقعی تطبیق دهید.**
+Jobهای `node-cron` (`src/bot/scheduler/`): یادآور تأخیر و خروج، علامت‌گذاری تعطیل/مرخصی، بستن رکوردهای ناقص، گزارش روزانه/هفتگی/ماهانه (ماه شمسی)، مرور شبانه، و **watchdog** (هشدار تلگرامی به ادمین‌ها؛ [`docs/MONITORING.md`](docs/MONITORING.md)). هر اجرای Job در جدول `job_runs` ثبت می‌شود و در پنل (ادمین ← «وضعیت سیستم») دیده می‌شود. عبارات `CRON_*` و ساعت‌ها در `.env` قابل تنظیم‌اند؛ **پیش‌فرض‌ها شنبه تا چهارشنبه را فرض می‌کنند — با روزهای کاری واقعی تطبیق دهید.**
 
 ## استقرار (ویندوز + NSSM)
 
@@ -161,4 +163,4 @@ npm run secret-scan  # جست‌وجوی توکن/کلید/راز در پروژ�
 npm run package      # zip تحویل بدون .env/.ssl/data/node_modules/.git → dist/
 ```
 
-تست‌ها hermetic هستند: دیتابیس موقت، توکن و راز ساختگی، و `.env` واقعی خوانده نمی‌شود. پوشش فعلی: migration، `initData` و Login Widget، سشن، `networkRestriction`، ماتریس دسترسی نقش × route، ساختار ترتیب routeها، و (بخش ۲-الف) هدرها/CSP، کوکی، CSRF و ابطال نشست، و (بخش ۲-ب۱) کنترل رازهای راه‌اندازی، اسکنر رازها و بسته‌ساز release. تست‌های موتور محاسبه با بخش ۳ می‌آید.
+تست‌ها hermetic هستند: دیتابیس موقت، توکن و راز ساختگی، و `.env` واقعی خوانده نمی‌شود. پوشش فعلی: migration، `initData` و Login Widget، سشن، `networkRestriction`، ماتریس دسترسی نقش × route، ساختار ترتیب routeها، و (بخش ۲-الف) هدرها/CSP، کوکی، CSRF و ابطال نشست، و (بخش ۲-ب۱) کنترل رازهای راه‌اندازی، اسکنر رازها و بسته‌ساز release، و (بخش ۲-ج۱) ثبت اجرای Jobها، نبض polling، سلامت سیستم، watchdog با بات ماک‌شده و `/api/health` + `/api/admin/system/status`. تست‌های موتور محاسبه با بخش ۳ می‌آید.

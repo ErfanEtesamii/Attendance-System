@@ -23,6 +23,30 @@ const config = {
   // این مقدار مستقیماً روی درستی چک IP فاز ۲ اثر می‌گذارد - توضیح کامل در README.
   trustProxy: process.env.TRUST_PROXY === 'true',
 
+  // بخش ۲-ب۲: محل نگهداری شمارنده‌های rate limit. sqlite (پیش‌فرض) = ماندگار و بدون صفر شدن با ری‌استارت؛
+  // memory = فقط حافظه‌ی پروسه (رفتار قبلی). اگر دیتابیس خطا بدهد، limiter موقتاً به حافظه برمی‌گردد (fail-open).
+  rateLimitStore: enumEnv(process.env.RATE_LIMIT_STORE, ['sqlite', 'memory'], 'sqlite'),
+
+  // ===== بخش ۲-ج۱: مانیتورینگ و هشدار =====
+  monitor: {
+    // watchdog هر چند دقیقه سلامت سیستم را می‌سنجد و در صورت مشکل به ادمین‌ها در تلگرام هشدار می‌دهد
+    watchdogEnabled: process.env.WATCHDOG_ENABLED !== 'false',
+    watchdogCron: process.env.CRON_WATCHDOG || '*/5 * * * *',
+    // حداقل فاصله‌ی دو هشدار «از یک نوع» (دقیقه). هشدار Job شکست‌خورده هر ۲۴ ساعت تکرار می‌شود (نه ساعتی).
+    alertThrottleMinutes: parseInt(process.env.ALERT_THROTTLE_MINUTES || '60', 10),
+    // اگر فضای آزاد دیسکِ پوشه‌ی دیتابیس کمتر از این مقدار (مگابایت) شد هشدار
+    diskMinFreeMb: parseInt(process.env.MONITOR_DISK_MIN_FREE_MB || '1024', 10),
+    // اگر این‌قدر ثانیه از آخرین getUpdates موفق بات گذشته باشد، polling «قطع» حساب می‌شود
+    pollingStaleSeconds: parseInt(process.env.MONITOR_POLLING_STALE_SECONDS || '120', 10),
+    // شکست Jobی که قدیمی‌تر از این (ساعت) باشد دیگر وضعیت را degraded نمی‌کند (فقط در تاریخچه می‌ماند)
+    jobFailureWindowHours: parseInt(process.env.MONITOR_JOB_FAILURE_WINDOW_HOURS || '72', 10),
+    // بررسی سن آخرین بک‌آپ. تا وقتی Job بک‌آپ روزانه (بخش ۲-ج۲) فعال نشده، پیش‌فرض خاموش است
+    // (وگرنه از همین حالا هشدار بک‌آپ قدیمی می‌داد). بک‌آپ‌های pre-migration حساب نمی‌شوند.
+    backupCheck: process.env.MONITOR_BACKUP_CHECK === 'true',
+    backupDir: path.resolve(process.cwd(), process.env.BACKUP_DIR || './data/backups'),
+    backupMaxAgeHours: parseInt(process.env.MONITOR_BACKUP_MAX_AGE_HOURS || '36', 10),
+  },
+
   // ===== فاز ۳: تنظیمات بات تلگرام =====
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || '',
 

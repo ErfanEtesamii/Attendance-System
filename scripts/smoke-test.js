@@ -70,6 +70,12 @@ async function main() {
     const cookie = (id) => `${SESSION_COOKIE_NAME}=${encodeURIComponent(createSessionToken({ userId: id }, SECRET, 600))}`;
     const get = (url, c) => fetch(base + url, { headers: c ? { cookie: c } : {} });
 
+    const health = await (await get('/api/health')).json().catch(() => ({}));
+    check('/api/health فقط status/time دارد و ok است', health.status === 'ok' && Object.keys(health).sort().join() === 'status,time', JSON.stringify(health));
+    check('GET /api/admin/system/status بدون سشن ← ۴۰۱، کارمند ← ۴۰۳', (await get('/api/admin/system/status')).status === 401 && (await get('/api/admin/system/status', cookie(ids.employee))).status === 403);
+    const st = await get('/api/admin/system/status', cookie(ids.admin));
+    const stJson = await st.json().catch(() => ({}));
+    check('GET /api/admin/system/status ادمین ← ۲۰۰ و سلامت دیتابیس ok', st.status === 200 && stJson.checks && stJson.checks.db.ok === true, st.status);
     check('GET /api/admin/me بدون سشن ← ۴۰۱', (await get('/api/admin/me')).status === 401);
     const me = await get('/api/admin/me', cookie(ids.admin));
     check('GET /api/admin/me با سشن ادمین ← ۲۰۰', me.status === 200, me.status);

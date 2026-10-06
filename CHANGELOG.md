@@ -4,6 +4,24 @@
 
 ## [Unreleased] — بخش ۲ (امنیت، پایداری و عملیات)
 
+### ۲-ج۱ — مانیتورینگ و هشدار (بخش ۲-ج به دو قسمت تقسیم شد: ۲-ج۱ مانیتورینگ ✅، ۲-ج۲ بک‌آپ/بازیابی ⏭)
+- **ثبت اجرای Jobها**: migration `004_monitoring` (جدول‌های `job_runs`، `monitor_alerts`، `monitor_state`؛ هیچ جدول موجودی تغییر نکرد) + `wrapJob` (`src/utils/jobRunner.js`). تمام Jobهای `scheduler/index.js` از آن عبور می‌کنند؛ شروع/پایان/موفق یا خطا/مدت ثبت می‌شود. اجراهای نیمه‌تمام پروسه‌ی قبلی هنگام بالا آمدن `interrupted` می‌شوند (خطا حساب نمی‌شوند). رفتار قبلی (خطا فقط در لاگ، بدون شکستن cron) حفظ شد؛ `lateCheckinCheck` همچنان هر دو کارش را مستقل اجرا می‌کند.
+- **نبض polling**: `bot.getUpdates` پیچیده می‌شود (`src/utils/botHealth.js`) تا آخرین موفقیت/خطای واقعی long-poll معلوم باشد.
+- **سلامت سیستم**: `src/utils/systemHealth.js` (دیتابیس با نوشتن/خواندن آزمایشی و `quick_check` اختیاری، polling، فضای دیسک، سن بک‌آپ، شکست Jobها).
+- **Watchdog** (`src/bot/scheduler/watchdog.js`): هر ۵ دقیقه؛ هشدار تلگرامی به ادمین‌های فعال؛ throttle (ساعتی؛ برای شکست Job روزانه)؛ پیام «رفع شد»؛ وضعیت ماندگار در `monitor_alerts`؛ فقط وقتی «ارسال‌شده» حساب می‌شود که حداقل یک ادمین دریافت کرده؛ fallback حافظه هنگام خرابی دیتابیس.
+- **`GET /api/health`**: عمومی، فقط `{status: ok|degraded, time}`، ۱۰ ثانیه کش، همیشه HTTP ۲۰۰ (سازگار با قبل). **`GET /api/admin/system/status`** (فقط ادمین): جزئیات کامل. صفحه‌ی «وضعیت سیستم» در پنل.
+- **راز**: متن خطا قبل از ذخیره/ارسال از `sanitizeText` رد می‌شود (توکن بات داخل URL خطای شبکه حذف می‌شود).
+- تنظیمات جدید `.env`: `WATCHDOG_ENABLED`، `CRON_WATCHDOG`، `ALERT_THROTTLE_MINUTES`، `MONITOR_*`، `BACKUP_DIR`. `MONITOR_BACKUP_CHECK` پیش‌فرض خاموش است تا ۲-ج۲ Job بک‌آپ را بسازد.
+- تست: `test/monitoring.test.js` (۳۳ تست)؛ `test/migrations.test.js` و `test/routesAccess.test.js` و smoke به‌روز شدند. `npm test`: ۱۷۳ سبز.
+- مستندات: `docs/MONITORING.md`.
+
+### ۲-ب۲ — rate limit ماندگار
+- **شمارنده‌ی ماندگار**: migration `003_rate_limits` (جدول `rate_limit_hits`) + `rateLimitRepository` (UPSERT اتمیک)؛ `src/middleware/rateLimiter.js` به‌جای Map حافظه از SQLite استفاده می‌کند، پس ری‌استارت/crash سرویس سقف تلاش ورود را صفر نمی‌کند. ردیف‌های منقضی هر ۱۰ دقیقه پاک می‌شوند. `RATE_LIMIT_STORE=memory` رفتار قبلی.
+- **نام ثابت برای هر limiter** (`attendance-action`، `admin-login`، `panel-auto-login`، `miniapp-action`، `csp-report`) چون کلید ذخیره‌ی ماندگار است (قبلاً شماره‌ی ترتیبی در حافظه). سقف‌ها و کلیدها (آیدی تلگرام برای Mini App، IP برای ورود) بدون تغییر.
+- **ثبت ۴۲۹ در audit**: `rate_limit_exceeded` با IP و جزئیات بدون query/body؛ فقط اولین مسدودی هر کلید در هر پنجره (ماندگار، بعد از ری‌استارت تکرار نمی‌شود) + سقف سراسری ۳۰ در دقیقه.
+- **fallback**: خطای دیتابیس ⇒ شمارنده‌ی حافظه (نه fail-open کامل) + لاگ `[rate-limit]`.
+- تست: `test/rateLimit.test.js` (۱۳ تست: repository، middleware، ماندگاری بین پروسه‌های جدا، audit/throttle، fallback، HTTP واقعی با «ری‌استارت»)؛ `test/migrations.test.js` برای ۰۰۳ به‌روز شد. ⚠️ جدول جدید `rate_limit_hits` در مقایسه‌ی «بدون تغییر داده» test migration کنار گذاشته می‌شود (داده‌ی کاربری نیست).
+
 ### ۲-ب۱ — مدیریت رازها
 - **بسته‌ساز بدون راز**: `npm run package` (`scripts/package-release.js`) — حذف همیشگی `.env`/`.env.*` (به‌جز `.env.example`)، `.ssl/`، `data/`، `node_modules/`، `.git/`، لاگ‌ها، `*.pem/*.key/*.pfx/*.db`؛ بعد از ساخت، خودِ zip هم با فهرست ممنوعه‌ها و اسکنر رازها راستی‌آزمایی می‌شود و در صورت یافته فایل ساخته نمی‌شود (fail-closed). zip با `zlib` داخلی، بدون وابستگی جدید.
 - **اسکنر رازها**: `npm run secret-scan` (`scripts/secret-scan.js`) — توکن بات (حتی داخل URL)، کلید خصوصی PEM، فایل‌های کلید سرگردان، انتساب مشکوک به SECRET/TOKEN/PASSWORD؛ کد خروج غیرصفر در صورت یافتن؛ مقدار راز چاپ نمی‌شود؛ استثنای عمدی با `// secret-scan:allow`. چهار مقدار ساختگی تست علامت‌گذاری شدند.

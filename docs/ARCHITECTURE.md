@@ -27,6 +27,7 @@
 
 - **یک پروسه**: `src/index.js` هم API (`src/server.js`) و هم بات را بالا می‌آورد. `npm run start:api-only` فقط API.
 - **زمان‌بندها** (`src/bot/scheduler/`): یادآور تأخیر، یادآور خروج، علامت‌گذاری روز تعطیل/مرخصی، بستن رکوردهای ناقص، گزارش‌ها، مرور شبانه.
+- **مانیتورینگ** (بخش ۲-ج۱): هر Job با `wrapJob` در `job_runs` ثبت می‌شود؛ `systemHealth.collect` تنها منبع سلامت است؛ watchdog هر ۵ دقیقه به ادمین‌ها در تلگرام هشدار می‌دهد؛ `/api/health` عمومی فقط ok/degraded و `/api/admin/system/status` جزئیات (فقط ادمین). [`docs/MONITORING.md`](MONITORING.md)
 - **دیتابیس**: تغییر ساختار فقط با migration (`src/db/migrations/`)؛ قبل از اعمال، بک‌آپ سازگار با WAL گرفته می‌شود.
 
 ## ساختار routeهای پنل (`src/api/routes/admin/`)
