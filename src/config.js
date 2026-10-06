@@ -61,6 +61,12 @@ const config = {
     keepMonthly: positiveIntEnv(process.env.BACKUP_KEEP_MONTHLY, 6),
   },
 
+  // ===== بخش ۲-د: تشخیص موارد مشکوک (S2-4) =====
+  fraud: {
+    // قاعده‌ی ب: دو کاربر با یک IP که ثبتشان با فاصله‌ی کمتر از این‌قدر ثانیه باشد «نشانه» حساب می‌شود (پیش‌فرض ۶۰)
+    sameIpWindowSeconds: positiveIntEnv(process.env.FRAUD_SAME_IP_WINDOW_SECONDS, 60),
+  },
+
   // ===== فاز ۳: تنظیمات بات تلگرام =====
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || '',
 

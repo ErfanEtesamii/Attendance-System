@@ -4,6 +4,13 @@
 
 ## [Unreleased] — بخش ۲ (امنیت، پایداری و عملیات)
 
+### S2-4c — قاعده‌ی ب: یک IP و فاصله‌ی کم (تابع خالص)
+- **`src/utils/fraudDetection.js`**: `detectSameIpClose(records, { windowSeconds })` روی ردیف‌های `attendance_records` (`id, user_id, record_date, check_in_time, check_in_ip, check_out_time, check_out_ip`) کار می‌کند. اگر دو کاربر **متفاوت** در یک روز با یک IP ثبت (ورود یا خروج، هر ترکیبی) با فاصله‌ی **کمتر از N ثانیه** داشته باشند، یک کاندیدای رویداد با نوع `same_ip_close` و شکل ورودی `suspiciousRepository.create` برمی‌گرداند (`details: {rule:'B', ip, windowSeconds, minGapSeconds, userCount}`). فاصله‌ی دقیقاً برابر N نشانه نمی‌سازد (مرز باز). ثبت‌های نزدیکِ زنجیره‌ای (A-B و B-C) در یک رویداد جمع می‌شوند.
+- **N قابل‌تنظیم**: `config.fraud.sameIpWindowSeconds` از env `FRAUD_SAME_IP_WINDOW_SECONDS` (پیش‌فرض ۶۰؛ مقدار نامعتبر/غیرمثبت ⇒ پیش‌فرض) و در `.env.example` آمده. خود تابع config را import نمی‌کند (خالص می‌ماند)؛ فراخواننده (S2-4e) مقدار را به `options.windowSeconds` می‌دهد و اگر ندهد ۶۰ است. هنوز به جدول `settings`/پنل وصل نشده است.
+- IP با حذف فاصله و پیشوند `::ffff:` نرمال می‌شود. تابع خالص است (بدون DB/زمان سیستم، ورودی را تغییر نمی‌دهد، خروجی قطعی و مرتب)، ورودی خراب ⇒ `[]`، ثبت بدون IP/زمان معتبر نادیده گرفته می‌شود، و چند ثبت پشت‌سرهم از یک کاربر هرگز نشانه نمی‌سازد.
+- هنوز جایی صدا زده نمی‌شود و چیزی ثبت نمی‌کند (اتصال در S2-4e). ⚠️ فرض: هر دستگاه در شبکه‌ی داخلی IP جدا دارد (سرور محلی بدون reverse proxy)؛ پشت NAT/هات‌اسپات مشترک یا DHCP که IP را سریع به دستگاه دیگر بدهد، نشانه‌ی کاذب ممکن است. خروجی فقط «نشانه» است نه مدرک.
+- تست: `test/fraudSameIp.test.js` (۴ تست: مثبت، منفی، مرز و N سفارشی، ورودی خراب/عدم تغییر ورودی/ترتیب قطعی).
+
 ### S2-4b — قاعده‌ی الف: یک device برای دو کاربر در یک روز (تابع خالص)
 - **`src/utils/fraudDetection.js`**: `detectSharedDevice(records)` روی ردیف‌های `attendance_records` (`id, user_id, record_date, check_in_device, check_out_device`) کار می‌کند؛ هر دو device ورود و خروج بررسی می‌شود. اگر یک `device_id` معتبر در یک روز برای ≥۲ کاربر متفاوت دیده شود، یک کاندیدای رویداد با نوع `shared_device` و همان شکل ورودی `suspiciousRepository.create` برمی‌گرداند (`details: {rule:'A', deviceId, userCount}`). تابع خالص است (بدون DB/زمان، ورودی را تغییر نمی‌دهد، خروجی قطعی و مرتب)، ورودی خراب ⇒ `[]`، و device خالی/نامعتبر (بات، ثبت دستی) هرگز نشانه نمی‌سازد.
 - هنوز جایی صدا زده نمی‌شود و چیزی ثبت نمی‌کند (اتصال و block اختیاری در S2-4e). ⚠️ `device_id` قابل جعل است؛ خروجی فقط «نشانه» است.

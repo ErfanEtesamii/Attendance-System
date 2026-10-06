@@ -7,6 +7,9 @@
 const { normalizeDeviceId } = require('./deviceInfo');
 
 const EVENT_SHARED_DEVICE = 'shared_device';
+const EVENT_SAME_IP_CLOSE = 'same_ip_close';
+// پیش‌فرض N قاعده‌ی ب (ثانیه). مقدار واقعی را فراخواننده از config.fraud.sameIpWindowSeconds می‌دهد.
+const DEFAULT_SAME_IP_WINDOW_SECONDS = 60;
 
 // قاعده‌ی الف: یک device_id معتبر برای دو (یا بیشتر) کاربر مختلف در یک روز.
 // ورودی: records = [{ id, user_id, record_date, check_in_device, check_out_device }]
@@ -50,4 +53,104 @@ function detectSharedDevice(records) {
       : a.details.deviceId < b.details.deviceId ? -1 : a.details.deviceId > b.details.deviceId ? 1 : 0));
 }
 
-module.exports = { EVENT_SHARED_DEVICE, detectSharedDevice };
+// نرمال‌سازی IP برای مقایسه: حذف فاصله و پیشوند IPv6-mapped (::ffff:)، حروف کوچک؛ خالی/غیررشته ⇒ null
+function normalizeIp(raw) {
+  if (typeof raw !== 'string') return null;
+  let ip = raw.trim().toLowerCase();
+  if (ip.startsWith('::ffff:')) ip = ip.slice(7);
+  return ip || null;
+}
+
+const byNum = (a, b) => a - b;
+const cmpStr = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
+// قاعده‌ی ب: دو کاربر مختلف با یک IP، که ثبت‌هایشان (ورود یا خروج، هر ترکیبی) در همان روز و
+// با فاصله‌ی «کمتر از N ثانیه» باشد. فاصله‌ی دقیقاً برابر N نشانه نمی‌سازد.
+// ورودی: records = [{ id, user_id, record_date, check_in_time, check_in_ip, check_out_time, check_out_ip }]
+//   (هر ردیف attendance_records؛ زمان‌ها ISO سمت سرور).
+// options.windowSeconds: همان N (ثانیه)؛ عدد نامعتبر/غیرمثبت ⇒ پیش‌فرض ۶۰.
+// خروجی: کاندیدای رویداد با شکل ورودی suspiciousRepository.create؛ برای هر (روز، IP) هر گروه از
+//   کاربرانِ «زنجیره‌ایِ نزدیک به هم» یک رویداد. مرتب و قطعی. ثبت‌های بدون IP/زمان معتبر یا ردیف خراب
+//   نادیده گرفته می‌شوند و چند ثبت پشت‌سرهم از یک کاربر هرگز نشانه نمی‌سازد.
+function detectSameIpClose(records, options) {
+  if (!Array.isArray(records)) return [];
+  const n = Number(options && options.windowSeconds);
+  const windowSeconds = Number.isFinite(n) && n > 0 ? n : DEFAULT_SAME_IP_WINDOW_SECONDS;
+  const windowMs = windowSeconds * 1000;
+
+  // کلید گروه: تاریخ + IP ⇒ فهرست ثبت‌ها { t (ms), userId, recordId }
+  const groups = new Map();
+  for (const rec of records) {
+    if (!rec || !Number.isInteger(rec.user_id) || typeof rec.record_date !== 'string') continue;
+    const regs = [
+      [rec.check_in_time, rec.check_in_ip],
+      [rec.check_out_time, rec.check_out_ip],
+    ];
+    for (const [time, rawIp] of regs) {
+      const ip = normalizeIp(rawIp);
+      const t = typeof time === 'string' ? Date.parse(time) : NaN;
+      if (!ip || !Number.isFinite(t)) continue;
+      const key = `${rec.record_date}\u0000${ip}`;
+      let g = groups.get(key);
+      if (!g) {
+        g = { eventDate: rec.record_date, ip, regs: [] };
+        groups.set(key, g);
+      }
+      g.regs.push({ t, userId: rec.user_id, recordId: Number.isInteger(rec.id) ? rec.id : null });
+    }
+  }
+
+  const events = [];
+  for (const g of groups.values()) {
+    const regs = g.regs.slice().sort((a, b) => a.t - b.t || a.userId - b.userId
+      || (a.recordId ?? 0) - (b.recordId ?? 0));
+    // union-find روی ثبت‌ها: دو ثبت از دو کاربر متفاوت با فاصله‌ی < N هم‌گروه می‌شوند
+    const parent = regs.map((_, i) => i);
+    const find = (i) => {
+      while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; }
+      return i;
+    };
+    const pairs = [];
+    for (let i = 0; i < regs.length; i += 1) {
+      for (let j = i + 1; j < regs.length && regs[j].t - regs[i].t < windowMs; j += 1) {
+        if (regs[i].userId === regs[j].userId) continue;
+        parent[find(i)] = find(j);
+        pairs.push([i, j]);
+      }
+    }
+    const comps = new Map(); // ریشه ⇒ { users, recordIds, minGapMs }
+    for (const [i, j] of pairs) {
+      const root = find(i);
+      let c = comps.get(root);
+      if (!c) {
+        c = { users: new Set(), recordIds: new Set(), minGapMs: Infinity };
+        comps.set(root, c);
+      }
+      for (const r of [regs[i], regs[j]]) {
+        c.users.add(r.userId);
+        if (r.recordId !== null) c.recordIds.add(r.recordId);
+      }
+      c.minGapMs = Math.min(c.minGapMs, regs[j].t - regs[i].t);
+    }
+    for (const c of comps.values()) {
+      events.push({
+        eventType: EVENT_SAME_IP_CLOSE,
+        userIds: [...c.users].sort(byNum),
+        recordIds: [...c.recordIds].sort(byNum),
+        eventDate: g.eventDate,
+        details: { rule: 'B', ip: g.ip, windowSeconds, minGapSeconds: c.minGapMs / 1000, userCount: c.users.size },
+      });
+    }
+  }
+
+  return events.sort((a, b) => cmpStr(a.eventDate, b.eventDate) || cmpStr(a.details.ip, b.details.ip)
+    || cmpStr(a.userIds.join(','), b.userIds.join(',')));
+}
+
+module.exports = {
+  EVENT_SHARED_DEVICE,
+  EVENT_SAME_IP_CLOSE,
+  DEFAULT_SAME_IP_WINDOW_SECONDS,
+  detectSharedDevice,
+  detectSameIpClose,
+};
