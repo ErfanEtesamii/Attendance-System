@@ -8,8 +8,13 @@ const { normalizeDeviceId } = require('./deviceInfo');
 
 const EVENT_SHARED_DEVICE = 'shared_device';
 const EVENT_SAME_IP_CLOSE = 'same_ip_close';
+const EVENT_DEVICE_CHANGE = 'device_change';
 // پیش‌فرض N قاعده‌ی ب (ثانیه). مقدار واقعی را فراخواننده از config.fraud.sameIpWindowSeconds می‌دهد.
 const DEFAULT_SAME_IP_WINDOW_SECONDS = 60;
+// پیش‌فرض‌های قاعده‌ی ج (مقدار واقعی را فراخواننده از config.fraud می‌دهد):
+// پنجره‌ی «الگوی اخیر» بر حسب روز تقویمی، و حداقل تعداد روزِ دارای device در آن پنجره
+const DEFAULT_DEVICE_CHANGE_LOOKBACK_DAYS = 7;
+const DEFAULT_DEVICE_CHANGE_MIN_HISTORY_DAYS = 3;
 
 // قاعده‌ی الف: یک device_id معتبر برای دو (یا بیشتر) کاربر مختلف در یک روز.
 // ورودی: records = [{ id, user_id, record_date, check_in_device, check_out_device }]
@@ -147,10 +152,98 @@ function detectSameIpClose(records, options) {
     || cmpStr(a.userIds.join(','), b.userIds.join(',')));
 }
 
+// شماره‌ی روز (از epoch) برای رشته‌ی تاریخ میلادی YYYY-MM-DD؛ نامعتبر ⇒ null
+function dayNumber(dateStr) {
+  const m = typeof dateStr === 'string' ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr) : null;
+  if (!m) return null;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const t = Date.UTC(y, mo - 1, d);
+  const back = new Date(t);
+  if (back.getUTCFullYear() !== y || back.getUTCMonth() !== mo - 1 || back.getUTCDate() !== d) return null;
+  return t / 86400000;
+}
+
+const positiveIntOr = (raw, fallback) => {
+  const n = Number(raw);
+  return Number.isInteger(n) && n > 0 ? n : fallback;
+};
+
+// قاعده‌ی ج: تغییر ناگهانی دستگاه یک کاربر نسبت به الگوی چند روز اخیرش.
+// برای هر روز D از هر کاربر: «الگو» = اجتماع device_idهای معتبر او در `lookbackDays` روز تقویمیِ قبل از D.
+//   - اگر الگو حداقل `minHistoryDays` روزِ دارای device داشته باشد (تاریخچه‌ی کافی) و
+//   - روز D حداقل یک device معتبر داشته باشد و هیچ‌کدام در الگو نباشد (حتی یکی مشترک ⇒ نشانه نیست)
+//   ⇒ یک نشانه. روز بعدی که همان device جدید دوباره دیده شود، چون الگو را به‌روز کرده، نشانه نمی‌سازد
+//   (فقط «اولین روزِ تغییر» گزارش می‌شود).
+// ورودی: records = [{ id, user_id, record_date, check_in_device, check_out_device }]
+// options.lookbackDays (پیش‌فرض ۷) / options.minHistoryDays (پیش‌فرض ۳): عدد صحیح مثبت؛ نامعتبر ⇒ پیش‌فرض.
+// options.targetDate (اختیاری، YYYY-MM-DD): فقط همان روز ارزیابی شود (برای اجرای لحظه‌ای/شبانه)؛ نامعتبر ⇒ همه‌ی روزها.
+// خروجی: کاندیدای رویداد با شکل ورودی suspiciousRepository.create، مرتب و قطعی. ردیف بدون device/با
+//   device نامعتبر (بات، ثبت دستی، کلاینت قدیمی) نه تاریخچه حساب می‌شود نه نشانه می‌سازد.
+function detectDeviceChange(records, options) {
+  if (!Array.isArray(records)) return [];
+  const opts = options || {};
+  const lookbackDays = positiveIntOr(opts.lookbackDays, DEFAULT_DEVICE_CHANGE_LOOKBACK_DAYS);
+  const minHistoryDays = positiveIntOr(opts.minHistoryDays, DEFAULT_DEVICE_CHANGE_MIN_HISTORY_DAYS);
+  const targetDay = dayNumber(opts.targetDate);
+  const onlyTarget = typeof opts.targetDate === 'string' && targetDay !== null;
+
+  // کاربر ⇒ روز ⇒ { date, devices: Set, recordIds: Set }
+  const users = new Map();
+  for (const rec of records) {
+    if (!rec || !Number.isInteger(rec.user_id)) continue;
+    const dn = dayNumber(rec.record_date);
+    if (dn === null) continue;
+    const devices = [rec.check_in_device, rec.check_out_device].map(normalizeDeviceId).filter(Boolean);
+    if (devices.length === 0) continue;
+    let days = users.get(rec.user_id);
+    if (!days) { days = new Map(); users.set(rec.user_id, days); }
+    let day = days.get(dn);
+    if (!day) { day = { date: rec.record_date, devices: new Set(), recordIds: new Set() }; days.set(dn, day); }
+    devices.forEach((d) => day.devices.add(d));
+    if (Number.isInteger(rec.id)) day.recordIds.add(rec.id);
+  }
+
+  const events = [];
+  for (const [userId, days] of users) {
+    for (const [dn, day] of days) {
+      if (onlyTarget && dn !== targetDay) continue;
+      const baseline = new Set();
+      let historyDays = 0;
+      for (const [otherDn, other] of days) {
+        if (otherDn < dn - lookbackDays || otherDn >= dn) continue;
+        historyDays += 1;
+        other.devices.forEach((d) => baseline.add(d));
+      }
+      if (historyDays < minHistoryDays) continue;
+      if ([...day.devices].some((d) => baseline.has(d))) continue;
+      events.push({
+        eventType: EVENT_DEVICE_CHANGE,
+        userIds: [userId],
+        recordIds: [...day.recordIds].sort(byNum),
+        eventDate: day.date,
+        details: {
+          rule: 'C',
+          newDevices: [...day.devices].sort(cmpStr),
+          baselineDevices: [...baseline].sort(cmpStr),
+          historyDays,
+          lookbackDays,
+          minHistoryDays,
+        },
+      });
+    }
+  }
+
+  return events.sort((a, b) => cmpStr(a.eventDate, b.eventDate) || (a.userIds[0] - b.userIds[0]));
+}
+
 module.exports = {
   EVENT_SHARED_DEVICE,
   EVENT_SAME_IP_CLOSE,
+  EVENT_DEVICE_CHANGE,
   DEFAULT_SAME_IP_WINDOW_SECONDS,
+  DEFAULT_DEVICE_CHANGE_LOOKBACK_DAYS,
+  DEFAULT_DEVICE_CHANGE_MIN_HISTORY_DAYS,
   detectSharedDevice,
   detectSameIpClose,
+  detectDeviceChange,
 };
