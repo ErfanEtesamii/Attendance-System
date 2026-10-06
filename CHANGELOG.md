@@ -4,6 +4,14 @@
 
 ## [Unreleased] — بخش ۳ (موتور محاسبه و تنظیمات)
 
+### S3-2b — موتور خالص `computeDay` (معادل منطق فعلی workHours؛ هنوز به هیچ‌جا وصل نیست)
+- **`src/engine/computeDay.js`** (جدید): `computeDay({ record, breaks, settings, now, timezone })` ⇒ `{ expected, workedGross, break, effective, late, earlyLeave, overtime, isOpen, flags, status }` (دقیقه، عدد صحیح؛ `workedGross/effective` بدون ورود `null`). **خالص**: بدون DB/repository/config و بدون خواندن ساعت سیستم؛ `now` و `timezone` (پیش‌فرض `Asia/Tehran`) ورودی‌اند؛ ورودی‌ها را تغییر نمی‌دهد. ساعت دیواری با `src/utils/time.js` (S3-2a) حساب می‌شود.
+- **معادل دقیق `workHours.summarizeRecord`** از نظر عددی: تأخیر = ورود پس از شروع (بدون مهلت)، زودتر رفتن/اضافه‌کاری از دقیقه‌ی ساعت دیواریِ خروج، `effective = max(0, round(gross − break))`، استراحت = جمع ms استراحت‌های **بسته‌شده** سپس گرد (استراحت باز حساب نمی‌شود)، رکورد باز تا `now`. رفتار موروثی عمداً حفظ شد: تاریخ دیده نمی‌شود (خروج بعد از نیمه‌شب «زودتر رفتن» است؛ شیفت شب S3-6c) و بدون مهلت (S3-3a/3b).
+- فیلدهای جدید نسبت به قبل: `expected` (= پایان − شروع)، `workedGross`، `break`، `flags` (**فعلاً همیشه `[]`**؛ S3-4b) و `status` (**همان status ذخیره‌شده‌ی رکورد، بدون تغییر**؛ `null` بدون رکورد — محاسبه‌ی status از اعداد کار بعدی است).
+- ورودی نامعتبر (زمان خراب، settings ناقص، timezone ناشناخته) ⇒ `RangeError/TypeError`؛ تحمل داده‌ی خراب در S3-4b.
+- بدون تغییر مصرف‌کننده، بدون migration، بدون وابستگی جدید، بدون تغییر UI/API.
+- تست: `test/computeDay.test.js` (۳ تست: خروجی‌ها و مرزها و timezone، اعتبارسنجی/خالص‌بودن شامل بارگذاری‌نشدن repository، و **تطبیق با `workHours.summarizeRecord` قدیمی روی ۱۵ رکورد × ۳ تنظیم ساعت کاری با جدول تفاوت خالی** (TZ سیستم = Asia/Tehran؛ تطبیق کامل‌تر در S3-2d)). `npm test`: ۲۸۷ سبز.
+
 ### S3-2a — تنظیم TIMEZONE و helper زمان (`src/utils/time.js`)
 - **تنظیم `timezone`** (نوع جدید `timezone` در رجیستری S3-1a؛ نام IANA، گروه «ساعت کاری»): پیش‌فرض `Asia/Tehran` (از `config.timezone` ← env `TIMEZONE`؛ نامعتبر ⇒ `Asia/Tehran`). نام با حروف دلخواه به نام استاندارد نرمال می‌شود (`asia/tehran` ⇒ `Asia/Tehran`)؛ آفست مثل `+03:30`، خالی و ناشناخته رد می‌شود. مقدار خراب در DB ⇒ پیش‌فرض. از همان `GET/PATCH /api/admin/settings` و API S3-1b قابل خواندن/تغییر است؛ `settingsRepository.getTimezone()`.
 - **`src/utils/time.js`** (جدید، همه با `Intl.DateTimeFormat` و `timeZone` صریح؛ هیچ استفاده‌ای از `getHours/getDate/toLocale*`، مستقل از TZ سیستم‌عامل — تست با تغییر `process.env.TZ`): `normalizeTimezone/isValidTimezone`، `getTimezone()`، `getZonedParts` (سال…ثانیه + روز هفته ۰=یکشنبه)، `formatDate` (`YYYY-MM-DD`)، `formatTime` (`HH:MM`، نیمه‌شب `00` نه `24`)، `formatDateTime`، `minutesSinceMidnight`، `dayOfWeek`، `todayInZone(tz, now)` و معکوس `zonedTimeToUtc(date, hhmm, tz)` (ساعت ناموجودِ جهش DST ⇒ لحظه‌ی بعد از جهش؛ ساعت تکراری ⇒ اولی). آرگومان `tz` اختیاری است؛ بدون آن تنظیم `timezone` خوانده می‌شود. ورودی نامعتبر ⇒ `RangeError`.
