@@ -151,8 +151,16 @@ const config = {
     markNonWorkingDays: process.env.CRON_MARK_NON_WORKING_DAYS || '5 0 * * *',
     // بک‌آپ روزانه‌ی دیتابیس؛ پیش‌فرض ۰۲:۳۰ بامداد (خارج از ساعت کاری و بعد از Jobهای شبانه)
     dailyBackup: process.env.CRON_DAILY_BACKUP || '30 2 * * *',
-    // Job ماهانه‌ی آرشیو audit (S2-6b: فقط dry-run)؛ پیش‌فرض روز اول هر ماه میلادی ساعت ۰۳:۰۰ (بعد از بک‌آپ، خارج از ساعت کاری)
+    // Job ماهانه‌ی آرشیو audit (S2-6b/6c: خاموش ⇒ dry-run، روشن ⇒ انتقال واقعی)؛ پیش‌فرض روز اول هر ماه میلادی ساعت ۰۳:۰۰ (بعد از بک‌آپ، خارج از ساعت کاری)
     auditArchive: process.env.CRON_AUDIT_ARCHIVE || '0 3 1 * *',
+  },
+
+  // آرشیو audit (S2-6c): تعداد رکورد در هر تراکنشِ انتقال. مقدار کوچک‌تر ⇒ قفل نوشتن کوتاه‌تر؛ مقدار خراب/خارج از بازه ⇒ ۱۰۰۰
+  auditArchive: {
+    batchSize: (() => {
+      const n = parseInt(process.env.AUDIT_ARCHIVE_BATCH_SIZE || '', 10);
+      return Number.isInteger(n) && n >= 1 && n <= 10000 ? n : 1000;
+    })(),
   },
 };
 

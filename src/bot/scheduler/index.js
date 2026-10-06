@@ -63,7 +63,7 @@ function startSchedulers(bot) {
     cron.schedule(config.cron.dailyBackup, wrapJob('dailyBackup', () => runDailyBackup()));
   }
 
-  // آرشیو ماهانه‌ی audit (S2-6b): فعلاً فقط dry-run (شمارش + لاگ)، بدون هیچ انتقالی
+  // آرشیو ماهانه‌ی audit (S2-6b/6c): تنظیم auditArchiveEnabled خاموش ⇒ dry-run (شمارش + لاگ)، روشن ⇒ انتقال واقعی با batch
   if (!cron.validate(config.cron.auditArchive)) {
     console.error(`[scheduler] CRON_AUDIT_ARCHIVE نامعتبر است («${config.cron.auditArchive}»)؛ Job آرشیو audit فعال نشد.`);
   } else {

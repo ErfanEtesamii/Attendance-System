@@ -1,4 +1,5 @@
-// S2-6b: Job ماهانه‌ی آرشیو audit در حالت dry-run — فقط می‌شمارد و لاگ می‌کند، هرگز چیزی منتقل نمی‌کند.
+// S2-6b: Job ماهانه‌ی آرشیو audit در حالت dry-run (تنظیم آرشیو خاموش) — فقط می‌شمارد و لاگ می‌کند، هرگز چیزی منتقل نمی‌کند.
+// (از S2-6c روشن‌بودن آرشیو انتقال واقعی است؛ تستش در test/auditArchiveMove.test.js)
 const { resetDb, cleanup } = require('./helpers/testEnv');
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
@@ -45,21 +46,21 @@ describe('Job آرشیو audit — dry-run (S2-6b)', () => {
     assert.match(cutoffFor(NOW, 1), /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
   });
 
-  test('dry-run: فقط رکوردهای قدیمی‌تر از آستانه شمرده می‌شود و هیچ چیز جابه‌جا نمی‌شود (خاموش و روشن)', () => {
+  test('dry-run (آرشیو خاموش): فقط رکوردهای قدیمی‌تر از آستانه شمرده می‌شود و هیچ چیز جابه‌جا نمی‌شود', () => {
     const before = state();
     assert.equal(before.archive, 0);
-    for (const enabled of [false, true]) {
+    for (let i = 0; i < 2; i += 1) { // تکرار: اجرای دوباره هم هیچ اثری ندارد
       const logs = [];
-      const r = runAuditArchive({ now: NOW, retentionMonths: 24, enabled, log: (m) => logs.push(m) });
+      const r = runAuditArchive({ now: NOW, retentionMonths: 24, enabled: false, log: (m) => logs.push(m) });
       assert.equal(r.mode, 'dry-run');
       assert.equal(r.candidates, 2, 'very_old و just_before_cutoff؛ نه رکورد مرزی');
       assert.equal(r.oldest, '2020-01-01 00:00:00');
       assert.equal(r.newest, '2024-10-06 12:30:44');
       assert.equal(r.moved, 0);
-      assert.equal(r.enabled, enabled);
+      assert.equal(r.enabled, false);
       assert.equal(logs.length, 1);
       assert.match(logs[0], /dry-run: 2 رکورد/);
-      assert.match(logs[0], enabled ? /آرشیو روشن/ : /آرشیو خاموش/);
+      assert.match(logs[0], /آرشیو خاموش/);
       assert.match(logs[0], /چیزی منتقل نشد/);
       assert.deepEqual(state(), before, 'audit_log دست‌نخورده و آرشیو خالی');
     }
