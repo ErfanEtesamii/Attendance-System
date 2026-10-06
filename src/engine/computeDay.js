@@ -8,7 +8,8 @@
 // ورودی:
 //   record   : ردیف attendance_records (check_in_time/check_out_time به‌صورت ISO UTC و status) یا null
 //   breaks   : ردیف‌های break_records ({ start_time, end_time })؛ فقط استراحت‌های «بسته‌شده» حساب می‌شوند (مثل قبل)
-//   settings : { workDayStart, workDayEnd } با قالب HH:MM
+//   settings : { workDayStart, workDayEnd } با قالب HH:MM؛ اختیاری (S3-3a): lateGraceMinutes (عدد ≥ ۰، پیش‌فرض ۰)،
+//              lateCountsFrom ('shift_start' | 'after_grace'، پیش‌فرض 'shift_start')
 //   now      : لحظه‌ی «الان» برای رکورد باز (Date یا ISO)؛ پیش‌فرض new Date()
 //   timezone : نام IANA؛ پیش‌فرض Asia/Tehran
 // خروجی (همه دقیقه، عدد صحیح مگر null):
@@ -16,7 +17,8 @@
 //   workedGross : مدت بین ورود و خروج (یا now برای رکورد باز)، گرد شده؛ بدون ورود ⇒ null
 //   break       : مجموع استراحت‌های بسته‌شده (جمع میلی‌ثانیه‌ها، سپس گرد)
 //   effective   : max(0, round(workedGross خام − break))؛ بدون ورود ⇒ null
-//   late        : دقیقه‌ی ورود پس از شروع کار (بدون مهلت؛ مهلت در S3-3a)
+//   late        : تأخیر ورود. ورود تا «شروع + مهلت» (شامل خودِ مرز) ⇒ ۰؛ بعد از آن: shift_start ⇒ ورود − شروع (کل تأخیر)،
+//                 after_grace ⇒ ورود − (شروع + مهلت). مهلت ۰ (پیش‌فرض) ⇒ هر دو حالت دقیقاً مثل قبل
 //   earlyLeave / overtime : خروج پیش از/پس از پایان کار (خروج دقیقاً روی پایان ⇒ هر دو ۰)
 //   isOpen      : ورود دارد ولی خروج ندارد
 //   flags       : فعلاً همیشه [] (پرچم‌ها و داده‌ی خراب در S3-4b)
@@ -27,6 +29,8 @@
 // (خروج بعد از نیمه‌شب مثل قبل «زودتر رفتن» حساب می‌شود؛ شیفت شب در S3-6c).
 
 const { DEFAULT_TIMEZONE, normalizeTimezone, minutesSinceMidnight } = require('../utils/time');
+
+const LATE_COUNTS_FROM = ['shift_start', 'after_grace'];
 
 function hhmmToMinutes(value, name) {
   const m = typeof value === 'string' ? /^\s*(\d{1,2}):(\d{2})\s*$/.exec(value) : null;
@@ -53,6 +57,10 @@ function computeDay({ record, breaks, settings, now, timezone } = {}) {
   if (!settings || typeof settings !== 'object') throw new TypeError('settings الزامی است.');
   const workStart = hhmmToMinutes(settings.workDayStart, 'workDayStart');
   const workEnd = hhmmToMinutes(settings.workDayEnd, 'workDayEnd');
+  const lateGrace = settings.lateGraceMinutes === undefined ? 0 : settings.lateGraceMinutes;
+  if (typeof lateGrace !== 'number' || !Number.isFinite(lateGrace) || lateGrace < 0) throw new RangeError('settings.lateGraceMinutes باید عدد ≥ ۰ باشد.');
+  const lateCountsFrom = settings.lateCountsFrom === undefined ? 'shift_start' : settings.lateCountsFrom;
+  if (!LATE_COUNTS_FROM.includes(lateCountsFrom)) throw new RangeError(`settings.lateCountsFrom باید یکی از ${LATE_COUNTS_FROM.join('، ')} باشد.`);
   const tz = timezone === undefined ? DEFAULT_TIMEZONE : normalizeTimezone(timezone);
   if (!tz) throw new RangeError('timezone نامعتبر است.');
 
@@ -76,7 +84,8 @@ function computeDay({ record, breaks, settings, now, timezone } = {}) {
   const checkOut = record.check_out_time ? toDate(record.check_out_time, 'check_out_time') : null;
 
   const checkInMinutes = minutesSinceMidnight(checkIn, tz);
-  if (checkInMinutes > workStart) result.late = checkInMinutes - workStart;
+  const lateLine = workStart + lateGrace; // تا خودِ این لحظه تأخیر نیست
+  if (checkInMinutes > lateLine) result.late = checkInMinutes - (lateCountsFrom === 'after_grace' ? lateLine : workStart);
 
   const end = checkOut || (now === undefined ? new Date() : toDate(now, 'now'));
   result.isOpen = !checkOut;

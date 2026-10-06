@@ -88,6 +88,9 @@ function def(key, dbKey, type, opts) {
 def('timezone', 'timezone', 'timezone', { group: 'workHours', default: () => config.timezone, fallback: 'Asia/Tehran', description: 'منطقه‌ی زمانی شرکت (نام IANA) برای تعیین روز و ساعت کاری' });
 def('workDayStart', 'work_day_start', 'time', { group: 'workHours', default: () => config.workDayStart, fallback: '08:00', description: 'ساعت شروع کار' });
 def('workDayEnd', 'work_day_end', 'time', { group: 'workHours', default: () => config.workDayEnd, fallback: '16:30', description: 'ساعت پایان کار' });
+// S3-3a: مهلت تأخیر در محاسبه‌ی روز (نه یادآور؛ یادآور ورود با lateCheckinGraceMinutes جداست)
+def('lateGraceMinutes', 'late_grace_minutes', 'number', { group: 'workHours', min: 0, max: 240, default: 0, description: 'مهلت تأخیر (دقیقه) پس از ساعت شروع کار؛ ورود تا پایان مهلت «تأخیر» حساب نمی‌شود (۰ = بدون مهلت)' });
+def('lateCountsFrom', 'late_counts_from', 'enum', { group: 'workHours', values: ['shift_start', 'after_grace'], default: 'shift_start', description: 'مبنای دقیقه‌ی تأخیر پس از گذشتن از مهلت: shift_start = از ساعت شروع کار (کل تأخیر)، after_grace = فقط از پایان مهلت' });
 // تأخیر و یادآوری
 def('lateCheckinGraceMinutes', 'late_checkin_grace_minutes', 'number', { group: 'reminders', min: 0, max: 720, default: () => config.lateCheckinGraceMinutes, fallback: 15, description: 'مهلت تأخیر ورود (دقیقه) پس از ساعت شروع، پیش از یادآوری ورود' });
 def('checkoutReminderMinutesBefore', 'checkout_reminder_minutes_before', 'number', { group: 'reminders', min: 0, max: 720, default: () => config.checkoutReminderMinutesBefore, fallback: 15, description: 'یادآوری ثبت خروج، این‌قدر دقیقه پیش از پایان کار' });
