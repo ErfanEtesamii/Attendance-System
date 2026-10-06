@@ -4,6 +4,14 @@
 
 ## [Unreleased] — بخش ۲ (امنیت، پایداری و عملیات)
 
+### S2-5a — API موارد مشکوک (فقط API؛ UI در S2-5b)
+- **`GET /api/admin/suspicious`**: فهرست موارد با فیلتر `status` (`open|reviewed|ignored`)، `from`/`to` (روی `event_date`، `YYYY-MM-DD`) و `limit` (پیش‌فرض ۲۰۰، حداکثر ۵۰۰)، مرتب از جدیدترین تاریخ. مقدار نامعتبر برای فیلترها ⇒ `400` (بی‌صدا نادیده گرفته نمی‌شود). هر مورد: `id, eventType, eventDate, status, details, recordIds, users[] (userBrief), reviewedBy, reviewedAt, createdAt`.
+- **`POST /api/admin/suspicious/:id/review`** با بدنه‌ی `{ reason (اجباری), status: 'reviewed'|'ignored' (پیش‌فرض reviewed) }`: وضعیت و `reviewed_by/reviewed_at` را ثبت می‌کند و در `audit_log` رویداد `suspicious_reviewed` (با `eventId, eventType, eventDate, targetUserIds, previousStatus, newStatus, reason`) می‌نویسد. بدون دلیل یا وضعیت نامعتبر ⇒ `400`؛ همان وضعیتِ فعلی ⇒ `409`؛ ناموجود ⇒ `404`؛ خارج از اسکوپ ⇒ `403`. هدر CSRF (`X-Requested-With`) مثل بقیه‌ی routeهای نوشتنی لازم است.
+- **اسکوپ**: admin همه؛ manager فقط مواردی که **همه‌ی** `user_ids` آن‌ها در تیمش‌اند (مورد مشترک با کاربر تیم دیگر برای او نه دیده می‌شود نه قابل بررسی است)؛ employee ممنوع — هم با لیست سفید `requireAdminAuth` (route در `EMPLOYEE_ALLOWED` نیامده) و هم با `requireStaff` روی خود route.
+- **repository**: `suspiciousRepository.list({status, from, to, limit})` و `markReviewed(id, {status, reviewedBy})` (SQL فقط آنجا). بدون migration؛ جدول ستونِ «دلیل» ندارد، پس دلیل فقط در audit نگه‌داری می‌شود (برای نمایش در پنل S2-5b یا از audit خوانده شود یا ستون جدا با migration بعدی).
+- ⚠️ هر مورد «نشانه» است نه اتهام. اسکوپ سرپرست پس از خواندن اعمال می‌شود (`user_ids` داخل JSON است)، برای حجم فعلی مشکلی ندارد. بازکردن دوباره‌ی مورد (`reviewed → open`) عمداً در این بخش نیست.
+- تست: `test/suspiciousApi.test.js` (۴ تست HTTP واقعی: فهرست/اسکوپ/فیلتر، ثبت بررسی + audit + ۴۰۹، اسکوپ و ۴۰۳/۴۰۴/۴۰۰ ثبت بررسی، کارمند/بدون سشن/بدون CSRF) و ماتریس‌های `routesAccess.test.js` و `adminAccess.test.js` با مسیرهای جدید به‌روز شدند. `npm test`: ۲۴۶ سبز.
+
 ### S2-4e-3 — بلوک اختیاری device مشترک (پیش‌فرض خاموش) — پایان S2-4e
 - **تنظیم `blockOnSharedDevice`** (کلید DB: `block_on_shared_device`، بولی، **پیش‌فرض خاموش**): در `settingsRepository` اضافه شد؛ از همان `GET/PATCH /api/admin/settings` (فقط ادمین کل، با audit `settings_updated`) خوانده/عوض می‌شود و مقدار نامعتبر نادیده گرفته می‌شود. ۵ تنظیم قبلی بدون تغییر. فیلدی در فرم پنل ندارد (رجیستری تنظیمات در S3-1؛ UI در S2-5b).
 - **`fraudRunner.evaluateSharedDeviceBlock({ userId, deviceId, date })`**: وقتی تنظیم روشن است همان قاعده‌ی خالص الف را روی ردیف‌های امروز + ثبتِ فرضیِ همین درخواست اجرا می‌کند؛ **فقط قاعده‌ی الف** مسدود می‌کند (ب و ج هرگز). بدون device معتبر ⇒ هرگز مسدود نمی‌شود. **fail-open**: هر خطا (قاعده، تنظیم، DB) ⇒ `blocked:false` و ثبت ادامه می‌یابد.

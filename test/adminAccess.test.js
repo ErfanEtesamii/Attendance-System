@@ -90,6 +90,8 @@ describe('لیست سفید کارمند (default-deny)', () => {
       ['POST', '/api/admin/leave-requests'],
       ['POST', '/api/admin/leave-requests/1/approve'],
       ['POST', '/api/admin/disputes/1/resolve'],
+      ['GET', '/api/admin/suspicious'],
+      ['POST', '/api/admin/suspicious/1/review'],
       ['GET', '/api/admin/some-future-feature'],
     ];
     for (const [method, url] of denied) {
