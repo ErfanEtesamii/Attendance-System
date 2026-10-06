@@ -13,6 +13,12 @@ function enumEnv(value, allowed, fallback) {
   return allowed.includes(v) ? v : fallback;
 }
 
+// عدد صحیح مثبت از env؛ مقدار نامعتبر/صفر/منفی = پیش‌فرض (تا غلط تایپی در .env نگهداری بک‌آپ را خراب نکند)
+function positiveIntEnv(value, fallback) {
+  const n = parseInt(String(value || '').trim(), 10);
+  return Number.isInteger(n) && n >= 1 ? n : fallback;
+}
+
 const config = {
   port: parseInt(process.env.PORT || '3000', 10),
   dbPath: path.resolve(process.cwd(), process.env.DB_PATH || './data/attendance.db'),
@@ -45,6 +51,14 @@ const config = {
     backupCheck: process.env.MONITOR_BACKUP_CHECK === 'true',
     backupDir: path.resolve(process.cwd(), process.env.BACKUP_DIR || './data/backups'),
     backupMaxAgeHours: parseInt(process.env.MONITOR_BACKUP_MAX_AGE_HOURS || '36', 10),
+  },
+
+  // ===== بخش ۲-ج۲: بک‌آپ روزانه (S2-1) =====
+  // پوشه‌ی مقصد همان monitor.backupDir است (BACKUP_DIR). زمان اجرا: cron.dailyBackup (CRON_DAILY_BACKUP).
+  backup: {
+    // تعداد بک‌آپ روزانه‌ی نگه‌داشته‌شده (جدیدترین‌ها) و تعداد کپی ماهانه (اولین بک‌آپ هر ماه میلادی)
+    keepDaily: positiveIntEnv(process.env.BACKUP_KEEP_DAILY, 14),
+    keepMonthly: positiveIntEnv(process.env.BACKUP_KEEP_MONTHLY, 6),
   },
 
   // ===== فاز ۳: تنظیمات بات تلگرام =====
@@ -125,6 +139,8 @@ const config = {
     autoCloseIncomplete: process.env.CRON_AUTO_CLOSE_INCOMPLETE || '59 23 * * *',
     // علامت‌گذاری روزهای تعطیل رسمی/مرخصی تأییدشده، قبل از شروع پنجره ثبت ورود (رفع گپ «غایب» فاز ۵)
     markNonWorkingDays: process.env.CRON_MARK_NON_WORKING_DAYS || '5 0 * * *',
+    // بک‌آپ روزانه‌ی دیتابیس؛ پیش‌فرض ۰۲:۳۰ بامداد (خارج از ساعت کاری و بعد از Jobهای شبانه)
+    dailyBackup: process.env.CRON_DAILY_BACKUP || '30 2 * * *',
   },
 };
 

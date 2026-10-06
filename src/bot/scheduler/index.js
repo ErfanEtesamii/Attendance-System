@@ -11,6 +11,7 @@ const { markNonWorkingDays } = require('./markNonWorkingDays');
 const { sendDailyReport, sendWeeklyReport, sendMonthlyReport } = require('./reports');
 const { sendNightlyReview } = require('./nightlyReview');
 const { runWatchdog } = require('./watchdog');
+const { runDailyBackup } = require('./backup');
 const { isFirstDayOfJalaliMonth } = require('../../utils/jalali');
 const { wrapJob, runAll } = require('../../utils/jobRunner');
 const jobRunsRepository = require('../../repositories/jobRunsRepository');
@@ -53,6 +54,13 @@ function startSchedulers(bot) {
   cron.schedule(config.cron.autoCloseIncomplete, wrapJob('autoCloseIncomplete', () => autoCloseIncompleteRecords()));
 
   cron.schedule(config.cron.markNonWorkingDays, wrapJob('markNonWorkingDays', () => markNonWorkingDays()));
+
+  // بک‌آپ روزانه (S2-1a): db.backup() به BACKUP_DIR/daily-YYYYMMDD-HHmm.db
+  if (!cron.validate(config.cron.dailyBackup)) {
+    console.error(`[scheduler] CRON_DAILY_BACKUP نامعتبر است («${config.cron.dailyBackup}»)؛ بک‌آپ روزانه فعال نشد.`);
+  } else {
+    cron.schedule(config.cron.dailyBackup, wrapJob('dailyBackup', () => runDailyBackup()));
+  }
 
   // Watchdog: فقط شکست‌هایش در job_runs ثبت می‌شود (هر ۵ دقیقه، موفقیت‌ها ردیف‌های بی‌ارزش زیاد می‌ساختند)
   if (config.monitor.watchdogEnabled) {
