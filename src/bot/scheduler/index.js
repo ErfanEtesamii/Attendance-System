@@ -12,6 +12,7 @@ const { sendDailyReport, sendWeeklyReport, sendMonthlyReport } = require('./repo
 const { sendNightlyReview } = require('./nightlyReview');
 const { runWatchdog } = require('./watchdog');
 const { runDailyBackup } = require('./backup');
+const { runAuditArchive } = require('./auditArchive');
 const { isFirstDayOfJalaliMonth } = require('../../utils/jalali');
 const { wrapJob, runAll } = require('../../utils/jobRunner');
 const jobRunsRepository = require('../../repositories/jobRunsRepository');
@@ -60,6 +61,13 @@ function startSchedulers(bot) {
     console.error(`[scheduler] CRON_DAILY_BACKUP نامعتبر است («${config.cron.dailyBackup}»)؛ بک‌آپ روزانه فعال نشد.`);
   } else {
     cron.schedule(config.cron.dailyBackup, wrapJob('dailyBackup', () => runDailyBackup()));
+  }
+
+  // آرشیو ماهانه‌ی audit (S2-6b): فعلاً فقط dry-run (شمارش + لاگ)، بدون هیچ انتقالی
+  if (!cron.validate(config.cron.auditArchive)) {
+    console.error(`[scheduler] CRON_AUDIT_ARCHIVE نامعتبر است («${config.cron.auditArchive}»)؛ Job آرشیو audit فعال نشد.`);
+  } else {
+    cron.schedule(config.cron.auditArchive, wrapJob('auditArchive', () => runAuditArchive()));
   }
 
   // Watchdog: فقط شکست‌هایش در job_runs ثبت می‌شود (هر ۵ دقیقه، موفقیت‌ها ردیف‌های بی‌ارزش زیاد می‌ساختند)

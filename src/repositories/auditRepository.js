@@ -44,10 +44,22 @@ function search({ userId, action, from, to, q, limit = 200 } = {}) {
     .all(...params, limit);
 }
 
+// خلاصه‌ی رکوردهای «قدیمی‌تر از cutoff» برای dry-run آرشیو (S2-6b). فقط خواندنی.
+// cutoff به قالب ذخیره‌ی occurred_at (YYYY-MM-DD HH:MM:SS) است؛ مقایسه‌ی متنی مستقیم تا ایندکس idx_audit_occurred کار کند.
+function summarizeOlderThan(cutoff) {
+  if (typeof cutoff !== 'string' || !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(cutoff)) {
+    throw new Error('cutoff باید YYYY-MM-DD HH:MM:SS باشد.');
+  }
+  const row = getDb()
+    .prepare('SELECT COUNT(*) AS count, MIN(occurred_at) AS oldest, MAX(occurred_at) AS newest FROM audit_log WHERE occurred_at < ?')
+    .get(cutoff);
+  return { count: row.count, oldest: row.oldest || null, newest: row.newest || null };
+}
+
 function listActions() {
   return getDb()
     .prepare('SELECT action, COUNT(*) AS count FROM audit_log GROUP BY action ORDER BY count DESC')
     .all();
 }
 
-module.exports = { logEvent, listByUser, listRecent, search, listActions };
+module.exports = { logEvent, listByUser, listRecent, search, listActions, summarizeOlderThan };
