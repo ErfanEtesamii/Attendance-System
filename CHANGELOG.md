@@ -4,6 +4,17 @@
 
 ## [Unreleased] — بخش ۲ (امنیت، پایداری و عملیات)
 
+### S2-7a — سیاست پاک‌سازی جدول‌های فرعی (تابع cleanup؛ هنوز Job نیست)
+- **`src/utils/dataCleanup.js`** ← `runCleanup({ now, dryRun = true, retention, log })`: سه جدول را پاک‌سازی می‌کند و برای هر کدام یک خط لاگ می‌نویسد. **پیش‌فرض dry-run است** (فقط شمارش، چیزی حذف نمی‌شود)؛ حذف واقعی فقط با `dryRun: false` صریح (Job در S2-7b). خطا در یک جدول بقیه را متوقف نمی‌کند و در پایان خطای تجمیعی پرتاب می‌شود.
+  - **`job_runs`**: اجراهای تمام‌شده‌ی قدیمی‌تر از نگهداری. **هرگز پاک نمی‌شود:** ردیف `running` و **آخرین ردیفِ هر (job، وضعیت)** (آخرین success/error هر Job مبنای صفحه‌ی سلامت و watchdog است و Jobهای ماهانه نباید گم شوند).
+  - **`monitor_alerts`**: فقط هشدارهای حل‌شده (`state='ok'`) با `updated_at` قدیمی. هشدار `firing` هرگز پاک نمی‌شود.
+  - **`rate_limit_hits`**: ردیف‌های منقضی که `reset_at` آن‌ها قدیمی‌تر از نگهداری است (قبلاً فقط منقضی‌ها بلافاصله با `purgeExpired` پاک می‌شدند).
+  - **`csp_reports`** ذخیره نمی‌شود (`routes/cspReport.js` فقط لاگ می‌کند) ⇒ سیاستی ندارد.
+- **تنظیمات جدید** (همان `GET/PATCH /api/admin/settings`، عدد صحیح با بازه؛ نامعتبر نادیده، مقدار خراب در DB ⇒ پیش‌فرض): `jobRunsRetentionDays` (۱۸۰، بازه ۷ تا ۳۶۵۰)، `monitorAlertsRetentionDays` (۱۸۰، ۷ تا ۳۶۵۰)، `rateLimitRetentionDays` (۷، ۱ تا ۳۶۵). `settingsRepository.getCleanupRetention()`.
+- **repositoryها** (SQL فقط آنجا): `jobRunsRepository.countPurgeable/purgeOlderThan`، `monitorRepository.countResolvedOlderThan/purgeResolvedOlderThan`، `rateLimitRepository.countExpired`.
+- بدون migration، بدون Job/زمان‌بندی، بدون UI، بدون وابستگی جدید.
+- تست: `test/dataCleanup.test.js` (۴ تست: dry-run بدون هیچ تغییر، اجرای واقعی با محافظت‌ها و «users/attendance_records/leave_requests/audit_log/settings دست‌نخورده» و اجرای دوباره، تنظیمات و اعتبارسنجی، خطای تجمیعی). `npm test`: ۲۶۸ سبز.
+
 ### S2-6c — انتقال واقعی آرشیو audit + `include_archive`
 - **انتقال واقعی** (`runAuditArchive`): وقتی تنظیم `auditArchiveEnabled` **روشن** باشد، رکوردهای `audit_log` که قدیمی‌تر از `auditRetentionMonths` ماه‌اند (مرز باز، آستانه‌ی UTC که در شروع اجرا یک‌بار ثابت می‌شود) **batch‌به‌batch** به `audit_log_archive` منتقل می‌شوند؛ خاموش ⇒ همان dry-run قبلی (شمارش + لاگ، بدون هیچ تغییر). نتیجه‌ی Job اکنون `mode` (`dry-run` | `archive`)، `moved` و `batches` دارد. پس از اتمام، خودِ انتقال با اکشن `audit_archived` (تعداد، batch، آستانه) در audit ثبت می‌شود (فقط وقتی `moved > 0`؛ خطای این ثبت Job را خطا نمی‌کند). تأیید پایانی: اگر رکورد قدیمی‌ای در `audit_log` بماند Job خطا می‌دهد.
 - **تراکنش و batch** (`auditRepository.archiveBatch(cutoff, batchSize)`): هر batch یک تراکنش است: انتخاب (قدیمی‌ترین‌ها اول) ← `INSERT … SELECT` با **همان id/ستون‌ها و زمان رویداد** ← `DELETE` از اصلی. اگر تعداد کپی/حذف با تعداد انتخاب‌شده نخواند یا id در آرشیو تکراری باشد، استثنا پرتاب و **کل batch برگردانده می‌شود**؛ batchهای قبلی سالم‌اند و خطا به `wrapJob` می‌رسد (`job_runs` = error). `cutoff` و `batchSize` (۱ تا ۱۰۰۰۰) اعتبارسنجی می‌شوند. این تنها استثنای «بدون update/delete» در `auditRepository` است و رکورد را حذف نمی‌کند، فقط جابه‌جا می‌کند.

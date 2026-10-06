@@ -73,4 +73,15 @@ function integrityCheckFile(filePath) {
   }
 }
 
-module.exports = { getAlert, listAlerts, markFiring, markSent, markOk, writeProbe, readProbe, quickCheck, integrityCheckFile };
+// ---------- پاک‌سازی (S2-7a) ----------
+// فقط هشدارهای «حل‌شده» (state='ok') که updated_at آن‌ها قدیمی‌تر از cutoff است. هشدار firing هرگز پاک نمی‌شود.
+// حذف ردیف ok بی‌خطر است: نبودن ردیف یعنی «هشداری نبوده» و markFiring بعدی دوباره می‌سازد.
+function countResolvedOlderThan(cutoffIso) {
+  return getDb().prepare("SELECT COUNT(*) AS n FROM monitor_alerts WHERE state = 'ok' AND updated_at < ?").get(cutoffIso).n;
+}
+
+function purgeResolvedOlderThan(cutoffIso) {
+  return getDb().prepare("DELETE FROM monitor_alerts WHERE state = 'ok' AND updated_at < ?").run(cutoffIso).changes;
+}
+
+module.exports = { countResolvedOlderThan, purgeResolvedOlderThan, getAlert, listAlerts, markFiring, markSent, markOk, writeProbe, readProbe, quickCheck, integrityCheckFile };

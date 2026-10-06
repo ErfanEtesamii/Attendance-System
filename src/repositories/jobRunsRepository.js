@@ -62,4 +62,18 @@ function countsSince(sinceIso) {
     .all(sinceIso);
 }
 
-module.exports = { start, finish, markInterrupted, latestResultPerJob, lastSuccessPerJob, recentErrors, recent, countsSince };
+// ---------- پاک‌سازی (S2-7a) ----------
+// قابل‌حذف: اجرای تمام‌شده (نه running) که started_at آن قدیمی‌تر از cutoff است، «به‌جز» آخرین ردیفِ هر (job، وضعیت).
+// آخرین success/error هر Job مبنای صفحه‌ی سلامت و watchdog است (Jobهای ماهانه/کم‌تکرار)، پس هرگز پاک نمی‌شود.
+const PURGEABLE_WHERE = `status != 'running' AND started_at < ?
+  AND id NOT IN (SELECT MAX(id) FROM job_runs GROUP BY job_name, status)`;
+
+function countPurgeable(cutoffIso) {
+  return getDb().prepare(`SELECT COUNT(*) AS n FROM job_runs WHERE ${PURGEABLE_WHERE}`).get(cutoffIso).n;
+}
+
+function purgeOlderThan(cutoffIso) {
+  return getDb().prepare(`DELETE FROM job_runs WHERE ${PURGEABLE_WHERE}`).run(cutoffIso).changes;
+}
+
+module.exports = { countPurgeable, purgeOlderThan, start, finish, markInterrupted, latestResultPerJob, lastSuccessPerJob, recentErrors, recent, countsSince };

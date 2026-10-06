@@ -17,13 +17,22 @@ const KEY_MAP = {
   // S2-6a: سیاست آرشیو audit (فقط تنظیم؛ Job آرشیو در S2-6b/6c). نگهداری به ماه؛ آرشیو پیش‌فرض خاموش
   auditRetentionMonths: 'audit_retention_months',
   auditArchiveEnabled: 'audit_archive_enabled',
+  // S2-7a: نگهداری (به روز) جدول‌های فرعی پیش از پاک‌سازی؛ مقدارهای پیش‌فرض عمداً محافظه‌کارانه‌اند
+  jobRunsRetentionDays: 'job_runs_retention_days',
+  monitorAlertsRetentionDays: 'monitor_alerts_retention_days',
+  rateLimitRetentionDays: 'rate_limit_retention_days',
 };
 
 // کلیدهای بولی: در DB به‌صورت '1'/'0' ذخیره می‌شوند و در API به‌صورت true/false برمی‌گردند
 const BOOLEAN_KEYS = new Set(['blockOnSharedDevice', 'auditArchiveEnabled']);
 
 // کلیدهای عددی با بازه‌ی مجاز (عدد صحیح). مقدار خارج از بازه/نامعتبر هنگام ذخیره نادیده گرفته می‌شود و هنگام خواندن پیش‌فرض برمی‌گردد.
-const INT_RANGES = { auditRetentionMonths: [1, 240] };
+const INT_RANGES = {
+  auditRetentionMonths: [1, 240],
+  jobRunsRetentionDays: [7, 3650],
+  monitorAlertsRetentionDays: [7, 3650],
+  rateLimitRetentionDays: [1, 365],
+};
 
 function parseIntInRange(value, [min, max]) {
   if (typeof value === 'string' && !/^\s*\d+\s*$/.test(value)) return null;
@@ -46,6 +55,9 @@ const DEFAULTS = () => ({
   blockOnSharedDevice: false,
   auditRetentionMonths: 24,
   auditArchiveEnabled: false,
+  jobRunsRetentionDays: 180,
+  monitorAlertsRetentionDays: 180,
+  rateLimitRetentionDays: 7,
 });
 
 function getAll() {
@@ -119,6 +131,16 @@ function getAuditRetentionMonths() {
   return n === null ? DEFAULTS().auditRetentionMonths : n;
 }
 
+// نگهداری جدول‌های فرعی برای cleanup (S2-7a). نبودن/خرابی مقدار ⇒ پیش‌فرض محافظه‌کارانه (هرگز NaN)
+function getCleanupRetention() {
+  const all = getAll();
+  return {
+    jobRunsDays: all.jobRunsRetentionDays,
+    monitorAlertsDays: all.monitorAlertsRetentionDays,
+    rateLimitDays: all.rateLimitRetentionDays,
+  };
+}
+
 // ---------- epoch سراسری نشست‌ها (بخش ۲-الف) ----------
 // عددی که داخل توکن نشست هم ذخیره می‌شود؛ با افزایش آن «همه‌ی نشست‌های همه‌ی کاربران» باطل می‌شود.
 // عمداً در KEY_MAP نیست تا از صفحه‌ی تنظیمات پنل قابل ویرایش/نمایش نباشد؛ فقط با bumpGlobalSessionEpoch.
@@ -144,5 +166,5 @@ function bumpGlobalSessionEpoch() {
 }
 
 module.exports = {
-  getAll, update, isBlockOnSharedDeviceEnabled, isAuditArchiveEnabled, getAuditRetentionMonths, getGlobalSessionEpoch, bumpGlobalSessionEpoch,
+  getAll, update, isBlockOnSharedDeviceEnabled, isAuditArchiveEnabled, getAuditRetentionMonths, getCleanupRetention, getGlobalSessionEpoch, bumpGlobalSessionEpoch,
 };

@@ -34,6 +34,11 @@ function purgeExpired(now = Date.now()) {
   return getDb().prepare('DELETE FROM rate_limit_hits WHERE reset_at <= ?').run(now).changes;
 }
 
+// تعداد ردیف‌های منقضی تا لحظه‌ی beforeMs (برای dry-run پاک‌سازی S2-7a؛ همان شرط purgeExpired)
+function countExpired(beforeMs) {
+  return getDb().prepare('SELECT COUNT(*) AS n FROM rate_limit_hits WHERE reset_at <= ?').get(beforeMs).n;
+}
+
 function countRows() {
   return getDb().prepare('SELECT COUNT(*) AS n FROM rate_limit_hits').get().n;
 }
@@ -45,4 +50,4 @@ function get(limiter, key) {
     .get(limiter, normalizeKey(key));
 }
 
-module.exports = { hit, purgeExpired, countRows, get, MAX_KEY_LENGTH };
+module.exports = { hit, purgeExpired, countExpired, countRows, get, MAX_KEY_LENGTH };
