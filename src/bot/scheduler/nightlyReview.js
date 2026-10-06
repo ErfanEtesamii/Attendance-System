@@ -10,6 +10,7 @@ const { reviewDay, summarize } = require('../../utils/dayReview');
 const { formatMinutes } = require('../../utils/workHours');
 const { todayDateString } = require('../../utils/serverTime');
 const { panelWebAppButton } = require('../panelLinks');
+const { runFraudChecksSafe } = require('../../utils/fraudRunner');
 
 const MAX_ATTENTION_LINES = 25;
 
@@ -68,6 +69,8 @@ function buildNightlyMessage(supervisor, team, today) {
 
 async function sendNightlyReview(bot) {
   const today = todayDateString();
+  // جاروی شبانه‌ی تشخیص مورد مشکوک (S2-4e): ضدخطا؛ شکستش نباید ارسال مرور شبانه را مختل کند
+  runFraudChecksSafe({ date: today });
   if (holidaysRepository.isHoliday(today)) return;
 
   const supervisors = usersRepository

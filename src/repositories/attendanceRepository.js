@@ -107,6 +107,21 @@ function listOpenRecordsByDate(dateStr) {
     .all(dateStr);
 }
 
+// ردیف‌های لازم برای قاعده‌های تشخیص مورد مشکوک (S2-4e): فقط ستون‌های زمان/IP/device، بازه‌ی بسته‌ی تاریخ.
+// فقط خواندنی است؛ هیچ اثری روی ثبت تردد ندارد.
+function listForFraud(fromDate, toDate) {
+  return getDb()
+    .prepare(
+      `SELECT id, user_id, record_date,
+              check_in_time, check_in_ip, check_in_device,
+              check_out_time, check_out_ip, check_out_device
+       FROM attendance_records
+       WHERE record_date BETWEEN ? AND ?
+       ORDER BY record_date, id`
+    )
+    .all(fromDate, toDate);
+}
+
 // ساخت دستی رکورد توسط ادمین (پنل وب) - زمان‌ها از ادمین می‌آیند، نه ساعت سرور.
 // لایه route مسئول الزام دلیل و ثبت در audit_log است.
 function createManual({ userId, recordDate, checkInTime, checkOutTime, status }) {
@@ -155,6 +170,7 @@ function search({ from, to, userIds = null, status = null, limit = 500 }) {
 }
 
 module.exports = {
+  listForFraud,
   createManual,
   removeWithBreaks,
   search,

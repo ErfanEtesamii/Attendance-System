@@ -19,6 +19,7 @@ const disputeRepository = require('../../repositories/disputeRepository');
 const auditRepository = require('../../repositories/auditRepository');
 const workHours = require('../../utils/workHours');
 const { extractDeviceInfo } = require('../../utils/deviceInfo');
+const fraudRunner = require('../../utils/fraudRunner');
 const { todayDateString } = require('../../utils/serverTime');
 
 // همه مسیرهای زیر /miniapp ابتدا باید هویت تلگرام معتبر داشته باشند
@@ -92,6 +93,8 @@ router.post('/miniapp/check-in', (req, res) => {
     details: { source: 'miniapp' },
   });
   res.status(201).json(record);
+  // تشخیص مورد مشکوک (S2-4e): بعد از ارسال پاسخ و کاملاً ضدخطا؛ هرگز روی نتیجه‌ی ثبت اثر نمی‌گذارد
+  fraudRunner.runFraudChecksSafe({ date: record.record_date });
 });
 
 router.post('/miniapp/check-out', (req, res) => {
@@ -114,6 +117,7 @@ router.post('/miniapp/check-out', (req, res) => {
     details: { source: 'miniapp' },
   });
   res.json(updated);
+  fraudRunner.runFraudChecksSafe({ date: updated.record_date });
 });
 
 router.post('/miniapp/break/start', (req, res) => {
