@@ -27,7 +27,7 @@ describe('requireAdminAuth — احراز هویت', () => {
   test('کوکی دستکاری‌شده / با راز اشتباه / منقضی ← ۴۰۱', () => {
     const good = sessionCookie(admin.id);
     assert.equal(call(null, 'GET', '/api/admin/me', { cookie: good.slice(0, -3) + 'abc' }).status, 401);
-    assert.equal(call(null, 'GET', '/api/admin/me', { cookie: sessionCookie(admin.id, { secret: 'wrong-secret-wrong-secret-0123456789' }) }).status, 401);
+    assert.equal(call(null, 'GET', '/api/admin/me', { cookie: sessionCookie(admin.id, { secret: 'wrong-secret-wrong-secret-0123456789' }) }).status, 401); // secret-scan:allow (راز اشتباهِ عمدی)
     assert.equal(call(null, 'GET', '/api/admin/me', { cookie: sessionCookie(admin.id, { maxAgeSeconds: -10 }) }).status, 401);
   });
   test('کاربر غیرفعال یا حذف‌شده ← ۴۰۳ (is_active در هر درخواست چک می‌شود)', () => {

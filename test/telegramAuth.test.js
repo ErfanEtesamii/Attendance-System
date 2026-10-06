@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const { verifyInitData } = require('../src/utils/telegramInitData');
 const { verifyLoginWidgetData } = require('../src/utils/telegramLoginAuth');
 
-const TOKEN = '123456789:TEST_FAKE_TOKEN_abcdefghijklmnopqrstuvwxyz0123';
+const TOKEN = '123456789:TEST_FAKE_TOKEN_abcdefghijklmnopqrstuvwxyz0123'; // secret-scan:allow (توکن ساختگی تست)
 const nowSec = () => Math.floor(Date.now() / 1000);
 
 // ساخت initData مطابق الگوریتم رسمی Mini App (کلید = HMAC("WebAppData", token))

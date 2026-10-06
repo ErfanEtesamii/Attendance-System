@@ -10,7 +10,7 @@ const path = require('path');
 const root = path.join(__dirname, '..');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'attendance-smoke-'));
 const PORT = 20000 + Math.floor(Math.random() * 20000);
-const SECRET = 'smoke-secret-0123456789abcdef0123456789abcdef';
+const SECRET = 'smoke-secret-0123456789abcdef0123456789abcdef'; // secret-scan:allow (مقدار ساختگی smoke test)
 
 const env = {
   ...process.env,

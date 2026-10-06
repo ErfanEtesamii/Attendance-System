@@ -45,7 +45,7 @@ npm start                   # API + بات در یک پروسه
 | `ADMIN_COOKIE_SAMESITE` | `strict` (پیش‌فرض) یا `lax` برای بازگشت اضطراری |
 | `CSP_PANEL_UNSAFE_EVAL` / `HSTS_MAX_AGE_SECONDS` / `CSRF_EXTRA_ORIGINS` | تنظیمات پیشرفته‌ی امنیت وب (پیش‌فرض‌ها معمولاً کافی‌اند) |
 
-> ⚠️ `.env`، پوشه‌ی `.ssl/` و فایل‌های `data/*.db` هرگز commit یا در zip تحویلی گذاشته نشوند.
+> ⚠️ `.env`، پوشه‌ی `.ssl/` و فایل‌های `data/*.db` هرگز commit یا در zip تحویلی گذاشته نشوند. برای ساخت بسته‌ی تحویل از `npm run package` استفاده کنید (رازها را خودکار حذف می‌کند) و قبل از commit/ارسال `npm run secret-scan` بزنید. در production اگر `ADMIN_SESSION_SECRET` کمتر از ۳۲ نویسه یا نمونه باشد سرور بالا نمی‌آید. جزئیات و چک‌لیست «اگر راز لو رفت»: [`docs/SECRETS.md`](docs/SECRETS.md).
 
 ## دیتابیس و migration
 
@@ -85,9 +85,10 @@ src/
   scripts/                 createAdmin، seedEmployees، pushPanelButton
 public/                    Mini App کارمند (بدون build)
 public-admin/              پنل مدیریتی وب (بدون build)، زیر /admin/
-scripts/                   install-service.ps1 (NSSM)، setup-ssl-renewal.ps1، run-tests.js، smoke-test.js
+scripts/                   install-service.ps1 (NSSM)، setup-ssl-renewal.ps1، run-tests.js، smoke-test.js،
+                           package-release.js (zip بدون راز)، secret-scan.js، lib/ (zip، اسکنر، قوانین release)
 test/                      تست‌های خودکار (node:test)
-docs/                      ARCHITECTURE.md، SECURITY.md (هدرها/CSP/کوکی/CSRF/ابطال نشست)
+docs/                      ARCHITECTURE.md، SECURITY.md (هدرها/CSP/کوکی/CSRF/ابطال نشست)، SECRETS.md (مدیریت رازها)
 ```
 
 ## نقش‌ها
@@ -156,6 +157,8 @@ Jobهای `node-cron` (`src/bot/scheduler/`): یادآور تأخیر و خرو�
 npm test             # همه‌ی تست‌ها (node:test، بدون وابستگی اضافه)
 npm run test:watch   # اجرای مجدد با هر تغییر
 npm run smoke        # سرور واقعی روی دیتابیس موقت + چند درخواست کلیدی
+npm run secret-scan  # جست‌وجوی توکن/کلید/راز در پروژه (کد خروج ۱ = یافته)
+npm run package      # zip تحویل بدون .env/.ssl/data/node_modules/.git → dist/
 ```
 
-تست‌ها hermetic هستند: دیتابیس موقت، توکن و راز ساختگی، و `.env` واقعی خوانده نمی‌شود. پوشش فعلی: migration، `initData` و Login Widget، سشن، `networkRestriction`، ماتریس دسترسی نقش × route، ساختار ترتیب routeها، و (بخش ۲-الف) هدرها/CSP، کوکی، CSRF و ابطال نشست. تست‌های موتور محاسبه با بخش ۳ می‌آید.
+تست‌ها hermetic هستند: دیتابیس موقت، توکن و راز ساختگی، و `.env` واقعی خوانده نمی‌شود. پوشش فعلی: migration، `initData` و Login Widget، سشن، `networkRestriction`، ماتریس دسترسی نقش × route، ساختار ترتیب routeها، و (بخش ۲-الف) هدرها/CSP، کوکی، CSRF و ابطال نشست، و (بخش ۲-ب۱) کنترل رازهای راه‌اندازی، اسکنر رازها و بسته‌ساز release. تست‌های موتور محاسبه با بخش ۳ می‌آید.

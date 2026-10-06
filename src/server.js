@@ -8,19 +8,17 @@ const { getDb } = require('./db/connection');
 const apiRoutes = require('./api/routes');
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
 const { securityHeaders } = require('./middleware/securityHeaders');
+const { runStartupChecks } = require('./utils/startupChecks');
 
 function createApp() {
+  // بخش ۲-ب۱: بررسی رازها هنگام بالا آمدن. در production اگر ADMIN_SESSION_SECRET خالی، کوتاه‌تر از ۳۲ نویسه،
+  // نمونه/پیش‌فرض یا غیرتصادفی باشد سرور بالا نمی‌آید (وگرنه هر کسی می‌تواند کوکی نشست جعلی بسازد)؛
+  // خالی‌بودن TELEGRAM_BOT_USERNAME فقط هشدار می‌دهد. منطق در src/utils/startupChecks.js (قابل تست).
+  // عمداً قبل از getDb(): پیکربندی ناامن نباید حتی migration یا بک‌آپ روی دیتابیس را اجرا کند.
+  runStartupChecks(config);
+
   // اطمینان از ساخته‌شدن دیتابیس و جداول قبل از بالا آمدن سرور
   getDb();
-
-  // فاز ۸: بدون یک کلید امضای واقعی، هر کسی می‌تواند یک کوکی session جعلی بسازد و به پنل
-  // مدیریتی وارد شود. در production این حالت را کاملاً مسدود می‌کنیم تا این اشتباه پیکربندی
-  // خاموش/نامرئی نماند (مشابه فلسفه‌ی هشدار TRUST_PROXY بالا).
-  if (config.nodeEnv === 'production' && !config.adminSessionSecret) {
-    throw new Error(
-      'ADMIN_SESSION_SECRET در .env تنظیم نشده است. برای production یک مقدار تصادفی و طولانی بگذارید (مثلاً: openssl rand -hex 32).'
-    );
-  }
 
   const app = express();
 

@@ -4,6 +4,14 @@
 
 ## [Unreleased] — بخش ۲ (امنیت، پایداری و عملیات)
 
+### ۲-ب۱ — مدیریت رازها
+- **بسته‌ساز بدون راز**: `npm run package` (`scripts/package-release.js`) — حذف همیشگی `.env`/`.env.*` (به‌جز `.env.example`)، `.ssl/`، `data/`، `node_modules/`، `.git/`، لاگ‌ها، `*.pem/*.key/*.pfx/*.db`؛ بعد از ساخت، خودِ zip هم با فهرست ممنوعه‌ها و اسکنر رازها راستی‌آزمایی می‌شود و در صورت یافته فایل ساخته نمی‌شود (fail-closed). zip با `zlib` داخلی، بدون وابستگی جدید.
+- **اسکنر رازها**: `npm run secret-scan` (`scripts/secret-scan.js`) — توکن بات (حتی داخل URL)، کلید خصوصی PEM، فایل‌های کلید سرگردان، انتساب مشکوک به SECRET/TOKEN/PASSWORD؛ کد خروج غیرصفر در صورت یافتن؛ مقدار راز چاپ نمی‌شود؛ استثنای عمدی با `// secret-scan:allow`. چهار مقدار ساختگی تست علامت‌گذاری شدند.
+- **کنترل راه‌اندازی** (`src/utils/startupChecks.js`): در production، `ADMIN_SESSION_SECRET` خالی/کوتاه‌تر از ۳۲/نمونه/غیرتصادفی ⇒ سرور بالا نمی‌آید و **قبل از** `getDb()` متوقف می‌شود (بدون migration/بک‌آپ). `TELEGRAM_BOT_USERNAME` خالی ⇒ هشدار. جایگزین شرط ساده‌ی قبلی «راز خالی» در `server.js`.
+- `.gitignore`: افزودن `.env.*` (به‌جز نمونه)، `*.pem/*.key/*.pfx/*.p12`، `*.log`، `logs/`، `dist/`، `data/attachments/`.
+- مستندات: `docs/SECRETS.md` (چک‌لیست «اگر راز لو رفت»، دستورات `icacls`). رفع در حین کار: اسکنر ابتدا فایل `.env.production` را نمی‌دید (پسوند نامتعارف) — با تست پیدا و اصلاح شد.
+- تست: `test/secrets.test.js` (۲۸ تست جدید، شامل اجرای واقعی `createApp` در production در پروسه‌ی جدا و ساخت zip از خود پروژه). ⚠️ `server.js` اکنون یک `require` و یک فراخوانی جدید دارد (CRLF حفظ شد).
+
 ### ۲-الف — هدرهای امنیتی، کوکی، CSRF، ابطال نشست
 - **هدرها**: `src/middleware/securityHeaders.js` — `nosniff`، `Referrer-Policy: strict-origin`، `Permissions-Policy`، HSTS (فقط روی TLS)، حذف `X-Powered-By`، `no-store` و CSP بسته برای `/api`. CSP برای پنل و Mini App با اجازه‌ی تلگرام (اسکریپت‌ها، iframe ویجت، `frame-ancestors`)؛ پیش‌فرض `report-only` (`CSP_MODE`) با `POST /api/csp-report`.
 - **کوکی نشست**: `SameSite=Strict` (قبلاً Lax؛ `ADMIN_COOKIE_SAMESITE=lax` برای بازگشت)، `Secure` روی TLS/production، ساخت یک‌جا در `src/utils/sessionCookie.js`.

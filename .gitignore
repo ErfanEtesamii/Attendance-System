@@ -8,3 +8,15 @@ npm-debug.log*
 
 .ssl/
 data/backups/
+
+# بخش ۲-ب۱: رازها و خروجی‌های محلی هرگز commit نشوند
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+*.log
+logs/
+dist/
+data/attachments/

@@ -85,3 +85,6 @@
 ## ۵. نکته برای migrationهای بعدی
 
 ستون `users.session_version` (migration ۰۰۲) باید در هر `rebuildTable` روی `users` (مثلاً افزودن نقش `hr` در بخش ۴) **در تعریف جدید جدول بیاید**، وگرنه با بازسازی جدول حذف می‌شود و ورود همه خراب می‌شود. تست `rebuildTable` در `test/migrations.test.js` این را با ستون موجود نشان می‌دهد.
+
+## ۶. رازها و بسته‌ی تحویل
+مدیریت رازها (`npm run package`، `npm run secret-scan`، کنترل راه‌اندازی، `icacls`، و چک‌لیست «اگر راز لو رفت») در [`SECRETS.md`](SECRETS.md) است. چرخش `ADMIN_SESSION_SECRET` برای ابطال اضطراری همان‌جا و در بخش ۴ همین سند آمده است.
