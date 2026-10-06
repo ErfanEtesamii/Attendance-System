@@ -89,7 +89,7 @@ function getHistoryCounts(id) {
 // حذف دائمی کاربر همراه با سوابقش (تردد، استراحت، مرخصی، اعتراض). در یک تراکنش انجام می‌شود.
 // - زیرمجموعه‌های او بدون سرپرست می‌شوند (manager_id = NULL)
 // - درخواست‌های مرخصی دیگران که او تأییدشان کرده باقی می‌ماند (approver_id = NULL)
-// - رکوردهای audit_log حذف نمی‌شوند؛ فقط ارتباطشان با کاربر قطع می‌شود (user_id = NULL)
+// - رکوردهای audit_log (و audit_log_archive، S2-6a) حذف نمی‌شوند؛ فقط ارتباطشان با کاربر قطع می‌شود (user_id = NULL)
 function deleteUserPermanently(id) {
   const db = getDb();
   const tx = db.transaction((userId) => {
@@ -105,6 +105,7 @@ function deleteUserPermanently(id) {
     db.prepare('DELETE FROM attendance_records WHERE user_id = ?').run(userId);
     db.prepare('DELETE FROM leave_requests WHERE user_id = ?').run(userId);
     db.prepare('UPDATE audit_log SET user_id = NULL WHERE user_id = ?').run(userId);
+    db.prepare('UPDATE audit_log_archive SET user_id = NULL WHERE user_id = ?').run(userId);
     db.prepare('DELETE FROM users WHERE id = ?').run(userId);
   });
   tx(id);

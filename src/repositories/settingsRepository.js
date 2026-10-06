@@ -14,10 +14,22 @@ const KEY_MAP = {
   repeatedLatenessThreshold: 'repeated_lateness_threshold',
   // S2-4e-3: مسدودکردن ثبت وقتی device_id همان روز برای کاربر دیگری استفاده شده (فقط قاعده‌ی الف). پیش‌فرض: خاموش
   blockOnSharedDevice: 'block_on_shared_device',
+  // S2-6a: سیاست آرشیو audit (فقط تنظیم؛ Job آرشیو در S2-6b/6c). نگهداری به ماه؛ آرشیو پیش‌فرض خاموش
+  auditRetentionMonths: 'audit_retention_months',
+  auditArchiveEnabled: 'audit_archive_enabled',
 };
 
 // کلیدهای بولی: در DB به‌صورت '1'/'0' ذخیره می‌شوند و در API به‌صورت true/false برمی‌گردند
-const BOOLEAN_KEYS = new Set(['blockOnSharedDevice']);
+const BOOLEAN_KEYS = new Set(['blockOnSharedDevice', 'auditArchiveEnabled']);
+
+// کلیدهای عددی با بازه‌ی مجاز (عدد صحیح). مقدار خارج از بازه/نامعتبر هنگام ذخیره نادیده گرفته می‌شود و هنگام خواندن پیش‌فرض برمی‌گردد.
+const INT_RANGES = { auditRetentionMonths: [1, 240] };
+
+function parseIntInRange(value, [min, max]) {
+  if (typeof value === 'string' && !/^\s*\d+\s*$/.test(value)) return null;
+  const n = typeof value === 'number' ? value : parseInt(value, 10);
+  return Number.isInteger(n) && n >= min && n <= max ? n : null;
+}
 
 function parseBool(value) {
   if (value === true || value === 1 || value === '1' || value === 'true') return true;
@@ -32,6 +44,8 @@ const DEFAULTS = () => ({
   checkoutReminderMinutesBefore: config.checkoutReminderMinutesBefore,
   repeatedLatenessThreshold: config.repeatedLatenessThreshold,
   blockOnSharedDevice: false,
+  auditRetentionMonths: 24,
+  auditArchiveEnabled: false,
 });
 
 function getAll() {
@@ -49,6 +63,9 @@ function getAll() {
       result[camelKey] = defaults[camelKey];
     } else if (BOOLEAN_KEYS.has(camelKey)) {
       result[camelKey] = parseBool(raw) === true;
+    } else if (INT_RANGES[camelKey]) {
+      const n = parseIntInRange(raw, INT_RANGES[camelKey]);
+      result[camelKey] = n === null ? defaults[camelKey] : n;
     } else if (camelKey === 'workDayStart' || camelKey === 'workDayEnd') {
       result[camelKey] = raw;
     } else {
@@ -74,6 +91,11 @@ function update(fields) {
       upsert.run(dbKey, flag ? '1' : '0');
       return;
     }
+    if (INT_RANGES[camelKey]) {
+      const n = parseIntInRange(value, INT_RANGES[camelKey]);
+      if (n !== null) upsert.run(dbKey, String(n));
+      return;
+    }
     upsert.run(dbKey, String(value));
   });
   return getAll();
@@ -83,6 +105,18 @@ function update(fields) {
 function isBlockOnSharedDeviceEnabled() {
   const row = getDb().prepare('SELECT value FROM settings WHERE key = ?').get(KEY_MAP.blockOnSharedDevice);
   return row ? parseBool(row.value) === true : false;
+}
+
+// خواندن سبکِ تنظیمات آرشیو audit برای Jobهای S2-6b/6c. نبودن/خرابی مقدار ⇒ آرشیو خاموش و ۲۴ ماه (محافظه‌کارانه)
+function isAuditArchiveEnabled() {
+  const row = getDb().prepare('SELECT value FROM settings WHERE key = ?').get(KEY_MAP.auditArchiveEnabled);
+  return row ? parseBool(row.value) === true : false;
+}
+
+function getAuditRetentionMonths() {
+  const row = getDb().prepare('SELECT value FROM settings WHERE key = ?').get(KEY_MAP.auditRetentionMonths);
+  const n = row ? parseIntInRange(row.value, INT_RANGES.auditRetentionMonths) : null;
+  return n === null ? DEFAULTS().auditRetentionMonths : n;
 }
 
 // ---------- epoch سراسری نشست‌ها (بخش ۲-الف) ----------
@@ -109,4 +143,6 @@ function bumpGlobalSessionEpoch() {
   return tx();
 }
 
-module.exports = { getAll, update, isBlockOnSharedDeviceEnabled, getGlobalSessionEpoch, bumpGlobalSessionEpoch };
+module.exports = {
+  getAll, update, isBlockOnSharedDeviceEnabled, isAuditArchiveEnabled, getAuditRetentionMonths, getGlobalSessionEpoch, bumpGlobalSessionEpoch,
+};
