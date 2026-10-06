@@ -4,6 +4,14 @@
 
 ## [Unreleased] — بخش ۲ (امنیت، پایداری و عملیات)
 
+### S2-7b — Job ماهانه‌ی نگهداری دیتابیس (cleanup + ANALYZE/optimize + VACUUM)
+- **`src/bot/scheduler/dbMaintenance.js`** ← `runDbMaintenance()` با ترتیب: ۱) `runCleanup({ dryRun: false })` (S2-7a؛ نگهداری‌ها از تنظیمات) ۲) `ANALYZE` ۳) `PRAGMA optimize` ۴) `VACUUM` + `wal_checkpoint(TRUNCATE)` **فقط اگر فضای دیسک کافی است**. خطای cleanup بقیه‌ی مراحل را متوقف نمی‌کند ولی در پایان Job را «error» می‌کند.
+- **شرط VACUUM**: از چک دیسک `systemHealth.checkDisk()` (اکنون export شده) استفاده می‌شود؛ لازم است فضای آزاد ≥ **۲ × (حجم دیتابیس + WAL) + `MONITOR_DISK_MIN_FREE_MB`** باشد (VACUUM نسخه‌ی کاملی می‌سازد). فضای ناکافی **یا نامعلوم** (statfs در دسترس نیست) ⇒ VACUUM رد و لاگ می‌شود، Job خطا نمی‌دهد و ماه بعد دوباره تلاش می‌کند. تصمیم در تابع خالص `vacuumDecision` است.
+- **`src/repositories/maintenanceRepository.js`** (جدید): `analyze/optimize/vacuum/checkpointTruncate` (SQL فقط اینجا).
+- **زمان‌بندی**: `config.cron.dbMaintenance` (env `CRON_DB_MAINTENANCE`، پیش‌فرض `0 4 2 * *` = روز دوم هر ماه میلادی ۰۴:۰۰، بعد از بک‌آپ ۰۲:۳۰ و آرشیو audit ۰۳:۰۰) با `wrapJob('dbMaintenance', …)` و `cron.validate` (نامعتبر ⇒ فقط لاگ خطا). در `.env.example` مستند شد. ⚠️ VACUUM هنگام اجرا قفل نوشتن می‌گیرد (`busy_timeout` ۵ ثانیه)، برای همین در ساعت کم‌ترافیک است.
+- بدون migration، بدون API/UI، بدون وابستگی جدید.
+- تست: `test/dbMaintenance.test.js` (۴ تست: فرمول و مرز `vacuumDecision`، **فضای ناکافی/نامعلوم ⇒ VACUUM صدا زده نمی‌شود** و Job موفق می‌ماند، ترتیب مراحل + اجرای واقعی (freelist صفر می‌شود، cleanup واقعی ردیف منقضی را حذف می‌کند، users/attendance_records دست‌نخورده، integrity_check ok)، خطای cleanup ⇒ error با اجرای بقیه‌ی مراحل و ثبت cron). `npm test`: ۲۷۲ سبز.
+
 ### S2-7a — سیاست پاک‌سازی جدول‌های فرعی (تابع cleanup؛ هنوز Job نیست)
 - **`src/utils/dataCleanup.js`** ← `runCleanup({ now, dryRun = true, retention, log })`: سه جدول را پاک‌سازی می‌کند و برای هر کدام یک خط لاگ می‌نویسد. **پیش‌فرض dry-run است** (فقط شمارش، چیزی حذف نمی‌شود)؛ حذف واقعی فقط با `dryRun: false` صریح (Job در S2-7b). خطا در یک جدول بقیه را متوقف نمی‌کند و در پایان خطای تجمیعی پرتاب می‌شود.
   - **`job_runs`**: اجراهای تمام‌شده‌ی قدیمی‌تر از نگهداری. **هرگز پاک نمی‌شود:** ردیف `running` و **آخرین ردیفِ هر (job، وضعیت)** (آخرین success/error هر Job مبنای صفحه‌ی سلامت و watchdog است و Jobهای ماهانه نباید گم شوند).

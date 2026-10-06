@@ -131,4 +131,4 @@ function safeJobs(now) {
   }
 }
 
-module.exports = { collect, latestBackup, latestSuspect };
+module.exports = { collect, latestBackup, latestSuspect, checkDisk };

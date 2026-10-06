@@ -13,6 +13,7 @@ const { sendNightlyReview } = require('./nightlyReview');
 const { runWatchdog } = require('./watchdog');
 const { runDailyBackup } = require('./backup');
 const { runAuditArchive } = require('./auditArchive');
+const { runDbMaintenance } = require('./dbMaintenance');
 const { isFirstDayOfJalaliMonth } = require('../../utils/jalali');
 const { wrapJob, runAll } = require('../../utils/jobRunner');
 const jobRunsRepository = require('../../repositories/jobRunsRepository');
@@ -68,6 +69,13 @@ function startSchedulers(bot) {
     console.error(`[scheduler] CRON_AUDIT_ARCHIVE نامعتبر است («${config.cron.auditArchive}»)؛ Job آرشیو audit فعال نشد.`);
   } else {
     cron.schedule(config.cron.auditArchive, wrapJob('auditArchive', () => runAuditArchive()));
+  }
+
+  // نگهداری ماهانه‌ی دیتابیس (S2-7b): cleanup جدول‌های فرعی ← ANALYZE/optimize ← VACUUM (فقط با فضای دیسک کافی)
+  if (!cron.validate(config.cron.dbMaintenance)) {
+    console.error(`[scheduler] CRON_DB_MAINTENANCE نامعتبر است («${config.cron.dbMaintenance}»)؛ Job نگهداری دیتابیس فعال نشد.`);
+  } else {
+    cron.schedule(config.cron.dbMaintenance, wrapJob('dbMaintenance', () => runDbMaintenance()));
   }
 
   // Watchdog: فقط شکست‌هایش در job_runs ثبت می‌شود (هر ۵ دقیقه، موفقیت‌ها ردیف‌های بی‌ارزش زیاد می‌ساختند)

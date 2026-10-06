@@ -153,6 +153,9 @@ const config = {
     dailyBackup: process.env.CRON_DAILY_BACKUP || '30 2 * * *',
     // Job ماهانه‌ی آرشیو audit (S2-6b/6c: خاموش ⇒ dry-run، روشن ⇒ انتقال واقعی)؛ پیش‌فرض روز اول هر ماه میلادی ساعت ۰۳:۰۰ (بعد از بک‌آپ، خارج از ساعت کاری)
     auditArchive: process.env.CRON_AUDIT_ARCHIVE || '0 3 1 * *',
+    // نگهداری ماهانه‌ی دیتابیس (S2-7b: cleanup جدول‌های فرعی + ANALYZE/optimize + VACUUM)؛ پیش‌فرض روز دوم هر ماه میلادی ساعت ۰۴:۰۰
+    // (بعد از بک‌آپ ۰۲:۳۰ و آرشیو audit ۰۳:۰۰، کم‌ترافیک‌ترین ساعت؛ VACUUM قفل نوشتن می‌گیرد)
+    dbMaintenance: process.env.CRON_DB_MAINTENANCE || '0 4 2 * *',
   },
 
   // آرشیو audit (S2-6c): تعداد رکورد در هر تراکنشِ انتقال. مقدار کوچک‌تر ⇒ قفل نوشتن کوتاه‌تر؛ مقدار خراب/خارج از بازه ⇒ ۱۰۰۰
