@@ -4,6 +4,11 @@
 
 ## [Unreleased] — بخش ۲ (امنیت، پایداری و عملیات)
 
+### S2-4b — قاعده‌ی الف: یک device برای دو کاربر در یک روز (تابع خالص)
+- **`src/utils/fraudDetection.js`**: `detectSharedDevice(records)` روی ردیف‌های `attendance_records` (`id, user_id, record_date, check_in_device, check_out_device`) کار می‌کند؛ هر دو device ورود و خروج بررسی می‌شود. اگر یک `device_id` معتبر در یک روز برای ≥۲ کاربر متفاوت دیده شود، یک کاندیدای رویداد با نوع `shared_device` و همان شکل ورودی `suspiciousRepository.create` برمی‌گرداند (`details: {rule:'A', deviceId, userCount}`). تابع خالص است (بدون DB/زمان، ورودی را تغییر نمی‌دهد، خروجی قطعی و مرتب)، ورودی خراب ⇒ `[]`، و device خالی/نامعتبر (بات، ثبت دستی) هرگز نشانه نمی‌سازد.
+- هنوز جایی صدا زده نمی‌شود و چیزی ثبت نمی‌کند (اتصال و block اختیاری در S2-4e). ⚠️ `device_id` قابل جعل است؛ خروجی فقط «نشانه» است.
+- تست: `test/fraudSharedDevice.test.js` (۶ تست: مثبت ساده، مثبت ورود/خروج و سه کاربر، منفی یک کاربر، منفی deviceهای متفاوت/روز متفاوت، منفی device نامعتبر/خالی، ورودی خراب و عدم تغییر ورودی).
+
 ### S2-4a — جدول suspicious_events و ثبت‌کننده (فقط ساختار؛ بدون قاعده‌ی تشخیص)
 - **migration `006_suspicious_events`**: جدول `suspicious_events` (`id, event_type, user_ids JSON, record_ids JSON, event_date, details JSON, status open|reviewed|ignored, reviewed_by, reviewed_at, created_at`) با ایندکس یکتای `(event_type, user_ids, event_date)` برای dedupe و ایندکس `(status, event_date)`. پیش از اعمال، migrator طبق معمول بک‌آپ `pre-migration-*` می‌گیرد.
 - **`src/repositories/suspiciousRepository.js`**: `create({eventType, userIds, recordIds, eventDate, details})` ⇒ `{created, event}`؛ `userIds`/`recordIds` قبل از درج مرتب و یکتا می‌شوند (ترتیب ورودی روی تکراری‌بودن اثر ندارد)؛ مورد تکراری بازنویسی نمی‌شود و رکورد قبلی با `created:false` برمی‌گردد؛ ورودی نامعتبر خطا می‌دهد. `getById` هم هست. هنوز هیچ کدی این را صدا نمی‌زند (اتصال در S2-4e).
