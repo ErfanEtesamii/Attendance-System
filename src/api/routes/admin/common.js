@@ -4,7 +4,8 @@
 const usersRepository = require('../../../repositories/usersRepository');
 const breakRepository = require('../../../repositories/breakRepository');
 const auditRepository = require('../../../repositories/auditRepository');
-const workHours = require('../../../utils/workHours');
+const dayService = require('../../../engine/dayService');
+const { minutesSinceMidnight } = require('../../../utils/time');
 const { todayDateString } = require('../../../utils/serverTime');
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -62,8 +63,8 @@ function userBrief(u) {
 }
 
 // رکورد قدیمی که خروج ندارد (ناقص) نباید ساعت مفیدش تا «الان» کش بیاید - عدد بی‌معنی می‌شود
-function safeSummary(record) {
-  const s = workHours.summarizeRecord(record);
+function safeSummary(record, opts) {
+  const s = dayService.summarizeRecord(record, opts);
   if (record.check_in_time && !record.check_out_time && record.record_date < todayDateString()) {
     s.effectiveMinutes = null;
     s.isOpen = false;
@@ -127,7 +128,17 @@ function minutesToHHMM(mins) {
   return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 }
 
+// ساعت ورود به وقت شرکت (timezone تنظیمات)؛ زمان خراب ⇒ NaN (مثل قبل: میانگین ورود null می‌شود، route نمی‌شکند)
+function checkInMinutesOf(iso, timezone) {
+  try {
+    return minutesSinceMidnight(iso, timezone);
+  } catch (_) {
+    return NaN;
+  }
+}
+
 function aggregateRecords(records) {
+  const context = dayService.loadContext(); // تنظیمات یک‌بار برای کل رکوردها
   const agg = {
     recordCount: records.length,
     presentDays: 0,
@@ -151,7 +162,7 @@ function aggregateRecords(records) {
     if (r.status === 'holiday') agg.holidayDays += 1;
     if (r.status === 'incomplete') agg.incompleteCount += 1;
     if (!r.check_in_time) return;
-    const s = safeSummary(r);
+    const s = safeSummary(r, { context });
     agg.presentDays += 1;
     if (s.effectiveMinutes != null) {
       agg.totalEffective += s.effectiveMinutes;
@@ -166,7 +177,7 @@ function aggregateRecords(records) {
       agg.totalEarlyMinutes += s.earlyLeaveMinutes;
     }
     agg.overtimeMinutes += s.overtimeMinutes;
-    checkInSum += workHours.minutesSinceMidnight(new Date(r.check_in_time));
+    checkInSum += checkInMinutesOf(r.check_in_time, context.timezone);
     checkInN += 1;
   });
   agg.avgEffective = effN ? Math.round(agg.totalEffective / effN) : 0;

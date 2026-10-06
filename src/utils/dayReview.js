@@ -5,7 +5,7 @@
 const attendanceRepository = require('../repositories/attendanceRepository');
 const holidaysRepository = require('../repositories/holidaysRepository');
 const leaveRepository = require('../repositories/leaveRepository');
-const workHours = require('./workHours');
+const dayService = require('../engine/dayService');
 const { todayDateString } = require('./serverTime');
 
 /**
@@ -40,7 +40,7 @@ function reviewDay(allUsers, date) {
     else if (onLeave) state = 'leave';
     else state = 'absent';
 
-    const summary = hasCheckIn ? workHours.summarizeRecord(record) : null;
+    const summary = hasCheckIn ? dayService.summarizeRecord(record) : null;
     const lateMinutes = summary ? summary.lateMinutes : 0;
 
     return {

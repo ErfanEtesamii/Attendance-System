@@ -1,6 +1,7 @@
 const { getRegisteredUser, notRegisteredMessage } = require('../auth');
 const attendanceRepository = require('../../repositories/attendanceRepository');
-const { summarizeRange, formatMinutes } = require('../../utils/workHours');
+const { summarizeRange } = require('../../engine/dayService');
+const { formatMinutes } = require('../../utils/workHours');
 const { todayDateString } = require('../../utils/serverTime');
 const { jalaliMonthToDateRange } = require('../../utils/jalali');
 

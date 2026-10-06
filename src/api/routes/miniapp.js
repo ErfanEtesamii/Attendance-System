@@ -17,7 +17,7 @@ const breakRepository = require('../../repositories/breakRepository');
 const leaveRepository = require('../../repositories/leaveRepository');
 const disputeRepository = require('../../repositories/disputeRepository');
 const auditRepository = require('../../repositories/auditRepository');
-const workHours = require('../../utils/workHours');
+const dayService = require('../../engine/dayService');
 const { extractDeviceInfo } = require('../../utils/deviceInfo');
 const fraudRunner = require('../../utils/fraudRunner');
 const { todayDateString } = require('../../utils/serverTime');
@@ -76,7 +76,7 @@ router.get('/miniapp/today', (req, res) => {
   const record = attendanceRepository.findTodayRecord(req.miniAppUser.id);
   const openBreak = record ? breakRepository.findOpenBreak(record.id) : null;
   const breaks = record ? breakRepository.listByAttendanceRecord(record.id) : [];
-  const summary = record ? workHours.summarizeRecord(record) : null;
+  const summary = record ? dayService.summarizeRecord(record) : null;
   res.json({ record: record || null, openBreak: openBreak || null, breaks, summary });
 });
 
@@ -183,7 +183,7 @@ router.get('/miniapp/history', (req, res) => {
   const from = dateDaysAgo(days);
   const to = todayDateString();
   const records = attendanceRepository.listByUserAndRange(req.miniAppUser.id, from, to);
-  const enriched = records.map((r) => ({ ...r, summary: workHours.summarizeRecord(r) }));
+  const enriched = records.map((r) => ({ ...r, summary: dayService.summarizeRecord(r) }));
   res.json(enriched);
 });
 
@@ -194,7 +194,7 @@ router.get('/miniapp/report', (req, res) => {
   const from = dateDaysAgo(isMonth ? 30 : 7);
   const to = todayDateString();
   const records = attendanceRepository.listByUserAndRange(req.miniAppUser.id, from, to);
-  const summary = workHours.summarizeRange(records);
+  const summary = dayService.summarizeRange(records);
   res.json({ period: isMonth ? 'month' : 'week', from, to, ...summary });
 });
 

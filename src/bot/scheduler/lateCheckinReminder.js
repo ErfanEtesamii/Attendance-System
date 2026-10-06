@@ -1,6 +1,5 @@
 // یادآوری ورود دیرهنگام + هشدار «تأخیر مکرر» به مدیر مستقیم.
-// ⚠️ چون موتور محاسبه رسمی (فاز ۵) هنوز ساخته نشده، اینجا خودمان با workHours.js
-// به‌صورت سبک تشخیص می‌دهیم که آیا کارمند دیر آمده یا اصلاً نیامده.
+// محاسبه‌ی روز از src/engine/dayService.js می‌آید (S3-2c)؛ اینجا فقط تصمیم یادآوری/هشدار گرفته می‌شود.
 
 const usersRepository = require('../../repositories/usersRepository');
 const attendanceRepository = require('../../repositories/attendanceRepository');
@@ -9,7 +8,9 @@ const holidaysRepository = require('../../repositories/holidaysRepository');
 const settingsRepository = require('../../repositories/settingsRepository');
 const auditRepository = require('../../repositories/auditRepository');
 const { todayDateString } = require('../../utils/serverTime');
-const { timeStringToMinutes, minutesSinceMidnight, summarizeRange } = require('../../utils/workHours');
+const { hhmmToMinutes } = require('../../engine/computeDay');
+const { summarizeRange } = require('../../engine/dayService');
+const { minutesSinceMidnight } = require('../../utils/time');
 
 // جلوگیری از ارسال چندباره یادآوری برای یک کارمند در همان روز (فقط در حافظه)
 const remindedToday = new Set(); // key: `${date}:${userId}`
@@ -24,8 +25,8 @@ function daysAgoDateString(days) {
 async function checkLateCheckins(bot) {
   const now = new Date();
   const settings = settingsRepository.getAll();
-  const graceLine = timeStringToMinutes(settings.workDayStart) + settings.lateCheckinGraceMinutes;
-  if (minutesSinceMidnight(now) < graceLine) return;
+  const graceLine = hhmmToMinutes(settings.workDayStart, 'workDayStart') + settings.lateCheckinGraceMinutes;
+  if (minutesSinceMidnight(now, settings.timezone) < graceLine) return; // ساعت دیواری شرکت، نه ساعت سیستم
 
   const today = todayDateString();
   if (holidaysRepository.isHoliday(today)) return;

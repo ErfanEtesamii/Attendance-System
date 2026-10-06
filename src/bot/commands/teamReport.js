@@ -1,7 +1,8 @@
 const { getRegisteredUser, notRegisteredMessage, hasRole } = require('../auth');
 const usersRepository = require('../../repositories/usersRepository');
 const attendanceRepository = require('../../repositories/attendanceRepository');
-const { summarizeRange, formatMinutes } = require('../../utils/workHours');
+const { summarizeRange } = require('../../engine/dayService');
+const { formatMinutes } = require('../../utils/workHours');
 const { todayDateString } = require('../../utils/serverTime');
 
 function daysAgoDateString(days) {

@@ -95,7 +95,7 @@ describe('computeDay (S3-2b)', () => {
     const { makeUser } = require('./helpers/factories');
     const settingsRepo = require('../src/repositories/settingsRepository');
     const breakRepo = require('../src/repositories/breakRepository');
-    const workHours = require('../src/utils/workHours');
+    const workHours = require('./fixtures/legacyWorkHours'); // منطق قدیمی منجمد‌شده (workHours فعلی wrapper موتور جدید است)
 
     const originalTz = process.env.TZ;
     const RealDate = Date;

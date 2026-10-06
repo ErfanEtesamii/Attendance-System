@@ -11,7 +11,7 @@ const leaveRepository = require('../../../repositories/leaveRepository');
 const holidaysRepository = require('../../../repositories/holidaysRepository');
 const disputeRepository = require('../../../repositories/disputeRepository');
 const auditRepository = require('../../../repositories/auditRepository');
-const workHours = require('../../../utils/workHours');
+const dayService = require('../../../engine/dayService');
 const { todayDateString } = require('../../../utils/serverTime');
 const { sendMessage } = require('../../../bot/notifier');
 const { sendCsv } = require('../../../utils/csv');
@@ -127,8 +127,8 @@ router.get('/admin/users/:id', (req, res) => {
   fromDate.setDate(fromDate.getDate() - 30);
   const from = fromDate.toISOString().slice(0, 10);
   const records = attendanceRepository.listByUserAndRange(user.id, from, to);
-  const enrichedRecords = records.map((r) => ({ ...r, summary: workHours.summarizeRecord(r) }));
-  const rangeSummary = workHours.summarizeRange(records);
+  const enrichedRecords = records.map((r) => ({ ...r, summary: dayService.summarizeRecord(r) }));
+  const rangeSummary = dayService.summarizeRange(records);
 
   res.json({
     id: user.id,

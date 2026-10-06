@@ -3,7 +3,8 @@ const attendanceRepository = require('../../repositories/attendanceRepository');
 const breakRepository = require('../../repositories/breakRepository');
 const holidaysRepository = require('../../repositories/holidaysRepository');
 const leaveRepository = require('../../repositories/leaveRepository');
-const { summarizeRecord, formatMinutes } = require('../../utils/workHours');
+const { summarizeRecord } = require('../../engine/dayService');
+const { formatMinutes } = require('../../utils/workHours');
 const { todayDateString } = require('../../utils/serverTime');
 
 function formatTime(isoString) {

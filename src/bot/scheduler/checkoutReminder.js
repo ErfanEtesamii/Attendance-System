@@ -2,16 +2,17 @@ const usersRepository = require('../../repositories/usersRepository');
 const attendanceRepository = require('../../repositories/attendanceRepository');
 const settingsRepository = require('../../repositories/settingsRepository');
 const { todayDateString } = require('../../utils/serverTime');
-const { timeStringToMinutes, minutesSinceMidnight } = require('../../utils/workHours');
+const { hhmmToMinutes } = require('../../engine/computeDay');
+const { minutesSinceMidnight } = require('../../utils/time');
 
 const remindedToday = new Set(); // key: `${date}:${userId}`
 
 async function checkCheckoutReminders(bot) {
   const now = new Date();
   const settings = settingsRepository.getAll();
-  const workEndMinutes = timeStringToMinutes(settings.workDayEnd);
+  const workEndMinutes = hhmmToMinutes(settings.workDayEnd, 'workDayEnd');
   const reminderLine = workEndMinutes - settings.checkoutReminderMinutesBefore;
-  const nowMinutes = minutesSinceMidnight(now);
+  const nowMinutes = minutesSinceMidnight(now, settings.timezone); // ساعت دیواری شرکت، نه ساعت سیستم
   if (nowMinutes < reminderLine || nowMinutes > workEndMinutes) return;
 
   const today = todayDateString();

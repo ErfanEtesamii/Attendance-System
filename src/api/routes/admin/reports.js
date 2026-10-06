@@ -7,7 +7,7 @@ const router = express.Router();
 const usersRepository = require('../../../repositories/usersRepository');
 const attendanceRepository = require('../../../repositories/attendanceRepository');
 const auditRepository = require('../../../repositories/auditRepository');
-const workHours = require('../../../utils/workHours');
+const dayService = require('../../../engine/dayService');
 const { sendCsv } = require('../../../utils/csv');
 const { scopedUserIds, visibleUsers, shiftDate, parseRange, userBrief, safeSummary, aggregateRecords } = require('./common');
 
@@ -28,7 +28,7 @@ router.get('/admin/reports/export', (req, res) => {
 
   const rows = team.map((member) => {
     const records = attendanceRepository.listByUserAndRange(member.id, from, to);
-    const summary = workHours.summarizeRange(records);
+    const summary = dayService.summarizeRange(records);
     return [
       member.full_name,
       member.personnel_code || '',

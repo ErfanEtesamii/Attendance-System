@@ -2,7 +2,8 @@ const usersRepository = require('../../repositories/usersRepository');
 const attendanceRepository = require('../../repositories/attendanceRepository');
 const holidaysRepository = require('../../repositories/holidaysRepository');
 const leaveRepository = require('../../repositories/leaveRepository');
-const { summarizeRange, summarizeRecord, formatMinutes } = require('../../utils/workHours');
+const { summarizeRange, summarizeRecord } = require('../../engine/dayService');
+const { formatMinutes } = require('../../utils/workHours');
 const { todayDateString } = require('../../utils/serverTime');
 const { jalaliMonthRange } = require('../../utils/jalali');
 

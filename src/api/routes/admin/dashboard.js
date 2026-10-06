@@ -12,7 +12,7 @@ const holidaysRepository = require('../../../repositories/holidaysRepository');
 const settingsRepository = require('../../../repositories/settingsRepository');
 const disputeRepository = require('../../../repositories/disputeRepository');
 const auditRepository = require('../../../repositories/auditRepository');
-const workHours = require('../../../utils/workHours');
+const dayService = require('../../../engine/dayService');
 const dayReview = require('../../../utils/dayReview');
 const { todayDateString, nowIso } = require('../../../utils/serverTime');
 const { DATE_RE, scopedUserIds, visibleUsers, shiftDate, userBrief, safeSummary, makeUserMap, classifyToday } = require('./common');
@@ -82,7 +82,7 @@ router.get('/admin/overview', (req, res) => {
     else if (key === 'absent') totals.absent += 1;
     else if (key === 'leave') totals.onLeave += 1;
     else if (key === 'incomplete') totals.incomplete += 1;
-    if (record && record.check_in_time && workHours.summarizeRecord(record).lateMinutes > 0) {
+    if (record && record.check_in_time && dayService.summarizeRecord(record).lateMinutes > 0) {
       totals.late += 1;
     }
   });
@@ -128,7 +128,7 @@ router.get('/admin/overview', (req, res) => {
   const lateBy = new Map();
   monthRecords.forEach((r) => {
     if (!r.check_in_time) return;
-    const s = workHours.summarizeRecord(r);
+    const s = dayService.summarizeRecord(r);
     if (s.lateMinutes > 0) {
       const cur = lateBy.get(r.user_id) || { count: 0, minutes: 0 };
       cur.count += 1;
@@ -188,7 +188,7 @@ router.get('/admin/live', (req, res) => {
       breaks,
       openBreak,
       breakMinutes: record ? breakRepository.totalBreakMinutes(record.id) : 0,
-      summary: record ? workHours.summarizeRecord(record) : null,
+      summary: record ? dayService.summarizeRecord(record) : null,
     };
   });
 
