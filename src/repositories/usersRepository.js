@@ -69,6 +69,14 @@ function revokeSessions(id) {
   return findById(id).session_version;
 }
 
+// انتساب شیفت (S3-6a): shiftId = عدد یا null (بدون شیفت). وجود شیفت را route چک می‌کند؛ FK هم جلوی شیفت ناموجود را می‌گیرد.
+// نسخه‌ی نشست (session_version) عمداً تغییر نمی‌کند: انتساب شیفت دسترسی کاربر را عوض نمی‌کند. کاربر نبود ⇒ null.
+function setUserShift(id, shiftId) {
+  const db = getDb();
+  const info = db.prepare("UPDATE users SET shift_id = ?, updated_at = datetime('now') WHERE id = ?").run(shiftId, id);
+  return info.changes === 0 ? null : findById(id);
+}
+
 function deactivateUser(id) {
   return updateUser(id, { is_active: 0 });
 }
@@ -119,6 +127,7 @@ module.exports = {
   updateUser,
   deactivateUser,
   revokeSessions,
+  setUserShift,
   getHistoryCounts,
   deleteUserPermanently,
 };

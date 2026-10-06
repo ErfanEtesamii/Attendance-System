@@ -60,6 +60,7 @@ describe('ماتریس نقش × route (/api/admin/*)', { skip: hasDeps ? false 
       ['GET', '/api/admin/audit-log'], ['GET', '/api/admin/system'], ['GET', '/api/admin/system/status'], ['POST', '/api/admin/broadcast'],
       ['GET', '/api/admin/overview'], ['GET', '/api/admin/attendance'], ['GET', '/api/admin/disputes'],
       ['GET', '/api/admin/suspicious'], ['POST', '/api/admin/suspicious/1/review'],
+      ['GET', '/api/admin/shifts'], ['POST', '/api/admin/shifts'], ['PATCH', '/api/admin/shifts/1'], ['DELETE', '/api/admin/shifts/1'], ['PUT', '/api/admin/users/1/shift'],
     ];
     for (const [m, u] of urls) assert.equal((await hit('none', m, u)).status, 401, `${m} ${u}`);
   });
@@ -88,6 +89,7 @@ describe('ماتریس نقش × route (/api/admin/*)', { skip: hasDeps ? false 
       ['GET', '/api/admin/users'], ['POST', '/api/admin/users'], ['GET', '/api/admin/settings'],
       ['GET', '/api/admin/audit-log'], ['GET', '/api/admin/system'], ['GET', '/api/admin/dashboard'],
       ['POST', '/api/admin/broadcast'], ['GET', '/api/admin/suspicious'], ['POST', '/api/admin/suspicious/1/review'],
+      ['GET', '/api/admin/shifts'], ['PUT', '/api/admin/users/1/shift'],
     ]) {
       assert.equal((await hit('employee', m, u)).status, 403, `${m} ${u}`);
     }

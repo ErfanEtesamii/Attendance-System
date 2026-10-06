@@ -43,7 +43,7 @@ function snapshot(db) {
   for (const t of userTables(db).filter((n) => !OPERATIONAL.includes(n))) {
     out[t] = db.prepare(`SELECT * FROM "${t}" ORDER BY rowid`).all().map((r) => {
       const row = { ...r };
-      if (t === 'users') delete row.session_version;
+      if (t === 'users') { delete row.session_version; delete row.shift_id; } // shift_id: migration ۰۰۸ (S3-6a)
       // ستون‌های device/UA (migration ۰۰۵، S2-3) جدیدند و روی رکوردهای قدیمی NULL می‌مانند
       if (t === 'attendance_records') for (const c of ['check_in_device', 'check_out_device', 'check_in_ua', 'check_out_ua']) delete row[c];
       return row;
@@ -241,7 +241,8 @@ describe('rebuildTable — تغییر CHECK روی جدول مرجع‌شده', 
     is_active INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    session_version INTEGER NOT NULL DEFAULT 0
+    session_version INTEGER NOT NULL DEFAULT 0,
+    shift_id INTEGER -- migration ۰۰۸ (S3-6a)؛ بدون FK چون این fixture جدول work_shifts ندارد
   )`;
 
   function migrationSource(foreignKeysLine) {
@@ -337,7 +338,7 @@ describe('migration 002 — session_version', () => {
     assert.equal(usersAfter.length, usersBefore.length);
     usersAfter.forEach((u, i) => {
       assert.equal(u.session_version, 0);
-      const { session_version: _sv, ...rest } = u;
+      const { session_version: _sv, shift_id: _shift, ...rest } = u; // shift_id: migration ۰۰۸ (S3-6a)
       assert.deepEqual(rest, usersBefore[i]);
     });
   });

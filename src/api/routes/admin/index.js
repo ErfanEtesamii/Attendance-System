@@ -21,6 +21,7 @@ router.use(require('./disputes'));
 router.use(require('./overtime'));
 router.use(require('./reports'));
 router.use(require('./settings'));
+router.use(require('./shifts'));
 router.use(require('./audit'));
 router.use(require('./suspicious'));
 router.use(require('./system'));
