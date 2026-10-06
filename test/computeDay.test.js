@@ -78,10 +78,11 @@ describe('computeDay (S3-2b)', () => {
       assert.throws(() => computeDay({ ...base, settings: bad }), RangeError, JSON.stringify(bad));
     }
     assert.throws(() => computeDay({ ...base, timezone: 'Mars/Base' }), RangeError);
-    assert.throws(() => computeDay({ ...base, record: { check_in_time: 'garbage' } }), RangeError);
-    assert.throws(() => computeDay({ ...base, record: { check_in_time: at('2026-10-06', '08:00'), check_out_time: 'garbage' } }), RangeError);
+    // زمان خراب رکورد/استراحت = داده‌ی خراب ⇒ پرچم invalid_time نه exception (S3-4b)
+    assert.deepEqual(computeDay({ ...base, record: { check_in_time: 'garbage' } }).flags, ['invalid_time']);
+    assert.deepEqual(computeDay({ ...base, record: { check_in_time: at('2026-10-06', '08:00'), check_out_time: 'garbage' } }).flags, ['invalid_time']);
     assert.throws(() => computeDay({ ...base, now: 'garbage' }), RangeError);
-    assert.throws(() => computeDay({ ...base, breaks: [{ start_time: 'x', end_time: at('2026-10-06', '12:00') }] }), RangeError);
+    assert.deepEqual(computeDay({ ...base, breaks: [{ start_time: 'x', end_time: at('2026-10-06', '12:00') }] }).flags, ['invalid_time']);
 
     // خالص: با require فقط این ماژول، هیچ repository/db/config بارگذاری نمی‌شود
     const root = path.join(__dirname, '..');

@@ -47,7 +47,10 @@ function emptySummary() {
 // لاگ می‌شود و خلاصه‌ی خالی برمی‌گردد (تحمل کامل داده‌ی خراب با پرچم‌ها در S3-4b). خطاهای دیگر پرتاب می‌شوند.
 function summarizeRecord(record, opts = {}) {
   try {
-    return toLegacySummary(computeRecordDay(record, opts));
+    const day = computeRecordDay(record, opts);
+    // S3-4b: زمان خراب دیگر exception نیست و با پرچم invalid_time می‌آید؛ مثل قبل لاگ می‌شود و خلاصه‌ی خالی/جزئی برمی‌گردد
+    if (day.flags.includes('invalid_time')) console.error(`[dayService] رکورد ${record && record.id} داده‌ی زمانی نامعتبر دارد (پرچم invalid_time).`);
+    return toLegacySummary(day);
   } catch (err) {
     if (!(err instanceof RangeError)) throw err;
     console.error(`[dayService] رکورد ${record && record.id} داده‌ی زمانی نامعتبر دارد؛ خلاصه‌ی خالی برگردانده شد:`, err.message);

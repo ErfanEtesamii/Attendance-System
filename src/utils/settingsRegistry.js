@@ -95,6 +95,9 @@ def('earlyGraceMinutes', 'early_grace_minutes', 'number', { group: 'workHours', 
 // S3-4a: استراحت‌ها (هر دو پیش‌فرض ۰ = خاموش ⇒ رفتار قبلی)
 def('maxLunchMinutes', 'max_lunch_minutes', 'number', { group: 'workHours', min: 0, max: 480, default: 0, description: 'حداکثر ناهار مجاز در روز (دقیقه)؛ مازاد ناهار ثبت‌شده به‌صورت «مازاد استراحت» گزارش می‌شود و همچنان از ساعت مفید کم می‌شود (۰ = بدون سقف)' });
 def('fixedLunchDeductMinutes', 'fixed_lunch_deduct_minutes', 'number', { group: 'workHours', min: 0, max: 480, default: 0, description: 'کسر ثابت ناهار (دقیقه) از ساعت مفید روزهای بسته‌شده‌ای که هیچ ناهاری ثبت نشده (۰ = خاموش)؛ استراحت کوتاه جای ناهار حساب نمی‌شود' });
+// S3-4b: آستانه‌ی پرچم‌ها (فقط گزارش؛ عددی را عوض نمی‌کنند)
+def('longOpenBreakMinutes', 'long_open_break_minutes', 'number', { group: 'workHours', min: 1, max: 720, default: 120, description: 'آستانه‌ی پرچم «استراحت بسته‌نشده» (دقیقه): استراحتی که پایان نخورده و بیش از این مدت طول کشیده پرچم می‌شود' });
+def('outsideShiftMarginMinutes', 'outside_shift_margin_minutes', 'number', { group: 'workHours', min: 0, max: 720, default: 120, description: 'حاشیه‌ی مجاز (دقیقه) ورود/خروج پیش از شروع یا پس از پایان کار؛ بیرون از آن پرچم «خارج از شیفت» می‌خورد (۷۲۰ = عملاً خاموش)' });
 // تأخیر و یادآوری
 def('lateCheckinGraceMinutes', 'late_checkin_grace_minutes', 'number', { group: 'reminders', min: 0, max: 720, default: () => config.lateCheckinGraceMinutes, fallback: 15, description: 'مهلت تأخیر ورود (دقیقه) پس از ساعت شروع، پیش از یادآوری ورود' });
 def('checkoutReminderMinutesBefore', 'checkout_reminder_minutes_before', 'number', { group: 'reminders', min: 0, max: 720, default: () => config.checkoutReminderMinutesBefore, fallback: 15, description: 'یادآوری ثبت خروج، این‌قدر دقیقه پیش از پایان کار' });

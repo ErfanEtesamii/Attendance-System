@@ -95,7 +95,7 @@ describe('dayService (S3-2c)', () => {
       console.error = realError;
     }
     assert.ok(logged.length >= 1, 'داده‌ی خراب باید لاگ شود');
-    assert.throws(() => dayService.computeRecordDay(addRecord({ in: 'not-a-date' })), RangeError, 'API کامل همچنان سخت‌گیر است');
+    assert.deepEqual(dayService.computeRecordDay(addRecord({ in: 'not-a-date' })).flags, ['invalid_time'], 'API کامل: پرچم، نه exception (S3-4b)');
   });
 
   test('workHours wrapper به dayService ارجاع می‌دهد؛ هیچ مصرف‌کننده‌ای در src محاسبه‌ی روز را از workHours نمی‌گیرد (فقط formatMinutes)', () => {
