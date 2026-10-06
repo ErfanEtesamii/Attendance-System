@@ -9,6 +9,8 @@
 const config = require('../config');
 const attendanceRepository = require('../repositories/attendanceRepository');
 const suspiciousRepository = require('../repositories/suspiciousRepository');
+const settingsRepository = require('../repositories/settingsRepository');
+const { normalizeDeviceId } = require('./deviceInfo');
 const { todayDateString } = require('./serverTime');
 const fraud = require('./fraudDetection');
 
@@ -124,4 +126,51 @@ function runFraudChecksSafe(options) {
   }
 }
 
-module.exports = { runFraudChecks, runFraudChecksSafe, isValidDate, shiftDate };
+/**
+ * بلوک اختیاری (S2-4e-3): آیا این ثبت باید رد شود؟ فقط قاعده‌ی الف (یک device برای کاربر دیگر در همان روز)
+ * و فقط وقتی تنظیم `blockOnSharedDevice` روشن است (پیش‌فرض خاموش). فراخواننده باید قبل از نوشتن رکورد صدا بزند.
+ * ضدخطا و fail-open: هر خطا/تنظیم خراب/device نامعتبر یا خالی ⇒ { blocked: false } تا ثبت هرگز به‌خاطر تشخیص نشکند.
+ * @returns {{blocked: boolean, event?: object, otherUserIds?: number[], date?: string, deviceId?: string}}
+ */
+function evaluateSharedDeviceBlock({ userId, deviceId, date } = {}) {
+  const none = { blocked: false };
+  try {
+    if (!settingsRepository.isBlockOnSharedDeviceEnabled()) return none;
+    const device = normalizeDeviceId(deviceId);
+    const day = date !== undefined ? date : todayDateString();
+    if (!device || !Number.isInteger(userId) || !isValidDate(day)) return none;
+    // همان قاعده‌ی خالص الف، روی ردیف‌های امروز + ثبتِ فرضیِ همین درخواست
+    const probe = { id: null, user_id: userId, record_date: day, check_in_device: device, check_out_device: null };
+    const records = attendanceRepository.listForFraud(day, day);
+    const hit = fraud.detectSharedDevice([...records, probe])
+      .find((e) => e.details.deviceId === device && e.userIds.includes(userId));
+    if (!hit) return none;
+    return { blocked: true, event: hit, otherUserIds: hit.userIds.filter((id) => id !== userId), date: day, deviceId: device };
+  } catch (err) {
+    console.error('[fraud] خطا در ارزیابی بلوک (نادیده گرفته شد، ثبت ادامه می‌یابد):', err && err.message ? err.message : err);
+    return none;
+  }
+}
+
+/**
+ * ثبت «نشانه» برای تلاشِ ردشده (رکوردی ساخته نشده، پس runFraudChecks آن را نمی‌بیند). ضدخطا؛ dedupe با repository.
+ * @param {{event: object, date: string}} block خروجی evaluateSharedDeviceBlock با blocked=true
+ * @param {'check_in'|'check_out'} action
+ */
+function recordBlockedAttempt(block, action) {
+  try {
+    const { event, date } = block;
+    return suspiciousRepository.create({
+      eventType: event.eventType,
+      userIds: event.userIds,
+      recordIds: event.recordIds,
+      eventDate: date,
+      details: { ...event.details, blocked: true, blockedAction: action },
+    });
+  } catch (err) {
+    console.error('[fraud] ثبت نشانه‌ی تلاش ردشده ناموفق بود (نادیده گرفته شد):', err && err.message ? err.message : err);
+    return null;
+  }
+}
+
+module.exports = { runFraudChecks, runFraudChecksSafe, evaluateSharedDeviceBlock, recordBlockedAttempt, isValidDate, shiftDate };

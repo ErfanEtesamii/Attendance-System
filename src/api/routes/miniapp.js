@@ -80,11 +80,37 @@ router.get('/miniapp/today', (req, res) => {
   res.json({ record: record || null, openBreak: openBreak || null, breaks, summary });
 });
 
+// بلوک اختیاری device مشترک (S2-4e-3؛ پیش‌فرض خاموش، فقط قاعده‌ی الف). اگر ثبت رد شود پاسخ 403 همین‌جا
+// فرستاده و true برمی‌گردد. هر خطای داخلی ⇒ false (fail-open): تشخیص هرگز ثبت تردد را نمی‌شکند.
+function rejectIfSharedDeviceBlocked(req, res, action) {
+  try {
+    const { deviceId } = extractDeviceInfo(req);
+    const block = fraudRunner.evaluateSharedDeviceBlock({ userId: req.miniAppUser.id, deviceId, date: todayDateString() });
+    if (!block.blocked) return false;
+    fraudRunner.recordBlockedAttempt(block, action);
+    auditRepository.logEvent({
+      userId: req.miniAppUser.id,
+      action: `${action}_blocked`,
+      ipAddress: req.ip,
+      details: { source: 'miniapp', reason: 'shared_device', rule: 'A', deviceId: block.deviceId, otherUserIds: block.otherUserIds },
+    });
+    res.status(403).json({
+      error: 'ثبت با این دستگاه ممکن نیست، چون امروز با همین دستگاه برای کاربر دیگری ثبت انجام شده است. موضوع را به سرپرست خود اطلاع دهید.',
+      code: 'shared_device_blocked',
+    });
+    return true;
+  } catch (err) {
+    console.error('[fraud] خطا در بلوک device مشترک (نادیده گرفته شد):', err && err.message ? err.message : err);
+    return false;
+  }
+}
+
 router.post('/miniapp/check-in', (req, res) => {
   const existing = attendanceRepository.findTodayRecord(req.miniAppUser.id);
   if (existing) {
     return res.status(400).json({ error: 'ورود امروز قبلاً ثبت شده است.' });
   }
+  if (rejectIfSharedDeviceBlocked(req, res, 'check_in')) return;
   const record = attendanceRepository.recordCheckIn(req.miniAppUser.id, req.ip, extractDeviceInfo(req));
   auditRepository.logEvent({
     userId: req.miniAppUser.id,
@@ -109,6 +135,7 @@ router.post('/miniapp/check-out', (req, res) => {
   if (openBreak) {
     return res.status(400).json({ error: 'ابتدا باید استراحت باز فعلی را پایان دهید.' });
   }
+  if (rejectIfSharedDeviceBlocked(req, res, 'check_out')) return;
   const updated = attendanceRepository.recordCheckOut(record.id, req.ip, extractDeviceInfo(req));
   auditRepository.logEvent({
     userId: req.miniAppUser.id,

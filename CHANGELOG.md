@@ -4,6 +4,13 @@
 
 ## [Unreleased] — بخش ۲ (امنیت، پایداری و عملیات)
 
+### S2-4e-3 — بلوک اختیاری device مشترک (پیش‌فرض خاموش) — پایان S2-4e
+- **تنظیم `blockOnSharedDevice`** (کلید DB: `block_on_shared_device`، بولی، **پیش‌فرض خاموش**): در `settingsRepository` اضافه شد؛ از همان `GET/PATCH /api/admin/settings` (فقط ادمین کل، با audit `settings_updated`) خوانده/عوض می‌شود و مقدار نامعتبر نادیده گرفته می‌شود. ۵ تنظیم قبلی بدون تغییر. فیلدی در فرم پنل ندارد (رجیستری تنظیمات در S3-1؛ UI در S2-5b).
+- **`fraudRunner.evaluateSharedDeviceBlock({ userId, deviceId, date })`**: وقتی تنظیم روشن است همان قاعده‌ی خالص الف را روی ردیف‌های امروز + ثبتِ فرضیِ همین درخواست اجرا می‌کند؛ **فقط قاعده‌ی الف** مسدود می‌کند (ب و ج هرگز). بدون device معتبر ⇒ هرگز مسدود نمی‌شود. **fail-open**: هر خطا (قاعده، تنظیم، DB) ⇒ `blocked:false` و ثبت ادامه می‌یابد.
+- **`/miniapp/check-in` و `/check-out`**: بعد از اعتبارسنجی‌های قبلی و **قبل از نوشتن رکورد**، اگر مسدود شود پاسخ `403 { code: 'shared_device_blocked', error }` با پیام غیرتوهین‌آمیز برمی‌گردد، رکوردی ساخته/تغییر نمی‌کند، در `audit_log` رویداد `check_in_blocked`/`check_out_blocked` (با `otherUserIds` و `deviceId`) ثبت می‌شود و یک مورد `shared_device` با `details.blocked=true` در suspicious_events می‌نشیند (dedupe طبق معمول).
+- ⚠️ خروجِ مسدودشده (کاربری که با device کاربر دیگر خروج بزند) رکورد بدون خروج می‌ماند؛ با دستگاه خودش دوباره می‌تواند خروج بزند، وگرنه `autoCloseIncomplete`/اصلاح دستی ادمین. چون `device_id` در localStorage ساخته می‌شود و قابل جعل/پاک‌شدن است، روشن‌کردن بلوک فقط با آگاهی از این محدودیت توصیه می‌شود؛ پیش‌فرض خاموش مانده.
+- تست: `test/fraudBlock.test.js` (۴ تست: تنظیم و پیش‌فرض، خاموش ⇒ فقط نشانه، روشن ⇒ ورود/خروج/audit/نشانه و استثناها، فقط الف + fail-open). `npm test`: ۲۴۲ سبز.
+
 ### S2-4e-2 — اتصال تشخیص به ثبت ورود/خروج و nightlyReview (بدون block)
 - **`fraudRunner.runFraudChecksSafe(options)`**: پوششِ ضدخطای `runFraudChecks`؛ حتی اگر خودِ runner استثنا بدهد فقط لاگ می‌شود و `{ ok:false, errors }` برمی‌گردد.
 - **`/api/miniapp/check-in` و `/check-out`**: بعد از ثبت، audit و **ارسال پاسخ**، `runFraudChecksSafe({ date })` برای روز همان رکورد اجرا می‌شود؛ پس هیچ تأخیر یا تغییری در پاسخ/ثبت ایجاد نمی‌کند و خطای تشخیص هرگز ثبت را نمی‌شکند. بات و ثبت دستی ادمین از این مسیر نمی‌گذرند (device ندارند) و در جاروی شبانه پوشش داده می‌شوند.

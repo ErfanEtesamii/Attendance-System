@@ -12,7 +12,18 @@ const KEY_MAP = {
   lateCheckinGraceMinutes: 'late_checkin_grace_minutes',
   checkoutReminderMinutesBefore: 'checkout_reminder_minutes_before',
   repeatedLatenessThreshold: 'repeated_lateness_threshold',
+  // S2-4e-3: مسدودکردن ثبت وقتی device_id همان روز برای کاربر دیگری استفاده شده (فقط قاعده‌ی الف). پیش‌فرض: خاموش
+  blockOnSharedDevice: 'block_on_shared_device',
 };
+
+// کلیدهای بولی: در DB به‌صورت '1'/'0' ذخیره می‌شوند و در API به‌صورت true/false برمی‌گردند
+const BOOLEAN_KEYS = new Set(['blockOnSharedDevice']);
+
+function parseBool(value) {
+  if (value === true || value === 1 || value === '1' || value === 'true') return true;
+  if (value === false || value === 0 || value === '0' || value === 'false') return false;
+  return null; // نامعتبر ⇒ نادیده گرفته می‌شود
+}
 
 const DEFAULTS = () => ({
   workDayStart: config.workDayStart,
@@ -20,6 +31,7 @@ const DEFAULTS = () => ({
   lateCheckinGraceMinutes: config.lateCheckinGraceMinutes,
   checkoutReminderMinutesBefore: config.checkoutReminderMinutesBefore,
   repeatedLatenessThreshold: config.repeatedLatenessThreshold,
+  blockOnSharedDevice: false,
 });
 
 function getAll() {
@@ -35,6 +47,8 @@ function getAll() {
     const raw = stored[dbKey];
     if (raw === undefined) {
       result[camelKey] = defaults[camelKey];
+    } else if (BOOLEAN_KEYS.has(camelKey)) {
+      result[camelKey] = parseBool(raw) === true;
     } else if (camelKey === 'workDayStart' || camelKey === 'workDayEnd') {
       result[camelKey] = raw;
     } else {
@@ -54,9 +68,21 @@ function update(fields) {
     const dbKey = KEY_MAP[camelKey];
     const value = fields[camelKey];
     if (!dbKey || value === undefined || value === null || value === '') return;
+    if (BOOLEAN_KEYS.has(camelKey)) {
+      const flag = parseBool(value);
+      if (flag === null) return;
+      upsert.run(dbKey, flag ? '1' : '0');
+      return;
+    }
     upsert.run(dbKey, String(value));
   });
   return getAll();
+}
+
+// خواندن سبکِ فقط یک کلید (برای مسیر ثبت تردد). نبودن/خرابی مقدار ⇒ false (خاموش)
+function isBlockOnSharedDeviceEnabled() {
+  const row = getDb().prepare('SELECT value FROM settings WHERE key = ?').get(KEY_MAP.blockOnSharedDevice);
+  return row ? parseBool(row.value) === true : false;
 }
 
 // ---------- epoch سراسری نشست‌ها (بخش ۲-الف) ----------
@@ -83,4 +109,4 @@ function bumpGlobalSessionEpoch() {
   return tx();
 }
 
-module.exports = { getAll, update, getGlobalSessionEpoch, bumpGlobalSessionEpoch };
+module.exports = { getAll, update, isBlockOnSharedDeviceEnabled, getGlobalSessionEpoch, bumpGlobalSessionEpoch };
