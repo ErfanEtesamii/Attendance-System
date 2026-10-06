@@ -12,8 +12,8 @@ const config = require('../config');
 const usersRepository = require('../repositories/usersRepository');
 const { verifySessionToken } = require('../utils/session');
 const { parseCookies } = require('../utils/cookies');
-
-const SESSION_COOKIE_NAME = 'attendance_admin_session';
+const settingsRepository = require('../repositories/settingsRepository');
+const { SESSION_COOKIE_NAME, buildClearCookie } = require('../utils/sessionCookie');
 
 // فقط خواندنِ داده‌های خود کارمند. (اسکوپ «فقط خودش» در scopedUserIds هر route اعمال می‌شود.)
 const EMPLOYEE_ALLOWED = [
@@ -47,6 +47,17 @@ function requireAdminAuth(req, res, next) {
   }
 
   const user = usersRepository.findById(session.userId);
+
+  // بخش ۲-الف: ابطال نشست. توکن‌های قدیمی بدون sv/ge به‌صورت ۰ حساب می‌شوند (سازگاری با نشست‌های موجود).
+  if (user) {
+    const tokenSv = Number.isInteger(session.sv) ? session.sv : 0;
+    const tokenGe = Number.isInteger(session.ge) ? session.ge : 0;
+    if (tokenSv !== (user.session_version || 0) || tokenGe !== settingsRepository.getGlobalSessionEpoch()) {
+      res.setHeader('Set-Cookie', buildClearCookie(req));
+      return res.status(401).json({ error: 'نشست شما باطل شده است؛ دوباره وارد شوید.', code: 'SESSION_REVOKED' });
+    }
+  }
+
   if (!user || !user.is_active || !['employee', 'manager', 'admin'].includes(user.role)) {
     return res.status(403).json({ error: 'دسترسی به پنل ندارید.' });
   }

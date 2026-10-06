@@ -13,7 +13,9 @@ const { requireFullAdmin } = require('../../../middleware/adminAuth');
 const usersRepository = require('../../../repositories/usersRepository');
 const { nowIso } = require('../../../utils/serverTime');
 const { sendMessage } = require('../../../bot/notifier');
-const { audit } = require('./common');
+const settingsRepository = require('../../../repositories/settingsRepository');
+const { buildClearCookie } = require('../../../utils/sessionCookie');
+const { audit, requireReason } = require('./common');
 
 // ---------- ارسال پیام گروهی (فقط ادمین کل) ----------
 
@@ -44,6 +46,26 @@ router.post('/admin/broadcast', requireFullAdmin, async (req, res) => {
   }
   audit(req, 'broadcast_sent', { scope, department: department || null, recipients: targets.length, delivered });
   res.json({ recipients: targets.length, delivered, failed: targets.length - delivered });
+});
+
+// ---------- خروج همه‌ی کاربران (فقط ادمین کل، با دلیل اجباری) ----------
+// epoch سراسری را زیاد می‌کند؛ همه‌ی نشست‌های موجود در درخواست بعدی ۴۰۱ می‌شوند.
+// به‌صورت پیش‌فرض نشست خود ادمینِ اجراکننده حفظ می‌شود (کوکی تازه می‌گیرد)؛ با includeSelf=true او هم خارج می‌شود.
+router.post('/admin/system/revoke-all-sessions', requireFullAdmin, (req, res) => {
+  const reason = requireReason(req, res);
+  if (!reason) return;
+  const includeSelf = !!(req.body && req.body.includeSelf);
+
+  const epoch = settingsRepository.bumpGlobalSessionEpoch();
+  audit(req, 'all_sessions_revoked', { reason, epoch, includeSelf });
+
+  if (includeSelf) {
+    res.setHeader('Set-Cookie', buildClearCookie(req));
+  } else {
+    // کاربر تازه از دیتابیس خوانده می‌شود تا نسخه‌ی فعلی‌اش در توکن جدید بیاید
+    require('../adminAuth').startSession(req, res, usersRepository.findById(req.adminUser.id));
+  }
+  res.json({ ok: true, selfLoggedOut: includeSelf });
 });
 
 // ---------- سیستم و پشتیبان‌گیری (فقط ادمین کل) ----------

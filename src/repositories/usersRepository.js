@@ -40,10 +40,33 @@ function updateUser(id, fields) {
   const keys = Object.keys(fields).filter((k) => allowed.includes(k));
   if (keys.length === 0) return findById(id);
 
+  // بخش ۲-الف: تغییر وضعیت فعال، نقش یا آیدی تلگرام = باطل‌شدن خودکار همه‌ی نشست‌های پنل این کاربر
+  // (در خود repository انجام می‌شود تا هر مسیری — پنل، بات، اسکریپت — را پوشش دهد).
+  const before = findById(id);
+  let bump = false;
+  if (before) {
+    if ('is_active' in fields && Number(fields.is_active) !== Number(before.is_active)) bump = true;
+    if ('role' in fields && fields.role !== before.role) bump = true;
+    if ('telegram_user_id' in fields) {
+      const next = fields.telegram_user_id == null || fields.telegram_user_id === '' ? null : String(fields.telegram_user_id);
+      const prev = before.telegram_user_id == null ? null : String(before.telegram_user_id);
+      if (next !== prev) bump = true;
+    }
+  }
+
   const setClause = keys.map((k) => `${k} = ?`).join(', ');
   const values = keys.map((k) => fields[k]);
-  db.prepare(`UPDATE users SET ${setClause}, updated_at = datetime('now') WHERE id = ?`).run(...values, id);
+  const bumpSql = bump ? ', session_version = session_version + 1' : '';
+  db.prepare(`UPDATE users SET ${setClause}${bumpSql}, updated_at = datetime('now') WHERE id = ?`).run(...values, id);
   return findById(id);
+}
+
+// باطل‌کردن همه‌ی نشست‌های پنل یک کاربر (دکمه‌ی «خروج از همه‌ی نشست‌ها»). نسخه‌ی جدید را برمی‌گرداند یا null اگر کاربر نبود.
+function revokeSessions(id) {
+  const db = getDb();
+  const info = db.prepare("UPDATE users SET session_version = session_version + 1, updated_at = datetime('now') WHERE id = ?").run(id);
+  if (info.changes === 0) return null;
+  return findById(id).session_version;
 }
 
 function deactivateUser(id) {
@@ -94,6 +117,7 @@ module.exports = {
   createUser,
   updateUser,
   deactivateUser,
+  revokeSessions,
   getHistoryCounts,
   deleteUserPermanently,
 };

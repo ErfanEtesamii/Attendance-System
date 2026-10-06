@@ -20,7 +20,7 @@
     const res = await fetch('/api' + path, {
       method: options.method || 'GET',
       credentials: 'include', // کوکی session حتماً باید همراه هر درخواست برود
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'AttendancePanel' },
       body: options.body ? JSON.stringify(options.body) : undefined,
     });
     const data = await res.json().catch(() => ({}));

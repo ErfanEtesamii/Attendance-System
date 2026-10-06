@@ -59,4 +59,28 @@ function update(fields) {
   return getAll();
 }
 
-module.exports = { getAll, update };
+// ---------- epoch سراسری نشست‌ها (بخش ۲-الف) ----------
+// عددی که داخل توکن نشست هم ذخیره می‌شود؛ با افزایش آن «همه‌ی نشست‌های همه‌ی کاربران» باطل می‌شود.
+// عمداً در KEY_MAP نیست تا از صفحه‌ی تنظیمات پنل قابل ویرایش/نمایش نباشد؛ فقط با bumpGlobalSessionEpoch.
+const GLOBAL_EPOCH_KEY = 'global_session_epoch';
+
+function getGlobalSessionEpoch() {
+  const row = getDb().prepare('SELECT value FROM settings WHERE key = ?').get(GLOBAL_EPOCH_KEY);
+  const n = row ? parseInt(row.value, 10) : 0;
+  return Number.isFinite(n) ? n : 0;
+}
+
+function bumpGlobalSessionEpoch() {
+  const db = getDb();
+  const tx = db.transaction(() => {
+    const next = getGlobalSessionEpoch() + 1;
+    db.prepare(
+      `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`
+    ).run(GLOBAL_EPOCH_KEY, String(next));
+    return next;
+  });
+  return tx();
+}
+
+module.exports = { getAll, update, getGlobalSessionEpoch, bumpGlobalSessionEpoch };

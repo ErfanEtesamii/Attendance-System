@@ -15,7 +15,8 @@ const workHours = require('../../../utils/workHours');
 const { todayDateString } = require('../../../utils/serverTime');
 const { sendMessage } = require('../../../bot/notifier');
 const { sendCsv } = require('../../../utils/csv');
-const { scopedUserIds, canAccessUser, parseRange, userBrief, enrichRecord, audit, aggregateRecords } = require('./common');
+const { buildClearCookie } = require('../../../utils/sessionCookie');
+const { scopedUserIds, canAccessUser, parseRange, userBrief, enrichRecord, audit, aggregateRecords, requireReason } = require('./common');
 
 // ---------- لیست کارمندان ----------
 
@@ -198,6 +199,22 @@ router.patch('/admin/users/:id', requireFullAdmin, (req, res) => {
   });
 
   res.json(updated);
+});
+
+// ---------- باطل‌کردن همه‌ی نشست‌های پنل یک کاربر (فقط ادمین کل، با دلیل اجباری) ----------
+// کاربر در درخواست بعدی‌اش ۴۰۱ می‌گیرد و باید دوباره وارد شود. اگر ادمین نشست‌های خودش را باطل کند، خودش هم خارج می‌شود.
+router.post('/admin/users/:id/revoke-sessions', requireFullAdmin, (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const user = usersRepository.findById(id);
+  if (!user) return res.status(404).json({ error: 'کارمند یافت نشد.' });
+  const reason = requireReason(req, res);
+  if (!reason) return;
+
+  const version = usersRepository.revokeSessions(id);
+  audit(req, 'user_sessions_revoked', { targetUserId: id, reason, sessionVersion: version });
+  const selfLoggedOut = id === req.adminUser.id;
+  if (selfLoggedOut) res.setHeader('Set-Cookie', buildClearCookie(req));
+  res.json({ ok: true, selfLoggedOut });
 });
 
 // ---------- حذف کارمند (فقط ادمین کل) ----------

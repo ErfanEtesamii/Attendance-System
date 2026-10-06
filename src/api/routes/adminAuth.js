@@ -14,25 +14,24 @@ const { verifyLoginWidgetData } = require('../../utils/telegramLoginAuth');
 const { verifyInitData } = require('../../utils/telegramInitData');
 const { createSessionToken } = require('../../utils/session');
 const { consumeCode, consumeLinkToken } = require('../../utils/panelLoginCodes');
-const { SESSION_COOKIE_NAME, requireAdminAuth } = require('../../middleware/adminAuth');
+const { requireAdminAuth } = require('../../middleware/adminAuth');
+const settingsRepository = require('../../repositories/settingsRepository');
+const { buildSessionCookie, buildClearCookie } = require('../../utils/sessionCookie');
 const { adminLoginLimiter, panelAutoLoginLimiter } = require('../../middleware/rateLimiter');
 
-function startSession(res, user) {
+// sv = نسخه‌ی نشست کاربر، ge = epoch سراسری (بخش ۲-الف: امکان باطل‌کردن نشست‌ها)
+function startSession(req, res, user) {
   const maxAgeSeconds = config.adminSessionMaxAgeDays * 24 * 60 * 60;
-  const token = createSessionToken({ userId: user.id }, config.adminSessionSecret, maxAgeSeconds);
-  const cookieParts = [
-    `${SESSION_COOKIE_NAME}=${encodeURIComponent(token)}`,
-    'HttpOnly',
-    'Path=/',
-    'SameSite=Lax',
-    `Max-Age=${maxAgeSeconds}`,
-  ];
-  if (config.nodeEnv === 'production') cookieParts.push('Secure');
-  res.setHeader('Set-Cookie', cookieParts.join('; '));
+  const token = createSessionToken(
+    { userId: user.id, sv: user.session_version || 0, ge: settingsRepository.getGlobalSessionEpoch() },
+    config.adminSessionSecret,
+    maxAgeSeconds
+  );
+  res.setHeader('Set-Cookie', buildSessionCookie(token, maxAgeSeconds, req));
 }
 
 function finishLogin(req, res, user, source) {
-  startSession(res, user);
+  startSession(req, res, user);
   auditRepository.logEvent({
     userId: user.id,
     action: 'admin_panel_login',
@@ -109,8 +108,11 @@ router.post('/admin/auth/telegram', adminLoginLimiter, (req, res) => {
 
 router.post('/admin/auth/logout', requireAdminAuth, (req, res) => {
   auditRepository.logEvent({ userId: req.adminUser.id, action: 'admin_panel_logout' });
-  res.setHeader('Set-Cookie', `${SESSION_COOKIE_NAME}=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0`);
+  res.setHeader('Set-Cookie', buildClearCookie(req));
   res.json({ ok: true });
 });
+
+// استفاده‌ی مجدد در routeهای ابطال نشست (صدور کوکی تازه برای ادمینی که خودش نشست‌ها را باطل می‌کند)
+router.startSession = startSession;
 
 module.exports = router;

@@ -26,8 +26,12 @@ function makeApprovedMission(userId, date) {
 }
 
 // مقدار هدر Cookie برای یک سشن معتبر پنل
-function sessionCookie(userId, { maxAgeSeconds = 3600, secret = config.adminSessionSecret } = {}) {
-  const token = createSessionToken({ userId }, secret, maxAgeSeconds);
+// sessionVersion/globalEpoch فقط وقتی داده شوند داخل توکن می‌روند (نبودنشان = توکن قدیمی، معادل ۰)
+function sessionCookie(userId, { maxAgeSeconds = 3600, secret = config.adminSessionSecret, sessionVersion, globalEpoch } = {}) {
+  const payload = { userId };
+  if (sessionVersion !== undefined) payload.sv = sessionVersion;
+  if (globalEpoch !== undefined) payload.ge = globalEpoch;
+  const token = createSessionToken(payload, secret, maxAgeSeconds);
   return `${SESSION_COOKIE_NAME}=${encodeURIComponent(token)}`;
 }
 
@@ -58,4 +62,7 @@ function runMiddleware(mw, req) {
   return { nextCalled, status: nextCalled ? 200 : res.statusCode, body: res.body };
 }
 
-module.exports = { makeUser, makeApprovedMission, sessionCookie, fakeReq, fakeRes, runMiddleware };
+// هدرهای لازم برای متدهای نوشتنی پنل (محافظت CSRF)
+const CSRF_HEADERS = { 'x-requested-with': 'AttendancePanel' };
+
+module.exports = { CSRF_HEADERS, makeUser, makeApprovedMission, sessionCookie, fakeReq, fakeRes, runMiddleware };

@@ -41,6 +41,9 @@ npm start                   # API + بات در یک پروسه
 | `ALLOWED_NETWORK_CIDR` | رنج شبکه‌ی مجاز ثبت تردد (پیش‌فرض `192.168.10.0/24`) |
 | `TRUST_PROXY` | باید `false` بماند (پراکسی نداریم) |
 | `DB_PATH` | مسیر فایل دیتابیس (پیش‌فرض `./data/attendance.db`) |
+| `CSP_MODE` | `report-only` (پیش‌فرض) / `enforce` / `off` — سیاست CSP؛ [`docs/SECURITY.md`](docs/SECURITY.md) |
+| `ADMIN_COOKIE_SAMESITE` | `strict` (پیش‌فرض) یا `lax` برای بازگشت اضطراری |
+| `CSP_PANEL_UNSAFE_EVAL` / `HSTS_MAX_AGE_SECONDS` / `CSRF_EXTRA_ORIGINS` | تنظیمات پیشرفته‌ی امنیت وب (پیش‌فرض‌ها معمولاً کافی‌اند) |
 
 > ⚠️ `.env`، پوشه‌ی `.ssl/` و فایل‌های `data/*.db` هرگز commit یا در zip تحویلی گذاشته نشوند.
 
@@ -84,7 +87,7 @@ public/                    Mini App کارمند (بدون build)
 public-admin/              پنل مدیریتی وب (بدون build)، زیر /admin/
 scripts/                   install-service.ps1 (NSSM)، setup-ssl-renewal.ps1، run-tests.js، smoke-test.js
 test/                      تست‌های خودکار (node:test)
-docs/                      ARCHITECTURE.md
+docs/                      ARCHITECTURE.md، SECURITY.md (هدرها/CSP/کوکی/CSRF/ابطال نشست)
 ```
 
 ## نقش‌ها
@@ -155,4 +158,4 @@ npm run test:watch   # اجرای مجدد با هر تغییر
 npm run smoke        # سرور واقعی روی دیتابیس موقت + چند درخواست کلیدی
 ```
 
-تست‌ها hermetic هستند: دیتابیس موقت، توکن و راز ساختگی، و `.env` واقعی خوانده نمی‌شود. پوشش فعلی: migration، `initData` و Login Widget، سشن، `networkRestriction`، ماتریس دسترسی نقش × route، و ساختار ترتیب routeها. تست‌های موتور محاسبه با بخش ۳ می‌آید.
+تست‌ها hermetic هستند: دیتابیس موقت، توکن و راز ساختگی، و `.env` واقعی خوانده نمی‌شود. پوشش فعلی: migration، `initData` و Login Widget، سشن، `networkRestriction`، ماتریس دسترسی نقش × route، ساختار ترتیب routeها، و (بخش ۲-الف) هدرها/CSP، کوکی، CSRF و ابطال نشست. تست‌های موتور محاسبه با بخش ۳ می‌آید.

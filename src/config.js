@@ -7,6 +7,12 @@ if (process.env.NODE_ENV !== 'test') {
 }
 const path = require('path');
 
+// مقدار enum از env را نرمال می‌کند؛ مقدار نامعتبر = پیش‌فرض (تا غلط تایپی در .env سرور را از کار نیندازد)
+function enumEnv(value, allowed, fallback) {
+  const v = String(value || '').trim().toLowerCase();
+  return allowed.includes(v) ? v : fallback;
+}
+
 const config = {
   port: parseInt(process.env.PORT || '3000', 10),
   dbPath: path.resolve(process.cwd(), process.env.DB_PATH || './data/attendance.db'),
@@ -38,6 +44,20 @@ const config = {
   // مدت اعتبار session ورود مدیر به پنل وب (روز)
   adminSessionMaxAgeDays: parseInt(process.env.ADMIN_SESSION_MAX_AGE_DAYS || '7', 10),
 
+  // ===== بخش ۲-الف: هدرهای امنیتی، کوکی و CSRF =====
+  // حالت CSP: 'report-only' (پیش‌فرض: فقط گزارش تخلف در لاگ سرور، چیزی مسدود نمی‌شود) | 'enforce' | 'off'.
+  // بعد از چند روز استفاده‌ی واقعی داخل تلگرام و دیدن‌نشدن گزارش تخلف، روی 'enforce' بگذارید.
+  cspMode: enumEnv(process.env.CSP_MODE, ['off', 'report-only', 'enforce'], 'report-only'),
+  // اگر ویجت «ورود با تلگرام» برای callback خود eval لازم داشت (فقط در صورت دیدن گزارش تخلف unsafe-eval)، این را true کنید.
+  cspPanelUnsafeEval: process.env.CSP_PANEL_UNSAFE_EVAL === 'true',
+  // HSTS فقط روی پاسخ‌های HTTPS ارسال می‌شود. پیش‌فرض ۱۸۰ روز، بدون includeSubDomains/preload (محافظه‌کارانه).
+  hstsMaxAgeSeconds: parseInt(process.env.HSTS_MAX_AGE_SECONDS || '15552000', 10),
+  // SameSite کوکی نشست پنل. پیش‌فرض strict؛ اگر در کلاینتی ورود شکست خورد موقتاً lax بگذارید.
+  adminCookieSameSite: enumEnv(process.env.ADMIN_COOKIE_SAMESITE, ['strict', 'lax'], 'strict'),
+  // Originهای اضافه‌ی مجاز برای درخواست‌های نوشتنی پنل (جدا با ویرگول؛ مثلاً https://attendance.farazhonar.com).
+  // به‌صورت پیش‌فرض فقط Origin هم‌میزبان (همان Host درخواست) مجاز است.
+  csrfExtraOrigins: (process.env.CSRF_EXTRA_ORIGINS || '').split(',').map((x) => x.trim()).filter(Boolean),
+
   // ===== HTTPS مستقیم از خود Node (بدون IIS/nginx) =====
   // طبق تصمیم معماری پروژه: چون هیچ ریورس‌پراکسی‌ای جلوی این سرویس قرار نمی‌گیرد، اگر این دو مسیر
   // پر شوند، سرور مستقیماً با https.createServer بالا می‌آید؛ اگر خالی بمانند (مثلاً در توسعه‌ی
@@ -45,6 +65,7 @@ const config = {
   // فایل‌ها را بعد از صدور گواهی با DNS-01 برای attendance.farazhonar.com همین‌جا قرار دهید.
   sslCertPath: process.env.SSL_CERT_PATH || '',
   sslKeyPath: process.env.SSL_KEY_PATH || '',
+  httpsEnabled: !!(process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH),
 
   // ساعت شروع/پایان رسمی کار، برای تشخیص تأخیر/زودتر رفتن/اضافه‌کاری و یادآوری‌ها.
   // فرمت HH:mm بر اساس ساعت سرور. محاسبه کامل و نهایی در فاز ۵ انجام می‌شود؛

@@ -7,6 +7,7 @@ const config = require('./config');
 const { getDb } = require('./db/connection');
 const apiRoutes = require('./api/routes');
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
+const { securityHeaders } = require('./middleware/securityHeaders');
 
 function createApp() {
   // اطمینان از ساخته‌شدن دیتابیس و جداول قبل از بالا آمدن سرور
@@ -28,6 +29,10 @@ function createApp() {
   if (config.trustProxy) {
     app.set('trust proxy', 'loopback'); // فقط پراکسی روی همان سرور (127.0.0.1) قابل‌اعتماد است
   }
+
+  // بخش ۲-الف: هدرهای امنیتی روی همه‌ی پاسخ‌ها (استاتیک و API)؛ x-powered-by حذف می‌شود
+  app.disable('x-powered-by');
+  app.use(securityHeaders);
 
   app.use(express.json());
   app.use((req, res, next) => {

@@ -41,7 +41,7 @@ describe('ماتریس نقش × route (/api/admin/*)', { skip: hasDeps ? false 
   });
 
   async function hit(role, method, url, body) {
-    const headers = { 'content-type': 'application/json' };
+    const headers = { 'content-type': 'application/json', 'x-requested-with': 'AttendancePanel' };
     if (cookies[role]) headers.cookie = cookies[role];
     const res = await fetch(base + url, { method, headers, body: body ? JSON.stringify(body) : undefined });
     let json = null;

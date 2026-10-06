@@ -257,7 +257,7 @@
       const s = await AP.api('/admin/system');
       const html = `
         <div class="view-header"><div><h2>سیستم و پشتیبان‌گیری</h2><div class="sub">وضعیت سرور، دیتابیس و اتصال‌ها</div></div>
-          <div class="header-actions"><a class="btn primary" href="/api/admin/system/backup" download>${icon('download')} دانلود نسخه‌ی پشتیبان دیتابیس</a></div></div>
+          <div class="header-actions"><button type="button" class="btn danger" id="sys-revoke-all">خروج همه‌ی کاربران</button><a class="btn primary" href="/api/admin/system/backup" download>${icon('download')} دانلود نسخه‌ی پشتیبان دیتابیس</a></div></div>
         <div class="grid-2">
           <div class="card"><h3>سرور</h3><div class="kv">
             <div class="kv-row"><span>زمان سرور</span><span>${esc(fmt.dateTime(s.serverTime))}</span></div>
@@ -282,7 +282,21 @@
           <div class="card"><h3>زمان‌بندی کارها (Cron)</h3><div class="kv">
             ${Object.entries(s.cron || {}).map(([k, v]) => `<div class="kv-row"><span class="ltr muted">${esc(k)}</span><span class="ltr">${esc(v)}</span></div>`).join('')}</div></div>
         </div>`;
-      return { html };
+      return {
+        html,
+        mount(root) {
+          const btn = $('#sys-revoke-all', root);
+          if (!btn) return;
+          btn.addEventListener('click', async () => {
+            const reason = await AP.askReason({
+              title: 'خروج همه‌ی کاربران', danger: true, confirmText: 'باطل‌کردن همه‌ی نشست‌ها',
+              message: 'نشست ورود همه‌ی کاربران (ادمین‌ها، سرپرستان و کارمندان) به پنل باطل می‌شود و همه باید دوباره وارد شوند. نشست خود شما حفظ می‌شود.',
+            });
+            if (!reason) return;
+            await AP.attempt(() => AP.api('/admin/system/revoke-all-sessions', { method: 'POST', body: { reason } }), 'همه‌ی نشست‌ها باطل شد.');
+          });
+        },
+      };
     },
   });
 })();

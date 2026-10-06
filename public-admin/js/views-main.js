@@ -350,6 +350,7 @@
           <div class="header-actions">
             ${u.telegramUserId && AP.state.isStaff ? `<button class="btn ghost" id="pf-msg">${icon('mail')} پیام تلگرام</button>` : ''}
             ${AP.state.isStaff ? `<button class="btn ghost" id="pf-rec">${icon('plus')} ثبت دستی تردد</button><button class="btn ghost" id="pf-leave">${icon('leave')} ثبت مرخصی</button>` : ''}
+            ${AP.state.isAdmin ? `<button class="btn ghost" id="pf-revoke" title="باطل‌کردن همه‌ی نشست‌های ورود این کاربر در پنل">خروج از همه‌ی نشست‌ها</button>` : ''}
             ${AP.state.isAdmin && u.id !== AP.state.me.id ? `<button class="btn danger" id="pf-del">حذف کارمند</button>` : ''}
           </div>
         </div>
@@ -459,6 +460,19 @@
           $$('[data-go]', page).forEach((b) => b.addEventListener('click', () => AP.go(b.dataset.go)));
           const msg = $('#pf-msg', page); if (msg) msg.addEventListener('click', () => AP.openMessage(u.id));
           const rec = $('#pf-rec', page); if (rec) rec.addEventListener('click', () => AP.openCreateRecord({ userId: u.id }));
+          const revoke = $('#pf-revoke', page);
+          if (revoke) revoke.addEventListener('click', async () => {
+            const reason = await AP.askReason({
+              title: 'خروج از همه‌ی نشست‌ها', danger: true, confirmText: 'باطل‌کردن نشست‌ها',
+              message: `همه‌ی نشست‌های ورود «${u.fullName}» به پنل باطل می‌شود و باید دوباره وارد شود.${u.id === AP.state.me.id ? ' (این حساب خود شماست؛ خودتان هم خارج می‌شوید.)' : ''}`,
+            });
+            if (!reason) return;
+            try {
+              const r = await AP.api(`/admin/users/${u.id}/revoke-sessions`, { method: 'POST', body: { reason } });
+              if (r.selfLoggedOut) { location.reload(); return; }
+              AP.toast('نشست‌های کاربر باطل شد.');
+            } catch (err) { AP.toast(err.message, true); }
+          });
           const del = $('#pf-del', page);
           if (del) del.addEventListener('click', async () => {
             const first = await AP.confirmBox({

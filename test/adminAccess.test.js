@@ -31,10 +31,13 @@ describe('requireAdminAuth — احراز هویت', () => {
     assert.equal(call(null, 'GET', '/api/admin/me', { cookie: sessionCookie(admin.id, { maxAgeSeconds: -10 }) }).status, 401);
   });
   test('کاربر غیرفعال یا حذف‌شده ← ۴۰۳ (is_active در هر درخواست چک می‌شود)', () => {
+    // غیرفعال‌شدن از طریق repository، session_version را بالا می‌برد (بخش ۲-الف)؛ سشنی که با نسخه‌ی تازه صادر شود ۴۰۳ می‌گیرد
     const inactive = makeUser({ role: 'admin', active: false });
-    assert.equal(call(inactive, 'GET', '/api/admin/me').status, 403);
+    const fresh = usersRepository.findById(inactive.id);
+    assert.equal(call(inactive, 'GET', '/api/admin/me', { cookie: sessionCookie(inactive.id, { sessionVersion: fresh.session_version }) }).status, 403);
+    // ویرایش مستقیم دیتابیس (بدون bump) هم همچنان ۴۰۳ است: is_active در هر درخواست چک می‌شود
     const cookie = sessionCookie(admin.id);
-    usersRepository.updateUser(admin.id, { is_active: 0 });
+    require('../src/db/connection').getDb().prepare('UPDATE users SET is_active = 0 WHERE id = ?').run(admin.id);
     assert.equal(call(null, 'GET', '/api/admin/me', { cookie }).status, 403);
     assert.equal(call(null, 'GET', '/api/admin/me', { cookie: sessionCookie(987654) }).status, 403);
   });

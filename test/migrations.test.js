@@ -32,9 +32,17 @@ function userTables(db) {
     .map((r) => r.name);
 }
 
+// ستون session_version را (که migration شماره ۰۰۲ عمداً اضافه می‌کند) کنار می‌گذاریم تا مقایسه‌ی «هیچ داده‌ای تغییر نکرده»
+// فقط روی ستون‌های اصلی باشد؛ خودِ ۰۰۲ در تست جدا (migration 002) بررسی می‌شود.
 function snapshot(db) {
   const out = {};
-  for (const t of userTables(db)) out[t] = db.prepare(`SELECT * FROM "${t}" ORDER BY rowid`).all().map((r) => ({ ...r }));
+  for (const t of userTables(db)) {
+    out[t] = db.prepare(`SELECT * FROM "${t}" ORDER BY rowid`).all().map((r) => {
+      const row = { ...r };
+      if (t === 'users') delete row.session_version;
+      return row;
+    });
+  }
   return out;
 }
 
@@ -76,19 +84,19 @@ describe('migration runner — پایه', () => {
   test('دیتابیس خالی: baseline اعمال و ثبت می‌شود، اجرای دوم هیچ کاری نمی‌کند', () => {
     const db = newDb();
     const r1 = migrate(db, {});
-    assert.deepEqual(r1.applied, ['001_baseline']);
+    assert.deepEqual(r1.applied, ['001_baseline', '002_session_version']);
     assert.equal(r1.backupPath, null, 'روی دیتابیس خالی بک‌آپ لازم نیست');
     for (const t of ['users', 'attendance_records', 'break_records', 'leave_requests', 'holidays', 'record_disputes', 'settings', 'audit_log']) {
       assert.ok(userTables(db).includes(t), `جدول ${t} باید ساخته شود`);
     }
     const row = db.prepare('SELECT * FROM schema_migrations').all();
-    assert.equal(row.length, 1);
+    assert.equal(row.length, 2);
     assert.equal(row[0].name, '001_baseline');
     assert.match(row[0].checksum, /^[0-9a-f]{64}$/);
 
     const r2 = migrate(db, {});
     assert.deepEqual(r2.applied, []);
-    assert.equal(db.prepare('SELECT COUNT(*) n FROM schema_migrations').get().n, 1);
+    assert.equal(db.prepare('SELECT COUNT(*) n FROM schema_migrations').get().n, 2);
   });
 
   test('دیتابیس قدیمی با داده: adopt می‌شود، هیچ داده‌ای تغییر نمی‌کند، بک‌آپ سالم گرفته می‌شود', () => {
@@ -98,7 +106,7 @@ describe('migration runner — پایه', () => {
 
     const logs = [];
     const res = migrate(db, { backupDir, log: (m) => logs.push(m) });
-    assert.deepEqual(res.applied, ['001_baseline']);
+    assert.deepEqual(res.applied, ['001_baseline', '002_session_version']);
     assert.deepEqual(snapshot(db), before, 'محتوای همه جدول‌ها باید دقیقاً یکسان بماند');
 
     // بک‌آپ: فایل معتبر با همان داده‌ها
@@ -226,7 +234,8 @@ describe('rebuildTable — تغییر CHECK روی جدول مرجع‌شده', 
     manager_id INTEGER REFERENCES users(id),
     is_active INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    session_version INTEGER NOT NULL DEFAULT 0
   )`;
 
   function migrationSource(foreignKeysLine) {
@@ -310,5 +319,27 @@ describe('rebuildTable — تغییر CHECK روی جدول مرجع‌شده', 
     rebuildTable(db, 'users', USERS_WITH_HR);
     assert.deepEqual(snapshot(db), before);
     assert.equal(db.pragma('foreign_keys', { simple: true }), 1);
+  });
+});
+
+describe('migration 002 — session_version', () => {
+  test('روی دیتابیس قدیمی با داده: ستون اضافه می‌شود، همه‌ی کاربران ۰ می‌گیرند و هیچ داده‌ای از بین نمی‌رود', () => {
+    const db = makeLegacyDb();
+    const usersBefore = db.prepare('SELECT * FROM users ORDER BY id').all();
+    migrate(db, {});
+    const usersAfter = db.prepare('SELECT * FROM users ORDER BY id').all();
+    assert.equal(usersAfter.length, usersBefore.length);
+    usersAfter.forEach((u, i) => {
+      assert.equal(u.session_version, 0);
+      const { session_version: _sv, ...rest } = u;
+      assert.deepEqual(rest, usersBefore[i]);
+    });
+  });
+
+  test('idempotent: اگر ستون از قبل وجود دارد خطا نمی‌دهد', () => {
+    const db = newDb();
+    migrate(db, {});
+    const m = require('../src/db/migrations/002_session_version');
+    assert.doesNotThrow(() => m.up(db));
   });
 });

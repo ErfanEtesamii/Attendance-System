@@ -150,7 +150,8 @@
     const res = await fetch(`/api${path}`, {
       method: options.method || 'GET',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      // X-Requested-With: لایه‌ی دوم محافظت CSRF (سرور برای متدهای نوشتنی آن را الزام می‌کند)
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'AttendancePanel' },
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
     });
     const data = await res.json().catch(() => ({}));
