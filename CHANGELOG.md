@@ -4,6 +4,14 @@
 
 ## [Unreleased] — بخش ۲ (امنیت، پایداری و عملیات)
 
+### S2-3 — ثبت device_id (فقط جمع‌آوری، بدون قاعده‌ی تشخیص)
+- **migration `005_attendance_devices`**: چهار ستون nullable روی `attendance_records`: `check_in_device`, `check_out_device`, `check_in_ua`, `check_out_ua` (idempotent؛ رکوردهای قدیمی، بات و ثبت دستی ادمین `NULL` می‌مانند). پیش از اعمال، migrator طبق معمول بک‌آپ `pre-migration-*` می‌گیرد.
+- **Mini App** (`public/js/app.js`): یک `device_id` تصادفی پایدار (`crypto.randomUUID`، با fallback) در `localStorage` نگه داشته می‌شود و فقط همراه `/check-in` و `/check-out` به‌صورت `body.deviceId` می‌رود. اگر تلگرام `CloudStorage` داشت، پشتیبان آن است: وقتی `localStorage` خالی بود از ابر خوانده می‌شود و شناسه‌ی موجود در ابر هرگز بازنویسی نمی‌شود (انتظار حداکثر ۱٫۵ ثانیه، سپس بدون ابر ادامه می‌دهد). هر خطای ذخیره‌سازی نادیده گرفته می‌شود و ورود/خروج بدون device هم کار می‌کند.
+- **سرور** (`src/utils/deviceInfo.js`، `miniapp.js`، `attendanceRepository.js`): `deviceId` فقط با فرمت `[A-Za-z0-9_-]{16,64}` پذیرفته می‌شود وگرنه نادیده گرفته می‌شود (`NULL`)؛ UA از هدر واقعی درخواست، با حذف نویسه‌های کنترلی و کوتاه‌شده به ۲۰۰ نویسه. `extractDeviceInfo` هرگز استثنا نمی‌دهد؛ زمان، IP و وضعیت ثبت مثل قبل فقط از سرور می‌آیند و device روی موفقیت/رد ثبت اثری ندارد.
+- ⚠️ `device_id` سمت کلاینت ساخته می‌شود و **قابل جعل** است؛ فقط «نشانه» برای S2-4 است، نه مدرک. ⚠️ `CloudStorage` تلگرام بین دستگاه‌های یک حساب مشترک است؛ اگر بعداً قاعده‌ی «تغییر ناگهانی دستگاه» (S2-4d) روی چند دستگاه یک کاربر کم‌دقت بود، پشتیبان‌گیری ابری را خاموش کنید (`cloudAvailable()` در `app.js`).
+- ستون‌های جدید در پاسخ‌هایی که `SELECT *` از `attendance_records` برمی‌گردانند (مثل `/api/miniapp/today` و جست‌وجوی رکوردهای پنل) هم دیده می‌شوند؛ CSVها ستون‌هایشان را صریح انتخاب می‌کنند و تغییری نکرده‌اند.
+- تست: `test/deviceId.test.js` (۱۲ تست: فرمت معتبر/نامعتبر، UA، `extractDeviceInfo` با ورودی خراب، ستون‌های migration و اجرای دوباره، NULL برای مسیرهای بدون device، و HTTP واقعی ورود/خروج با device معتبر، نبودن device، فرمت‌های خراب، UA بلند، بی‌اثر بودن روی زمان/ورود تکراری، دو کاربر روی یک device). `test/migrations.test.js` برای migration پنجم به‌روز شد. `npm test`: ۲۱۱ سبز.
+
 ### S2-2b — مستند بازیابی و پاک‌سازی فایل قدیمی
 - `docs/BACKUP_RESTORE.md` (فقط مستند، بدون تغییر کد): انواع فایل `data/backups/` (daily/monthly/pre-migration/pre-restore/.suspect/.partial)، تفاوت daily با pre-migration، مراحل `nssm stop` ← فهرست ← `--dry-run` ← restore ← `nssm start` ← تأیید، کدهای خروج، تمرین بازیابی روی کپی، و نکته‌ی نگهداری بیرونی.
 - `data/attendance.backup.db` (قدیمی، خارج از چرخه‌ی بک‌آپ، هیچ کدی به آن ارجاع نمی‌دهد؛ با `data/*.db` در `.gitignore` و هرگز در git نبوده): صاحب پروژه دستی پاک کند و در zip تحویلی هم نگذارد.

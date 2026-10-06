@@ -26,6 +26,79 @@
     timerInterval: null,
   };
 
+  // ---------- شناسه‌ی دستگاه (S2-3) ----------
+  // یک شناسه‌ی تصادفی پایدار برای همین مرورگر/نصب تلگرام که فقط همراه ورود/خروج فرستاده می‌شود.
+  // فقط یک «نشانه» برای بررسی‌های بعدی است (قابل جعل) و هرگز روی مجاز بودن ثبت تردد اثر ندارد؛
+  // هر خطایی در ساخت/خواندن آن نادیده گرفته می‌شود و ورود/خروج بدون آن هم ثبت می‌شود.
+  // ترتیب: localStorage اولویت دارد؛ اگر تلگرام CloudStorage داشت، پشتیبان آن است (وقتی localStorage خالی شد برمی‌گردد).
+  const DEVICE_KEY = 'attendance_device_id';
+  const DEVICE_ID_RE = /^[A-Za-z0-9_-]{16,64}$/;
+  const CLOUD_TIMEOUT_MS = 1500;
+  let deviceIdPromise = null;
+
+  function newDeviceId() {
+    try {
+      if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+      if (window.crypto && window.crypto.getRandomValues) {
+        const bytes = new Uint8Array(16);
+        window.crypto.getRandomValues(bytes);
+        return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+      }
+    } catch (_) { /* می‌رویم سراغ جایگزین */ }
+    let out = '';
+    while (out.length < 32) out += Math.floor(Math.random() * 16).toString(16);
+    return out;
+  }
+
+  function readLocalDeviceId() {
+    try {
+      const v = window.localStorage.getItem(DEVICE_KEY);
+      return v && DEVICE_ID_RE.test(v) ? v : null;
+    } catch (_) { return null; }
+  }
+
+  function writeLocalDeviceId(id) {
+    try { window.localStorage.setItem(DEVICE_KEY, id); } catch (_) { /* حالت خصوصی/محدود */ }
+  }
+
+  function cloudAvailable() {
+    return !!(tg && tg.CloudStorage && (!tg.isVersionAtLeast || tg.isVersionAtLeast('6.9')));
+  }
+
+  // خواندن از CloudStorage تلگرام؛ در هر شکست/کندی null (بیشترین انتظار CLOUD_TIMEOUT_MS)
+  function cloudGetDeviceId() {
+    return new Promise((resolve) => {
+      if (!cloudAvailable()) return resolve(null);
+      const timer = setTimeout(() => resolve(null), CLOUD_TIMEOUT_MS);
+      try {
+        tg.CloudStorage.getItem(DEVICE_KEY, (err, value) => {
+          clearTimeout(timer);
+          resolve(!err && value && DEVICE_ID_RE.test(value) ? value : null);
+        });
+      } catch (_) { clearTimeout(timer); resolve(null); }
+    });
+  }
+
+  function cloudSetDeviceId(id) {
+    try { if (cloudAvailable()) tg.CloudStorage.setItem(DEVICE_KEY, id, () => {}); } catch (_) { /* مهم نیست */ }
+  }
+
+  async function resolveDeviceId() {
+    let id = readLocalDeviceId();
+    const cloudId = await cloudGetDeviceId();
+    if (!id) id = cloudId || newDeviceId();
+    writeLocalDeviceId(id);
+    // فقط اگر ابر خالی بود می‌نویسیم؛ شناسه‌ی موجود در ابر (مثلاً از دستگاه دیگر) بازنویسی نمی‌شود
+    if (!cloudId) cloudSetDeviceId(id);
+    return id;
+  }
+
+  // یک‌بار در هر بار باز شدن صفحه محاسبه و cache می‌شود
+  function getDeviceId() {
+    if (!deviceIdPromise) deviceIdPromise = resolveDeviceId().catch(() => null);
+    return deviceIdPromise;
+  }
+
   // ---------- ابزار کمکی ----------
 
   function $(sel) { return document.querySelector(sel); }
@@ -191,6 +264,11 @@
 
   async function doAction(path, body, successMsg) {
     try {
+      // S2-3: device_id فقط همراه ورود/خروج؛ نبودنش مانع ثبت نیست
+      if (path === '/check-in' || path === '/check-out') {
+        const deviceId = await getDeviceId();
+        if (deviceId) body = { ...(body || {}), deviceId };
+      }
       await api(path, { method: 'POST', body });
       showToast(successMsg);
       await loadToday();
@@ -406,6 +484,7 @@
   // ---------- بوت‌استرپ ----------
 
   async function boot() {
+    getDeviceId(); // S2-3: از همین ابتدا آماده شود تا لمس «ثبت ورود» معطل نماند
     if (!initData) {
       // اجرای خارج از تلگرام (مثلاً باز کردن مستقیم در مرورگر) - initData وجود ندارد
       $('#not-registered').classList.remove('hidden');

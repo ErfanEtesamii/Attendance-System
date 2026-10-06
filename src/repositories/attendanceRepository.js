@@ -26,27 +26,29 @@ function listByUserAndRange(userId, fromDate, toDate) {
 
 // ثبت ورود: در صورت نبود رکورد امروز برای این کاربر، یکی می‌سازد.
 // توجه: IP و timestamp همیشه در همین لایه (سمت سرور) تولید می‌شوند.
-function recordCheckIn(userId, ip) {
+// device (اختیاری، S2-3): { deviceId, userAgent } که قبلاً با utils/deviceInfo اعتبارسنجی شده؛
+// فقط ذخیره می‌شود و روی منطق ثبت اثری ندارد. بات و فراخوانی بدون device ⇒ NULL.
+function recordCheckIn(userId, ip, device = {}) {
   const db = getDb();
   const existing = findTodayRecord(userId);
   if (existing) return existing; // منطق «فقط یک بار در روز» در فاز API/بات نهایی می‌شود
 
   const result = db
     .prepare(
-      `INSERT INTO attendance_records (user_id, record_date, check_in_time, check_in_ip, status)
-       VALUES (?, ?, ?, ?, 'normal')`
+      `INSERT INTO attendance_records (user_id, record_date, check_in_time, check_in_ip, check_in_device, check_in_ua, status)
+       VALUES (?, ?, ?, ?, ?, ?, 'normal')`
     )
-    .run(userId, todayDateString(), nowIso(), ip);
+    .run(userId, todayDateString(), nowIso(), ip, device?.deviceId ?? null, device?.userAgent ?? null);
   return findById(result.lastInsertRowid);
 }
 
-function recordCheckOut(attendanceRecordId, ip) {
+function recordCheckOut(attendanceRecordId, ip, device = {}) {
   const db = getDb();
   db.prepare(
     `UPDATE attendance_records
-     SET check_out_time = ?, check_out_ip = ?, updated_at = datetime('now')
+     SET check_out_time = ?, check_out_ip = ?, check_out_device = ?, check_out_ua = ?, updated_at = datetime('now')
      WHERE id = ?`
-  ).run(nowIso(), ip, attendanceRecordId);
+  ).run(nowIso(), ip, device?.deviceId ?? null, device?.userAgent ?? null, attendanceRecordId);
   return findById(attendanceRecordId);
 }
 

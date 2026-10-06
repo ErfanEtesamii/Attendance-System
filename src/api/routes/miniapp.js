@@ -18,6 +18,7 @@ const leaveRepository = require('../../repositories/leaveRepository');
 const disputeRepository = require('../../repositories/disputeRepository');
 const auditRepository = require('../../repositories/auditRepository');
 const workHours = require('../../utils/workHours');
+const { extractDeviceInfo } = require('../../utils/deviceInfo');
 const { todayDateString } = require('../../utils/serverTime');
 
 // همه مسیرهای زیر /miniapp ابتدا باید هویت تلگرام معتبر داشته باشند
@@ -83,7 +84,7 @@ router.post('/miniapp/check-in', (req, res) => {
   if (existing) {
     return res.status(400).json({ error: 'ورود امروز قبلاً ثبت شده است.' });
   }
-  const record = attendanceRepository.recordCheckIn(req.miniAppUser.id, req.ip);
+  const record = attendanceRepository.recordCheckIn(req.miniAppUser.id, req.ip, extractDeviceInfo(req));
   auditRepository.logEvent({
     userId: req.miniAppUser.id,
     action: 'check_in',
@@ -105,7 +106,7 @@ router.post('/miniapp/check-out', (req, res) => {
   if (openBreak) {
     return res.status(400).json({ error: 'ابتدا باید استراحت باز فعلی را پایان دهید.' });
   }
-  const updated = attendanceRepository.recordCheckOut(record.id, req.ip);
+  const updated = attendanceRepository.recordCheckOut(record.id, req.ip, extractDeviceInfo(req));
   auditRepository.logEvent({
     userId: req.miniAppUser.id,
     action: 'check_out',
