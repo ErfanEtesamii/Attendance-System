@@ -3,7 +3,7 @@
 // قواعد:
 //   • هر «نوع هشدار» (db_error، bot_polling، disk_low، backup_stale، job_failed:<job>) وضعیت جدا دارد.
 //   • اولین بار که مشکل دیده شد ⇒ فوراً هشدار. تا وقتی ادامه دارد: حداکثر یک هشدار در هر alertThrottleMinutes
-//     (برای شکست Job: هر ۲۴ ساعت، چون Jobهای هفتگی/ماهانه تا اجرای بعدی «شکست‌خورده» می‌مانند).
+//     (برای شکست Job و فایل بک‌آپ مشکوک: هر ۲۴ ساعت، چون تا اجرای بعدیِ Job همان‌طور می‌مانند).
 //   • وقتی مشکل رفع شد ⇒ یک پیام «رفع شد».
 //   • وضعیت هشدارها در دیتابیس است (monitor_alerts) تا با ری‌استارت هشدار تکراری/گم‌شده نداشته باشیم؛
 //     اگر خودِ دیتابیس خراب باشد، به نگهداری در حافظه برمی‌گردیم تا هشدار «خرابی دیتابیس» حداقل یک‌بار برود.
@@ -16,6 +16,7 @@ const monitorRepository = require('../../repositories/monitorRepository');
 const usersRepository = require('../../repositories/usersRepository');
 const { sanitizeText } = require('../../utils/sanitize');
 
+// فاصله‌ی یادآوری برای هشدارهایی که فقط با اجرای بعدیِ یک Job رفع می‌شوند (job_failed:*، backup_suspect)
 const JOB_REMINDER_MS = 24 * 3600 * 1000;
 
 // وضعیت حافظه‌ای (فقط وقتی DB در دسترس نیست استفاده می‌شود) و آخرین فهرست گیرنده‌ها
@@ -105,10 +106,19 @@ function evaluate(report) {
   if (c.disk.applicable && !c.disk.ok) {
     out.set('disk_low', { title: 'فضای آزاد دیسک کم است', detail: `${c.disk.freeMb} مگابایت آزاد (حداقل مجاز ${c.disk.minFreeMb})` });
   }
-  if (c.backup.applicable && !c.backup.ok) {
+  // stale === false یعنی بک‌آپ سالم تازه است و فقط .suspect مشکل دارد (هشدار جدا: backup_suspect)
+  if (c.backup.applicable && !c.backup.ok && c.backup.stale !== false) {
     out.set('backup_stale', {
       title: 'بک‌آپ دیتابیس قدیمی است',
       detail: c.backup.lastBackupAt ? `آخرین بک‌آپ ${Math.round(c.backup.ageHours)} ساعت پیش (حداکثر مجاز ${c.backup.maxAgeHours})` : c.backup.detail,
+    });
+  }
+  // فایل .suspect حل‌نشده: بک‌آپ تازه integrity_check را رد کرد (S2-1c). با اولین بک‌آپ سالمِ بعدی خودکار رفع می‌شود.
+  if (c.backup.applicable && c.backup.suspect) {
+    const s = c.backup.suspect;
+    out.set('backup_suspect', {
+      title: 'بک‌آپ دیتابیس سالم نیست (integrity_check ناموفق)',
+      detail: `فایل ${s.file} مشکوک تشخیص داده شد و کنار گذاشته شد. ${c.backup.lastBackupAt ? `آخرین بک‌آپ سالم: ${c.backup.lastBackupFile} (${Math.round(c.backup.ageHours)} ساعت پیش)` : 'هیچ بک‌آپ سالمی وجود ندارد'}. فایل .suspect را بررسی و دستی پاک کنید.`,
     });
   }
   for (const f of c.jobs.failing || []) {
@@ -122,6 +132,7 @@ function titleForRecovered(key) {
   if (key === 'bot_polling') return 'ارتباط بات با تلگرام';
   if (key === 'disk_low') return 'فضای دیسک';
   if (key === 'backup_stale') return 'بک‌آپ دیتابیس';
+  if (key === 'backup_suspect') return 'سلامت فایل بک‌آپ';
   if (key.startsWith('job_failed:')) return `Job «${key.slice('job_failed:'.length)}»`;
   return key;
 }
@@ -161,7 +172,7 @@ async function runWatchdog({ bot, now = Date.now(), collect = systemHealth.colle
     saveFiring(key, info.detail, nowIso);
 
     const lastSentMs = wasFiring && existing.last_sent_at ? Date.parse(existing.last_sent_at) : null;
-    const interval = key.startsWith('job_failed:') ? JOB_REMINDER_MS : throttleMs;
+    const interval = key.startsWith('job_failed:') || key === 'backup_suspect' ? JOB_REMINDER_MS : throttleMs;
     const due = lastSentMs === null || now - lastSentMs >= interval;
     if (!due || !bot) continue;
 

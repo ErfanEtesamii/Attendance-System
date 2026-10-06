@@ -10,6 +10,10 @@ let hasDeps = true;
 try { require.resolve('express'); } catch (_) { hasDeps = false; }
 
 const config = require('../src/config');
+
+// از S2-1c پیش‌فرض MONITOR_BACKUP_CHECK روشن است؛ این فایل روی بقیه‌ی بررسی‌ها (db/bot/disk/jobs) تمرکز دارد و پوشه‌ی بک‌آپ ندارد،
+// پس بررسی بک‌آپ را خاموش نگه می‌دارد. رفتار بک‌آپ/.suspect در test/backup.test.js و تست «بک‌آپ» همین فایل (با روشن‌کردن صریح) پوشش داده می‌شود.
+config.monitor.backupCheck = false;
 const jobRunsRepository = require('../src/repositories/jobRunsRepository');
 const monitorRepository = require('../src/repositories/monitorRepository');
 const { wrapJob, runAll } = require('../src/utils/jobRunner');
@@ -188,6 +192,8 @@ describe('systemHealth — دیسک، بک‌آپ، Jobها', () => {
 
       fs.writeFileSync(path.join(dir, 'pre-migration-2026.db'), 'x');
       assert.equal(systemHealth.collect().checks.backup.ok, false, 'pre-migration نباید بک‌آپ روزانه حساب شود');
+      fs.writeFileSync(path.join(dir, 'pre-restore-20260101-000000.db'), 'x');
+      assert.equal(systemHealth.collect().checks.backup.ok, false, 'pre-restore نباید بک‌آپ روزانه حساب شود');
 
       const daily = path.join(dir, 'daily-2026-10-06.db');
       fs.writeFileSync(daily, 'x');

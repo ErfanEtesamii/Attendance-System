@@ -1,5 +1,6 @@
 // وضعیت هشدارهای watchdog و نوشتن آزمایشی سلامت دیتابیس (بخش ۲-ج۱). SQL فقط اینجاست.
 
+const Database = require('better-sqlite3');
 const { getDb } = require('../db/connection');
 const { nowIso } = require('../utils/serverTime');
 
@@ -54,4 +55,22 @@ function quickCheck() {
   return { ok: first === 'ok', result: first };
 }
 
-module.exports = { getAlert, listAlerts, markFiring, markSent, markOk, writeProbe, readProbe, quickCheck };
+// PRAGMA integrity_check کامل روی «یک فایل دیتابیس» (نه دیتابیس زنده) با اتصال جدا و فقط‌خواندنی (S2-1c).
+// فایل خراب/غیر SQLite (مثلاً «file is not a database») استثنا نمی‌دهد؛ نتیجه‌ی ok=false می‌گیرد.
+// اتصال همیشه بسته می‌شود تا روی ویندوز فایل قفل نماند (وگرنه rename به .suspect شکست می‌خورد).
+function integrityCheckFile(filePath) {
+  let conn = null;
+  try {
+    conn = new Database(filePath, { readonly: true, fileMustExist: true });
+    const rows = conn.pragma('integrity_check'); // حداکثر ۱۰۰ ردیف خطا؛ سالم = یک ردیف «ok»
+    const messages = rows.map((r) => String(Object.values(r)[0]));
+    const ok = messages.length === 1 && messages[0] === 'ok';
+    return { ok, result: messages.slice(0, 5).join(' | ') };
+  } catch (err) {
+    return { ok: false, result: err.message };
+  } finally {
+    try { if (conn) conn.close(); } catch (_) { /* بسته شده/باز نشده */ }
+  }
+}
+
+module.exports = { getAlert, listAlerts, markFiring, markSent, markOk, writeProbe, readProbe, quickCheck, integrityCheckFile };

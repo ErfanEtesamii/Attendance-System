@@ -46,9 +46,9 @@ const config = {
     pollingStaleSeconds: parseInt(process.env.MONITOR_POLLING_STALE_SECONDS || '120', 10),
     // شکست Jobی که قدیمی‌تر از این (ساعت) باشد دیگر وضعیت را degraded نمی‌کند (فقط در تاریخچه می‌ماند)
     jobFailureWindowHours: parseInt(process.env.MONITOR_JOB_FAILURE_WINDOW_HOURS || '72', 10),
-    // بررسی سن آخرین بک‌آپ. تا وقتی Job بک‌آپ روزانه (بخش ۲-ج۲) فعال نشده، پیش‌فرض خاموش است
-    // (وگرنه از همین حالا هشدار بک‌آپ قدیمی می‌داد). بک‌آپ‌های pre-migration حساب نمی‌شوند.
-    backupCheck: process.env.MONITOR_BACKUP_CHECK === 'true',
+    // بررسی بک‌آپ (سن آخرین بک‌آپ سالم + فایل‌های .suspect). از S2-1c پیش‌فرض روشن است (فقط مقدار دقیق 'false' خاموشش می‌کند).
+    // بک‌آپ‌های pre-migration و فایل‌های .suspect به‌عنوان «آخرین بک‌آپ» حساب نمی‌شوند.
+    backupCheck: process.env.MONITOR_BACKUP_CHECK !== 'false',
     backupDir: path.resolve(process.cwd(), process.env.BACKUP_DIR || './data/backups'),
     backupMaxAgeHours: parseInt(process.env.MONITOR_BACKUP_MAX_AGE_HOURS || '36', 10),
   },

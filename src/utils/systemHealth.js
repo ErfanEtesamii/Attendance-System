@@ -44,7 +44,7 @@ function checkDisk() {
   }
 }
 
-// آخرین بک‌آپ غیر pre-migration در BACKUP_DIR. فایل‌های .db و .db.gz (فشرده) و .zip حساب می‌شوند.
+// آخرین بک‌آپ غیر pre-migration/pre-restore در BACKUP_DIR (pre-restore = اسنپ‌شات دیتابیسِ قبل از restore، S2-2a). فایل‌های .db و .db.gz (فشرده) و .zip حساب می‌شوند (.suspect نه).
 function latestBackup() {
   const dir = config.monitor.backupDir;
   let best = null;
@@ -55,25 +55,50 @@ function latestBackup() {
     return null;
   }
   for (const e of entries) {
-    if (!e.isFile() || e.name.startsWith('pre-migration-') || !/\.(db|db\.gz|zip)$/i.test(e.name)) continue;
+    if (!e.isFile() || e.name.startsWith('pre-migration-') || e.name.startsWith('pre-restore-') || !/\.(db|db\.gz|zip)$/i.test(e.name)) continue;
     const st = fs.statSync(path.join(dir, e.name));
     if (!best || st.mtimeMs > best.mtimeMs) best = { name: e.name, mtimeMs: st.mtimeMs, sizeBytes: st.size };
   }
   return best;
 }
 
+// فایل‌های .suspect (بک‌آپی که integrity_check رد کرده؛ S2-1c). جدیدترین را برمی‌گرداند.
+function latestSuspect() {
+  const dir = config.monitor.backupDir;
+  let best = null;
+  let entries = [];
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch (_) {
+    return null;
+  }
+  for (const e of entries) {
+    if (!e.isFile() || !/\.db\.suspect$/i.test(e.name)) continue;
+    const st = fs.statSync(path.join(dir, e.name));
+    if (!best || st.mtimeMs > best.mtimeMs) best = { name: e.name, mtimeMs: st.mtimeMs };
+  }
+  return best;
+}
+
+// lastBackupAt/lastBackupFile = «آخرین بک‌آپ سالم»: فقط فایل‌هایی که با نام نهایی منتشر شده‌اند (یعنی integrity_check را رد کرده‌اند)؛
+// .suspect و .partial هرگز حساب نمی‌شوند.
+// suspect = فایل .suspect «حل‌نشده»: جدیدتر از آخرین بک‌آپ سالم است (با اولین بک‌آپ سالمِ بعدی خودکار حل می‌شود؛ خودِ فایل پاک نمی‌شود).
 function checkBackup(now) {
   const last = latestBackup();
+  const sus = latestSuspect();
+  const unresolved = sus && (!last || sus.mtimeMs > last.mtimeMs) ? sus : null;
   const base = {
     applicable: config.monitor.backupCheck,
     maxAgeHours: config.monitor.backupMaxAgeHours,
     lastBackupAt: last ? new Date(last.mtimeMs).toISOString() : null,
     lastBackupFile: last ? last.name : null,
     ageHours: last ? Math.round(((now - last.mtimeMs) / HOUR_MS) * 10) / 10 : null,
+    suspect: unresolved ? { file: unresolved.name, at: new Date(unresolved.mtimeMs).toISOString() } : null,
   };
   if (!config.monitor.backupCheck) return { ...base, ok: true };
-  if (!last) return { ...base, ok: false, detail: 'هیچ بک‌آپی در پوشه‌ی بک‌آپ پیدا نشد' };
-  return { ...base, ok: now - last.mtimeMs <= config.monitor.backupMaxAgeHours * HOUR_MS };
+  if (!last) return { ...base, ok: false, stale: true, detail: 'هیچ بک‌آپ سالمی در پوشه‌ی بک‌آپ پیدا نشد' };
+  const stale = now - last.mtimeMs > config.monitor.backupMaxAgeHours * HOUR_MS;
+  return { ...base, stale, ok: !stale && !unresolved };
 }
 
 function checkJobs(now) {
@@ -106,4 +131,4 @@ function safeJobs(now) {
   }
 }
 
-module.exports = { collect, latestBackup };
+module.exports = { collect, latestBackup, latestSuspect };

@@ -345,6 +345,7 @@
             ${bot.applicable && bot.lastError ? `<div class="kv-row"><span>آخرین خطای polling</span><span class="ltr" style="word-break:break-word">${esc(bot.lastError)}</span></div>` : ''}
             <div class="kv-row"><span>فضای آزاد دیسک</span><span>${disk.freeMb != null ? `${healthBadge(disk.ok, 'کافی', 'کم')} <span class="ltr">${fmt.num(disk.freeMb)} / ${fmt.num(disk.totalMb)} MB</span>` : AP.badge('holiday', 'قابل‌اندازه‌گیری نیست')}</span></div>
             <div class="kv-row"><span>آخرین بک‌آپ</span><span>${backup.lastBackupAt ? `${esc(fmt.dateTime(backup.lastBackupAt))} (${fmt.num(backup.ageHours)} ساعت پیش)` : 'یافت نشد'}${backup.applicable ? ` ${healthBadge(backup.ok, 'به‌روز', 'قدیمی')}` : ' <span class="muted">(بررسی هشدار خاموش است)</span>'}</span></div>
+            ${backup.suspect ? `<div class="kv-row"><span>فایل بک‌آپ مشکوک</span><span>${AP.badge('red', 'integrity_check ناموفق')} <span class="ltr">${esc(backup.suspect.file)}</span></span></div>` : ''}
             <div class="kv-row"><span>Jobهای ۷۲ ساعت اخیر</span><span>${healthBadge(c.jobs.ok, 'بدون شکست', `${fmt.num(c.jobs.failing.length)} شکست`)}</span></div></div></div>
           <div class="card"><h3>هشدارهای فعال</h3><div class="kv">${alertsHtml}</div>
             <p class="muted" style="margin:14px 0 0;line-height:1.9">watchdog ${s.watchdog.enabled ? `هر چند دقیقه (<span class="ltr">${esc(s.watchdog.cron)}</span>) به ادمین‌ها در تلگرام هشدار می‌دهد؛ هشدار تکراریِ هر نوع حداکثر هر ${fmt.num(s.watchdog.throttleMinutes)} دقیقه` : 'خاموش است'}.</p></div>
