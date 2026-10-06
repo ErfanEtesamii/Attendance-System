@@ -91,6 +91,7 @@ def('workDayEnd', 'work_day_end', 'time', { group: 'workHours', default: () => c
 // S3-3a: مهلت تأخیر در محاسبه‌ی روز (نه یادآور؛ یادآور ورود با lateCheckinGraceMinutes جداست)
 def('lateGraceMinutes', 'late_grace_minutes', 'number', { group: 'workHours', min: 0, max: 240, default: 0, description: 'مهلت تأخیر (دقیقه) پس از ساعت شروع کار؛ ورود تا پایان مهلت «تأخیر» حساب نمی‌شود (۰ = بدون مهلت)' });
 def('lateCountsFrom', 'late_counts_from', 'enum', { group: 'workHours', values: ['shift_start', 'after_grace'], default: 'shift_start', description: 'مبنای دقیقه‌ی تأخیر پس از گذشتن از مهلت: shift_start = از ساعت شروع کار (کل تأخیر)، after_grace = فقط از پایان مهلت' });
+def('earlyGraceMinutes', 'early_grace_minutes', 'number', { group: 'workHours', min: 0, max: 240, default: 0, description: 'مهلت زودتر رفتن (دقیقه) پیش از ساعت پایان کار؛ خروج تا این مقدار زودتر «زودتر رفتن» حساب نمی‌شود (۰ = بدون مهلت). در صورت عبور از مهلت، کل دقیقه‌های مانده تا پایان کار حساب می‌شود' });
 // تأخیر و یادآوری
 def('lateCheckinGraceMinutes', 'late_checkin_grace_minutes', 'number', { group: 'reminders', min: 0, max: 720, default: () => config.lateCheckinGraceMinutes, fallback: 15, description: 'مهلت تأخیر ورود (دقیقه) پس از ساعت شروع، پیش از یادآوری ورود' });
 def('checkoutReminderMinutesBefore', 'checkout_reminder_minutes_before', 'number', { group: 'reminders', min: 0, max: 720, default: () => config.checkoutReminderMinutesBefore, fallback: 15, description: 'یادآوری ثبت خروج، این‌قدر دقیقه پیش از پایان کار' });
