@@ -77,4 +77,59 @@ function summarizeRange(records, opts = {}) {
   return { totalEffective, lateCount, earlyLeaveCount, incompleteCount, dayCount: records.length };
 }
 
-module.exports = { loadContext, computeRecordDay, summarizeRecord, summarizeRange, toLegacySummary };
+// ---------- سقف ماهانه‌ی اضافه‌کاری (S3-5b) ----------
+// عمداً بیرون از computeDay (تابع خالصِ «یک روز») است: سقف ماهانه به مجموع چند روز بستگی دارد.
+// ورودی/خروجی هر دو «دقیقه‌ی معادل قابل‌پرداخت» (overtimePayable، پس از آستانه/گرد‌کردن/ضریب) هستند.
+
+// برش مجموع تجمعی: payables به ترتیب زمانی (قدیمی‌ترین اول)؛ cap = سقف ماه (۰ = بدون سقف).
+// هر روز min(مقدار روز، باقی‌مانده‌ی سقف) می‌گیرد؛ روزی که سقف را رد کند فقط باقی‌مانده را می‌گیرد (بدون گرد‌کردن دوباره)
+// و روزهای بعد ۰ می‌شوند. مجموع دقیقاً برابر سقف ⇒ هیچ برشی نیست. ورودی تغییر نمی‌کند؛ آرایه‌ی جدید برمی‌گردد.
+function capMonthlyOvertime(payables, cap) {
+  if (!Array.isArray(payables)) throw new TypeError('payables باید آرایه باشد.');
+  if (typeof cap !== 'number' || !Number.isFinite(cap) || cap < 0) throw new RangeError('سقف ماهانه باید عدد ≥ ۰ باشد.');
+  for (const p of payables) {
+    if (typeof p !== 'number' || !Number.isFinite(p) || p < 0) throw new RangeError('هر مقدار اضافه‌کاری قابل‌پرداخت باید عدد ≥ ۰ باشد.');
+  }
+  if (cap === 0) return payables.slice();
+  let remaining = cap;
+  return payables.map((p) => {
+    const allowed = Math.min(p, remaining);
+    remaining -= allowed;
+    return allowed;
+  });
+}
+
+// اضافه‌کاری قابل‌پرداخت‌ی یک ماه برای یک کاربر. records = رکوردهای attendance_records «همان کاربر و همان ماه»؛
+// تعیین مرز ماه (شمسی/میلادی) با فراخواننده است (S5-2a)، نه این تابع. ترتیب ورودی مهم نیست: بر اساس record_date (سپس id) مرتب می‌شود.
+// opts: { now, context, capMinutes } — capMinutes اگر نباشد از تنظیم overtimeMonthlyCapMinutes می‌آید.
+// خروجی: { cap, days: [{ recordId, recordDate, overtime, overtimePayableDaily, overtimePayable }], totalOvertime,
+//          totalPayableDaily (پیش از سقف)، totalPayable (پس از سقف)، clippedMinutes }
+function computeMonthOvertime(records, opts = {}) {
+  const list = Array.isArray(records) ? records.filter(Boolean) : [];
+  if (new Set(list.map((r) => r.user_id)).size > 1) throw new RangeError('رکوردهای یک ماه باید مال یک کاربر باشند (سقف ماهانه برای هر کاربر جدا حساب می‌شود).');
+  const context = opts.context || loadContext();
+  const cap = opts.capMinutes === undefined ? context.settings.overtimeMonthlyCapMinutes : opts.capMinutes;
+  const sorted = list.slice().sort((a, b) => (a.record_date < b.record_date ? -1 : a.record_date > b.record_date ? 1 : (a.id || 0) - (b.id || 0)));
+  const dayResults = sorted.map((record) => computeRecordDay(record, { ...opts, context }));
+  const daily = dayResults.map((d) => d.overtimePayable);
+  const capped = capMonthlyOvertime(daily, cap);
+  const sum = (arr) => arr.reduce((t, v) => t + v, 0);
+  const totalPayableDaily = sum(daily);
+  const totalPayable = sum(capped);
+  return {
+    cap,
+    days: sorted.map((record, i) => ({
+      recordId: record.id,
+      recordDate: record.record_date,
+      overtime: dayResults[i].overtime,
+      overtimePayableDaily: daily[i],
+      overtimePayable: capped[i],
+    })),
+    totalOvertime: sum(dayResults.map((d) => d.overtime)),
+    totalPayableDaily,
+    totalPayable,
+    clippedMinutes: totalPayableDaily - totalPayable,
+  };
+}
+
+module.exports = { loadContext, computeRecordDay, summarizeRecord, summarizeRange, toLegacySummary, capMonthlyOvertime, computeMonthOvertime };
