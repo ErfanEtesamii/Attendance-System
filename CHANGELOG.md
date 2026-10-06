@@ -4,6 +4,11 @@
 
 ## [Unreleased] — بخش ۲ (امنیت، پایداری و عملیات)
 
+### S2-4a — جدول suspicious_events و ثبت‌کننده (فقط ساختار؛ بدون قاعده‌ی تشخیص)
+- **migration `006_suspicious_events`**: جدول `suspicious_events` (`id, event_type, user_ids JSON, record_ids JSON, event_date, details JSON, status open|reviewed|ignored, reviewed_by, reviewed_at, created_at`) با ایندکس یکتای `(event_type, user_ids, event_date)` برای dedupe و ایندکس `(status, event_date)`. پیش از اعمال، migrator طبق معمول بک‌آپ `pre-migration-*` می‌گیرد.
+- **`src/repositories/suspiciousRepository.js`**: `create({eventType, userIds, recordIds, eventDate, details})` ⇒ `{created, event}`؛ `userIds`/`recordIds` قبل از درج مرتب و یکتا می‌شوند (ترتیب ورودی روی تکراری‌بودن اثر ندارد)؛ مورد تکراری بازنویسی نمی‌شود و رکورد قبلی با `created:false` برمی‌گردد؛ ورودی نامعتبر خطا می‌دهد. `getById` هم هست. هنوز هیچ کدی این را صدا نمی‌زند (اتصال در S2-4e).
+- تست: `test/suspiciousEvents.test.js` (۵ تست: ساخت و نرمال‌سازی، dedupe با ترتیب متفاوت، موارد متمایز، ورودی نامعتبر، CHECK وضعیت). `test/migrations.test.js` برای migration ششم به‌روز شد (جدول جدید جزو جدول‌های «عملیاتی» مقایسه‌ی داده). `npm test`: ۲۱۶ سبز.
+
 ### S2-3 — ثبت device_id (فقط جمع‌آوری، بدون قاعده‌ی تشخیص)
 - **migration `005_attendance_devices`**: چهار ستون nullable روی `attendance_records`: `check_in_device`, `check_out_device`, `check_in_ua`, `check_out_ua` (idempotent؛ رکوردهای قدیمی، بات و ثبت دستی ادمین `NULL` می‌مانند). پیش از اعمال، migrator طبق معمول بک‌آپ `pre-migration-*` می‌گیرد.
 - **Mini App** (`public/js/app.js`): یک `device_id` تصادفی پایدار (`crypto.randomUUID`، با fallback) در `localStorage` نگه داشته می‌شود و فقط همراه `/check-in` و `/check-out` به‌صورت `body.deviceId` می‌رود. اگر تلگرام `CloudStorage` داشت، پشتیبان آن است: وقتی `localStorage` خالی بود از ابر خوانده می‌شود و شناسه‌ی موجود در ابر هرگز بازنویسی نمی‌شود (انتظار حداکثر ۱٫۵ ثانیه، سپس بدون ابر ادامه می‌دهد). هر خطای ذخیره‌سازی نادیده گرفته می‌شود و ورود/خروج بدون device هم کار می‌کند.
