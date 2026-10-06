@@ -2,6 +2,15 @@
 
 وضعیت و جزئیات کامل فازها: [`PROJECT_STATUS.md`](PROJECT_STATUS.md) — معماری: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 
+## [Unreleased] — بخش ۳ (موتور محاسبه و تنظیمات)
+
+### S3-1a — رجیستری تنظیمات + اعتبارسنجی (بدون API/UI)
+- **`src/utils/settingsRegistry.js`** (جدید، خالص و بدون SQL): هر تنظیم یک خط `def(key, dbKey, type, { default, fallback, min, max, values, group, description })`. انواع: `number` (صحیح با بازه) | `boolean` | `time` (HH:MM؛ `8:00` ⇒ `08:00`) | `cron` (با `node-cron` validate) | `enum` | `string`. توضیح فارسی و `group` (برچسب‌ها در `GROUP_LABELS`) برای صفحه‌ی گروه‌بندی‌شده‌ی S3-9a. `validate(key, raw)` ⇒ `{ok,value}|{ok:false,error}` (برای S3-1b)، `deserialize` (خراب/خارج از بازه ⇒ پیش‌فرض، هرگز NaN)، `serialize`، `defaultOf` (پیش‌فرض از `config`/`.env` و در صورت نامعتبر بودن `fallback` ثابت تا غلط تایپی در `.env` سرور را خراب نکند) و `selfCheck()` (کلید تکراری/پیش‌فرض نامعتبر و ...).
+- **`settingsRepository`**: `KEY_MAP/INT_RANGES/BOOLEAN_KEYS/DEFAULTS` حذف و همه از رجیستری ساخته می‌شود؛ API عمومی و ترتیب/نام کلیدهای `getAll()` بدون تغییر. هر ۱۱ کلید فعلی (۵ کلید اصلی + ۶ کلید S2) منتقل شد. رفتار `update`: نامعتبر/خالی/ناشناخته **همچنان نادیده** (۴۰۰ در S3-1b).
+- ⚠️ تغییر رفتار جزئی (فقط برای مقدار نامعتبر): ۵ کلید قدیمی اکنون هم بازه دارند (دقیقه ۰ تا ۷۲۰، آستانه‌ی تأخیر ۱ تا ۱۰۰ و ساعت‌ها HH:MM معتبر)؛ قبلاً هر متنی ذخیره می‌شد و مقدار عددی خراب هنگام خواندن `NaN` می‌شد. مقدار معتبر قبلی در DB دقیقاً همان می‌ماند.
+- بدون migration، بدون وابستگی جدید، بدون تغییر API/UI.
+- تست: `test/settingsRegistry.test.js` (۴ تست: سلامت رجیستری و پوشش ۱۱ کلید، هر نوع با مقدار معتبر/نامعتبر، سازگاری با مقادیر موجود DB، رفتار `update`). `npm test`: ۲۷۶ سبز.
+
 ## [Unreleased] — بخش ۲ (امنیت، پایداری و عملیات)
 
 ### S2-7b — Job ماهانه‌ی نگهداری دیتابیس (cleanup + ANALYZE/optimize + VACUUM)
