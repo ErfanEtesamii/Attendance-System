@@ -58,10 +58,11 @@ function networkRestriction(req, res, next) {
   }
 
   // استثنای فاز ۷: مأموریت تأییدشده برای همین کاربر و همین تاریخ.
-  // چون این middleware زودتر از هندلر اصلی اجرا می‌شود، userId را همینجا می‌خوانیم.
-  // اگر پیش از این middleware احراز هویت واقعی Mini App (فاز ۴) اجرا شده باشد،
-  // req.miniAppUser معتبرتر از هر مقدار خام body/query است (چون امضا شده و قابل جعل نیست).
-  const userId = req.miniAppUser?.id || req.body?.userId || req.query.userId;
+  // فقط هویت امضاشده‌ی Mini App (req.miniAppUser از telegramAuth) پذیرفته می‌شود؛ userId خام body/query
+  // دیگر خوانده نمی‌شود (بخش ۱-ب): مسیر قدیمی /api/attendance که بدون احراز هویت userId را از body می‌گرفت
+  // حذف شد، و تا وقتی این middleware فقط بعد از telegramAuth قرار دارد، نیازی به آن نیست.
+  // (اگر روزی جایی بدون telegramAuth استفاده شود، userId=null و فقط رد + ثبت audit رخ می‌دهد: fail-closed)
+  const userId = req.miniAppUser?.id;
   if (userId) {
     const onMission = leaveRepository.hasApprovedMissionOnDate(userId, todayDateString());
     if (onMission) {

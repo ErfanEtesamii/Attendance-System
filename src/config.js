@@ -1,7 +1,10 @@
 // ماژول مرکزی خواندن تنظیمات از فایل .env
 // در فازهای بعد (مثلاً فاز ۲) از همین فایل برای خواندن ALLOWED_NETWORK_CIDR استفاده می‌شود.
 
-require('dotenv').config();
+// در تست‌ها (NODE_ENV=test) .env واقعی خوانده نمی‌شود تا تست‌ها hermetic باشند و به توکن/دیتابیس واقعی دست نزنند
+if (process.env.NODE_ENV !== 'test') {
+  require('dotenv').config();
+}
 const path = require('path');
 
 const config = {

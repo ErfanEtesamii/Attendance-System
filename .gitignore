@@ -7,3 +7,4 @@ data/*.db-shm
 npm-debug.log*
 
 .ssl/
+data/backups/

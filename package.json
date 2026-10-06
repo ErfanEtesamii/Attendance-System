@@ -1,13 +1,18 @@
 {
   "name": "farazhonar-attendance-backend",
-  "version": "0.4.0",
-  "description": "سیستم حضور و غیاب تلگرامی شرکت فرازهنر - فاز ۱ تا ۴: بک‌اند، بات تلگرام (Polling) و Telegram Mini App",
+  "version": "1.0.0-rc.1",
+  "description": "سیستم حضور و غیاب تلگرامی شرکت فرازهنر — بک‌اند Express + SQLite، بات تلگرام (polling)، Mini App کارمند و پنل مدیریتی وب (فاز ۱ تا ۹)",
   "private": true,
   "main": "src/server.js",
   "scripts": {
     "start": "node src/index.js",
     "start:api-only": "node src/server.js",
     "init-db": "node src/db/init.js",
+    "migrate": "node src/db/migrate.js",
+    "migrate:status": "node src/db/migrate.js --status",
+    "test": "node scripts/run-tests.js",
+    "test:watch": "node scripts/run-tests.js --watch",
+    "smoke": "node scripts/smoke-test.js",
     "create-admin": "node src/scripts/createAdmin.js",
     "dev": "node --watch src/index.js"
   },
