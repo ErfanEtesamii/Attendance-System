@@ -11,6 +11,7 @@
 
 const settingsRepository = require('../repositories/settingsRepository');
 const breakRepository = require('../repositories/breakRepository');
+const overtimeApprovalRepository = require('../repositories/overtimeApprovalRepository');
 const { computeDay } = require('./computeDay');
 
 // تنظیمات مؤثر + منطقه‌ی زمانی. برای حلقه روی چند رکورد یک‌بار بگیرید و با { context } بدهید تا هر رکورد دوباره DB نخواند.
@@ -99,37 +100,68 @@ function capMonthlyOvertime(payables, cap) {
   });
 }
 
-// اضافه‌کاری قابل‌پرداخت‌ی یک ماه برای یک کاربر. records = رکوردهای attendance_records «همان کاربر و همان ماه»؛
+// ---------- تأیید اضافه‌کاری (S3-5c) ----------
+// وضعیت تأیید یک روز (خالص). requiresApproval از تنظیم overtimeRequiresApproval؛ payable = overtimePayable همان روز؛
+// decision = ردیف overtime_approvals یا undefined.
+//   not_required  تأیید لازم نیست (تنظیم خاموش) ⇒ همه‌ی payable حساب می‌شود
+//   none          تأیید لازم است ولی چیزی برای تأیید نیست (payable ۰ و تصمیمی ثبت نشده)
+//   pending       تأیید لازم است و هنوز تصمیمی نیست ⇒ خارج از payable
+//   approved / rejected   تصمیم ثبت‌شده (ردشده خارج از payable)
+function approvalStatusOf(requiresApproval, payable, decision) {
+  if (!requiresApproval) return 'not_required';
+  if (decision) return decision.status;
+  return payable > 0 ? 'pending' : 'none';
+}
+
+// قابل‌پرداخت پس از اعمال تأیید: معلق و ردشده ۰
+function eligiblePayable(payable, status) {
+  return status === 'pending' || status === 'rejected' ? 0 : payable;
+}
+
+// اضافه‌کاری قابل‌پرداختِ یک ماه برای یک کاربر. records = رکوردهای attendance_records «همان کاربر و همان ماه»؛
 // تعیین مرز ماه (شمسی/میلادی) با فراخواننده است (S5-2a)، نه این تابع. ترتیب ورودی مهم نیست: بر اساس record_date (سپس id) مرتب می‌شود.
+// ترتیب مراحل: payable روزانه (computeDay) ⇒ حذف معلق/ردشده (S3-5c، فقط وقتی overtimeRequiresApproval روشن است) ⇒ سقف ماهانه (S3-5b).
 // opts: { now, context, capMinutes } — capMinutes اگر نباشد از تنظیم overtimeMonthlyCapMinutes می‌آید.
-// خروجی: { cap, days: [{ recordId, recordDate, overtime, overtimePayableDaily, overtimePayable }], totalOvertime,
-//          totalPayableDaily (پیش از سقف)، totalPayable (پس از سقف)، clippedMinutes }
+// خروجی: { cap, requiresApproval,
+//          days: [{ recordId, recordDate, overtime, overtimePayableDaily, approvalStatus, overtimePayableEligible, overtimePayable }],
+//          totalOvertime, totalPayableDaily (پیش از تأیید و سقف)، pendingMinutes، rejectedMinutes (payable روزانه‌ی روزهای معلق/ردشده)،
+//          totalEligible (پس از تأیید)، totalPayable (پس از سقف)، clippedMinutes = totalEligible − totalPayable }
 function computeMonthOvertime(records, opts = {}) {
   const list = Array.isArray(records) ? records.filter(Boolean) : [];
   if (new Set(list.map((r) => r.user_id)).size > 1) throw new RangeError('رکوردهای یک ماه باید مال یک کاربر باشند (سقف ماهانه برای هر کاربر جدا حساب می‌شود).');
   const context = opts.context || loadContext();
   const cap = opts.capMinutes === undefined ? context.settings.overtimeMonthlyCapMinutes : opts.capMinutes;
+  const requiresApproval = context.settings.overtimeRequiresApproval === true;
   const sorted = list.slice().sort((a, b) => (a.record_date < b.record_date ? -1 : a.record_date > b.record_date ? 1 : (a.id || 0) - (b.id || 0)));
   const dayResults = sorted.map((record) => computeRecordDay(record, { ...opts, context }));
   const daily = dayResults.map((d) => d.overtimePayable);
-  const capped = capMonthlyOvertime(daily, cap);
+  const decisions = requiresApproval ? overtimeApprovalRepository.mapByRecordIds(sorted.map((r) => r.id)) : new Map();
+  const statuses = sorted.map((record, i) => approvalStatusOf(requiresApproval, daily[i], decisions.get(record.id)));
+  const eligible = daily.map((p, i) => eligiblePayable(p, statuses[i]));
+  const capped = capMonthlyOvertime(eligible, cap);
   const sum = (arr) => arr.reduce((t, v) => t + v, 0);
-  const totalPayableDaily = sum(daily);
+  const totalEligible = sum(eligible);
   const totalPayable = sum(capped);
   return {
     cap,
+    requiresApproval,
     days: sorted.map((record, i) => ({
       recordId: record.id,
       recordDate: record.record_date,
       overtime: dayResults[i].overtime,
       overtimePayableDaily: daily[i],
+      approvalStatus: statuses[i],
+      overtimePayableEligible: eligible[i],
       overtimePayable: capped[i],
     })),
     totalOvertime: sum(dayResults.map((d) => d.overtime)),
-    totalPayableDaily,
+    totalPayableDaily: sum(daily),
+    pendingMinutes: sum(daily.filter((_, i) => statuses[i] === 'pending')),
+    rejectedMinutes: sum(daily.filter((_, i) => statuses[i] === 'rejected')),
+    totalEligible,
     totalPayable,
-    clippedMinutes: totalPayableDaily - totalPayable,
+    clippedMinutes: totalEligible - totalPayable,
   };
 }
 
-module.exports = { loadContext, computeRecordDay, summarizeRecord, summarizeRange, toLegacySummary, capMonthlyOvertime, computeMonthOvertime };
+module.exports = { loadContext, computeRecordDay, summarizeRecord, summarizeRange, toLegacySummary, capMonthlyOvertime, computeMonthOvertime, approvalStatusOf, eligiblePayable };
