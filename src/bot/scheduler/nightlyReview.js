@@ -11,6 +11,7 @@ const { formatMinutes } = require('../../utils/workHours');
 const { todayDateString } = require('../../utils/serverTime');
 const { panelWebAppButton } = require('../panelLinks');
 const { runFraudChecksSafe } = require('../../utils/fraudRunner');
+const suspiciousRepository = require('../../repositories/suspiciousRepository');
 
 const MAX_ATTENTION_LINES = 25;
 
@@ -26,6 +27,20 @@ function attentionLine(r) {
   if (r.noCheckout) parts.push(`ورود ${clock(r.checkIn)} ولی خروج ثبت نشده`);
   else if (r.state === 'incomplete') parts.push('رکورد ناقص');
   return `• ${name} — ${parts.join('، ')}`;
+}
+
+// تعداد «نشانه»های بررسی‌نشده‌ی تیم سرپرست (S2-5b). همان اسکوپ API پنل: همه‌ی کاربران مورد باید در تیمش باشند.
+// ضدخطا: هر مشکلی ⇒ ۰ تا مرور شبانه هرگز نشکند.
+function openSuspiciousCount(supervisor) {
+  try {
+    const teamIds = new Set(usersRepository.listUsers({ managerId: supervisor.id }).map((u) => u.id));
+    return suspiciousRepository
+      .list({ status: 'open', limit: 1000 })
+      .filter((e) => e.user_ids.length > 0 && e.user_ids.every((id) => teamIds.has(id))).length;
+  } catch (err) {
+    console.error('[bot][scheduler] خطا در شمارش موارد مشکوک:', err.message);
+    return 0;
+  }
 }
 
 function buildNightlyMessage(supervisor, team, today) {
@@ -58,10 +73,13 @@ function buildNightlyMessage(supervisor, team, today) {
     }
   }
 
-  if (pendingLeave > 0 || openDisputes > 0) {
+  const openSuspicious = openSuspiciousCount(supervisor);
+  if (pendingLeave > 0 || openDisputes > 0 || openSuspicious > 0) {
     lines.push('');
     if (pendingLeave > 0) lines.push(`⏳ ${pendingLeave} درخواست مرخصی/مأموریت منتظر پاسخ شماست → /pending_leaves`);
     if (openDisputes > 0) lines.push(`💬 ${openDisputes} اعتراض باز منتظر پاسخ شماست → /pending_disputes`);
+    // «نشانه» است نه اتهام؛ جزئیات فقط در پنل (بخش «موارد مشکوک»)
+    if (openSuspicious > 0) lines.push(`🔎 ${openSuspicious} نشانه‌ی بررسی‌نشده در تیم شما (فقط نشانه، نه اتهام) → پنل ‹ موارد مشکوک`);
   }
 
   return lines.join('\n');

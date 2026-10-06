@@ -428,6 +428,84 @@
     },
   });
   // ======================================================
+  // موارد مشکوک (S2-5b): فقط «نشانه» برای بررسی انسانی، نه اتهام یا مدرک
+  // ======================================================
+  const suspUi = { status: 'open' };
+  const SUSP_TYPE = { shared_device: 'یک دستگاه برای چند نفر', same_ip_close: 'یک IP و ثبت‌های بسیار نزدیک', device_change: 'تغییر ناگهانی دستگاه' };
+  const SUSP_STATUS = { open: ['open', 'بررسی‌نشده'], reviewed: ['resolved', 'بررسی‌شده'], ignored: ['holiday', 'بی‌اهمیت'] };
+  const shortId = (v) => { const t = String(v == null ? '' : v); return t.length > 10 ? `${t.slice(0, 8)}…` : t; };
+
+  // توضیح فارسی و خوانا از details هر نوع قاعده (همه‌ی مقدارها esc می‌شوند)
+  function suspDetailLines(e) {
+    const d = e.details || {};
+    const out = [];
+    if (e.eventType === 'shared_device') {
+      out.push(`یک شناسه‌ی دستگاه (${shortId(d.deviceId)}) در همین روز برای ${fmt.num(d.userCount || e.users.length)} نفر ثبت شده است.`);
+    } else if (e.eventType === 'same_ip_close') {
+      out.push(`ثبت‌ها از یک IP (${d.ip || '—'}) و با فاصله‌ی ${fmt.num(d.minGapSeconds)} ثانیه (آستانه ${fmt.num(d.windowSeconds)} ثانیه) انجام شده‌اند.`);
+      out.push('در شبکه‌ی مشترک یا هات‌اسپات، این حالت می‌تواند کاملاً عادی باشد.');
+    } else if (e.eventType === 'device_change') {
+      out.push(`دستگاه امروز با دستگاه‌های ${fmt.num(d.historyDays)} روز اخیر (از ${fmt.num(d.lookbackDays)} روز گذشته) تفاوت دارد.`);
+      out.push('تعویض گوشی یا پاک‌شدن داده‌ی مرورگر/تلگرام هم همین نشانه را می‌سازد.');
+    }
+    if (d.blocked) out.push('ثبت این تردد به‌دلیل تنظیم «مسدودسازی دستگاه مشترک» انجام نشد.');
+    return out;
+  }
+
+  AP.view('suspicious', {
+    nav: { icon: 'alert', label: 'موارد مشکوک', group: 'کارمندان و تردد', counter: true },
+    async render() {
+      const qs = suspUi.status === 'all' ? '' : `?status=${suspUi.status}`;
+      const items = await AP.api(`/admin/suspicious${qs}`);
+      const html = `
+        <div class="view-header"><div><h2>موارد مشکوک</h2><div class="sub">${fmt.num(items.length)} نشانه</div></div></div>
+        <div class="card" style="margin-bottom:14px"><p class="muted" style="margin:0;line-height:2">
+          اینجا فقط «نشانه» می‌بینید، نه اتهام یا مدرک. شناسه‌ی دستگاه توسط خود برنامه در مرورگر ساخته می‌شود و قابل جعل یا پاک‌شدن است؛
+          هر نشانه باید با گفتگو و بررسی انسانی تأیید یا نادیده گرفته شود. ثبت نتیجه‌ی بررسی (با ذکر دلیل) در گزارش رویدادها می‌ماند.</p></div>
+        <div class="chips" id="s-chips">${[['open', 'بررسی‌نشده'], ['reviewed', 'بررسی‌شده'], ['ignored', 'بی‌اهمیت'], ['all', 'همه']]
+          .map(([k, l]) => `<button class="chip ${k === suspUi.status ? 'active' : ''}" data-s="${k}">${l}</button>`).join('')}</div>
+        <div class="list">${items.length ? items.map((e) => {
+          const [cls, label] = SUSP_STATUS[e.status] || ['holiday', e.status];
+          return `
+          <div class="item">
+            <div class="grow">
+              <div class="title">${esc(SUSP_TYPE[e.eventType] || e.eventType)} ${AP.badge(cls, label)}
+                <span class="muted" style="font-weight:400;font-size:12px">${esc(fmt.dateLong(e.eventDate))}</span></div>
+              <div class="meta">${e.users.map((u) => `<a href="#/profile/${esc(u.id)}" style="color:var(--green)">${esc(u.fullName || `کاربر ${u.id}`)}</a>`).join('، ')}</div>
+              ${suspDetailLines(e).map((t) => `<p class="text">${esc(t)}</p>`).join('')}
+              ${e.recordIds.length ? `<div class="meta">رکوردهای مرتبط: ${e.recordIds.map((id) => `<a href="#" data-rec="${esc(id)}" style="color:var(--green)">#${fmt.num(id)}</a>`).join('، ')}</div>` : ''}
+              ${e.reviewedAt ? `<div class="meta">${e.status === 'ignored' ? 'ثبت‌شده به‌عنوان بی‌اهمیت' : 'بررسی‌شده'} توسط ${esc(e.reviewedBy ? e.reviewedBy.fullName || `کاربر ${e.reviewedBy.id}` : '—')} · ${esc(fmt.dateTime(e.reviewedAt))}</div>` : ''}
+            </div>
+            <div class="row-actions">
+              ${e.status === 'open' ? `
+                <button class="btn success small" data-review="${e.id}" data-to="reviewed">${icon('check')} بررسی شد</button>
+                <button class="btn ghost small" data-review="${e.id}" data-to="ignored">بی‌اهمیت</button>` : `
+                <button class="btn ghost small" data-review="${e.id}" data-to="${e.status === 'reviewed' ? 'ignored' : 'reviewed'}">${e.status === 'reviewed' ? 'تغییر به بی‌اهمیت' : 'تغییر به بررسی‌شده'}</button>`}
+            </div></div>`;
+        }).join('') : `<div class="card">${emptyBox(suspUi.status === 'open' ? 'نشانه‌ی بررسی‌نشده‌ای وجود ندارد.' : 'موردی وجود ندارد.')}</div>`}</div>`;
+      return {
+        html,
+        mount(page) {
+          $('#s-chips', page).addEventListener('click', (ev) => { const c = ev.target.closest('[data-s]'); if (c) { suspUi.status = c.dataset.s; AP.refresh(); } });
+          $$('[data-rec]', page).forEach((a) => a.addEventListener('click', (ev) => { ev.preventDefault(); AP.openRecord(a.dataset.rec); }));
+          $$('[data-review]', page).forEach((b) => b.addEventListener('click', async () => {
+            const to = b.dataset.to;
+            const reason = await AP.askReason({
+              title: to === 'reviewed' ? 'ثبت نتیجه‌ی بررسی' : 'ثبت به‌عنوان بی‌اهمیت',
+              label: 'دلیل / نتیجه‌ی بررسی (اجباری — در گزارش رویدادها ثبت می‌شود)',
+              message: 'این مورد فقط یک نشانه است. نتیجه‌ی بررسی خود را کوتاه بنویسید.',
+              confirmText: to === 'reviewed' ? 'ثبت بررسی' : 'ثبت بی‌اهمیت',
+            });
+            if (reason === null) return;
+            const ok = await AP.attempt(() => AP.api(`/admin/suspicious/${b.dataset.review}/review`, { method: 'POST', body: { status: to, reason } }), 'ثبت شد.');
+            if (ok) { AP.refresh(); AP.refreshCounts(); }
+          }));
+        },
+      };
+    },
+  });
+
+  // ======================================================
   // مرور شبانه: وضعیت تیم + مرخصی‌ها + اعتراض‌ها در یک صفحه
   // ======================================================
   const nightUi = { date: null, filter: 'attention' };

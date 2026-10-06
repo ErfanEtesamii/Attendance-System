@@ -366,8 +366,13 @@
         AP.api('/admin/leave-requests?status=pending'),
         AP.api('/admin/disputes?status=open'),
       ]);
-      AP.state.counts = { leave: leave.length, disputes: disputes.length, nightly: leave.length + disputes.length };
-      ['leave', 'disputes', 'nightly'].forEach((k) => {
+      // موارد مشکوک فقط برای سرپرست/ادمین (کارمند ۴۰۳ می‌گیرد)؛ شکستش شمارنده‌های دیگر را خراب نمی‌کند
+      let suspicious = [];
+      if (AP.state.isStaff) {
+        try { suspicious = await AP.api('/admin/suspicious?status=open'); } catch (_) { suspicious = []; }
+      }
+      AP.state.counts = { leave: leave.length, disputes: disputes.length, nightly: leave.length + disputes.length, suspicious: suspicious.length };
+      ['leave', 'disputes', 'nightly', 'suspicious'].forEach((k) => {
         const el = $(`.nav-item[data-view="${k}"] .nav-count`);
         if (!el) return;
         el.textContent = fmt.num(AP.state.counts[k]);
