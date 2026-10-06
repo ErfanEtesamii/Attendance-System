@@ -4,6 +4,12 @@
 
 ## [Unreleased] — بخش ۳ (موتور محاسبه و تنظیمات)
 
+### S3-2d — تست تطبیق موتور جدید با `workHours` قدیمی (فقط تست؛ بدون تغییر کد برنامه)
+- **`test/legacyParity.test.js`** (جدید، ۳ تست): خروجی `dayService` (از مسیر واقعی DB ⇒ `computeDay`) با منطق قدیمی منجمد‌شده (`test/fixtures/legacyWorkHours.js`) مقایسه می‌شود. مجموعه‌ی داده: ۱۹ رکورد دست‌ساز (مرز دقیق شروع/پایان، ورود=خروج، خروج پیش از ورود، عبور از نیمه‌شب، بدون ورود، رکورد باز، ورود بعد از «الان»، میلی‌ثانیه و گرد‌شدن نیم‌دقیقه، استراحت باز/صفر/منفی/هم‌پوشان/خارج از بازه/بلندتر از کار) + ۳۰۰ رکورد تصادفیِ بذردار (قابل تکرار) × ۶ تنظیم ساعت کاری (پیش‌فرض، ۰۹:۰۰–۱۷:۳۰، ساعت تک‌رقمی `7:30`، ۰۰:۰۰–۲۳:۵۹، شروع=پایان، شروع بعد از پایان).
+- مقایسه‌ها: `summarizeRecord` (هر رکورد × هر تنظیم)، `summarizeRange` (کل مجموعه و گروه‌های ۱۰تایی و خالی)، و wrapper `workHours` + `now` تزریقی. TZ پروسه = Asia/Tehran و `Date` ثابت (برای رکوردهای باز).
+- **نتیجه: جدول تفاوت خالی** — هیچ اختلافی بین موتور جدید و قدیمی پیدا نشد، پس هیچ رفعی لازم نبود. صحت خود تست با جهش (mutation) سنجیده شد: تغییر گرد‌کردن استراحت، حذف clamp ساعت مفید، شمردن استراحت باز، و جابه‌جایی یک‌دقیقه‌ای تأخیر/اضافه‌کاری همگی باعث شکست تست می‌شوند.
+- محدودیت: تطبیق فقط وقتی معتبر است که TZ سیستم‌عامل = timezone تنظیمات (تهران) باشد؛ منطق قدیمی ذاتاً به ساعت سیستم وابسته بود. `npm test`: ۲۹۴ سبز.
+
 ### S3-2c — `dayService` و مهاجرت مصرف‌کننده‌های `workHours` (`workHours.js` اکنون wrapper)
 - **`src/engine/dayService.js`** (جدید): تنها جایی که استراحت‌ها (`breakRepository`) و تنظیمات (`settingsRepository.getAll()`، شامل `timezone`) را می‌خواند و به `computeDay` می‌دهد. `computeRecordDay(record, { now, context })` ⇒ خروجی کامل computeDay؛ `summarizeRecord` / `summarizeRange` ⇒ **همان شکل و ترتیب کلید قدیمی** (`effectiveMinutes, lateMinutes, earlyLeaveMinutes, overtimeMinutes, isOpen`) تا JSON پنل/Mini App/بات و فرانت‌اند بدون تغییر بماند؛ `loadContext()` برای حلقه‌ها (تنظیمات یک‌بار).
 - **مصرف‌کننده‌های مهاجرت‌شده** (فهرست grep): API پنل (`admin/users.js`، `admin/common.js` (`safeSummary`/`aggregateRecords`)، `admin/dashboard.js`، `admin/reports.js`)، `miniapp.js`، `utils/dayReview.js`، بات (`commands/status.js`، `report.js`، `teamReport.js`)، Jobها (`scheduler/reports.js`، `lateCheckinReminder.js`، `checkoutReminder.js`). `scheduler/nightlyReview.js` فقط `formatMinutes` می‌خواند و دست‌نخورده ماند.
