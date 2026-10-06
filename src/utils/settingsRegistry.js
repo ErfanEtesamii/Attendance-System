@@ -4,12 +4,13 @@
 // افزودن تنظیم جدید = یک خط در REGISTRY (پایین همین فایل)؛ اعتبارسنجی، پیش‌فرض و خواندن/ذخیره خودکار است.
 //
 // انواع: number (عدد صحیح، مگر integer:false) | boolean | time (HH:MM) | cron (با node-cron validate)
-//        | enum (values) | string (minLength/maxLength اختیاری)
+//        | enum (values) | string (minLength/maxLength اختیاری) | timezone (نام IANA، مثل Asia/Tehran)
 
 const cron = require('node-cron');
 const config = require('../config');
+const time = require('./time');
 
-const TYPES = ['number', 'boolean', 'time', 'cron', 'enum', 'string'];
+const TYPES = ['number', 'boolean', 'time', 'cron', 'enum', 'string', 'timezone'];
 
 // برچسب فارسی گروه‌ها (برای صفحه‌ی تنظیمات گروه‌بندی‌شده در S3-9a)
 const GROUP_LABELS = {
@@ -65,6 +66,10 @@ function validateValue(def, raw) {
       if (s.length > (def.maxLength || 200)) return bad(`حداکثر ${def.maxLength || 200} نویسه مجاز است.`);
       return { ok: true, value: s };
     }
+    case 'timezone': {
+      const zone = time.normalizeTimezone(raw);
+      return zone ? { ok: true, value: zone } : bad('باید نام معتبر منطقه‌ی زمانی IANA باشد (مثل Asia/Tehran).');
+    }
     default:
       return bad('نوع تنظیم ناشناخته است.');
   }
@@ -80,6 +85,7 @@ function def(key, dbKey, type, opts) {
 }
 
 // ساعت کاری
+def('timezone', 'timezone', 'timezone', { group: 'workHours', default: () => config.timezone, fallback: 'Asia/Tehran', description: 'منطقه‌ی زمانی شرکت (نام IANA) برای تعیین روز و ساعت کاری' });
 def('workDayStart', 'work_day_start', 'time', { group: 'workHours', default: () => config.workDayStart, fallback: '08:00', description: 'ساعت شروع کار' });
 def('workDayEnd', 'work_day_end', 'time', { group: 'workHours', default: () => config.workDayEnd, fallback: '16:30', description: 'ساعت پایان کار' });
 // تأخیر و یادآوری

@@ -115,6 +115,10 @@ const config = {
   sslKeyPath: process.env.SSL_KEY_PATH || '',
   httpsEnabled: !!(process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH),
 
+  // S3-2a: منطقه‌ی زمانی شرکت (نام IANA) برای تفکیک «روز و ساعتِ شرکت» از زمان UTC ذخیره‌شده.
+  // فقط پیش‌فرض است؛ مقدار مؤثر از تنظیمات پنل (timezone) خوانده می‌شود. نامعتبر ⇒ Asia/Tehran.
+  timezone: process.env.TIMEZONE || 'Asia/Tehran',
+
   // ساعت شروع/پایان رسمی کار، برای تشخیص تأخیر/زودتر رفتن/اضافه‌کاری و یادآوری‌ها.
   // فرمت HH:mm بر اساس ساعت سرور. محاسبه کامل و نهایی در فاز ۵ انجام می‌شود؛
   // این مقدار همان‌جا هم دوباره استفاده خواهد شد.

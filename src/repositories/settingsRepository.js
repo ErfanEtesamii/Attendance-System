@@ -97,6 +97,11 @@ function resetValue(camelKey) {
   return info.changes > 0;
 }
 
+// منطقه‌ی زمانی مؤثر شرکت (S3-2a). نبودن/خرابی مقدار ⇒ پیش‌فرض (config.timezone یا Asia/Tehran)، هرگز پرتاب خطا
+function getTimezone() {
+  return registry.deserialize('timezone', readRaw('timezone'));
+}
+
 // خواندن سبکِ فقط یک کلید (برای مسیر ثبت تردد). نبودن/خرابی مقدار ⇒ false (خاموش)
 function isBlockOnSharedDeviceEnabled() {
   return registry.deserialize('blockOnSharedDevice', readRaw('blockOnSharedDevice')) === true;
@@ -143,5 +148,5 @@ function bumpGlobalSessionEpoch() {
 }
 
 module.exports = {
-  getAll, update, getItems, getItem, setValue, resetValue, isBlockOnSharedDeviceEnabled, isAuditArchiveEnabled, getAuditRetentionMonths, getCleanupRetention, getGlobalSessionEpoch, bumpGlobalSessionEpoch,
+  getAll, update, getTimezone, getItems, getItem, setValue, resetValue, isBlockOnSharedDeviceEnabled, isAuditArchiveEnabled, getAuditRetentionMonths, getCleanupRetention, getGlobalSessionEpoch, bumpGlobalSessionEpoch,
 };

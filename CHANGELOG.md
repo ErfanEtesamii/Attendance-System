@@ -4,6 +4,13 @@
 
 ## [Unreleased] — بخش ۳ (موتور محاسبه و تنظیمات)
 
+### S3-2a — تنظیم TIMEZONE و helper زمان (`src/utils/time.js`)
+- **تنظیم `timezone`** (نوع جدید `timezone` در رجیستری S3-1a؛ نام IANA، گروه «ساعت کاری»): پیش‌فرض `Asia/Tehran` (از `config.timezone` ← env `TIMEZONE`؛ نامعتبر ⇒ `Asia/Tehran`). نام با حروف دلخواه به نام استاندارد نرمال می‌شود (`asia/tehran` ⇒ `Asia/Tehran`)؛ آفست مثل `+03:30`، خالی و ناشناخته رد می‌شود. مقدار خراب در DB ⇒ پیش‌فرض. از همان `GET/PATCH /api/admin/settings` و API S3-1b قابل خواندن/تغییر است؛ `settingsRepository.getTimezone()`.
+- **`src/utils/time.js`** (جدید، همه با `Intl.DateTimeFormat` و `timeZone` صریح؛ هیچ استفاده‌ای از `getHours/getDate/toLocale*`، مستقل از TZ سیستم‌عامل — تست با تغییر `process.env.TZ`): `normalizeTimezone/isValidTimezone`، `getTimezone()`، `getZonedParts` (سال…ثانیه + روز هفته ۰=یکشنبه)، `formatDate` (`YYYY-MM-DD`)، `formatTime` (`HH:MM`، نیمه‌شب `00` نه `24`)، `formatDateTime`، `minutesSinceMidnight`، `dayOfWeek`، `todayInZone(tz, now)` و معکوس `zonedTimeToUtc(date, hhmm, tz)` (ساعت ناموجودِ جهش DST ⇒ لحظه‌ی بعد از جهش؛ ساعت تکراری ⇒ اولی). آرگومان `tz` اختیاری است؛ بدون آن تنظیم `timezone` خوانده می‌شود. ورودی نامعتبر ⇒ `RangeError`.
+- **بدون تغییر عمدی**: `serverTime.js` و قرارداد ذخیره (timestamp = ISO در UTC، تاریخ = `YYYY-MM-DD`) دست‌نخورده‌اند و **هیچ مصرف‌کننده‌ای هنوز مهاجرت نکرد** (`todayDateString` همچنان بر پایه‌ی UTC است؛ `workHours.js`، Jobها و فرمت‌های `toLocale*` در S3-2b/2c). `system.js` هنوز timezone «سیستم» را گزارش می‌کند.
+- بدون migration، بدون وابستگی جدید، بدون تغییر UI. `.env.example` و `config.js` یک کلید `TIMEZONE` گرفتند.
+- تست: `test/time.test.js` (۴ تست: اعتبار نام منطقه، تبدیل UTC→شرکت با لحظه‌های ثابت و عبور از نیمه‌شب/سال/DST و مستقل‌بودن از TZ سیستم، معکوس و رفت‌وبرگشت با DST و ورودی نامعتبر، تنظیم timezone و خواندن پیش‌فرض helperها از آن)؛ تست‌های S3-1a/1b برای ۱۲ کلید به‌روز شد. `npm test`: ۲۸۴ سبز.
+
 ### S3-1b — API تنظیمات با متادیتا، ذخیره با دلیل اجباری و reset
 - **`GET /api/admin/settings/items`** (سرپرست/ادمین): `{ items, groups }`؛ هر آیتم: `key, type, group, groupLabel, description, value, default, isDefault, updatedAt` و (در صورت وجود) `min/max/values`.
 - **`PUT /api/admin/settings/:key`** `{ value, reason }` (فقط ادمین کل): دلیل اجباری و مقدار نامعتبر ⇒ ۴۰۰ (پیام فارسی، بدون هیچ تغییر)، کلید ناشناخته ⇒ ۴۰۴. مقدار برابر با مقدار فعلی ⇒ `changed:false` بدون نوشتن و بدون audit.

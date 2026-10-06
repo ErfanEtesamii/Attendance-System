@@ -10,10 +10,10 @@ describe('رجیستری تنظیمات (S3-1a)', () => {
   let db;
   before(() => { db = resetDb(); });
 
-  test('سلامت رجیستری و پوشش کلیدهای فعلی با نام و ترتیب قبلی', () => {
+  test('سلامت رجیستری و پوشش کلیدها (۱۱ کلید قبلی + timezone)', () => {
     assert.deepEqual(registry.selfCheck(), []);
     assert.deepEqual(registry.keys(), [
-      'workDayStart', 'workDayEnd', 'lateCheckinGraceMinutes', 'checkoutReminderMinutesBefore', 'repeatedLatenessThreshold',
+      'timezone', 'workDayStart', 'workDayEnd', 'lateCheckinGraceMinutes', 'checkoutReminderMinutesBefore', 'repeatedLatenessThreshold',
       'blockOnSharedDevice', 'auditRetentionMonths', 'auditArchiveEnabled',
       'jobRunsRetentionDays', 'monitorAlertsRetentionDays', 'rateLimitRetentionDays',
     ]);
@@ -21,7 +21,7 @@ describe('رجیستری تنظیمات (S3-1a)', () => {
     assert.equal(registry.getDef('rateLimitRetentionDays').dbKey, 'rate_limit_retention_days');
     registry.REGISTRY.forEach((d) => assert.ok(d.description && registry.GROUP_LABELS[d.group], d.key));
     assert.deepEqual(settings.getAll(), {
-      workDayStart: '08:00', workDayEnd: '16:30', lateCheckinGraceMinutes: 15, checkoutReminderMinutesBefore: 15,
+      timezone: 'Asia/Tehran', workDayStart: '08:00', workDayEnd: '16:30', lateCheckinGraceMinutes: 15, checkoutReminderMinutesBefore: 15,
       repeatedLatenessThreshold: 3, blockOnSharedDevice: false, auditRetentionMonths: 24, auditArchiveEnabled: false,
       jobRunsRetentionDays: 180, monitorAlertsRetentionDays: 180, rateLimitRetentionDays: 7,
     });
