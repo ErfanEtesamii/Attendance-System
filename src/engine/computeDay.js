@@ -9,13 +9,20 @@
 //   record   : ردیف attendance_records (check_in_time/check_out_time به‌صورت ISO UTC و status) یا null
 //   breaks   : ردیف‌های break_records ({ start_time, end_time })؛ فقط استراحت‌های «بسته‌شده» حساب می‌شوند (مثل قبل)
 //   settings : { workDayStart, workDayEnd } با قالب HH:MM؛ اختیاری (S3-3a): lateGraceMinutes (عدد ≥ ۰، پیش‌فرض ۰)،
-//              lateCountsFrom ('shift_start' | 'after_grace'، پیش‌فرض 'shift_start')؛ (S3-3b) earlyGraceMinutes (عدد ≥ ۰، پیش‌فرض ۰)
+//              lateCountsFrom ('shift_start' | 'after_grace'، پیش‌فرض 'shift_start')؛ (S3-3b) earlyGraceMinutes (عدد ≥ ۰، پیش‌فرض ۰)؛
+//              (S3-4a) maxLunchMinutes (حداکثر ناهار مجاز؛ عدد ≥ ۰، پیش‌فرض ۰ = بدون سقف)،
+//              fixedLunchDeductMinutes (کسر ثابت ناهار وقتی ناهار ثبت نشده؛ عدد ≥ ۰، پیش‌فرض ۰ = خاموش)
 //   now      : لحظه‌ی «الان» برای رکورد باز (Date یا ISO)؛ پیش‌فرض new Date()
 //   timezone : نام IANA؛ پیش‌فرض Asia/Tehran
 // خروجی (همه دقیقه، عدد صحیح مگر null):
 //   expected    : طول روز کاری رسمی = پایان − شروع (حداقل ۰)
 //   workedGross : مدت بین ورود و خروج (یا now برای رکورد باز)، گرد شده؛ بدون ورود ⇒ null
-//   break       : مجموع استراحت‌های بسته‌شده (جمع میلی‌ثانیه‌ها، سپس گرد)
+//   break       : مجموع استراحت‌های بسته‌شده (همه‌ی نوع‌ها؛ جمع میلی‌ثانیه‌ها، سپس گرد) + breakAuto (کسر ثابت ناهار، پایین)
+//   breakAuto   : (S3-4a) کسر ثابت ناهار برای روزی که «ناهار ثبت نشده». فقط وقتی fixedLunchDeductMinutes > ۰، رکورد خروج دارد
+//                 (رکورد باز هنوز به ناهار نرسیده فرض می‌شود) و هیچ ردیف استراحتی از نوع lunch (بسته یا باز) ندارد. مقدار =
+//                 min(کسر ثابت، workedGross) تا استراحت از مدت کار بیشتر نشود. استراحت کوتاه (short_break) «ناهار ثبت‌شده» نیست
+//   breakExcess : (S3-4a) مازاد ناهارِ ثبت‌شده بر maxLunchMinutes = max(0، جمع ناهارهای بسته‌شده − سقف)؛ سقف ۰ ⇒ ۰. فقط اطلاعاتی است:
+//                 مازاد همچنان از ساعت مفید کم می‌شود (زمان واقعاً بیرون بوده)؛ پرچم‌گذاری آن در S3-4b. استراحت کوتاه شامل سقف نیست
 //   effective   : max(0, round(workedGross خام − break))؛ بدون ورود ⇒ null
 //   late        : تأخیر ورود. ورود تا «شروع + مهلت» (شامل خودِ مرز) ⇒ ۰؛ بعد از آن: shift_start ⇒ ورود − شروع (کل تأخیر)،
 //                 after_grace ⇒ ورود − (شروع + مهلت). مهلت ۰ (پیش‌فرض) ⇒ هر دو حالت دقیقاً مثل قبل
@@ -53,11 +60,16 @@ function toDate(value, name) {
   return d;
 }
 
-// مجموع استراحت‌های بسته‌شده: مثل breakRepository.totalBreakMinutes (جمع ms سپس گرد؛ بدون clamp)
-function sumBreakMinutes(breaks) {
+// نوع استراحت: ردیف بدون break_type مثل پیش‌فرض ستون/repository ناهار حساب می‌شود (فقط 'short_break' کوتاه است)
+const isLunch = (b) => !(b && b.break_type === 'short_break');
+
+// مجموع استراحت‌های بسته‌شده: مثل breakRepository.totalBreakMinutes (جمع ms سپس گرد؛ بدون clamp).
+// onlyLunch ⇒ فقط ناهارها (برای سقف ناهار S3-4a)
+function sumBreakMinutes(breaks, { onlyLunch = false } = {}) {
   let totalMs = 0;
   for (const b of breaks || []) {
-    if (b && b.end_time) totalMs += toDate(b.end_time, 'break.end_time').getTime() - toDate(b.start_time, 'break.start_time').getTime();
+    if (!b || !b.end_time || (onlyLunch && !isLunch(b))) continue;
+    totalMs += toDate(b.end_time, 'break.end_time').getTime() - toDate(b.start_time, 'break.start_time').getTime();
   }
   return Math.round(totalMs / 60000);
 }
@@ -68,6 +80,8 @@ function computeDay({ record, breaks, settings, now, timezone } = {}) {
   const workEnd = hhmmToMinutes(settings.workDayEnd, 'workDayEnd');
   const lateGrace = graceMinutes(settings.lateGraceMinutes, 'lateGraceMinutes');
   const earlyGrace = graceMinutes(settings.earlyGraceMinutes, 'earlyGraceMinutes');
+  const maxLunch = graceMinutes(settings.maxLunchMinutes, 'maxLunchMinutes');
+  const fixedLunch = graceMinutes(settings.fixedLunchDeductMinutes, 'fixedLunchDeductMinutes');
   const lateCountsFrom = settings.lateCountsFrom === undefined ? 'shift_start' : settings.lateCountsFrom;
   if (!LATE_COUNTS_FROM.includes(lateCountsFrom)) throw new RangeError(`settings.lateCountsFrom باید یکی از ${LATE_COUNTS_FROM.join('، ')} باشد.`);
   const tz = timezone === undefined ? DEFAULT_TIMEZONE : normalizeTimezone(timezone);
@@ -77,6 +91,8 @@ function computeDay({ record, breaks, settings, now, timezone } = {}) {
     expected: Math.max(0, workEnd - workStart),
     workedGross: null,
     break: 0,
+    breakAuto: 0,
+    breakExcess: 0,
     effective: null,
     late: 0,
     earlyLeave: 0,
@@ -87,6 +103,7 @@ function computeDay({ record, breaks, settings, now, timezone } = {}) {
   };
 
   result.break = sumBreakMinutes(breaks);
+  if (maxLunch > 0) result.breakExcess = Math.max(0, sumBreakMinutes(breaks, { onlyLunch: true }) - maxLunch);
   if (!record || !record.check_in_time) return result;
 
   const checkIn = toDate(record.check_in_time, 'check_in_time');
@@ -100,6 +117,11 @@ function computeDay({ record, breaks, settings, now, timezone } = {}) {
   result.isOpen = !checkOut;
   const gross = Math.max(0, (end.getTime() - checkIn.getTime()) / 60000);
   result.workedGross = Math.round(gross);
+  // کسر ثابت ناهار: فقط روز بسته‌شده‌ای که هیچ ردیف ناهاری ندارد (استراحت کوتاه جای ناهار را نمی‌گیرد)
+  if (fixedLunch > 0 && checkOut && !(breaks || []).some(isLunch)) {
+    result.breakAuto = Math.min(fixedLunch, result.workedGross);
+    result.break += result.breakAuto;
+  }
   result.effective = Math.max(0, Math.round(gross - result.break));
 
   if (checkOut) {
