@@ -22,7 +22,7 @@ describe('computeDay (S3-2b)', () => {
 
     // روز کامل ۰۸:۰۰–۱۶:۳۰ با ۳۰ دقیقه ناهار
     assert.deepEqual(run({ check_in_time: at('2026-10-06', '08:00'), check_out_time: at('2026-10-06', '16:30'), status: 'normal' }, lunch), {
-      expected: 510, workedGross: 510, break: 30, breakAuto: 0, breakExcess: 0, effective: 480, late: 0, earlyLeave: 0, overtime: 0, isOpen: false, flags: [], status: 'normal',
+      expected: 510, workedGross: 510, break: 30, breakAuto: 0, breakExcess: 0, effective: 480, late: 0, earlyLeave: 0, overtime: 0, overtimePayable: 0, isOpen: false, flags: [], status: 'normal',
     });
     // تأخیر ۴۵ دقیقه و اضافه‌کاری ۴۵ دقیقه (بدون مهلت؛ مثل منطق قبلی)
     const lateOt = run({ check_in_time: at('2026-10-06', '08:45'), check_out_time: at('2026-10-06', '17:15'), status: 'late' });
@@ -38,7 +38,7 @@ describe('computeDay (S3-2b)', () => {
       [...lunch.map((b) => ({ ...b, start_time: at('2026-10-06', '10:00'), end_time: at('2026-10-06', '10:15') })), { start_time: at('2026-10-06', '11:50'), end_time: null }]);
     assert.deepEqual([open.isOpen, open.workedGross, open.break, open.effective, open.late, open.earlyLeave, open.overtime], [true, 230, 15, 215, 10, 0, 0]);
     // بدون ورود / بدون رکورد
-    assert.deepEqual(run({ status: 'holiday', check_in_time: null }), { expected: 510, workedGross: null, break: 0, breakAuto: 0, breakExcess: 0, effective: null, late: 0, earlyLeave: 0, overtime: 0, isOpen: false, flags: [], status: 'holiday' });
+    assert.deepEqual(run({ status: 'holiday', check_in_time: null }), { expected: 510, workedGross: null, break: 0, breakAuto: 0, breakExcess: 0, effective: null, late: 0, earlyLeave: 0, overtime: 0, overtimePayable: 0, isOpen: false, flags: [], status: 'holiday' });
     assert.equal(run(null).status, null);
     assert.equal(run(null).effective, null);
     // خروج پیش از ورود ⇒ ساعت مفید ۰ (نه منفی)

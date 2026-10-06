@@ -15,6 +15,7 @@ const TYPES = ['number', 'boolean', 'time', 'cron', 'enum', 'string', 'timezone'
 // برچسب فارسی گروه‌ها (برای صفحه‌ی تنظیمات گروه‌بندی‌شده در S3-9a)
 const GROUP_LABELS = {
   workHours: 'ساعت کاری',
+  overtime: 'اضافه‌کاری',
   reminders: 'تأخیر و یادآوری',
   security: 'امنیت',
   retention: 'نگهداری و آرشیو داده',
@@ -98,6 +99,14 @@ def('fixedLunchDeductMinutes', 'fixed_lunch_deduct_minutes', 'number', { group: 
 // S3-4b: آستانه‌ی پرچم‌ها (فقط گزارش؛ عددی را عوض نمی‌کنند)
 def('longOpenBreakMinutes', 'long_open_break_minutes', 'number', { group: 'workHours', min: 1, max: 720, default: 120, description: 'آستانه‌ی پرچم «استراحت بسته‌نشده» (دقیقه): استراحتی که پایان نخورده و بیش از این مدت طول کشیده پرچم می‌شود' });
 def('outsideShiftMarginMinutes', 'outside_shift_margin_minutes', 'number', { group: 'workHours', min: 0, max: 720, default: 120, description: 'حاشیه‌ی مجاز (دقیقه) ورود/خروج پیش از شروع یا پس از پایان کار؛ بیرون از آن پرچم «خارج از شیفت» می‌خورد (۷۲۰ = عملاً خاموش)' });
+// S3-5a: اضافه‌کاری روزانه (پیش‌فرض خاموش؛ ضریب‌ها ۱ = خنثی، عدد قانونی hard-code نشده)
+def('overtimeEnabled', 'overtime_enabled', 'boolean', { group: 'overtime', default: false, description: 'محاسبه‌ی «اضافه‌کاری قابل‌پرداخت» (خاموش = ۰؛ اضافه‌کاری خام همچنان گزارش می‌شود)' });
+def('overtimeMinMinutes', 'overtime_min_minutes', 'number', { group: 'overtime', min: 0, max: 480, default: 0, description: 'حداقل اضافه‌کاری روزانه (دقیقه) برای قابل‌پرداخت بودن؛ کمتر از آن صفر حساب می‌شود و برابر یا بیشتر کامل (۰ = بدون آستانه)' });
+def('overtimeDailyCapMinutes', 'overtime_daily_cap_minutes', 'number', { group: 'overtime', min: 0, max: 720, default: 0, description: 'سقف اضافه‌کاری قابل‌پرداخت در یک روز (دقیقه)؛ پیش از گرد‌کردن و ضریب برش می‌خورد (۰ = بدون سقف)' });
+def('overtimeFactor', 'overtime_factor', 'number', { group: 'overtime', integer: false, min: 0, max: 10, default: 1, description: 'ضریب اضافه‌کاری روز عادی (۱ = بدون ضریب)؛ دقیقه‌ی قابل‌پرداخت = دقیقه‌ی گرد‌شده × ضریب' });
+def('overtimeHolidayFactor', 'overtime_holiday_factor', 'number', { group: 'overtime', integer: false, min: 0, max: 10, default: 1, description: 'ضریب اضافه‌کاری رکورد روز تعطیل (status = holiday)؛ ۱ = بدون ضریب' });
+def('overtimeRoundStep', 'overtime_round_step', 'number', { group: 'overtime', min: 1, max: 60, default: 1, description: 'گام گرد‌کردن اضافه‌کاری (دقیقه)؛ ۱ = بدون گرد‌کردن' });
+def('overtimeRounding', 'overtime_rounding', 'enum', { group: 'overtime', values: ['down', 'nearest', 'up'], default: 'down', description: 'حالت گرد‌کردن به گام: down = به پایین، nearest = نزدیک‌ترین (نیم‌گام به بالا)، up = به بالا' });
 // تأخیر و یادآوری
 def('lateCheckinGraceMinutes', 'late_checkin_grace_minutes', 'number', { group: 'reminders', min: 0, max: 720, default: () => config.lateCheckinGraceMinutes, fallback: 15, description: 'مهلت تأخیر ورود (دقیقه) پس از ساعت شروع، پیش از یادآوری ورود' });
 def('checkoutReminderMinutesBefore', 'checkout_reminder_minutes_before', 'number', { group: 'reminders', min: 0, max: 720, default: () => config.checkoutReminderMinutesBefore, fallback: 15, description: 'یادآوری ثبت خروج، این‌قدر دقیقه پیش از پایان کار' });

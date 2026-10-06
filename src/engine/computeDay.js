@@ -13,7 +13,10 @@
 //              (S3-4a) maxLunchMinutes (حداکثر ناهار مجاز؛ عدد ≥ ۰، پیش‌فرض ۰ = بدون سقف)،
 //              fixedLunchDeductMinutes (کسر ثابت ناهار وقتی ناهار ثبت نشده؛ عدد ≥ ۰، پیش‌فرض ۰ = خاموش)؛
 //              (S3-4b) longOpenBreakMinutes (آستانه‌ی استراحتِ بازِ طولانی؛ عدد > ۰، پیش‌فرض ۱۲۰)،
-//              outsideShiftMarginMinutes (حاشیه‌ی مجاز ورود/خروج دور از شیفت؛ عدد ≥ ۰، پیش‌فرض ۱۲۰)
+//              outsideShiftMarginMinutes (حاشیه‌ی مجاز ورود/خروج دور از شیفت؛ عدد ≥ ۰، پیش‌فرض ۱۲۰)؛
+//              (S3-5a) اضافه‌کاری قابل‌پرداخت: overtimeEnabled (boolean، پیش‌فرض false)، overtimeMinMinutes (حداقل آستانه، ≥ ۰، پیش‌فرض ۰)،
+//              overtimeDailyCapMinutes (سقف روزانه، ≥ ۰، پیش‌فرض ۰ = بدون سقف)، overtimeFactor / overtimeHolidayFactor (ضریب، ≥ ۰، پیش‌فرض ۱)،
+//              overtimeRoundStep (گام گرد‌کردن به دقیقه، > ۰، پیش‌فرض ۱)، overtimeRounding ('down' | 'nearest' | 'up'، پیش‌فرض 'down')
 //   now      : لحظه‌ی «الان» برای رکورد باز (Date یا ISO)؛ پیش‌فرض new Date()
 //   timezone : نام IANA؛ پیش‌فرض Asia/Tehran
 // خروجی (همه دقیقه، عدد صحیح مگر null):
@@ -31,6 +34,10 @@
 //   earlyLeave  : زودتر رفتن. خروج تا «پایان − مهلت» (شامل خودِ مرز) ⇒ ۰؛ زودتر از آن ⇒ پایان − خروج (کل دقیقه‌ها، نه فقط مازاد بر مهلت).
 //                 مهلت ۰ (پیش‌فرض) ⇒ دقیقاً مثل قبل
 //   overtime    : خروج از پایان کار به بعد (خروج دقیقاً روی پایان ⇒ ۰). خروج داخل مهلت (پیش از پایان) نه زودتر رفتن است نه اضافه‌کاری
+//   overtimePayable : (S3-5a) اضافه‌کاری قابل‌پرداخت (دقیقه‌ی معادل، عدد صحیح). overtimeEnabled=false (پیش‌فرض) ⇒ ۰ و `overtime` خام دست‌نخورده.
+//                 مراحل: overtime خام ⇒ زیر حداقل آستانه ۰ (روی آستانه و بالاتر: کامل) ⇒ برش با سقف روزانه ⇒ گرد‌کردن به گام (down/nearest/up؛
+//                 nearest نیم‌گام را به بالا) ⇒ ضرب در ضریب (رکورد با status = holiday: overtimeHolidayFactor، وگرنه overtimeFactor) و گرد به عدد صحیح.
+//                 رکورد با خروج پیش از ورود یا زمان خراب ⇒ ۰. پایه‌ی اضافه‌کاری روز تعطیل فعلاً همان `overtime` خام است (تعریف «کل کار در تعطیل» با S3-7c)
 //   isOpen      : ورود دارد ولی خروج ندارد
 //   flags       : (S3-4b) آرایه‌ی کدهای هشدار، به این ترتیب ثابت و بدون تکرار؛ هرگز exception نمی‌دهند و اعداد را عوض نمی‌کنند (جز invalid_time):
 //                 invalid_time            زمان رکورد/استراحت قابل‌خواندن نیست. زمان خراب رکورد ⇒ هیچ عددی محاسبه نمی‌شود (workedGross/effective = null،
@@ -49,6 +56,7 @@
 const { DEFAULT_TIMEZONE, normalizeTimezone, minutesSinceMidnight, formatDate } = require('../utils/time');
 
 const LATE_COUNTS_FROM = ['shift_start', 'after_grace'];
+const OVERTIME_ROUNDING = ['down', 'nearest', 'up'];
 const FLAG_ORDER = ['invalid_time', 'checkout_before_checkin', 'missing_checkout', 'long_open_break', 'break_outside_range', 'outside_shift'];
 const DEFAULT_LONG_OPEN_BREAK = 120;
 const DEFAULT_OUTSIDE_SHIFT_MARGIN = 120;
@@ -77,6 +85,22 @@ function thresholdMinutes(value, name, dflt, min) {
   const v = value === undefined ? dflt : value;
   if (typeof v !== 'number' || !Number.isFinite(v) || v < min) throw new RangeError(`settings.${name} باید عدد ≥ ${min} باشد.`);
   return v;
+}
+
+// ضریب: نبودن ⇒ ۱؛ باید عدد متناهی ≥ ۰ باشد (اعشار مجاز)
+function factorValue(value, name) {
+  const v = value === undefined ? 1 : value;
+  if (typeof v !== 'number' || !Number.isFinite(v) || v < 0) throw new RangeError(`settings.${name} باید عدد ≥ ۰ باشد.`);
+  return v;
+}
+
+// اضافه‌کاری قابل‌پرداخت از روی اضافه‌کاری خام (دقیقه). ترتیب مراحل در کامنت سرفایل
+function payableOvertime(raw, ot, factor) {
+  if (!ot.enabled || raw <= 0 || raw < ot.minMinutes) return 0;
+  const capped = ot.dailyCap > 0 ? Math.min(raw, ot.dailyCap) : raw;
+  const q = capped / ot.step;
+  const steps = ot.rounding === 'up' ? Math.ceil(q) : ot.rounding === 'nearest' ? Math.floor(q + 0.5) : Math.floor(q);
+  return Math.round(steps * ot.step * factor);
 }
 
 // نوع استراحت: ردیف بدون break_type مثل پیش‌فرض ستون/repository ناهار حساب می‌شود (فقط 'short_break' کوتاه است)
@@ -121,6 +145,18 @@ function computeDay({ record, breaks, settings, now, timezone } = {}) {
   const earlyGrace = graceMinutes(settings.earlyGraceMinutes, 'earlyGraceMinutes');
   const maxLunch = graceMinutes(settings.maxLunchMinutes, 'maxLunchMinutes');
   const fixedLunch = graceMinutes(settings.fixedLunchDeductMinutes, 'fixedLunchDeductMinutes');
+  if (settings.overtimeEnabled !== undefined && typeof settings.overtimeEnabled !== 'boolean') throw new RangeError('settings.overtimeEnabled باید boolean باشد.');
+  const overtimeRounding = settings.overtimeRounding === undefined ? 'down' : settings.overtimeRounding;
+  if (!OVERTIME_ROUNDING.includes(overtimeRounding)) throw new RangeError(`settings.overtimeRounding باید یکی از ${OVERTIME_ROUNDING.join('، ')} باشد.`);
+  const ot = {
+    enabled: settings.overtimeEnabled === true,
+    minMinutes: graceMinutes(settings.overtimeMinMinutes, 'overtimeMinMinutes'),
+    dailyCap: graceMinutes(settings.overtimeDailyCapMinutes, 'overtimeDailyCapMinutes'),
+    step: thresholdMinutes(settings.overtimeRoundStep, 'overtimeRoundStep', 1, 1),
+    rounding: overtimeRounding,
+  };
+  const overtimeFactor = factorValue(settings.overtimeFactor, 'overtimeFactor');
+  const overtimeHolidayFactor = factorValue(settings.overtimeHolidayFactor, 'overtimeHolidayFactor');
   const longOpenBreak = thresholdMinutes(settings.longOpenBreakMinutes, 'longOpenBreakMinutes', DEFAULT_LONG_OPEN_BREAK, 1);
   const shiftMargin = thresholdMinutes(settings.outsideShiftMarginMinutes, 'outsideShiftMarginMinutes', DEFAULT_OUTSIDE_SHIFT_MARGIN, 0);
   const lateCountsFrom = settings.lateCountsFrom === undefined ? 'shift_start' : settings.lateCountsFrom;
@@ -138,6 +174,7 @@ function computeDay({ record, breaks, settings, now, timezone } = {}) {
     late: 0,
     earlyLeave: 0,
     overtime: 0,
+    overtimePayable: 0,
     isOpen: false,
     flags: [],
     status: record && record.status !== undefined ? record.status : null,
@@ -195,6 +232,7 @@ function computeDay({ record, breaks, settings, now, timezone } = {}) {
     } else {
       result.overtime = checkOutMinutes - workEnd;
     }
+    if (!reversed) result.overtimePayable = payableOvertime(result.overtime, ot, record.status === 'holiday' ? overtimeHolidayFactor : overtimeFactor);
   }
   return emit();
 }
