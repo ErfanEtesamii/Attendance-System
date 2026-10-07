@@ -24,7 +24,7 @@ router.get('/admin/leave-requests', requirePermission('leave.read'), (req, res) 
     const employee = usersRepository.findById(r.user_id);
     return {
       id: r.id,
-      leaveType: r.leave_type,
+      leaveType: r.kind,
       startDate: r.start_date,
       endDate: r.end_date,
       reason: r.reason,
@@ -68,7 +68,7 @@ router.post('/admin/leave-requests/:id/:decision(approve|reject)', requirePermis
   notificationEvents.leaveDecided(updated, { note }); // اعلان پنل برای کارمند (S4-6b)
 
   if (employee?.telegram_user_id) {
-    const typeLabel = request.leave_type === 'mission' ? 'مأموریت' : 'مرخصی';
+    const typeLabel = request.kind === 'mission' ? 'مأموریت' : 'مرخصی';
     const statusLabel = newStatus === 'approved' ? 'تأیید شد ✅' : 'رد شد ❌';
     notifyUser(
       employee.telegram_user_id,
@@ -139,7 +139,7 @@ router.patch('/admin/leave-requests/:id', requirePermission('leave.edit'), (req,
     const label = { approved: 'تأیید شد ✅', rejected: 'رد شد ❌', pending: 'به حالت «در انتظار» بازگشت' }[fields.status];
     sendMessage(
       employee.telegram_user_id,
-      `وضعیت درخواست ${updated.leave_type === 'mission' ? 'مأموریت' : 'مرخصی'} شما (${updated.start_date} تا ${updated.end_date}) ${label}`
+      `وضعیت درخواست ${updated.kind === 'mission' ? 'مأموریت' : 'مرخصی'} شما (${updated.start_date} تا ${updated.end_date}) ${label}`
     );
   }
   res.json(updated);

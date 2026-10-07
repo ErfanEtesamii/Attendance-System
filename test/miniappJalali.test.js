@@ -101,7 +101,7 @@ describe('نمایش شمسی در Mini App (S3-11d)', () => {
 
   test('فهرست مرخصی: بازه‌ی «از تا» شمسی', async () => {
     const env = makeEnv({
-      routes: { '/leave': [{ leave_type: 'mission', status: 'approved', start_date: '2026-10-07', end_date: '2026-10-09' }] },
+      routes: { '/leave': [{ kind: 'mission', leave_type: 'mission', status: 'approved', start_date: '2026-10-07', end_date: '2026-10-09' }] },
     });
     click(env.navBtns[1]);
     await flush();

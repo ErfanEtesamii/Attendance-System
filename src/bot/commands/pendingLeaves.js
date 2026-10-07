@@ -27,7 +27,7 @@ async function handlePendingLeaves(bot, msg) {
 
   for (const request of scoped) {
     const employee = usersRepository.findById(request.user_id);
-    const typeLabel = request.leave_type === 'mission' ? 'مأموریت' : 'مرخصی';
+    const typeLabel = request.kind === 'mission' ? 'مأموریت' : 'مرخصی';
     const text = [
       `درخواست #${request.id} — ${typeLabel}`,
       `کارمند: ${employee ? employee.full_name : `#${request.user_id}`}`,
@@ -98,7 +98,7 @@ async function handlePendingLeavesCallback(bot, query) {
       const statusLabel = newStatus === 'approved' ? 'تأیید شد ✅' : 'رد شد ❌';
       await bot.sendMessage(
         employee.telegram_user_id,
-        `درخواست ${request.leave_type === 'mission' ? 'مأموریت' : 'مرخصی'} شما (${request.start_date} تا ${request.end_date}) ${statusLabel}`
+        `درخواست ${request.kind === 'mission' ? 'مأموریت' : 'مرخصی'} شما (${request.start_date} تا ${request.end_date}) ${statusLabel}`
       );
     } catch (err) {
       console.error('[bot] خطا در اطلاع‌رسانی وضعیت مرخصی به کارمند:', err.message);

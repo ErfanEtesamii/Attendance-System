@@ -500,7 +500,7 @@
         el.className = 'list-item';
         el.innerHTML = `
           <div class="li-top">
-            <span>${it.leave_type === 'mission' ? 'مأموریت' : 'مرخصی'}</span>
+            <span>${it.kind === 'mission' ? 'مأموریت' : 'مرخصی'}</span>
             <span class="badge ${it.status}">${LEAVE_STATUS_LABELS[it.status] || it.status}</span>
           </div>
           <div class="li-bottom">

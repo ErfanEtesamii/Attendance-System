@@ -216,7 +216,7 @@ router.post('/miniapp/leave', (req, res) => {
   auditRepository.logEvent({
     userId: req.miniAppUser.id,
     action: 'leave_requested',
-    details: { source: 'miniapp', leaveType: request.leave_type },
+    details: { source: 'miniapp', leaveType: request.kind },
   });
   notificationEvents.leaveRequested(request); // اعلان پنل برای تأییدکننده‌ها؛ هرگز ثبت را نمی‌شکند (S4-6b)
   res.status(201).json(request);

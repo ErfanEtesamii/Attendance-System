@@ -33,14 +33,19 @@ function createLeaveRequest({ userId, startDate, endDate, leaveType, leaveTypeId
   return findById(result.lastInsertRowid);
 }
 
+// S4-7c: هر ردیف خروجی علاوه بر ستون‌های leave_requests فیلد `kind` ('leave'|'mission') را از leave_types می‌گیرد؛
+// مصرف‌کننده‌ها باید به `kind` تکیه کنند، نه به ستون قدیمی leave_type (که فقط برای سازگاری می‌ماند).
+const SELECT_WITH_KIND = `SELECT lr.*, lt.kind AS kind FROM leave_requests lr
+       JOIN leave_types lt ON lt.id = lr.leave_type_id`;
+
 function findById(id) {
   const db = getDb();
-  return db.prepare('SELECT * FROM leave_requests WHERE id = ?').get(id);
+  return db.prepare(`${SELECT_WITH_KIND} WHERE lr.id = ?`).get(id);
 }
 
 function listPending() {
   const db = getDb();
-  return db.prepare("SELECT * FROM leave_requests WHERE status = 'pending' ORDER BY created_at").all();
+  return db.prepare(`${SELECT_WITH_KIND} WHERE lr.status = 'pending' ORDER BY lr.created_at`).all();
 }
 
 // برای پنل مدیریتی وب (فاز ۸): تاریخچه کامل یا فیلترشده بر اساس وضعیت
@@ -48,15 +53,15 @@ function listAll({ status } = {}) {
   const db = getDb();
   if (status) {
     return db
-      .prepare('SELECT * FROM leave_requests WHERE status = ? ORDER BY created_at DESC')
+      .prepare(`${SELECT_WITH_KIND} WHERE lr.status = ? ORDER BY lr.created_at DESC`)
       .all(status);
   }
-  return db.prepare('SELECT * FROM leave_requests ORDER BY created_at DESC').all();
+  return db.prepare(`${SELECT_WITH_KIND} ORDER BY lr.created_at DESC`).all();
 }
 
 function listByUser(userId) {
   const db = getDb();
-  return db.prepare('SELECT * FROM leave_requests WHERE user_id = ? ORDER BY created_at DESC').all(userId);
+  return db.prepare(`${SELECT_WITH_KIND} WHERE lr.user_id = ? ORDER BY lr.created_at DESC`).all(userId);
 }
 
 function setStatus(id, status, approverId) {
@@ -69,17 +74,22 @@ function setStatus(id, status, approverId) {
   return findById(id);
 }
 
-// آیا برای این کاربر در این تاریخ یک درخواست تأییدشده از نوع مشخص وجود دارد؟
-// نسخه عمومی؛ هم برای مأموریت (استثنای فاز ۲) و هم برای مرخصی (رفع گپ «غایب» فاز ۵) استفاده می‌شود.
-function hasApprovedLeaveOnDate(userId, dateStr, leaveType) {
+// آیا برای این کاربر در این تاریخ یک درخواست تأییدشده از «kind» مشخص ('leave' | 'mission') وجود دارد؟
+// S4-7c: بر پایه‌ی leave_types.kind (از طریق leave_type_id)؛ هر نوع دلخواه (استعلاجی، بدون حقوق، …) با kind خودش شمرده می‌شود.
+// kind نامعتبر ⇒ Error (به‌جای «هیچ‌وقت true نمی‌شود» بی‌صدا).
+const KINDS = ['leave', 'mission'];
+function hasApprovedLeaveOnDate(userId, dateStr, kind) {
+  if (!KINDS.includes(kind)) throw new Error(`kind نامعتبر است: ${kind}`);
   const db = getDb();
   const row = db
     .prepare(
-      `SELECT * FROM leave_requests
-       WHERE user_id = ? AND leave_type = ? AND status = 'approved'
-         AND ? BETWEEN start_date AND end_date`
+      `SELECT 1 FROM leave_requests lr
+       JOIN leave_types lt ON lt.id = lr.leave_type_id
+       WHERE lr.user_id = ? AND lt.kind = ? AND lr.status = 'approved'
+         AND ? BETWEEN lr.start_date AND lr.end_date
+       LIMIT 1`
     )
-    .get(userId, leaveType, dateStr);
+    .get(userId, kind, dateStr);
   return Boolean(row);
 }
 
@@ -105,7 +115,7 @@ function updateManual(id, fields, approverId) {
   keys.forEach((k) => {
     if (k === 'leave_type') {
       // همان kind قبلی دوباره فرستاده شد ⇒ نوع دقیق (مثلاً استعلاجی) نباید به annual برگردد
-      if (existing && fields.leave_type === existing.leave_type) return;
+      if (existing && fields.leave_type === existing.kind) return;
       const type = resolveLeaveType({ leaveType: fields.leave_type });
       sets.push('leave_type = ?', 'leave_type_id = ?');
       values.push(type.kind, type.id);

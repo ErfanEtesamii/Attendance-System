@@ -24,7 +24,7 @@ const SUSPICIOUS_LABEL = {
   device_change: 'تغییر ناگهانی دستگاه',
 };
 
-const leaveLabel = (leaveType) => (leaveType === 'mission' ? 'مأموریت' : 'مرخصی');
+const leaveLabel = (kind) => (kind === 'mission' ? 'مأموریت' : 'مرخصی');
 
 function logError(label, err) {
   console.error(`[notifyEvents] ${label} ناموفق (نادیده گرفته شد):`, sanitizeText(err && err.message ? err.message : String(err), 200));
@@ -74,14 +74,14 @@ function leaveRequested(request) {
   return guard('leaveRequested', () => {
     const employee = usersRepository.findById(request.user_id);
     if (!employee) return [];
-    const label = leaveLabel(request.leave_type);
+    const label = leaveLabel(request.kind);
     return handlersOf(employee).map((h) =>
       send('leaveRequested', h.id, {
         type: 'leave_requested',
         title: `درخواست ${label} جدید`,
         body: `${employee.full_name} — ${period(request)}${request.reason ? `\n${sanitizeText(request.reason, 200)}` : ''}`,
         link: '#/leave',
-        data: { requestId: request.id, employeeId: employee.id, leaveType: request.leave_type },
+        data: { requestId: request.id, employeeId: employee.id, leaveType: request.kind },
         dedupeKey: `leave_requested:${request.id}`,
       })
     );
@@ -92,7 +92,7 @@ function leaveRequested(request) {
 function leaveDecided(request, { note = null } = {}) {
   return guard('leaveDecided', () => {
     if (!request || !['approved', 'rejected'].includes(request.status)) return [];
-    const label = leaveLabel(request.leave_type);
+    const label = leaveLabel(request.kind);
     const approved = request.status === 'approved';
     return [
       send('leaveDecided', request.user_id, {

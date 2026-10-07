@@ -22,7 +22,7 @@ async function notifyApprovers(bot, employee, request) {
     ? [usersRepository.findById(employee.manager_id)].filter(Boolean)
     : usersRepository.listUsers({ onlyActive: true }).filter((u) => u.role === 'admin');
 
-  const typeLabel = request.leave_type === 'mission' ? 'مأموریت' : 'مرخصی';
+  const typeLabel = request.kind === 'mission' ? 'مأموریت' : 'مرخصی';
   const text = [
     `📥 درخواست ${typeLabel} جدید`,
     `از: ${employee.full_name}`,
@@ -158,7 +158,7 @@ async function handleLeaveCallback(bot, query, sess) {
     auditRepository.logEvent({
       userId: user.id,
       action: 'leave_request_created',
-      details: { requestId: request.id, leaveType: request.leave_type },
+      details: { requestId: request.id, leaveType: request.kind },
     });
     notificationEvents.leaveRequested(request); // اعلان پنل برای تأییدکننده‌ها (S4-6b)
 
