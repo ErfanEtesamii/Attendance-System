@@ -61,6 +61,10 @@ describe('لیست سفید کارمند (default-deny)', () => {
       '/api/admin/leave-requests': 'GET',
       '/api/admin/disputes': 'GET',
       '/api/admin/reports/summary': 'GET',
+      '/api/admin/notifications?unread=1': 'GET', // S4-5b
+      '/api/admin/notifications/unread-count': 'GET',
+      '/api/admin/notifications/7/read': 'POST',
+      '/api/admin/notifications/read-all': 'POST',
       '/api/admin/auth/logout': 'POST',
       '/api/admin/me/': 'GET',
     };
@@ -68,7 +72,7 @@ describe('لیست سفید کارمند (default-deny)', () => {
       assert.equal(call(employee, method, url).nextCalled, true, `${method} ${url}`);
     }
     // هر الگوی لیست سفید حداقل در یکی از نمونه‌ها پوشش داده شده (اگر کسی ورودی جدید اضافه کند این تست یادآوری می‌کند)
-    assert.equal(EMPLOYEE_ALLOWED.length, 10, 'لیست سفید تغییر کرده؛ ماتریس تست را به‌روز کنید');
+    assert.equal(EMPLOYEE_ALLOWED.length, 14, 'لیست سفید تغییر کرده؛ ماتریس تست را به‌روز کنید');
   });
 
   test('هر چیزی خارج از لیست سفید برای کارمند ۴۰۳ است (از جمله route های آینده)', () => {
@@ -94,6 +98,9 @@ describe('لیست سفید کارمند (default-deny)', () => {
       ['GET', '/api/admin/suspicious'],
       ['POST', '/api/admin/suspicious/1/review'],
       ['GET', '/api/admin/some-future-feature'],
+      ['GET', '/api/admin/notifications/7'], // S4-5b: فقط الگوهای دقیق مجازند
+      ['POST', '/api/admin/notifications'],
+      ['DELETE', '/api/admin/notifications/7'],
     ];
     for (const [method, url] of denied) {
       assert.equal(call(employee, method, url).status, 403, `${method} ${url}`);

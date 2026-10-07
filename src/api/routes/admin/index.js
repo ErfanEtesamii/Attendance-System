@@ -24,6 +24,7 @@ router.use(require('./settings'));
 router.use(require('./shifts'));
 router.use(require('./audit'));
 router.use(require('./suspicious'));
+router.use(require('./notifications'));
 router.use(require('./system'));
 
 module.exports = router;

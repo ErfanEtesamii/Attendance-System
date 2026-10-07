@@ -27,6 +27,10 @@ const EMPLOYEE_ALLOWED = [
   ['GET', /^\/admin\/leave-requests$/],
   ['GET', /^\/admin\/disputes$/],
   ['GET', /^\/admin\/reports\/summary$/],
+  ['GET', /^\/admin\/notifications$/], // S4-5b: اعلان‌های خود کاربر (اسکوپ در route؛ بدون پارامتر کاربر)
+  ['GET', /^\/admin\/notifications\/unread-count$/],
+  ['POST', /^\/admin\/notifications\/\d+\/read$/],
+  ['POST', /^\/admin\/notifications\/read-all$/],
   ['POST', /^\/admin\/auth\/logout$/],
 ];
 

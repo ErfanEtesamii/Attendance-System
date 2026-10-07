@@ -13,7 +13,7 @@ describe('پاک‌سازی جدول‌های فرعی (S2-7a)', () => {
   const DAY = 86400000;
   const daysAgo = (d) => new Date(NOW.getTime() - d * DAY).toISOString();
   const silent = () => {};
-  const RET = { jobRunsDays: 180, monitorAlertsDays: 180, rateLimitDays: 7 };
+  const RET = { jobRunsDays: 180, monitorAlertsDays: 180, rateLimitDays: 7, notificationsDays: 90 };
   const counts = () => Object.fromEntries(
     ['job_runs', 'monitor_alerts', 'rate_limit_hits', 'users', 'attendance_records', 'leave_requests', 'audit_log', 'settings']
       .map((t) => [t, db.prepare(`SELECT COUNT(*) n FROM ${t}`).get().n])
@@ -59,7 +59,7 @@ describe('پاک‌سازی جدول‌های فرعی (S2-7a)', () => {
     assert.equal(r.tables.monitor_alerts.candidates, 1);
     assert.equal(r.tables.rate_limit_hits.candidates, 2);
     for (const t of Object.values(r.tables)) assert.equal(t.deleted, 0);
-    assert.equal(logs.length, 3);
+    assert.equal(logs.length, 4);
     assert.ok(logs.every((m) => /dry-run/.test(m) && /چیزی حذف نشد/.test(m)));
     assert.deepEqual(counts(), before);
   });
@@ -70,7 +70,7 @@ describe('پاک‌سازی جدول‌های فرعی (S2-7a)', () => {
     assert.equal(r.dryRun, false);
     assert.deepEqual(
       Object.fromEntries(Object.entries(r.tables).map(([k, v]) => [k, v.deleted])),
-      { job_runs: 2, monitor_alerts: 1, rate_limit_hits: 2 }
+      { job_runs: 2, monitor_alerts: 1, rate_limit_hits: 2, notifications: 0 }
     );
     const after = counts();
     assert.equal(after.job_runs, before.job_runs - 2);
@@ -89,11 +89,11 @@ describe('پاک‌سازی جدول‌های فرعی (S2-7a)', () => {
 
     // اجرای دوباره: چیزی نمانده
     const again = runCleanup({ now: NOW, retention: RET, dryRun: false, log: silent });
-    assert.deepEqual(Object.values(again.tables).map((t) => t.deleted), [0, 0, 0]);
+    assert.deepEqual(Object.values(again.tables).map((t) => t.deleted), [0, 0, 0, 0]);
   });
 
   test('تنظیمات نگهداری: پیش‌فرض‌های محافظه‌کارانه، اعتبارسنجی بازه، مقدار خراب ⇒ پیش‌فرض، و runCleanup از همان‌ها می‌خواند', () => {
-    assert.deepEqual(settings.getCleanupRetention(), { jobRunsDays: 180, monitorAlertsDays: 180, rateLimitDays: 7 });
+    assert.deepEqual(settings.getCleanupRetention(), { jobRunsDays: 180, monitorAlertsDays: 180, rateLimitDays: 7, notificationsDays: 90 });
     const s = settings.update({ jobRunsRetentionDays: 365, monitorAlertsRetentionDays: '90', rateLimitRetentionDays: 30 });
     assert.equal(s.jobRunsRetentionDays, 365);
     assert.equal(s.monitorAlertsRetentionDays, 90);
@@ -112,7 +112,7 @@ describe('پاک‌سازی جدول‌های فرعی (S2-7a)', () => {
     const before = counts();
     const logs = [];
     assert.throws(
-      () => runCleanup({ now: NOW, retention: { jobRunsDays: 0, monitorAlertsDays: 180, rateLimitDays: 7 }, dryRun: false, log: (m) => logs.push(m) }),
+      () => runCleanup({ now: NOW, retention: { jobRunsDays: 0, monitorAlertsDays: 180, rateLimitDays: 7, notificationsDays: 90 }, dryRun: false, log: (m) => logs.push(m) }),
       /پاک‌سازی ناقص: job_runs/
     );
     assert.ok(logs.some((m) => /خطا در job_runs/.test(m)));

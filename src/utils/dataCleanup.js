@@ -1,5 +1,5 @@
-// پاک‌سازی جدول‌های فرعی (S2-7a): job_runs، monitor_alerts حل‌شده، rate_limit_hits.
-// فقط این سه جدول؛ داده‌ی کاربری (users، attendance_records، leave_requests، audit_log و ...) هرگز لمس نمی‌شود.
+// پاک‌سازی جدول‌های فرعی (S2-7a): job_runs، monitor_alerts حل‌شده، rate_limit_hits، و (S4-5b) notifications «خوانده‌شده».
+// فقط این چهار جدول؛ داده‌ی کاربری (users، attendance_records، leave_requests، audit_log و ...) هرگز لمس نمی‌شود.
 // csp_reports ذخیره نمی‌شود (routes/cspReport.js فقط لاگ می‌کند)، پس سیاستی ندارد.
 // پیش‌فرض dryRun=true است (محافظه‌کارانه): فقط می‌شمارد و لاگ می‌کند. حذف واقعی فقط با dryRun:false صریح (Job در S2-7b).
 // نگهداری‌ها از تنظیمات خوانده می‌شود (settingsRepository.getCleanupRetention).
@@ -8,11 +8,12 @@ const settingsRepository = require('../repositories/settingsRepository');
 const jobRunsRepository = require('../repositories/jobRunsRepository');
 const monitorRepository = require('../repositories/monitorRepository');
 const rateLimitRepository = require('../repositories/rateLimitRepository');
+const notificationsRepository = require('../repositories/notificationsRepository');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * @param {{now?: Date, dryRun?: boolean, retention?: {jobRunsDays:number, monitorAlertsDays:number, rateLimitDays:number}, log?: (msg: string) => void}} [opts]
+ * @param {{now?: Date, dryRun?: boolean, retention?: {jobRunsDays:number, monitorAlertsDays:number, rateLimitDays:number, notificationsDays:number}, log?: (msg: string) => void}} [opts]
  * @returns {{dryRun: boolean, tables: Record<string, {retentionDays:number, cutoff:string, candidates:number, deleted:number}>}}
  * @throws اگر پاک‌سازی یک جدول خطا بدهد، بقیه اجرا می‌شوند و در پایان یک خطای تجمیعی پرتاب می‌شود
  */
@@ -50,6 +51,14 @@ function runCleanup({
       purge: (ms) => rateLimitRepository.purgeExpired(ms),
       cutoff: iso,
       label: 'شمارنده‌های منقضی rate limit',
+    },
+    {
+      table: 'notifications',
+      days: retention.notificationsDays,
+      count: (ms) => notificationsRepository.countPurgeable(iso(ms)),
+      purge: (ms) => notificationsRepository.purgeOlderThan(iso(ms)),
+      cutoff: iso,
+      label: 'اعلان‌های خوانده‌شده (خوانده‌نشده‌ها هرگز حذف نمی‌شوند)',
     },
   ];
 

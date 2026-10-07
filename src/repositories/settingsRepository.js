@@ -123,6 +123,7 @@ function getCleanupRetention() {
     jobRunsDays: all.jobRunsRetentionDays,
     monitorAlertsDays: all.monitorAlertsRetentionDays,
     rateLimitDays: all.rateLimitRetentionDays,
+    notificationsDays: all.notificationsRetentionDays,
   };
 }
 
