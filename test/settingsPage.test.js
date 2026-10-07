@@ -104,6 +104,7 @@ describe('صفحه‌های تنظیمات و تعطیلات پنل (S3-9a/9b)',
     assert.doesNotMatch(html, /<b>x<\/b>/);
     assert.match(html, /&lt;b&gt;x&lt;\/b&gt;/);
     assert.match(html, /id="hol-add"/);
+    assert.match(html, /id="hol-import"/, 'دکمه‌ی ورود گروهی (S3-9d)');
   });
 
   test('تعطیلات: حالت خالی', async () => {

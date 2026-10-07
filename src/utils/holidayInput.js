@@ -128,7 +128,7 @@ function parseImport({ text, items }) {
     if (!line || line.startsWith('#')) return;
     const cells = splitLine(line);
     // سطر سرستون (مثل «تاریخ,عنوان» یا «date,title») نادیده گرفته می‌شود
-    if (rows.length === 0 && !/\d/.test(cells[0] || '')) return;
+    if (rows.length === 0 && !/\d/.test(toAsciiDigits(cells[0] || ''))) return;
     rows.push({ line: idx + 1, input: line, ...parseRow(cells) });
   });
   if (rows.length === 0) return { error: 'هیچ ردیفی پیدا نشد.' };

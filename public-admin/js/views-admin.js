@@ -377,7 +377,7 @@
 
       const html = `
         <div class="view-header"><div><h2>تعطیلات</h2><div class="sub">تعطیلی کامل روز را غیرکاری می‌کند؛ نیم‌روز فقط ساعت پایان کار همان روز را زودتر می‌کند · ${fmt.num(all.length)} مورد ثبت‌شده</div></div>
-          <div class="header-actions"><button class="btn primary" id="hol-add">${icon('plus')} افزودن تعطیلی</button></div></div>
+          <div class="header-actions"><button class="btn ghost" id="hol-import">${icon('download')} ورود گروهی</button><button class="btn primary" id="hol-add">${icon('plus')} افزودن تعطیلی</button></div></div>
         <form class="filters" id="hol-filters"><label class="field"><span>نمایش</span>
           <select name="when">${[['upcoming', 'از امروز به بعد'], ['past', 'گذشته'], ['all', 'همه']].map(([v, l]) => `<option value="${v}"${holUi.when === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label></form>
         <div class="card flush">${rows.length ? `<div class="table-wrap"><table><thead><tr><th>تاریخ</th><th>عنوان</th><th>نوع</th><th>شامل</th><th></th></tr></thead><tbody>
@@ -428,11 +428,92 @@
         });
       }
 
+
+      // S3-9d: ورود گروهی. متن/CSV ⇒ پیش‌نمایش (بدون ذخیره) ⇒ تأیید. هر تغییر در متن، پیش‌نمایش را باطل می‌کند.
+      const IMPORT_STATUS = { new: ['green', 'جدید'], duplicate: ['holiday', 'تکراری (قبلاً ثبت شده)'], duplicate_in_input: ['orange', 'تکرار در همین ورودی'], invalid: ['red', 'نامعتبر'] };
+      const importKind = (r) => (r.kind === 'half' ? `نیم‌روز تا ${r.halfEndTime}` : 'کامل');
+      function importReport(res) {
+        const sm = res.summary;
+        const head = `<div class="note${sm.invalid ? ' warn' : ''}"><span>${fmt.num(sm.total)} ردیف: ${fmt.num(sm.new)} جدید · ${fmt.num(sm.duplicate + sm.duplicateInInput)} تکراری (نادیده گرفته می‌شود) · ${fmt.num(sm.invalid)} نامعتبر${sm.invalid ? ' — تا اصلاح خطاها ثبت ممکن نیست.' : ''}</span></div>`;
+        const body = res.rows.map((r) => {
+          const [cls, label] = IMPORT_STATUS[r.status] || ['holiday', r.status];
+          if (r.status === 'invalid') return `<tr><td>${fmt.num(r.line)}</td><td colspan="3" class="ltr">${esc(r.input)}</td><td>${AP.badge(cls, label)}<div class="form-msg err">${esc(r.error)}</div></td></tr>`;
+          return `<tr><td>${fmt.num(r.line)}</td><td class="ltr">${esc(r.jalali)}<div class="muted small">${esc(r.date)}</div></td><td>${esc(r.title)}</td>
+            <td>${esc(importKind(r))} · ${esc(r.scope === 'department' ? `دپارتمان «${r.department}»` : 'همه')}</td>
+            <td>${AP.badge(cls, label)}${r.warning ? `<div class="form-msg err">${esc(r.warning)}</div>` : ''}</td></tr>`;
+        }).join('');
+        return `${head}<div class="table-wrap" style="max-height:320px;overflow:auto"><table><thead><tr><th>خط</th><th>تاریخ</th><th>عنوان</th><th>نوع / شامل</th><th>وضعیت</th></tr></thead><tbody>${body}</tbody></table></div>`;
+      }
+      function openImport() {
+        AP.modal({
+          title: 'ورود گروهی تعطیلات', wide: true,
+          body: `<form class="form" id="imp-form">
+            <p class="muted small" style="margin:0;line-height:2">هر خط یک تعطیلی با <b>تاریخ شمسی</b>: <span class="ltr">1405/01/01 نوروز</span> یا CSV: <span class="ltr">1405/01/03,عنوان,نیم‌روز,11:30,دپارتمان</span>
+              (ستون‌های نوع، ساعت پایان و دپارتمان اختیاری‌اند؛ خط‌های خالی و خط‌های شروع‌شده با # نادیده گرفته می‌شوند.)</p>
+            <label class="field"><span>فهرست تعطیلات</span><textarea name="text" rows="8" dir="auto" placeholder="1405/01/01 نوروز&#10;1405/01/02 نوروز"></textarea></label>
+            <label class="field"><span>یا فایل CSV / متنی</span><input type="file" name="file" accept=".csv,.txt,text/csv,text/plain" /></label>
+            <div id="imp-report"></div>
+            <div class="form-msg" id="imp-msg"></div>
+            <div class="modal-actions"><button class="btn ghost" type="submit" id="imp-preview">پیش‌نمایش</button>
+              <button class="btn primary" type="button" id="imp-commit" disabled>ثبت تعطیلی‌ها</button>
+              <button class="btn ghost" type="button" data-cancel>انصراف</button></div></form>`,
+          onMount(body, m) {
+            const form = $('#imp-form', body);
+            const report = $('#imp-report', body);
+            const msg = $('#imp-msg', body);
+            const commitBtn = $('#imp-commit', body);
+            const setMsg = (t, cls = '') => { msg.className = `form-msg ${cls}`; msg.textContent = t; };
+            const invalidate = () => { commitBtn.disabled = true; report.innerHTML = ''; setMsg(''); };
+            const show = (res) => {
+              report.innerHTML = importReport(res);
+              commitBtn.disabled = !(res.summary.invalid === 0 && res.summary.new > 0);
+              commitBtn.textContent = res.summary.new ? `ثبت ${fmt.num(res.summary.new)} تعطیلی` : 'ثبت تعطیلی‌ها';
+              if (!res.summary.new && !res.summary.invalid) setMsg('همه‌ی ردیف‌ها قبلاً ثبت شده‌اند؛ چیزی برای ثبت نیست.');
+            };
+            const call = async (commit) => {
+              const text = form.text.value;
+              if (!text.trim()) { setMsg('متن یا فایل را وارد کنید.', 'err'); return null; }
+              if (text.length > 90000) { setMsg('حجم ورودی زیاد است (حداکثر ۹۰هزار نویسه).', 'err'); return null; }
+              try { return await AP.api('/admin/holidays/import', { method: 'POST', body: { text, commit } }); }
+              catch (err) {
+                if (err.data && err.data.rows) show(err.data);
+                setMsg(err.message, 'err');
+                return null;
+              }
+            };
+            form.text.addEventListener('input', invalidate);
+            form.file.addEventListener('change', async () => {
+              const f = form.file.files[0];
+              if (!f) return;
+              if (f.size > 90000) { setMsg('فایل بزرگ است (حداکثر حدود ۹۰ کیلوبایت).', 'err'); form.file.value = ''; return; }
+              form.text.value = await f.text();
+              invalidate();
+            });
+            form.addEventListener('submit', async (e) => {
+              e.preventDefault();
+              setMsg('در حال بررسی…');
+              const res = await call(false);
+              if (res) { setMsg(''); show(res); }
+            });
+            commitBtn.addEventListener('click', async () => {
+              commitBtn.disabled = true;
+              const res = await call(true);
+              if (!res) return;
+              AP.toast(`${fmt.num(res.summary.added)} تعطیلی ثبت شد.`);
+              m.close();
+              AP.refresh();
+            });
+            $('[data-cancel]', form).addEventListener('click', () => m.close());
+          },
+        });
+      }
+
       return {
         html,
         mount(page) {
           $('#hol-filters', page).addEventListener('change', (e) => { holUi.when = e.target.value; AP.refresh(); });
           $('#hol-add', page).addEventListener('click', () => openForm(null));
+          $('#hol-import', page).addEventListener('click', openImport);
           $$('[data-edit]', page).forEach((b) => b.addEventListener('click', () => openForm(all.find((h) => String(h.id) === b.dataset.edit))));
           $$('[data-del]', page).forEach((b) => b.addEventListener('click', async () => {
             const h = all.find((x) => String(x.id) === b.dataset.del);

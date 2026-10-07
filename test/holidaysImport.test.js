@@ -39,6 +39,12 @@ describe('تحلیل ورودی گروهی تعطیلات (S3-9c)', () => {
     assert.equal(rows[0].line, 3, 'شماره‌ی خط اصلی حفظ می‌شود');
   });
 
+  test('خط اول با ارقام فارسی سرستون حساب نمی‌شود (باگ: فقط ارقام ASCII دیده می‌شد)', () => {
+    const { rows } = parseImport({ text: '۱۴۰۵/۰۱/۰۱ نوروز\n۱۴۰۵/۰۱/۰۲ دوم' });
+    assert.equal(rows.length, 2);
+    assert.equal(rows[0].value.date, '2026-03-21');
+  });
+
   test('ردیف نامعتبر دلیل دارد: نوع ناشناخته، نیم‌روز بدون ساعت، عنوان خالی، عنوان طولانی', () => {
     const { rows } = parseImport({ text: ['1405/01/01,x,سه‌ربع', '1405/01/02,x,نیم‌روز', '1405/01/03', `1405/01/04,${'ع'.repeat(101)}`].join('\n') });
     assert.deepEqual(rows.map((r) => r.ok), [false, false, false, false]);
