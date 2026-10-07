@@ -72,6 +72,10 @@
           <div id="search-results" class="search-results hidden"></div>
         </div>
         <div class="topbar-date" id="topbar-date"></div>
+        <button id="bell-btn" class="icon-btn bell-btn hidden" type="button" title="اعلان‌ها" aria-label="اعلان‌ها" aria-haspopup="dialog" aria-expanded="false" aria-controls="bell-drawer">
+          <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          <span id="bell-count" class="bell-count hidden" aria-hidden="true"></span>
+        </button>
         <button id="refresh-btn" class="icon-btn" title="تازه‌سازی" aria-label="تازه‌سازی">
           <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg>
         </button>
@@ -80,6 +84,20 @@
       <main class="page" id="page"></main>
     </div>
   </div>
+
+  <!-- زنگوله‌ی اعلان: پنل کشویی (S4-6a؛ منطق در js/bell.js) -->
+  <div id="bell-backdrop" class="bell-backdrop"></div>
+  <aside id="bell-drawer" class="bell-drawer" role="dialog" aria-modal="false" aria-labelledby="bell-title" aria-hidden="true">
+    <div class="bell-head">
+      <h3 id="bell-title">اعلان‌ها</h3>
+      <button id="bell-mark-all" type="button" class="btn ghost small" disabled>خواندن همه</button>
+      <button id="bell-close" type="button" class="icon-btn" aria-label="بستن">
+        <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="bell-list" class="bell-list" aria-live="polite"></div>
+    <div class="bell-foot"><button id="bell-more" type="button" class="btn ghost small hidden">نمایش بیشتر</button></div>
+  </aside>
 
   <div id="modal-root"></div>
   <div id="toast" class="toast hidden"></div>
@@ -91,6 +109,7 @@
   <script src="/admin/js/views-ops.js"></script>
   <script src="/admin/js/views-admin.js"></script>
   <script src="/admin/js/views-shifts.js"></script>
+  <script src="/admin/js/bell.js"></script>
   <script src="/admin/js/boot.js"></script>
 </body>
 </html>

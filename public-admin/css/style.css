@@ -610,3 +610,61 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--g
   .set-row { grid-template-columns: 1fr; gap: 8px; }
   .set-side { justify-content: flex-start; }
 }
+
+/* ---------- زنگوله‌ی اعلان (S4-6a) ---------- */
+.bell-btn { position: relative; }
+.bell-count {
+  position: absolute; top: -6px; left: -6px;
+  min-width: 19px; padding: 1px 5px;
+  border-radius: 999px; background: var(--red); color: #fff;
+  font-size: 10.5px; font-weight: 800; line-height: 17px; text-align: center;
+  border: 2px solid var(--bg);
+  pointer-events: none;
+}
+.bell-backdrop { display: none; }
+.bell-backdrop.open { display: block; position: fixed; inset: 0; background: rgba(10, 10, 20, .45); z-index: 44; }
+.bell-drawer {
+  position: fixed; top: 0; bottom: 0; left: 0; z-index: 45;
+  width: min(400px, 100vw);
+  display: flex; flex-direction: column;
+  background: var(--sidebar);
+  border-right: 1px solid var(--border);
+  box-shadow: none;
+  transform: translateX(-100%);
+  visibility: hidden; /* بسته ⇒ با Tab هم فوکوس نگیرد */
+  transition: transform .25s ease, visibility 0s linear .25s;
+}
+.bell-drawer.open { transform: translateX(0); visibility: visible; box-shadow: 20px 0 60px rgba(0, 0, 0, .5); transition: transform .25s ease, visibility 0s; }
+.bell-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.bell-head h3 { flex: 1; margin: 0; font-size: 16px; font-weight: 800; }
+.bell-list { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+.bell-foot { padding: 10px 16px; border-top: 1px solid var(--border); text-align: center; }
+.bell-foot:has(.hidden:only-child) { display: none; }
+.bell-items { list-style: none; margin: 0; padding: 0; }
+.bell-item { display: flex; align-items: flex-start; gap: 6px; border-bottom: 1px solid var(--border); }
+.bell-item.unread { background: var(--purple-soft); }
+.bell-main {
+  flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 16px; border: 0; background: transparent; color: var(--text);
+  font-family: inherit; text-align: right; cursor: default;
+}
+.bell-item.has-link .bell-main { cursor: pointer; }
+.bell-item.has-link .bell-main:hover { background: rgba(255, 255, 255, .04); }
+.bell-dot { flex: none; width: 8px; height: 8px; margin-top: 7px; border-radius: 50%; background: transparent; }
+.bell-item.unread .bell-dot { background: var(--purple); }
+.bell-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.bell-title { font-size: 13.5px; font-weight: 700; line-height: 1.8; overflow-wrap: anywhere; }
+.bell-body {
+  font-size: 12.5px; line-height: 1.8; color: var(--hint); overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.bell-time { font-size: 11.5px; }
+.bell-read { margin: 10px 0 0 10px; width: 32px; height: 32px; border-radius: 10px; }
+.bell-read svg { width: 16px; height: 16px; }
+.bell-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 900px) {
+  .bell-drawer { width: 100vw; border-right: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bell-drawer, .bell-drawer.open { transition: none; }
+}

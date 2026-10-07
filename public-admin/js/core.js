@@ -552,12 +552,13 @@
       $('#sidebar-backdrop').classList.add('open');
     });
     $('#sidebar-backdrop').addEventListener('click', closeSidebar);
-    $('#refresh-btn').addEventListener('click', () => { AP.state.users = null; AP.refresh(); AP.refreshCounts(); });
+    $('#refresh-btn').addEventListener('click', () => { AP.state.users = null; AP.refresh(); AP.refreshCounts(); if (AP.bell) AP.bell.refresh(); });
     $('#logout-btn').addEventListener('click', async () => {
       try { await AP.api('/admin/auth/logout', { method: 'POST' }); } catch (_) {}
       location.reload();
     });
     AP.refreshCounts();
+    if (AP.bell) AP.bell.init(); // زنگوله‌ی اعلان (S4-6a؛ js/bell.js) — بعد از loadPermissions تا default-deny درست کار کند
     // ?go=<صفحه> از دکمه‌های بات (مثلاً دکمه‌ی پیام شبانه → مرور شبانه)
     const go = AP.launch && AP.launch.go;
     if (go && AP.viewAllowed(AP.views[go])) {
