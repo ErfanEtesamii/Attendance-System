@@ -10,12 +10,13 @@ const auditRepository = require('../../../repositories/auditRepository');
 const dayService = require('../../../engine/dayService');
 const { sendCsv } = require('../../../utils/csv');
 const { scopedUserIds, visibleUsers, shiftDate, parseRange, userBrief, safeSummary, aggregateRecords } = require('./common');
+const { requirePermission } = require('../../../middleware/permissions');
 
 // ---------- فاز ۶: خروجی اکسل (CSV) ----------
 // نکته: خروجی CSV با BOM است، نه .xlsx باینری واقعی - توضیح کامل در src/utils/csv.js.
 // این سه مسیر همان محدوده‌ی داده‌ای (scoping بر اساس نقش) مسیرهای JSON بالا را رعایت می‌کنند.
 
-router.get('/admin/reports/export', (req, res) => {
+router.get('/admin/reports/export', requirePermission('reports.read'), (req, res) => {
   const { from, to, userId } = req.query;
   if (!from || !to) {
     return res.status(400).json({ error: 'پارامترهای from و to (به‌فرمت YYYY-MM-DD) الزامی‌اند.' });
@@ -66,7 +67,7 @@ router.get('/admin/reports/export', (req, res) => {
 
 // ---------- گزارش تحلیلی ----------
 
-router.get('/admin/reports/summary', (req, res) => {
+router.get('/admin/reports/summary', requirePermission('reports.read'), (req, res) => {
   const { from, to } = parseRange(req.query, 30);
   const { department, userId } = req.query;
   let users = visibleUsers(req.adminUser);

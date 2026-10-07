@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { requireStaff } = require('../../../middleware/adminAuth');
+const { requirePermission } = require('../../../middleware/permissions');
 const usersRepository = require('../../../repositories/usersRepository');
 const leaveRepository = require('../../../repositories/leaveRepository');
 const { notifyUser, sendMessage } = require('../../../bot/notifier');
@@ -13,7 +13,7 @@ const { leaveRequestView } = require('../../../utils/auditViews');
 
 // ---------- صف تأیید مرخصی/مأموریت ----------
 
-router.get('/admin/leave-requests', (req, res) => {
+router.get('/admin/leave-requests', requirePermission('leave.read'), (req, res) => {
   const status = req.query.status || 'pending';
   const allowedIds = scopedUserIds(req.adminUser);
   let items = status === 'all' ? leaveRepository.listAll({}) : leaveRepository.listAll({ status });
@@ -35,7 +35,7 @@ router.get('/admin/leave-requests', (req, res) => {
   res.json(enriched);
 });
 
-router.post('/admin/leave-requests/:id/:decision(approve|reject)', (req, res) => {
+router.post('/admin/leave-requests/:id/:decision(approve|reject)', requirePermission('leave.approve'), (req, res) => {
   const requestId = parseInt(req.params.id, 10);
   const decision = req.params.decision;
   const request = leaveRepository.findById(requestId);
@@ -79,7 +79,7 @@ router.post('/admin/leave-requests/:id/:decision(approve|reject)', (req, res) =>
 
 // ---------- مرخصی/مأموریت: کنترل کامل ادمین ----------
 
-router.post('/admin/leave-requests', requireStaff, (req, res) => {
+router.post('/admin/leave-requests', requirePermission('leave.edit'), (req, res) => {
   const { userId, startDate, endDate, leaveType, reason, status } = req.body || {};
   const user = usersRepository.findById(parseInt(userId, 10));
   if (!user) return res.status(404).json({ error: 'کارمند یافت نشد.' });
@@ -103,7 +103,7 @@ router.post('/admin/leave-requests', requireStaff, (req, res) => {
   res.status(201).json(saved);
 });
 
-router.patch('/admin/leave-requests/:id', requireStaff, (req, res) => {
+router.patch('/admin/leave-requests/:id', requirePermission('leave.edit'), (req, res) => {
   const reqRow = leaveRepository.findById(parseInt(req.params.id, 10));
   if (!reqRow) return res.status(404).json({ error: 'درخواست یافت نشد.' });
   if (!canAccessUser(req.adminUser, reqRow.user_id)) return res.status(403).json({ error: 'به این کارمند دسترسی ندارید.' });
@@ -140,7 +140,7 @@ router.patch('/admin/leave-requests/:id', requireStaff, (req, res) => {
   res.json(updated);
 });
 
-router.delete('/admin/leave-requests/:id', requireStaff, (req, res) => {
+router.delete('/admin/leave-requests/:id', requirePermission('leave.edit'), (req, res) => {
   const reqRow = leaveRepository.findById(parseInt(req.params.id, 10));
   if (!reqRow) return res.status(404).json({ error: 'درخواست یافت نشد.' });
   if (!canAccessUser(req.adminUser, reqRow.user_id)) return res.status(403).json({ error: 'به این کارمند دسترسی ندارید.' });

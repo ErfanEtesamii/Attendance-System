@@ -5,13 +5,13 @@
 // اسکوپ و دسترسی:
 //   admin    — همه‌ی کارمندان
 //   manager  — فقط تیم خودش (scopedUserIds)
-//   employee — ممنوع (لیست سفید requireAdminAuth + requireStaff؛ دو لایه)
+//   employee — ممنوع (لیست سفید requireAdminAuth + requirePermission؛ دو لایه)
 //   هیچ‌کس اضافه‌کاری خودش را تأیید/رد نمی‌کند (۴۰۳).
 
 const express = require('express');
 const router = express.Router();
 
-const { requireStaff } = require('../../../middleware/adminAuth');
+const { requirePermission } = require('../../../middleware/permissions');
 const attendanceRepository = require('../../../repositories/attendanceRepository');
 const overtimeApprovalRepository = require('../../../repositories/overtimeApprovalRepository');
 const dayService = require('../../../engine/dayService');
@@ -32,7 +32,7 @@ function present(row, userMap) {
 
 // GET /admin/overtime-approvals?from=YYYY-MM-DD&to=YYYY-MM-DD&status=pending|approved|rejected
 // فقط روزهایی که اضافه‌کاری قابل‌پرداخت دارند یا تصمیمی برایشان ثبت شده.
-router.get('/admin/overtime-approvals', requireStaff, (req, res) => {
+router.get('/admin/overtime-approvals', requirePermission('overtime.approve'), (req, res) => {
   const { status, from, to } = req.query;
   if (status !== undefined && status !== '' && !LIST_STATUSES.includes(status)) {
     return res.status(400).json({ error: 'وضعیت نامعتبر است (pending | approved | rejected).' });
@@ -69,7 +69,7 @@ router.get('/admin/overtime-approvals', requireStaff, (req, res) => {
 });
 
 // POST /admin/overtime-approvals/:recordId/approve|reject  { reason } — دلیل برای رد اجباری، برای تأیید اختیاری
-router.post('/admin/overtime-approvals/:recordId/:action(approve|reject)', requireStaff, (req, res) => {
+router.post('/admin/overtime-approvals/:recordId/:action(approve|reject)', requirePermission('overtime.approve'), (req, res) => {
   const recordId = Number(req.params.recordId);
   if (!Number.isInteger(recordId) || recordId <= 0) return res.status(400).json({ error: 'شناسه‌ی نامعتبر است.' });
   const record = attendanceRepository.findById(recordId);

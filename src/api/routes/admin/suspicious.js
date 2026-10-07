@@ -4,12 +4,12 @@
 // اسکوپ:
 //   admin    — همه‌ی موارد
 //   manager  — فقط مواردی که «همه‌ی» کاربرانشان در تیم خودش‌اند (مورد مشترک با کاربر تیم دیگر دیده نمی‌شود)
-//   employee — ممنوع (هم با لیست سفید requireAdminAuth و هم با requireStaff؛ دو لایه)
+//   employee — ممنوع (هم با لیست سفید requireAdminAuth و هم با requirePermission؛ دو لایه)
 
 const express = require('express');
 const router = express.Router();
 
-const { requireStaff } = require('../../../middleware/adminAuth');
+const { requirePermission } = require('../../../middleware/permissions');
 const suspiciousRepository = require('../../../repositories/suspiciousRepository');
 const { scopedUserIds, DATE_RE, userBrief, makeUserMap, requireReason, audit } = require('./common');
 
@@ -37,7 +37,7 @@ function present(event, userMap) {
 }
 
 // GET /admin/suspicious?status=open|reviewed|ignored&from=YYYY-MM-DD&to=YYYY-MM-DD&limit=
-router.get('/admin/suspicious', requireStaff, (req, res) => {
+router.get('/admin/suspicious', requirePermission('suspicious.read'), (req, res) => {
   const { status, from, to } = req.query;
   if (status !== undefined && status !== '' && !suspiciousRepository.STATUSES.includes(status)) {
     return res.status(400).json({ error: 'وضعیت نامعتبر است (open | reviewed | ignored).' });
@@ -61,7 +61,7 @@ router.get('/admin/suspicious', requireStaff, (req, res) => {
 });
 
 // POST /admin/suspicious/:id/review  { status: 'reviewed'|'ignored' (پیش‌فرض reviewed), reason (اجباری) }
-router.post('/admin/suspicious/:id/review', requireStaff, (req, res) => {
+router.post('/admin/suspicious/:id/review', requirePermission('suspicious.review'), (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'شناسه‌ی نامعتبر است.' });
 

@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { requireFullAdmin, requireStaff } = require('../../../middleware/adminAuth');
+const { requirePermission } = require('../../../middleware/permissions');
 const shiftsRepository = require('../../../repositories/shiftsRepository');
 const usersRepository = require('../../../repositories/usersRepository');
 const { validateShiftInput, checkConsistency } = require('../../../utils/shiftValidation');
@@ -17,12 +17,12 @@ function parseId(raw) {
 }
 
 // GET /admin/shifts → [{ id, name, startTime, endTime, graceLateMinutes, graceEarlyMinutes, workDays, overnight, maxLunchMinutes, fixedLunchDeductMinutes, userCount, ... }]
-router.get('/admin/shifts', requireStaff, (req, res) => {
+router.get('/admin/shifts', requirePermission('shifts.read'), (req, res) => {
   res.json(shiftsRepository.listShifts());
 });
 
 // GET /admin/shifts/:id → شیفت + کاربران منتسب (سرپرست فقط تیم خودش را می‌بیند)
-router.get('/admin/shifts/:id', requireStaff, (req, res) => {
+router.get('/admin/shifts/:id', requirePermission('shifts.read'), (req, res) => {
   const shift = shiftsRepository.findById(parseId(req.params.id));
   if (!shift) return res.status(404).json(NOT_FOUND);
   const allowed = scopedUserIds(req.adminUser);
@@ -31,7 +31,7 @@ router.get('/admin/shifts/:id', requireStaff, (req, res) => {
 });
 
 // POST /admin/shifts  { name, startTime, endTime, [graceLateMinutes, graceEarlyMinutes, workDays, overnight, maxLunchMinutes, fixedLunchDeductMinutes], reason }
-router.post('/admin/shifts', requireFullAdmin, (req, res) => {
+router.post('/admin/shifts', requirePermission('shifts.edit'), (req, res) => {
   const reason = requireReason(req, res);
   if (reason === null) return undefined;
   const checked = validateShiftInput(req.body);
@@ -44,7 +44,7 @@ router.post('/admin/shifts', requireFullAdmin, (req, res) => {
 });
 
 // PATCH /admin/shifts/:id  { هر زیرمجموعه‌ای از فیلدها, reason } → { changed, shift }
-router.patch('/admin/shifts/:id', requireFullAdmin, (req, res) => {
+router.patch('/admin/shifts/:id', requirePermission('shifts.edit'), (req, res) => {
   const id = parseId(req.params.id);
   const before = shiftsRepository.findById(id);
   if (!before) return res.status(404).json(NOT_FOUND);
@@ -75,7 +75,7 @@ router.patch('/admin/shifts/:id', requireFullAdmin, (req, res) => {
 });
 
 // DELETE /admin/shifts/:id  { reason } (یا ?reason=) → ۴۰۹ HAS_USERS اگر کسی منتسب است (ابتدا انتساب‌ها را بردارید)
-router.delete('/admin/shifts/:id', requireFullAdmin, (req, res) => {
+router.delete('/admin/shifts/:id', requirePermission('shifts.edit'), (req, res) => {
   const id = parseId(req.params.id);
   const shift = shiftsRepository.findById(id);
   if (!shift) return res.status(404).json(NOT_FOUND);
@@ -90,7 +90,7 @@ router.delete('/admin/shifts/:id', requireFullAdmin, (req, res) => {
 });
 
 // PUT /admin/users/:id/shift  { shiftId: عدد | null, reason } → { changed, userId, shiftId, shift }
-router.put('/admin/users/:id/shift', requireFullAdmin, (req, res) => {
+router.put('/admin/users/:id/shift', requirePermission('shifts.edit'), (req, res) => {
   const userId = parseId(req.params.id);
   const user = userId === null ? null : usersRepository.findById(userId);
   if (!user) return res.status(404).json({ error: 'کارمند یافت نشد.' });

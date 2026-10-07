@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { requireFullAdmin } = require('../../../middleware/adminAuth');
+const { requirePermission } = require('../../../middleware/permissions');
 const usersRepository = require('../../../repositories/usersRepository');
 const auditRepository = require('../../../repositories/auditRepository');
 const { sendCsv } = require('../../../utils/csv');
@@ -64,7 +64,7 @@ function parseFilters(query) {
   return { filters: f };
 }
 
-router.get('/admin/audit-log', requireFullAdmin, (req, res) => {
+router.get('/admin/audit-log', requirePermission('audit.read'), (req, res) => {
   const includeArchive = parseIncludeArchive(req.query.include_archive);
   if (includeArchive === null) return res.status(400).json(BAD_INCLUDE_ARCHIVE);
   const parsed = parseFilters(req.query);
@@ -81,7 +81,7 @@ router.get('/admin/audit-log', requireFullAdmin, (req, res) => {
   res.json(enriched);
 });
 
-router.get('/admin/audit-log/export', requireFullAdmin, (req, res) => {
+router.get('/admin/audit-log/export', requirePermission('audit.read'), (req, res) => {
   const includeArchive = parseIncludeArchive(req.query.include_archive);
   if (includeArchive === null) return res.status(400).json(BAD_INCLUDE_ARCHIVE);
   const parsed = parseFilters(req.query);
@@ -103,7 +103,7 @@ router.get('/admin/audit-log/export', requireFullAdmin, (req, res) => {
 
 // ---------- فیلترهای Audit ----------
 
-router.get('/admin/audit-actions', requireFullAdmin, (req, res) => {
+router.get('/admin/audit-actions', requirePermission('audit.read'), (req, res) => {
   res.json(auditRepository.listActions());
 });
 

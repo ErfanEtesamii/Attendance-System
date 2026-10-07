@@ -16,15 +16,16 @@ const dayService = require('../../../engine/dayService');
 const dayReview = require('../../../utils/dayReview');
 const { todayDateString, nowIso } = require('../../../utils/serverTime');
 const { DATE_RE, scopedUserIds, visibleUsers, shiftDate, userBrief, safeSummary, makeUserMap, classifyToday } = require('./common');
+const { requirePermission } = require('../../../middleware/permissions');
 
-router.get('/admin/me', (req, res) => {
+router.get('/admin/me', requirePermission('me.read'), (req, res) => {
   const u = req.adminUser;
   res.json({ id: u.id, fullName: u.full_name, role: u.role, department: u.department });
 });
 
 // ---------- داشبورد خلاصه ----------
 
-router.get('/admin/dashboard', (req, res) => {
+router.get('/admin/dashboard', requirePermission('dashboard.read'), (req, res) => {
   const adminUser = req.adminUser;
   const allowedIds = scopedUserIds(adminUser);
   const allUsers =
@@ -53,7 +54,7 @@ router.get('/admin/dashboard', (req, res) => {
 
 // ---------- نمای کلی (داشبورد کامل) ----------
 
-router.get('/admin/overview', (req, res) => {
+router.get('/admin/overview', requirePermission('dashboard.read'), (req, res) => {
   const today = todayDateString();
   const users = visibleUsers(req.adminUser, { onlyActive: true });
   const userIds = users.map((u) => u.id);
@@ -168,7 +169,7 @@ router.get('/admin/overview', (req, res) => {
 
 // ---------- تابلوی زنده‌ی امروز ----------
 
-router.get('/admin/live', (req, res) => {
+router.get('/admin/live', requirePermission('dashboard.read'), (req, res) => {
   const today = todayDateString();
   const holiday = holidaysRepository.isHoliday(today);
   const users = visibleUsers(req.adminUser, { onlyActive: true });
@@ -197,7 +198,7 @@ router.get('/admin/live', (req, res) => {
 
 // ---------- مرور شبانه: وضعیت یک روز برای تیم سرپرست (ادمین: همه) ----------
 
-router.get('/admin/nightly-review', (req, res) => {
+router.get('/admin/nightly-review', requirePermission('dashboard.read'), (req, res) => {
   const today = todayDateString();
   let date = DATE_RE.test(req.query.date || '') ? req.query.date : today;
   if (date > today) date = today;

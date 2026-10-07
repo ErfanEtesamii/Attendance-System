@@ -1,4 +1,4 @@
-// S4-3b: قفل‌کردن نگاشت مجوز روی routeهای مهاجرت‌شده (users, attendance, disputes).
+// S4-3b/S4-3c: قفل‌کردن نگاشت مجوز روی routeهای مهاجرت‌شده (نیمه‌ی اول: users, attendance, disputes؛ نیمه‌ی دوم: بقیه‌ی /api/admin/*).
 // برای هر route و هر نقش، نتیجه‌ی گارد با رفتار قبلی (requireStaff / requireFullAdmin / بدون گارد + لیست سفید کارمند) برابر است.
 // تشخیص «رد شدن توسط گارد» از ۴۰۳ اسکوپ: پیام ۴۰۳ گارد مجوز یکتاست.
 const { resetDb, cleanup } = require('./helpers/testEnv');
@@ -38,7 +38,52 @@ const ROUTES = [
   ['POST', '/api/admin/disputes/999999/reopen', [M, A]],
 ];
 
-describe('گارد مجوز routeهای users/attendance/disputes (S4-3b)', { skip: hasDeps ? false : 'express نصب نیست (npm install)' }, () => {
+// نیمه‌ی دوم (S4-3c). عنصر چهارم 'skip' = اجرای واقعی برای نقش مجاز عوارض دارد (ارسال همگانی، ابطال همه‌ی نشست‌ها، بک‌آپ)،
+// پس فقط ردشدن نقش‌های ممنوع بررسی می‌شود.
+const ROUTES_2 = [
+  ['GET', '/api/admin/me', [E, M, A]],
+  ['GET', '/api/admin/dashboard', [M, A]],
+  ['GET', '/api/admin/overview', [M, A]],
+  ['GET', '/api/admin/live', [M, A]],
+  ['GET', '/api/admin/nightly-review', [M, A]],
+  ['GET', '/api/admin/leave-requests', [E, M, A]],
+  ['POST', '/api/admin/leave-requests/999999/approve', [M, A]],
+  ['POST', '/api/admin/leave-requests', [M, A]],
+  ['PATCH', '/api/admin/leave-requests/999999', [M, A]],
+  ['DELETE', '/api/admin/leave-requests/999999', [M, A]],
+  ['GET', '/api/admin/overtime-approvals', [M, A]],
+  ['POST', '/api/admin/overtime-approvals/999999/approve', [M, A]],
+  ['GET', '/api/admin/reports/export', [M, A]],
+  ['GET', '/api/admin/reports/summary', [E, M, A]],
+  ['GET', '/api/admin/holidays', [M, A]],
+  ['GET', '/api/admin/settings', [M, A]],
+  ['GET', '/api/admin/settings/items', [M, A]],
+  ['POST', '/api/admin/holidays/import', [A]],
+  ['POST', '/api/admin/holidays', [A]],
+  ['PUT', '/api/admin/holidays/999999', [A]],
+  ['DELETE', '/api/admin/holidays/999999', [A]],
+  ['PATCH', '/api/admin/settings', [A]],
+  ['PUT', '/api/admin/settings/no_such_key', [A]],
+  ['POST', '/api/admin/settings/no_such_key/reset', [A]],
+  ['GET', '/api/admin/shifts', [M, A]],
+  ['GET', '/api/admin/shifts/999999', [M, A]],
+  ['POST', '/api/admin/shifts', [A]],
+  ['PATCH', '/api/admin/shifts/999999', [A]],
+  ['DELETE', '/api/admin/shifts/999999', [A]],
+  ['PUT', '/api/admin/users/999999/shift', [A]],
+  ['GET', '/api/admin/audit-log', [A]],
+  ['GET', '/api/admin/audit-log/export', [A]],
+  ['GET', '/api/admin/audit-actions', [A]],
+  ['GET', '/api/admin/suspicious', [M, A]],
+  ['POST', '/api/admin/suspicious/999999/review', [M, A]],
+  ['GET', '/api/admin/system', [A]],
+  ['GET', '/api/admin/system/status', [A]],
+  ['POST', '/api/admin/broadcast', [A], 'skip'],
+  ['POST', '/api/admin/system/revoke-all-sessions', [A], 'skip'],
+  ['GET', '/api/admin/system/backup', [A], 'skip'],
+];
+
+describe('گارد مجوز routeهای /api/admin/* (S4-3b/S4-3c)', { skip: hasDeps ? false : 'express نصب نیست (npm install)' }, () => {
   let server, base, cookies;
 
   before(async () => {
@@ -65,11 +110,12 @@ describe('گارد مجوز routeهای users/attendance/disputes (S4-3b)', { sk
 
   // «مجاز»: از گارد عبور کرده؛ یعنی نه ۴۰۱ و نه پیام گارد مجوز (۴۰۳ اسکوپ/۴۰۴/۴۰۰ بعدی مجاز است).
   // «ممنوع»: ۴۰۳ (برای کارمند ممکن است پیام لیست سفید باشد؛ برای سرپرست/ادمین پیام گارد مجوز).
-    for (const [method, url, allowed] of ROUTES) {
+  for (const [method, url, allowed, skip] of [...ROUTES, ...ROUTES_2]) {
     test(`${method} ${url}`, async () => {
       for (const role of [E, M, A]) {
-        const r = await hit(role, method, url);
         const allow = allowed.includes(role);
+        if (allow && skip) continue;
+        const r = await hit(role, method, url);
         if (allow) {
           assert.notEqual(r.status, 401, `${role}`);
           assert.notEqual(r.json && r.json.error, GUARD_MSG, `${role} نباید توسط گارد رد شود`);

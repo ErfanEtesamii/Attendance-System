@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { requireFullAdmin } = require('../../../middleware/adminAuth');
+const { requirePermission } = require('../../../middleware/permissions');
 const holidaysRepository = require('../../../repositories/holidaysRepository');
 const settingsRepository = require('../../../repositories/settingsRepository');
 const usersRepository = require('../../../repositories/usersRepository');
@@ -14,7 +14,7 @@ const { parseHolidayBody, parseImport } = require('../../../utils/holidayInput')
 
 // ---------- تعطیلات رسمی ----------
 
-router.get('/admin/holidays', (req, res) => {
+router.get('/admin/holidays', requirePermission('settings.read'), (req, res) => {
   res.json(holidaysRepository.listHolidays());
 });
 
@@ -35,7 +35,7 @@ function holidayResponse(h) {
 // و { commit: true } برای ذخیره. بدون commit فقط پیش‌نمایش است و هیچ چیزی نوشته نمی‌شود.
 // وضعیت هر ردیف: new | duplicate (از قبل در تقویم) | duplicate_in_input (تکرار داخل همین ورودی؛ فقط اولی) | invalid.
 // commit: اگر حتی یک ردیف نامعتبر باشد ⇒ ۴۲۲ و هیچ چیز ذخیره نمی‌شود؛ تکراری‌ها نادیده می‌مانند و بقیه در یک تراکنش ذخیره می‌شوند.
-router.post('/admin/holidays/import', requireFullAdmin, (req, res) => {
+router.post('/admin/holidays/import', requirePermission('settings.edit'), (req, res) => {
   const body = req.body || {};
   const parsed = parseImport({ text: body.text, items: body.items });
   if (parsed.error) return res.status(400).json({ error: parsed.error });
@@ -77,7 +77,7 @@ router.post('/admin/holidays/import', requireFullAdmin, (req, res) => {
   return res.json({ committed: true, summary: { ...summary, added: added.length }, rows });
 });
 
-router.post('/admin/holidays', requireFullAdmin, (req, res) => {
+router.post('/admin/holidays', requirePermission('settings.edit'), (req, res) => {
   const parsed = parseHolidayBody(req.body);
   if (!parsed.ok) return res.status(400).json({ error: parsed.error });
   const v = parsed.value;
@@ -89,7 +89,7 @@ router.post('/admin/holidays', requireFullAdmin, (req, res) => {
   return res.status(201).json(holidayResponse(holiday));
 });
 
-router.put('/admin/holidays/:id', requireFullAdmin, (req, res) => {
+router.put('/admin/holidays/:id', requirePermission('settings.edit'), (req, res) => {
   const id = parseInt(req.params.id, 10);
   const before = Number.isInteger(id) ? holidaysRepository.getHoliday(id) : null;
   if (!before) return res.status(404).json({ error: 'تعطیلی موردنظر پیدا نشد.' });
@@ -102,7 +102,7 @@ router.put('/admin/holidays/:id', requireFullAdmin, (req, res) => {
   return res.json(holidayResponse(after));
 });
 
-router.delete('/admin/holidays/:id', requireFullAdmin, (req, res) => {
+router.delete('/admin/holidays/:id', requirePermission('settings.edit'), (req, res) => {
   const id = parseInt(req.params.id, 10);
   const before = Number.isInteger(id) ? holidaysRepository.getHoliday(id) : null;
   if (!before) return res.status(404).json({ error: 'تعطیلی موردنظر پیدا نشد.' });
@@ -126,11 +126,11 @@ function reloadSchedulerIfCron(keys) {
 
 // ---------- تنظیمات سیستم (ساعت کاری، آستانه‌ها) ----------
 
-router.get('/admin/settings', (req, res) => {
+router.get('/admin/settings', requirePermission('settings.read'), (req, res) => {
   res.json(settingsRepository.getAll());
 });
 
-router.patch('/admin/settings', requireFullAdmin, (req, res) => {
+router.patch('/admin/settings', requirePermission('settings.edit'), (req, res) => {
   const before = settingsRepository.getAll();
   const updated = settingsRepository.update(req.body || {});
   // S3-1b: مقدار قبل/بعد کلیدهای تغییرکرده هم در details می‌آید (فیلدهای قبلی بدون تغییر)
@@ -155,12 +155,12 @@ router.patch('/admin/settings', requireFullAdmin, (req, res) => {
 // UI فعلی همچنان از GET/PATCH /admin/settings بالا استفاده می‌کند؛ این سه مسیر برای صفحه‌ی تنظیمات جدید (S3-9a) است.
 
 // GET /admin/settings/items → { items: [{ key, type, group, groupLabel, description, value, default, isDefault, updatedAt, min?, max?, values? }] }
-router.get('/admin/settings/items', (req, res) => {
+router.get('/admin/settings/items', requirePermission('settings.read'), (req, res) => {
   res.json({ items: settingsRepository.getItems(), groups: registry.GROUP_LABELS });
 });
 
 // PUT /admin/settings/:key  { value, reason (اجباری) } → ۴۰۴ کلید ناشناخته، ۴۰۰ بدون دلیل/مقدار نامعتبر
-router.put('/admin/settings/:key', requireFullAdmin, (req, res) => {
+router.put('/admin/settings/:key', requirePermission('settings.edit'), (req, res) => {
   const { key } = req.params;
   if (!registry.getDef(key)) return res.status(404).json({ error: 'تنظیم موردنظر پیدا نشد.' });
   const reason = requireReason(req, res);
@@ -179,7 +179,7 @@ router.put('/admin/settings/:key', requireFullAdmin, (req, res) => {
 });
 
 // POST /admin/settings/:key/reset  { reason (اجباری) } → بازگشت یک کلید به پیش‌فرض
-router.post('/admin/settings/:key/reset', requireFullAdmin, (req, res) => {
+router.post('/admin/settings/:key/reset', requirePermission('settings.edit'), (req, res) => {
   const { key } = req.params;
   if (!registry.getDef(key)) return res.status(404).json({ error: 'تنظیم موردنظر پیدا نشد.' });
   const reason = requireReason(req, res);

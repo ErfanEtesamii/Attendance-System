@@ -9,7 +9,7 @@ const os = require('os');
 const path = require('path');
 const config = require('../../../config');
 const { getDb } = require('../../../db/connection');
-const { requireFullAdmin } = require('../../../middleware/adminAuth');
+const { requirePermission } = require('../../../middleware/permissions');
 const usersRepository = require('../../../repositories/usersRepository');
 const { nowIso } = require('../../../utils/serverTime');
 const { sendMessage } = require('../../../bot/notifier');
@@ -28,7 +28,7 @@ function effectiveCrons() {
 
 // ---------- ارسال پیام گروهی (فقط ادمین کل) ----------
 
-router.post('/admin/broadcast', requireFullAdmin, async (req, res) => {
+router.post('/admin/broadcast', requirePermission('system.manage'), async (req, res) => {
   const { scope, department, userIds, text } = req.body || {};
   const message = (text || '').trim();
   if (!message) return res.status(400).json({ error: 'متن پیام خالی است.' });
@@ -60,7 +60,7 @@ router.post('/admin/broadcast', requireFullAdmin, async (req, res) => {
 // ---------- خروج همه‌ی کاربران (فقط ادمین کل، با دلیل اجباری) ----------
 // epoch سراسری را زیاد می‌کند؛ همه‌ی نشست‌های موجود در درخواست بعدی ۴۰۱ می‌شوند.
 // به‌صورت پیش‌فرض نشست خود ادمینِ اجراکننده حفظ می‌شود (کوکی تازه می‌گیرد)؛ با includeSelf=true او هم خارج می‌شود.
-router.post('/admin/system/revoke-all-sessions', requireFullAdmin, (req, res) => {
+router.post('/admin/system/revoke-all-sessions', requirePermission('system.manage'), (req, res) => {
   const reason = requireReason(req, res);
   if (!reason) return;
   const includeSelf = !!(req.body && req.body.includeSelf);
@@ -88,7 +88,7 @@ router.post('/admin/system/revoke-all-sessions', requireFullAdmin, (req, res) =>
 
 // ---------- سیستم و پشتیبان‌گیری (فقط ادمین کل) ----------
 
-router.get('/admin/system', requireFullAdmin, (req, res) => {
+router.get('/admin/system', requirePermission('system.read'), (req, res) => {
   const db = getDb();
   const count = (t) => db.prepare(`SELECT COUNT(*) AS c FROM ${t}`).get().c;
   const fileSize = (p) => {
@@ -132,7 +132,7 @@ router.get('/admin/system', requireFullAdmin, (req, res) => {
 // ---------- وضعیت سیستم (بخش ۲-ج۱؛ فقط ادمین کل) ----------
 // سلامت دیتابیس/بات/دیسک/بک‌آپ/Jobها + تاریخچه‌ی اجراها و آخرین خطاها + هشدارهای فعال.
 // ?deep=1 ⇒ PRAGMA quick_check هم اجرا می‌شود (روی دیتابیس بزرگ کند است؛ پیش‌فرض خاموش).
-router.get('/admin/system/status', requireFullAdmin, (req, res) => {
+router.get('/admin/system/status', requirePermission('system.read'), (req, res) => {
   const report = systemHealth.collect({ deep: req.query.deep === '1' });
   const cronMap = effectiveCrons();
   const watchdogCron = settingsRepository.getCronExpressions().watchdog || config.monitor.watchdogCron;
@@ -162,7 +162,7 @@ router.get('/admin/system/status', requireFullAdmin, (req, res) => {
   res.json({ ...report, jobs, recentErrors, recentRuns, activeAlerts: alerts, watchdog: { enabled: config.monitor.watchdogEnabled, cron: watchdogCron, throttleMinutes: config.monitor.alertThrottleMinutes } });
 });
 
-router.get('/admin/system/backup', requireFullAdmin, async (req, res) => {
+router.get('/admin/system/backup', requirePermission('system.manage'), async (req, res) => {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const dest = path.join(os.tmpdir(), `attendance-backup-${stamp}.db`);
   try {
