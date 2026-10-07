@@ -34,9 +34,31 @@ function addHoliday(dateStr, title, opts = {}) {
   return find.get(dateStr, scope, department);
 }
 
+function getHoliday(id) {
+  const db = getDb();
+  return db.prepare('SELECT * FROM holidays WHERE id = ?').get(id) || null;
+}
+
+// S3-9b: ویرایش یک تعطیلی (مقدارهای «از قبل معتبر»؛ اعتبارسنجی در route). ردیف دیگری با همان (تاریخ، دامنه، دپارتمان) ⇒ { conflict: true } بدون تغییر.
+// ردیف نبود ⇒ null. خروجی موفق: ردیف جدید.
+function updateHoliday(id, fields) {
+  const db = getDb();
+  const current = db.prepare('SELECT * FROM holidays WHERE id = ?').get(id);
+  if (!current) return null;
+  const kind = fields.kind || 'full';
+  const scope = fields.scope || 'all';
+  const department = scope === 'department' ? fields.department || '' : '';
+  const halfEndTime = kind === 'half' ? fields.halfEndTime || null : null;
+  const dup = db.prepare('SELECT id FROM holidays WHERE holiday_date = ? AND scope = ? AND department = ? AND id <> ?').get(fields.date, scope, department, id);
+  if (dup) return { conflict: true };
+  db.prepare('UPDATE holidays SET holiday_date = ?, title = ?, kind = ?, half_end_time = ?, scope = ?, department = ? WHERE id = ?')
+    .run(fields.date, fields.title, kind, halfEndTime, scope, department, id);
+  return db.prepare('SELECT * FROM holidays WHERE id = ?').get(id);
+}
+
 function removeHoliday(id) {
   const db = getDb();
   db.prepare('DELETE FROM holidays WHERE id = ?').run(id);
 }
 
-module.exports = { listHolidays, isHoliday, listByDate, addHoliday, removeHoliday };
+module.exports = { listHolidays, isHoliday, listByDate, getHoliday, addHoliday, updateHoliday, removeHoliday };

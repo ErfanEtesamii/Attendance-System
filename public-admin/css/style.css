@@ -570,3 +570,32 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--g
   .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .modal { padding: 18px; border-radius: 20px; }
 }
+
+/* ---------- صفحه‌ی تنظیمات و تعطیلات (S3-9a/9b) ---------- */
+.small { font-size: 12px; }
+.set-group { padding: 0; margin-bottom: 14px; }
+.set-group > summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 16px 18px; cursor: pointer; list-style: none; }
+.set-group > summary::-webkit-details-marker { display: none; }
+.set-group > summary h3 { margin: 0; }
+.set-group[open] > summary { border-bottom: 1px solid var(--border); }
+.set-body { padding: 6px 18px 16px; }
+.note { display: flex; gap: 10px; align-items: flex-start; margin: 12px 0 4px; padding: 10px 12px; border-radius: 12px; font-size: 12.5px; line-height: 1.9; background: var(--blue-soft); color: var(--text); }
+.note svg { width: 18px; height: 18px; flex: none; margin-top: 3px; }
+.note.warn { background: var(--yellow-soft); }
+.set-rows { display: flex; flex-direction: column; }
+.set-row { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(150px, 1fr) minmax(130px, auto); gap: 14px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.set-row:last-child { border-bottom: none; }
+.set-row.dirty { box-shadow: inset 3px 0 0 var(--yellow); padding-inline-start: 10px; }
+.set-desc { font-size: 13.5px; line-height: 1.8; }
+.set-meta { font-size: 11.5px; color: var(--hint); margin-top: 2px; }
+.set-ctl input, .set-ctl select { width: 100%; }
+.set-ctl .ltr-in { direction: ltr; text-align: left; }
+.set-side { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.chk-row { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+.chk { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; color: var(--text); }
+.set-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+.set-foot .form-msg { flex: 1; min-width: 200px; }
+@media (max-width: 760px) {
+  .set-row { grid-template-columns: 1fr; gap: 8px; }
+  .set-side { justify-content: flex-start; }
+}
