@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { requireFullAdmin } = require('../../../middleware/adminAuth');
+const { requirePermission } = require('../../../middleware/permissions');
 const usersRepository = require('../../../repositories/usersRepository');
 const attendanceRepository = require('../../../repositories/attendanceRepository');
 const leaveRepository = require('../../../repositories/leaveRepository');
@@ -23,7 +23,7 @@ const { userView } = require('../../../utils/auditViews');
 
 // ---------- لیست کارمندان ----------
 
-router.get('/admin/users', (req, res) => {
+router.get('/admin/users', requirePermission('users.read'), (req, res) => {
   const allowedIds = scopedUserIds(req.adminUser);
   let users = usersRepository.listUsers({});
   if (allowedIds !== null) users = users.filter((u) => allowedIds.includes(u.id));
@@ -64,7 +64,7 @@ router.get('/admin/users', (req, res) => {
 
 // ---------- افزودن کارمند (فقط ادمین کل) ----------
 
-router.post('/admin/users', requireFullAdmin, (req, res) => {
+router.post('/admin/users', requirePermission('users.write'), (req, res) => {
   const { telegramUserId, fullName, personnelCode, department, role, managerId } = req.body || {};
   if (!fullName || !fullName.trim()) {
     return res.status(400).json({ error: 'fullName الزامی است.' });
@@ -97,7 +97,7 @@ router.post('/admin/users', requireFullAdmin, (req, res) => {
 // ---------- فاز ۶: خروجی CSV کارمندان (باید قبل از /admin/users/:id ثبت شود، وگرنه
 // اکسپرس "export" را به‌عنوان مقدار :id تفسیر می‌کند) ----------
 
-router.get('/admin/users/export', (req, res) => {
+router.get('/admin/users/export', requirePermission('users.read'), (req, res) => {
   const allowedIds = scopedUserIds(req.adminUser);
   let users = usersRepository.listUsers({});
   if (allowedIds !== null) users = users.filter((u) => allowedIds.includes(u.id));
@@ -121,7 +121,7 @@ router.get('/admin/users/export', (req, res) => {
 
 // ---------- پروفایل یک کارمند ----------
 
-router.get('/admin/users/:id', (req, res) => {
+router.get('/admin/users/:id', requirePermission('users.read'), (req, res) => {
   const id = parseInt(req.params.id, 10);
   const user = usersRepository.findById(id);
   if (!user) return res.status(404).json({ error: 'کارمند یافت نشد.' });
@@ -156,7 +156,7 @@ router.get('/admin/users/:id', (req, res) => {
 
 // ---------- ویرایش پروفایل کارمند (فقط ادمین کل) ----------
 
-router.patch('/admin/users/:id', requireFullAdmin, (req, res) => {
+router.patch('/admin/users/:id', requirePermission('users.write'), (req, res) => {
   const id = parseInt(req.params.id, 10);
   const user = usersRepository.findById(id);
   if (!user) return res.status(404).json({ error: 'کارمند یافت نشد.' });
@@ -215,7 +215,7 @@ router.patch('/admin/users/:id', requireFullAdmin, (req, res) => {
 
 // ---------- باطل‌کردن همه‌ی نشست‌های پنل یک کاربر (فقط ادمین کل، با دلیل اجباری) ----------
 // کاربر در درخواست بعدی‌اش ۴۰۱ می‌گیرد و باید دوباره وارد شود. اگر ادمین نشست‌های خودش را باطل کند، خودش هم خارج می‌شود.
-router.post('/admin/users/:id/revoke-sessions', requireFullAdmin, (req, res) => {
+router.post('/admin/users/:id/revoke-sessions', requirePermission('users.write'), (req, res) => {
   const id = parseInt(req.params.id, 10);
   const user = usersRepository.findById(id);
   if (!user) return res.status(404).json({ error: 'کارمند یافت نشد.' });
@@ -241,7 +241,7 @@ router.post('/admin/users/:id/revoke-sessions', requireFullAdmin, (req, res) => 
 // بدون ?force=1: اگر کارمند سابقه‌ی تردد/مرخصی/اعتراض داشته باشد، ۴۰۹ با شمارش سوابق برمی‌گردد
 // تا پنل هشدار بدهد. با ?force=1: حذف دائمی همراه با سوابق.
 
-router.delete('/admin/users/:id', requireFullAdmin, (req, res) => {
+router.delete('/admin/users/:id', requirePermission('users.write'), (req, res) => {
   const id = parseInt(req.params.id, 10);
   const user = usersRepository.findById(id);
   if (!user) return res.status(404).json({ error: 'کارمند یافت نشد.' });
@@ -275,7 +275,7 @@ router.delete('/admin/users/:id', requireFullAdmin, (req, res) => {
 
 // ---------- پرونده‌ی کامل یک کارمند ----------
 
-router.get('/admin/users/:id/details', (req, res) => {
+router.get('/admin/users/:id/details', requirePermission('users.details.read'), (req, res) => {
   const user = usersRepository.findById(parseInt(req.params.id, 10));
   if (!user) return res.status(404).json({ error: 'کارمند یافت نشد.' });
   if (!canAccessUser(req.adminUser, user.id)) {
@@ -321,7 +321,7 @@ router.get('/admin/users/:id/details', (req, res) => {
   });
 });
 
-router.post('/admin/users/:id/message', (req, res) => {
+router.post('/admin/users/:id/message', requirePermission('users.message'), (req, res) => {
   const user = usersRepository.findById(parseInt(req.params.id, 10));
   if (!user) return res.status(404).json({ error: 'کارمند یافت نشد.' });
   if (!canAccessUser(req.adminUser, user.id)) {

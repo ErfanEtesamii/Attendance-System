@@ -5,7 +5,7 @@ const express = require('express');
 const router = express.Router();
 
 const { getDb } = require('../../../db/connection');
-const { requireStaff } = require('../../../middleware/adminAuth');
+const { requirePermission } = require('../../../middleware/permissions');
 const usersRepository = require('../../../repositories/usersRepository');
 const attendanceRepository = require('../../../repositories/attendanceRepository');
 const breakRepository = require('../../../repositories/breakRepository');
@@ -19,7 +19,7 @@ const { attendanceRecordView, breakView } = require('../../../utils/auditViews')
 
 // ---------- اصلاح دستی رکورد تردد (فقط ادمین کل) ----------
 
-router.patch('/admin/attendance-records/:id', requireStaff, (req, res) => {
+router.patch('/admin/attendance-records/:id', requirePermission('records.edit'), (req, res) => {
   const id = parseInt(req.params.id, 10);
   const record = attendanceRepository.findById(id);
   if (!record) return res.status(404).json({ error: 'رکورد یافت نشد.' });
@@ -97,12 +97,12 @@ function filteredAttendance(req) {
   return { from, to, records, userMap };
 }
 
-router.get('/admin/attendance', (req, res) => {
+router.get('/admin/attendance', requirePermission('attendance.read'), (req, res) => {
   const { from, to, records, userMap } = filteredAttendance(req);
   res.json({ from, to, count: records.length, records: records.map((r) => enrichRecord(r, userMap)) });
 });
 
-router.get('/admin/attendance/export', (req, res) => {
+router.get('/admin/attendance/export', requirePermission('attendance.read'), (req, res) => {
   const { from, to, records, userMap } = filteredAttendance(req);
   const fmt = (iso) => (iso ? new Date(iso).toLocaleString('fa-IR') : '');
   const rows = records.map((r) => {
@@ -126,7 +126,7 @@ router.get('/admin/attendance/export', (req, res) => {
 
 // ---------- جزئیات یک رکورد (استراحت‌ها، IPها، تاریخچه‌ی تغییرات) ----------
 
-router.get('/admin/attendance-records/:id', (req, res) => {
+router.get('/admin/attendance-records/:id', requirePermission('attendance.read'), (req, res) => {
   const record = attendanceRepository.findById(parseInt(req.params.id, 10));
   if (!record) return res.status(404).json({ error: 'رکورد یافت نشد.' });
   if (!canAccessUser(req.adminUser, record.user_id)) {
@@ -144,7 +144,7 @@ router.get('/admin/attendance-records/:id', (req, res) => {
   res.json({ ...enrichRecord(record), history, disputes });
 });
 
-router.post('/admin/attendance-records', requireStaff, (req, res) => {
+router.post('/admin/attendance-records', requirePermission('records.edit'), (req, res) => {
   const reason = requireReason(req, res);
   if (!reason) return;
   const { userId, date, checkInTime, checkOutTime, status } = req.body || {};
@@ -180,7 +180,7 @@ router.post('/admin/attendance-records', requireStaff, (req, res) => {
   res.status(201).json(enrichRecord(created));
 });
 
-router.delete('/admin/attendance-records/:id', requireStaff, (req, res) => {
+router.delete('/admin/attendance-records/:id', requirePermission('records.edit'), (req, res) => {
   const reason = requireReason(req, res);
   if (!reason) return;
   const record = attendanceRepository.findById(parseInt(req.params.id, 10));
@@ -201,7 +201,7 @@ router.delete('/admin/attendance-records/:id', requireStaff, (req, res) => {
 
 // ---------- استراحت‌ها ----------
 
-router.post('/admin/attendance-records/:id/breaks', requireStaff, (req, res) => {
+router.post('/admin/attendance-records/:id/breaks', requirePermission('records.edit'), (req, res) => {
   const reason = requireReason(req, res);
   if (!reason) return;
   const record = attendanceRepository.findById(parseInt(req.params.id, 10));
@@ -230,7 +230,7 @@ router.post('/admin/attendance-records/:id/breaks', requireStaff, (req, res) => 
   res.status(201).json(created);
 });
 
-router.patch('/admin/break-records/:id', requireStaff, (req, res) => {
+router.patch('/admin/break-records/:id', requirePermission('records.edit'), (req, res) => {
   const reason = requireReason(req, res);
   if (!reason) return;
   const br = breakRepository.findById(parseInt(req.params.id, 10));
@@ -264,7 +264,7 @@ router.patch('/admin/break-records/:id', requireStaff, (req, res) => {
   res.json(updated);
 });
 
-router.delete('/admin/break-records/:id', requireStaff, (req, res) => {
+router.delete('/admin/break-records/:id', requirePermission('records.edit'), (req, res) => {
   const reason = requireReason(req, res);
   if (!reason) return;
   const br = breakRepository.findById(parseInt(req.params.id, 10));

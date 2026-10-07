@@ -10,10 +10,11 @@ const disputeRepository = require('../../../repositories/disputeRepository');
 const { sendMessage } = require('../../../bot/notifier');
 const { scopedUserIds, canAccessUser, userBrief, makeUserMap, auditChange } = require('./common');
 const { disputeView } = require('../../../utils/auditViews');
+const { requirePermission } = require('../../../middleware/permissions');
 
 // ---------- اعتراض‌های کارمندان ----------
 
-router.get('/admin/disputes', (req, res) => {
+router.get('/admin/disputes', requirePermission('disputes.read'), (req, res) => {
   const status = ['open', 'resolved'].includes(req.query.status) ? req.query.status : null;
   const ids = scopedUserIds(req.adminUser);
   let items = disputeRepository.listAll({ status });
@@ -35,7 +36,7 @@ router.get('/admin/disputes', (req, res) => {
   );
 });
 
-router.post('/admin/disputes/:id/:action(resolve|reopen)', (req, res) => {
+router.post('/admin/disputes/:id/:action(resolve|reopen)', requirePermission('disputes.resolve'), (req, res) => {
   const dispute = disputeRepository.findById(parseInt(req.params.id, 10));
   if (!dispute) return res.status(404).json({ error: 'اعتراض یافت نشد.' });
   if (!canAccessUser(req.adminUser, dispute.user_id)) {
