@@ -1,0 +1,19 @@
+/* datepicker شمسی (S3-10b). فقط وقتی صفحه‌ای لینکش کند اثر دارد؛ از متغیرهای style.css استفاده می‌کند و برای فایل مستقل مقدار پیش‌فرض دارد. */
+.jdp-pop { position: absolute; z-index: 1000; width: 280px; padding: 10px; border-radius: var(--radius-sm, 12px); background: var(--card, #2a2b40); color: var(--text, #f2f3f8); border: 1px solid var(--border, rgba(255,255,255,.12)); box-shadow: var(--shadow, 0 8px 24px rgba(0,0,0,.28)); font-size: 14px; }
+.jdp-head { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
+.jdp-title { flex: 1; text-align: center; font-weight: 600; }
+.jdp-nav, .jdp-link { border: 0; background: transparent; color: inherit; cursor: pointer; border-radius: 8px; min-width: 34px; min-height: 34px; font-size: 16px; }
+.jdp-link { font-size: 13px; color: var(--green, #1fcf95); padding: 0 8px; }
+.jdp-nav:hover:not(:disabled), .jdp-link:hover:not(:disabled) { background: var(--card-2, #323350); }
+.jdp-nav:disabled, .jdp-link:disabled, .jdp-day:disabled { opacity: .35; cursor: not-allowed; }
+.jdp-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.jdp-wd { text-align: center; font-size: 12px; color: var(--hint, #9a9cb8); padding: 4px 0; }
+.jdp-cell { height: 34px; }
+.jdp-day { border: 1px solid transparent; background: transparent; color: inherit; cursor: pointer; border-radius: 8px; font: inherit; }
+.jdp-day:hover:not(:disabled) { background: var(--card-2, #323350); }
+.jdp-day:focus-visible, .jdp-nav:focus-visible, .jdp-link:focus-visible { outline: 2px solid var(--green, #1fcf95); outline-offset: 1px; }
+.jdp-fri { color: var(--red, #f0506e); }
+.jdp-today { border-color: var(--blue, #4da3ff); }
+.jdp-selected, .jdp-selected:hover:not(:disabled) { background: var(--green, #1fcf95); color: #0d1a14; font-weight: 700; }
+.jdp-foot { display: flex; justify-content: space-between; margin-top: 6px; }
+.jdp-input[aria-invalid="true"] { border-color: var(--red, #f0506e); }
