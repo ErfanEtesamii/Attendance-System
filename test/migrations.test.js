@@ -44,6 +44,8 @@ function snapshot(db) {
     out[t] = db.prepare(`SELECT * FROM "${t}" ORDER BY rowid`).all().map((r) => {
       const row = { ...r };
       if (t === 'users') { delete row.session_version; delete row.shift_id; } // shift_id: migration ۰۰۹ (S3-6a)
+      // ستون‌های kind/half_end_time/scope/department (migration ۰۱۰، S3-7b) روی ردیف‌های قدیمی مقدار پیش‌فرض می‌گیرند؛ در تست migration 010 جدا بررسی می‌شوند
+      if (t === 'holidays') for (const c of ['kind', 'half_end_time', 'scope', 'department']) delete row[c];
       // ستون‌های device/UA (migration ۰۰۵، S2-3) جدیدند و روی رکوردهای قدیمی NULL می‌مانند
       if (t === 'attendance_records') for (const c of ['check_in_device', 'check_out_device', 'check_in_ua', 'check_out_ua']) delete row[c];
       return row;
@@ -90,19 +92,19 @@ describe('migration runner — پایه', () => {
   test('دیتابیس خالی: baseline اعمال و ثبت می‌شود، اجرای دوم هیچ کاری نمی‌کند', () => {
     const db = newDb();
     const r1 = migrate(db, {});
-    assert.deepEqual(r1.applied, ['001_baseline', '002_session_version', '003_rate_limits', '004_monitoring', '005_attendance_devices', '006_suspicious_events', '007_audit_archive', '008_overtime_approvals', '009_work_shifts']);
+    assert.deepEqual(r1.applied, ['001_baseline', '002_session_version', '003_rate_limits', '004_monitoring', '005_attendance_devices', '006_suspicious_events', '007_audit_archive', '008_overtime_approvals', '009_work_shifts', '010_holiday_scope']);
     assert.equal(r1.backupPath, null, 'روی دیتابیس خالی بک‌آپ لازم نیست');
     for (const t of ['users', 'attendance_records', 'break_records', 'leave_requests', 'holidays', 'record_disputes', 'settings', 'audit_log']) {
       assert.ok(userTables(db).includes(t), `جدول ${t} باید ساخته شود`);
     }
     const row = db.prepare('SELECT * FROM schema_migrations').all();
-    assert.equal(row.length, 9);
+    assert.equal(row.length, 10);
     assert.equal(row[0].name, '001_baseline');
     assert.match(row[0].checksum, /^[0-9a-f]{64}$/);
 
     const r2 = migrate(db, {});
     assert.deepEqual(r2.applied, []);
-    assert.equal(db.prepare('SELECT COUNT(*) n FROM schema_migrations').get().n, 9);
+    assert.equal(db.prepare('SELECT COUNT(*) n FROM schema_migrations').get().n, 10);
   });
 
   test('دیتابیس قدیمی با داده: adopt می‌شود، هیچ داده‌ای تغییر نمی‌کند، بک‌آپ سالم گرفته می‌شود', () => {
@@ -112,7 +114,7 @@ describe('migration runner — پایه', () => {
 
     const logs = [];
     const res = migrate(db, { backupDir, log: (m) => logs.push(m) });
-    assert.deepEqual(res.applied, ['001_baseline', '002_session_version', '003_rate_limits', '004_monitoring', '005_attendance_devices', '006_suspicious_events', '007_audit_archive', '008_overtime_approvals', '009_work_shifts']);
+    assert.deepEqual(res.applied, ['001_baseline', '002_session_version', '003_rate_limits', '004_monitoring', '005_attendance_devices', '006_suspicious_events', '007_audit_archive', '008_overtime_approvals', '009_work_shifts', '010_holiday_scope']);
     assert.deepEqual(snapshot(db), before, 'محتوای همه جدول‌ها باید دقیقاً یکسان بماند');
 
     // بک‌آپ: فایل معتبر با همان داده‌ها
@@ -348,5 +350,39 @@ describe('migration 002 — session_version', () => {
     migrate(db, {});
     const m = require('../src/db/migrations/002_session_version');
     assert.doesNotThrow(() => m.up(db));
+  });
+});
+
+describe('migration 010 — holiday scope/kind (S3-7b)', () => {
+  test('روی دیتابیس قدیمی با داده: ردیف‌ها و idها بدون تغییر، kind=full و scope=all، شمارنده‌ی id عقب نمی‌رود', () => {
+    const db = makeLegacyDb();
+    db.exec("INSERT INTO holidays (holiday_date, title) VALUES ('2026-10-02','دوم'), ('2026-10-03','سوم')");
+    db.exec("DELETE FROM holidays WHERE holiday_date = '2026-10-03'"); // id=3 قبلاً استفاده شده
+    const before = db.prepare('SELECT id, holiday_date, title FROM holidays ORDER BY id').all();
+    migrate(db, {});
+    const after = db.prepare('SELECT * FROM holidays ORDER BY id').all();
+    assert.deepEqual(after.map(({ id, holiday_date, title }) => ({ id, holiday_date, title })), before);
+    after.forEach((r) => assert.deepEqual([r.kind, r.half_end_time, r.scope, r.department], ['full', null, 'all', '']));
+    const ins = db.prepare("INSERT INTO holidays (holiday_date, title) VALUES ('2026-10-09','جدید')").run();
+    assert.ok(ins.lastInsertRowid >= 4, `id جدید ${ins.lastInsertRowid} نباید از id حذف‌شده استفاده مجدد کند`);
+    assert.deepEqual(db.pragma('foreign_key_check'), []);
+    assert.equal(db.pragma('foreign_keys', { simple: true }), 1);
+  });
+
+  test('قیدها: UNIQUE(تاریخ، دامنه، دپارتمان)، CHECKهای kind/ساعت/دامنه', () => {
+    const db = newDb();
+    migrate(db, {});
+    const add = (date, kind, end, scope, dep) => db.prepare('INSERT INTO holidays (holiday_date, title, kind, half_end_time, scope, department) VALUES (?,?,?,?,?,?)').run(date, 't', kind, end, scope, dep);
+    add('2026-11-01', 'full', null, 'all', '');
+    add('2026-11-01', 'full', null, 'department', 'فنی');   // همان روز، دپارتمان متفاوت ⇒ مجاز
+    add('2026-11-01', 'half', '12:00', 'department', 'مالی'); // دپارتمان دیگر ⇒ مجاز
+    assert.throws(() => add('2026-11-01', 'full', null, 'all', ''), /UNIQUE/);
+    assert.throws(() => add('2026-11-01', 'full', null, 'department', 'فنی'), /UNIQUE/);
+    assert.throws(() => add('2026-11-02', 'half', null, 'all', ''), /CHECK/);          // نیم‌روز بدون ساعت
+    assert.throws(() => add('2026-11-02', 'full', '12:00', 'all', ''), /CHECK/);       // کامل با ساعت
+    assert.throws(() => add('2026-11-02', 'half', '9:5', 'all', ''), /CHECK/);         // قالب ساعت
+    assert.throws(() => add('2026-11-02', 'full', null, 'department', ''), /CHECK/);   // دپارتمانی بدون دپارتمان
+    assert.throws(() => add('2026-11-02', 'full', null, 'all', 'فنی'), /CHECK/);       // همه‌ی کارکنان با دپارتمان
+    assert.throws(() => add('2026-11-02', 'weekly', null, 'all', ''), /CHECK/);
   });
 });

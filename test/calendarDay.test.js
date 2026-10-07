@@ -3,7 +3,7 @@ const { resetDb, cleanup } = require('./helpers/testEnv');
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 
-const { getCalendarDay, resolveCalendarDay, weekdayOf } = require('../src/engine/calendarService');
+const { getCalendarDay, resolveCalendarDay, pickHoliday, weekdayOf } = require('../src/engine/calendarService');
 const registry = require('../src/utils/settingsRegistry');
 const settingsRepo = require('../src/repositories/settingsRepository');
 const holidaysRepo = require('../src/repositories/holidaysRepository');
@@ -79,6 +79,51 @@ describe('getCalendarDay خالص (S3-7a)', () => {
   });
 });
 
+describe('تعطیلی نیم‌روز و دپارتمانی (S3-7b)', () => {
+  const row = (o) => ({ title: 'ت', kind: 'full', half_end_time: null, scope: 'all', department: '', ...o });
+  const FULL_ALL = row({ title: 'کامل همه' });
+  const FULL_DEP = row({ title: 'کامل فنی', scope: 'department', department: 'فنی' });
+  const HALF_ALL = row({ title: 'نیم همه', kind: 'half', half_end_time: '13:00' });
+  const HALF_DEP = row({ title: 'نیم فنی', kind: 'half', half_end_time: '11:00', scope: 'department', department: 'فنی' });
+
+  test('pickHoliday: دامنه، تقدم کامل بر نیم‌روز، همه بر دپارتمان، زودترین نیم‌روز', () => {
+    assert.equal(pickHoliday([], 'فنی'), null);
+    assert.equal(pickHoliday([FULL_DEP], 'مالی'), null);   // دپارتمان دیگر
+    assert.equal(pickHoliday([FULL_DEP], null), null);     // بدون دپارتمان فقط scope=all
+    assert.equal(pickHoliday([FULL_DEP], 'فنی').title, 'کامل فنی');
+    assert.equal(pickHoliday([FULL_DEP], '  فنی ').title, 'کامل فنی'); // trim
+    assert.equal(pickHoliday([FULL_DEP], 'فنیِ دیگر'), null);          // تطبیق دقیق
+    assert.equal(pickHoliday([FULL_DEP, FULL_ALL], 'فنی').title, 'کامل همه');
+    assert.equal(pickHoliday([HALF_ALL, FULL_DEP], 'فنی').title, 'کامل فنی'); // کامل بر نیم‌روز غالب
+    assert.equal(pickHoliday([HALF_ALL, HALF_DEP], 'فنی').title, 'نیم فنی');   // زودترین پایان
+    assert.equal(pickHoliday([HALF_ALL, HALF_DEP], 'مالی').title, 'نیم همه');
+  });
+
+  test('نیم‌روز: روز کاری می‌ماند، isHoliday=true، پایان = ساعت تعطیلی؛ با نیم‌روز هفتگی زودترین پایان', () => {
+    const r = pure(WEEK.mon, { holiday: HALF_ALL });
+    assert.deepEqual(r, { isWorkingDay: true, isHoliday: true, holidayTitle: 'نیم همه', expectedStart: '08:00', expectedEnd: '13:00', kind: 'half' });
+    assert.equal(pure(WEEK.thu, { holiday: HALF_ALL }).expectedEnd, '12:30'); // هفتگی ۱۲:۳۰ زودتر از ۱۳:۰۰
+    assert.equal(pure(WEEK.thu, { holiday: row({ kind: 'half', half_end_time: '10:00' }) }).expectedEnd, '10:00');
+  });
+
+  test('نیم‌روز: ساعت نامعتبر/بیرون از بازه نادیده (روز کامل، ولی isHoliday=true)؛ آخر هفته و شیفت شب', () => {
+    ['07:00', '08:00', '16:30', '20:00'].forEach((t) => {
+      const r = pure(WEEK.mon, { holiday: row({ title: 'ن', kind: 'half', half_end_time: t }) });
+      assert.deepEqual([r.kind, r.expectedEnd, r.isWorkingDay, r.isHoliday], ['working', '16:30', true, true], t);
+    });
+    const fri = pure(WEEK.fri, { holiday: HALF_ALL }); // نیم‌روز روی آخر هفته: غیرکاری ولی اطلاعات تعطیلی حفظ
+    assert.deepEqual([fri.kind, fri.isWorkingDay, fri.isHoliday, fri.holidayTitle, fri.expectedEnd], ['weekend', false, true, 'نیم همه', null]);
+    const night = { startTime: '22:00', endTime: '06:00', workDays: [0, 1, 2, 3, 4, 6], overnight: true };
+    const n = pure(WEEK.mon, { shift: night, holiday: HALF_ALL });
+    assert.deepEqual([n.kind, n.expectedEnd, n.isHoliday], ['working', '06:00', true]);
+    assert.equal(pure(WEEK.mon, { shift: { startTime: '14:00', endTime: '22:00', workDays: [0, 1], overnight: false }, holiday: HALF_ALL }).kind, 'working'); // ۱۳:۰۰ پیش از شروع شیفت
+  });
+
+  test('ردیف بدون kind (قرارداد S3-7a) همچنان تعطیلی کامل است', () => {
+    assert.equal(pure(WEEK.mon, { holiday: { title: 'قدیمی' } }).kind, 'holiday');
+  });
+});
+
 describe('getCalendarDay با DB (S3-7a)', () => {
   before(() => { resetDb(); });
   after(() => { cleanup(); });
@@ -111,7 +156,7 @@ describe('getCalendarDay با DB (S3-7a)', () => {
 
   test('getCalendarDay: جدول holidays فعلی، کاربر بدون شیفت، کاربر با شیفت و شیفت مستقیم', () => {
     holidaysRepo.addHoliday('2026-09-14', 'تعطیلی آزمایشی');
-    assert.equal(holidaysRepo.findByDate('2026-09-15'), null);
+    assert.deepEqual(holidaysRepo.listByDate('2026-09-15'), []);
 
     assert.deepEqual(getCalendarDay(null, '2026-09-14'), { isWorkingDay: false, isHoliday: true, holidayTitle: 'تعطیلی آزمایشی', expectedStart: null, expectedEnd: null, kind: 'holiday' });
     assert.equal(getCalendarDay(null, '2026-09-15').kind, 'working');
@@ -129,5 +174,24 @@ describe('getCalendarDay با DB (S3-7a)', () => {
     assert.deepEqual([r.kind, r.expectedStart, r.expectedEnd], ['working', '14:00', '22:00']);
     assert.equal(getCalendarDay(withShift, WEEK.thu).kind, 'weekend'); // پنجشنبه در workDays شیفت نیست
     assert.equal(getCalendarDay(shift, WEEK.sat).expectedStart, '14:00'); // خود شیفت
+  });
+  test('دامنه‌ی دپارتمان با DB: فقط کاربر همان دپارتمان؛ شیفتِ تنها و کاربر دپارتمان دیگر تعطیل نمی‌شوند؛ isHoliday قدیمی فقط کامل+همه', () => {
+    const d = '2026-12-02';
+    holidaysRepo.addHoliday(d, 'تعطیلی فنی', { scope: 'department', department: 'فنی' });
+    holidaysRepo.addHoliday(d, 'نیم‌روز همه', { kind: 'half', halfEndTime: '13:00' });
+    const tech = makeUser({ department: 'فنی' });
+    const fin = makeUser({ department: 'مالی' });
+    assert.equal(getCalendarDay(tech, d).kind, 'holiday');
+    assert.equal(getCalendarDay(tech, d).holidayTitle, 'تعطیلی فنی');
+    const f = getCalendarDay(fin, d);
+    assert.deepEqual([f.kind, f.holidayTitle, f.expectedEnd], ['half', 'نیم‌روز همه', '13:00']);
+    assert.equal(getCalendarDay(null, d).kind, 'half');
+    assert.equal(holidaysRepo.isHoliday(d), false); // مصرف‌کننده‌های قدیمی: نه دپارتمانی و نه نیم‌روز
+    assert.equal(holidaysRepo.isHoliday('2026-09-14'), true);
+    assert.equal(holidaysRepo.listByDate(d).length, 2);
+    // تکراری درج نمی‌شود؛ ورودی نامعتبر خطا می‌دهد (نه بلعیده‌شدن)
+    assert.equal(holidaysRepo.addHoliday(d, 'تکراری', { scope: 'department', department: 'فنی' }).title, 'تعطیلی فنی');
+    assert.throws(() => holidaysRepo.addHoliday('2026-12-03', 'x', { kind: 'half' }), /CHECK/);
+    assert.throws(() => holidaysRepo.addHoliday('2026-12-03', 'x', { scope: 'department' }), /CHECK/);
   });
 });

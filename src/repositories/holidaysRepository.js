@@ -5,21 +5,33 @@ function listHolidays() {
   return db.prepare('SELECT * FROM holidays ORDER BY holiday_date').all();
 }
 
+// «تعطیلی کامل برای همه» (kind=full و scope=all) — معنای قبلیِ isHoliday که مصرف‌کننده‌های فعلی (Jobها، گزارش‌ها) به آن تکیه دارند.
+// تعطیلی نیم‌روز/دپارتمانی عمداً اینجا نمی‌آید؛ آن‌ها با getCalendarDay (S3-7c) وصل می‌شوند.
 function isHoliday(dateStr) {
   const db = getDb();
-  return Boolean(db.prepare('SELECT 1 FROM holidays WHERE holiday_date = ?').get(dateStr));
+  return Boolean(db.prepare("SELECT 1 FROM holidays WHERE holiday_date = ? AND scope = 'all' AND kind = 'full'").get(dateStr));
 }
 
-// ردیف تعطیلی یک تاریخ (برای getCalendarDay؛ عنوان لازم است)، نبود ⇒ null
-function findByDate(dateStr) {
+// همه‌ی ردیف‌های یک تاریخ (همه‌ی نوع‌ها و دامنه‌ها؛ معمولاً ۰ تا ۲ ردیف) برای getCalendarDay
+function listByDate(dateStr) {
   const db = getDb();
-  return db.prepare('SELECT * FROM holidays WHERE holiday_date = ?').get(dateStr) || null;
+  return db.prepare('SELECT * FROM holidays WHERE holiday_date = ? ORDER BY id').all(dateStr);
 }
 
-function addHoliday(dateStr, title) {
+// opts (اختیاری): { kind: 'full'|'half'، halfEndTime، scope: 'all'|'department'، department }؛ ندادن = تعطیلی کامل برای همه (رفتار قبلی).
+// ورودی نامعتبر را CHECK جدول با خطا رد می‌کند (اعتبارسنجی کاربرپسند در S3-9b). ردیف تکراری (تاریخ+دامنه+دپارتمان) درج نمی‌شود و ردیف موجود برمی‌گردد.
+function addHoliday(dateStr, title, opts = {}) {
   const db = getDb();
-  db.prepare('INSERT OR IGNORE INTO holidays (holiday_date, title) VALUES (?, ?)').run(dateStr, title);
-  return db.prepare('SELECT * FROM holidays WHERE holiday_date = ?').get(dateStr);
+  const kind = opts.kind || 'full';
+  const scope = opts.scope || 'all';
+  const department = scope === 'department' ? opts.department || '' : '';
+  const halfEndTime = kind === 'half' ? opts.halfEndTime || null : null;
+  const find = db.prepare('SELECT * FROM holidays WHERE holiday_date = ? AND scope = ? AND department = ?');
+  const existing = find.get(dateStr, scope, department);
+  if (existing) return existing;
+  // INSERT ساده (نه OR IGNORE): OR IGNORE نقض CHECK را هم بی‌صدا می‌بلعد
+  db.prepare('INSERT INTO holidays (holiday_date, title, kind, half_end_time, scope, department) VALUES (?, ?, ?, ?, ?, ?)').run(dateStr, title, kind, halfEndTime, scope, department);
+  return find.get(dateStr, scope, department);
 }
 
 function removeHoliday(id) {
@@ -27,4 +39,4 @@ function removeHoliday(id) {
   db.prepare('DELETE FROM holidays WHERE id = ?').run(id);
 }
 
-module.exports = { listHolidays, isHoliday, findByDate, addHoliday, removeHoliday };
+module.exports = { listHolidays, isHoliday, listByDate, addHoliday, removeHoliday };
