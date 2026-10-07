@@ -21,6 +21,7 @@ const GROUP_LABELS = {
   reminders: 'تأخیر و یادآوری',
   security: 'امنیت',
   retention: 'نگهداری و آرشیو داده',
+  schedule: 'زمان‌بندی Jobها',
 };
 
 // ---------- اعتبارسنجی بر اساس نوع ----------
@@ -139,6 +140,24 @@ def('auditArchiveEnabled', 'audit_archive_enabled', 'boolean', { group: 'retenti
 def('jobRunsRetentionDays', 'job_runs_retention_days', 'number', { group: 'retention', min: 7, max: 3650, default: 180, description: 'نگهداری تاریخچه‌ی اجرای Jobها (روز)' });
 def('monitorAlertsRetentionDays', 'monitor_alerts_retention_days', 'number', { group: 'retention', min: 7, max: 3650, default: 180, description: 'نگهداری هشدارهای حل‌شده‌ی مانیتورینگ (روز)' });
 def('rateLimitRetentionDays', 'rate_limit_retention_days', 'number', { group: 'retention', min: 1, max: 365, default: 7, description: 'نگهداری ردیف‌های منقضی‌شده‌ی rate limit (روز)' });
+// S3-8c: زمان‌بندی Jobها (عبارت cron با فرمت node-cron). default از config (.env یا پیش‌فرض کد)؛ مقدار ذخیره‌شده‌ی پنل غالب است و reset دوباره به .env برمی‌گردد.
+// job = نام Job (کلید config.cron و نام اجرای ثبت‌شده در job_runs). تغییر این کلیدها از مسیرهای settings بلافاصله با scheduler.reload() اعمال می‌شود (بدون ری‌استارت).
+// fallback = پیش‌فرض ثابت امنِ کد برای وقتی که مقدار .env نامعتبر باشد (غلط تایپی cron دیگر سرور را بالا نمی‌آورد/نمی‌شکند).
+function defCron(job, key, dbKey, getDefault, fallback, title) {
+  def(key, dbKey, 'cron', { group: 'schedule', job, default: getDefault, fallback, description: `زمان‌بندی Job «${title}» (عبارت cron: دقیقه ساعت روزماه ماه روزهفته؛ ۰=یکشنبه … ۶=شنبه). بدون ری‌استارت اعمال می‌شود` });
+}
+defCron('lateCheckinCheck', 'cronLateCheckinCheck', 'cron_late_checkin_check', () => config.cron.lateCheckinCheck, '*/5 8-12 * * *', 'یادآوری ورود دیرهنگام');
+defCron('checkoutReminderCheck', 'cronCheckoutReminderCheck', 'cron_checkout_reminder_check', () => config.cron.checkoutReminderCheck, '*/5 9-18 * * *', 'یادآوری ثبت خروج');
+defCron('dailyReport', 'cronDailyReport', 'cron_daily_report', () => config.cron.dailyReport, '0 17 * * *', 'گزارش پایان روز');
+defCron('weeklyReport', 'cronWeeklyReport', 'cron_weekly_report', () => config.cron.weeklyReport, '0 8 * * 6', 'گزارش هفتگی');
+defCron('monthlyReport', 'cronMonthlyReport', 'cron_monthly_report', () => config.cron.monthlyReport, '0 8 * * *', 'بررسی گزارش ماهانه‌ی شمسی (فقط روز اول ماه شمسی می‌فرستد؛ هر روز اجرا شود)');
+defCron('nightlyReview', 'cronNightlyReview', 'cron_nightly_review', () => config.cron.nightlyReview, '0 20 * * *', 'مرور شبانه‌ی سرپرستان');
+defCron('autoCloseIncomplete', 'cronAutoCloseIncomplete', 'cron_auto_close_incomplete', () => config.cron.autoCloseIncomplete, '59 23 * * *', 'بستن رکوردهای بدون خروج');
+defCron('markNonWorkingDays', 'cronMarkNonWorkingDays', 'cron_mark_non_working_days', () => config.cron.markNonWorkingDays, '5 0 * * *', 'علامت‌گذاری تعطیل/مرخصی');
+defCron('dailyBackup', 'cronDailyBackup', 'cron_daily_backup', () => config.cron.dailyBackup, '30 2 * * *', 'بک‌آپ روزانه');
+defCron('auditArchive', 'cronAuditArchive', 'cron_audit_archive', () => config.cron.auditArchive, '0 3 1 * *', 'آرشیو ماهانه‌ی audit');
+defCron('dbMaintenance', 'cronDbMaintenance', 'cron_db_maintenance', () => config.cron.dbMaintenance, '0 4 2 * *', 'نگهداری ماهانه‌ی دیتابیس');
+defCron('watchdog', 'cronWatchdog', 'cron_watchdog', () => config.monitor.watchdogCron, '*/5 * * * *', 'watchdog (سلامت سیستم؛ روشن/خاموش‌بودنش همچنان با WATCHDOG_ENABLED در .env است)');
 
 // ---------- توابع عمومی ----------
 const BY_KEY = new Map(REGISTRY.map((d) => [d.key, d]));
@@ -149,6 +168,11 @@ function getDef(key) {
 
 function keys() {
   return REGISTRY.map((d) => d.key);
+}
+
+// تنظیم‌های زمان‌بندی (S3-8c): [{ job, key }] به ترتیب تعریف
+function cronJobs() {
+  return REGISTRY.filter((d) => d.type === 'cron' && d.job).map((d) => ({ job: d.job, key: d.key }));
 }
 
 // پیش‌فرض معتبر: default (در صورت تابع بودن، در لحظه) و اگر نامعتبر بود fallback
@@ -198,7 +222,9 @@ function selfCheck() {
   const problems = [];
   const seenKeys = new Set();
   const seenDb = new Set();
+  const seenJobs = new Set();
   REGISTRY.forEach((d) => {
+    if (d.job) { if (seenJobs.has(d.job)) problems.push(`نام Job تکراری: ${d.job}`); seenJobs.add(d.job); }
     if (seenKeys.has(d.key)) problems.push(`کلید تکراری: ${d.key}`);
     if (seenDb.has(d.dbKey)) problems.push(`کلید DB تکراری: ${d.dbKey}`);
     seenKeys.add(d.key); seenDb.add(d.dbKey);
@@ -206,6 +232,7 @@ function selfCheck() {
     if (!d.description) problems.push(`توضیح خالی: ${d.key}`);
     if (!GROUP_LABELS[d.group]) problems.push(`گروه نامعتبر: ${d.key}`);
     if (d.type === 'enum' && !(Array.isArray(d.values) && d.values.length)) problems.push(`values خالی: ${d.key}`);
+    if (d.type === 'cron' && !d.job) problems.push(`نام Job برای تنظیم cron نیست: ${d.key}`);
     if (d.min !== undefined && d.max !== undefined && d.min > d.max) problems.push(`min>max: ${d.key}`);
     const raw = typeof d.default === 'function' ? d.default() : d.default;
     if (!validateValue(d, raw).ok && d.fallback === undefined) problems.push(`پیش‌فرض نامعتبر: ${d.key}`);
@@ -214,4 +241,4 @@ function selfCheck() {
   return problems;
 }
 
-module.exports = { REGISTRY, GROUP_LABELS, TYPES, getDef, keys, defaultOf, validate, validateValue, deserialize, serialize, sameValue, selfCheck };
+module.exports = { REGISTRY, GROUP_LABELS, TYPES, getDef, keys, cronJobs, defaultOf, validate, validateValue, deserialize, serialize, sameValue, selfCheck };

@@ -105,7 +105,6 @@ describe('Job آرشیو audit — dry-run (S2-6b)', () => {
     assert.throws(() => auditRepository.summarizeOlderThan("2024-10-06'; DROP TABLE audit_log; --"), /cutoff/);
 
     assert.ok(require('node-cron').validate(config.cron.auditArchive));
-    const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'bot', 'scheduler', 'index.js'), 'utf8');
-    assert.match(src, /wrapJob\('auditArchive'/);
+    assert.ok(require('../src/bot/scheduler').jobNames().includes('auditArchive')); // S3-8c: scheduler جدولِ Job دارد (نه wrapJob با نام ثابت)
   });
 });

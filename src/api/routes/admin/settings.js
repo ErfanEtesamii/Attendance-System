@@ -39,6 +39,19 @@ router.delete('/admin/holidays/:id', requireFullAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
+// S3-8c: بعد از تغییر/reset هر تنظیم cron، زمان‌بندی Jobها همان لحظه و بدون ری‌استارت دوباره ساخته می‌شود.
+// ضدخطا: خرابیِ reload هرگز ذخیره‌ی تنظیم را برنمی‌گرداند (مقدار در DB ماندگار است و در ری‌استارت بعدی اعمال می‌شود). تنظیم غیر cron ⇒ undefined.
+// اگر پروسه‌ی فعلی زمان‌بندی را بالا نیاورده (مثلاً فقط API) نتیجه‌ی { reloaded: false, reason: 'scheduler_not_started' } است.
+function reloadSchedulerIfCron(keys) {
+  if (!keys.some((k) => { const d = registry.getDef(k); return d && d.type === 'cron'; })) return undefined;
+  try {
+    return require('../../../bot/scheduler').reload(); // require تنبل: مسیر API به بارگذاری Jobها وابسته نشود
+  } catch (err) {
+    console.error('[settings] reload زمان‌بندی ناموفق:', err.message);
+    return { reloaded: false, reason: 'error', error: err.message, changed: [], errors: [] };
+  }
+}
+
 // ---------- تنظیمات سیستم (ساعت کاری، آستانه‌ها) ----------
 
 router.get('/admin/settings', (req, res) => {
@@ -58,6 +71,7 @@ router.patch('/admin/settings', requireFullAdmin, (req, res) => {
     action: 'settings_updated',
     details: { source: 'admin_panel', fields: Object.keys(req.body || {}), changes },
   });
+  reloadSchedulerIfCron(Object.keys(changes)); // پاسخ PATCH قدیمی (آبجکت تخت تنظیمات) عمداً بدون تغییر می‌ماند
   res.json(updated);
 });
 
@@ -84,7 +98,8 @@ router.put('/admin/settings/:key', requireFullAdmin, (req, res) => {
 
   const item = settingsRepository.setValue(key, checked.value);
   audit(req, 'settings_updated', { fields: [key], changes: { [key]: { before, after: item.value } }, reason });
-  return res.json({ changed: true, item });
+  const scheduler = reloadSchedulerIfCron([key]);
+  return res.json({ changed: true, item, ...(scheduler ? { scheduler } : {}) });
 });
 
 // POST /admin/settings/:key/reset  { reason (اجباری) } → بازگشت یک کلید به پیش‌فرض
@@ -98,7 +113,8 @@ router.post('/admin/settings/:key/reset', requireFullAdmin, (req, res) => {
   if (!settingsRepository.resetValue(key)) return res.json({ changed: false, item: settingsRepository.getItem(key) }); // ردیفی نبود: همین الان پیش‌فرض است
   const item = settingsRepository.getItem(key);
   audit(req, 'settings_reset', { fields: [key], changes: { [key]: { before, after: item.value } }, reason });
-  return res.json({ changed: true, item });
+  const scheduler = reloadSchedulerIfCron([key]);
+  return res.json({ changed: true, item, ...(scheduler ? { scheduler } : {}) });
 });
 
 module.exports = router;

@@ -107,7 +107,6 @@ describe('Job نگهداری ماهانه‌ی دیتابیس (S2-7b)', () => {
     assert.equal(db.prepare("SELECT status FROM job_runs WHERE job_name = 'dbMaintenance' ORDER BY id DESC").get().status, 'error');
 
     assert.ok(require('node-cron').validate(config.cron.dbMaintenance));
-    const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'bot', 'scheduler', 'index.js'), 'utf8');
-    assert.match(src, /wrapJob\('dbMaintenance'/);
+    assert.ok(require('../src/bot/scheduler').jobNames().includes('dbMaintenance')); // S3-8c
   });
 });

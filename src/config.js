@@ -142,14 +142,14 @@ const config = {
     lateCheckinCheck: process.env.CRON_LATE_CHECKIN_CHECK || '*/5 8-12 * * *',
     // یادآوری ثبت خروج نزدیک پایان ساعت کاری (S3-8a: هر روز؛ ساعت‌ها ۹ تا ۱۸ تا پایانِ نیم‌روز/نیم‌روزِ تعطیلی هم پوشش داده شود)
     checkoutReminderCheck: process.env.CRON_CHECKOUT_REMINDER_CHECK || '*/5 9-18 * * *',
-    // گزارش پایان روز برای مدیران/ادمین
-    dailyReport: process.env.CRON_DAILY_REPORT || '0 17 * * 6,0,1,2,3',
+    // گزارش پایان روز برای مدیران/ادمین (S3-8b: هر روز؛ کارمندِ روز غیرکاری را خود Job از getCalendarDay کنار می‌گذارد)
+    dailyReport: process.env.CRON_DAILY_REPORT || '0 17 * * *',
     // گزارش هفتگی (شروع هفته کاری - شنبه صبح)
     weeklyReport: process.env.CRON_WEEKLY_REPORT || '0 8 * * 6',
     // بررسی روزانه برای گزارش ماهانه شمسی (خود Job فقط در روز اول ماه شمسی واقعاً گزارش می‌فرستد)
     monthlyReport: process.env.CRON_MONTHLY_REPORT || '0 8 * * *',
-    // پیام مرور شبانه برای سرپرستان: وضعیت تیم + درخواست‌ها/اعتراض‌های منتظر پاسخ
-    nightlyReview: process.env.CRON_NIGHTLY_REVIEW || '0 20 * * 6,0,1,2,3',
+    // پیام مرور شبانه برای سرپرستان: وضعیت تیم + درخواست‌ها/اعتراض‌های منتظر پاسخ (S3-8b: هر روز؛ روز غیرکاریِ کل تیم ⇒ پیامی نیست)
+    nightlyReview: process.env.CRON_NIGHTLY_REVIEW || '0 20 * * *',
     // بستن خودکار رکوردهای بدون خروج ثبت‌شده در پایان روز (وضعیت «ناقص»)
     autoCloseIncomplete: process.env.CRON_AUTO_CLOSE_INCOMPLETE || '59 23 * * *',
     // علامت‌گذاری روزهای تعطیل رسمی/مرخصی تأییدشده، قبل از شروع پنجره ثبت ورود (رفع گپ «غایب» فاز ۵)

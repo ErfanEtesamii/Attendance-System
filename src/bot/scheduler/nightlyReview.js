@@ -5,7 +5,6 @@
 const usersRepository = require('../../repositories/usersRepository');
 const leaveRepository = require('../../repositories/leaveRepository');
 const disputeRepository = require('../../repositories/disputeRepository');
-const holidaysRepository = require('../../repositories/holidaysRepository');
 const { reviewDay, summarize } = require('../../utils/dayReview');
 const { formatMinutes } = require('../../utils/workHours');
 const { todayDateString } = require('../../utils/serverTime');
@@ -43,8 +42,12 @@ function openSuspiciousCount(supervisor) {
   }
 }
 
-function buildNightlyMessage(supervisor, team, today) {
-  const rows = reviewDay(team, today);
+// «روز غیرکاری برای همه‌ی تیم»: هیچ‌کس امروز کاری نیست (آخر هفته/تعطیلی کامل یا دپارتمانی/روز غیرکاریِ شیفت) و کسی هم ورود نزده است (S3-8b)
+function isTeamOffDay(rows) {
+  return rows.length > 0 && rows.every((r) => ['weekend', 'holiday'].includes(r.calendarKind) && !r.checkIn);
+}
+
+function buildNightlyMessage(supervisor, team, today, rows = reviewDay(team, today)) {
   const t = summarize(rows);
   const teamIds = new Set(team.map((u) => u.id));
   const pendingLeave = leaveRepository.listPending().filter((r) => teamIds.has(r.user_id)).length;
@@ -52,7 +55,7 @@ function buildNightlyMessage(supervisor, team, today) {
 
   const lines = [
     `🌙 مرور شبانه — ${today}`,
-    `${supervisor.full_name} عزیز، وضعیت امروز تیم شما (${t.total} نفر):`,
+    `${supervisor.full_name} عزیز، وضعیت امروز تیم شما (${t.total - t.holiday} نفر):`, // تعطیلِ امروز (تعطیلی دپارتمان/…) در شمارش نمی‌آید
     '',
     `✅ حاضر / خروج ثبت‌شده: ${t.present - t.noCheckout}`,
     `⏳ بدون ثبت خروج: ${t.noCheckout}`,
@@ -85,11 +88,12 @@ function buildNightlyMessage(supervisor, team, today) {
   return lines.join('\n');
 }
 
+// S3-8b: Job هر روز اجرا می‌شود؛ برای هر سرپرست از تقویم کاری تیمش تصمیم می‌گیرد: اگر امروز برای کل تیم روز غیرکاری است
+// (و کسی ورود نزده) پیامی نمی‌فرستد؛ در غیر این صورت مثل قبل (تعطیلی دپارتمان/آخر هفته‌ی بقیه‌ی تیم فقط در شمارش «تعطیل» می‌آید).
 async function sendNightlyReview(bot) {
   const today = todayDateString();
   // جاروی شبانه‌ی تشخیص مورد مشکوک (S2-4e): ضدخطا؛ شکستش نباید ارسال مرور شبانه را مختل کند
   runFraudChecksSafe({ date: today });
-  if (holidaysRepository.isHoliday(today)) return;
 
   const supervisors = usersRepository
     .listUsers({ onlyActive: true })
@@ -101,13 +105,15 @@ async function sendNightlyReview(bot) {
     const team = usersRepository.listUsers({ onlyActive: true, managerId: sup.id });
     if (team.length === 0) continue;
     try {
+      const rows = reviewDay(team, today);
+      if (isTeamOffDay(rows)) continue;
       const options = button ? { reply_markup: { inline_keyboard: [[button]] } } : {};
       // eslint-disable-next-line no-await-in-loop
-      await bot.sendMessage(sup.telegram_user_id, buildNightlyMessage(sup, team, today), options);
+      await bot.sendMessage(sup.telegram_user_id, buildNightlyMessage(sup, team, today, rows), options);
     } catch (err) {
       console.error('[bot][scheduler] خطا در ارسال مرور شبانه:', err.message);
     }
   }
 }
 
-module.exports = { sendNightlyReview, buildNightlyMessage };
+module.exports = { sendNightlyReview, buildNightlyMessage, isTeamOffDay };

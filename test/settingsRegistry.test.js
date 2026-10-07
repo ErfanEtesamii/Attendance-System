@@ -16,6 +16,7 @@ describe('رجیستری تنظیمات (S3-1a)', () => {
       'timezone', 'workDayStart', 'workDayEnd', 'lateGraceMinutes', 'lateCountsFrom', 'earlyGraceMinutes', 'weekendDays', 'halfDayWeekdays', 'halfDayEndTime', 'maxLunchMinutes', 'fixedLunchDeductMinutes', 'longOpenBreakMinutes', 'outsideShiftMarginMinutes', 'overtimeEnabled', 'overtimeMinMinutes', 'overtimeDailyCapMinutes', 'overtimeFactor', 'overtimeHolidayFactor', 'overtimeRoundStep', 'overtimeRounding', 'overtimeMonthlyCapMinutes', 'overtimeRequiresApproval', 'lateCheckinGraceMinutes', 'checkoutReminderMinutesBefore', 'repeatedLatenessThreshold',
       'blockOnSharedDevice', 'auditRetentionMonths', 'auditArchiveEnabled',
       'jobRunsRetentionDays', 'monitorAlertsRetentionDays', 'rateLimitRetentionDays',
+      'cronLateCheckinCheck', 'cronCheckoutReminderCheck', 'cronDailyReport', 'cronWeeklyReport', 'cronMonthlyReport', 'cronNightlyReview', 'cronAutoCloseIncomplete', 'cronMarkNonWorkingDays', 'cronDailyBackup', 'cronAuditArchive', 'cronDbMaintenance', 'cronWatchdog',
     ]);
     assert.equal(registry.getDef('workDayStart').dbKey, 'work_day_start');
     assert.equal(registry.getDef('rateLimitRetentionDays').dbKey, 'rate_limit_retention_days');
@@ -24,6 +25,8 @@ describe('رجیستری تنظیمات (S3-1a)', () => {
       timezone: 'Asia/Tehran', workDayStart: '08:00', workDayEnd: '16:30', lateGraceMinutes: 0, lateCountsFrom: 'shift_start', earlyGraceMinutes: 0, weekendDays: [5], halfDayWeekdays: [4], halfDayEndTime: '12:30', maxLunchMinutes: 0, fixedLunchDeductMinutes: 0, longOpenBreakMinutes: 120, outsideShiftMarginMinutes: 120, overtimeEnabled: false, overtimeMinMinutes: 0, overtimeDailyCapMinutes: 0, overtimeFactor: 1, overtimeHolidayFactor: 1, overtimeRoundStep: 1, overtimeRounding: 'down', overtimeMonthlyCapMinutes: 0, overtimeRequiresApproval: false, lateCheckinGraceMinutes: 15, checkoutReminderMinutesBefore: 15,
       repeatedLatenessThreshold: 3, blockOnSharedDevice: false, auditRetentionMonths: 24, auditArchiveEnabled: false,
       jobRunsRetentionDays: 180, monitorAlertsRetentionDays: 180, rateLimitRetentionDays: 7,
+      cronLateCheckinCheck: '*/5 8-12 * * *', cronCheckoutReminderCheck: '*/5 9-18 * * *', cronDailyReport: '0 17 * * *', cronWeeklyReport: '0 8 * * 6', cronMonthlyReport: '0 8 * * *', cronNightlyReview: '0 20 * * *',
+      cronAutoCloseIncomplete: '59 23 * * *', cronMarkNonWorkingDays: '5 0 * * *', cronDailyBackup: '30 2 * * *', cronAuditArchive: '0 3 1 * *', cronDbMaintenance: '0 4 2 * *', cronWatchdog: '*/5 * * * *',
     });
   });
 

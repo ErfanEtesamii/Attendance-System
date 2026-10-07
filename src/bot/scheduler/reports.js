@@ -2,6 +2,8 @@ const usersRepository = require('../../repositories/usersRepository');
 const attendanceRepository = require('../../repositories/attendanceRepository');
 const holidaysRepository = require('../../repositories/holidaysRepository');
 const leaveRepository = require('../../repositories/leaveRepository');
+const settingsRepository = require('../../repositories/settingsRepository');
+const { getCalendarDay } = require('../../engine/calendarService');
 const { summarizeRange, summarizeRecord } = require('../../engine/dayService');
 const { formatMinutes } = require('../../utils/workHours');
 const { todayDateString } = require('../../utils/serverTime');
@@ -9,11 +11,12 @@ const { jalaliMonthRange } = require('../../utils/jalali');
 
 // برچسب درست برای روزی که کارمند ورود ثبت نکرده: تعطیل رسمی / مرخصی تأییدشده / واقعاً غایب.
 // اول status رکورد placeholder (اگر Job صبحگاهی markNonWorkingDays آن را ساخته باشد) چک می‌شود؛
-// در غیر این صورت به‌صورت مستقل از holidaysRepository/leaveRepository هم چک می‌کنیم تا حتی اگر آن
+// در غیر این صورت به‌صورت مستقل از تقویم/leaveRepository هم چک می‌کنیم تا حتی اگر آن
 // Job اجرا نشده باشد (یا مرخصی همان روز تأیید شده باشد)، گزارش باز هم اشتباه «غایب» نگوید.
-function absenceLabel(userId, dateStr, record) {
+// S3-8b: «تعطیل رسمی» از getCalendarDay همان کارمند می‌آید (تعطیلی کامل برای همه یا دپارتمان او)، نه فقط تعطیلیِ سراسری.
+function absenceLabel(userId, dateStr, record, calendar) {
   const status = record ? record.status : null;
-  if (status === 'holiday' || holidaysRepository.isHoliday(dateStr)) return 'تعطیل رسمی';
+  if (status === 'holiday' || (calendar && calendar.kind === 'holiday')) return 'تعطیل رسمی';
   if (status === 'leave' || leaveRepository.hasApprovedLeaveOnDate(userId, dateStr, 'leave')) {
     return 'مرخصی تأییدشده';
   }
@@ -48,22 +51,30 @@ async function sendToManagersAndAdmins(bot, buildMessage) {
   }
 }
 
+// S3-8b: Job هر روز اجرا می‌شود و برای «هر کارمند» از تقویم کاری تصمیم می‌گیرد: کارمندی که ورود ندارد و امروز برایش روز غیرکاریِ عادی است
+// (آخر هفته / روز غیرکاریِ شیفت) در گزارش نمی‌آید؛ اگر کسی همان روز ورود زده باشد مثل همیشه می‌آید. تعطیل رسمی (کامل/دپارتمانی) همچنان
+// «تعطیل رسمی» می‌نویسد. اگر هیچ کارمندی برای گزارش نماند (مثلاً جمعه) پیامی ارسال نمی‌شود.
 async function sendDailyReport(bot) {
   const today = todayDateString();
+  const settings = settingsRepository.getAll();
+  const holidays = holidaysRepository.listByDate(today);
   await sendToManagersAndAdmins(bot, (recipient, team) => {
-    if (team.length === 0) return null;
-    const lines = [`📅 گزارش پایان روز — ${today}`, ''];
+    const body = [];
     for (const member of team) {
       const record = attendanceRepository.findTodayRecord(member.id);
       if (!record || !record.check_in_time) {
-        lines.push(`• ${member.full_name}: ${absenceLabel(member.id, today, record)}`);
+        // holiday: null ⇒ فقط آخر هفته/روز کاریِ شیفت، بدون اثر تعطیلی (تعطیلی که روی جمعه می‌افتد هم «روز غیرکاری» است)
+        if (!getCalendarDay(member, today, { settings, holiday: null }).isWorkingDay) continue;
+        const calendar = getCalendarDay(member, today, { settings, holidays });
+        body.push(`• ${member.full_name}: ${absenceLabel(member.id, today, record, calendar)}`);
         continue;
       }
       const summary = summarizeRecord(record);
       const statusLabel = record.check_out_time ? 'خروج ثبت شده' : 'هنوز حاضر / خروج ثبت نشده';
-      lines.push(`• ${member.full_name}: ${statusLabel} — ${formatMinutes(summary.effectiveMinutes)}`);
+      body.push(`• ${member.full_name}: ${statusLabel} — ${formatMinutes(summary.effectiveMinutes)}`);
     }
-    return lines.join('\n');
+    if (body.length === 0) return null;
+    return [`📅 گزارش پایان روز — ${today}`, '', ...body].join('\n');
   });
 }
 

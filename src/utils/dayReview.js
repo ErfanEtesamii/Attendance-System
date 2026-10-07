@@ -4,9 +4,21 @@
 
 const attendanceRepository = require('../repositories/attendanceRepository');
 const holidaysRepository = require('../repositories/holidaysRepository');
+const settingsRepository = require('../repositories/settingsRepository');
+const { getCalendarDay } = require('../engine/calendarService');
 const leaveRepository = require('../repositories/leaveRepository');
 const dayService = require('../engine/dayService');
 const { todayDateString } = require('./serverTime');
+
+// S3-8b: تقویم همان روز برای همان کاربر (تعطیلی کامل/دپارتمانی، آخر هفته، روز غیرکاریِ شیفت). داده‌ی خراب ⇒ روز کاری (رفتار قبلی)، نه خطا.
+function calendarOf(user, date, ctx) {
+  try {
+    return getCalendarDay(user, date, ctx);
+  } catch (err) {
+    console.error('[dayReview] getCalendarDay ناموفق:', err.message);
+    return { isWorkingDay: true, kind: 'working' };
+  }
+}
 
 /**
  * @param {Array} users کاربران (ردیف‌های جدول users)
@@ -16,7 +28,7 @@ function reviewDay(allUsers, date) {
   const today = todayDateString();
   // کارمندی که بعد از آن تاریخ ساخته شده، در آن روز «غایب» نیست؛ اصلاً در سیستم نبوده
   const users = allUsers.filter((u) => !u.created_at || String(u.created_at).slice(0, 10) <= date);
-  const holiday = holidaysRepository.isHoliday(date);
+  const ctx = { settings: settingsRepository.getAll(), holidays: holidaysRepository.listByDate(date) };
   const records = users.length
     ? attendanceRepository.search({ from: date, to: date, userIds: users.map((u) => u.id), limit: 5000 })
     : [];
@@ -29,6 +41,7 @@ function reviewDay(allUsers, date) {
     const noCheckout = hasCheckIn && !record.check_out_time && !['leave', 'holiday'].includes(record.status);
     const onLeave = leaveRepository.hasApprovedLeaveOnDate(user.id, date, 'leave');
     const onMission = leaveRepository.hasApprovedMissionOnDate(user.id, date);
+    const calendar = calendarOf(user, date, ctx);
 
     let state;
     if (record && record.status === 'holiday') state = 'holiday';
@@ -36,7 +49,8 @@ function reviewDay(allUsers, date) {
     else if (record && record.status === 'incomplete') state = 'incomplete';
     else if (hasCheckIn && record.check_out_time) state = 'checked_out';
     else if (hasCheckIn) state = date < today ? 'incomplete' : 'present';
-    else if (holiday) state = 'holiday';
+    else if (calendar.kind === 'holiday') state = 'holiday';
+    else if (!calendar.isWorkingDay) state = 'holiday'; // آخر هفته/روز غیرکاریِ شیفت: کسی غایب نیست (S3-8b)
     else if (onLeave) state = 'leave';
     else state = 'absent';
 
@@ -52,6 +66,7 @@ function reviewDay(allUsers, date) {
         telegramUserId: user.telegram_user_id,
       },
       state,
+      calendarKind: calendar.kind, // working | half | weekend | holiday (افزایشی؛ S3-8b)
       onMission,
       noCheckout,
       lateMinutes,

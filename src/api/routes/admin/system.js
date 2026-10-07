@@ -20,6 +20,12 @@ const systemHealth = require('../../../utils/systemHealth');
 const jobRunsRepository = require('../../../repositories/jobRunsRepository');
 const monitorRepository = require('../../../repositories/monitorRepository');
 
+// S3-8c: cron «مؤثر» هر Job (تنظیم ذخیره‌شده در پنل ⇒ وگرنه .env/پیش‌فرض)، نه فقط مقدار config که با reload کهنه می‌شود
+function effectiveCrons() {
+  const all = settingsRepository.getCronExpressions();
+  return Object.fromEntries(Object.keys(config.cron).map((name) => [name, all[name] || config.cron[name]]));
+}
+
 // ---------- ارسال پیام گروهی (فقط ادمین کل) ----------
 
 router.post('/admin/broadcast', requireFullAdmin, async (req, res) => {
@@ -110,7 +116,7 @@ router.get('/admin/system', requireFullAdmin, (req, res) => {
       trustProxy: config.trustProxy,
       sessionMaxAgeDays: config.adminSessionMaxAgeDays,
     },
-    cron: config.cron,
+    cron: effectiveCrons(),
   });
 });
 
@@ -119,7 +125,8 @@ router.get('/admin/system', requireFullAdmin, (req, res) => {
 // ?deep=1 ⇒ PRAGMA quick_check هم اجرا می‌شود (روی دیتابیس بزرگ کند است؛ پیش‌فرض خاموش).
 router.get('/admin/system/status', requireFullAdmin, (req, res) => {
   const report = systemHealth.collect({ deep: req.query.deep === '1' });
-  const cronMap = config.cron;
+  const cronMap = effectiveCrons();
+  const watchdogCron = settingsRepository.getCronExpressions().watchdog || config.monitor.watchdogCron;
   const latest = new Map((report.checks.jobs.latest || []).map((j) => [j.job, j]));
   const lastSuccess = new Map();
   try {
@@ -129,7 +136,7 @@ router.get('/admin/system/status', requireFullAdmin, (req, res) => {
   const jobNames = [...Object.keys(cronMap), ...(config.monitor.watchdogEnabled ? ['watchdog'] : [])];
   const jobs = jobNames.map((name) => ({
     name,
-    cron: name === 'watchdog' ? config.monitor.watchdogCron : cronMap[name],
+    cron: name === 'watchdog' ? watchdogCron : cronMap[name],
     lastResult: latest.get(name) || null,
     lastSuccessAt: lastSuccess.get(name) || null,
   }));
@@ -143,7 +150,7 @@ router.get('/admin/system/status', requireFullAdmin, (req, res) => {
     alerts = monitorRepository.listAlerts().filter((a) => a.state === 'firing');
   } catch (_) { /* همان */ }
 
-  res.json({ ...report, jobs, recentErrors, recentRuns, activeAlerts: alerts, watchdog: { enabled: config.monitor.watchdogEnabled, cron: config.monitor.watchdogCron, throttleMinutes: config.monitor.alertThrottleMinutes } });
+  res.json({ ...report, jobs, recentErrors, recentRuns, activeAlerts: alerts, watchdog: { enabled: config.monitor.watchdogEnabled, cron: watchdogCron, throttleMinutes: config.monitor.alertThrottleMinutes } });
 });
 
 router.get('/admin/system/backup', requireFullAdmin, async (req, res) => {

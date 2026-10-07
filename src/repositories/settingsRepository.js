@@ -126,6 +126,14 @@ function getCleanupRetention() {
   };
 }
 
+// عبارت cron مؤثر هر Job (S3-8c): { lateCheckinCheck: '…', …, watchdog: '…' }. مقدار ذخیره‌شده ⇒ وگرنه .env/پیش‌فرض؛ هرگز نامعتبر نیست
+function getCronExpressions() {
+  const all = getAll();
+  const out = {};
+  registry.cronJobs().forEach(({ job, key }) => { out[job] = all[key]; });
+  return out;
+}
+
 // ---------- epoch سراسری نشست‌ها (بخش ۲-الف) ----------
 // عددی که داخل توکن نشست هم ذخیره می‌شود؛ با افزایش آن «همه‌ی نشست‌های همه‌ی کاربران» باطل می‌شود.
 // عمداً در رجیستری نیست تا از صفحه‌ی تنظیمات پنل قابل ویرایش/نمایش نباشد؛ فقط با bumpGlobalSessionEpoch.
@@ -148,5 +156,5 @@ function bumpGlobalSessionEpoch() {
 }
 
 module.exports = {
-  getAll, update, getTimezone, getItems, getItem, setValue, resetValue, isBlockOnSharedDeviceEnabled, isAuditArchiveEnabled, getAuditRetentionMonths, getCleanupRetention, getGlobalSessionEpoch, bumpGlobalSessionEpoch,
+  getAll, update, getTimezone, getCronExpressions, getItems, getItem, setValue, resetValue, isBlockOnSharedDeviceEnabled, isAuditArchiveEnabled, getAuditRetentionMonths, getCleanupRetention, getGlobalSessionEpoch, bumpGlobalSessionEpoch,
 };

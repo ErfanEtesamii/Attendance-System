@@ -70,8 +70,7 @@ describe('S2-1a — بک‌آپ روزانه', () => {
   test('Job با نام dailyBackup در config.cron هست و cron معتبر است', () => {
     const cron = require('node-cron');
     assert.ok(cron.validate(config.cron.dailyBackup));
-    const src = fs.readFileSync(path.join(__dirname, '../src/bot/scheduler/index.js'), 'utf8');
-    assert.match(src, /wrapJob\('dailyBackup'/);
+    assert.ok(require('../src/bot/scheduler').jobNames().includes('dailyBackup')); // S3-8c
   });
 });
 
