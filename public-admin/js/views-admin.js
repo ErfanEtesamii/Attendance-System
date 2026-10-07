@@ -534,7 +534,48 @@
   // ======================================================
   // گزارش رویدادها (Audit)
   // ======================================================
-  const auUi = { userId: '', action: '', from: '', to: '', q: '', limit: 200 };
+  // S4-2b: نمایش خوانای diff قبل/بعد برای ورودی‌های جدید (details استاندارد logChange: { entityType, entityId, changes, reason?, redacted? }).
+  // هر چیز دیگر (ورودی قدیمی، متن ساده، JSON بدون changes) همان جعبه‌ی متنی قبلی است. همه‌ی مقدارها esc می‌شوند.
+  const AU_ENTITY = { user: 'کاربر', attendance_record: 'رکورد تردد', break_record: 'استراحت', leave_request: 'مرخصی/مأموریت', holiday: 'تعطیلی', dispute: 'اعتراض', settings: 'تنظیمات', session: 'نشست' };
+  const AU_FIELD = {
+    full_name: 'نام', personnel_code: 'کد پرسنلی', department: 'دپارتمان', role: 'نقش', manager_id: 'مدیر (شناسه)', is_active: 'وضعیت حساب', telegram_user_id: 'آیدی تلگرام',
+    record_date: 'تاریخ رکورد', check_in_time: 'ورود', check_out_time: 'خروج', status: 'وضعیت', break_type: 'نوع استراحت', start_time: 'شروع', end_time: 'پایان',
+    leave_type: 'نوع', start_date: 'از تاریخ', end_date: 'تا تاریخ', reason: 'دلیل درخواست', date: 'تاریخ', title: 'عنوان', kind: 'نوع', halfEndTime: 'پایان نیم‌روز', scope: 'دامنه',
+    session_version: 'نسخه‌ی نشست', epoch: 'epoch سراسری', added: 'ثبت‌شده‌ها',
+  };
+  function auParse(details) {
+    if (typeof details !== 'string' || details.charAt(0) !== '{') return null;
+    try {
+      const d = JSON.parse(details);
+      return d && typeof d === 'object' && typeof d.entityType === 'string' && d.changes && typeof d.changes === 'object' && !Array.isArray(d.changes) ? d : null;
+    } catch (_) { return null; }
+  }
+  function auVal(key, v) {
+    if (v === null || v === undefined) return '<span class="muted">—</span>';
+    let s;
+    if (key === 'is_active') s = v ? 'فعال' : 'غیرفعال';
+    else if (typeof v === 'object') s = JSON.stringify(v);
+    else s = String(v);
+    if (s.length > 200) s = `${s.slice(0, 200)}…`;
+    return esc(s);
+  }
+  function auDetailsHtml(raw) {
+    const d = auParse(raw);
+    if (!d) return `<div class="details-box">${esc(raw || '')}</div>`;
+    const keys = Object.keys(d.changes);
+    const rows = keys.map((k) => {
+      const c = d.changes[k] || {};
+      return `<div class="diff-row"><span class="diff-field">${esc(AU_FIELD[k] || k)}</span><span class="diff-before">${auVal(k, c.before)}</span><span class="diff-arrow">←</span><span class="diff-after">${auVal(k, c.after)}</span></div>`;
+    }).join('');
+    const redacted = Array.isArray(d.redacted) && d.redacted.length ? `<div class="diff-note">فیلد حساس تغییر کرد (مقدار ثبت نمی‌شود): <span class="ltr">${esc(d.redacted.join('، '))}</span></div>` : '';
+    const reason = d.reason ? `<div class="diff-reason">دلیل: ${esc(d.reason)}</div>` : '';
+    return `<div class="diff">
+      <div class="diff-head">${esc(AU_ENTITY[d.entityType] || d.entityType)}${d.entityId !== null && d.entityId !== undefined ? ` <span class="ltr muted">#${esc(d.entityId)}</span>` : ''}</div>
+      ${rows || '<div class="diff-note">بدون تغییر در فیلدها</div>'}${redacted}${reason}
+      <details class="diff-raw"><summary>متن خام</summary><div class="details-box">${esc(raw)}</div></details></div>`;
+  }
+
+  const auUi = { userId: '', action: '', entityType: '', from: '', to: '', q: '', limit: 200 };
   AP.view('audit', {
     admin: true,
     nav: { icon: 'audit', label: 'گزارش رویدادها', group: 'مدیریت', admin: true },
@@ -547,6 +588,7 @@
         <form class="filters" id="au-filters">
           <label class="field grow"><span>جستجو در جزئیات / IP</span><input type="search" name="q" value="${esc(auUi.q)}" /></label>
           <label class="field"><span>رویداد</span><select name="action"><option value="">همه</option>${actions.map((a) => `<option value="${esc(a.action)}" ${a.action === auUi.action ? 'selected' : ''}>${esc(a.action)} (${fmt.num(a.count)})</option>`).join('')}</select></label>
+          <label class="field"><span>موجودیت</span><select name="entityType"><option value="">همه</option>${Object.keys(AU_ENTITY).map((k) => `<option value="${k}" ${k === auUi.entityType ? 'selected' : ''}>${esc(AU_ENTITY[k])}</option>`).join('')}</select></label>
           <label class="field"><span>کاربر</span><select name="userId"><option value="">همه</option>${users.map((u) => `<option value="${u.id}" ${String(u.id) === String(auUi.userId) ? 'selected' : ''}>${esc(u.fullName)}</option>`).join('')}</select></label>
           <label class="field"><span>از تاریخ</span><input type="date" name="from" value="${esc(auUi.from)}" /></label>
           <label class="field"><span>تا تاریخ</span><input type="date" name="to" value="${esc(auUi.to)}" /></label>
@@ -556,7 +598,7 @@
           <thead><tr><th>زمان</th><th>کاربر</th><th>رویداد</th><th>IP</th><th>جزئیات</th></tr></thead><tbody>
           ${rows.length ? rows.map((r) => `<tr><td class="num">${esc(fmt.dateTime(r.occurred_at))}</td><td>${esc(r.userFullName || '—')}</td>
             <td>${esc(r.action)}</td><td><span class="ltr muted">${esc(r.ip_address || '—')}</span></td>
-            <td class="wrap"><div class="details-box">${esc(r.details || '')}</div></td></tr>`).join('') : `<tr><td colspan="5">${emptyBox('رویدادی پیدا نشد.')}</td></tr>`}
+            <td class="wrap">${auDetailsHtml(r.details)}</td></tr>`).join('') : `<tr><td colspan="5">${emptyBox('رویدادی پیدا نشد.')}</td></tr>`}
           </tbody></table></div></div>`;
       return {
         html,

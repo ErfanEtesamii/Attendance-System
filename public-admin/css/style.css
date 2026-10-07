@@ -498,6 +498,17 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--g
 .profile-head .tags { display: flex; flex-wrap: wrap; gap: 8px; }
 .profile-head .grow { flex: 1; min-width: 220px; }
 
+.diff { display: flex; flex-direction: column; gap: 6px; min-width: 260px; }
+.diff-head { font-weight: 600; font-size: 13px; }
+.diff-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-size: 13px; }
+.diff-field { color: var(--hint); min-width: 90px; }
+.diff-before { color: var(--red); background: var(--red-soft); padding: 1px 8px; border-radius: 8px; text-decoration: line-through; word-break: break-word; }
+.diff-after { color: var(--green); background: var(--green-soft); padding: 1px 8px; border-radius: 8px; word-break: break-word; }
+.diff-arrow { color: var(--hint); }
+.diff-reason { font-size: 12px; color: var(--yellow); }
+.diff-note { font-size: 12px; color: var(--hint); }
+.diff-raw summary { cursor: pointer; font-size: 12px; color: var(--hint); }
+.diff-raw .details-box { margin-top: 6px; }
 .details-box { font-family: "Cascadia Mono", Consolas, monospace; direction: ltr; text-align: left; font-size: 12px; white-space: pre-wrap; word-break: break-all; background: var(--bg-2); padding: 10px 12px; border-radius: 10px; color: #c9cbe3; }
 
 /* ---------- مودال ---------- */
