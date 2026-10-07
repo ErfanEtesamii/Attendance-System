@@ -66,7 +66,34 @@ function jalaliMonthToDateRange(date = new Date()) {
   return { from: range.from, to: today, label: range.label };
 }
 
+// S3-11c: ستون «تاریخ شمسی» در CSVها. خروجی «YYYY/MM/DD» با ارقام انگلیسی (برای مرتب‌سازی/فیلتر در اکسل)؛ ورودی نامعتبر/خالی ⇒ ''.
+const pad2 = (n) => String(n).padStart(2, '0');
+function isoDateToJalaliString(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso == null ? '' : iso));
+  if (!m) return '';
+  const [gy, gm, gd] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const d = new Date(Date.UTC(2000, gm - 1, gd));
+  d.setUTCFullYear(gy);
+  if (gm < 1 || gm > 12 || d.getUTCFullYear() !== gy || d.getUTCMonth() !== gm - 1 || d.getUTCDate() !== gd) return '';
+  try {
+    const j = jalaali.toJalaali(gy, gm, gd);
+    return `${j.jy}/${pad2(j.jm)}/${pad2(j.jd)}`;
+  } catch (_) { return ''; }
+}
+
+// لحظه‌ی ذخیره‌شده (UTC: «YYYY-MM-DD HH:MM:SS» دیتابیس یا ISO) ⇒ تاریخ شمسیِ همان لحظه به وقت شرکت (نه منطقه‌ی سرور)
+function instantToJalaliString(value, tz) {
+  if (!value) return '';
+  const s = String(value);
+  const iso = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s) ? `${s.replace(' ', 'T')}Z` : s;
+  try {
+    return isoDateToJalaliString(require('./time').formatDate(iso, tz));
+  } catch (_) { return ''; }
+}
+
 module.exports = {
+  isoDateToJalaliString,
+  instantToJalaliString,
   MONTH_NAMES,
   toJalaliFromDate,
   isFirstDayOfJalaliMonth,

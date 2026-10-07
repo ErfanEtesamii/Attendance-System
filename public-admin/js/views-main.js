@@ -25,7 +25,8 @@
     trend.forEach((t, i) => {
       // راست‌به‌چپ: قدیمی‌ترین روز سمت راست
       const cx = W - 44 - (i + 0.5) * ((W - 44 - padX) / trend.length);
-      const day = new Date(`${t.date}T00:00:00`).toLocaleDateString('fa-IR', { day: 'numeric' });
+      const tj = window.Jalali.isoToJalali(t.date);
+      const day = tj ? window.Jalali.toFaDigits(tj.jd) : '';
       const full = fmt.dateLong(t.date);
       svg += `<g><title>${esc(full)} — حاضر: ${fmt.num(t.present)}، متأخر: ${fmt.num(t.late)}</title>
         <rect class="bar-a" x="${cx - bw - 1}" y="${y(t.present)}" width="${bw}" height="${H - padB - y(t.present)}" rx="4"/>
@@ -55,7 +56,7 @@
       const html = `
         <div class="view-header">
           <div><h2>سلام ${esc(AP.state.me.fullName)} 👋</h2>
-            <div class="sub">وضعیت امروز، ${esc(fmt.dateLong(d.date))}${t.holiday ? ' — امروز تعطیل رسمی است' : ''}</div></div>
+            <div class="sub">وضعیت امروز، ${esc(fmt.dateFull(d.date))}${t.holiday ? ' — امروز تعطیل رسمی است' : ''}</div></div>
           <div class="header-actions">
             ${d.pending.leave ? `<button class="btn ghost" data-go="leave">${icon('leave')} ${fmt.num(d.pending.leave)} درخواست در انتظار</button>` : ''}
             ${d.pending.disputes ? `<button class="btn ghost" data-go="disputes">${icon('disputes')} ${fmt.num(d.pending.disputes)} اعتراض باز</button>` : ''}

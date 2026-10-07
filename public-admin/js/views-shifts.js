@@ -39,8 +39,8 @@
     return `<form class="form" id="shift-form">
       <div class="form-grid">
         <label class="field"><span>نام شیفت</span><input name="name" required maxlength="60" value="${esc(cur.name)}" placeholder="مثلاً: صبح" /></label>
-        <label class="field"><span>ساعت شروع</span><input type="time" name="startTime" required value="${esc(cur.startTime)}" /></label>
-        <label class="field"><span>ساعت پایان</span><input type="time" name="endTime" required value="${esc(cur.endTime)}" /></label>
+        <label class="field"><span>ساعت شروع</span><input type="time" name="startTime" required value="${esc(cur.startTime)}" dir="ltr" class="ltr-in" /></label>
+        <label class="field"><span>ساعت پایان</span><input type="time" name="endTime" required value="${esc(cur.endTime)}" dir="ltr" class="ltr-in" /></label>
         <label class="check-row full" style="grid-column:1/-1"><input type="checkbox" name="overnight"${cur.overnight ? ' checked' : ''} /> شیفت شب است (پایان بعد از نیمه‌شب، مثلاً ۲۲:۰۰ تا ۰۶:۰۰)</label>
         ${numField('graceLateMinutes', 'مهلت تأخیر (دقیقه)', 720)}
         ${numField('graceEarlyMinutes', 'مهلت زودتر رفتن (دقیقه)', 720)}

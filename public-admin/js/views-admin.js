@@ -24,7 +24,7 @@
       const h = (H - padT - padB) * (d.present / max);
       svg += `<g><title>${esc(fmt.dateLong(d.date))} — حاضر: ${fmt.num(d.present)}، متأخر: ${fmt.num(d.late)}</title>
         <rect class="bar-a" x="${cx - bw / 2}" y="${H - padB - h}" width="${bw}" height="${h}" rx="3"/></g>`;
-      if (i % every === 0) svg += `<text x="${cx}" y="${H - 8}" text-anchor="middle">${new Date(`${d.date}T00:00:00`).toLocaleDateString('fa-IR', { day: 'numeric', month: 'numeric' })}</text>`;
+      if (i % every === 0) svg += `<text x="${cx}" y="${H - 8}" text-anchor="middle">${jalaliDayMonth(d.date)}</text>`;
     });
     return `${svg}</svg>`;
   }
@@ -32,6 +32,9 @@
   // ======================================================
   // گزارش‌ها
   // ======================================================
+  // برچسب محور نمودار: «۱۵/۷» (روز/ماه شمسی)
+  const jalaliDayMonth = (iso) => { const j = window.Jalali.isoToJalali(iso); return j ? window.Jalali.toFaDigits(`${j.jd}/${j.jm}`) : ''; };
+
   const repUi = { from: null, to: null, department: '', sort: 'totalEffective', dir: -1 };
   AP.view('reports', {
     employee: true,
@@ -82,6 +85,7 @@
         html,
         mount(page) {
           const form = $('#rep-filters', page);
+          AP.dates.mount(form); // از/تا تاریخ شمسی؛ قبل از بستن listenerها (S3-11b)
           $$('input, select', form).forEach((el) => el.addEventListener('change', () => { Object.assign(repUi, AP.formData(form)); AP.refresh(); }));
           $$('[data-range]', form).forEach((b) => b.addEventListener('click', () => { repUi.from = fmt.daysAgo(Number(b.dataset.range)); repUi.to = fmt.today(); AP.refresh(); }));
           $$('th[data-sort]', page).forEach((h) => h.addEventListener('click', () => {
@@ -184,7 +188,7 @@
       case 'number':
         return `<input type="number" step="any" name="${k}" data-key="${k}" value="${esc(v)}"${it.min !== undefined ? ` min="${it.min}"` : ''}${it.max !== undefined ? ` max="${it.max}"` : ''} class="ltr-in" />`;
       case 'time':
-        return `<input type="time" name="${k}" data-key="${k}" value="${esc(v)}" class="ltr-in" />`;
+        return `<input type="time" name="${k}" data-key="${k}" value="${esc(v)}" class="ltr-in" dir="ltr" />`;
       case 'enum':
         return `<select name="${k}" data-key="${k}">${it.values.map((o) => `<option value="${esc(o)}"${o === v ? ' selected' : ''}>${esc(setEnumLabel(it, o))}</option>`).join('')}</select>`;
       case 'weekdays':
@@ -395,10 +399,10 @@
           title: h ? 'ویرایش تعطیلی' : 'افزودن تعطیلی',
           body: `<form class="form" id="hol-form">
             <div class="form-grid">
-              <label class="field"><span>تاریخ (میلادی)</span><input type="date" name="date" required value="${esc(cur.holiday_date)}" /></label>
+              <label class="field"><span>تاریخ</span><input type="date" name="date" required value="${esc(cur.holiday_date)}" /></label>
               <label class="field"><span>عنوان</span><input name="title" required maxlength="100" value="${esc(cur.title)}" placeholder="مثلاً: عید فطر" /></label>
               <label class="field"><span>نوع</span><select name="kind"><option value="full"${cur.kind === 'full' ? ' selected' : ''}>تعطیلی کامل</option><option value="half"${cur.kind === 'half' ? ' selected' : ''}>نیم‌روز</option></select></label>
-              <label class="field" data-half><span>ساعت پایان کار در نیم‌روز</span><input type="time" name="halfEndTime" value="${esc(cur.half_end_time || '12:30')}" /></label>
+              <label class="field" data-half><span>ساعت پایان کار در نیم‌روز</span><input type="time" name="halfEndTime" value="${esc(cur.half_end_time || '12:30')}" dir="ltr" class="ltr-in" /></label>
               <label class="field"><span>شامل</span><select name="scope"><option value="all"${cur.scope === 'all' ? ' selected' : ''}>همه‌ی کارمندان</option><option value="department"${cur.scope === 'department' ? ' selected' : ''}>یک دپارتمان</option></select></label>
               <label class="field" data-dept><span>دپارتمان</span><select name="department">${deptList.length ? deptList.map((d) => `<option value="${esc(d)}"${d === cur.department ? ' selected' : ''}>${esc(d)}</option>`).join('') : '<option value="">— هیچ کاربری دپارتمان ندارد —</option>'}</select></label>
             </div>
@@ -406,6 +410,7 @@
             <div class="modal-actions"><button class="btn primary" type="submit">${h ? 'ذخیره‌ی تغییرات' : 'افزودن'}</button><button class="btn ghost" type="button" data-cancel>انصراف</button></div>
           </form>`,
           onMount(body, m) {
+            AP.dates.mount(body); // تاریخ تعطیلی شمسی (مقدار ارسالی همچنان میلادی)؛ ساعت پایان نیم‌روز LTR (S3-11b)
             const form = $('#hol-form', body);
             const sync = () => {
               $('[data-half]', form).classList.toggle('hidden', form.kind.value !== 'half');
@@ -557,6 +562,7 @@
         html,
         mount(page) {
           const form = $('#au-filters', page);
+          AP.dates.mount(form); // از/تا تاریخ شمسی؛ قبل از بستن listenerها (S3-11b)
           let t;
           $$('input, select', form).forEach((el) => el.addEventListener(el.type === 'search' ? 'input' : 'change', () => {
             clearTimeout(t);

@@ -114,6 +114,7 @@
         const reopen = () => { h.close(); AP.openRecord(id); AP.refresh(); };
         const link = $('[data-close-link]', b); if (link) link.addEventListener('click', () => h.close());
         if (!admin) return;
+        AP.dates.mount(b); // قبل از listenerها: datetime-localها ⇒ تاریخ شمسی + ساعت (S3-11a)
 
         $('#fix-form', b).addEventListener('submit', async (e) => {
           e.preventDefault();
@@ -184,6 +185,7 @@
         <div class="form-msg"></div>
         <div class="modal-actions"><button class="btn primary" type="submit">ثبت رکورد</button></div></form>`,
       onMount(b, h) {
+        AP.dates.mount(b); // تاریخ شمسی (S3-11a)
         $('form', b).addEventListener('submit', async (e) => {
           e.preventDefault();
           const f = AP.formData(e.target);
@@ -255,6 +257,7 @@
         html,
         mount(page) {
           const form = $('#att-filters', page);
+          AP.dates.mount(form); // فیلتر از/تا تاریخ شمسی؛ قبل از بستن listenerها (S3-11a)
           const apply = () => { Object.assign(attUi, AP.formData(form)); AP.refresh(); };
           $$('input, select', form).forEach((el) => el.addEventListener('change', apply));
           $$('[data-range]', form).forEach((b) => b.addEventListener('click', () => {
@@ -291,6 +294,7 @@
         <div class="modal-actions"><button class="btn primary" type="submit">ذخیره</button>
           <button class="btn danger" type="button" id="del-leave">${icon('trash')} حذف</button></div></form>`,
       onMount(b, h) {
+        AP.dates.mount(b); // از/تا تاریخ شمسی (S3-11b)
         $('form', b).addEventListener('submit', async (e) => {
           e.preventDefault();
           try {
@@ -321,6 +325,7 @@
         <div class="form-msg"></div>
         <div class="modal-actions"><button class="btn primary" type="submit">ثبت</button></div></form>`,
       onMount(b, h) {
+        AP.dates.mount(b); // از/تا تاریخ شمسی (S3-11b)
         $('form', b).addEventListener('submit', async (e) => {
           e.preventDefault();
           const f = AP.formData(e.target);
@@ -558,7 +563,7 @@
           <div><h2>مرور شبانه</h2>
             <div class="sub">${esc(fmt.dateLong(data.date))}${data.holiday ? ' · تعطیل رسمی' : ''} · ${fmt.num(t.total)} نفر · ${fmt.num(t.attention)} مورد نیازمند بررسی</div></div>
           <div class="header-actions">
-            <label class="field" style="margin:0"><input type="date" id="nt-date" value="${esc(data.date)}" max="${esc(data.today)}" /></label>
+            <label class="field" style="margin:0"><input type="date" id="nt-date" name="ntDate" value="${esc(data.date)}" max="${esc(data.today)}" /></label>
           </div>
         </div>
         <div class="chips" id="nt-chips">${chips.map(([k, l, c]) => `<button class="chip ${k === nightUi.filter ? 'active' : ''}" data-f="${k}">${esc(l)}<b>${fmt.num(c)}</b></button>`).join('')}
@@ -576,6 +581,7 @@
       return {
         html,
         mount(page) {
+          AP.dates.mount($('.header-actions', page)); // تاریخ مرور شمسی؛ مقدار ISO در input مخفی ntDate (S3-11b)
           const body = $('#nt-body', page);
           const chipsEl = $('#nt-chips', page);
           const draw = () => {
@@ -597,7 +603,7 @@
           draw();
           chipsEl.addEventListener('click', (e) => { const c = e.target.closest('[data-f]'); if (c) { nightUi.filter = c.dataset.f; draw(); } });
           body.addEventListener('click', (e) => { const m = e.target.closest('[data-msg]'); if (m) AP.openMessage(m.dataset.msg); });
-          $('#nt-date', page).addEventListener('change', (e) => { if (e.target.value) { nightUi.date = e.target.value; AP.refresh(); } });
+          $('input[name="ntDate"]', page).addEventListener('change', (e) => { if (e.target.value) { nightUi.date = e.target.value; AP.refresh(); } });
 
           $$('[data-rec]', page).forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); AP.openRecord(a.dataset.rec); }));
           $$('[data-act]', page).forEach((b) => b.addEventListener('click', async () => {

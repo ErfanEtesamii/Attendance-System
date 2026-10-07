@@ -8,6 +8,8 @@ const { requireFullAdmin } = require('../../../middleware/adminAuth');
 const usersRepository = require('../../../repositories/usersRepository');
 const auditRepository = require('../../../repositories/auditRepository');
 const { sendCsv } = require('../../../utils/csv');
+const { instantToJalaliString } = require('../../../utils/jalali');
+const settingsRepository = require('../../../repositories/settingsRepository');
 const { audit } = require('./common');
 
 // ---------- Audit Log (فقط ادمین کل) ----------
@@ -42,17 +44,18 @@ router.get('/admin/audit-log/export', requireFullAdmin, (req, res) => {
   const includeArchive = parseIncludeArchive(req.query.include_archive);
   if (includeArchive === null) return res.status(400).json(BAD_INCLUDE_ARCHIVE);
   const limit = Math.min(parseInt(req.query.limit, 10) || 500, 2000);
+  const tz = settingsRepository.getTimezone();
   const rows = (req.query.userId
     ? auditRepository.listByUser(req.query.userId, limit, { includeArchive })
     : auditRepository.listRecent(limit, { includeArchive })
   ).map((r) => {
     const u = r.user_id ? usersRepository.findById(r.user_id) : null;
-    const cells = [r.id, r.occurred_at, u ? u.full_name : '', r.action, r.ip_address || '', r.details || ''];
+    const cells = [r.id, r.occurred_at, instantToJalaliString(r.occurred_at, tz), u ? u.full_name : '', r.action, r.ip_address || '', r.details || ''];
     if (includeArchive) cells.push(r.archived ? 'آرشیو' : 'اصلی'); // ستون «منبع» فقط با include_archive؛ قالب پیش‌فرض بدون تغییر
     return cells;
   });
 
-  const headers = ['ردیف', 'زمان', 'کارمند', 'عملیات', 'IP', 'جزئیات'];
+  const headers = ['ردیف', 'زمان', 'تاریخ شمسی', 'کارمند', 'عملیات', 'IP', 'جزئیات'];
   if (includeArchive) headers.push('منبع');
   sendCsv(res, 'audit-log.csv', headers, rows);
 });

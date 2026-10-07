@@ -17,3 +17,9 @@
 .jdp-selected, .jdp-selected:hover:not(:disabled) { background: var(--green, #1fcf95); color: #0d1a14; font-weight: 700; }
 .jdp-foot { display: flex; justify-content: space-between; margin-top: 6px; }
 .jdp-input[aria-invalid="true"] { border-color: var(--red, #f0506e); }
+/* جفت «تاریخ شمسی + ساعت» جایگزین datetime-local (S3-11a) */
+.dt-pair { display: inline-flex; gap: 6px; align-items: center; max-width: 100%; }
+.dt-pair .dt-date { width: 118px; text-align: center; }
+.dt-pair .dt-time { width: 100px; text-align: center; }
+.dt-pair [aria-invalid="true"] { border-color: var(--red, #f0506e); }
+td .dt-pair .dt-date, td .dt-pair .dt-time { padding: 8px 6px; }

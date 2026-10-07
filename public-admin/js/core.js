@@ -56,7 +56,12 @@
     `<svg viewBox="0 0 24 24" ${size ? `width="${size}" height="${size}"` : ''} aria-hidden="true">${P[name] || ''}</svg>`;
 
   // ---------- فرمت‌ها ----------
+  const J = window.Jalali; // jalali.js (S3-10a)؛ قبل از core.js لود می‌شود
   const nf = new Intl.NumberFormat('fa-IR');
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const localIso = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  const isoPart = (s) => { const m = /^(\d{4}-\d{2}-\d{2})/.exec(String(s == null ? '' : s)); return m && J.parseIso(m[1]) ? m[1] : null; };
+  const safeJalali = (iso) => { try { return J.isoToJalali(iso); } catch (_) { return null; } };
   const fmt = (AP.fmt = {
     num: (n) => (n == null || Number.isNaN(n) ? '—' : nf.format(n)),
     parse(v) {
@@ -70,23 +75,35 @@
       const d = fmt.parse(iso);
       return d ? d.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }) : '—';
     },
+    // تاریخ‌ها همه شمسی‌اند و با jalali.js (نه ICU مرورگر) ساخته می‌شوند تا خروجی در همه‌ی مرورگرها یکسان و قابل تست باشد.
+    // ورودی «YYYY-MM-DD» میلادی (یا رشته‌ای که با آن شروع شود)؛ نامعتبر ⇒ همان ورودی برمی‌گردد.
     date(dateStr) {
       if (!dateStr) return '—';
-      const d = new Date(`${String(dateStr).slice(0, 10)}T00:00:00`);
-      if (Number.isNaN(d.getTime())) return dateStr;
-      return d.toLocaleDateString('fa-IR', { weekday: 'short', month: 'short', day: 'numeric' });
+      const iso = isoPart(dateStr);
+      const j = iso && safeJalali(iso);
+      if (!j) return dateStr;
+      const cur = safeJalali(localIso(new Date()));
+      const year = cur && cur.jy === j.jy ? '' : ` ${J.toFaDigits(j.jy)}`;
+      return `${J.weekdayName(iso)}، ${J.toFaDigits(j.jd)} ${J.MONTH_NAMES[j.jm - 1]}${year}`;
     },
     dateLong(dateStr) {
       if (!dateStr) return '—';
-      const d = new Date(`${String(dateStr).slice(0, 10)}T00:00:00`);
-      if (Number.isNaN(d.getTime())) return dateStr;
-      return d.toLocaleDateString('fa-IR', { year: 'numeric', month: 'long', day: 'numeric' });
+      const iso = isoPart(dateStr);
+      return (iso && safeJalali(iso) && J.formatIso(iso, { long: true })) || dateStr;
     },
+    // «پنجشنبه، ۱۵ مهر ۱۴۰۵» (نوار بالا، سرتیتر داشبورد)
+    dateFull(dateStr) {
+      if (!dateStr) return '—';
+      const iso = isoPart(dateStr);
+      return (iso && safeJalali(iso) && `${J.weekdayName(iso)}، ${J.formatIso(iso, { long: true })}`) || dateStr;
+    },
+    // لحظه‌ی UTC دیتابیس ⇒ «۱۴۰۵/۰۷/۱۵ ۱۴:۳۰» به وقت محلی مرورگر
     dateTime(v) {
       const d = fmt.parse(v);
-      return d
-        ? d.toLocaleString('fa-IR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
-        : '—';
+      if (!d) return '—';
+      const iso = localIso(d);
+      if (!safeJalali(iso)) return '—';
+      return `${J.formatIso(iso)} ${J.toFaDigits(`${pad2(d.getHours())}:${pad2(d.getMinutes())}`)}`;
     },
     min(m) {
       if (m == null || Number.isNaN(m)) return '—';
@@ -107,13 +124,14 @@
       const d = new Date(v);
       return Number.isNaN(d.getTime()) ? null : d.toISOString();
     },
+    // «امروز» به وقت محلی (نه UTC)؛ همان مبنایی که «امروز»ِ datepicker شمسی دارد
     today() {
-      return new Date().toISOString().slice(0, 10);
+      return localIso(new Date());
     },
     daysAgo(n) {
       const d = new Date();
-      d.setUTCDate(d.getUTCDate() - n);
-      return d.toISOString().slice(0, 10);
+      d.setDate(d.getDate() - n);
+      return localIso(d);
     },
   });
 
@@ -188,6 +206,62 @@
       else out[el.name] = el.value;
     });
     return out;
+  };
+
+  // ---------- تاریخ شمسی در فرم‌ها (S3-11) ----------
+  // AP.dates.mount(root) — هر صفحه/مودال صراحتاً صدایش می‌زند (اعمال تدریجی روی صفحه‌ها):
+  //   <input type="date">           ⇒ datepicker شمسی؛ مقدار فرم (AP.formData) همچنان میلادی «YYYY-MM-DD» است
+  //   <input type="datetime-local"> ⇒ جفت «تاریخ شمسی + ساعت HH:MM(LTR)»؛ input اصلی (name/data-f) پنهان می‌شود و
+  //                                   همان قالب قبلی «YYYY-MM-DDTHH:MM» را نگه می‌دارد (fmt.fromLocalInput/AP.formData بدون تغییر)
+  //   <input type="time">           ⇒ dir=ltr (ساعت در صفحه‌ی RTL برعکس نمایش داده نشود)
+  // قرارداد: قبل از بستن listenerهای خود صفحه صدا زده شود، چون تغییر تایپی input ظاهری (متن شمسی) با
+  // stopImmediatePropagation بلعیده می‌شود و فقط change input مخفیِ حامل ISO به صفحه می‌رسد.
+  // خروجی: آرایه‌ی نمونه‌های datepicker (برای getValue/setValue).
+  AP.dates = {
+    combine(iso, time) { return iso && /^\d{2}:\d{2}$/.test(time || '') ? `${iso}T${time}` : ''; },
+    split(local) {
+      const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(local || '');
+      return m ? { date: m[1], time: m[2] } : { date: '', time: '' };
+    },
+    mount(root) {
+      const DP = window.JalaliDatepicker;
+      const out = [];
+      if (!DP) return out;
+      $$('input[type="date"]', root).forEach((el) => {
+        const opts = { value: el.value, min: el.getAttribute('min') || '', max: el.getAttribute('max') || '' };
+        el.removeAttribute('min');
+        el.removeAttribute('max');
+        el.type = 'text';
+        el.addEventListener('change', (e) => e.stopImmediatePropagation());
+        out.push(DP.attach(el, opts));
+      });
+      $$('input[type="datetime-local"]', root).forEach((el) => {
+        const init = AP.dates.split(el.value);
+        const wrap = document.createElement('span');
+        wrap.className = 'dt-pair';
+        wrap.innerHTML = '<input type="text" class="dt-date" aria-label="تاریخ" /><input type="time" class="dt-time" dir="ltr" aria-label="ساعت" />';
+        const dateEl = wrap.firstChild;
+        const timeEl = wrap.lastChild;
+        if (el.required) { dateEl.required = true; timeEl.required = true; }
+        timeEl.value = init.time;
+        el.type = 'hidden';
+        el.after(wrap);
+        let dp = null;
+        const sync = () => {
+          const iso = dp ? dp.getValue() : init.date;
+          el.value = AP.dates.combine(iso, timeEl.value);
+          // نیمه‌کاره (فقط تاریخ یا فقط ساعت) ⇒ مقدار خالی می‌ماند؛ خانه‌ی خالی قرمز می‌شود تا بی‌صدا حذف نشود
+          if (iso && !timeEl.value) timeEl.setAttribute('aria-invalid', 'true'); else timeEl.removeAttribute('aria-invalid');
+          if (!iso && timeEl.value && !dateEl.value) dateEl.setAttribute('aria-invalid', 'true');
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        };
+        dp = DP.attach(dateEl, { value: init.date, onChange: sync });
+        timeEl.addEventListener('change', (e) => { e.stopPropagation(); sync(); });
+        out.push(dp);
+      });
+      $$('input[type="time"]', root).forEach((el) => { el.setAttribute('dir', 'ltr'); el.classList.add('ltr-in'); });
+      return out;
+    },
   };
 
   AP.loadUsers = async function loadUsers(force) {
@@ -434,7 +508,7 @@
     $('#me-avatar').textContent = AP.initials(me.fullName);
     $('#me-name').textContent = me.fullName;
     $('#me-role').textContent = AP.ROLE[me.role] || me.role;
-    $('#topbar-date').textContent = new Date().toLocaleDateString('fa-IR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    $('#topbar-date').textContent = fmt.dateFull(fmt.today());
     buildNav();
     setupSearch();
     $('#menu-btn').addEventListener('click', () => {

@@ -13,6 +13,7 @@ const disputeRepository = require('../../../repositories/disputeRepository');
 const auditRepository = require('../../../repositories/auditRepository');
 const { notifyUser } = require('../../../bot/notifier');
 const { sendCsv } = require('../../../utils/csv');
+const { isoDateToJalaliString } = require('../../../utils/jalali');
 const { DATE_RE, STATUSES, scopedUserIds, visibleUsers, canAccessUser, parseRange, isoOrNull, enrichRecord, requireReason, audit } = require('./common');
 
 // ---------- اصلاح دستی رکورد تردد (فقط ادمین کل) ----------
@@ -103,7 +104,7 @@ router.get('/admin/attendance/export', (req, res) => {
     const e = enrichRecord(r, userMap);
     return [
       e.user?.fullName || '', e.user?.personnelCode || '', e.user?.department || '',
-      r.record_date, fmt(r.check_in_time), r.check_in_ip || '', fmt(r.check_out_time),
+      r.record_date, isoDateToJalaliString(r.record_date), fmt(r.check_in_time), r.check_in_ip || '', fmt(r.check_out_time),
       r.check_out_ip || '', e.breakMinutes, e.summary.effectiveMinutes ?? '', e.summary.lateMinutes,
       e.summary.earlyLeaveMinutes, e.summary.overtimeMinutes, r.status,
     ];
@@ -112,7 +113,7 @@ router.get('/admin/attendance/export', (req, res) => {
   sendCsv(
     res,
     `attendance-records_${from}_${to}.csv`,
-    ['نام', 'کد پرسنلی', 'دپارتمان', 'تاریخ', 'ورود', 'IP ورود', 'خروج', 'IP خروج',
+    ['نام', 'کد پرسنلی', 'دپارتمان', 'تاریخ', 'تاریخ شمسی', 'ورود', 'IP ورود', 'خروج', 'IP خروج',
       'دقیقه استراحت', 'دقیقه مفید', 'دقیقه تأخیر', 'دقیقه خروج زودهنگام', 'دقیقه اضافه‌کاری', 'وضعیت'],
     rows
   );
