@@ -11,44 +11,13 @@ const auditRepository = require('../../../repositories/auditRepository');
 const usersRepository = require('../../../repositories/usersRepository');
 const registry = require('../../../utils/settingsRegistry');
 const { requireReason, audit } = require('./common');
+const { parseHolidayBody, parseImport } = require('../../../utils/holidayInput');
 
 // ---------- تعطیلات رسمی ----------
 
 router.get('/admin/holidays', (req, res) => {
   res.json(holidaysRepository.listHolidays());
 });
-
-// S3-9b: اعتبارسنجی ورودی تعطیلی با پیام فارسی (پیش‌تر فقط CHECK جدول بود و ۵۰۰ می‌داد).
-// ورودی قدیمی { date, title } معتبر می‌ماند (= تعطیلی کامل برای همه). خروجی: { ok, value } | { ok: false, error }
-function parseHolidayBody(body) {
-  const b = body || {};
-  const bad = (error) => ({ ok: false, error });
-  const date = typeof b.date === 'string' ? b.date.trim() : '';
-  const d = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T00:00:00Z`) : null;
-  if (!d || Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== date) return bad('تاریخ نامعتبر است (قالب YYYY-MM-DD).');
-  const title = typeof b.title === 'string' ? b.title.trim() : '';
-  if (!title) return bad('عنوان الزامی است.');
-  if (title.length > 100) return bad('عنوان حداکثر ۱۰۰ نویسه می‌تواند باشد.');
-
-  const kind = b.kind === undefined || b.kind === '' ? 'full' : b.kind;
-  if (kind !== 'full' && kind !== 'half') return bad('نوع تعطیلی باید «کامل» یا «نیم‌روز» باشد.');
-  let halfEndTime = null;
-  if (kind === 'half') {
-    const m = typeof b.halfEndTime === 'string' ? /^\s*(\d{1,2}):(\d{2})\s*$/.exec(b.halfEndTime) : null;
-    if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) return bad('برای نیم‌روز، ساعت پایان کار (HH:MM) الزامی است.');
-    halfEndTime = `${m[1].padStart(2, '0')}:${m[2]}`;
-  }
-
-  const scope = b.scope === undefined || b.scope === '' ? 'all' : b.scope;
-  if (scope !== 'all' && scope !== 'department') return bad('دامنه باید «همه» یا «دپارتمان» باشد.');
-  let department = '';
-  if (scope === 'department') {
-    department = typeof b.department === 'string' ? b.department.trim() : '';
-    if (!department) return bad('برای تعطیلی دپارتمانی، نام دپارتمان الزامی است.');
-    if (department.length > 100) return bad('نام دپارتمان حداکثر ۱۰۰ نویسه می‌تواند باشد.');
-  }
-  return { ok: true, value: { date, title, kind, halfEndTime, scope, department } };
-}
 
 // خلاصه‌ی قابل‌ثبت در audit
 const holidayView = (h) => ({ date: h.holiday_date, title: h.title, kind: h.kind, halfEndTime: h.half_end_time, scope: h.scope, department: h.department });
@@ -62,6 +31,43 @@ function departmentUnmatched(h) {
 function holidayResponse(h) {
   return { ...h, ...(departmentUnmatched(h) ? { warning: 'هیچ کاربری با این دپارتمان (دقیقاً با همین نوشتار) پیدا نشد؛ این تعطیلی فعلاً روی کسی اثر ندارد.' } : {}) };
 }
+
+// S3-9c: ورود گروهی تعطیلات. بدنه: { text } (خط‌به‌خط یا CSV؛ تاریخ شمسی) یا { items: [{date,title,kind,halfEndTime,department}] }
+// و { commit: true } برای ذخیره. بدون commit فقط پیش‌نمایش است و هیچ چیزی نوشته نمی‌شود.
+// وضعیت هر ردیف: new | duplicate (از قبل در تقویم) | duplicate_in_input (تکرار داخل همین ورودی؛ فقط اولی) | invalid.
+// commit: اگر حتی یک ردیف نامعتبر باشد ⇒ ۴۲۲ و هیچ چیز ذخیره نمی‌شود؛ تکراری‌ها نادیده می‌مانند و بقیه در یک تراکنش ذخیره می‌شوند.
+router.post('/admin/holidays/import', requireFullAdmin, (req, res) => {
+  const body = req.body || {};
+  const parsed = parseImport({ text: body.text, items: body.items });
+  if (parsed.error) return res.status(400).json({ error: parsed.error });
+
+  const existing = new Set(holidaysRepository.listHolidays().map((h) => `${h.holiday_date}|${h.scope}|${h.department}`));
+  const seen = new Set();
+  const departments = new Set(usersRepository.listUsers({}).map((u) => (u.department || '').trim()).filter(Boolean));
+  const rows = parsed.rows.map((r) => {
+    if (!r.ok) return { line: r.line, input: r.input, status: 'invalid', error: r.error };
+    const v = r.value;
+    const key = `${v.date}|${v.scope}|${v.department}`;
+    let status = 'new';
+    if (existing.has(key)) status = 'duplicate';
+    else if (seen.has(key)) status = 'duplicate_in_input';
+    seen.add(key);
+    const out = { line: r.line, input: r.input, status, ...v, jalali: r.jalali };
+    if (v.scope === 'department' && !departments.has(v.department)) out.warning = 'هیچ کاربری با این دپارتمان (دقیقاً با همین نوشتار) پیدا نشد.';
+    return out;
+  });
+  const count = (s) => rows.filter((r) => r.status === s).length;
+  const summary = { total: rows.length, new: count('new'), duplicate: count('duplicate'), duplicateInInput: count('duplicate_in_input'), invalid: count('invalid') };
+
+  if (body.commit !== true) return res.json({ committed: false, summary, rows });
+  if (summary.invalid) return res.status(422).json({ error: 'ورودی ردیف نامعتبر دارد؛ چیزی ذخیره نشد. ابتدا خطاها را اصلاح کنید.', committed: false, summary, rows });
+
+  const toAdd = rows.filter((r) => r.status === 'new');
+  const added = holidaysRepository.addHolidaysBatch(toAdd.map((r) => ({ date: r.date, title: r.title, kind: r.kind, halfEndTime: r.halfEndTime, scope: r.scope, department: r.department })));
+  const reason = (body.reason || '').toString().trim();
+  audit(req, 'holidays_imported', { summary, added: added.map((h) => ({ date: h.holiday_date, title: h.title, kind: h.kind, scope: h.scope, department: h.department })), ...(reason ? { reason } : {}) });
+  return res.json({ committed: true, summary: { ...summary, added: added.length }, rows });
+});
 
 router.post('/admin/holidays', requireFullAdmin, (req, res) => {
   const parsed = parseHolidayBody(req.body);

@@ -56,9 +56,28 @@ function updateHoliday(id, fields) {
   return db.prepare('SELECT * FROM holidays WHERE id = ?').get(id);
 }
 
+// S3-9c: درج چندتایی در یک تراکنش (همه یا هیچ). ورودی‌ها از قبل معتبر و غیرتکراری‌اند؛ تکراری ⇒ همان ردیف موجود بدون درج دوباره. خروجی: ردیف‌های تازه‌درج‌شده
+function addHolidaysBatch(list) {
+  const db = getDb();
+  const find = db.prepare('SELECT * FROM holidays WHERE holiday_date = ? AND scope = ? AND department = ?');
+  const insert = db.prepare('INSERT INTO holidays (holiday_date, title, kind, half_end_time, scope, department) VALUES (?, ?, ?, ?, ?, ?)');
+  return db.transaction((items) => {
+    const out = [];
+    items.forEach((o) => {
+      const kind = o.kind || 'full';
+      const scope = o.scope || 'all';
+      const department = scope === 'department' ? o.department || '' : '';
+      if (find.get(o.date, scope, department)) return;
+      insert.run(o.date, o.title, kind, kind === 'half' ? o.halfEndTime || null : null, scope, department);
+      out.push(find.get(o.date, scope, department));
+    });
+    return out;
+  })(list);
+}
+
 function removeHoliday(id) {
   const db = getDb();
   db.prepare('DELETE FROM holidays WHERE id = ?').run(id);
 }
 
-module.exports = { listHolidays, isHoliday, listByDate, getHoliday, addHoliday, updateHoliday, removeHoliday };
+module.exports = { listHolidays, isHoliday, listByDate, getHoliday, addHoliday, addHolidaysBatch, updateHoliday, removeHoliday };
