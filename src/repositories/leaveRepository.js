@@ -21,16 +21,43 @@ function resolveLeaveType({ leaveType, leaveTypeId } = {}) {
   return byCode;
 }
 
-function createLeaveRequest({ userId, startDate, endDate, leaveType, leaveTypeId, reason }) {
+// S4-8a: ستون‌های واحد/مدت اختیاری‌اند (بدون آن‌ها: unit='day' و duration_minutes=NULL = رفتار قبلی). اعتبارسنجی و محاسبه‌ی مدت
+// در leaveDurationService است؛ اینجا فقط ذخیره می‌شود و CHECKهای جدول (migration ۰۱۵) ناهم‌خوانی را رد می‌کنند.
+function createLeaveRequest({ userId, startDate, endDate, leaveType, leaveTypeId, reason, unit, halfDayPart, startTime, endTime, durationMinutes }) {
   const db = getDb();
   const type = resolveLeaveType({ leaveType, leaveTypeId });
   const result = db
     .prepare(
-      `INSERT INTO leave_requests (user_id, start_date, end_date, leave_type, leave_type_id, reason)
-       VALUES (?, ?, ?, ?, ?, ?)`
+      `INSERT INTO leave_requests (user_id, start_date, end_date, leave_type, leave_type_id, reason, unit, half_day_part, start_time, end_time, duration_minutes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
-    .run(userId, startDate, endDate, type.kind, type.id, reason || null);
+    .run(
+      userId, startDate, endDate, type.kind, type.id, reason || null,
+      unit || 'day', halfDayPart || null, startTime || null, endTime || null,
+      durationMinutes === undefined ? null : durationMinutes
+    );
   return findById(result.lastInsertRowid);
+}
+
+// درخواست‌های «زنده» (pending/approved؛ ردشده‌ها حساب نمی‌شوند) یک کاربر که با بازه‌ی [startDate, endDate] هم‌پوشانی تاریخی دارند (S4-8a).
+function listActiveInRange(userId, startDate, endDate, { excludeId } = {}) {
+  const db = getDb();
+  return db
+    .prepare(
+      `${SELECT_WITH_KIND} WHERE lr.user_id = ? AND lr.status IN ('pending','approved')
+         AND lr.start_date <= ? AND lr.end_date >= ? AND (? IS NULL OR lr.id <> ?)
+       ORDER BY lr.start_date, lr.id`
+    )
+    .all(userId, endDate, startDate, excludeId === undefined ? null : excludeId, excludeId === undefined ? null : excludeId);
+}
+
+// درخواست‌هایی که duration_minutes ندارند (قدیمی‌ها)، قدیمی‌ترین اول (برای backfillMissingDurations)
+function listMissingDuration({ limit = 500 } = {}) {
+  return getDb().prepare(`${SELECT_WITH_KIND} WHERE lr.duration_minutes IS NULL ORDER BY lr.id LIMIT ?`).all(limit);
+}
+
+function setDuration(id, minutes) {
+  getDb().prepare('UPDATE leave_requests SET duration_minutes = ? WHERE id = ?').run(minutes, id);
 }
 
 // S4-7c: هر ردیف خروجی علاوه بر ستون‌های leave_requests فیلد `kind` ('leave'|'mission') را از leave_types می‌گیرد؛
@@ -125,6 +152,15 @@ function updateManual(id, fields, approverId) {
     values.push(fields[k]);
   });
   if (!sets.length) return findById(id);
+  // S4-8a: تغییر تاریخ، مدتِ محاسبه‌شده را کهنه می‌کند ⇒ NULL (با backfill دوباره پر می‌شود). نیم‌روز/ساعتی فقط یک روز است.
+  if (fields.start_date !== undefined || fields.end_date !== undefined) {
+    const nextStart = fields.start_date !== undefined ? fields.start_date : existing && existing.start_date;
+    const nextEnd = fields.end_date !== undefined ? fields.end_date : existing && existing.end_date;
+    if (existing && existing.unit !== 'day' && nextStart !== nextEnd) {
+      throw new Error('درخواست نیم‌روز/ساعتی فقط یک روز است؛ تاریخ شروع و پایان باید یکی بماند.');
+    }
+    sets.push('duration_minutes = NULL');
+  }
   if (fields.status) {
     sets.push('approver_id = ?');
     values.push(approverId || null);
@@ -137,6 +173,10 @@ function updateManual(id, fields, approverId) {
 }
 
 module.exports = {
+  resolveLeaveType,
+  listActiveInRange,
+  listMissingDuration,
+  setDuration,
   remove,
   updateManual,
   createLeaveRequest,
