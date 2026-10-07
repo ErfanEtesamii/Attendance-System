@@ -107,6 +107,23 @@ function audit(req, action, details) {
   });
 }
 
+// S4-1b: ثبت «تغییر یک موجودیت» با قالب استاندارد (auditRepository.logChange): actor و ip از درخواست، source=admin_panel همیشه.
+// before/after = نمای موجودیت (src/utils/auditViews.js)؛ null ⇒ ایجاد/حذف. reason (اختیاری) دلیلِ ثبت‌شده توسط ادمین.
+// meta = فیلدهای کمکی کنار diff که جستجوهای پنل به آن‌ها تکیه دارند (targetUserId، recordId، ...).
+function auditChange(req, { action, entityType, entityId = null, before = null, after = null, reason = null, meta = null }) {
+  return auditRepository.logChange({
+    actor: req.adminUser.id,
+    action,
+    entityType,
+    entityId,
+    before,
+    after,
+    reason,
+    ip: req.ip,
+    meta: { source: 'admin_panel', ...(meta || {}) },
+  });
+}
+
 // وضعیت زنده‌ی امروز یک کارمند
 function classifyToday(user, record, openBreak, today, holiday, onLeave) {
   if (record) {
@@ -200,6 +217,7 @@ module.exports = {
   makeUserMap,
   requireReason,
   audit,
+  auditChange,
   classifyToday,
   minutesToHHMM,
   aggregateRecords,

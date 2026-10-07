@@ -46,8 +46,12 @@ describe('API تعطیلات (S3-9b)', { skip: hasDeps ? false : 'express نصب
     assert.equal(r.json.warning, undefined);
     const rows = auditRows('holiday_added');
     assert.equal(rows.length, 1);
-    assert.equal(details(rows[0]).date, '2026-03-21');
-    assert.equal(details(rows[0]).kind, 'full');
+    // S4-1c: قالب استاندارد logChange (ایجاد ⇒ before=null برای همه‌ی فیلدها)
+    const d = details(rows[0]);
+    assert.equal(d.entityType, 'holiday');
+    assert.equal(d.changes.date.after, '2026-03-21');
+    assert.equal(d.changes.kind.after, 'full');
+    assert.equal(d.changes.date.before, null);
   });
 
   test('اعتبارسنجی: تاریخ/عنوان/نوع/ساعت نیم‌روز/دامنه/دپارتمان نامعتبر ⇒ ۴۰۰ فارسی و بدون ذخیره', async () => {
@@ -104,10 +108,11 @@ describe('API تعطیلات (S3-9b)', { skip: hasDeps ? false : 'express نصب
     const row = auditRows('holiday_updated')[0];
     const d = details(row);
     assert.equal(d.holidayId, half.id);
-    assert.equal(d.before.kind, 'half');
-    assert.equal(d.before.halfEndTime, '09:05');
-    assert.equal(d.after.kind, 'full');
-    assert.equal(d.after.title, 'تعطیل کامل شد');
+    assert.equal(d.entityId, half.id);
+    assert.deepEqual(d.changes.kind, { before: 'half', after: 'full' });
+    assert.deepEqual(d.changes.halfEndTime, { before: '09:05', after: null });
+    assert.deepEqual(d.changes.title, { before: 'نیم‌روز', after: 'تعطیل کامل شد' });
+    assert.ok(!('scope' in d.changes), 'فیلد تغییرنکرده ثبت نمی‌شود');
     assert.equal(d.reason, 'ابلاغیه');
 
     assert.equal((await hit('admin', 'PUT', '/api/admin/holidays/99999', { date: '2026-04-02', title: 'x' })).status, 404);
@@ -125,8 +130,9 @@ describe('API تعطیلات (S3-9b)', { skip: hasDeps ? false : 'express نصب
     assert.equal((await hit('admin', 'DELETE', `/api/admin/holidays/${target.id}`)).status, 200);
     assert.equal(db.prepare('SELECT COUNT(*) c FROM holidays WHERE id = ?').get(target.id).c, 0);
     const d = details(auditRows('holiday_removed').pop());
-    assert.equal(d.title, 'ناشناس');
-    assert.equal(d.department, 'بایگانی');
+    assert.deepEqual(d.changes.title, { before: 'ناشناس', after: null });
+    assert.deepEqual(d.changes.department, { before: 'بایگانی', after: null });
+    assert.equal(d.entityId, target.id);
     assert.equal((await hit('admin', 'DELETE', `/api/admin/holidays/${target.id}`)).status, 404);
   });
 

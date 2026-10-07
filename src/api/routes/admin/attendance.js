@@ -14,7 +14,8 @@ const auditRepository = require('../../../repositories/auditRepository');
 const { notifyUser } = require('../../../bot/notifier');
 const { sendCsv } = require('../../../utils/csv');
 const { isoDateToJalaliString } = require('../../../utils/jalali');
-const { DATE_RE, STATUSES, scopedUserIds, visibleUsers, canAccessUser, parseRange, isoOrNull, enrichRecord, requireReason, audit } = require('./common');
+const { DATE_RE, STATUSES, scopedUserIds, visibleUsers, canAccessUser, parseRange, isoOrNull, enrichRecord, requireReason, audit, auditChange } = require('./common');
+const { attendanceRecordView, breakView } = require('../../../utils/auditViews');
 
 // ---------- اصلاح دستی رکورد تردد (فقط ادمین کل) ----------
 
@@ -47,10 +48,14 @@ router.patch('/admin/attendance-records/:id', requireStaff, (req, res) => {
 
   const updated = attendanceRepository.manualUpdate(id, fields);
 
-  auditRepository.logEvent({
-    userId: req.adminUser.id,
+  auditChange(req, {
     action: 'attendance_record_manually_fixed',
-    details: { source: 'admin_panel', recordId: id, fields: Object.keys(fields), reason: reason.trim() },
+    entityType: 'attendance_record',
+    entityId: id,
+    before: attendanceRecordView(record),
+    after: attendanceRecordView(updated),
+    reason: reason.trim(),
+    meta: { recordId: id, targetUserId: record.user_id, fields: Object.keys(fields) },
   });
 
   const employee = usersRepository.findById(record.user_id);
@@ -163,7 +168,15 @@ router.post('/admin/attendance-records', requireStaff, (req, res) => {
   const created = attendanceRepository.createManual({
     userId: user.id, recordDate: date, checkInTime: ci, checkOutTime: co, status: st,
   });
-  audit(req, 'attendance_record_manually_created', { recordId: created.id, targetUserId: user.id, date, reason });
+  auditChange(req, {
+    action: 'attendance_record_manually_created',
+    entityType: 'attendance_record',
+    entityId: created.id,
+    before: null,
+    after: attendanceRecordView(created),
+    reason,
+    meta: { recordId: created.id, targetUserId: user.id },
+  });
   res.status(201).json(enrichRecord(created));
 });
 
@@ -174,9 +187,14 @@ router.delete('/admin/attendance-records/:id', requireStaff, (req, res) => {
   if (!record) return res.status(404).json({ error: 'رکورد یافت نشد.' });
   if (!canAccessUser(req.adminUser, record.user_id)) return res.status(403).json({ error: 'به این کارمند دسترسی ندارید.' });
   attendanceRepository.removeWithBreaks(record.id);
-  audit(req, 'attendance_record_deleted', {
-    recordId: record.id, targetUserId: record.user_id, date: record.record_date,
-    snapshot: { in: record.check_in_time, out: record.check_out_time, status: record.status }, reason,
+  auditChange(req, {
+    action: 'attendance_record_deleted',
+    entityType: 'attendance_record',
+    entityId: record.id,
+    before: attendanceRecordView(record),
+    after: null,
+    reason,
+    meta: { recordId: record.id, targetUserId: record.user_id },
   });
   res.json({ ok: true });
 });
@@ -200,7 +218,15 @@ router.post('/admin/attendance-records/:id/breaks', requireStaff, (req, res) => 
     startTime: st,
     endTime: en,
   });
-  audit(req, 'break_record_manually_created', { recordId: record.id, breakId: created.id, targetUserId: record.user_id, reason });
+  auditChange(req, {
+    action: 'break_record_manually_created',
+    entityType: 'break_record',
+    entityId: created.id,
+    before: null,
+    after: breakView(created),
+    reason,
+    meta: { recordId: record.id, breakId: created.id, targetUserId: record.user_id },
+  });
   res.status(201).json(created);
 });
 
@@ -226,8 +252,14 @@ router.patch('/admin/break-records/:id', requireStaff, (req, res) => {
   }
   const updated = breakRepository.updateManual(br.id, fields);
   const record = attendanceRepository.findById(br.attendance_record_id);
-  audit(req, 'break_record_manually_edited', {
-    recordId: br.attendance_record_id, breakId: br.id, targetUserId: record?.user_id, fields: Object.keys(fields), reason,
+  auditChange(req, {
+    action: 'break_record_manually_edited',
+    entityType: 'break_record',
+    entityId: br.id,
+    before: breakView(br),
+    after: breakView(updated),
+    reason,
+    meta: { recordId: br.attendance_record_id, breakId: br.id, targetUserId: record?.user_id, fields: Object.keys(fields) },
   });
   res.json(updated);
 });
@@ -241,8 +273,14 @@ router.delete('/admin/break-records/:id', requireStaff, (req, res) => {
   if (!ownerRec || !canAccessUser(req.adminUser, ownerRec.user_id)) return res.status(403).json({ error: 'به این کارمند دسترسی ندارید.' });
   breakRepository.remove(br.id);
   const record = attendanceRepository.findById(br.attendance_record_id);
-  audit(req, 'break_record_deleted', {
-    recordId: br.attendance_record_id, breakId: br.id, targetUserId: record?.user_id, reason,
+  auditChange(req, {
+    action: 'break_record_deleted',
+    entityType: 'break_record',
+    entityId: br.id,
+    before: breakView(br),
+    after: null,
+    reason,
+    meta: { recordId: br.attendance_record_id, breakId: br.id, targetUserId: record?.user_id },
   });
   res.json({ ok: true });
 });

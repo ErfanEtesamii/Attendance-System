@@ -15,7 +15,7 @@ const { nowIso } = require('../../../utils/serverTime');
 const { sendMessage } = require('../../../bot/notifier');
 const settingsRepository = require('../../../repositories/settingsRepository');
 const { buildClearCookie } = require('../../../utils/sessionCookie');
-const { audit, requireReason } = require('./common');
+const { audit, auditChange, requireReason } = require('./common');
 const systemHealth = require('../../../utils/systemHealth');
 const jobRunsRepository = require('../../../repositories/jobRunsRepository');
 const monitorRepository = require('../../../repositories/monitorRepository');
@@ -65,8 +65,17 @@ router.post('/admin/system/revoke-all-sessions', requireFullAdmin, (req, res) =>
   if (!reason) return;
   const includeSelf = !!(req.body && req.body.includeSelf);
 
+  const epochBefore = settingsRepository.getGlobalSessionEpoch();
   const epoch = settingsRepository.bumpGlobalSessionEpoch();
-  audit(req, 'all_sessions_revoked', { reason, epoch, includeSelf });
+  auditChange(req, {
+    action: 'all_sessions_revoked',
+    entityType: 'session',
+    entityId: 'global_epoch',
+    before: { epoch: epochBefore },
+    after: { epoch },
+    reason,
+    meta: { includeSelf },
+  });
 
   if (includeSelf) {
     res.setHeader('Set-Cookie', buildClearCookie(req));

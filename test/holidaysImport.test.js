@@ -125,7 +125,9 @@ describe('API ورود گروهی تعطیلات (S3-9c)', { skip: hasDeps ? fal
     const rows = audits();
     assert.equal(rows.length, 1);
     const d = JSON.parse(rows[0].details);
-    assert.equal(d.added.length, 4);
+    assert.equal(d.changes.added.before, null);
+    assert.equal(d.changes.added.after.length, 4);
+    assert.equal(d.summary.new, 4);
     assert.equal(d.reason, 'تقویم ۱۴۰۵');
 
     const again = await hit('admin', { text: TEXT, commit: true });

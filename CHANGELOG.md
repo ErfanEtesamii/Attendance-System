@@ -4,6 +4,21 @@
 
 ## [Unreleased] — بخش ۴ (ممیزی)
 
+### S4-1c — مهاجرت routeهای رکورد تردد، استراحت، مرخصی، تعطیلات و اعتراض به `logChange`
+- `attendance-records` (ایجاد/ویرایش/حذف)، `break-records` و `…/breaks` (ایجاد/ویرایش/حذف)، `leave-requests` (تأیید/رد، ایجاد/ویرایش/حذف ادمین)، `holidays` (افزودن/ویرایش/حذف/ورود گروهی) و `disputes` (بستن/بازگشایی) به‌جای `audit()`/`logEvent` از `auditChange` → `logChange` استفاده می‌کنند. نام `action`ها **بدون تغییر** است.
+- `details` اکنون `changes: { فیلد: { before, after } }` (فقط فیلدهای تغییرکرده؛ ایجاد ⇒ `before=null`، حذف ⇒ `after=null`) دارد. **یادداشت تصمیم** (تأیید/رد مرخصی، بستن/بازگشایی اعتراض) در `reason` می‌نشیند. `recordId`/`breakId`/`requestId`/`disputeId`/`targetUserId` در `meta` می‌مانند تا «تاریخچه‌ی رکورد» (`"recordId":N`) و «پرونده‌ی کارمند» (`"targetUserId":N`) مثل قبل کار کنند.
+- ⚠️ **تغییر قالب (قدیمی ⇒ جدید)**: تعطیلات: `details.date/kind/…` تخت و `details.before/after` ⇒ `details.changes.<فیلد>`؛ ورود گروهی: `details.added` ⇒ `details.changes.added.after` (`summary` در `meta`)؛ حذف رکورد تردد: `snapshot{in,out,status}`+`date` ⇒ `changes.check_in_time/check_out_time/status/record_date` با `after=null`؛ ویرایش مرخصی: `from/to` ⇒ `changes.status`. رکوردهای قدیمی audit دست‌نخورده می‌مانند.
+- نماهای قابل‌ثبت: `src/utils/auditViews.js` (فقط ستون‌های بیزینسی؛ بدون `created_at/updated_at` و ستون‌های حساس).
+- خارج از دامنه (عمداً دست‌نخورده): رویدادهای Mini App و بات، `shifts/overtime/suspicious` و رویدادهای غیرتغییری (`attendance_exported`، `broadcast_sent`، …).
+- تست: `test/auditRoutesRecords.test.js` (۴ تست: ویرایش رکورد تردد با قبل/بعد دقیق و تاریخچه‌ی `recordId`، استراحت، مرخصی، اعتراض)؛ `holidaysApi`/`holidaysImport` به قالب جدید به‌روز شدند.
+
+### S4-1b — مهاجرت routeهای کاربران، نقش‌ها، سشن‌ها و تنظیمات به `logChange`
+- `POST/PATCH/DELETE /admin/users` (نقش هم همین‌جا تغییر می‌کند)، `revoke-sessions`، `revoke-all-sessions` و تنظیمات (`PATCH /admin/settings`، `PUT /admin/settings/:key`، `POST …/reset`) از `auditChange` → `logChange` استفاده می‌کنند؛ `action`ها بدون تغییر.
+- ویرایش کاربر: فقط فیلدهای تغییرکرده در `changes` (نمای `userView`: نام، کد پرسنلی، دپارتمان، نقش، مدیر، فعال، آیدی تلگرام)؛ حذف کاربر: همان نما با `after=null` (جای `fullName/personnelCode/telegramUserId` تخت قبلی). ابطال سشن: `changes.session_version`؛ ابطال سراسری: `entityType: 'session'`، `changes.epoch`.
+- تنظیمات: `changes` همان قالب قبلی است (تست‌های قبلی بدون تغییر سبزند)؛ `fields` (کلیدهای ارسالی) در `meta` می‌ماند.
+- **افزوده به helper S4-1a**: گزینه‌ی اختیاری `meta` در `logChange`/`buildChangeDetails` برای فیلدهای کمکی کنار diff (`source`, `targetUserId`, `recordId`, …)؛ مثل diff پاک‌سازی می‌شود (حساس‌ها حذف) و کلیدهای رزروشده (`entityType/entityId/changes/reason/redacted`) را بازنویسی نمی‌کند. `auditChange(req, …)` در `routes/admin/common.js` actor، ip و `source: 'admin_panel'` را از درخواست می‌گیرد. توجه: حالا همه‌ی این رویدادها ip هم ثبت می‌کنند.
+- تست: `test/auditRoutesUsers.test.js` (۵ تست)، `test/auditMeta.test.js` (۳ تست).
+
 ### S4-1a — `auditRepository.logChange` (helper؛ هنوز هیچ route به آن وصل نشده)
 - `auditRepository.logChange({ actor, action, entityType, entityId, before, after, reason, ip })`: لایه‌ای بالای `logEvent`؛ **ساختار جدول `audit_log` و ورودی‌های قدیمی بدون تغییر** (`user_id` = actor، `ip_address` = ip، بقیه در `details` JSON).
 - `details` استاندارد: `{ entityType, entityId, changes: { <field>: { before, after } }, reason?, redacted? }` (همان قالب `changes` ممیزی تنظیمات S3-1b). **فقط فیلدهای تغییرکرده** (مقایسه‌ی عمیق، مستقل از ترتیب کلید؛ `before=null` ⇒ ایجاد، `after=null` ⇒ حذف).

@@ -18,7 +18,8 @@ const { todayDateString } = require('../../../utils/serverTime');
 const { sendMessage } = require('../../../bot/notifier');
 const { sendCsv } = require('../../../utils/csv');
 const { buildClearCookie } = require('../../../utils/sessionCookie');
-const { scopedUserIds, canAccessUser, parseRange, userBrief, enrichRecord, audit, aggregateRecords, requireReason } = require('./common');
+const { scopedUserIds, canAccessUser, parseRange, userBrief, enrichRecord, audit, auditChange, aggregateRecords, requireReason } = require('./common');
+const { userView } = require('../../../utils/auditViews');
 
 // ---------- لیست کارمندان ----------
 
@@ -81,10 +82,13 @@ router.post('/admin/users', requireFullAdmin, (req, res) => {
     managerId: managerId || null,
   });
 
-  auditRepository.logEvent({
-    userId: req.adminUser.id,
+  auditChange(req, {
     action: 'employee_added',
-    details: { source: 'admin_panel', newUserId: user.id },
+    entityType: 'user',
+    entityId: user.id,
+    before: null,
+    after: userView(user),
+    meta: { newUserId: user.id, targetUserId: user.id },
   });
 
   res.status(201).json(user);
@@ -197,10 +201,13 @@ router.patch('/admin/users/:id', requireFullAdmin, (req, res) => {
     throw err;
   }
 
-  auditRepository.logEvent({
-    userId: req.adminUser.id,
+  auditChange(req, {
     action: 'employee_profile_edited',
-    details: { source: 'admin_panel', targetUserId: id, fields: Object.keys(fields) },
+    entityType: 'user',
+    entityId: id,
+    before: userView(user),
+    after: userView(updated),
+    meta: { targetUserId: id, fields: Object.keys(fields) },
   });
 
   res.json(updated);
@@ -216,7 +223,15 @@ router.post('/admin/users/:id/revoke-sessions', requireFullAdmin, (req, res) => 
   if (!reason) return;
 
   const version = usersRepository.revokeSessions(id);
-  audit(req, 'user_sessions_revoked', { targetUserId: id, reason, sessionVersion: version });
+  auditChange(req, {
+    action: 'user_sessions_revoked',
+    entityType: 'user',
+    entityId: id,
+    before: { session_version: user.session_version },
+    after: { session_version: version },
+    reason,
+    meta: { targetUserId: id },
+  });
   const selfLoggedOut = id === req.adminUser.id;
   if (selfLoggedOut) res.setHeader('Set-Cookie', buildClearCookie(req));
   res.json({ ok: true, selfLoggedOut });
@@ -246,18 +261,13 @@ router.delete('/admin/users/:id', requireFullAdmin, (req, res) => {
 
   usersRepository.deleteUserPermanently(id);
 
-  auditRepository.logEvent({
-    userId: req.adminUser.id,
+  auditChange(req, {
     action: 'employee_deleted',
-    ipAddress: req.ip,
-    details: {
-      source: 'admin_panel',
-      targetUserId: id,
-      fullName: user.full_name,
-      personnelCode: user.personnel_code,
-      telegramUserId: user.telegram_user_id,
-      removed: counts,
-    },
+    entityType: 'user',
+    entityId: id,
+    before: userView(user),
+    after: null,
+    meta: { targetUserId: id, removed: counts },
   });
 
   res.json({ ok: true, removed: counts });

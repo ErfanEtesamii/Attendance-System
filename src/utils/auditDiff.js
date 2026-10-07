@@ -82,9 +82,22 @@ function buildChanges(before, after) {
   return { changes, redacted };
 }
 
-function buildChangeDetails({ entityType, entityId = null, before = null, after = null, reason = null }) {
+// S4-1b: فیلدهای کمکیِ «غیر diff» که جستجوهای قدیمی به آن‌ها تکیه دارند (source، targetUserId، recordId، fields، ...).
+// مثل diff پاک‌سازی می‌شوند (حساس‌ها حذف، رشته‌ها sanitize)؛ کلیدهای رزروشده هرگز با meta بازنویسی نمی‌شوند.
+const RESERVED_META_KEYS = ['entityType', 'entityId', 'changes', 'reason', 'redacted'];
+
+function cleanMeta(meta) {
+  if (meta === undefined || meta === null) return {};
+  if (!isPlainObject(meta)) throw new TypeError('meta باید آبجکت (یا null) باشد.');
+  const out = clean(meta);
+  RESERVED_META_KEYS.forEach((k) => { delete out[k]; });
+  return out;
+}
+
+function buildChangeDetails({ entityType, entityId = null, before = null, after = null, reason = null, meta = null }) {
   const { changes, redacted } = buildChanges(before, after);
   const details = {
+    ...cleanMeta(meta),
     entityType: sanitizeText(entityType, 100),
     entityId: entityId === null || entityId === undefined ? null : (typeof entityId === 'number' ? entityId : sanitizeText(entityId, 100)),
     changes,

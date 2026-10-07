@@ -8,7 +8,8 @@ const usersRepository = require('../../../repositories/usersRepository');
 const attendanceRepository = require('../../../repositories/attendanceRepository');
 const disputeRepository = require('../../../repositories/disputeRepository');
 const { sendMessage } = require('../../../bot/notifier');
-const { scopedUserIds, canAccessUser, userBrief, makeUserMap, audit } = require('./common');
+const { scopedUserIds, canAccessUser, userBrief, makeUserMap, auditChange } = require('./common');
+const { disputeView } = require('../../../utils/auditViews');
 
 // ---------- اعتراض‌های کارمندان ----------
 
@@ -43,8 +44,14 @@ router.post('/admin/disputes/:id/:action(resolve|reopen)', (req, res) => {
   const resolving = req.params.action === 'resolve';
   const updated = disputeRepository.setStatus(dispute.id, resolving ? 'resolved' : 'open');
   const note = ((req.body && req.body.note) || '').trim();
-  audit(req, resolving ? 'dispute_resolved' : 'dispute_reopened', {
-    disputeId: dispute.id, targetUserId: dispute.user_id, note: note || undefined,
+  auditChange(req, {
+    action: resolving ? 'dispute_resolved' : 'dispute_reopened',
+    entityType: 'dispute',
+    entityId: dispute.id,
+    before: disputeView(dispute),
+    after: disputeView(updated),
+    reason: note || null, // یادداشت بستن/بازگشایی = دلیل
+    meta: { disputeId: dispute.id, targetUserId: dispute.user_id },
   });
   const employee = usersRepository.findById(dispute.user_id);
   if (resolving && employee?.telegram_user_id) {

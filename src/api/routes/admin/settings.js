@@ -7,10 +7,9 @@ const router = express.Router();
 const { requireFullAdmin } = require('../../../middleware/adminAuth');
 const holidaysRepository = require('../../../repositories/holidaysRepository');
 const settingsRepository = require('../../../repositories/settingsRepository');
-const auditRepository = require('../../../repositories/auditRepository');
 const usersRepository = require('../../../repositories/usersRepository');
 const registry = require('../../../utils/settingsRegistry');
-const { requireReason, audit } = require('./common');
+const { requireReason, auditChange } = require('./common');
 const { parseHolidayBody, parseImport } = require('../../../utils/holidayInput');
 
 // ---------- تعطیلات رسمی ----------
@@ -65,7 +64,16 @@ router.post('/admin/holidays/import', requireFullAdmin, (req, res) => {
   const toAdd = rows.filter((r) => r.status === 'new');
   const added = holidaysRepository.addHolidaysBatch(toAdd.map((r) => ({ date: r.date, title: r.title, kind: r.kind, halfEndTime: r.halfEndTime, scope: r.scope, department: r.department })));
   const reason = (body.reason || '').toString().trim();
-  audit(req, 'holidays_imported', { summary, added: added.map((h) => ({ date: h.holiday_date, title: h.title, kind: h.kind, scope: h.scope, department: h.department })), ...(reason ? { reason } : {}) });
+  // یک رکورد برای کل batch: after.added = فهرست تعطیلی‌های ثبت‌شده (before=null ⇒ ایجاد)
+  auditChange(req, {
+    action: 'holidays_imported',
+    entityType: 'holiday',
+    entityId: null,
+    before: null,
+    after: { added: added.map((h) => ({ date: h.holiday_date, title: h.title, kind: h.kind, scope: h.scope, department: h.department })) },
+    reason,
+    meta: { summary },
+  });
   return res.json({ committed: true, summary: { ...summary, added: added.length }, rows });
 });
 
@@ -77,7 +85,7 @@ router.post('/admin/holidays', requireFullAdmin, (req, res) => {
   if (dup) return res.status(409).json({ error: 'برای این تاریخ و دامنه قبلاً تعطیلی ثبت شده است؛ آن را ویرایش کنید.' });
   const holiday = holidaysRepository.addHoliday(v.date, v.title, v);
   const reason = ((req.body || {}).reason || '').toString().trim();
-  audit(req, 'holiday_added', { ...holidayView(holiday), holidayId: holiday.id, ...(reason ? { reason } : {}) });
+  auditChange(req, { action: 'holiday_added', entityType: 'holiday', entityId: holiday.id, before: null, after: holidayView(holiday), reason, meta: { holidayId: holiday.id } });
   return res.status(201).json(holidayResponse(holiday));
 });
 
@@ -90,7 +98,7 @@ router.put('/admin/holidays/:id', requireFullAdmin, (req, res) => {
   const after = holidaysRepository.updateHoliday(id, parsed.value);
   if (after && after.conflict) return res.status(409).json({ error: 'برای این تاریخ و دامنه تعطیلی دیگری ثبت شده است.' });
   const reason = ((req.body || {}).reason || '').toString().trim();
-  audit(req, 'holiday_updated', { holidayId: id, before: holidayView(before), after: holidayView(after), ...(reason ? { reason } : {}) });
+  auditChange(req, { action: 'holiday_updated', entityType: 'holiday', entityId: id, before: holidayView(before), after: holidayView(after), reason, meta: { holidayId: id } });
   return res.json(holidayResponse(after));
 });
 
@@ -99,7 +107,7 @@ router.delete('/admin/holidays/:id', requireFullAdmin, (req, res) => {
   const before = Number.isInteger(id) ? holidaysRepository.getHoliday(id) : null;
   if (!before) return res.status(404).json({ error: 'تعطیلی موردنظر پیدا نشد.' });
   holidaysRepository.removeHoliday(id);
-  audit(req, 'holiday_removed', { holidayId: req.params.id, ...holidayView(before) });
+  auditChange(req, { action: 'holiday_removed', entityType: 'holiday', entityId: id, before: holidayView(before), after: null, meta: { holidayId: id } });
   return res.json({ ok: true });
 });
 
@@ -126,16 +134,20 @@ router.patch('/admin/settings', requireFullAdmin, (req, res) => {
   const before = settingsRepository.getAll();
   const updated = settingsRepository.update(req.body || {});
   // S3-1b: مقدار قبل/بعد کلیدهای تغییرکرده هم در details می‌آید (فیلدهای قبلی بدون تغییر)
-  const changes = {};
-  Object.keys(updated).forEach((k) => {
-    if (!registry.sameValue(updated[k], before[k])) changes[k] = { before: before[k], after: updated[k] };
-  });
-  auditRepository.logEvent({
-    userId: req.adminUser.id,
+  const changedKeys = Object.keys(updated).filter((k) => !registry.sameValue(updated[k], before[k]));
+  const beforeChanged = {};
+  const afterChanged = {};
+  changedKeys.forEach((k) => { beforeChanged[k] = before[k]; afterChanged[k] = updated[k]; });
+  // S4-1b: قالب استاندارد logChange؛ changes همان { کلید: { before, after } } قبلی است و fields (کلیدهای ارسالی) در meta می‌ماند
+  auditChange(req, {
     action: 'settings_updated',
-    details: { source: 'admin_panel', fields: Object.keys(req.body || {}), changes },
+    entityType: 'settings',
+    entityId: null,
+    before: beforeChanged,
+    after: afterChanged,
+    meta: { fields: Object.keys(req.body || {}) },
   });
-  reloadSchedulerIfCron(Object.keys(changes)); // پاسخ PATCH قدیمی (آبجکت تخت تنظیمات) عمداً بدون تغییر می‌ماند
+  reloadSchedulerIfCron(changedKeys); // پاسخ PATCH قدیمی (آبجکت تخت تنظیمات) عمداً بدون تغییر می‌ماند
   res.json(updated);
 });
 
@@ -161,7 +173,7 @@ router.put('/admin/settings/:key', requireFullAdmin, (req, res) => {
   if (registry.sameValue(before, checked.value)) return res.json({ changed: false, item: settingsRepository.getItem(key) });
 
   const item = settingsRepository.setValue(key, checked.value);
-  audit(req, 'settings_updated', { fields: [key], changes: { [key]: { before, after: item.value } }, reason });
+  auditChange(req, { action: 'settings_updated', entityType: 'settings', entityId: key, before: { [key]: before }, after: { [key]: item.value }, reason, meta: { fields: [key] } });
   const scheduler = reloadSchedulerIfCron([key]);
   return res.json({ changed: true, item, ...(scheduler ? { scheduler } : {}) });
 });
@@ -176,7 +188,7 @@ router.post('/admin/settings/:key/reset', requireFullAdmin, (req, res) => {
   const before = settingsRepository.getItem(key).value;
   if (!settingsRepository.resetValue(key)) return res.json({ changed: false, item: settingsRepository.getItem(key) }); // ردیفی نبود: همین الان پیش‌فرض است
   const item = settingsRepository.getItem(key);
-  audit(req, 'settings_reset', { fields: [key], changes: { [key]: { before, after: item.value } }, reason });
+  auditChange(req, { action: 'settings_reset', entityType: 'settings', entityId: key, before: { [key]: before }, after: { [key]: item.value }, reason, meta: { fields: [key] } });
   const scheduler = reloadSchedulerIfCron([key]);
   return res.json({ changed: true, item, ...(scheduler ? { scheduler } : {}) });
 });

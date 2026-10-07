@@ -7,9 +7,9 @@ const router = express.Router();
 const { requireStaff } = require('../../../middleware/adminAuth');
 const usersRepository = require('../../../repositories/usersRepository');
 const leaveRepository = require('../../../repositories/leaveRepository');
-const auditRepository = require('../../../repositories/auditRepository');
 const { notifyUser, sendMessage } = require('../../../bot/notifier');
-const { DATE_RE, scopedUserIds, canAccessUser, audit } = require('./common');
+const { DATE_RE, scopedUserIds, canAccessUser, auditChange } = require('./common');
+const { leaveRequestView } = require('../../../utils/auditViews');
 
 // ---------- صف تأیید مرخصی/مأموریت ----------
 
@@ -54,10 +54,14 @@ router.post('/admin/leave-requests/:id/:decision(approve|reject)', (req, res) =>
   const newStatus = decision === 'approve' ? 'approved' : 'rejected';
   const updated = leaveRepository.setStatus(requestId, newStatus, req.adminUser.id);
 
-  auditRepository.logEvent({
-    userId: req.adminUser.id,
+  auditChange(req, {
     action: newStatus === 'approved' ? 'leave_request_approved' : 'leave_request_rejected',
-    details: { source: 'admin_panel', requestId, employeeId: request.user_id, note: note || undefined },
+    entityType: 'leave_request',
+    entityId: requestId,
+    before: leaveRequestView(request),
+    after: leaveRequestView(updated),
+    reason: note || null, // یادداشت تصمیم‌گیرنده = دلیل تصمیم
+    meta: { requestId, employeeId: request.user_id, targetUserId: request.user_id },
   });
 
   if (employee?.telegram_user_id) {
@@ -88,7 +92,14 @@ router.post('/admin/leave-requests', requireStaff, (req, res) => {
   });
   const finalStatus = ['approved', 'rejected', 'pending'].includes(status) ? status : 'approved';
   const saved = finalStatus === 'pending' ? created : leaveRepository.setStatus(created.id, finalStatus, req.adminUser.id);
-  audit(req, 'leave_request_created_by_admin', { requestId: saved.id, targetUserId: user.id, status: finalStatus });
+  auditChange(req, {
+    action: 'leave_request_created_by_admin',
+    entityType: 'leave_request',
+    entityId: saved.id,
+    before: null,
+    after: leaveRequestView(saved),
+    meta: { requestId: saved.id, targetUserId: user.id },
+  });
   res.status(201).json(saved);
 });
 
@@ -110,8 +121,13 @@ router.patch('/admin/leave-requests/:id', requireStaff, (req, res) => {
   if (leaveType !== undefined) fields.leave_type = leaveType === 'mission' ? 'mission' : 'leave';
   if (reason !== undefined) fields.reason = reason;
   const updated = leaveRepository.updateManual(reqRow.id, fields, req.adminUser.id);
-  audit(req, 'leave_request_edited_by_admin', {
-    requestId: reqRow.id, targetUserId: reqRow.user_id, fields: Object.keys(fields), from: reqRow.status, to: updated.status,
+  auditChange(req, {
+    action: 'leave_request_edited_by_admin',
+    entityType: 'leave_request',
+    entityId: reqRow.id,
+    before: leaveRequestView(reqRow),
+    after: leaveRequestView(updated),
+    meta: { requestId: reqRow.id, targetUserId: reqRow.user_id, fields: Object.keys(fields) },
   });
   const employee = usersRepository.findById(reqRow.user_id);
   if (fields.status && fields.status !== reqRow.status && employee?.telegram_user_id) {
@@ -129,7 +145,14 @@ router.delete('/admin/leave-requests/:id', requireStaff, (req, res) => {
   if (!reqRow) return res.status(404).json({ error: 'درخواست یافت نشد.' });
   if (!canAccessUser(req.adminUser, reqRow.user_id)) return res.status(403).json({ error: 'به این کارمند دسترسی ندارید.' });
   leaveRepository.remove(reqRow.id);
-  audit(req, 'leave_request_deleted_by_admin', { requestId: reqRow.id, targetUserId: reqRow.user_id });
+  auditChange(req, {
+    action: 'leave_request_deleted_by_admin',
+    entityType: 'leave_request',
+    entityId: reqRow.id,
+    before: leaveRequestView(reqRow),
+    after: null,
+    meta: { requestId: reqRow.id, targetUserId: reqRow.user_id },
+  });
   res.json({ ok: true });
 });
 

@@ -36,6 +36,7 @@ function logEvent({ userId = null, action, ipAddress = null, details = null }) {
 // ساختار جدول و ورودی‌های قدیمی (logEvent) بدون تغییر است؛ این فقط یک لایه‌ی بالای logEvent است.
 //   actor: شناسه‌ی کاربر انجام‌دهنده، یا آبجکت با id/userId (null برای سیستم)؛ در ستون user_id می‌نشیند
 //   before/after: آبجکت‌های «وضعیت قبل/بعد» (null ⇒ ایجاد/حذف)؛ فقط فیلدهای تغییرکرده ثبت می‌شوند، حساس‌ها حذف
+//   meta (اختیاری، S4-1b): فیلدهای کمکی کنار diff (source، targetUserId، recordId، ...) برای جستجوی `"targetUserId":N`
 // ⚠️ اگر هیچ فیلدی تغییر نکرده باشد هم رکورد (با changes خالی) ثبت می‌شود: «رخ دادنِ عمل» ردپای ممیزی است و بی‌صدا گم نمی‌شود.
 function resolveActorId(actor) {
   if (actor === null || actor === undefined) return null;
@@ -45,10 +46,10 @@ function resolveActorId(actor) {
   return id;
 }
 
-function logChange({ actor = null, action, entityType, entityId = null, before = null, after = null, reason = null, ip = null } = {}) {
+function logChange({ actor = null, action, entityType, entityId = null, before = null, after = null, reason = null, ip = null, meta = null } = {}) {
   if (typeof action !== 'string' || !action.trim()) throw new TypeError('logChange: action الزامی است.');
   if (typeof entityType !== 'string' || !entityType.trim()) throw new TypeError('logChange: entityType الزامی است.');
-  const details = buildChangeDetails({ entityType: entityType.trim(), entityId, before, after, reason });
+  const details = buildChangeDetails({ entityType: entityType.trim(), entityId, before, after, reason, meta });
   return logEvent({ userId: resolveActorId(actor), action: action.trim(), ipAddress: ip, details });
 }
 
