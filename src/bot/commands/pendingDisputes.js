@@ -5,6 +5,7 @@ const usersRepository = require('../../repositories/usersRepository');
 const disputeRepository = require('../../repositories/disputeRepository');
 const attendanceRepository = require('../../repositories/attendanceRepository');
 const auditRepository = require('../../repositories/auditRepository');
+const notificationEvents = require('../../services/notificationEvents');
 
 function canHandle(actor, dispute) {
   if (actor.role === 'admin') return true;
@@ -13,7 +14,8 @@ function canHandle(actor, dispute) {
 }
 
 async function closeDispute(bot, actor, dispute, note) {
-  disputeRepository.setStatus(dispute.id, 'resolved');
+  const updated = disputeRepository.setStatus(dispute.id, 'resolved');
+  notificationEvents.disputeResolved(updated, { note }); // اعلان پنل برای کارمند (S4-6b)
   auditRepository.logEvent({
     userId: actor.id,
     action: 'dispute_resolved',

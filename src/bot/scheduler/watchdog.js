@@ -14,6 +14,7 @@ const config = require('../../config');
 const systemHealth = require('../../utils/systemHealth');
 const monitorRepository = require('../../repositories/monitorRepository');
 const usersRepository = require('../../repositories/usersRepository');
+const notificationEvents = require('../../services/notificationEvents');
 const { sanitizeText } = require('../../utils/sanitize');
 
 // فاصله‌ی یادآوری برای هشدارهایی که فقط با اجرای بعدیِ یک Job رفع می‌شوند (job_failed:*، backup_suspect)
@@ -170,6 +171,11 @@ async function runWatchdog({ bot, now = Date.now(), collect = systemHealth.colle
     const existing = loadAlert(key);
     const wasFiring = existing && existing.state === 'firing';
     saveFiring(key, info.detail, nowIso);
+    // اعلان پنل فقط در «شروع» هر دوره‌ی هشدار (یادآوری‌های دوره‌ای فقط تلگرام‌اند)؛ dedupe با first_seen_at همین دوره (S4-6b)
+    if (!wasFiring) {
+      const row = loadAlert(key);
+      notificationEvents.systemAlert({ key, title: info.title, detail: info.detail, firstSeenAt: (row && row.first_seen_at) || nowIso });
+    }
 
     const lastSentMs = wasFiring && existing.last_sent_at ? Date.parse(existing.last_sent_at) : null;
     const interval = key.startsWith('job_failed:') || key === 'backup_suspect' ? JOB_REMINDER_MS : throttleMs;

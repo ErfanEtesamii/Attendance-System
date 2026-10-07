@@ -13,6 +13,7 @@ const settingsRepository = require('../repositories/settingsRepository');
 const { normalizeDeviceId } = require('./deviceInfo');
 const { todayDateString } = require('./serverTime');
 const fraud = require('./fraudDetection');
+const notificationEvents = require('../services/notificationEvents');
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -96,7 +97,10 @@ function runFraudChecks(options) {
         summary.found += 1;
         try {
           const res = suspiciousRepository.create(candidate);
-          if (res.created) summary.created.push(res.event);
+          if (res.created) {
+            summary.created.push(res.event);
+            notificationEvents.suspiciousCreated(res.event); // اعلان پنل؛ ضدخطا (S4-6b)
+          }
           else summary.duplicates += 1;
         } catch (err) {
           fail(`${stage}_save`, err);
@@ -160,13 +164,15 @@ function evaluateSharedDeviceBlock({ userId, deviceId, date } = {}) {
 function recordBlockedAttempt(block, action) {
   try {
     const { event, date } = block;
-    return suspiciousRepository.create({
+    const res = suspiciousRepository.create({
       eventType: event.eventType,
       userIds: event.userIds,
       recordIds: event.recordIds,
       eventDate: date,
       details: { ...event.details, blocked: true, blockedAction: action },
     });
+    if (res.created) notificationEvents.suspiciousCreated(res.event); // S4-6b
+    return res;
   } catch (err) {
     console.error('[fraud] ثبت نشانه‌ی تلاش ردشده ناموفق بود (نادیده گرفته شد):', err && err.message ? err.message : err);
     return null;

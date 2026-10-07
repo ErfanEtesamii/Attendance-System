@@ -6,6 +6,7 @@ const session = require('../session');
 const leaveRepository = require('../../repositories/leaveRepository');
 const usersRepository = require('../../repositories/usersRepository');
 const auditRepository = require('../../repositories/auditRepository');
+const notificationEvents = require('../../services/notificationEvents');
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -159,6 +160,7 @@ async function handleLeaveCallback(bot, query, sess) {
       action: 'leave_request_created',
       details: { requestId: request.id, leaveType: request.leave_type },
     });
+    notificationEvents.leaveRequested(request); // اعلان پنل برای تأییدکننده‌ها (S4-6b)
 
     session.clear(chatId);
     await bot.sendMessage(chatId, '✅ درخواست شما ثبت شد و برای تأیید ارسال شد.');

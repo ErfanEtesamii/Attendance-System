@@ -11,6 +11,7 @@ const { sendMessage } = require('../../../bot/notifier');
 const { scopedUserIds, canAccessUser, userBrief, makeUserMap, auditChange } = require('./common');
 const { disputeView } = require('../../../utils/auditViews');
 const { requirePermission } = require('../../../middleware/permissions');
+const notificationEvents = require('../../../services/notificationEvents');
 
 // ---------- اعتراض‌های کارمندان ----------
 
@@ -54,6 +55,7 @@ router.post('/admin/disputes/:id/:action(resolve|reopen)', requirePermission('di
     reason: note || null, // یادداشت بستن/بازگشایی = دلیل
     meta: { disputeId: dispute.id, targetUserId: dispute.user_id },
   });
+  if (resolving) notificationEvents.disputeResolved(updated, { note }); // اعلان پنل برای کارمند (S4-6b)
   const employee = usersRepository.findById(dispute.user_id);
   if (resolving && employee?.telegram_user_id) {
     sendMessage(

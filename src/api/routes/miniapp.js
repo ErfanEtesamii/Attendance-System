@@ -20,6 +20,7 @@ const auditRepository = require('../../repositories/auditRepository');
 const dayService = require('../../engine/dayService');
 const { extractDeviceInfo } = require('../../utils/deviceInfo');
 const fraudRunner = require('../../utils/fraudRunner');
+const notificationEvents = require('../../services/notificationEvents');
 const { todayDateString } = require('../../utils/serverTime');
 
 // همه مسیرهای زیر /miniapp ابتدا باید هویت تلگرام معتبر داشته باشند
@@ -217,6 +218,7 @@ router.post('/miniapp/leave', (req, res) => {
     action: 'leave_requested',
     details: { source: 'miniapp', leaveType: request.leave_type },
   });
+  notificationEvents.leaveRequested(request); // اعلان پنل برای تأییدکننده‌ها؛ هرگز ثبت را نمی‌شکند (S4-6b)
   res.status(201).json(request);
 });
 
@@ -247,6 +249,7 @@ router.post('/miniapp/dispute', (req, res) => {
     action: 'record_dispute_submitted',
     details: { attendanceRecordId: attendanceRecordId || null },
   });
+  notificationEvents.disputeOpened(dispute); // S4-6b
   res.status(201).json(dispute);
 });
 

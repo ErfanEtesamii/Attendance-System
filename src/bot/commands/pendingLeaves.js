@@ -2,6 +2,7 @@ const { getRegisteredUser, notRegisteredMessage, hasRole } = require('../auth');
 const usersRepository = require('../../repositories/usersRepository');
 const leaveRepository = require('../../repositories/leaveRepository');
 const auditRepository = require('../../repositories/auditRepository');
+const notificationEvents = require('../../services/notificationEvents');
 
 async function handlePendingLeaves(bot, msg) {
   const chatId = msg.chat.id;
@@ -73,7 +74,8 @@ async function handlePendingLeavesCallback(bot, query) {
   }
 
   const newStatus = action === 'leave_approve' ? 'approved' : 'rejected';
-  leaveRepository.setStatus(requestId, newStatus, approver.id);
+  const updated = leaveRepository.setStatus(requestId, newStatus, approver.id);
+  notificationEvents.leaveDecided(updated); // اعلان پنل برای کارمند (S4-6b)
 
   auditRepository.logEvent({
     userId: approver.id,

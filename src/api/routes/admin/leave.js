@@ -10,6 +10,7 @@ const leaveRepository = require('../../../repositories/leaveRepository');
 const { notifyUser, sendMessage } = require('../../../bot/notifier');
 const { DATE_RE, scopedUserIds, canAccessUser, auditChange } = require('./common');
 const { leaveRequestView } = require('../../../utils/auditViews');
+const notificationEvents = require('../../../services/notificationEvents');
 
 // ---------- صف تأیید مرخصی/مأموریت ----------
 
@@ -63,6 +64,8 @@ router.post('/admin/leave-requests/:id/:decision(approve|reject)', requirePermis
     reason: note || null, // یادداشت تصمیم‌گیرنده = دلیل تصمیم
     meta: { requestId, employeeId: request.user_id, targetUserId: request.user_id },
   });
+
+  notificationEvents.leaveDecided(updated, { note }); // اعلان پنل برای کارمند (S4-6b)
 
   if (employee?.telegram_user_id) {
     const typeLabel = request.leave_type === 'mission' ? 'مأموریت' : 'مرخصی';
@@ -130,6 +133,8 @@ router.patch('/admin/leave-requests/:id', requirePermission('leave.edit'), (req,
     meta: { requestId: reqRow.id, targetUserId: reqRow.user_id, fields: Object.keys(fields) },
   });
   const employee = usersRepository.findById(reqRow.user_id);
+  // فقط تغییر به approved/rejected «تصمیم» است؛ بازگشت به pending اعلان پنل نمی‌سازد (S4-6b)
+  if (fields.status && fields.status !== reqRow.status) notificationEvents.leaveDecided(updated);
   if (fields.status && fields.status !== reqRow.status && employee?.telegram_user_id) {
     const label = { approved: 'تأیید شد ✅', rejected: 'رد شد ❌', pending: 'به حالت «در انتظار» بازگشت' }[fields.status];
     sendMessage(
