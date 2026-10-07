@@ -14,5 +14,7 @@ const attendanceRecordView = (r) => pick(r, ['record_date', 'check_in_time', 'ch
 const breakView = (b) => pick(b, ['break_type', 'start_time', 'end_time']);
 const leaveRequestView = (l) => pick(l, ['leave_type', 'start_date', 'end_date', 'status', 'reason']);
 const disputeView = (d) => pick(d, ['status']);
+// S4-7a: نوع مرخصی/مأموریت (ورودی = شیء camelCase خروجی leaveTypesRepository؛ code برای شناسایی در diff می‌آید)
+const leaveTypeView = (t) => pick(t, ['code', 'title', 'kind', 'isPaid', 'requiresAttachment', 'countsAgainstBalance', 'allowedUnits', 'maxConsecutiveDays', 'isActive']);
 
-module.exports = { pick, userView, attendanceRecordView, breakView, leaveRequestView, disputeView };
+module.exports = { pick, userView, attendanceRecordView, breakView, leaveRequestView, disputeView, leaveTypeView };

@@ -21,7 +21,7 @@ const HR_ALLOWED = new Set([
   'GET /api/admin/me', 'GET /api/admin/me/permissions', 'GET /api/admin/dashboard', 'GET /api/admin/overview', 'GET /api/admin/live', 'GET /api/admin/nightly-review',
   'GET /api/admin/users', 'GET /api/admin/users/export', 'GET /api/admin/users/999999', 'GET /api/admin/users/999999/details',
   'GET /api/admin/attendance', 'GET /api/admin/attendance/export', 'GET /api/admin/attendance-records/999999',
-  'GET /api/admin/disputes', 'GET /api/admin/leave-requests', 'GET /api/admin/reports/export', 'GET /api/admin/reports/summary',
+  'GET /api/admin/disputes', 'GET /api/admin/leave-requests', 'GET /api/admin/leave-types', 'GET /api/admin/leave-types/999999', 'GET /api/admin/reports/export', 'GET /api/admin/reports/summary',
 ]);
 const ROUTES = [
   ['GET', '/api/admin/users', [M, A]],
@@ -59,6 +59,11 @@ const ROUTES_2 = [
   ['GET', '/api/admin/leave-requests', [E, M, A]],
   ['POST', '/api/admin/leave-requests/999999/approve', [M, A]],
   ['POST', '/api/admin/leave-requests', [M, A]],
+  ['GET', '/api/admin/leave-types', [M, A]], // S4-7a: خواندن leave.read؛ نوشتن settings.edit (فقط ادمین)
+  ['GET', '/api/admin/leave-types/999999', [M, A]],
+  ['POST', '/api/admin/leave-types', [A]],
+  ['PATCH', '/api/admin/leave-types/999999', [A]],
+  ['DELETE', '/api/admin/leave-types/999999', [A]],
   ['PATCH', '/api/admin/leave-requests/999999', [M, A]],
   ['DELETE', '/api/admin/leave-requests/999999', [M, A]],
   ['GET', '/api/admin/overtime-approvals', [M, A]],

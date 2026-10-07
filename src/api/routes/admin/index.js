@@ -17,6 +17,7 @@ router.use(require('./dashboard'));
 router.use(require('./users'));
 router.use(require('./attendance'));
 router.use(require('./leave'));
+router.use(require('./leaveTypes'));
 router.use(require('./disputes'));
 router.use(require('./overtime'));
 router.use(require('./reports'));

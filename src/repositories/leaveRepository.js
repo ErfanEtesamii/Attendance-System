@@ -1,13 +1,35 @@
 const { getDb } = require('../db/connection');
+const leaveTypesRepository = require('./leaveTypesRepository');
 
-function createLeaveRequest({ userId, startDate, endDate, leaveType, reason }) {
+// S4-7b: هر درخواست به یک «نوع» (leave_types) وصل است. کانال‌های فعلی هنوز فقط 'leave' | 'mission' می‌فرستند؛ نگاشت:
+// leave → annual (مرخصی استحقاقی)، mission → mission (مأموریت). ستون قدیمی leave_type همیشه برابر kind نوع انتخاب‌شده نگه داشته می‌شود
+// (تا S4-7c که کدهای مصرف‌کننده به kind منتقل می‌شوند).
+const LEGACY_TYPE_CODE = { leave: 'annual', mission: 'mission' };
+
+// نوع را از leaveTypeId (اولویت) یا از مقدار قدیمی leaveType پیدا می‌کند؛ نامعتبر/ناموجود ⇒ Error (چیزی نوشته نمی‌شود)
+function resolveLeaveType({ leaveType, leaveTypeId } = {}) {
+  if (leaveTypeId !== undefined && leaveTypeId !== null) {
+    const byId = leaveTypesRepository.findById(leaveTypeId);
+    if (!byId) throw new Error(`نوع مرخصی با شناسه‌ی ${leaveTypeId} وجود ندارد.`);
+    return byId;
+  }
+  const legacy = leaveType || 'leave';
+  if (!Object.prototype.hasOwnProperty.call(LEGACY_TYPE_CODE, legacy)) throw new Error(`مقدار leaveType نامعتبر است: ${legacy}`);
+  const code = LEGACY_TYPE_CODE[legacy];
+  const byCode = leaveTypesRepository.findByCode(code);
+  if (!byCode) throw new Error(`نوع «${code}» در leave_types نیست؛ آن را از پنل (انواع مرخصی) بسازید.`);
+  return byCode;
+}
+
+function createLeaveRequest({ userId, startDate, endDate, leaveType, leaveTypeId, reason }) {
   const db = getDb();
+  const type = resolveLeaveType({ leaveType, leaveTypeId });
   const result = db
     .prepare(
-      `INSERT INTO leave_requests (user_id, start_date, end_date, leave_type, reason)
-       VALUES (?, ?, ?, ?, ?)`
+      `INSERT INTO leave_requests (user_id, start_date, end_date, leave_type, leave_type_id, reason)
+       VALUES (?, ?, ?, ?, ?, ?)`
     )
-    .run(userId, startDate, endDate, leaveType || 'leave', reason || null);
+    .run(userId, startDate, endDate, type.kind, type.id, reason || null);
   return findById(result.lastInsertRowid);
 }
 
@@ -77,8 +99,22 @@ function updateManual(id, fields, approverId) {
   const allowed = ['start_date', 'end_date', 'leave_type', 'status', 'reason'];
   const keys = Object.keys(fields).filter((k) => allowed.includes(k) && fields[k] !== undefined);
   if (!keys.length) return findById(id);
-  const sets = keys.map((k) => `${k} = ?`);
-  const values = keys.map((k) => fields[k]);
+  const existing = findById(id);
+  const sets = [];
+  const values = [];
+  keys.forEach((k) => {
+    if (k === 'leave_type') {
+      // همان kind قبلی دوباره فرستاده شد ⇒ نوع دقیق (مثلاً استعلاجی) نباید به annual برگردد
+      if (existing && fields.leave_type === existing.leave_type) return;
+      const type = resolveLeaveType({ leaveType: fields.leave_type });
+      sets.push('leave_type = ?', 'leave_type_id = ?');
+      values.push(type.kind, type.id);
+      return;
+    }
+    sets.push(`${k} = ?`);
+    values.push(fields[k]);
+  });
+  if (!sets.length) return findById(id);
   if (fields.status) {
     sets.push('approver_id = ?');
     values.push(approverId || null);
