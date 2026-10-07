@@ -55,8 +55,8 @@
   }
 
   AP.view('shifts', {
-    admin: true,
-    nav: { icon: 'clock', label: 'شیفت‌ها', group: 'مدیریت', admin: true },
+    perm: 'shifts.edit',
+    nav: { icon: 'clock', label: 'شیفت‌ها', group: 'مدیریت' },
     async render() {
       const shifts = await AP.api('/admin/shifts');
       const html = `
@@ -140,7 +140,7 @@
     },
   });
 
-  // کارت «شیفت کاری» برای پرونده‌ی کارمند (فقط ادمین کل). ورودی: کارمند (با shiftId) و فهرست شیفت‌ها.
+  // کارت «شیفت کاری» برای پرونده‌ی کارمند (فقط با مجوز shifts.edit؛ گیت در پروفایل). ورودی: کارمند (با shiftId) و فهرست شیفت‌ها.
   AP.shiftAssignCard = function shiftAssignCard(u, shifts) {
     const cur = u.shiftId == null ? '' : String(u.shiftId);
     return `<div class="card" id="shift-card" style="margin-top:14px"><form class="form" id="shift-assign-form">

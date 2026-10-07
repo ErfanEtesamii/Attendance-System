@@ -40,6 +40,7 @@
   // داشبورد
   // ======================================================
   AP.view('dashboard', {
+    perm: 'dashboard.read',
     nav: { icon: 'dashboard', label: 'داشبورد', group: 'نمای کلی' },
     async render() {
       const d = await AP.api('/admin/overview');
@@ -91,8 +92,8 @@
               <span>${fmt.num(x.count)} بار · ${fmt.min(x.minutes)}</span></div>`).join('')}</div>` : emptyBox('تأخیری ثبت نشده است. 🎉')}
           </div>
 
-          <div class="card"><h3>${AP.state.isAdmin ? 'آخرین رویدادها' : 'ساعت کاری'}</h3>
-            ${AP.state.isAdmin ? (d.recentActivity.length ? `<div class="kv">${d.recentActivity.map((r) => `
+          <div class="card"><h3>${AP.can('audit.read') ? 'آخرین رویدادها' : 'ساعت کاری'}</h3>
+            ${AP.can('audit.read') ? ((d.recentActivity || []).length ? `<div class="kv">${(d.recentActivity || []).map((r) => `
               <div class="kv-row"><span>${esc(r.userFullName || '—')} · ${esc(r.action)}</span><span class="muted">${esc(fmt.dateTime(r.occurred_at))}</span></div>`).join('')}</div>
               <div class="mt"><button class="btn ghost small" data-go="audit">مشاهده‌ی همه</button></div>` : emptyBox('رویدادی ثبت نشده است.'))
               : `<div class="kv"><div class="kv-row"><span>شروع کار</span><span class="ltr">${esc(d.settings.workDayStart)}</span></div>
@@ -115,6 +116,7 @@
   // تابلوی زنده
   // ======================================================
   AP.view('live', {
+    perm: 'dashboard.read',
     nav: { icon: 'live', label: 'تابلوی زنده امروز', group: 'نمای کلی' },
     async render(param) {
       const data = await AP.api('/admin/live');
@@ -171,9 +173,9 @@
                 <td class="num">${r.state === 'on_break' ? 'از ' + fmt.clock(r.openBreak.start_time) : r.breakMinutes ? fmt.min(r.breakMinutes) : '—'}</td>
                 <td><span class="ltr muted">${esc(rec && rec.check_in_ip ? rec.check_in_ip : '—')}</span></td>
                 <td><div class="row-actions">
-                  ${AP.state.isStaff ? (rec ? `<button class="btn ghost small" data-rec="${rec.id}">رکورد</button>`
+                  ${AP.can('records.edit') ? (rec ? `<button class="btn ghost small" data-rec="${rec.id}">رکورد</button>`
                     : `<button class="btn ghost small" data-new="${r.user.id}">ثبت دستی</button>`) : ''}
-                  ${r.user.telegramUserId ? `<button class="btn ghost small" data-msg="${r.user.id}" title="ارسال پیام تلگرام">${AP.icon('mail')}</button>` : ''}
+                  ${r.user.telegramUserId && AP.can('users.message') ? `<button class="btn ghost small" data-msg="${r.user.id}" title="ارسال پیام تلگرام">${AP.icon('mail')}</button>` : ''}
                 </div></td></tr>`;
             }).join('') : `<tr><td colspan="8">${emptyBox('موردی برای نمایش نیست.')}</td></tr>`;
           };
@@ -221,6 +223,7 @@
   AP.employeeFormFields = employeeFormFields;
 
   AP.view('employees', {
+    perm: 'users.read',
     nav: { icon: 'employees', label: 'کارمندان', group: 'کارمندان و تردد' },
     async render() {
       const users = await AP.loadUsers(true);
@@ -231,7 +234,7 @@
           <div><h2>کارمندان</h2><div class="sub">${fmt.num(users.length)} نفر ثبت‌شده</div></div>
           <div class="header-actions">
             <a class="btn ghost" href="/api/admin/users/export" download>${icon('download')} خروجی CSV</a>
-            ${AP.state.isAdmin ? `<button class="btn primary" id="add-emp">${icon('plus')} افزودن کارمند</button>` : ''}
+            ${AP.can('users.write') ? `<button class="btn primary" id="add-emp">${icon('plus')} افزودن کارمند</button>` : ''}
           </div>
         </div>
         <div class="filters">
@@ -304,7 +307,7 @@
   const profileUi = { days: 30, tab: 'attendance' };
 
   AP.view('profile', {
-    employee: true,
+    perm: 'users.details.read',
     navId: 'employees',
     async render(param) {
       if (!param) throw new Error('کارمندی انتخاب نشده است.');
@@ -313,7 +316,7 @@
       const [d, users, shiftList] = await Promise.all([
         AP.api(`/admin/users/${param}/details?from=${from}&to=${to}`),
         AP.loadUsers(),
-        AP.state.isAdmin ? AP.api('/admin/shifts').catch(() => []) : [], // S3-9e: فقط برای کارت انتساب شیفت
+        AP.can('shifts.edit', 'shifts.read') ? AP.api('/admin/shifts').catch(() => []) : [], // S3-9e: فقط برای کارت انتساب شیفت
       ]);
       const u = d.user;
       const s = d.stats;
@@ -330,11 +333,11 @@
 
       const tabs = [['attendance', 'تردد'], ['leave', 'مرخصی و مأموریت'], ['disputes', 'اعتراض‌ها'], ['info', 'اطلاعات و ویرایش']];
       if (d.team.length) tabs.push(['team', 'اعضای تیم']);
-      if (AP.state.isAdmin) tabs.push(['activity', 'سوابق و رویدادها']);
+      if (AP.can('audit.read')) tabs.push(['activity', 'سوابق و رویدادها']);
       if (!tabs.some((t) => t[0] === profileUi.tab)) profileUi.tab = 'attendance';
 
       const html = `
-        ${AP.state.isEmployee ? '' : '<div class="view-header"><button class="btn ghost small" data-go="employees">→ بازگشت به کارمندان</button></div>'}
+        ${AP.can('users.read') ? '<div class="view-header"><button class="btn ghost small" data-go="employees">→ بازگشت به کارمندان</button></div>' : ''}
 
         <div class="card profile-head">
           ${AP.avatar(u.fullName, 'lg')}
@@ -350,10 +353,10 @@
             <div class="muted mt" style="margin-top:10px;font-size:12.5px">سرپرست مستقیم: ${esc(u.managerName || '—')} · عضویت از ${esc(fmt.dateLong(u.createdAt))}</div>
           </div>
           <div class="header-actions">
-            ${u.telegramUserId && AP.state.isStaff ? `<button class="btn ghost" id="pf-msg">${icon('mail')} پیام تلگرام</button>` : ''}
-            ${AP.state.isStaff ? `<button class="btn ghost" id="pf-rec">${icon('plus')} ثبت دستی تردد</button><button class="btn ghost" id="pf-leave">${icon('leave')} ثبت مرخصی</button>` : ''}
-            ${AP.state.isAdmin ? `<button class="btn ghost" id="pf-revoke" title="باطل‌کردن همه‌ی نشست‌های ورود این کاربر در پنل">خروج از همه‌ی نشست‌ها</button>` : ''}
-            ${AP.state.isAdmin && u.id !== AP.state.me.id ? `<button class="btn danger" id="pf-del">حذف کارمند</button>` : ''}
+            ${u.telegramUserId && AP.can('users.message') ? `<button class="btn ghost" id="pf-msg">${icon('mail')} پیام تلگرام</button>` : ''}
+            ${AP.can('records.edit') ? `<button class="btn ghost" id="pf-rec">${icon('plus')} ثبت دستی تردد</button>` : ''}${AP.can('leave.edit') ? `<button class="btn ghost" id="pf-leave">${icon('leave')} ثبت مرخصی</button>` : ''}
+            ${AP.can('users.write') ? `<button class="btn ghost" id="pf-revoke" title="باطل‌کردن همه‌ی نشست‌های ورود این کاربر در پنل">خروج از همه‌ی نشست‌ها</button>` : ''}
+            ${AP.can('users.write') && u.id !== AP.state.me.id ? `<button class="btn danger" id="pf-del">حذف کارمند</button>` : ''}
           </div>
         </div>
 
@@ -397,7 +400,7 @@
             <div class="item"><div class="grow"><div class="title">${AP.badge(l.leave_type === 'mission' ? 'mission' : 'leave', AP.LEAVE_TYPE[l.leave_type])} ${AP.badge(l.status, AP.LEAVE_STATUS[l.status])}</div>
               <div class="meta">${esc(fmt.dateLong(l.start_date))} تا ${esc(fmt.dateLong(l.end_date))} · ثبت: ${esc(fmt.dateTime(l.created_at))}</div>
               ${l.reason ? `<p class="text">${esc(l.reason)}</p>` : ''}</div>
-              ${AP.state.isStaff ? `<button class="btn ghost small" data-leave="${l.id}">ویرایش</button>` : ''}</div>`).join('')}</div>`;
+              ${AP.can('leave.edit') ? `<button class="btn ghost small" data-leave="${l.id}">ویرایش</button>` : ''}</div>`).join('')}</div>`;
         },
         disputes() {
           if (!d.disputes.length) return `<div class="card">${emptyBox('اعتراضی ثبت نشده است.')}</div>`;
@@ -407,7 +410,7 @@
               <button class="btn ghost small" data-go-disputes>مدیریت اعتراض‌ها</button></div>`).join('')}</div>`;
         },
         info() {
-          if (!AP.state.isAdmin) {
+          if (!AP.can('users.write')) {
             return `<div class="card"><div class="kv">
               <div class="kv-row"><span>نام</span><span>${esc(u.fullName)}</span></div>
               <div class="kv-row"><span>کد پرسنلی</span><span>${esc(u.personnelCode || '—')}</span></div>
@@ -418,7 +421,7 @@
           const full = users.find((x) => x.id === u.id) || { ...u, managerId: u.managerId };
           return `<div class="card"><form class="form" id="pf-form">${employeeFormFields({ ...full, managerId: u.managerId, isActive: u.isActive }, users)}
             <div class="form-msg"></div>
-            <div class="modal-actions"><button class="btn primary" type="submit">ذخیره تغییرات</button></div></form></div>${AP.shiftAssignCard ? AP.shiftAssignCard(u, shiftList) : ''}`;
+            <div class="modal-actions"><button class="btn primary" type="submit">ذخیره تغییرات</button></div></form></div>${AP.shiftAssignCard && AP.can('shifts.edit') ? AP.shiftAssignCard(u, shiftList) : ''}`;
         },
         team() {
           return `<div class="list">${d.team.map((m) => `
@@ -427,10 +430,10 @@
               ${m.isActive ? AP.badge('green', 'فعال') : AP.badge('red', 'غیرفعال')}</a>`).join('')}</div>`;
         },
         activity() {
-          if (!d.audit.length) return `<div class="card">${emptyBox('رویدادی ثبت نشده است.')}</div>`;
+          if (!(d.audit || []).length) return `<div class="card">${emptyBox('رویدادی ثبت نشده است.')}</div>`;
           return `<div class="card flush"><div class="table-wrap"><table>
             <thead><tr><th>زمان</th><th>انجام‌دهنده</th><th>رویداد</th><th>IP</th><th>جزئیات</th></tr></thead><tbody>
-            ${d.audit.map((r) => `<tr><td class="num">${esc(fmt.dateTime(r.occurred_at))}</td><td>${esc(r.userFullName || '—')}</td>
+            ${(d.audit || []).map((r) => `<tr><td class="num">${esc(fmt.dateTime(r.occurred_at))}</td><td>${esc(r.userFullName || '—')}</td>
               <td>${esc(r.action)}</td><td><span class="ltr muted">${esc(r.ip_address || '—')}</span></td>
               <td class="wrap"><div class="details-box">${esc(r.details || '')}</div></td></tr>`).join('')}</tbody></table></div></div>`;
         },

@@ -21,7 +21,7 @@ describe('صفحه‌های تنظیمات و تعطیلات پنل (S3-9a/9b)',
   function loadViews(apiImpl, users = []) {
     const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     const AP = {
-      views: {}, nav: [], state: { isAdmin: true },
+      views: {}, nav: [], state: { perms: new Set(['settings.edit']) },
       $: () => null, $$: () => [], esc,
       fmt: { num: (n) => String(n), dateLong: (d) => d, dateTime: (d) => d, date: (d) => d, clock: (d) => d, min: (m) => `${m}m` },
       icon: () => '', badge: (cls, text) => `<span class="badge ${cls}">${esc(text)}</span>`,
@@ -37,7 +37,7 @@ describe('صفحه‌های تنظیمات و تعطیلات پنل (S3-9a/9b)',
     const calls = [];
     const AP = loadViews(async (p) => { calls.push(p); return { items, groups }; });
     const def = AP.views.settings;
-    assert.ok(def && def.admin, 'فقط ادمین');
+    assert.ok(def && def.perm === 'settings.edit', 'فقط با مجوز settings.edit (S4-4b؛ قبلاً admin:true)');
     const { html } = await def.render();
     assert.deepEqual(calls, ['/admin/settings/items'], 'فقط API متادیتا خوانده می‌شود (API قدیمی بدون تغییر)');
 
@@ -93,8 +93,8 @@ describe('صفحه‌های تنظیمات و تعطیلات پنل (S3-9a/9b)',
     ];
     const AP = loadViews(async () => rows, [{ department: 'مالی' }, { department: ' مالی ' }, { department: 'فنی' }]);
     const def = AP.views.holidays;
-    assert.ok(def && def.admin, 'فقط ادمین');
-    assert.ok(AP.nav.some((n) => n.id === 'holidays' && n.admin), 'آیتم ناوبری «تعطیلات»');
+    assert.ok(def && def.perm === 'settings.edit', 'فقط با مجوز settings.edit (S4-4b؛ قبلاً admin:true)');
+    assert.ok(AP.nav.some((n) => n.id === 'holidays'), 'آیتم ناوبری «تعطیلات»');
     const { html } = await def.render(); // پیش‌فرض: از امروز به بعد
     assert.doesNotMatch(html, /data-edit="1"/, 'تعطیلی گذشته در نمای «آینده» نیست');
     assert.match(html, /data-edit="2"/);

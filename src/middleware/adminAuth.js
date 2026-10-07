@@ -19,6 +19,7 @@ const { ROLES } = require('./permissions');
 // فقط خواندنِ داده‌های خود کارمند. (اسکوپ «فقط خودش» در scopedUserIds هر route اعمال می‌شود.)
 const EMPLOYEE_ALLOWED = [
   ['GET', /^\/admin\/me$/],
+  ['GET', /^\/admin\/me\/permissions$/], // S4-4b: مجوزهای خود کاربر (برای ساخت منوی پنل)
   ['GET', /^\/admin\/attendance$/],
   ['GET', /^\/admin\/attendance\/export$/],
   ['GET', /^\/admin\/attendance-records\/\d+$/],

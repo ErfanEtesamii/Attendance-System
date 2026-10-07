@@ -37,7 +37,7 @@
 
   const repUi = { from: null, to: null, department: '', sort: 'totalEffective', dir: -1 };
   AP.view('reports', {
-    employee: true,
+    perm: 'reports.read',
     nav: { icon: 'reports', label: 'گزارش‌های تحلیلی', group: 'گزارش‌ها' },
     async render() {
       repUi.from = repUi.from || fmt.daysAgo(29);
@@ -102,8 +102,8 @@
   // ارسال پیام گروهی
   // ======================================================
   AP.view('broadcast', {
-    admin: true,
-    nav: { icon: 'broadcast', label: 'ارسال پیام گروهی', group: 'مدیریت', admin: true },
+    perm: 'system.manage',
+    nav: { icon: 'broadcast', label: 'ارسال پیام گروهی', group: 'مدیریت' },
     async render() {
       const users = (await AP.loadUsers()).filter((u) => u.isActive);
       const depts = [...new Set(users.map((u) => u.department).filter(Boolean))];
@@ -214,8 +214,8 @@
   }
 
   AP.view('settings', {
-    admin: true,
-    nav: { icon: 'settings', label: 'تنظیمات', group: 'مدیریت', admin: true },
+    perm: 'settings.edit',
+    nav: { icon: 'settings', label: 'تنظیمات', group: 'مدیریت' },
     async render() {
       const data = await AP.api('/admin/settings/items');
       const items = data.items;
@@ -368,8 +368,8 @@
   const localToday = () => { const d = new Date(); const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
 
   AP.view('holidays', {
-    admin: true,
-    nav: { icon: 'attendance', label: 'تعطیلات', group: 'مدیریت', admin: true },
+    perm: 'settings.edit',
+    nav: { icon: 'attendance', label: 'تعطیلات', group: 'مدیریت' },
     async render() {
       const [all, users] = await Promise.all([AP.api('/admin/holidays'), AP.loadUsers()]);
       const today = localToday();
@@ -577,8 +577,8 @@
 
   const auUi = { userId: '', action: '', entityType: '', from: '', to: '', q: '', limit: 200 };
   AP.view('audit', {
-    admin: true,
-    nav: { icon: 'audit', label: 'گزارش رویدادها', group: 'مدیریت', admin: true },
+    perm: 'audit.read',
+    nav: { icon: 'audit', label: 'گزارش رویدادها', group: 'مدیریت' },
     async render() {
       const qs = new URLSearchParams(Object.entries(auUi).filter(([, v]) => v)).toString();
       const [rows, actions, users] = await Promise.all([AP.api(`/admin/audit-log?${qs}`), AP.api('/admin/audit-actions'), AP.loadUsers()]);
@@ -627,13 +627,13 @@
   const yn = (v, yes, no) => (v ? AP.badge('green', yes) : AP.badge('red', no));
 
   AP.view('system', {
-    admin: true,
-    nav: { icon: 'system', label: 'سیستم و پشتیبان', group: 'مدیریت', admin: true },
+    perm: 'system.read',
+    nav: { icon: 'system', label: 'سیستم و پشتیبان', group: 'مدیریت' },
     async render() {
       const s = await AP.api('/admin/system');
       const html = `
         <div class="view-header"><div><h2>سیستم و پشتیبان‌گیری</h2><div class="sub">وضعیت سرور، دیتابیس و اتصال‌ها</div></div>
-          <div class="header-actions"><button type="button" class="btn danger" id="sys-revoke-all">خروج همه‌ی کاربران</button><a class="btn primary" href="/api/admin/system/backup" download>${icon('download')} دانلود نسخه‌ی پشتیبان دیتابیس</a></div></div>
+          <div class="header-actions">${AP.can('system.manage') ? `<button type="button" class="btn danger" id="sys-revoke-all">خروج همه‌ی کاربران</button><a class="btn primary" href="/api/admin/system/backup" download>${icon('download')} دانلود نسخه‌ی پشتیبان دیتابیس</a>` : ''}</div></div>
         <div class="grid-2">
           <div class="card"><h3>سرور</h3><div class="kv">
             <div class="kv-row"><span>زمان سرور</span><span>${esc(fmt.dateTime(s.serverTime))}</span></div>
@@ -684,8 +684,8 @@
   const healthBadge = (ok, yes, no) => AP.badge(ok ? 'green' : 'red', ok ? yes : no);
 
   AP.view('status', {
-    admin: true,
-    nav: { icon: 'alert', label: 'وضعیت سیستم', group: 'مدیریت', admin: true },
+    perm: 'system.read',
+    nav: { icon: 'alert', label: 'وضعیت سیستم', group: 'مدیریت' },
     async render() {
       const s = await AP.api('/admin/system/status');
       const c = s.checks;

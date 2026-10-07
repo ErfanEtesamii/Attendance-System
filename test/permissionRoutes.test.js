@@ -18,7 +18,7 @@ const H = 'hr';
 
 // hr (S4-4a): فقط‌خواندنی همه؛ همین routeها برای hr مجازند و بقیه (همه‌ی نوشتن‌ها، تنظیمات، ممیزی، سیستم، شیفت، مشکوک) ۴۰۳ گارد مجوز می‌دهند.
 const HR_ALLOWED = new Set([
-  'GET /api/admin/me', 'GET /api/admin/dashboard', 'GET /api/admin/overview', 'GET /api/admin/live', 'GET /api/admin/nightly-review',
+  'GET /api/admin/me', 'GET /api/admin/me/permissions', 'GET /api/admin/dashboard', 'GET /api/admin/overview', 'GET /api/admin/live', 'GET /api/admin/nightly-review',
   'GET /api/admin/users', 'GET /api/admin/users/export', 'GET /api/admin/users/999999', 'GET /api/admin/users/999999/details',
   'GET /api/admin/attendance', 'GET /api/admin/attendance/export', 'GET /api/admin/attendance-records/999999',
   'GET /api/admin/disputes', 'GET /api/admin/leave-requests', 'GET /api/admin/reports/export', 'GET /api/admin/reports/summary',
@@ -51,6 +51,7 @@ const ROUTES = [
 // پس فقط ردشدن نقش‌های ممنوع بررسی می‌شود.
 const ROUTES_2 = [
   ['GET', '/api/admin/me', [E, M, A]],
+  ['GET', '/api/admin/me/permissions', [E, M, A]], // S4-4b
   ['GET', '/api/admin/dashboard', [M, A]],
   ['GET', '/api/admin/overview', [M, A]],
   ['GET', '/api/admin/live', [M, A]],

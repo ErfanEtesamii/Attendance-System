@@ -16,11 +16,18 @@ const dayService = require('../../../engine/dayService');
 const dayReview = require('../../../utils/dayReview');
 const { todayDateString, nowIso } = require('../../../utils/serverTime');
 const { DATE_RE, scopedUserIds, visibleUsers, shiftDate, userBrief, safeSummary, makeUserMap, classifyToday } = require('./common');
-const { requirePermission } = require('../../../middleware/permissions');
+const { requirePermission, permissionsFor } = require('../../../middleware/permissions');
 
 router.get('/admin/me', requirePermission('me.read'), (req, res) => {
   const u = req.adminUser;
   res.json({ id: u.id, fullName: u.full_name, role: u.role, department: u.department });
+});
+
+// S4-4b: فهرست مجوزهای کاربر جاری برای نمایش/پنهان‌کردن منو و دکمه‌ها در پنل.
+// فقط برای UI است؛ امنیت واقعی همچنان با requirePermission روی هر route اعمال می‌شود (پنهان‌بودن دکمه حفاظت نیست).
+router.get('/admin/me/permissions', requirePermission('me.read'), (req, res) => {
+  const role = req.adminUser.role;
+  res.json({ role, permissions: permissionsFor(role) });
 });
 
 // ---------- داشبورد خلاصه ----------

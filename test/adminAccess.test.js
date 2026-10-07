@@ -53,6 +53,7 @@ describe('لیست سفید کارمند (default-deny)', () => {
   test('هر ورودی لیست سفید برای کارمند عبور می‌کند (با query و اسلش پایانی)', () => {
     const samples = {
       '/api/admin/me': 'GET',
+      '/api/admin/me/permissions': 'GET', // S4-4b
       '/api/admin/attendance?from=2026-01-01': 'GET',
       '/api/admin/attendance/export': 'GET',
       '/api/admin/attendance-records/12': 'GET',
@@ -67,7 +68,7 @@ describe('لیست سفید کارمند (default-deny)', () => {
       assert.equal(call(employee, method, url).nextCalled, true, `${method} ${url}`);
     }
     // هر الگوی لیست سفید حداقل در یکی از نمونه‌ها پوشش داده شده (اگر کسی ورودی جدید اضافه کند این تست یادآوری می‌کند)
-    assert.equal(EMPLOYEE_ALLOWED.length, 9, 'لیست سفید تغییر کرده؛ ماتریس تست را به‌روز کنید');
+    assert.equal(EMPLOYEE_ALLOWED.length, 10, 'لیست سفید تغییر کرده؛ ماتریس تست را به‌روز کنید');
   });
 
   test('هر چیزی خارج از لیست سفید برای کارمند ۴۰۳ است (از جمله route های آینده)', () => {
@@ -102,6 +103,8 @@ describe('لیست سفید کارمند (default-deny)', () => {
   test('دور زدن لیست سفید با مسیر/متد/query ساختگی ممکن نیست', () => {
     const tricks = [
       ['POST', '/api/admin/me'], // متد اشتباه
+      ['POST', '/api/admin/me/permissions'], // متد اشتباه (S4-4b)
+      ['GET', '/api/admin/me/permissions/extra'],
       ['GET', '/api/admin/users?next=/admin/me'], // الگو داخل query
       ['GET', '/api/admin/me/../users'],
       ['GET', '/api/admin/attendance-records/1/../../users'],

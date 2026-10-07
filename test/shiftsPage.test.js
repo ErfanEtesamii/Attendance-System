@@ -14,7 +14,7 @@ function loadShiftViews(apiImpl, { reasonAnswer = 'دلیل تست' } = {}) {
   const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   const toasts = [];
   const AP = {
-    views: {}, nav: [], state: { isAdmin: true },
+    views: {}, nav: [], state: { perms: new Set(['shifts.edit']) },
     $: (...a) => AP.$impl(...a), $impl: () => null, $$: () => [], esc,
     fmt: { num: (n) => String(n) },
     icon: () => '', badge: (cls, text) => `<span class="badge ${cls}">${esc(text)}</span>`, avatar: (n) => `<i>${esc(n)}</i>`,
@@ -36,8 +36,9 @@ describe('صفحه‌ی شیفت‌ها و انتساب (S3-9e)', () => {
     const calls = [];
     const { AP } = loadShiftViews(async (p) => { calls.push(p); return [shift(), shift({ id: 2, name: 'شب', startTime: '22:00', endTime: '06:00', overnight: true, userCount: 0, workDays: [4, 5], maxLunchMinutes: 0, fixedLunchDeductMinutes: 30 })]; });
     const def = AP.views.shifts;
-    assert.ok(def && def.admin, 'فقط ادمین');
-    assert.ok(AP.nav.some((n) => n.id === 'shifts' && n.admin));
+    assert.ok(def && def.perm === 'shifts.edit', 'فقط با مجوز shifts.edit (S4-4b؛ قبلاً admin:true)');
+    assert.ok(AP.nav.some((n) => n.id === 'shifts'));
+    assert.equal(def.admin, undefined);
     const { html } = await def.render();
     assert.deepEqual(calls, ['/admin/shifts']);
     assert.match(html, /08:00 – 16:30/);

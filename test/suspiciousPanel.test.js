@@ -62,7 +62,9 @@ describe('موارد مشکوک در پنل و مرور شبانه (S2-5b)', () 
   async function renderPanel(items, status = 'open') {
     const AP = {
       views: {},
-      state: { isStaff: true, isAdmin: false, isEmployee: false },
+      // سرپرست: مجوزهای واقعی نقش (S4-4b)
+      state: { perms: new Set(require('../src/middleware/permissions').permissionsFor('manager')) },
+      can: (...p) => p.every((x) => AP.state.perms.has(x)),
       $: () => null,
       $$: () => [],
       esc: (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'),
@@ -77,8 +79,7 @@ describe('موارد مشکوک در پنل و مرور شبانه (S2-5b)', () 
     vm.runInNewContext(src, sandbox);
     const def = AP.views.suspicious;
     assert.ok(def, 'view با شناسه‌ی suspicious ثبت شده است');
-    assert.equal(def.employee, undefined, 'کارمند به این صفحه راه ندارد');
-    assert.equal(def.admin, undefined, 'سرپرست هم باید ببیند (فقط‌ادمین نیست)');
+    assert.equal(def.perm, 'suspicious.read', 'با مجوز suspicious.read: سرپرست و ادمین می‌بینند، کارمند و hr نه');
     return def.render();
   }
 

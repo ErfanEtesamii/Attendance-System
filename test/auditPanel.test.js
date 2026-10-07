@@ -11,7 +11,7 @@ describe('صفحه‌ی گزارش رویدادها (S4-2b)', () => {
     const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     const calls = [];
     const AP = {
-      views: {}, nav: [], state: { isAdmin: true },
+      views: {}, nav: [], state: { perms: new Set(['audit.read']) },
       $: () => null, $$: () => [], esc,
       fmt: { num: (n) => String(n), dateLong: (d) => d, dateTime: (d) => d, date: (d) => d, clock: (d) => d, min: (m) => `${m}m` },
       icon: () => '', badge: (cls, text) => `<span class="badge ${cls}">${esc(text)}</span>`,

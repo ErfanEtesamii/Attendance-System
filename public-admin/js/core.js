@@ -5,7 +5,8 @@
   'use strict';
 
   const AP = (window.AP = {
-    state: { me: null, isAdmin: false, isStaff: false, isEmployee: false, users: null, counts: { leave: 0, disputes: 0 } },
+    // perms: مجوزهای کاربر جاری (S4-4b؛ از /admin/me/permissions). فقط برای نمایش UI است؛ سرور هر درخواست را جداگانه چک می‌کند.
+    state: { me: null, perms: new Set(), users: null, counts: { leave: 0, disputes: 0 } },
     views: {},
     nav: [],
     onLeave: null,
@@ -15,6 +16,31 @@
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
   AP.$ = $;
   AP.$$ = $$;
+
+  // ---------- مجوزها (S4-4b) ----------
+  // AP.can('records.edit') ⇒ true اگر کاربر جاری آن مجوز را دارد؛ چند مجوز ⇒ همه‌ی آن‌ها لازم است.
+  // default-deny: بدون آرگومان، آرگومان نامعتبر یا مجوزهای بارگذاری‌نشده ⇒ false.
+  // این فقط تصمیم نمایش است (منو/دکمه)؛ امنیت واقعی سمت سرور است و پنهان‌بودن یک دکمه جای گارد route را نمی‌گیرد.
+  AP.can = function can(...required) {
+    if (!required.length) return false;
+    const perms = AP.state.perms;
+    return required.every((p) => typeof p === 'string' && perms.has(p));
+  };
+  // کاربری که فهرست کاربران را نمی‌بیند (کارمند): فقط پروفایل/داده‌ی خودش
+  AP.selfOnly = () => !AP.can('users.read');
+  // هر صفحه باید perm داشته باشد؛ صفحه‌ی بدون perm برای هیچ‌کس نمایش داده نمی‌شود (default-deny).
+  AP.viewAllowed = (def) => !!(def && def.perm && AP.can(def.perm));
+  AP.loadPermissions = async function loadPermissions() {
+    try {
+      const r = await AP.api('/admin/me/permissions');
+      AP.state.perms = new Set(Array.isArray(r.permissions) ? r.permissions.filter((p) => typeof p === 'string') : []);
+      return true;
+    } catch (err) {
+      AP.state.perms = new Set(); // خطا ⇒ هیچ مجوزی فرض نمی‌شود
+      AP.toast('بارگذاری مجوزها ناموفق بود؛ صفحه را تازه کنید.', true);
+      return false;
+    }
+  };
 
   // ---------- امنیت خروجی HTML ----------
   AP.esc = function esc(v) {
@@ -135,7 +161,7 @@
     },
   });
 
-  AP.ROLE = { employee: 'کارمند', manager: 'سرپرست', admin: 'ادمین کل' };
+  AP.ROLE = { employee: 'کارمند', manager: 'سرپرست', admin: 'ادمین کل', hr: 'منابع انسانی' };
   AP.STATE_LABEL = {
     present: 'حاضر', on_break: 'در استراحت', checked_out: 'خارج شده', absent: 'غایب / نیامده',
     leave: 'مرخصی', holiday: 'تعطیل', incomplete: 'ناقص',
@@ -265,8 +291,8 @@
   };
 
   AP.loadUsers = async function loadUsers(force) {
-    if (AP.state.isEmployee) {
-      // کارمند به لیست کارمندان دسترسی ندارد؛ فقط خودش
+    if (AP.selfOnly()) {
+      // کاربر بدون users.read (کارمند) به لیست کارمندان دسترسی ندارد؛ فقط خودش
       const m = AP.state.me;
       AP.state.users = [{ id: m.id, fullName: m.fullName, personnelCode: null, department: m.department, role: m.role, isActive: true, managerId: null, telegramUserId: null }];
       return AP.state.users;
@@ -384,29 +410,38 @@
     return { id: m[0] || 'dashboard', param: m[1] || null };
   }
 
-  // صفحه‌ی اول هر نقش: کارمند → پروفایل خودش، سرپرست/ادمین → داشبورد
+  // صفحه‌ی اول: داشبورد (اگر مجوزش را دارد) ← پروفایل خودش ← اولین صفحه‌ی مجاز ← null (هیچ صفحه‌ای مجاز نیست)
   AP.homeRoute = function homeRoute() {
-    return AP.state.isEmployee ? { id: 'profile', param: AP.state.me.id } : { id: 'dashboard', param: null };
+    if (AP.viewAllowed(AP.views.dashboard)) return { id: 'dashboard', param: null };
+    if (AP.viewAllowed(AP.views.profile)) return { id: 'profile', param: AP.state.me.id };
+    const first = AP.nav.find((n) => AP.viewAllowed(AP.views[n.id]));
+    return first ? { id: first.id, param: null } : null;
   };
 
   async function route() {
     if (!AP.state.me) return;
     let { id, param } = parseHash();
     let def = AP.views[id];
-    // کارمند فقط به صفحه‌هایی که صریحاً employee:true دارند می‌رسد (امن‌به‌صورت‌پیش‌فرض)
-    if (!def || (def.admin && !AP.state.isAdmin) || (AP.state.isEmployee && !def.employee)) {
+    // صفحه فقط با مجوزِ تعریف‌شده در perm باز می‌شود (امن‌به‌صورت‌پیش‌فرض)؛ در غیر این صورت صفحه‌ی اول
+    if (!AP.viewAllowed(def)) {
       const home = AP.homeRoute();
+      if (!home) {
+        AP.currentRoute = { id: null, param: null };
+        $$('.nav-item').forEach((b) => b.classList.remove('active'));
+        $('#page').innerHTML = `<div class="card"><div class="empty">${AP.icon('alert')}برای حساب شما هیچ بخشی در پنل فعال نیست. با ادمین تماس بگیرید.</div></div>`;
+        return;
+      }
       id = home.id;
       param = home.param;
       def = AP.views[id];
     }
-    if (AP.state.isEmployee && id === 'profile') param = AP.state.me.id; // فقط پروفایل خودش
+    if (AP.selfOnly() && id === 'profile') param = AP.state.me.id; // بدون users.read فقط پروفایل خودش
     if (AP.onLeave) { try { AP.onLeave(); } catch (_) {} AP.onLeave = null; }
     AP.currentRoute = { id, param };
     const token = ++routeToken;
 
     // وضعیت فعال ناوبری
-    const navKey = AP.state.isEmployee && id === 'profile' ? 'profile' : (def.navId || id);
+    const navKey = AP.selfOnly() && id === 'profile' ? 'profile' : (def.navId || id);
     $$('.nav-item').forEach((b) => b.classList.toggle('active', b.dataset.view === navKey));
     closeSidebar();
 
@@ -436,13 +471,14 @@
 
   AP.refreshCounts = async function refreshCounts() {
     try {
+      // فقط شمارنده‌هایی که مجوزشان را دارد؛ بقیه صفر (درخواستِ بی‌مجوز ۴۰۳ می‌گیرد)
       const [leave, disputes] = await Promise.all([
-        AP.api('/admin/leave-requests?status=pending'),
-        AP.api('/admin/disputes?status=open'),
+        AP.can('leave.read') ? AP.api('/admin/leave-requests?status=pending') : [],
+        AP.can('disputes.read') ? AP.api('/admin/disputes?status=open') : [],
       ]);
-      // موارد مشکوک فقط برای سرپرست/ادمین (کارمند ۴۰۳ می‌گیرد)؛ شکستش شمارنده‌های دیگر را خراب نمی‌کند
+      // شکست موارد مشکوک شمارنده‌های دیگر را خراب نمی‌کند
       let suspicious = [];
-      if (AP.state.isStaff) {
+      if (AP.can('suspicious.read')) {
         try { suspicious = await AP.api('/admin/suspicious?status=open'); } catch (_) { suspicious = []; }
       }
       AP.state.counts = { leave: leave.length, disputes: disputes.length, nightly: leave.length + disputes.length, suspicious: suspicious.length };
@@ -457,10 +493,11 @@
 
   function buildNav() {
     const groups = {};
-    const items = AP.state.isEmployee
-      ? [{ id: 'profile', icon: 'employees', label: 'پروفایل من', group: 'پنل من', param: AP.state.me.id },
-         ...AP.nav.filter((n) => AP.views[n.id] && AP.views[n.id].employee)]
-      : AP.nav.filter((n) => !n.admin || AP.state.isAdmin);
+    // فقط صفحه‌هایی که مجوزشان را دارد؛ کاربر بدون users.read (کارمند) به‌جای فهرست کارمندان «پروفایل من» می‌بیند
+    const items = AP.nav.filter((n) => AP.viewAllowed(AP.views[n.id]));
+    if (AP.selfOnly() && AP.viewAllowed(AP.views.profile)) {
+      items.unshift({ id: 'profile', icon: 'employees', label: 'پروفایل من', group: 'پنل من', param: AP.state.me.id });
+    }
     items.forEach((n) => { (groups[n.group] = groups[n.group] || []).push(n); });
     $('#side-nav').innerHTML = Object.keys(groups)
       .map((g) => `<div class="nav-group">${esc(g)}</div>${groups[g]
@@ -500,11 +537,10 @@
     $('#login-screen').classList.add('hidden');
     $('#app-shell').classList.remove('hidden');
     const me = AP.state.me;
-    AP.state.isAdmin = me.role === 'admin';
-    AP.state.isStaff = me.role === 'admin' || me.role === 'manager';
-    AP.state.isEmployee = me.role === 'employee';
-    $('.brand-sub').textContent = AP.state.isAdmin ? 'پنل مدیریتی' : AP.state.isStaff ? 'پنل سرپرست' : 'پنل کارمند';
-    if (AP.state.isEmployee) $('.search-box').classList.add('hidden'); // کارمند کس دیگری را جستجو نمی‌کند
+    await AP.loadPermissions(); // قبل از ساخت منو؛ بدون آن همه‌چیز بسته می‌ماند
+    // فقط برچسب نمایشی زیر لوگو (کنترل دسترسی نیست)
+    $('.brand-sub').textContent = { admin: 'پنل مدیریتی', manager: 'پنل سرپرست', hr: 'پنل منابع انسانی', employee: 'پنل کارمند' }[me.role] || 'پنل';
+    if (AP.selfOnly()) $('.search-box').classList.add('hidden'); // بدون users.read کس دیگری را جستجو نمی‌کند
     $('#me-avatar').textContent = AP.initials(me.fullName);
     $('#me-name').textContent = me.fullName;
     $('#me-role').textContent = AP.ROLE[me.role] || me.role;
@@ -524,7 +560,7 @@
     AP.refreshCounts();
     // ?go=<صفحه> از دکمه‌های بات (مثلاً دکمه‌ی پیام شبانه → مرور شبانه)
     const go = AP.launch && AP.launch.go;
-    if (go && AP.views[go] && !(AP.views[go].admin && !AP.state.isAdmin) && !(AP.state.isEmployee && !AP.views[go].employee)) {
+    if (go && AP.viewAllowed(AP.views[go])) {
       history.replaceState(null, '', `#/${go}`);
     }
     await route();
