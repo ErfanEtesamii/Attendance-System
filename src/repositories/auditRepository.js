@@ -69,12 +69,20 @@ function listRecent(limit = 200, { includeArchive = false } = {}) {
 }
 
 // جستجوی چندفیلتری برای پنل وب (فقط خواندنی - لاگ همچنان غیرقابل‌ویرایش است)
-function search({ userId, action, from, to, q, limit = 200, includeArchive = false } = {}) {
+// S4-2a: entityType/entityId = فیلتر روی details استاندارد logChange (S4-1a). ردیف‌های قدیمی (details متنی/غیر JSON یا بدون
+// entityType) هرگز با این فیلترها نمی‌خوانند و خطا هم نمی‌دهند (json_extract پشت json_valid در CASE تا SQLite روی متن خراب نیفتد).
+const ENTITY_FIELD_SQL = (field) => `CASE WHEN json_valid(details) THEN json_extract(details, '$.${field}') END`;
+
+function search({ userId, action, entityType, entityId, from, to, q, limit = 200, includeArchive = false } = {}) {
   const db = getDb();
   const where = [];
   const params = [];
   if (userId) { where.push('user_id = ?'); params.push(userId); }
   if (action) { where.push('action = ?'); params.push(action); }
+  if (entityType) { where.push(`${ENTITY_FIELD_SQL('entityType')} = ?`); params.push(String(entityType)); }
+  if (entityId !== undefined && entityId !== null && entityId !== '') {
+    where.push(`CAST(${ENTITY_FIELD_SQL('entityId')} AS TEXT) = ?`); params.push(String(entityId));
+  }
   if (from) { where.push('date(occurred_at) >= ?'); params.push(from); }
   if (to) { where.push('date(occurred_at) <= ?'); params.push(to); }
   if (q) {

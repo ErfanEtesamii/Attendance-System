@@ -4,6 +4,12 @@
 
 ## [Unreleased] — بخش ۴ (ممیزی)
 
+### S4-2a — API خواندن audit با فیلتر و CSV
+- `GET /admin/audit-log` و `GET /admin/audit-log/export` فیلترهای مشترک و اختیاری دارند (با AND ترکیب می‌شوند): `userId`، `action`، **`entityType`**، **`entityId`** (جدید؛ روی `details` استاندارد `logChange`)، `from`/`to` (تاریخ میلادی `YYYY-MM-DD`، شامل دو سر)، `q`، `limit`، `include_archive`. **CSV قبلاً فقط `userId` را می‌فهمید؛ اکنون همه‌ی فیلترها** (ستون‌ها، ترتیب «جدیدترین اول» و سقف‌های `limit` مثل قبل).
+- ورودی قدیمی ساده بدون تغییر کار می‌کند (بدون فیلتر ⇒ همه). ⚠️ ورودی **نامعتبر** حالا ۴۰۰ فارسی می‌دهد به‌جای نتیجه‌ی خالی بی‌صدا: `userId` غیرعددی، `from`/`to` غیر `YYYY-MM-DD` یا `from>to`، پارامتر تکراری (`?action=a&action=b`).
+- ردیف‌های قدیمی (details متنی یا بدون `entityType`) با فیلتر موجودیت نمی‌خوانند و خطا هم نمی‌دهند (`json_valid` پشت `CASE`)؛ `auditRepository.search` دو پارامتر `entityType`/`entityId` گرفت. دسترسی همان قبلی (فقط ادمین کل). بدون migration.
+- تست: `test/auditApi.test.js` (۶ تست: ساده/قدیمی، موجودیت، ترکیب و بازه، ۴۰۰ها، CSV، آرشیو و دسترسی).
+
 ### S4-1c — مهاجرت routeهای رکورد تردد، استراحت، مرخصی، تعطیلات و اعتراض به `logChange`
 - `attendance-records` (ایجاد/ویرایش/حذف)، `break-records` و `…/breaks` (ایجاد/ویرایش/حذف)، `leave-requests` (تأیید/رد، ایجاد/ویرایش/حذف ادمین)، `holidays` (افزودن/ویرایش/حذف/ورود گروهی) و `disputes` (بستن/بازگشایی) به‌جای `audit()`/`logEvent` از `auditChange` → `logChange` استفاده می‌کنند. نام `action`ها **بدون تغییر** است.
 - `details` اکنون `changes: { فیلد: { before, after } }` (فقط فیلدهای تغییرکرده؛ ایجاد ⇒ `before=null`، حذف ⇒ `after=null`) دارد. **یادداشت تصمیم** (تأیید/رد مرخصی، بستن/بازگشایی اعتراض) در `reason` می‌نشیند. `recordId`/`breakId`/`requestId`/`disputeId`/`targetUserId` در `meta` می‌مانند تا «تاریخچه‌ی رکورد» (`"recordId":N`) و «پرونده‌ی کارمند» (`"targetUserId":N`) مثل قبل کار کنند.
