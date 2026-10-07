@@ -15,6 +15,7 @@ const { verifyInitData } = require('../../utils/telegramInitData');
 const { createSessionToken } = require('../../utils/session');
 const { consumeCode, consumeLinkToken } = require('../../utils/panelLoginCodes');
 const { requireAdminAuth } = require('../../middleware/adminAuth');
+const { ROLES } = require('../../middleware/permissions');
 const settingsRepository = require('../../repositories/settingsRepository');
 const { buildSessionCookie, buildClearCookie } = require('../../utils/sessionCookie');
 const { adminLoginLimiter, panelAutoLoginLimiter } = require('../../middleware/rateLimiter');
@@ -45,7 +46,7 @@ function finishLogin(req, res, user, source) {
 }
 
 function usableUser(user) {
-  return !!user && !!user.is_active && ['employee', 'manager', 'admin'].includes(user.role);
+  return !!user && !!user.is_active && ROLES.includes(user.role);
 }
 
 // ورود با دکمه‌ی «پنل» داخل بات (Web App)

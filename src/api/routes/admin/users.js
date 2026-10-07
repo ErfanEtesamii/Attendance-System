@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { requirePermission } = require('../../../middleware/permissions');
+const { requirePermission, ROLES } = require('../../../middleware/permissions');
 const usersRepository = require('../../../repositories/usersRepository');
 const attendanceRepository = require('../../../repositories/attendanceRepository');
 const leaveRepository = require('../../../repositories/leaveRepository');
@@ -78,7 +78,7 @@ router.post('/admin/users', requirePermission('users.write'), (req, res) => {
     fullName: fullName.trim(),
     personnelCode,
     department,
-    role: ['employee', 'manager', 'admin'].includes(role) ? role : 'employee',
+    role: ROLES.includes(role) ? role : 'employee',
     managerId: managerId || null,
   });
 
@@ -186,7 +186,7 @@ router.patch('/admin/users/:id', requirePermission('users.write'), (req, res) =>
   if (fullName !== undefined) fields.full_name = fullName;
   if (personnelCode !== undefined) fields.personnel_code = personnelCode;
   if (department !== undefined) fields.department = department;
-  if (role !== undefined && ['employee', 'manager', 'admin'].includes(role)) fields.role = role;
+  if (role !== undefined && ROLES.includes(role)) fields.role = role;
   if (managerId !== undefined) fields.manager_id = managerId || null;
   if (isActive !== undefined) fields.is_active = isActive ? 1 : 0;
   if (telegramUserId !== undefined) fields.telegram_user_id = telegramUserId || null;

@@ -9,7 +9,7 @@
 //   - اسکوپ سرپرست (فقط تیم خودش) مجوز نیست؛ همچنان با scopedUserIds / canAccessUser در خود route اعمال می‌شود.
 //   - لیست سفید کارمند (EMPLOYEE_ALLOWED در adminAuth.js) لایه‌ی بیرونی است و بدون تغییر می‌ماند؛
 //     مجوزهای کارمند اینجا فقط همان خواندنی‌های «خود کارمند» هستند.
-//   - اضافه‌شدن نقش جدید (مثلاً hr در S4-4a) فقط یک کلید تازه در ROLE_PERMISSIONS است.
+//   - اضافه‌شدن نقش جدید (مثل hr در S4-4a) فقط یک کلید تازه در ROLE_PERMISSIONS است (+ migration برای CHECK جدول users).
 
 // فهرست کامل مجوزها (نام‌گذاری: «حوزه.عمل»).
 const PERMISSIONS = Object.freeze([
@@ -66,11 +66,23 @@ const MANAGER_PERMISSIONS = [
   'settings.read',
 ];
 
+// منابع انسانی (S4-4a): فقط‌خواندنی روی همه‌ی کاربران (بدون اسکوپ تیم؛ scopedUserIds برای hr مثل admin همه را برمی‌گرداند).
+// هیچ مجوز نوشتن/تأیید/تنظیمات/ممیزی/سیستم ندارد. «مانده»ی مرخصی: هنوز endpoint جدایی ندارد (leave.read فعلاً آن را می‌پوشاند).
+const HR_PERMISSIONS = [
+  ...EMPLOYEE_PERMISSIONS,
+  'dashboard.read',
+  'users.read',
+];
+
 const ROLE_PERMISSIONS = Object.freeze({
   employee: Object.freeze(new Set(EMPLOYEE_PERMISSIONS)),
   manager: Object.freeze(new Set(MANAGER_PERMISSIONS)),
   admin: Object.freeze(new Set(PERMISSIONS)),
+  hr: Object.freeze(new Set(HR_PERMISSIONS)),
 });
+
+// فهرست نقش‌های معتبر (منبع واحد برای اعتبارسنجی نقش در route ها و middleware)
+const ROLES = Object.freeze(Object.keys(ROLE_PERMISSIONS));
 
 const PERMISSION_SET = new Set(PERMISSIONS);
 
@@ -103,4 +115,4 @@ function requirePermission(...required) {
   };
 }
 
-module.exports = { PERMISSIONS, ROLE_PERMISSIONS, hasPermission, permissionsFor, requirePermission };
+module.exports = { PERMISSIONS, ROLES, ROLE_PERMISSIONS, hasPermission, permissionsFor, requirePermission };

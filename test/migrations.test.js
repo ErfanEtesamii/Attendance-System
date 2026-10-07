@@ -25,6 +25,10 @@ function newDb() {
   return db;
 }
 
+function columnNames(db, table) {
+  return db.pragma(`table_info(${table})`).map((c) => c.name);
+}
+
 function userTables(db) {
   return db
     .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name != 'schema_migrations' ORDER BY name")
@@ -92,19 +96,19 @@ describe('migration runner — پایه', () => {
   test('دیتابیس خالی: baseline اعمال و ثبت می‌شود، اجرای دوم هیچ کاری نمی‌کند', () => {
     const db = newDb();
     const r1 = migrate(db, {});
-    assert.deepEqual(r1.applied, ['001_baseline', '002_session_version', '003_rate_limits', '004_monitoring', '005_attendance_devices', '006_suspicious_events', '007_audit_archive', '008_overtime_approvals', '009_work_shifts', '010_holiday_scope']);
+    assert.deepEqual(r1.applied, ['001_baseline', '002_session_version', '003_rate_limits', '004_monitoring', '005_attendance_devices', '006_suspicious_events', '007_audit_archive', '008_overtime_approvals', '009_work_shifts', '010_holiday_scope', '011_hr_role']);
     assert.equal(r1.backupPath, null, 'روی دیتابیس خالی بک‌آپ لازم نیست');
     for (const t of ['users', 'attendance_records', 'break_records', 'leave_requests', 'holidays', 'record_disputes', 'settings', 'audit_log']) {
       assert.ok(userTables(db).includes(t), `جدول ${t} باید ساخته شود`);
     }
     const row = db.prepare('SELECT * FROM schema_migrations').all();
-    assert.equal(row.length, 10);
+    assert.equal(row.length, 11);
     assert.equal(row[0].name, '001_baseline');
     assert.match(row[0].checksum, /^[0-9a-f]{64}$/);
 
     const r2 = migrate(db, {});
     assert.deepEqual(r2.applied, []);
-    assert.equal(db.prepare('SELECT COUNT(*) n FROM schema_migrations').get().n, 10);
+    assert.equal(db.prepare('SELECT COUNT(*) n FROM schema_migrations').get().n, 11);
   });
 
   test('دیتابیس قدیمی با داده: adopt می‌شود، هیچ داده‌ای تغییر نمی‌کند، بک‌آپ سالم گرفته می‌شود', () => {
@@ -114,7 +118,7 @@ describe('migration runner — پایه', () => {
 
     const logs = [];
     const res = migrate(db, { backupDir, log: (m) => logs.push(m) });
-    assert.deepEqual(res.applied, ['001_baseline', '002_session_version', '003_rate_limits', '004_monitoring', '005_attendance_devices', '006_suspicious_events', '007_audit_archive', '008_overtime_approvals', '009_work_shifts', '010_holiday_scope']);
+    assert.deepEqual(res.applied, ['001_baseline', '002_session_version', '003_rate_limits', '004_monitoring', '005_attendance_devices', '006_suspicious_events', '007_audit_archive', '008_overtime_approvals', '009_work_shifts', '010_holiday_scope', '011_hr_role']);
     assert.deepEqual(snapshot(db), before, 'محتوای همه جدول‌ها باید دقیقاً یکسان بماند');
 
     // بک‌آپ: فایل معتبر با همان داده‌ها
@@ -384,5 +388,35 @@ describe('migration 010 — holiday scope/kind (S3-7b)', () => {
     assert.throws(() => add('2026-11-02', 'full', null, 'department', ''), /CHECK/);   // دپارتمانی بدون دپارتمان
     assert.throws(() => add('2026-11-02', 'full', null, 'all', 'فنی'), /CHECK/);       // همه‌ی کارکنان با دپارتمان
     assert.throws(() => add('2026-11-02', 'weekly', null, 'all', ''), /CHECK/);
+  });
+});
+
+describe('migration 011 — نقش hr (S4-4a)', () => {
+  test('روی دیتابیس قدیمی با داده: کاربران/idها/FKها/ایندکس حفظ می‌شود و شمارنده‌ی id عقب نمی‌رود', () => {
+    const db = makeLegacyDb();
+    // makeLegacyDb سه کاربر (admin/manager/employee) و رکوردهای وابسته دارد؛ یک کاربر چهارم می‌سازیم و حذف می‌کنیم تا شمارنده‌ی id جلوتر از ردیف‌ها باشد
+    db.exec("INSERT INTO users (telegram_user_id, full_name, personnel_code, role) VALUES ('1004','موقت','P4','employee')");
+    db.exec("DELETE FROM users WHERE id = 4");
+    const cols = 'id, telegram_user_id, full_name, personnel_code, department, role, manager_id, is_active, created_at';
+    const before = db.prepare(`SELECT ${cols} FROM users ORDER BY id`).all();
+    migrate(db, {});
+    assert.deepEqual(db.prepare(`SELECT ${cols} FROM users ORDER BY id`).all(), before);
+    assert.equal(db.prepare('SELECT COUNT(*) n FROM attendance_records WHERE user_id = 3').get().n, 2);
+    assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE type='index' AND name='idx_users_shift'").get(), 'ایندکس idx_users_shift باید بماند');
+    assert.ok(columnNames(db, 'users').includes('session_version') && columnNames(db, 'users').includes('shift_id'));
+    const ins = db.prepare("INSERT INTO users (full_name, role) VALUES ('جدید', 'hr')").run();
+    assert.ok(ins.lastInsertRowid >= 5, `id جدید ${ins.lastInsertRowid} نباید از id حذف‌شده استفاده مجدد کند`);
+    assert.deepEqual(db.pragma('foreign_key_check'), []);
+    assert.equal(db.pragma('foreign_keys', { simple: true }), 1);
+  });
+
+  test('CHECK نقش: چهار نقش معتبر پذیرفته و مقدار ناشناخته رد می‌شود', () => {
+    const db = newDb();
+    migrate(db, {});
+    for (const role of ['employee', 'manager', 'admin', 'hr']) {
+      db.prepare('INSERT INTO users (full_name, role) VALUES (?, ?)').run(`u-${role}`, role);
+    }
+    assert.throws(() => db.prepare("INSERT INTO users (full_name, role) VALUES ('x', 'boss')").run(), /CHECK/);
+    assert.throws(() => db.prepare("UPDATE users SET role = 'HR' WHERE full_name = 'u-hr'").run(), /CHECK/);
   });
 });

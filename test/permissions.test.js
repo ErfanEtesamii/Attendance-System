@@ -39,15 +39,24 @@ test('محدوده‌ی هر نقش: کارمند فقط خواندنی خود،
   }
 });
 
+test('hr: فقط‌خواندنی روی کاربران/گزارش/خروجی/مرخصی؛ هیچ نوشتن/تنظیمات/ممیزی/سیستمی ندارد', () => {
+  for (const p of ['users.read', 'users.details.read', 'attendance.read', 'reports.read', 'leave.read', 'disputes.read', 'dashboard.read']) {
+    assert.equal(hasPermission('hr', p), true, `hr ${p}`);
+  }
+  const forbidden = PERMISSIONS.filter((p) => !['me.read', 'dashboard.read', 'attendance.read', 'leave.read', 'disputes.read', 'reports.read', 'users.read', 'users.details.read'].includes(p));
+  for (const p of forbidden) assert.equal(hasPermission('hr', p), false, `hr ${p}`);
+  assert.ok(permissionsFor('hr').every((p) => p.endsWith('.read')), 'همه‌ی مجوزهای hr باید .read باشند');
+});
+
 test('default-deny: نقش/مجوز ناشناخته یا ورودی نامعتبر همیشه رد است', () => {
-  assert.equal(hasPermission('hr', 'reports.read'), false);
+  assert.equal(hasPermission('boss', 'reports.read'), false);
   assert.equal(hasPermission('admin', 'no.such.permission'), false);
   assert.equal(hasPermission(undefined, 'reports.read'), false);
   assert.equal(hasPermission('__proto__', 'reports.read'), false);
   assert.equal(hasPermission('admin', null), false);
-  assert.deepEqual(permissionsFor('hr'), []);
+  assert.deepEqual(permissionsFor('boss'), []);
   assert.equal(run(requirePermission('reports.read'), undefined), 403);
-  assert.equal(run(requirePermission('reports.read'), 'hr'), 403);
+  assert.equal(run(requirePermission('reports.read'), 'boss'), 403);
   assert.throws(() => requirePermission('typo.here'), /ناشناخته/);
   assert.throws(() => requirePermission(), /حداقل/);
 });

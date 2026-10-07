@@ -14,6 +14,7 @@ const { verifySessionToken } = require('../utils/session');
 const { parseCookies } = require('../utils/cookies');
 const settingsRepository = require('../repositories/settingsRepository');
 const { SESSION_COOKIE_NAME, buildClearCookie } = require('../utils/sessionCookie');
+const { ROLES } = require('./permissions');
 
 // فقط خواندنِ داده‌های خود کارمند. (اسکوپ «فقط خودش» در scopedUserIds هر route اعمال می‌شود.)
 const EMPLOYEE_ALLOWED = [
@@ -58,7 +59,7 @@ function requireAdminAuth(req, res, next) {
     }
   }
 
-  if (!user || !user.is_active || !['employee', 'manager', 'admin'].includes(user.role)) {
+  if (!user || !user.is_active || !ROLES.includes(user.role)) {
     return res.status(403).json({ error: 'دسترسی به پنل ندارید.' });
   }
 

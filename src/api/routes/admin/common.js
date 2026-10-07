@@ -12,7 +12,7 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const STATUSES = ['normal', 'late', 'incomplete', 'leave', 'holiday'];
 
 function scopedUserIds(adminUser) {
-  if (adminUser.role === 'admin') return null;
+  if (adminUser.role === 'admin' || adminUser.role === 'hr') return null; // hr: فقط‌خواندنی روی همه (نوشتن با requirePermission بسته است)
   if (adminUser.role === 'employee') return [adminUser.id]; // کارمند فقط خودش
   return usersRepository.listUsers({ managerId: adminUser.id }).map((u) => u.id);
 }

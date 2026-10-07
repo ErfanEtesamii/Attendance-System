@@ -14,6 +14,15 @@ const GUARD_MSG = 'برای این عملیات مجوز لازم را ندار�
 const E = 'employee';
 const M = 'manager';
 const A = 'admin';
+const H = 'hr';
+
+// hr (S4-4a): فقط‌خواندنی همه؛ همین routeها برای hr مجازند و بقیه (همه‌ی نوشتن‌ها، تنظیمات، ممیزی، سیستم، شیفت، مشکوک) ۴۰۳ گارد مجوز می‌دهند.
+const HR_ALLOWED = new Set([
+  'GET /api/admin/me', 'GET /api/admin/dashboard', 'GET /api/admin/overview', 'GET /api/admin/live', 'GET /api/admin/nightly-review',
+  'GET /api/admin/users', 'GET /api/admin/users/export', 'GET /api/admin/users/999999', 'GET /api/admin/users/999999/details',
+  'GET /api/admin/attendance', 'GET /api/admin/attendance/export', 'GET /api/admin/attendance-records/999999',
+  'GET /api/admin/disputes', 'GET /api/admin/leave-requests', 'GET /api/admin/reports/export', 'GET /api/admin/reports/summary',
+]);
 const ROUTES = [
   ['GET', '/api/admin/users', [M, A]],
   ['GET', '/api/admin/users/export', [M, A]],
@@ -91,9 +100,10 @@ describe('گارد مجوز routeهای /api/admin/* (S4-3b/S4-3c)', { skip: has
     const { makeUser, sessionCookie } = require('./helpers/factories');
     const { createApp } = require('../src/server');
     const admin = makeUser({ role: 'admin' });
+    const hr = makeUser({ role: 'hr' });
     const mgr = makeUser({ role: 'manager' });
     const emp = makeUser({ role: 'employee', managerId: mgr.id });
-    cookies = { employee: sessionCookie(emp.id), manager: sessionCookie(mgr.id), admin: sessionCookie(admin.id) };
+    cookies = { employee: sessionCookie(emp.id), manager: sessionCookie(mgr.id), admin: sessionCookie(admin.id), hr: sessionCookie(hr.id) };
     server = createApp().listen(0);
     await new Promise((r) => server.once('listening', r));
     base = `http://127.0.0.1:${server.address().port}`;
@@ -112,8 +122,8 @@ describe('گارد مجوز routeهای /api/admin/* (S4-3b/S4-3c)', { skip: has
   // «ممنوع»: ۴۰۳ (برای کارمند ممکن است پیام لیست سفید باشد؛ برای سرپرست/ادمین پیام گارد مجوز).
   for (const [method, url, allowed, skip] of [...ROUTES, ...ROUTES_2]) {
     test(`${method} ${url}`, async () => {
-      for (const role of [E, M, A]) {
-        const allow = allowed.includes(role);
+      for (const role of [E, M, A, H]) {
+        const allow = allowed.includes(role) || (role === H && HR_ALLOWED.has(`${method} ${url}`));
         if (allow && skip) continue;
         const r = await hit(role, method, url);
         if (allow) {
