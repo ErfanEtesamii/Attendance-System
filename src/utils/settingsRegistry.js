@@ -5,16 +5,18 @@
 //
 // انواع: number (عدد صحیح، مگر integer:false) | boolean | time (HH:MM) | cron (با node-cron validate)
 //        | enum (values) | string (minLength/maxLength اختیاری) | timezone (نام IANA، مثل Asia/Tehran)
+//        | weekdays (آرایه‌ی روزهای هفته ۰=یکشنبه … ۶=شنبه؛ ورودی آرایه یا متن «4,5»؛ مقدار نرمال = آرایه‌ی مرتب و یکتا)
 
 const cron = require('node-cron');
 const config = require('../config');
 const time = require('./time');
 
-const TYPES = ['number', 'boolean', 'time', 'cron', 'enum', 'string', 'timezone'];
+const TYPES = ['number', 'boolean', 'time', 'cron', 'enum', 'string', 'timezone', 'weekdays'];
 
 // برچسب فارسی گروه‌ها (برای صفحه‌ی تنظیمات گروه‌بندی‌شده در S3-9a)
 const GROUP_LABELS = {
   workHours: 'ساعت کاری',
+  calendar: 'تقویم کاری',
   overtime: 'اضافه‌کاری',
   reminders: 'تأخیر و یادآوری',
   security: 'امنیت',
@@ -71,6 +73,18 @@ function validateValue(def, raw) {
       const zone = time.normalizeTimezone(raw);
       return zone ? { ok: true, value: zone } : bad('باید نام معتبر منطقه‌ی زمانی IANA باشد (مثل Asia/Tehran).');
     }
+    case 'weekdays': {
+      // آرایه‌ی عددها یا متن جداشده با کاما ('4,5'؛ متن خالی = بدون روز، فقط اگر def.allowEmpty)
+      let list;
+      if (Array.isArray(raw)) list = raw;
+      else if (typeof raw === 'string') list = raw.trim() === '' ? [] : raw.split(',').map((x) => (/^\s*\d\s*$/.test(x) ? Number(x) : NaN));
+      else return bad('باید فهرست روزهای هفته باشد (۰=یکشنبه … ۶=شنبه).');
+      if (!list.every((d) => Number.isInteger(d) && d >= 0 && d <= 6)) return bad('هر روز باید عدد صحیح ۰ تا ۶ باشد (۰=یکشنبه … ۶=شنبه).');
+      const days = [...new Set(list)].sort((a, b) => a - b);
+      if (days.length < (def.allowEmpty ? 0 : 1)) return bad('حداقل یک روز لازم است.');
+      if (days.length > (def.maxDays || 7)) return bad(`حداکثر ${def.maxDays || 7} روز مجاز است.`);
+      return { ok: true, value: days };
+    }
     default:
       return bad('نوع تنظیم ناشناخته است.');
   }
@@ -93,6 +107,10 @@ def('workDayEnd', 'work_day_end', 'time', { group: 'workHours', default: () => c
 def('lateGraceMinutes', 'late_grace_minutes', 'number', { group: 'workHours', min: 0, max: 240, default: 0, description: 'مهلت تأخیر (دقیقه) پس از ساعت شروع کار؛ ورود تا پایان مهلت «تأخیر» حساب نمی‌شود (۰ = بدون مهلت)' });
 def('lateCountsFrom', 'late_counts_from', 'enum', { group: 'workHours', values: ['shift_start', 'after_grace'], default: 'shift_start', description: 'مبنای دقیقه‌ی تأخیر پس از گذشتن از مهلت: shift_start = از ساعت شروع کار (کل تأخیر)، after_grace = فقط از پایان مهلت' });
 def('earlyGraceMinutes', 'early_grace_minutes', 'number', { group: 'workHours', min: 0, max: 240, default: 0, description: 'مهلت زودتر رفتن (دقیقه) پیش از ساعت پایان کار؛ خروج تا این مقدار زودتر «زودتر رفتن» حساب نمی‌شود (۰ = بدون مهلت). در صورت عبور از مهلت، کل دقیقه‌های مانده تا پایان کار حساب می‌شود' });
+// S3-7a: تقویم کاری (فقط برای getCalendarDay؛ مصرف‌کننده‌ها در S3-7c وصل می‌شوند). روزهای هفته: ۰=یکشنبه … ۶=شنبه
+def('weekendDays', 'weekend_days', 'weekdays', { group: 'calendar', maxDays: 6, default: [5], description: 'روزهای آخر هفته‌ی (تعطیل) شرکت برای کاربر بدون شیفت؛ ۰=یکشنبه … ۶=شنبه (پیش‌فرض جمعه = ۵). کاربر دارای شیفت از «روزهای کاری شیفت» پیروی می‌کند' });
+def('halfDayWeekdays', 'half_day_weekdays', 'weekdays', { group: 'calendar', allowEmpty: true, default: [4], description: 'روزهای هفته‌ی نیم‌روز کاری (پیش‌فرض پنجشنبه = ۴)؛ فقط روزی که کاری است نیم‌روز می‌شود. فهرست خالی = بدون نیم‌روز' });
+def('halfDayEndTime', 'half_day_end_time', 'time', { group: 'calendar', default: '12:30', description: 'ساعت پایان کار در روزهای نیم‌روز؛ اگر از شروع کار زودتر یا از پایان کار دیرتر باشد نادیده گرفته می‌شود' });
 // S3-4a: استراحت‌ها (هر دو پیش‌فرض ۰ = خاموش ⇒ رفتار قبلی)
 def('maxLunchMinutes', 'max_lunch_minutes', 'number', { group: 'workHours', min: 0, max: 480, default: 0, description: 'حداکثر ناهار مجاز در روز (دقیقه)؛ مازاد ناهار ثبت‌شده به‌صورت «مازاد استراحت» گزارش می‌شود و همچنان از ساعت مفید کم می‌شود (۰ = بدون سقف)' });
 def('fixedLunchDeductMinutes', 'fixed_lunch_deduct_minutes', 'number', { group: 'workHours', min: 0, max: 480, default: 0, description: 'کسر ثابت ناهار (دقیقه) از ساعت مفید روزهای بسته‌شده‌ای که هیچ ناهاری ثبت نشده (۰ = خاموش)؛ استراحت کوتاه جای ناهار حساب نمی‌شود' });
@@ -164,7 +182,15 @@ function deserialize(key, raw) {
 // مقدار معتبر → متن برای DB (بولی به '1'/'0' مثل قبل)
 function serialize(key, value) {
   const d = BY_KEY.get(key);
-  return d.type === 'boolean' ? (value ? '1' : '0') : String(value);
+  if (d.type === 'boolean') return value ? '1' : '0';
+  if (d.type === 'weekdays') return value.join(',');
+  return String(value);
+}
+
+// برابری دو مقدار نرمال‌شده‌ی یک تنظیم (آرایه‌ی weekdays با === برابر نمی‌شود)
+function sameValue(a, b) {
+  if (Array.isArray(a) && Array.isArray(b)) return a.length === b.length && a.every((x, i) => x === b[i]);
+  return a === b;
 }
 
 // بررسی سلامت خود رجیستری (کلید تکراری، نوع ناشناخته، پیش‌فرض نامعتبر، enum بدون values، cron/min>max)
@@ -188,4 +214,4 @@ function selfCheck() {
   return problems;
 }
 
-module.exports = { REGISTRY, GROUP_LABELS, TYPES, getDef, keys, defaultOf, validate, validateValue, deserialize, serialize, selfCheck };
+module.exports = { REGISTRY, GROUP_LABELS, TYPES, getDef, keys, defaultOf, validate, validateValue, deserialize, serialize, sameValue, selfCheck };

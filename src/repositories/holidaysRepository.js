@@ -10,6 +10,12 @@ function isHoliday(dateStr) {
   return Boolean(db.prepare('SELECT 1 FROM holidays WHERE holiday_date = ?').get(dateStr));
 }
 
+// ردیف تعطیلی یک تاریخ (برای getCalendarDay؛ عنوان لازم است)، نبود ⇒ null
+function findByDate(dateStr) {
+  const db = getDb();
+  return db.prepare('SELECT * FROM holidays WHERE holiday_date = ?').get(dateStr) || null;
+}
+
 function addHoliday(dateStr, title) {
   const db = getDb();
   db.prepare('INSERT OR IGNORE INTO holidays (holiday_date, title) VALUES (?, ?)').run(dateStr, title);
@@ -21,4 +27,4 @@ function removeHoliday(id) {
   db.prepare('DELETE FROM holidays WHERE id = ?').run(id);
 }
 
-module.exports = { listHolidays, isHoliday, addHoliday, removeHoliday };
+module.exports = { listHolidays, isHoliday, findByDate, addHoliday, removeHoliday };

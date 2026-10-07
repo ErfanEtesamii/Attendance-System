@@ -61,7 +61,7 @@ function buildItem(def, stored) {
     description: def.description,
     value,
     default: dflt,
-    isDefault: value === dflt,
+    isDefault: registry.sameValue(value, dflt),
     updatedAt: stored ? stored.updated_at : null,
   };
   if (def.min !== undefined) item.min = def.min;

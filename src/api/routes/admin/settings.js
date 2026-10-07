@@ -51,7 +51,7 @@ router.patch('/admin/settings', requireFullAdmin, (req, res) => {
   // S3-1b: مقدار قبل/بعد کلیدهای تغییرکرده هم در details می‌آید (فیلدهای قبلی بدون تغییر)
   const changes = {};
   Object.keys(updated).forEach((k) => {
-    if (updated[k] !== before[k]) changes[k] = { before: before[k], after: updated[k] };
+    if (!registry.sameValue(updated[k], before[k])) changes[k] = { before: before[k], after: updated[k] };
   });
   auditRepository.logEvent({
     userId: req.adminUser.id,
@@ -80,7 +80,7 @@ router.put('/admin/settings/:key', requireFullAdmin, (req, res) => {
   if (!checked.ok) return res.status(400).json({ error: `مقدار «${key}» نامعتبر است: ${checked.error}`, key });
 
   const before = settingsRepository.getItem(key).value;
-  if (before === checked.value) return res.json({ changed: false, item: settingsRepository.getItem(key) });
+  if (registry.sameValue(before, checked.value)) return res.json({ changed: false, item: settingsRepository.getItem(key) });
 
   const item = settingsRepository.setValue(key, checked.value);
   audit(req, 'settings_updated', { fields: [key], changes: { [key]: { before, after: item.value } }, reason });
