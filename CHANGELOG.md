@@ -4,6 +4,13 @@
 
 ## [Unreleased] — بخش ۴ (ممیزی)
 
+### S4-5a — جدول اعلان‌ها و سرویس `notify`
+- migration `012_notifications`: جدول `notifications` (`user_id`، `type`، `title`، `body`، `link`، `data`، `dedupe_key`، `read_at`، `telegram_status`، `created_at`) با `ON DELETE CASCADE` روی کاربر (حذف دائمی کاربر اعلان‌هایش را هم پاک می‌کند؛ `usersRepository` بدون تغییر). ایندکس‌ها: یکتای جزئی `(user_id, dedupe_key)` فقط وقتی کلید پر است؛ `(user_id, read_at, id)` برای فهرست/شمارنده‌ی خوانده‌نشده؛ `created_at` برای پاک‌سازی (S4-5b). داده‌ی جدول‌های موجود دست‌نخورده.
+- `src/repositories/notificationsRepository.js` (SQL فقط اینجا: `insert` با `INSERT OR IGNORE`، `findById`، `findByDedupe`، `setTelegramStatus`) و `src/services/notificationService.js` با `await notify(userId, { type, title, body?, link?, data?, dedupeKey?, telegram? })` ⇒ `{ created, notification }`.
+- dedupe: همان `(userId, dedupeKey)` دوباره ساخته نمی‌شود، رکورد اول بازنویسی نمی‌شود و **تلگرام دوباره نمی‌رود**؛ بدون `dedupeKey` هر بار اعلان جدید ساخته می‌شود (اگر اعلان باید هر روز/هر بار تازه باشد، تاریخ/شناسه را در کلید بگذارید).
+- تلگرام فقط با `telegram: true` (پیش‌فرض false) و فقط برای ردیف تازه: موفق ⇒ `sent`، شکست/استثنا ⇒ `failed` (ردیف پنل می‌ماند)، کاربر غیرفعال یا بدون آیدی تلگرام ⇒ `skipped`. ⚠️ هنوز «ترجیح تلگرام per-user» وجود ندارد؛ فراخواننده تصمیم می‌گیرد (ستون ترجیح = migration جدا، خارج از دامنه).
+- هنوز هیچ route/UI/اتصال رویدادی نیست (S4-5b، S4-6a، S4-6b). تست: `test/notifications.test.js` (۴ تست: ثبت، dedupe، تلگرام ساختگی با ۳ وضعیت، اعتبارسنجی و cascade)؛ `test/migrations.test.js` به ۱۲ migration به‌روز شد.
+
 ### S4-4b — UI پنل بر پایه‌ی مجوز (`/api/admin/me/permissions`)
 - endpoint جدید `GET /api/admin/me/permissions` (مجوز `me.read`) فهرست مجوزهای نقش جاری را برمی‌گرداند و به `EMPLOYEE_ALLOWED` اضافه شد (۹ → ۱۰؛ فقط GET). فقط برای نمایش UI است؛ امنیت واقعی همچنان با `requirePermission` سمت سرور است.
 - `core.js`: پرچم‌های `isAdmin/isStaff/isEmployee` حذف و با `AP.can(...)`، `AP.viewAllowed`، `AP.selfOnly`، `AP.loadPermissions` جایگزین شدند. هر view باید `perm` داشته باشد (default-deny)؛ شکست بارگذاری مجوزها ⇒ هیچ منو/صفحه‌ای باز نمی‌شود.
