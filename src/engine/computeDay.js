@@ -17,6 +17,12 @@
 //              (S3-5a) اضافه‌کاری قابل‌پرداخت: overtimeEnabled (boolean، پیش‌فرض false)، overtimeMinMinutes (حداقل آستانه، ≥ ۰، پیش‌فرض ۰)،
 //              overtimeDailyCapMinutes (سقف روزانه، ≥ ۰، پیش‌فرض ۰ = بدون سقف)، overtimeFactor / overtimeHolidayFactor (ضریب، ≥ ۰، پیش‌فرض ۱)،
 //              overtimeRoundStep (گام گرد‌کردن به دقیقه، > ۰، پیش‌فرض ۱)، overtimeRounding ('down' | 'nearest' | 'up'، پیش‌فرض 'down')
+//   shift    : (S3-6b) اختیاری؛ شیفت کاربر به شکل خروجی shiftsRepository ({ startTime, endTime, graceLateMinutes, graceEarlyMinutes,
+//              overnight, maxLunchMinutes, fixedLunchDeductMinutes, ... }). null/undefined ⇒ «شیفت پیش‌فرض» = همان settings (رفتار قبلی، بدون تغییر).
+//              با شیفت، این شش مقدار از شیفت می‌آیند و جایگزین (نه جمع با) تنظیمات سراسری می‌شوند: شروع/پایان (workDayStart/End)،
+//              مهلت تأخیر/زودتر رفتن (lateGraceMinutes/earlyGraceMinutes) و قاعده‌ی ناهار (maxLunchMinutes/fixedLunchDeductMinutes)؛ ۰ در شیفت
+//              یعنی «خاموش/بدون مهلت»، نه «از تنظیمات بگیر». بقیه‌ی تنظیمات (lateCountsFrom، اضافه‌کاری، آستانه‌ها، حاشیه‌ی خارج از شیفت) سراسری می‌مانند.
+//              شیفت ناسازگار (overnight با پایان ≥ شروع، یا پایان < شروع بدون overnight، ساعت نامعتبر) ⇒ RangeError.
 //   now      : لحظه‌ی «الان» برای رکورد باز (Date یا ISO)؛ پیش‌فرض new Date()
 //   timezone : نام IANA؛ پیش‌فرض Asia/Tehran
 // خروجی (همه دقیقه، عدد صحیح مگر null):
@@ -50,10 +56,17 @@
 //   status      : status ذخیره‌شده‌ی رکورد (normal|late|incomplete|leave|holiday) بدون تغییر؛ بدون رکورد null
 // ورودی نامعتبر (زمان خراب، settings ناقص/نامعتبر، timezone ناشناخته) ⇒ RangeError/TypeError.
 //
-// ⚠️ رفتار موروثی عمداً حفظ شده: late/earlyLeave/overtime فقط بر پایه‌ی «دقیقه‌ی ساعت دیواری» است و تاریخ را نمی‌بیند
-// (خروج بعد از نیمه‌شب مثل قبل «زودتر رفتن» حساب می‌شود؛ شیفت شب در S3-6c).
+// ⚠️ رفتار موروثی عمداً حفظ شده (روز/شیفت عادی): late/earlyLeave/overtime فقط بر پایه‌ی «دقیقه‌ی ساعت دیواری» است و تاریخ را نمی‌بیند
+// (خروج بعد از نیمه‌شب «زودتر رفتن» حساب می‌شود).
+//
+// شیفت شب (S3-6c؛ فقط وقتی shift.overnight=true و پایان < شروع): record.record_date = روزِ شروع شیفت (به وقت شرکت) و همه‌ی زمان‌ها به
+// «دقیقه از نیمه‌شبِ record_date» تبدیل می‌شوند (روز بعد = ۱۴۴۰ + دقیقه)؛ پس پایان = پایان + ۱۴۴۰ و expected = ۱۴۴۰ − شروع + پایان.
+// ورود پیش از شروع (مثلاً ۲۱:۳۰ برای شیفت ۲۲:۰۰) تأخیر نیست؛ ورود ۰۰:۳۰ روز بعد ۱۵۰ دقیقه تأخیر است؛ خروج ۰۶:۱۰ روز بعد برای پایان ۰۶:۰۰
+// ۱۰ دقیقه اضافه‌کاری است. بدون record_date معتبر، تاریخ ورود مبنا می‌شود. پرچم‌ها هم روی همین مبنا سنجیده می‌شوند: outside_shift با دقیقه‌ی
+// نسبت‌به‌روزِ شروع (بدون شرط «خروج در روز دیگر» که برای شیفت شب عادی است)، و missing_checkout وقتی «پایان + حاشیه» گذشته (نه عوض‌شدن تاریخ تقویمی).
 
 const { DEFAULT_TIMEZONE, normalizeTimezone, minutesSinceMidnight, formatDate } = require('../utils/time');
+const { dayNumber, dayDiff } = require('../utils/shiftDay');
 
 const LATE_COUNTS_FROM = ['shift_start', 'after_grace'];
 const OVERTIME_ROUNDING = ['down', 'nearest', 'up'];
@@ -62,16 +75,48 @@ const DEFAULT_LONG_OPEN_BREAK = 120;
 const DEFAULT_OUTSIDE_SHIFT_MARGIN = 120;
 
 // مهلت (دقیقه): نبودن ⇒ ۰؛ باید عدد متناهی ≥ ۰ باشد
-function graceMinutes(value, name) {
+function graceMinutes(value, name, prefix = 'settings.') {
   const v = value === undefined ? 0 : value;
-  if (typeof v !== 'number' || !Number.isFinite(v) || v < 0) throw new RangeError(`settings.${name} باید عدد ≥ ۰ باشد.`);
+  if (typeof v !== 'number' || !Number.isFinite(v) || v < 0) throw new RangeError(`${prefix}${name} باید عدد ≥ ۰ باشد.`);
   return v;
 }
 
-function hhmmToMinutes(value, name) {
+function hhmmToMinutes(value, name, prefix = 'settings.') {
   const m = typeof value === 'string' ? /^\s*(\d{1,2}):(\d{2})\s*$/.exec(value) : null;
-  if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) throw new RangeError(`settings.${name} باید HH:MM معتبر باشد.`);
+  if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) throw new RangeError(`${prefix}${name} باید HH:MM معتبر باشد.`);
   return Number(m[1]) * 60 + Number(m[2]);
+}
+
+// پارامترهای مؤثرِ روز (S3-6b): shift خالی ⇒ تنظیمات سراسری (رفتار قبلی)؛ وگرنه شش مقدار از شیفت (در کامنت سرفایل).
+// خروجی: { workStart, workEnd, lateGrace, earlyGrace, maxLunch, fixedLunch, overnight } — برای شیفت شب workEnd = پایان + ۱۴۴۰.
+function resolveShiftParams(settings, shift) {
+  if (shift === null || shift === undefined) {
+    return {
+      workStart: hhmmToMinutes(settings.workDayStart, 'workDayStart'),
+      workEnd: hhmmToMinutes(settings.workDayEnd, 'workDayEnd'),
+      lateGrace: graceMinutes(settings.lateGraceMinutes, 'lateGraceMinutes'),
+      earlyGrace: graceMinutes(settings.earlyGraceMinutes, 'earlyGraceMinutes'),
+      maxLunch: graceMinutes(settings.maxLunchMinutes, 'maxLunchMinutes'),
+      fixedLunch: graceMinutes(settings.fixedLunchDeductMinutes, 'fixedLunchDeductMinutes'),
+      overnight: false,
+    };
+  }
+  if (typeof shift !== 'object') throw new TypeError('shift باید شیء یا null باشد.');
+  const start = hhmmToMinutes(shift.startTime, 'startTime', 'shift.');
+  const end = hhmmToMinutes(shift.endTime, 'endTime', 'shift.');
+  if (shift.overnight !== undefined && typeof shift.overnight !== 'boolean') throw new RangeError('shift.overnight باید boolean باشد.');
+  const overnight = shift.overnight === true;
+  if (overnight && end >= start) throw new RangeError('shift.overnight فقط با پایان پیش از شروع معنا دارد.');
+  if (!overnight && end < start) throw new RangeError('shift: پایان پیش از شروع بدون overnight نامعتبر است.');
+  return {
+    workStart: start,
+    workEnd: overnight ? end + 1440 : end,
+    lateGrace: graceMinutes(shift.graceLateMinutes, 'graceLateMinutes', 'shift.'),
+    earlyGrace: graceMinutes(shift.graceEarlyMinutes, 'graceEarlyMinutes', 'shift.'),
+    maxLunch: graceMinutes(shift.maxLunchMinutes, 'maxLunchMinutes', 'shift.'),
+    fixedLunch: graceMinutes(shift.fixedLunchDeductMinutes, 'fixedLunchDeductMinutes', 'shift.'),
+    overnight,
+  };
 }
 
 function toDate(value, name) {
@@ -137,14 +182,9 @@ function sumBreakMinutes(breaks, opts) {
   return sumItems(readBreaks(breaks).items, opts);
 }
 
-function computeDay({ record, breaks, settings, now, timezone } = {}) {
+function computeDay({ record, breaks, settings, now, timezone, shift } = {}) {
   if (!settings || typeof settings !== 'object') throw new TypeError('settings الزامی است.');
-  const workStart = hhmmToMinutes(settings.workDayStart, 'workDayStart');
-  const workEnd = hhmmToMinutes(settings.workDayEnd, 'workDayEnd');
-  const lateGrace = graceMinutes(settings.lateGraceMinutes, 'lateGraceMinutes');
-  const earlyGrace = graceMinutes(settings.earlyGraceMinutes, 'earlyGraceMinutes');
-  const maxLunch = graceMinutes(settings.maxLunchMinutes, 'maxLunchMinutes');
-  const fixedLunch = graceMinutes(settings.fixedLunchDeductMinutes, 'fixedLunchDeductMinutes');
+  const { workStart, workEnd, lateGrace, earlyGrace, maxLunch, fixedLunch, overnight } = resolveShiftParams(settings, shift);
   if (settings.overtimeEnabled !== undefined && typeof settings.overtimeEnabled !== 'boolean') throw new RangeError('settings.overtimeEnabled باید boolean باشد.');
   const overtimeRounding = settings.overtimeRounding === undefined ? 'down' : settings.overtimeRounding;
   if (!OVERTIME_ROUNDING.includes(overtimeRounding)) throw new RangeError(`settings.overtimeRounding باید یکی از ${OVERTIME_ROUNDING.join('، ')} باشد.`);
@@ -197,7 +237,10 @@ function computeDay({ record, breaks, settings, now, timezone } = {}) {
     return emit();
   }
 
-  const checkInMinutes = minutesSinceMidnight(checkIn, tz);
+  // مبنای زمان (S3-6c): شیفت شب ⇒ دقیقه از نیمه‌شبِ record_date (روز بعد = ۱۴۴۰+)؛ وگرنه دقیقه‌ی ساعت دیواری مثل قبل
+  const refDate = overnight ? (dayNumber(record.record_date) !== null ? record.record_date : formatDate(checkIn, tz)) : null;
+  const posOf = overnight ? (d) => dayDiff(formatDate(d, tz), refDate) * 1440 + minutesSinceMidnight(d, tz) : (d) => minutesSinceMidnight(d, tz);
+  const checkInMinutes = posOf(checkIn);
   const lateLine = workStart + lateGrace; // تا خودِ این لحظه تأخیر نیست
   if (checkInMinutes > lateLine) result.late = checkInMinutes - (lateCountsFrom === 'after_grace' ? lateLine : workStart);
 
@@ -206,15 +249,17 @@ function computeDay({ record, breaks, settings, now, timezone } = {}) {
   // ---- پرچم‌ها (S3-4b): فقط گزارش؛ هیچ‌کدام عددی را عوض نمی‌کنند ----
   const reversed = Boolean(checkOut) && checkOut.getTime() < checkIn.getTime();
   if (reversed) flagSet.add('checkout_before_checkin');
-  if (!checkOut && (record.status === 'incomplete' || formatDate(checkIn, tz) < formatDate(end, tz))) flagSet.add('missing_checkout');
+  const dayOver = overnight ? posOf(end) > workEnd + shiftMargin : formatDate(checkIn, tz) < formatDate(end, tz); // شیفت شب: «پایان + حاشیه» گذشته
+  if (!checkOut && (record.status === 'incomplete' || dayOver)) flagSet.add('missing_checkout');
   for (const b of read.items) {
     if (b.endMs === null && (end.getTime() - b.startMs) / 60000 > longOpenBreak) flagSet.add('long_open_break');
     if (reversed) continue; // بازه‌ی روز معتبر نیست؛ مقایسه‌ی استراحت بی‌معنی است
     const bEnd = b.endMs === null ? b.startMs : b.endMs;
     if (b.startMs < checkIn.getTime() || bEnd < b.startMs || (checkOut && bEnd > checkOut.getTime())) flagSet.add('break_outside_range');
   }
-  const outsideMinutes = (d) => { const m = minutesSinceMidnight(d, tz); return m < workStart - shiftMargin || m > workEnd + shiftMargin; };
-  if (outsideMinutes(checkIn) || (checkOut && (outsideMinutes(checkOut) || formatDate(checkOut, tz) !== formatDate(checkIn, tz)))) flagSet.add('outside_shift');
+  const outsideMinutes = (d) => { const m = posOf(d); return m < workStart - shiftMargin || m > workEnd + shiftMargin; };
+  const otherDay = !overnight && Boolean(checkOut) && formatDate(checkOut, tz) !== formatDate(checkIn, tz); // شیفت شب عمداً از نیمه‌شب رد می‌شود
+  if (outsideMinutes(checkIn) || (checkOut && (outsideMinutes(checkOut) || otherDay))) flagSet.add('outside_shift');
 
   const gross = Math.max(0, (end.getTime() - checkIn.getTime()) / 60000);
   result.workedGross = Math.round(gross);
@@ -226,7 +271,7 @@ function computeDay({ record, breaks, settings, now, timezone } = {}) {
   result.effective = Math.max(0, Math.round(gross - result.break));
 
   if (checkOut) {
-    const checkOutMinutes = minutesSinceMidnight(checkOut, tz);
+    const checkOutMinutes = posOf(checkOut);
     if (checkOutMinutes < workEnd) {
       if (checkOutMinutes < workEnd - earlyGrace) result.earlyLeave = workEnd - checkOutMinutes; // تا خودِ «پایان − مهلت» زودتر رفتن نیست
     } else {
@@ -237,4 +282,4 @@ function computeDay({ record, breaks, settings, now, timezone } = {}) {
   return emit();
 }
 
-module.exports = { computeDay, hhmmToMinutes, sumBreakMinutes };
+module.exports = { computeDay, hhmmToMinutes, sumBreakMinutes, resolveShiftParams };

@@ -1,4 +1,4 @@
-// S3-6a: ساختار شیفت — migration ۰۰۸، اعتبارسنجی خالص، repository، API CRUD + انتساب (دسترسی، دلیل اجباری، audit).
+// S3-6a: ساختار شیفت — migration ۰۰۹، اعتبارسنجی خالص، repository، API CRUD + انتساب (دسترسی، دلیل اجباری، audit).
 // موتور محاسبه تغییر نکرده؛ این فایل هیچ رفتار computeDay را نمی‌سنجد. API روی اپ واقعی؛ بدون express نصب‌شده skip می‌شود.
 const { resetDb, cleanup } = require('./helpers/testEnv');
 const { test, describe, before, after } = require('node:test');
@@ -12,15 +12,15 @@ describe('شیفت‌های کاری — migration، اعتبارسنجی و rep
   before(() => { db = resetDb(); });
   after(cleanup);
 
-  test('migration ۰۰۸: جدول و ستون users.shift_id (nullable، روی کاربران موجود NULL)، اجرای دوباره بی‌خطا، FK و CHECKها', () => {
+  test('migration ۰۰۹: جدول و ستون users.shift_id (nullable، روی کاربران موجود NULL)، اجرای دوباره بی‌خطا، FK و CHECKها', () => {
     const cols = db.prepare("PRAGMA table_info('work_shifts')").all().map((c) => c.name);
     for (const c of ['name', 'start_time', 'end_time', 'grace_late_minutes', 'grace_early_minutes', 'work_days', 'overnight', 'max_lunch_minutes', 'fixed_lunch_deduct_minutes']) assert.ok(cols.includes(c), c);
     const shiftCol = db.prepare("PRAGMA table_info('users')").all().find((c) => c.name === 'shift_id');
     assert.ok(shiftCol && shiftCol.notnull === 0 && shiftCol.dflt_value === null);
     const { makeUser } = require('./helpers/factories');
     assert.equal(db.prepare('SELECT shift_id FROM users WHERE id = ?').get(makeUser().id).shift_id, null);
-    assert.doesNotThrow(() => require('../src/db/migrations/008_work_shifts').up(db));
-    assert.equal(db.prepare("SELECT COUNT(*) n FROM schema_migrations WHERE name = '008_work_shifts'").get().n, 1);
+    assert.doesNotThrow(() => require('../src/db/migrations/009_work_shifts').up(db));
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM schema_migrations WHERE name = '009_work_shifts'").get().n, 1);
 
     const ins = (name, extra = '') => db.exec(`INSERT INTO work_shifts (name, start_time, end_time${extra ? ', ' + extra.split('=')[0] : ''}) VALUES ('${name}', '08:00', '16:00'${extra ? ', ' + extra.split('=')[1] : ''})`);
     ins('م۱');

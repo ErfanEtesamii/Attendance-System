@@ -1,4 +1,4 @@
-// شیفت‌های کاری (S3-6a). فقط ساختار و CRUD؛ موتور محاسبه هنوز از آن استفاده نمی‌کند (S3-6b).
+// شیفت‌های کاری (S3-6a: ساختار و CRUD). موتور محاسبه از S3-6b شیفت کاربر را با findByUserId می‌خواند (dayService).
 // خروجی همه‌ی توابع «شیء نرمال‌شده‌ی camelCase» است؛ work_days ذخیره‌شده‌ی خراب (JSON نامعتبر) ⇒ آرایه‌ی خالی، نه exception.
 
 const { getDb } = require('../db/connection');
@@ -46,6 +46,15 @@ function findById(id) {
     getDb()
       .prepare('SELECT s.*, (SELECT COUNT(*) FROM users u WHERE u.shift_id = s.id) AS user_count FROM work_shifts s WHERE s.id = ?')
       .get(id)
+  );
+}
+
+// شیفت منتسب به یک کاربر (S3-6b)؛ بدون شیفت/کاربر ناموجود ⇒ null
+function findByUserId(userId) {
+  return toShift(
+    getDb()
+      .prepare('SELECT s.* FROM work_shifts s JOIN users u ON u.shift_id = s.id WHERE u.id = ?')
+      .get(userId)
   );
 }
 
@@ -109,4 +118,4 @@ function deleteShiftIfUnused(id) {
   })(id);
 }
 
-module.exports = { listShifts, findById, findByName, createShift, updateShift, countUsers, listUsersOfShift, deleteShiftIfUnused };
+module.exports = { listShifts, findById, findByUserId, findByName, createShift, updateShift, countUsers, listUsersOfShift, deleteShiftIfUnused };

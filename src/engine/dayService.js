@@ -11,22 +11,36 @@
 
 const settingsRepository = require('../repositories/settingsRepository');
 const breakRepository = require('../repositories/breakRepository');
+const shiftsRepository = require('../repositories/shiftsRepository');
 const overtimeApprovalRepository = require('../repositories/overtimeApprovalRepository');
 const { computeDay } = require('./computeDay');
 
-// تنظیمات مؤثر + منطقه‌ی زمانی. برای حلقه روی چند رکورد یک‌بار بگیرید و با { context } بدهید تا هر رکورد دوباره DB نخواند.
+// تنظیمات مؤثر + منطقه‌ی زمانی (+ کش شیفت کاربران، S3-6b). برای حلقه روی چند رکورد یک‌بار بگیرید و با { context } بدهید
+// تا هر رکورد دوباره DB نخواند. context ساخته‌شده‌ی دستی (فقط { settings, timezone }) هم معتبر است؛ فقط کش نخواهد داشت.
 function loadContext() {
   const settings = settingsRepository.getAll();
-  return { settings, timezone: settings.timezone };
+  return { settings, timezone: settings.timezone, shiftCache: new Map() };
+}
+
+// شیفت کاربر رکورد (S3-6b): opts.shift صریح (null = «بدون شیفت») اولویت دارد؛ وگرنه از users.shift_id. بدون شیفت ⇒ null ⇒ تنظیمات سراسری.
+function shiftForRecord(record, ctx, opts) {
+  if (opts.shift !== undefined) return opts.shift;
+  if (!record || record.user_id === undefined || record.user_id === null) return null;
+  const cache = ctx.shiftCache;
+  if (cache && cache.has(record.user_id)) return cache.get(record.user_id);
+  const shift = shiftsRepository.findByUserId(record.user_id);
+  if (cache) cache.set(record.user_id, shift);
+  return shift;
 }
 
 // خروجی کامل computeDay برای یک رکورد attendance_records (یا null).
-// opts: { now, context } — now پیش‌فرض الان؛ context خروجی loadContext().
+// opts: { now, context, shift } — now پیش‌فرض الان؛ context خروجی loadContext()؛ shift (اختیاری) شیفت صریح به‌جای شیفت منتسب به کاربر.
 function computeRecordDay(record, opts = {}) {
   const ctx = opts.context || loadContext();
   // مثل قبل: بدون ورود، استراحتی خوانده نمی‌شود
   const breaks = record && record.check_in_time ? breakRepository.listByAttendanceRecord(record.id) : [];
-  return computeDay({ record, breaks, settings: ctx.settings, now: opts.now, timezone: ctx.timezone });
+  const shift = record && record.check_in_time ? shiftForRecord(record, ctx, opts) : null;
+  return computeDay({ record, breaks, settings: ctx.settings, now: opts.now, timezone: ctx.timezone, shift });
 }
 
 // تبدیل خروجی computeDay به شکل قدیمی summarizeRecord (ترتیب کلیدها هم همان است ⇒ JSON یکسان)

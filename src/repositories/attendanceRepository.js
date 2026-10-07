@@ -1,11 +1,24 @@
 const { getDb } = require('../db/connection');
 const { nowIso, todayDateString } = require('../utils/serverTime');
+const shiftsRepository = require('./shiftsRepository');
+const settingsRepository = require('./settingsRepository');
+const { isOvernightShift, shiftRecordDate } = require('../utils/shiftDay');
 
+// تاریخ رکورد «الان» برای این کاربر (S3-6c). شیفت شب ⇒ روزِ «شروع شیفت» به وقت شرکت (ورود ۲۲:۰۰ و خروج ۰۶:۰۰ روز بعد هر دو در یک رکورد؛
+// تا «پایان شیفت + outsideShiftMarginMinutes» هنوز روز قبل است). بقیه (بدون شیفت/شیفت عادی) ⇒ دقیقاً مثل قبل todayDateString().
+function currentRecordDate(userId, now = new Date()) {
+  const shift = shiftsRepository.findByUserId(userId);
+  if (!isOvernightShift(shift)) return todayDateString();
+  const s = settingsRepository.getAll();
+  return shiftRecordDate(now, shift, { timezone: s.timezone, marginMinutes: s.outsideShiftMarginMinutes });
+}
+
+// «رکورد امروز» = رکورد روز جاریِ کاربر طبق currentRecordDate (برای کاربر شیفت شب: رکورد شیفتِ در جریان)
 function findTodayRecord(userId) {
   const db = getDb();
   return db
     .prepare('SELECT * FROM attendance_records WHERE user_id = ? AND record_date = ?')
-    .get(userId, todayDateString());
+    .get(userId, currentRecordDate(userId));
 }
 
 function findById(id) {
@@ -30,7 +43,10 @@ function listByUserAndRange(userId, fromDate, toDate) {
 // فقط ذخیره می‌شود و روی منطق ثبت اثری ندارد. بات و فراخوانی بدون device ⇒ NULL.
 function recordCheckIn(userId, ip, device = {}) {
   const db = getDb();
-  const existing = findTodayRecord(userId);
+  const recordDate = currentRecordDate(userId);
+  const existing = db
+    .prepare('SELECT * FROM attendance_records WHERE user_id = ? AND record_date = ?')
+    .get(userId, recordDate);
   if (existing) return existing; // منطق «فقط یک بار در روز» در فاز API/بات نهایی می‌شود
 
   const result = db
@@ -38,7 +54,7 @@ function recordCheckIn(userId, ip, device = {}) {
       `INSERT INTO attendance_records (user_id, record_date, check_in_time, check_in_ip, check_in_device, check_in_ua, status)
        VALUES (?, ?, ?, ?, ?, ?, 'normal')`
     )
-    .run(userId, todayDateString(), nowIso(), ip, device?.deviceId ?? null, device?.userAgent ?? null);
+    .run(userId, recordDate, nowIso(), ip, device?.deviceId ?? null, device?.userAgent ?? null);
   return findById(result.lastInsertRowid);
 }
 
@@ -170,6 +186,7 @@ function search({ from, to, userIds = null, status = null, limit = 500 }) {
 }
 
 module.exports = {
+  currentRecordDate,
   listForFraud,
   createManual,
   removeWithBreaks,
