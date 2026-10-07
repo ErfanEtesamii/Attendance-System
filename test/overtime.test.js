@@ -11,7 +11,7 @@ const { zonedTimeToUtc } = require('../src/utils/time');
 const { makeUser } = require('./helpers/factories');
 
 const TEHRAN = 'Asia/Tehran';
-const DATE = '2026-09-10';
+const DATE = '2026-09-14'; // دوشنبه: روز کاریِ کامل در تقویم پیش‌فرض (S3-7c)
 const at = (hhmm, date = DATE) => zonedTimeToUtc(date, hhmm, TEHRAN).toISOString();
 const base = { workDayStart: '08:00', workDayEnd: '16:30' };
 // پایان کار ۱۶:۳۰ ⇒ خروج با «raw» دقیقه اضافه‌کاری

@@ -64,9 +64,9 @@ describe('سقف ماهانه‌ی اضافه‌کاری (S3-5b)', () => {
       const id = insert.run(user.id, date, at(date, '08:00'), at(date, outAt(raw)), 'normal').lastInsertRowid;
       return db.prepare('SELECT * FROM attendance_records WHERE id = ?').get(id);
     };
-    const d3 = mk('2026-09-12', 30);
-    const d1 = mk('2026-09-10', 40);
-    const d2 = mk('2026-09-11', 50);
+    const d3 = mk('2026-09-14', 30);
+    const d1 = mk('2026-09-12', 40);
+    const d2 = mk('2026-09-13', 50);
     const input = [d3, d1, d2]; // نامرتب
     const reset = () => db.exec("DELETE FROM settings WHERE key LIKE 'overtime\\_%' ESCAPE '\\'");
     try {
@@ -76,7 +76,7 @@ describe('سقف ماهانه‌ی اضافه‌کاری (S3-5b)', () => {
       // پیش‌فرض DB (سقف ۰) ⇒ بدون برش
       let m = computeMonthOvertime(input);
       assert.equal(m.cap, 0);
-      assert.deepEqual(m.days.map((d) => [d.recordDate, d.overtimePayableDaily, d.overtimePayable]), [['2026-09-10', 60, 60], ['2026-09-11', 75, 75], ['2026-09-12', 45, 45]]);
+      assert.deepEqual(m.days.map((d) => [d.recordDate, d.overtimePayableDaily, d.overtimePayable]), [['2026-09-12', 60, 60], ['2026-09-13', 75, 75], ['2026-09-14', 45, 45]]);
       assert.deepEqual([m.totalOvertime, m.totalPayableDaily, m.totalPayable, m.clippedMinutes], [120, 180, 180, 0]);
 
       // سقف از تنظیمات DB: ۱۰۰ ⇒ روز اول ۶۰، روز دوم فقط ۴۰ (نه ۷۵)، روز سوم ۰؛ خام همچنان گزارش می‌شود
@@ -101,7 +101,7 @@ describe('سقف ماهانه‌ی اضافه‌کاری (S3-5b)', () => {
 
     // computeDay خالص و دست‌نخورده است: سقف ماهانه را نمی‌شناسد
     const base = { workDayStart: '08:00', workDayEnd: '16:30', overtimeEnabled: true, overtimeFactor: 1.5, overtimeMonthlyCapMinutes: 1 };
-    assert.equal(computeDay({ record: d2, breaks: [], settings: base, timezone: TEHRAN, now: at('2026-09-11', '12:00') }).overtimePayable, 75);
+    assert.equal(computeDay({ record: d2, breaks: [], settings: base, timezone: TEHRAN, now: at('2026-09-13', '12:00') }).overtimePayable, 75);
   });
 
   test('رکوردهای چند کاربر در یک ماه ⇒ RangeError (سقف برای هر کاربر جدا)', () => {

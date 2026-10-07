@@ -9,7 +9,7 @@ const dayService = require('../src/engine/dayService');
 const legacy = require('./fixtures/legacyWorkHours');
 const settingsRepo = require('../src/repositories/settingsRepository');
 const { zonedTimeToUtc } = require('../src/utils/time');
-const { makeUser } = require('./helpers/factories');
+const { makeUser, workdayDate } = require('./helpers/factories');
 
 const TEHRAN = 'Asia/Tehran';
 const at = (date, hhmm) => zonedTimeToUtc(date, hhmm, TEHRAN).toISOString();
@@ -55,7 +55,7 @@ describe('تطبیق موتور جدید با workHours قدیمی (S3-2d)', () 
     let n = 0;
     const add = (ci, out, status, brk = []) => {
       n += 1;
-      const date = new RealDate(Date.UTC(2025, 0, 1) + n * 86400000).toISOString().slice(0, 10); // تاریخ یکتا (UNIQUE کاربر+تاریخ)
+      const date = workdayDate(n); // تاریخ یکتا (UNIQUE کاربر+تاریخ)
       const id = Number(insRec.run(user.id, date, ci, out, status).lastInsertRowid);
       brk.forEach(([s, e]) => insBrk.run(id, 'lunch', s, e));
       recordIds.push(id);

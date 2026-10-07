@@ -70,7 +70,7 @@ describe('مهلت زودتر رفتن (S3-3b)', () => {
     const user = makeUser();
     const ins = db.prepare('INSERT INTO attendance_records (user_id, record_date, check_in_time, check_out_time, status) VALUES (?, ?, ?, ?, ?)');
     const recs = ['16:25', '16:20', '16:10', '15:00'].map((h, i) => {
-      const date = `2026-09-0${i + 1}`;
+      const date = `2026-09-1${i + 2}`; // شنبه تا سه‌شنبه (تقویم پیش‌فرض: پنجشنبه/جمعه متفاوت است، S3-7c)
       return db.prepare('SELECT * FROM attendance_records WHERE id = ?').get(ins.run(user.id, date, at('08:00', date), at(h, date), 'normal').lastInsertRowid);
     });
     const earlies = () => recs.map((r) => dayService.summarizeRecord(r).earlyLeaveMinutes);

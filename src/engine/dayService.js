@@ -13,13 +13,17 @@ const settingsRepository = require('../repositories/settingsRepository');
 const breakRepository = require('../repositories/breakRepository');
 const shiftsRepository = require('../repositories/shiftsRepository');
 const overtimeApprovalRepository = require('../repositories/overtimeApprovalRepository');
+const usersRepository = require('../repositories/usersRepository');
+const holidaysRepository = require('../repositories/holidaysRepository');
+const { dayNumber } = require('../utils/shiftDay');
 const { computeDay } = require('./computeDay');
+const { getCalendarDay } = require('./calendarService');
 
 // تنظیمات مؤثر + منطقه‌ی زمانی (+ کش شیفت کاربران، S3-6b). برای حلقه روی چند رکورد یک‌بار بگیرید و با { context } بدهید
 // تا هر رکورد دوباره DB نخواند. context ساخته‌شده‌ی دستی (فقط { settings, timezone }) هم معتبر است؛ فقط کش نخواهد داشت.
 function loadContext() {
   const settings = settingsRepository.getAll();
-  return { settings, timezone: settings.timezone, shiftCache: new Map() };
+  return { settings, timezone: settings.timezone, shiftCache: new Map(), userCache: new Map(), holidayCache: new Map() };
 }
 
 // شیفت کاربر رکورد (S3-6b): opts.shift صریح (null = «بدون شیفت») اولویت دارد؛ وگرنه از users.shift_id. بدون شیفت ⇒ null ⇒ تنظیمات سراسری.
@@ -33,14 +37,39 @@ function shiftForRecord(record, ctx, opts) {
   return shift;
 }
 
+// تقویم روزِ رکورد (S3-7c): getCalendarDay برای کاربر رکورد در record_date (دپارتمان ⇒ تعطیلی دپارتمانی؛ شیفت ⇒ روزهای کاری/نیم‌روز شیفت).
+// opts.calendar صریح (شیء یا null = «بدون تقویم») اولویت دارد. رکورد بدون ورود یا بدون record_date معتبر ⇒ null (رفتار قبلی؛ هرگز exception).
+function calendarForRecord(record, ctx, opts, shift) {
+  if (opts.calendar !== undefined) return opts.calendar;
+  if (!record || !record.check_in_time || dayNumber(record.record_date) === null) return null;
+  let user = null;
+  if (record.user_id !== undefined && record.user_id !== null) {
+    const uc = ctx.userCache;
+    if (uc && uc.has(record.user_id)) user = uc.get(record.user_id);
+    else {
+      user = usersRepository.findById(record.user_id) || null;
+      if (uc) uc.set(record.user_id, user);
+    }
+  }
+  const hc = ctx.holidayCache;
+  let holidays = hc ? hc.get(record.record_date) : undefined;
+  if (holidays === undefined) {
+    holidays = holidaysRepository.listByDate(record.record_date);
+    if (hc) hc.set(record.record_date, holidays);
+  }
+  return getCalendarDay(user, record.record_date, { shift, settings: ctx.settings, holidays });
+}
+
 // خروجی کامل computeDay برای یک رکورد attendance_records (یا null).
-// opts: { now, context, shift } — now پیش‌فرض الان؛ context خروجی loadContext()؛ shift (اختیاری) شیفت صریح به‌جای شیفت منتسب به کاربر.
+// opts: { now, context, shift, calendar } — now پیش‌فرض الان؛ context خروجی loadContext()؛ shift (اختیاری) شیفت صریح به‌جای شیفت منتسب به کاربر؛
+// calendar (اختیاری، S3-7c) تقویم صریح به‌جای خواندن از getCalendarDay (null = بدون تقویم).
 function computeRecordDay(record, opts = {}) {
   const ctx = opts.context || loadContext();
   // مثل قبل: بدون ورود، استراحتی خوانده نمی‌شود
   const breaks = record && record.check_in_time ? breakRepository.listByAttendanceRecord(record.id) : [];
   const shift = record && record.check_in_time ? shiftForRecord(record, ctx, opts) : null;
-  return computeDay({ record, breaks, settings: ctx.settings, now: opts.now, timezone: ctx.timezone, shift });
+  const calendar = record && record.check_in_time ? calendarForRecord(record, ctx, opts, shift) : null;
+  return computeDay({ record, breaks, settings: ctx.settings, now: opts.now, timezone: ctx.timezone, shift, calendar });
 }
 
 // تبدیل خروجی computeDay به شکل قدیمی summarizeRecord (ترتیب کلیدها هم همان است ⇒ JSON یکسان)

@@ -1,7 +1,7 @@
 const { getRegisteredUser, notRegisteredMessage } = require('../auth');
 const attendanceRepository = require('../../repositories/attendanceRepository');
 const breakRepository = require('../../repositories/breakRepository');
-const holidaysRepository = require('../../repositories/holidaysRepository');
+const { getCalendarDay } = require('../../engine/calendarService');
 const leaveRepository = require('../../repositories/leaveRepository');
 const { summarizeRecord } = require('../../engine/dayService');
 const { formatMinutes } = require('../../utils/workHours');
@@ -23,7 +23,7 @@ async function handleStatus(bot, msg) {
   if (!record || !record.check_in_time) {
     const today = todayDateString();
     const status = record ? record.status : null;
-    if (status === 'holiday' || holidaysRepository.isHoliday(today)) {
+    if (status === 'holiday' || getCalendarDay(user, today).kind === 'holiday') { // S3-7c: شامل تعطیلی دپارتمانِ همین کاربر
       await bot.sendMessage(chatId, '📍 وضعیت شما: امروز تعطیل رسمی است.');
       return;
     }

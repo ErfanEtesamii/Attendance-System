@@ -11,7 +11,7 @@ const workHours = require('../src/utils/workHours');
 const settingsRepo = require('../src/repositories/settingsRepository');
 const breakRepo = require('../src/repositories/breakRepository');
 const { zonedTimeToUtc } = require('../src/utils/time');
-const { makeUser } = require('./helpers/factories');
+const { makeUser, workdayDate } = require('./helpers/factories');
 
 const TEHRAN = 'Asia/Tehran';
 const at = (date, hhmm) => zonedTimeToUtc(date, hhmm, TEHRAN).toISOString();
@@ -24,7 +24,7 @@ describe('dayService (S3-2c)', () => {
   const addRecord = ({ in: ci, out = null, status = 'normal', brk = [] }) => {
     seq += 1;
     const id = Number(db.prepare('INSERT INTO attendance_records (user_id, record_date, check_in_time, check_out_time, status) VALUES (?, ?, ?, ?, ?)')
-      .run(user.id, `2026-07-${String(seq).padStart(2, '0')}`, ci, out, status).lastInsertRowid);
+      .run(user.id, workdayDate(seq), ci, out, status).lastInsertRowid);
     brk.forEach(([s, e]) => db.prepare("INSERT INTO break_records (attendance_record_id, break_type, start_time, end_time) VALUES (?, 'lunch', ?, ?)").run(id, s, e));
     return db.prepare('SELECT * FROM attendance_records WHERE id = ?').get(id);
   };

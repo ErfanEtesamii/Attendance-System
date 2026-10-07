@@ -23,6 +23,14 @@
 //              مهلت تأخیر/زودتر رفتن (lateGraceMinutes/earlyGraceMinutes) و قاعده‌ی ناهار (maxLunchMinutes/fixedLunchDeductMinutes)؛ ۰ در شیفت
 //              یعنی «خاموش/بدون مهلت»، نه «از تنظیمات بگیر». بقیه‌ی تنظیمات (lateCountsFrom، اضافه‌کاری، آستانه‌ها، حاشیه‌ی خارج از شیفت) سراسری می‌مانند.
 //              شیفت ناسازگار (overnight با پایان ≥ شروع، یا پایان < شروع بدون overnight، ساعت نامعتبر) ⇒ RangeError.
+//   calendar : (S3-7c) اختیاری؛ خروجی getCalendarDay همان روز ({ isWorkingDay, kind, expectedEnd, ... }). null/undefined ⇒ رفتار قبلی (بدون تقویم).
+//              فقط سه چیز را عوض می‌کند (بقیه‌ی قواعد دست‌نخورده):
+//              • روز کاری نیم‌روز (kind='half' و شیفت غیرشب): پایانِ مؤثر = calendar.expectedEnd (در صورتی که بین شروع و پایان عادی باشد، وگرنه نادیده)؛
+//                پس expected کوتاه‌تر می‌شود و زودتر رفتن/اضافه‌کاری نسبت به همین پایان سنجیده می‌شود.
+//              • روز غیرکاری (isWorkingDay=false: آخر هفته، تعطیلی کامل، روز غیرکاری شیفت): expected = ۰، late = ۰، earlyLeave = ۰ و «کل کار» اضافه‌کاری است:
+//                overtime = workedGross (برای رکورد بسته‌شده؛ مثل اضافه‌کاری عادی استراحت از آن کم نمی‌شود). ضریب اضافه‌کاری = overtimeHolidayFactor.
+//                پرچم outside_shift برای چنین روزی داده نمی‌شود (پنجره‌ی کاری وجود ندارد).
+//              • calendar.isWorkingDay باید boolean باشد (وگرنه RangeError)؛ ساخت calendar با خود فراخواننده است (dayService.computeRecordDay).
 //   now      : لحظه‌ی «الان» برای رکورد باز (Date یا ISO)؛ پیش‌فرض new Date()
 //   timezone : نام IANA؛ پیش‌فرض Asia/Tehran
 // خروجی (همه دقیقه، عدد صحیح مگر null):
@@ -43,7 +51,7 @@
 //   overtimePayable : (S3-5a) اضافه‌کاری قابل‌پرداخت (دقیقه‌ی معادل، عدد صحیح). overtimeEnabled=false (پیش‌فرض) ⇒ ۰ و `overtime` خام دست‌نخورده.
 //                 مراحل: overtime خام ⇒ زیر حداقل آستانه ۰ (روی آستانه و بالاتر: کامل) ⇒ برش با سقف روزانه ⇒ گرد‌کردن به گام (down/nearest/up؛
 //                 nearest نیم‌گام را به بالا) ⇒ ضرب در ضریب (رکورد با status = holiday: overtimeHolidayFactor، وگرنه overtimeFactor) و گرد به عدد صحیح.
-//                 رکورد با خروج پیش از ورود یا زمان خراب ⇒ ۰. پایه‌ی اضافه‌کاری روز تعطیل فعلاً همان `overtime` خام است (تعریف «کل کار در تعطیل» با S3-7c)
+//                 رکورد با خروج پیش از ورود یا زمان خراب ⇒ ۰. در روز غیرکاری (calendar، S3-7c) `overtime` خام = کل مدت کار و ضریب همیشه overtimeHolidayFactor است
 //   isOpen      : ورود دارد ولی خروج ندارد
 //   flags       : (S3-4b) آرایه‌ی کدهای هشدار، به این ترتیب ثابت و بدون تکرار؛ هرگز exception نمی‌دهند و اعداد را عوض نمی‌کنند (جز invalid_time):
 //                 invalid_time            زمان رکورد/استراحت قابل‌خواندن نیست. زمان خراب رکورد ⇒ هیچ عددی محاسبه نمی‌شود (workedGross/effective = null،
@@ -182,9 +190,23 @@ function sumBreakMinutes(breaks, opts) {
   return sumItems(readBreaks(breaks).items, opts);
 }
 
-function computeDay({ record, breaks, settings, now, timezone, shift } = {}) {
+function computeDay({ record, breaks, settings, now, timezone, shift, calendar } = {}) {
   if (!settings || typeof settings !== 'object') throw new TypeError('settings الزامی است.');
-  const { workStart, workEnd, lateGrace, earlyGrace, maxLunch, fixedLunch, overnight } = resolveShiftParams(settings, shift);
+  const params = resolveShiftParams(settings, shift);
+  const { workStart, lateGrace, earlyGrace, maxLunch, fixedLunch, overnight } = params;
+  let { workEnd } = params;
+  // تقویم روز (S3-7c): روز غیرکاری یا پایانِ نیم‌روز. بدون calendar همه‌چیز مثل قبل
+  let dayOff = false;
+  if (calendar !== undefined && calendar !== null) {
+    if (typeof calendar !== 'object') throw new TypeError('calendar باید شیء یا null باشد.');
+    if (typeof calendar.isWorkingDay !== 'boolean') throw new RangeError('calendar.isWorkingDay باید boolean باشد.');
+    dayOff = !calendar.isWorkingDay;
+    if (!dayOff && calendar.kind === 'half' && !overnight) {
+      const halfEnd = typeof calendar.expectedEnd === 'string' ? /^\s*(\d{1,2}):(\d{2})\s*$/.exec(calendar.expectedEnd) : null;
+      const halfEndMin = halfEnd && Number(halfEnd[1]) <= 23 && Number(halfEnd[2]) <= 59 ? Number(halfEnd[1]) * 60 + Number(halfEnd[2]) : null;
+      if (halfEndMin !== null && halfEndMin > workStart && halfEndMin < workEnd) workEnd = halfEndMin; // نامعتبر/بیرون از بازه ⇒ روز کامل (مثل calendarService)
+    }
+  }
   if (settings.overtimeEnabled !== undefined && typeof settings.overtimeEnabled !== 'boolean') throw new RangeError('settings.overtimeEnabled باید boolean باشد.');
   const overtimeRounding = settings.overtimeRounding === undefined ? 'down' : settings.overtimeRounding;
   if (!OVERTIME_ROUNDING.includes(overtimeRounding)) throw new RangeError(`settings.overtimeRounding باید یکی از ${OVERTIME_ROUNDING.join('، ')} باشد.`);
@@ -205,7 +227,7 @@ function computeDay({ record, breaks, settings, now, timezone, shift } = {}) {
   if (!tz) throw new RangeError('timezone نامعتبر است.');
 
   const result = {
-    expected: Math.max(0, workEnd - workStart),
+    expected: dayOff ? 0 : Math.max(0, workEnd - workStart),
     workedGross: null,
     break: 0,
     breakAuto: 0,
@@ -242,7 +264,7 @@ function computeDay({ record, breaks, settings, now, timezone, shift } = {}) {
   const posOf = overnight ? (d) => dayDiff(formatDate(d, tz), refDate) * 1440 + minutesSinceMidnight(d, tz) : (d) => minutesSinceMidnight(d, tz);
   const checkInMinutes = posOf(checkIn);
   const lateLine = workStart + lateGrace; // تا خودِ این لحظه تأخیر نیست
-  if (checkInMinutes > lateLine) result.late = checkInMinutes - (lateCountsFrom === 'after_grace' ? lateLine : workStart);
+  if (!dayOff && checkInMinutes > lateLine) result.late = checkInMinutes - (lateCountsFrom === 'after_grace' ? lateLine : workStart);
 
   const end = checkOut || (now === undefined ? new Date() : toDate(now, 'now'));
   result.isOpen = !checkOut;
@@ -259,7 +281,7 @@ function computeDay({ record, breaks, settings, now, timezone, shift } = {}) {
   }
   const outsideMinutes = (d) => { const m = posOf(d); return m < workStart - shiftMargin || m > workEnd + shiftMargin; };
   const otherDay = !overnight && Boolean(checkOut) && formatDate(checkOut, tz) !== formatDate(checkIn, tz); // شیفت شب عمداً از نیمه‌شب رد می‌شود
-  if (outsideMinutes(checkIn) || (checkOut && (outsideMinutes(checkOut) || otherDay))) flagSet.add('outside_shift');
+  if (!dayOff && (outsideMinutes(checkIn) || (checkOut && (outsideMinutes(checkOut) || otherDay)))) flagSet.add('outside_shift');
 
   const gross = Math.max(0, (end.getTime() - checkIn.getTime()) / 60000);
   result.workedGross = Math.round(gross);
@@ -272,12 +294,14 @@ function computeDay({ record, breaks, settings, now, timezone, shift } = {}) {
 
   if (checkOut) {
     const checkOutMinutes = posOf(checkOut);
-    if (checkOutMinutes < workEnd) {
+    if (dayOff) {
+      result.overtime = result.workedGross; // روز غیرکاری: کل کار اضافه‌کاری است (S3-7c)
+    } else if (checkOutMinutes < workEnd) {
       if (checkOutMinutes < workEnd - earlyGrace) result.earlyLeave = workEnd - checkOutMinutes; // تا خودِ «پایان − مهلت» زودتر رفتن نیست
     } else {
       result.overtime = checkOutMinutes - workEnd;
     }
-    if (!reversed) result.overtimePayable = payableOvertime(result.overtime, ot, record.status === 'holiday' ? overtimeHolidayFactor : overtimeFactor);
+    if (!reversed) result.overtimePayable = payableOvertime(result.overtime, ot, record.status === 'holiday' || dayOff ? overtimeHolidayFactor : overtimeFactor);
   }
   return emit();
 }

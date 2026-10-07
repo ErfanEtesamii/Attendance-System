@@ -23,7 +23,7 @@ const rec = (date, inHhmm, outHhmm, outDate = date, extra = {}) => ({ record_dat
 
 describe('computeDay با شیفت (S3-6b)', () => {
   test('بدون شیفت (null/undefined) دقیقاً مثل تنظیمات سراسری؛ شیفتِ هم‌ارزِ تنظیمات هم همان خروجی را می‌دهد', () => {
-    const r = rec('2026-09-10', '08:20', '17:00');
+    const r = rec('2026-09-13', '08:20', '17:00');
     const base = day(r);
     assert.deepEqual(day(r, { shift: null }), base);
     assert.deepEqual([base.expected, base.late, base.overtime], [510, 20, 30]);
@@ -31,7 +31,7 @@ describe('computeDay با شیفت (S3-6b)', () => {
   });
 
   test('دو شیفت متفاوت روی یک ورود/خروج، نتیجه‌ی متفاوت می‌دهند (شروع/پایان/expected/مهلت)', () => {
-    const r = rec('2026-09-10', '14:20', '22:30');
+    const r = rec('2026-09-13', '14:20', '22:30');
     const morning = shiftOf({ startTime: '08:00', endTime: '16:00', graceLateMinutes: 10, graceEarlyMinutes: 5 });
     const evening = shiftOf({ startTime: '14:00', endTime: '22:00' });
     const a = day(r, { shift: morning });
@@ -45,7 +45,7 @@ describe('computeDay با شیفت (S3-6b)', () => {
   });
 
   test('مهلت و ناهار شیفت جایگزین تنظیمات سراسری می‌شوند (۰ در شیفت = خاموش، نه «از تنظیمات»)', () => {
-    const r = rec('2026-09-10', '08:10', '16:00');
+    const r = rec('2026-09-13', '08:10', '16:00');
     const settings = { ...GLOBAL, workDayEnd: '16:00', lateGraceMinutes: 15, fixedLunchDeductMinutes: 45 };
     const g = day(r, { settings });
     assert.deepEqual([g.late, g.breakAuto], [0, 45]); // سراسری: مهلت ۱۵، کسر ۴۵
@@ -53,7 +53,7 @@ describe('computeDay با شیفت (S3-6b)', () => {
     assert.deepEqual([s.late, s.breakAuto], [10, 0]); // شیفت: بدون مهلت و بدون کسر
     const s2 = day(r, { settings, shift: shiftOf({ startTime: '08:00', endTime: '16:00', graceLateMinutes: 10, fixedLunchDeductMinutes: 30 }) });
     assert.deepEqual([s2.late, s2.breakAuto, s2.effective], [0, 30, 440]); // ۴۷۰ دقیقه حضور − ۳۰ کسر ناهار
-    const cap = day(r, { shift: shiftOf({ startTime: '08:00', endTime: '16:00', maxLunchMinutes: 30 }), breaks: [{ start_time: iso('2026-09-10', '12:00'), end_time: iso('2026-09-10', '13:00'), break_type: 'lunch' }] });
+    const cap = day(r, { shift: shiftOf({ startTime: '08:00', endTime: '16:00', maxLunchMinutes: 30 }), breaks: [{ start_time: iso('2026-09-13', '12:00'), end_time: iso('2026-09-13', '13:00'), break_type: 'lunch' }] });
     assert.equal(cap.breakExcess, 30);
 
     for (const bad of [
@@ -71,7 +71,7 @@ describe('computeDay با شیفت (S3-6b)', () => {
     const [u1, u2, u3] = [makeUser(), makeUser(), makeUser()];
     usersRepo.setUserShift(u1.id, sA.id);
     usersRepo.setUserShift(u2.id, sB.id);
-    const mk = (u) => attendanceRepo.createManual({ userId: u.id, recordDate: '2026-09-10', checkInTime: iso('2026-09-10', '14:20'), checkOutTime: iso('2026-09-10', '22:30'), status: 'normal' });
+    const mk = (u) => attendanceRepo.createManual({ userId: u.id, recordDate: '2026-09-13', checkInTime: iso('2026-09-13', '14:20'), checkOutTime: iso('2026-09-13', '22:30'), status: 'normal' });
     const [r1, r2, r3] = [mk(u1), mk(u2), mk(u3)];
     const context = dayService.loadContext();
     const [d1, d2, d3] = [r1, r2, r3].map((r) => dayService.computeRecordDay(r, { context }));

@@ -12,6 +12,8 @@ const holidaysRepository = require('../../../repositories/holidaysRepository');
 const disputeRepository = require('../../../repositories/disputeRepository');
 const auditRepository = require('../../../repositories/auditRepository');
 const dayService = require('../../../engine/dayService');
+const settingsRepository = require('../../../repositories/settingsRepository');
+const { getCalendarDay } = require('../../../engine/calendarService');
 const { todayDateString } = require('../../../utils/serverTime');
 const { sendMessage } = require('../../../bot/notifier');
 const { sendCsv } = require('../../../utils/csv');
@@ -26,6 +28,9 @@ router.get('/admin/users', (req, res) => {
   if (allowedIds !== null) users = users.filter((u) => allowedIds.includes(u.id));
 
   const today = todayDateString();
+  // S3-7c: «تعطیل» بودن امروز برای هر کاربر از getCalendarDay (تعطیلی کامل؛ شامل دامنه‌ی دپارتمان). یک‌بار خواندن تنظیمات/ردیف‌های امروز
+  const calSettings = settingsRepository.getAll();
+  const calHolidays = holidaysRepository.listByDate(today);
   const withToday = users.map((u) => {
     const record = attendanceRepository.findTodayRecord(u.id);
     let todayStatus = 'not_checked_in';
@@ -34,7 +39,7 @@ router.get('/admin/users', (req, res) => {
       if (record.status === 'incomplete') todayStatus = 'incomplete';
       if (record.status === 'holiday') todayStatus = 'holiday';
       if (record.status === 'leave') todayStatus = 'leave';
-    } else if (holidaysRepository.isHoliday(today)) {
+    } else if (getCalendarDay(u, today, { settings: calSettings, holidays: calHolidays }).kind === 'holiday') {
       todayStatus = 'holiday';
     } else if (leaveRepository.hasApprovedLeaveOnDate(u.id, today, 'leave')) {
       todayStatus = 'leave';

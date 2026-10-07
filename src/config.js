@@ -137,10 +137,11 @@ const config = {
   // عبارات Cron برای Jobهای زمان‌بندی‌شده (فرمت node-cron: دقیقه ساعت روزماه ماه روزهفته).
   // ⚠️ پیش‌فرض‌ها را حتماً متناسب با روزهای کاری واقعی شرکت در .env تنظیم کنید.
   cron: {
-    // بررسی روزانه ورودهای دیرهنگام (هر روز، مقداری بعد از WORK_DAY_START اجرا شود)
-    lateCheckinCheck: process.env.CRON_LATE_CHECKIN_CHECK || '*/5 8-12 * * 6,0,1,2,3',
-    // یادآوری ثبت خروج نزدیک پایان ساعت کاری
-    checkoutReminderCheck: process.env.CRON_CHECKOUT_REMINDER_CHECK || '*/5 15-18 * * 6,0,1,2,3',
+    // بررسی روزانه ورودهای دیرهنگام (مقداری بعد از WORK_DAY_START اجرا شود)
+    // S3-8a: هر روز هفته اجرا می‌شود؛ «روز کاری بودن» را خود Job برای هر کاربر از getCalendarDay می‌گیرد (نه الگوی cron)
+    lateCheckinCheck: process.env.CRON_LATE_CHECKIN_CHECK || '*/5 8-12 * * *',
+    // یادآوری ثبت خروج نزدیک پایان ساعت کاری (S3-8a: هر روز؛ ساعت‌ها ۹ تا ۱۸ تا پایانِ نیم‌روز/نیم‌روزِ تعطیلی هم پوشش داده شود)
+    checkoutReminderCheck: process.env.CRON_CHECKOUT_REMINDER_CHECK || '*/5 9-18 * * *',
     // گزارش پایان روز برای مدیران/ادمین
     dailyReport: process.env.CRON_DAILY_REPORT || '0 17 * * 6,0,1,2,3',
     // گزارش هفتگی (شروع هفته کاری - شنبه صبح)

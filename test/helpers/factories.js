@@ -7,6 +7,16 @@ const { SESSION_COOKIE_NAME } = require('../../src/middleware/adminAuth');
 
 let seq = 0;
 
+// n-امین روز «کاری عادی» (شنبه تا چهارشنبه) از ۲۰۲۶-۰۸-۰۱ (شنبه) — برای رکوردهایی که تاریخشان دلخواه است و نباید با تقویم پیش‌فرض
+// (جمعه آخر هفته، پنجشنبه نیم‌روز؛ S3-7c) تداخل کند. n از ۱ شروع می‌شود؛ برای n‌های متفاوت تاریخ‌های متفاوت می‌دهد.
+function workdayDate(n) {
+  const d = new Date(Date.UTC(2026, 7, 1));
+  let left = n - 1;
+  const cycle = [0, 1, 2, 3, 4]; // شنبه..چهارشنبه
+  d.setUTCDate(d.getUTCDate() + Math.floor(left / 5) * 7 + cycle[left % 5]);
+  return d.toISOString().slice(0, 10);
+}
+
 function makeUser({ role = 'employee', managerId = null, department = 'تست', active = true, name } = {}) {
   seq += 1;
   const user = usersRepository.createUser({
@@ -65,4 +75,4 @@ function runMiddleware(mw, req) {
 // هدرهای لازم برای متدهای نوشتنی پنل (محافظت CSRF)
 const CSRF_HEADERS = { 'x-requested-with': 'AttendancePanel' };
 
-module.exports = { CSRF_HEADERS, makeUser, makeApprovedMission, sessionCookie, fakeReq, fakeRes, runMiddleware };
+module.exports = { workdayDate, CSRF_HEADERS, makeUser, makeApprovedMission, sessionCookie, fakeReq, fakeRes, runMiddleware };

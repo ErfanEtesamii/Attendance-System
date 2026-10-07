@@ -68,7 +68,7 @@ describe('مهلت تأخیر (S3-3a)', () => {
     const user = makeUser();
     const ins = db.prepare('INSERT INTO attendance_records (user_id, record_date, check_in_time, check_out_time, status) VALUES (?, ?, ?, ?, ?)');
     const recs = ['08:05', '08:10', '08:25', '09:00'].map((h, i) => {
-      const date = `2026-09-0${i + 1}`;
+      const date = `2026-09-1${i + 2}`; // شنبه تا سه‌شنبه (تقویم پیش‌فرض: پنجشنبه/جمعه متفاوت است، S3-7c)
       return db.prepare('SELECT * FROM attendance_records WHERE id = ?').get(ins.run(user.id, date, at(h, date), at('16:30', date), 'normal').lastInsertRowid);
     });
     const lates = () => recs.map((r) => dayService.summarizeRecord(r).lateMinutes);

@@ -41,7 +41,7 @@ describe('تأیید اضافه‌کاری (S3-5c)', () => {
     const manager = makeUser({ role: 'manager' });
     const emp = makeUser({ role: 'employee', managerId: manager.id });
     const r1 = mkRecord(emp, '2026-07-01', 30);
-    const r2 = mkRecord(emp, '2026-07-02', 30);
+    const r2 = mkRecord(emp, '2026-07-04', 30);
     const raw = (recordId, status) => db.prepare('INSERT INTO overtime_approvals (attendance_record_id, user_id, status, decided_by) VALUES (?, ?, ?, ?)').run(recordId, emp.id, status, manager.id);
     assert.throws(() => raw(r1.id, 'pending'), /CHECK/, 'pending ردیف نمی‌شود');
     raw(r1.id, 'approved');
@@ -155,7 +155,7 @@ describe('تأیید اضافه‌کاری (S3-5c)', () => {
         // رکوردِ بدون اضافه‌کاری ⇒ ۴۰۹
         assert.equal((await hit('manager', 'POST', url(none.id, 'approve'), {})).status, 409);
         // هیچ‌کس اضافه‌کاری خودش را تأیید نمی‌کند (ادمین روی رکورد خودش)
-        const own = mkRecord({ id: ids.admin }, '2026-09-03', 45);
+        const own = mkRecord({ id: ids.admin }, '2026-09-05', 45);
         assert.equal((await hit('admin', 'POST', url(own.id, 'approve'), {})).status, 403);
 
         // رد بدون دلیل ⇒ ۴۰۰ و هیچ ردیفی ساخته نمی‌شود
@@ -191,9 +191,9 @@ describe('تأیید اضافه‌کاری (S3-5c)', () => {
     test('فهرست: معلق/تأییدشده/ردشده، فیلتر وضعیت، اسکوپ سرپرست، اعتبارسنجی و ممنوعیت کارمند', async () => {
       const emp = { id: ids.employee };
       const outsider = { id: ids.outsider };
-      const a = mkRecord(emp, '2026-10-01', 40);
-      const b = mkRecord(emp, '2026-10-02', 30);
-      const c = mkRecord(outsider, '2026-10-01', 20);
+      const a = mkRecord(emp, '2026-10-04', 40);
+      const b = mkRecord(emp, '2026-10-05', 30);
+      const c = mkRecord(outsider, '2026-10-04', 20);
       mkRecord(emp, '2026-10-03', 0); // اضافه‌کاری ندارد ⇒ در فهرست نمی‌آید
       const q = '?from=2026-10-01&to=2026-10-31';
       try {
