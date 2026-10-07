@@ -295,6 +295,7 @@ router.get('/admin/users/:id/details', (req, res) => {
       ...userBrief(user),
       managerId: user.manager_id,
       managerName: manager ? manager.full_name : null,
+      shiftId: user.shift_id == null ? null : user.shift_id,
       createdAt: user.created_at,
       updatedAt: user.updated_at,
     },

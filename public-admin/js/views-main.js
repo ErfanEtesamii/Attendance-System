@@ -309,9 +309,10 @@
       if (!param) throw new Error('کارمندی انتخاب نشده است.');
       const from = fmt.daysAgo(profileUi.days - 1);
       const to = fmt.today();
-      const [d, users] = await Promise.all([
+      const [d, users, shiftList] = await Promise.all([
         AP.api(`/admin/users/${param}/details?from=${from}&to=${to}`),
         AP.loadUsers(),
+        AP.state.isAdmin ? AP.api('/admin/shifts').catch(() => []) : [], // S3-9e: فقط برای کارت انتساب شیفت
       ]);
       const u = d.user;
       const s = d.stats;
@@ -416,7 +417,7 @@
           const full = users.find((x) => x.id === u.id) || { ...u, managerId: u.managerId };
           return `<div class="card"><form class="form" id="pf-form">${employeeFormFields({ ...full, managerId: u.managerId, isActive: u.isActive }, users)}
             <div class="form-msg"></div>
-            <div class="modal-actions"><button class="btn primary" type="submit">ذخیره تغییرات</button></div></form></div>`;
+            <div class="modal-actions"><button class="btn primary" type="submit">ذخیره تغییرات</button></div></form></div>${AP.shiftAssignCard ? AP.shiftAssignCard(u, shiftList) : ''}`;
         },
         team() {
           return `<div class="list">${d.team.map((m) => `
@@ -444,6 +445,7 @@
             $$('[data-rec]', panel).forEach((el) => el.addEventListener('click', () => AP.openRecord(el.dataset.rec)));
             $$('[data-leave]', panel).forEach((el) => el.addEventListener('click', () => AP.openLeaveEditor(el.dataset.leave)));
             $$('[data-go-disputes]', panel).forEach((el) => el.addEventListener('click', () => AP.go('disputes')));
+            if (AP.bindShiftAssign) AP.bindShiftAssign(panel, u);
             const form = $('#pf-form', panel);
             if (form) form.addEventListener('submit', async (e) => {
               e.preventDefault();
