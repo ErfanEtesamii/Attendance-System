@@ -2,7 +2,25 @@
 
 وضعیت و جزئیات کامل فازها: [`PROJECT_STATUS.md`](PROJECT_STATUS.md) — معماری: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 
+## [Unreleased] — بخش ۴ (ممیزی)
+
+### S4-1a — `auditRepository.logChange` (helper؛ هنوز هیچ route به آن وصل نشده)
+- `auditRepository.logChange({ actor, action, entityType, entityId, before, after, reason, ip })`: لایه‌ای بالای `logEvent`؛ **ساختار جدول `audit_log` و ورودی‌های قدیمی بدون تغییر** (`user_id` = actor، `ip_address` = ip، بقیه در `details` JSON).
+- `details` استاندارد: `{ entityType, entityId, changes: { <field>: { before, after } }, reason?, redacted? }` (همان قالب `changes` ممیزی تنظیمات S3-1b). **فقط فیلدهای تغییرکرده** (مقایسه‌ی عمیق، مستقل از ترتیب کلید؛ `before=null` ⇒ ایجاد، `after=null` ⇒ حذف).
+- **فیلدهای حساس** (نام شامل `token|secret|hash|password|passwd|api_key`) در هر عمقی حذف می‌شوند و مقدارشان ثبت نمی‌شود. اگر یکی از آن‌ها «تغییر» کرده باشد فقط **نام** فیلد در `redacted` می‌آید (ردپای وقوع تغییر، بدون مقدار). همه‌ی رشته‌ها با `sanitizeText` پاک/کوتاه (۵۰۰ نویسه) می‌شوند؛ الگوی توکن بات ⇒ `[REDACTED]`.
+- رفتار ثبت‌شده: اگر هیچ فیلدی تغییر نکرده باشد هم رکورد با `changes` خالی ثبت می‌شود (وقوع عمل ردپای ممیزی است). ورودی نامعتبر (بدون `action`/`entityType`، `before/after` غیرآبجکت، `actor` غیرعددی) ⇒ خطای صریح و رکوردی ثبت نمی‌شود.
+- فایل‌ها: `src/utils/auditDiff.js` (منطق خالص)، `src/repositories/auditRepository.js` (`logChange` + export)، `test/auditChange.test.js` (۱۲ تست: diff دقیق، ایجاد/حذف، بی‌تغییر، عمق، راز ذخیره نمی‌شود حتی در ستون واقعی DB، سازگاری ستون‌ها و `logEvent`/`search`/`listActions`).
+- مهاجرت routeها به `logChange` در S4-1b/S4-1c است.
+
 ## [Unreleased] — بخش ۳ (موتور محاسبه و تنظیمات)
+
+### S3-11d — نمایش و ورودی شمسی در Mini App کارمند
+- `public/index.html`: `datepicker.css` (قبل از `style.css` تا تنظیمات Mini App غلبه کند)، `jalali.js` و `datepicker.js` **همان فایل‌های پنل از `/admin/...`** لینک شد (یک منبع واحد؛ بدون کپی). CSP صفحه‌ی Mini App (`script-src 'self'`) بدون تغییر کافی است. وابستگی جدید ندارد.
+- **نمایش (`public/js/app.js`)**: `fmtDate` (تاریخچه‌ی ۳۰ روز، فهرست مرخصی) با `Jalali.formatIso` ⇒ «۱۵ مهر ۱۴۰۵». دیگر `new Date('YYYY-MM-DD')` نمی‌سازد (UTC نیمه‌شب در منطقه‌های زمانیِ منفی روز قبل را نشان می‌داد) و به ICU پیش‌فرض `fa-IR` تکیه نمی‌کند. تاریخ سربرگ «چهارشنبه ۱۵ مهر» از همان کتابخانه است (به وقت دستگاه، بدون سال مثل قبل). اگر `jalali.js` بارگذاری نشود جایگزین ICU با تقویم شمسیِ صریح (`fa-IR-u-ca-persian`) است.
+- **ورودی (فرم مرخصی/مأموریت)**: «از/تا تاریخ» از `input[type=date]` به datepicker شمسی تبدیل شد (تایپ فارسی/انگلیسی یا انتخاب از تقویم)؛ **مقدار ارسالی به API همچنان میلادی `YYYY-MM-DD`** است، پس API و دیتابیس بدون تغییرند. تاریخ نامعتبر (مثلاً ۳۰ اسفند سال غیرکبیسه) یا پایان قبل از شروع در کلاینت رد می‌شود و درخواستی نمی‌رود. بعد از ارسال موفق، حالت داخلی datepicker هم پاک می‌شود (`form.reset()` به‌تنهایی آن را پاک نمی‌کند). اگر datepicker بارگذاری نشود input بومی `date` می‌ماند.
+- `style.css`: فقط چینش وسط‌چین، عرض popup متناسب با صفحه‌ی موبایل و هدف لمسیِ ۴۰px.
+- تست: `test/miniappJalali.test.js` (۱۱ تست؛ اجرای واقعی `app.js` با DOM ساختگی: تاریخچه/مرخصی با مرز کبیسه، سربرگ، ارسال ISO، رد ورودی نامعتبر، حالت بدون datepicker؛ سرو شدن فایل‌های `/admin` روی اپ واقعی). **انجام نشده**: تست روی تلگرام/موبایل واقعی (باز شدن popup روی کیبورد لمسی، جای popup نسبت به نوار پایین، WebView تلگرام iOS/Android) و مرورگر واقعی (در این محیط مرورگر/jsdom نبود).
+- نکته‌ی مرتبط (خارج از دامنه): `POST /miniapp/leave` فرمت و ترتیب تاریخ را سمت سرور اعتبارسنجی نمی‌کند؛ اعتبارسنجی فعلی فقط در کلاینت است.
 
 ### S3-11c — ستون تاریخ شمسی در CSV
 - `src/utils/jalali.js`: `isoDateToJalaliString(iso)` و `instantToJalaliString(utcValue, tz)` (روز شمسیِ لحظه‌ی UTC به وقت شرکت، نه منطقه‌ی سرور)؛ خروجی `YYYY/MM/DD` با ارقام انگلیسی؛ نامعتبر/خالی ⇒ `''`.

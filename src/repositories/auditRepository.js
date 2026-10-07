@@ -1,4 +1,5 @@
 const { getDb } = require('../db/connection');
+const { buildChangeDetails } = require('../utils/auditDiff');
 
 // این لاگ عمداً هیچ تابع update/delete ندارد؛ طبق سند باید غیرقابل‌ویرایش باقی بماند.
 // تنها استثنا archiveBatch (S2-6c) است: رکورد را «حذف» نمی‌کند، همان ردیف را (با همان id و زمان) به audit_log_archive
@@ -29,6 +30,26 @@ function logEvent({ userId = null, action, ipAddress = null, details = null }) {
     )
     .run(userId, action, ipAddress, detailsStr);
   return db.prepare('SELECT * FROM audit_log WHERE id = ?').get(result.lastInsertRowid);
+}
+
+// S4-1a: ثبت «تغییرِ یک موجودیت» با details استاندارد (جزئیات قالب: src/utils/auditDiff.js).
+// ساختار جدول و ورودی‌های قدیمی (logEvent) بدون تغییر است؛ این فقط یک لایه‌ی بالای logEvent است.
+//   actor: شناسه‌ی کاربر انجام‌دهنده، یا آبجکت با id/userId (null برای سیستم)؛ در ستون user_id می‌نشیند
+//   before/after: آبجکت‌های «وضعیت قبل/بعد» (null ⇒ ایجاد/حذف)؛ فقط فیلدهای تغییرکرده ثبت می‌شوند، حساس‌ها حذف
+// ⚠️ اگر هیچ فیلدی تغییر نکرده باشد هم رکورد (با changes خالی) ثبت می‌شود: «رخ دادنِ عمل» ردپای ممیزی است و بی‌صدا گم نمی‌شود.
+function resolveActorId(actor) {
+  if (actor === null || actor === undefined) return null;
+  const id = typeof actor === 'object' ? (actor.id !== undefined ? actor.id : actor.userId) : actor;
+  if (id === null || id === undefined) return null;
+  if (!Number.isInteger(id)) throw new TypeError('actor باید شناسه‌ی عددی کاربر یا آبجکت دارای id باشد.');
+  return id;
+}
+
+function logChange({ actor = null, action, entityType, entityId = null, before = null, after = null, reason = null, ip = null } = {}) {
+  if (typeof action !== 'string' || !action.trim()) throw new TypeError('logChange: action الزامی است.');
+  if (typeof entityType !== 'string' || !entityType.trim()) throw new TypeError('logChange: entityType الزامی است.');
+  const details = buildChangeDetails({ entityType: entityType.trim(), entityId, before, after, reason });
+  return logEvent({ userId: resolveActorId(actor), action: action.trim(), ipAddress: ip, details });
 }
 
 // includeArchive (S2-6c): رکوردهای آرشیوشده هم در نتیجه بیایند (با ستون archived)
@@ -110,4 +131,4 @@ function listActions() {
     .all();
 }
 
-module.exports = { logEvent, listByUser, listRecent, search, listActions, summarizeOlderThan, archiveBatch };
+module.exports = { logEvent, logChange, listByUser, listRecent, search, listActions, summarizeOlderThan, archiveBatch };

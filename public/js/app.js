@@ -146,13 +146,48 @@
     return d.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
   }
 
+  // ---------- تاریخ شمسی (S3-11d) ----------
+  // jalali.js/datepicker.js همان فایل‌های پنل‌اند (/admin/js). اگر بارگذاری نشدند، نمایش به ICU برمی‌گردد
+  // و ورودی تاریخ همان input بومی (میلادی) می‌ماند؛ هیچ‌کدام مانع کار برنامه نمی‌شود.
+  const J = window.Jalali || null;
+  const DP = window.JalaliDatepicker || null;
+  const pad2 = (n) => String(n).padStart(2, '0');
+
+  // «YYYY-MM-DD» (یا YYYY-MM-DD HH:MM:SS دیتابیس) ⇒ همان بخش تاریخ؛ نامعتبر ⇒ null
+  function isoPart(v) {
+    const m = /^(\d{4}-\d{2}-\d{2})/.exec(String(v == null ? '' : v));
+    return m ? m[1] : null;
+  }
+
+  // تاریخ میلادی ISO رکورد ⇒ «۱۵ مهر ۱۴۰۵». عمداً از new Date(iso) استفاده نمی‌کند (UTC نیمه‌شب در منطقه‌های منفی روز قبل می‌شد).
   function fmtDate(dateStr) {
     if (!dateStr) return '—';
-    try {
-      return new Date(dateStr).toLocaleDateString('fa-IR', { year: 'numeric', month: 'long', day: 'numeric' });
-    } catch (_) {
-      return dateStr;
+    const iso = isoPart(dateStr);
+    if (!iso) return String(dateStr);
+    if (J) {
+      try {
+        const out = J.formatIso(iso, { long: true });
+        if (out) return out;
+      } catch (_) { /* خارج از بازه‌ی پشتیبانی ⇒ جایگزین */ }
     }
+    try {
+      return new Date(`${iso}T12:00:00`).toLocaleDateString('fa-IR-u-ca-persian', { year: 'numeric', month: 'long', day: 'numeric' });
+    } catch (_) {
+      return iso;
+    }
+  }
+
+  // «امروز» به وقت دستگاه (همان مبنای «امروز»ِ datepicker) ⇒ «چهارشنبه ۱۵ مهر»؛ بدون سال چون جا کم است
+  function fmtTodayShort() {
+    const d = new Date();
+    const iso = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+    if (J) {
+      try {
+        const j = J.isoToJalali(iso);
+        return `${J.weekdayName(iso)} ${J.toFaDigits(j.jd)} ${J.MONTH_NAMES[j.jm - 1]}`;
+      } catch (_) { /* جایگزین */ }
+    }
+    return d.toLocaleDateString('fa-IR-u-ca-persian', { weekday: 'long', month: 'long', day: 'numeric' });
   }
 
   const STATUS_LABELS = {
@@ -394,25 +429,55 @@
 
   // ---------- مرخصی ----------
 
-  $('#leave-form').addEventListener('submit', async (e) => {
+  // فیلدهای تاریخ فرم مرخصی: با datepicker شمسی، ولی مقدارِ ارسالی همچنان میلادی YYYY-MM-DD است.
+  // اگر datepicker بارگذاری نشده باشد، input بومی type=date (که خودش ISO می‌دهد) می‌ماند.
+  const leaveForm = $('#leave-form');
+  const leaveDates = { startDate: null, endDate: null };
+  ['startDate', 'endDate'].forEach((name) => {
+    const el = leaveForm[name];
+    if (!DP || !el) return;
+    el.type = 'text'; // type=date متن شمسی را نمی‌پذیرد
+    leaveDates[name] = DP.attach(el, {});
+  });
+
+  function readLeaveDate(form, name) {
+    return leaveDates[name] ? leaveDates[name].getValue() : form[name].value;
+  }
+
+  leaveForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
     const msg = $('#leave-msg');
     msg.textContent = '';
     msg.className = 'form-msg';
+    const startDate = readLeaveDate(form, 'startDate');
+    const endDate = readLeaveDate(form, 'endDate');
+    // ورودی شمسی نامعتبر (مثلاً ۳۰ اسفند سال غیرکبیسه) ⇒ مقدار ISO خالی می‌ماند و نباید به سرور برود
+    if (!startDate || !endDate) {
+      msg.textContent = 'تاریخ شروع و پایان را معتبر و به‌صورت شمسی وارد کنید (مثل ۱۴۰۵/۰۷/۱۵).';
+      msg.classList.add('err');
+      return;
+    }
+    if (endDate < startDate) { // ISO میلادی: مقایسه‌ی متنی = مقایسه‌ی تاریخ
+      msg.textContent = 'تاریخ پایان نباید قبل از تاریخ شروع باشد.';
+      msg.classList.add('err');
+      return;
+    }
     try {
       await api('/leave', {
         method: 'POST',
         body: {
           leaveType: form.leaveType.value,
-          startDate: form.startDate.value,
-          endDate: form.endDate.value,
+          startDate,
+          endDate,
           reason: form.reason.value,
         },
       });
       msg.textContent = 'درخواست با موفقیت ارسال شد.';
       msg.classList.add('ok');
       form.reset();
+      // reset فرم حالت داخلی datepicker را پاک نمی‌کند
+      Object.values(leaveDates).forEach((dp) => { if (dp) dp.setValue(''); });
       loadLeaveList();
     } catch (err) {
       msg.textContent = err.message;
@@ -497,7 +562,7 @@
       state.me = await api('/me');
       $('#user-name').textContent = state.me.fullName;
       try {
-        $('#header-date').textContent = new Date().toLocaleDateString('fa-IR', { weekday: 'long', month: 'long', day: 'numeric' });
+        $('#header-date').textContent = fmtTodayShort();
       } catch (_) { /* ignore */ }
       $('#app').classList.remove('hidden');
       await loadToday();

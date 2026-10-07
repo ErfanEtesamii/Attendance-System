@@ -383,6 +383,13 @@ body {
   color-scheme: dark;
 }
 .form input:focus, .form select:focus, .form textarea:focus { border-color: var(--green); }
+/* datepicker شمسی (S3-11d): رنگ/فونت از متغیرهای همین فایل می‌آید؛ اینجا فقط تنظیم لمسی و چینش */
+.form input.jdp-input { text-align: center; }
+.jdp-pop { width: min(300px, calc(100vw - 16px)); font-family: inherit; }
+@media (pointer: coarse) {
+  .jdp-cell, .jdp-nav, .jdp-link { min-height: 40px; }
+  .jdp-cell { height: 40px; }
+}
 .form-msg { font-size: 12px; min-height: 16px; }
 .form-msg.ok { color: var(--green); }
 .form-msg.err { color: var(--red); }
