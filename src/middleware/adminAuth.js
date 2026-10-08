@@ -25,6 +25,7 @@ const EMPLOYEE_ALLOWED = [
   ['GET', /^\/admin\/attendance-records\/\d+$/],
   ['GET', /^\/admin\/users\/\d+\/details$/],
   ['GET', /^\/admin\/leave-requests$/],
+  ['GET', /^\/admin\/leave-requests\/\d+\/attachment$/], // S4-12b: پیوست درخواست خود کارمند (اسکوپ در route)
   ['GET', /^\/admin\/leave-balances$/], // S4-9c: مانده‌ی خود کارمند (اسکوپ در route)
   ['GET', /^\/admin\/leave-balances\/\d+\/adjustments$/],
   ['GET', /^\/admin\/disputes$/],

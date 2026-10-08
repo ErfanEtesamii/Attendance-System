@@ -15,6 +15,8 @@ const config = require('../../config');
 const { getDb } = require('../../db/connection');
 const { applyRetention } = require('../../utils/backupRetention');
 const { integrityCheckFile } = require('../../repositories/monitorRepository');
+const settingsRepository = require('../../repositories/settingsRepository');
+const { mirrorAttachments } = require('../../utils/attachmentsBackup');
 
 const pad = (n) => String(n).padStart(2, '0');
 
@@ -42,6 +44,7 @@ async function runDailyBackup({
   now = new Date(),
   keepDaily = config.backup.keepDaily,
   keepMonthly = config.backup.keepMonthly,
+  attachmentsDir = config.attachmentsDir,
 } = {}) {
   fs.mkdirSync(dir, { recursive: true });
   const file = `daily-${backupStamp(now)}.db`;
@@ -79,7 +82,15 @@ async function runDailyBackup({
   const { monthlyCreated, removed } = applyRetention(dir, { justCreated: file, keepDaily, keepMonthly });
   const n = removed.daily.length + removed.monthly.length;
   if (monthlyCreated || n) console.log(`[backup] نگهداری: کپی ماهانه=${monthlyCreated || '-'}، پاک‌شده=${n}`);
-  return { file, path: dest, sizeBytes, integrity: 'ok', monthlyCreated, removed };
+
+  // پیوست‌های مرخصی (S4-12c؛ تنظیم backupIncludeAttachments، پیش‌فرض روشن). خطای کپی پیوست بک‌آپ دیتابیس را بی‌اعتبار نمی‌کند ولی Job را «خطا» می‌کند تا دیده شود.
+  let attachments = null;
+  if (settingsRepository.getAll().backupIncludeAttachments) {
+    attachments = mirrorAttachments(attachmentsDir, dir);
+    if (attachments.copied) console.log(`[backup] پیوست‌ها: ${attachments.copied} فایل تازه کپی شد (${attachments.skipped} قبلاً بود).`);
+    if (attachments.errors.length) throw new Error(`بک‌آپ دیتابیس سالم است ولی کپی پیوست‌ها ناقص ماند (${attachments.errors.length} خطا): ${attachments.errors.slice(0, 3).join(' | ')}`);
+  }
+  return { file, path: dest, sizeBytes, integrity: 'ok', monthlyCreated, removed, attachments };
 }
 
 module.exports = { runDailyBackup, backupStamp };

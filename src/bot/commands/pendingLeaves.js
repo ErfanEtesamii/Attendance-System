@@ -3,6 +3,7 @@ const usersRepository = require('../../repositories/usersRepository');
 const leaveRepository = require('../../repositories/leaveRepository');
 const auditRepository = require('../../repositories/auditRepository');
 const notificationEvents = require('../../services/notificationEvents');
+const leaveApprovalService = require('../../services/leaveApprovalService');
 
 async function handlePendingLeaves(bot, msg) {
   const chatId = msg.chat.id;
@@ -17,8 +18,11 @@ async function handlePendingLeaves(bot, msg) {
   }
 
   const pending = leaveRepository.listPending();
+  // S4-11a: سرپرست فقط درخواست‌هایی را می‌بیند که «نوبت مرحله‌ی سرپرست» است؛ ادمین همه‌ی pendingها (هر مرحله) را
   const scoped =
-    user.role === 'admin' ? pending : pending.filter((r) => usersRepository.findById(r.user_id)?.manager_id === user.id);
+    user.role === 'admin'
+      ? pending
+      : pending.filter((r) => usersRepository.findById(r.user_id)?.manager_id === user.id && leaveApprovalService.awaitingRole(r) === 'manager');
 
   if (scoped.length === 0) {
     await bot.sendMessage(chatId, 'هیچ درخواست در انتظاری وجود ندارد.');
@@ -68,20 +72,29 @@ async function handlePendingLeavesCallback(bot, query) {
   }
 
   const employee = usersRepository.findById(request.user_id);
-  if (approver.role !== 'admin' && employee?.manager_id !== approver.id) {
-    await bot.answerCallbackQuery(query.id, { text: 'این کارمند زیرمجموعه شما نیست.', show_alert: true });
+  const decision = action === 'leave_approve' ? 'approve' : 'reject';
+  const result = leaveApprovalService.decide({ requestId, actor: approver, decision });
+  if (!result.ok) {
+    await bot.answerCallbackQuery(query.id, { text: result.error, show_alert: true });
     return;
   }
-
-  const newStatus = action === 'leave_approve' ? 'approved' : 'rejected';
-  const updated = leaveRepository.setStatus(requestId, newStatus, approver.id);
-  notificationEvents.leaveDecided(updated); // اعلان پنل برای کارمند (S4-6b)
+  const newStatus = result.finalStatus;
+  const updated = result.request;
+  if (result.completed) notificationEvents.leaveDecided(updated); // اعلان پنل برای کارمند فقط روی تصمیم نهایی (S4-6b/S4-11a)
 
   auditRepository.logEvent({
     userId: approver.id,
-    action: newStatus === 'approved' ? 'leave_request_approved' : 'leave_request_rejected',
-    details: { requestId, employeeId: request.user_id },
+    action: !result.completed ? 'leave_request_step_approved' : newStatus === 'approved' ? 'leave_request_approved' : 'leave_request_rejected',
+    details: { requestId, employeeId: request.user_id, step: result.step, nextRole: result.nextRole },
   });
+
+  if (!result.completed) {
+    notificationEvents.leaveStepAdvanced(updated); // اعلان به تأییدکننده‌ی مرحله‌ی بعد (S4-11b)
+    await bot.answerCallbackQuery(query.id, { text: 'مرحله‌ی شما تأیید شد؛ منتظر تأیید مرحله‌ی بعد.' });
+    await bot.editMessageReplyMarkup({ inline_keyboard: [] }, { chat_id: chatId, message_id: query.message.message_id });
+    await bot.sendMessage(chatId, `درخواست #${requestId} ✅ در مرحله‌ی شما تأیید شد و برای مرحله‌ی بعد (${{ admin: 'ادمین', hr: 'منابع انسانی' }[result.nextRole] || result.nextRole}) ارسال شد.`);
+    return;
+  }
 
   await bot.answerCallbackQuery(query.id, { text: newStatus === 'approved' ? 'تأیید شد.' : 'رد شد.' });
   await bot.editMessageReplyMarkup(

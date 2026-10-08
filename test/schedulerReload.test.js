@@ -32,10 +32,10 @@ describe('زمان‌بندی از رجیستری و reload (S3-8c)', () => {
   });
   afterEach(() => { scheduler.stopSchedulers(); mock.restoreAll(); });
 
-  test('رجیستری: ۱۲ کلید cron با پیش‌فرض .env/کد؛ ذخیره غالب است، reset به پیش‌فرض برمی‌گرداند، نامعتبر رد می‌شود، .env خراب ⇒ fallback', () => {
+  test('رجیستری: ۱۳ کلید cron با پیش‌فرض .env/کد؛ ذخیره غالب است، reset به پیش‌فرض برمی‌گرداند، نامعتبر رد می‌شود، .env خراب ⇒ fallback', () => {
     assert.deepEqual(registry.selfCheck(), []);
     const jobs = registry.cronJobs();
-    assert.equal(jobs.length, 12);
+    assert.equal(jobs.length, 13);
     assert.deepEqual(jobs.map((j) => j.job).filter((n) => n !== 'watchdog'), Object.keys(config.cron), 'همه‌ی Jobهای config.cron، هم‌ترتیب');
     jobs.forEach(({ job, key }) => assert.equal(registry.defaultOf(key), job === 'watchdog' ? config.monitor.watchdogCron : config.cron[job], key));
     assert.equal(registry.getDef('cronDailyReport').group, 'schedule');
@@ -61,20 +61,20 @@ describe('زمان‌بندی از رجیستری و reload (S3-8c)', () => {
 
     scheduler.startSchedulers({ sendMessage: async () => {} });
     const names = scheduler.jobNames();
-    assert.equal(names.length, 12);
-    assert.equal(sched.mock.callCount(), 12);
+    assert.equal(names.length, 13);
+    assert.equal(sched.mock.callCount(), 13);
     assert.equal(scheduler.activeCrons().dailyReport, DEFAULT);
 
     assert.deepEqual(scheduler.reload(), { reloaded: true, changed: [], errors: [] });
-    assert.equal(sched.mock.callCount(), 12, 'بدون تغییر ⇒ ساخت مجدد ندارد');
+    assert.equal(sched.mock.callCount(), 13, 'بدون تغییر ⇒ ساخت مجدد ندارد');
     assert.equal(tasks.filter((t) => t.stopped).length, 0);
 
     settingsRepo.setValue('cronDailyReport', NEW_EXPR);
     const r = scheduler.reload();
     assert.deepEqual(r, { reloaded: true, changed: [{ job: 'dailyReport', from: DEFAULT, to: NEW_EXPR }], errors: [] });
-    assert.equal(sched.mock.callCount(), 13);
+    assert.equal(sched.mock.callCount(), 14);
     assert.deepEqual(tasks.filter((t) => t.stopped).map((t) => t.expr), [DEFAULT], 'فقط تسک قبلی همان Job متوقف شد');
-    assert.equal(tasks[12].expr, NEW_EXPR);
+    assert.equal(tasks[13].expr, NEW_EXPR);
     assert.equal(scheduler.activeCrons().dailyReport, NEW_EXPR);
 
     // callback ثبت‌شده همان Job است و با wrapJob در job_runs ثبت می‌شود

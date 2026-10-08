@@ -13,6 +13,7 @@ const notificationEvents = require('../../services/notificationEvents');
 const leaveService = require('../../services/leaveService');
 const leaveBalanceService = require('../../services/leaveBalanceService');
 const leaveTypesRepository = require('../../repositories/leaveTypesRepository');
+const attachmentService = require('../../services/attachmentService');
 const { formatMinutes } = require('../../utils/leaveBalanceFormat');
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -92,6 +93,7 @@ function toServiceInput(data) {
     startTime: data.startTime,
     endTime: data.endTime,
     reason: data.reason,
+    attachment: data.attachment,
   };
 }
 
@@ -108,6 +110,7 @@ async function sendSummary(bot, chatId, data) {
   const result = leaveService.validate(toServiceInput(data));
   if (!result.ok) {
     session.clear(chatId);
+    if (data.attachment) await attachmentService.remove(data.attachment.id); // فایل یتیم نماند
     await bot.sendMessage(chatId, ['❌ این درخواست قابل ثبت نیست:', ...result.errors.map((e) => `• ${e.error}`), '', 'برای شروع دوباره /leave را بفرستید.'].join('\n'));
     return;
   }
@@ -125,7 +128,8 @@ async function sendSummary(bot, chatId, data) {
     when,
     `مدت: ${formatMinutes(result.durationMinutes, dayMinutes).text}`,
     `توضیح: ${data.reason || '—'}`,
-  ];
+    data.attachment ? `پیوست: ✅ ${data.attachment.name || ''} (${Math.ceil(data.attachment.size / 1024)} کیلوبایت)`.trim() : null,
+  ].filter((x) => x !== null);
   if (result.warnings.some((w) => w.code === 'LOW_BALANCE')) lines.push('', '⚠️ مانده‌ی مرخصی شما برای این درخواست کافی نیست؛ ثبت می‌شود ولی ممکن است مدیر رد کند.');
   lines.push('', 'ارسال شود؟');
   session.update(chatId, { step: 4, data });
@@ -199,8 +203,52 @@ async function handleLeaveText(bot, msg, sess) {
   }
 
   if (sess.step === 3) {
-    await sendSummary(bot, chatId, { ...sess.data, reason: text === '-' ? null : text });
+    const data = { ...sess.data, reason: text === '-' ? null : text };
+    // نوعی که پیوست الزامی دارد (S4-12a): قبل از خلاصه فایل می‌خواهیم؛ بقیه‌ی نوع‌ها مثل قبل
+    const type = data.leaveTypeId ? leaveTypesRepository.findById(data.leaveTypeId) : null;
+    if (type && type.requiresAttachment) {
+      session.update(chatId, { step: 9, data });
+      await bot.sendMessage(chatId, 'این نوع درخواست پیوست لازم دارد. تصویر (عکس) یا فایل PDF را همین‌جا بفرستید:', {
+        reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'leave_cancel' }]] },
+      });
+      return;
+    }
+    await sendSummary(bot, chatId, data);
+    return;
   }
+
+  if (sess.step === 9) {
+    await bot.sendMessage(chatId, 'لطفاً به‌جای متن، عکس یا فایل PDF بفرستید (یا با دکمه‌ی لغو خارج شوید).');
+  }
+}
+
+// دریافت پیوست (S4-12a): عکس یا سند در مرحله‌ی ۹ جریان /leave. نوع/حجم قبل و بعد از دانلود سنجیده می‌شود؛ فایل با نام تصادفی ذخیره می‌شود.
+async function handleLeaveAttachment(bot, msg, sess) {
+  const chatId = msg.chat.id;
+  if (!sess || sess.flow !== 'leave' || sess.step !== 9) return;
+  const photo = Array.isArray(msg.photo) && msg.photo.length ? msg.photo[msg.photo.length - 1] : null;
+  const doc = msg.document || null;
+  const meta = photo
+    ? { fileId: photo.file_id, mime: 'image/jpeg', size: photo.file_size, name: null }
+    : doc ? { fileId: doc.file_id, mime: doc.mime_type, size: doc.file_size, name: doc.file_name } : null;
+  if (!meta || !meta.fileId) return;
+
+  const pre = attachmentService.precheck(meta);
+  if (!pre.ok) {
+    await bot.sendMessage(chatId, `❌ ${pre.error}`);
+    return;
+  }
+  let saved;
+  try {
+    saved = await attachmentService.saveStream(bot.getFileStream(meta.fileId), { mime: meta.mime, size: meta.size, originalName: meta.name });
+  } catch (err) {
+    saved = { ok: false, error: 'دریافت فایل ناموفق بود. دوباره تلاش کنید.' };
+  }
+  if (!saved.ok) {
+    await bot.sendMessage(chatId, `❌ ${saved.error}`);
+    return;
+  }
+  await sendSummary(bot, chatId, { ...sess.data, attachment: saved.attachment });
 }
 
 async function chooseUnit(bot, chatId, sess, unit) {
@@ -213,6 +261,7 @@ async function handleLeaveCallback(bot, query, sess) {
   const [action, value] = query.data.split(':');
 
   if (action === 'leave_cancel') {
+    if (sess && sess.data && sess.data.attachment) await attachmentService.remove(sess.data.attachment.id);
     session.clear(chatId);
     await bot.answerCallbackQuery(query.id);
     await bot.sendMessage(chatId, 'درخواست لغو شد.');
@@ -259,6 +308,7 @@ async function handleLeaveCallback(bot, query, sess) {
   if (action === 'leave_confirm') {
     await bot.answerCallbackQuery(query.id);
     if (value === 'no') {
+      if (sess.data.attachment) await attachmentService.remove(sess.data.attachment.id);
       session.clear(chatId);
       await bot.sendMessage(chatId, 'درخواست لغو شد.');
       return;
@@ -268,6 +318,7 @@ async function handleLeaveCallback(bot, query, sess) {
     const result = leaveService.create(toServiceInput(sess.data));
     session.clear(chatId);
     if (!result.ok) {
+      if (sess.data.attachment) await attachmentService.remove(sess.data.attachment.id);
       await bot.sendMessage(chatId, ['❌ درخواست ثبت نشد:', ...result.errors.map((e) => `• ${e.error}`)].join('\n'));
       return;
     }
@@ -284,4 +335,4 @@ async function handleLeaveCallback(bot, query, sess) {
   }
 }
 
-module.exports = { handleLeaveCommand, handleLeaveText, handleLeaveCallback };
+module.exports = { handleLeaveCommand, handleLeaveText, handleLeaveCallback, handleLeaveAttachment };

@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { requirePermission } = require('../../../middleware/permissions');
+const { requirePermission, requireAnyPermission } = require('../../../middleware/permissions');
 const usersRepository = require('../../../repositories/usersRepository');
 const leaveRepository = require('../../../repositories/leaveRepository');
 const { notifyUser, sendMessage } = require('../../../bot/notifier');
@@ -13,6 +13,9 @@ const { leaveRequestView } = require('../../../utils/auditViews');
 const notificationEvents = require('../../../services/notificationEvents');
 const leaveService = require('../../../services/leaveService');
 const leaveDurationService = require('../../../services/leaveDurationService');
+const leaveApprovalService = require('../../../services/leaveApprovalService');
+const attachmentService = require('../../../services/attachmentService');
+const { sendAttachment } = require('../../../utils/attachmentResponse');
 
 // ---------- صف تأیید مرخصی/مأموریت ----------
 
@@ -31,6 +34,11 @@ router.get('/admin/leave-requests', requirePermission('leave.read'), (req, res) 
       endDate: r.end_date,
       reason: r.reason,
       status: r.status,
+      hasAttachment: !!r.attachment_id, // S4-12b: دانلود با GET /admin/leave-requests/:id/attachment
+      attachmentMime: r.attachment_mime || null,
+      attachmentName: r.attachment_name || null,
+      currentStep: r.current_step || null, // S4-11a: مرحله‌ی فعال زنجیره (null = بدون زنجیره)
+      awaitingRole: leaveApprovalService.awaitingRole(r), // manager|admin|hr (فقط pending)
       createdAt: r.created_at,
       employee: employee ? { id: employee.id, fullName: employee.full_name } : null,
     };
@@ -38,57 +46,63 @@ router.get('/admin/leave-requests', requirePermission('leave.read'), (req, res) 
   res.json(enriched);
 });
 
-router.post('/admin/leave-requests/:id/:decision(approve|reject)', requirePermission('leave.approve'), (req, res) => {
+// سرو پیوست (S4-12b): صاحب درخواست، سرپرست مستقیم (تیم) و admin/hr. شناسه‌ی فایل هرگز از کلاینت نمی‌آید؛ از ردیف DB خوانده و با ID_RE اعتبارسنجی می‌شود.
+router.get('/admin/leave-requests/:id/attachment', requirePermission('leave.read'), (req, res) => {
+  const request = /^\d+$/.test(req.params.id) ? leaveRepository.findById(parseInt(req.params.id, 10)) : null;
+  if (!request) return res.status(404).json({ error: 'درخواست یافت نشد.' });
+  const me = req.adminUser;
+  if (request.user_id !== me.id && !canAccessUser(me, request.user_id)) return res.status(403).json({ error: 'به پیوست این درخواست دسترسی ندارید.' });
+  return sendAttachment(res, request);
+});
+
+// تصمیم روی درخواست (S4-11a: زنجیره‌ی چندمرحله‌ای). مجوز: leave.approve (سرپرست/ادمین) یا leave.approve.hr (فقط مرحله‌ی hr)؛
+// اینکه «این کاربر این مرحله را» می‌تواند تصمیم بگیرد با leaveApprovalService.canDecide (۴۰۳ با متن فارسی).
+// تأیید مرحله‌ی میانی هنوز «تصمیم نهایی» نیست: پاسخ { completed:false, nextRole } و بدون اعلان به کارمند.
+router.post('/admin/leave-requests/:id/:decision(approve|reject)', requireAnyPermission('leave.approve', 'leave.approve.hr'), (req, res) => {
   const requestId = parseInt(req.params.id, 10);
   const decision = req.params.decision;
   const request = leaveRepository.findById(requestId);
   if (!request) return res.status(404).json({ error: 'درخواست یافت نشد.' });
-  if (request.status !== 'pending') {
-    return res.status(400).json({ error: 'این درخواست قبلاً بررسی شده است.' });
-  }
-
-  const employee = usersRepository.findById(request.user_id);
-  const isManagerOfEmployee = employee && employee.manager_id === req.adminUser.id;
-  if (req.adminUser.role !== 'admin' && !isManagerOfEmployee) {
-    return res.status(403).json({ error: 'این کارمند زیرمجموعه شما نیست.' });
-  }
 
   const note = ((req.body && req.body.note) || '').toString().trim().slice(0, 500);
-  const newStatus = decision === 'approve' ? 'approved' : 'rejected';
-  const updated = leaveRepository.setStatus(requestId, newStatus, req.adminUser.id);
+  const result = leaveApprovalService.decide({ requestId, actor: req.adminUser, decision, note });
+  if (!result.ok) {
+    const status = { NOT_FOUND: 404, ALREADY_DECIDED: 400, FORBIDDEN: 403 }[result.code] || 400;
+    return res.status(status).json({ error: result.error, code: result.code });
+  }
+  const updated = result.request;
+  const employee = usersRepository.findById(request.user_id);
 
+  const finalAction = result.finalStatus === 'approved' ? 'leave_request_approved' : 'leave_request_rejected';
   auditChange(req, {
-    action: newStatus === 'approved' ? 'leave_request_approved' : 'leave_request_rejected',
+    action: result.completed ? finalAction : 'leave_request_step_approved',
     entityType: 'leave_request',
     entityId: requestId,
     before: leaveRequestView(request),
     after: leaveRequestView(updated),
     reason: note || null, // یادداشت تصمیم‌گیرنده = دلیل تصمیم
-    meta: { requestId, employeeId: request.user_id, targetUserId: request.user_id },
+    meta: { requestId, employeeId: request.user_id, targetUserId: request.user_id, step: result.step, role: result.role, nextRole: result.nextRole },
   });
 
-  notificationEvents.leaveDecided(updated, { note }); // اعلان پنل برای کارمند (S4-6b)
+  if (!result.completed) {
+    notificationEvents.leaveStepAdvanced(updated); // اعلان به تأییدکننده‌ی مرحله‌ی بعد (S4-11b)
+    return res.json({ ...updated, completed: false, nextRole: result.nextRole });
+  }
 
+  notificationEvents.leaveDecided(updated, { note }); // اعلان پنل برای کارمند (S4-6b)
   if (employee?.telegram_user_id) {
     const typeLabel = request.kind === 'mission' ? 'مأموریت' : 'مرخصی';
-    const statusLabel = newStatus === 'approved' ? 'تأیید شد ✅' : 'رد شد ❌';
+    const statusLabel = result.finalStatus === 'approved' ? 'تأیید شد ✅' : 'رد شد ❌';
+    const roleLabel = { admin: 'ادمین', hr: 'منابع انسانی' }[req.adminUser.role] || 'سرپرست';
     notifyUser(
       employee.telegram_user_id,
-      `درخواست ${typeLabel} شما (${request.start_date} تا ${request.end_date}) ${statusLabel}` +
-        (note ? `\nپاسخ ${req.adminUser.role === 'admin' ? 'ادمین' : 'سرپرست'}: ${note}` : '')
+      `درخواست ${typeLabel} شما (${request.start_date} تا ${request.end_date}) ${statusLabel}` + (note ? `\nپاسخ ${roleLabel}: ${note}` : '')
     );
   }
 
-  res.json(updated);
+  res.json({ ...updated, completed: true });
 });
 
-// ---------- مرخصی/مأموریت: کنترل کامل ادمین ----------
-
-// ثبت مرخصی/مأموریت توسط سرپرست/ادمین برای کارمند (S4-10d). فقط از leaveService.create؛ همه‌ی قواعد (واحد مجاز، مدت کاری، تداخل) اعمال می‌شود.
-//   reason = دلیل ثبت (الزامی؛ همان توضیح درخواست هم هست و در audit می‌آید).
-//   مدیر از قواعد «گذشته/آینده/پیش‌اطلاع» معاف است (ثبت برای روزهای گذشته کار طبیعی مدیر است)؛ مانده و سقف روز متوالی برقرار می‌ماند.
-//   فقط admin می‌تواند force:true بدهد تا مانده/سقف روز متوالی هم نادیده شود؛ force در audit (meta.force) ثبت می‌شود.
-//   status پیش‌فرض approved (مثل قبل)؛ بدنه: { userId, leaveTypeId | leaveType, unit?, startDate, endDate?, halfDayPart?, startTime?, endTime?, reason, status?, force? }
 router.post('/admin/leave-requests', requirePermission('leave.edit'), (req, res) => {
   const b = req.body || {};
   const user = usersRepository.findById(parseInt(b.userId, 10));
@@ -115,7 +129,8 @@ router.post('/admin/leave-requests', requirePermission('leave.edit'), (req, res)
     startTime: b.startTime,
     endTime: b.endTime,
     reason,
-  }, { skip: force ? ['past', 'future', 'notice', 'balance', 'maxConsecutive'] : ['past', 'future', 'notice'] });
+    substituteUserId: Number.isInteger(b.substituteUserId) ? b.substituteUserId : undefined,
+  }, { skip: force ? ['past', 'future', 'notice', 'balance', 'maxConsecutive', 'attachment'] : ['past', 'future', 'notice', 'attachment'] });
   if (!result.ok) {
     return res.status(400).json({ error: result.errors.map((x) => x.error).join(' '), code: result.errors[0].code, errors: result.errors });
   }
@@ -123,6 +138,7 @@ router.post('/admin/leave-requests', requirePermission('leave.edit'), (req, res)
   const created = result.request;
   const finalStatus = ['approved', 'rejected', 'pending'].includes(b.status) ? b.status : 'approved';
   const saved = finalStatus === 'pending' ? created : leaveRepository.setStatus(created.id, finalStatus, req.adminUser.id);
+  if (finalStatus !== 'pending') leaveApprovalService.clearChain(created.id); // ثبت مستقیم توسط مدیر ⇒ بدون زنجیره (S4-11a)
   auditChange(req, {
     action: 'leave_request_created_by_admin',
     entityType: 'leave_request',
@@ -180,6 +196,12 @@ router.patch('/admin/leave-requests/:id', requirePermission('leave.edit'), (req,
     leaveRepository.setDuration(reqRow.id, nextDuration);
     updated = leaveRepository.findById(reqRow.id);
   }
+  // تغییر دستی وضعیت توسط مدیر زنجیره را بازتنظیم می‌کند (S4-11a): نهایی ⇒ بدون زنجیره؛ بازگشت به pending ⇒ زنجیره‌ی تازه از مرحله ۱
+  if (fields.status !== undefined && fields.status !== reqRow.status) {
+    if (fields.status === 'pending') leaveApprovalService.initChain(reqRow.id);
+    else leaveApprovalService.clearChain(reqRow.id);
+    updated = leaveRepository.findById(reqRow.id);
+  }
   auditChange(req, {
     action: 'leave_request_edited_by_admin',
     entityType: 'leave_request',
@@ -205,6 +227,7 @@ router.delete('/admin/leave-requests/:id', requirePermission('leave.edit'), (req
   const reqRow = leaveRepository.findById(parseInt(req.params.id, 10));
   if (!reqRow) return res.status(404).json({ error: 'درخواست یافت نشد.' });
   if (!canAccessUser(req.adminUser, reqRow.user_id)) return res.status(403).json({ error: 'به این کارمند دسترسی ندارید.' });
+  leaveApprovalService.clearChain(reqRow.id);
   leaveRepository.remove(reqRow.id);
   auditChange(req, {
     action: 'leave_request_deleted_by_admin',

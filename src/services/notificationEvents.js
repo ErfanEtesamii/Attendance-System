@@ -2,7 +2,8 @@
 //
 // رویدادها و گیرنده‌ها:
 //   leaveRequested(request)          درخواست مرخصی/مأموریت جدید   ⇒ تأییدکننده‌ها (مدیر مستقیم‌ِ فعال؛ وگرنه همه‌ی ادمین‌های فعال)
-//   leaveDecided(request, {note})    تأیید/رد درخواست              ⇒ خودِ کارمند
+//   leaveStepAdvanced(request)       تأیید مرحله‌ی میانی زنجیره       ⇒ تأییدکننده‌های «مرحله‌ی بعد» (admin‌ها / hr‌های فعال)؛ تلگرام هم می‌رود (S4-11b)
+//   leaveDecided(request, {note})    تأیید/رد درخواست              ⇒ خودِ کارمند (+ در تأیید: جانشین، اگر ثبت شده)
 //   disputeOpened(dispute)           اعتراض جدید به رکورد          ⇒ همان تأییدکننده‌ها
 //   disputeResolved(dispute, {note}) بسته‌شدن اعتراض               ⇒ خودِ کارمند
 //   systemAlert({...})               هشدار سیستم (watchdog)        ⇒ همه‌ی ادمین‌های فعال
@@ -16,6 +17,7 @@
 
 const usersRepository = require('../repositories/usersRepository');
 const { notify } = require('./notificationService');
+const leaveApprovalService = require('./leaveApprovalService');
 const { sanitizeText } = require('../utils/sanitize');
 
 const SUSPICIOUS_LABEL = {
@@ -70,12 +72,20 @@ function period(request) {
   return request.start_date === request.end_date ? request.start_date : `${request.start_date} تا ${request.end_date}`;
 }
 
+// تأییدکننده‌های «مرحله‌ی فعال» درخواست (S4-11b): manager ⇒ همان قاعده‌ی handlersOf؛ admin ⇒ ادمین‌های فعال؛ hr ⇒ hrهای فعال
+function approversOf(request, employee) {
+  const role = leaveApprovalService.awaitingRole(request);
+  if (role === 'admin') return activeAdmins().filter((u) => u.id !== employee.id);
+  if (role === 'hr') return usersRepository.listUsers({ onlyActive: true }).filter((u) => u.role === 'hr' && u.id !== employee.id);
+  return handlersOf(employee);
+}
+
 function leaveRequested(request) {
   return guard('leaveRequested', () => {
     const employee = usersRepository.findById(request.user_id);
     if (!employee) return [];
     const label = leaveLabel(request.kind);
-    return handlersOf(employee).map((h) =>
+    return approversOf(request, employee).map((h) =>
       send('leaveRequested', h.id, {
         type: 'leave_requested',
         title: `درخواست ${label} جدید`,
@@ -94,7 +104,7 @@ function leaveDecided(request, { note = null } = {}) {
     if (!request || !['approved', 'rejected'].includes(request.status)) return [];
     const label = leaveLabel(request.kind);
     const approved = request.status === 'approved';
-    return [
+    const jobs = [
       send('leaveDecided', request.user_id, {
         type: approved ? 'leave_approved' : 'leave_rejected',
         title: `درخواست ${label} شما ${approved ? 'تأیید شد' : 'رد شد'}`,
@@ -104,6 +114,42 @@ function leaveDecided(request, { note = null } = {}) {
         dedupeKey: `leave_decided:${request.id}:${request.status}:${request.updated_at || ''}`,
       }),
     ];
+    // جانشین فقط وقتی مرخصی «قطعی» شد خبردار می‌شود (S4-11b)
+    if (approved && request.substitute_user_id) {
+      const employee = usersRepository.findById(request.user_id);
+      jobs.push(
+        send('leaveSubstitute', request.substitute_user_id, {
+          type: 'leave_substitute',
+          title: `شما جانشین ${employee ? employee.full_name : 'همکار'} هستید`,
+          body: `${label} تأییدشده: ${period(request)}`,
+          link: '#/leave',
+          data: { requestId: request.id, employeeId: request.user_id },
+          dedupeKey: `leave_substitute:${request.id}`,
+        })
+      );
+    }
+    return jobs;
+  });
+}
+
+/** پس از تأیید مرحله‌ی میانی؛ request = ردیف «پس از تصمیم» (هنوز pending با current_step بعدی). */
+function leaveStepAdvanced(request) {
+  return guard('leaveStepAdvanced', () => {
+    if (!request || request.status !== 'pending' || !request.current_step) return [];
+    const employee = usersRepository.findById(request.user_id);
+    if (!employee) return [];
+    const label = leaveLabel(request.kind);
+    return approversOf(request, employee).map((a) =>
+      notify(a.id, {
+        type: 'leave_requested',
+        title: `درخواست ${label} منتظر تأیید شماست`,
+        body: `${employee.full_name} — ${period(request)} (مرحله ${request.current_step})`,
+        link: '#/leave',
+        data: { requestId: request.id, employeeId: employee.id, step: request.current_step },
+        dedupeKey: `leave_step:${request.id}:${request.current_step}`,
+        telegram: true,
+      }).catch((err) => { logError('leaveStepAdvanced', err); return null; })
+    );
   });
 }
 
@@ -187,4 +233,4 @@ function suspiciousCreated(event) {
   });
 }
 
-module.exports = { leaveRequested, leaveDecided, disputeOpened, disputeResolved, systemAlert, suspiciousCreated };
+module.exports = { leaveRequested, leaveStepAdvanced, leaveDecided, disputeOpened, disputeResolved, systemAlert, suspiciousCreated };

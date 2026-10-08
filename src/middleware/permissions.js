@@ -19,6 +19,7 @@ const PERMISSIONS = Object.freeze([
   'records.edit', // ساخت/ویرایش/حذف رکورد تردد و استراحت
   'leave.read',
   'leave.approve', // تأیید/رد درخواست مرخصی
+  'leave.approve.hr', // S4-11a: تصمیم «مرحله‌ی منابع انسانی» در زنجیره‌ی تأیید (فقط همان مرحله؛ سرپرست/ادمین با leave.approve)
   'leave.edit', // ثبت/ویرایش/حذف مرخصی توسط مدیر
   'disputes.read',
   'disputes.resolve',
@@ -79,6 +80,7 @@ const HR_PERMISSIONS = [
   ...EMPLOYEE_PERMISSIONS,
   'dashboard.read',
   'users.read',
+  'leave.approve.hr', // تنها استثنای «فقط‌خواندنی» (S4-11a): فقط مرحله‌ای که تنظیمات به hr سپرده؛ سایر مراحل ⇒ ۴۰۳ از سرویس
 ];
 
 const ROLE_PERMISSIONS = Object.freeze({
@@ -122,4 +124,19 @@ function requirePermission(...required) {
   };
 }
 
-module.exports = { PERMISSIONS, ROLES, ROLE_PERMISSIONS, hasPermission, permissionsFor, requirePermission };
+// middleware: «هرکدام» از مجوزهای داده‌شده کافی است (S4-11a؛ مثلاً leave.approve یا leave.approve.hr).
+function requireAnyPermission(...anyOf) {
+  if (anyOf.length === 0) throw new Error('requireAnyPermission: حداقل یک مجوز لازم است.');
+  for (const p of anyOf) {
+    if (!PERMISSION_SET.has(p)) throw new Error(`requireAnyPermission: مجوز ناشناخته «${p}».`);
+  }
+  return function anyPermissionGuard(req, res, next) {
+    const role = req.adminUser && req.adminUser.role;
+    if (!anyOf.some((p) => hasPermission(role, p))) {
+      return res.status(403).json({ error: 'برای این عملیات مجوز لازم را ندارید.' });
+    }
+    next();
+  };
+}
+
+module.exports = { PERMISSIONS, ROLES, ROLE_PERMISSIONS, hasPermission, permissionsFor, requirePermission, requireAnyPermission };

@@ -53,6 +53,9 @@ const config = {
     backupMaxAgeHours: parseInt(process.env.MONITOR_BACKUP_MAX_AGE_HOURS || '36', 10),
   },
 
+  // پیوست‌های درخواست مرخصی (S4-12a): فایل‌ها با نام تصادفی؛ جزو دارایی‌های داده (بک‌آپ: S4-12c). پوشه خارج از پوشه‌ی استاتیک عمومی است.
+  attachmentsDir: path.resolve(process.cwd(), process.env.ATTACHMENTS_DIR || './data/attachments'),
+
   // ===== بخش ۲-ج۲: بک‌آپ روزانه (S2-1) =====
   // پوشه‌ی مقصد همان monitor.backupDir است (BACKUP_DIR). زمان اجرا: cron.dailyBackup (CRON_DAILY_BACKUP).
   backup: {
@@ -161,6 +164,8 @@ const config = {
     // نگهداری ماهانه‌ی دیتابیس (S2-7b: cleanup جدول‌های فرعی + ANALYZE/optimize + VACUUM)؛ پیش‌فرض روز دوم هر ماه میلادی ساعت ۰۴:۰۰
     // (بعد از بک‌آپ ۰۲:۳۰ و آرشیو audit ۰۳:۰۰، کم‌ترافیک‌ترین ساعت؛ VACUUM قفل نوشتن می‌گیرد)
     dbMaintenance: process.env.CRON_DB_MAINTENANCE || '0 4 2 * *',
+    // یادآوری/ارجاع تأیید مرخصی (S4-11c): هر ساعت (دقیقه‌ی ۱۵)؛ تا وقتی تنظیمات leaveApprovalReminderHours/leaveEscalate* صفرند کاری نمی‌کند
+    leaveApprovalReminder: process.env.CRON_LEAVE_APPROVAL_REMINDER || '15 * * * *',
   },
 
   // آرشیو audit (S2-6c): تعداد رکورد در هر تراکنشِ انتقال. مقدار کوچک‌تر ⇒ قفل نوشتن کوتاه‌تر؛ مقدار خراب/خارج از بازه ⇒ ۱۰۰۰

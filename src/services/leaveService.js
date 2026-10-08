@@ -15,11 +15,13 @@ const settingsRepository = require('../repositories/settingsRepository');
 const leaveRepository = require('../repositories/leaveRepository');
 const leaveDurationService = require('./leaveDurationService');
 const leaveBalanceService = require('./leaveBalanceService');
+const leaveApprovalService = require('./leaveApprovalService');
+const usersRepository = require('../repositories/usersRepository');
 const { dayDiff } = require('../utils/shiftDay');
 const { jalaliYearOfDateString } = require('../utils/jalali');
 const { todayInZone, zonedTimeToUtc } = require('../utils/time');
 
-const SKIPPABLE = ['past', 'future', 'notice', 'maxConsecutive', 'balance'];
+const SKIPPABLE = ['past', 'future', 'notice', 'maxConsecutive', 'balance', 'attachment'];
 
 function validate(input = {}, opts = {}) {
   const skip = new Set(opts.skip || []);
@@ -50,6 +52,20 @@ function validate(input = {}, opts = {}) {
     const noticeHours = (startAt.getTime() - now.getTime()) / 3600000;
     if (noticeHours < settings.leaveMinNoticeHours) {
       errors.push({ code: 'INSUFFICIENT_NOTICE', error: `حداقل پیش‌اطلاع ${settings.leaveMinNoticeHours} ساعت است.` });
+    }
+  }
+
+  // پیوست الزامی (S4-12a): نوعی که requires_attachment دارد بدون input.attachment ثبت نمی‌شود (مدیر با skip:'attachment' معاف است)
+  if (type.requiresAttachment && !input.attachment && !skip.has('attachment')) {
+    errors.push({ code: 'ATTACHMENT_REQUIRED', error: `نوع «${type.title}» پیوست (تصویر یا PDF) لازم دارد؛ این درخواست را از طریق بات تلگرام ثبت کنید.` });
+  }
+  // جانشین (S4-11b، اختیاری): کاربر فعال و غیر از خود کارمند؛ نباید در همین بازه مرخصی «تأییدشده» داشته باشد
+  if (input.substituteUserId !== undefined && input.substituteUserId !== null) {
+    const sub = Number.isInteger(input.substituteUserId) ? usersRepository.findById(input.substituteUserId) : null;
+    if (!sub || !sub.is_active) errors.push({ code: 'SUBSTITUTE_NOT_FOUND', error: 'جانشین انتخاب‌شده یافت نشد یا غیرفعال است.' });
+    else if (sub.id === input.userId) errors.push({ code: 'SUBSTITUTE_IS_SELF', error: 'جانشین نمی‌تواند خود کارمند باشد.' });
+    else if (leaveRepository.listActiveInRange(sub.id, value.startDate, value.endDate).some((r) => r.status === 'approved')) {
+      errors.push({ code: 'SUBSTITUTE_UNAVAILABLE', error: 'جانشین انتخاب‌شده در این بازه خودش مرخصی/مأموریت تأییدشده دارد.' });
     }
   }
 
@@ -88,8 +104,12 @@ function create(input = {}, opts = {}) {
     startTime: value.startTime,
     endTime: value.endTime,
     durationMinutes: result.durationMinutes,
+    substituteUserId: input.substituteUserId === null ? undefined : input.substituteUserId,
+    attachment: input.attachment || undefined,
   });
-  return { ...result, request };
+  // زنجیره‌ی تأیید (S4-11a): مراحل از تنظیمات؛ درخواست با current_step = 1 شروع می‌شود
+  const chained = leaveApprovalService.initChain(request.id) || request;
+  return { ...result, request: chained };
 }
 
 module.exports = { validate, create, SKIPPABLE };

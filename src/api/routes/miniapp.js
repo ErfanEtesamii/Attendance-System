@@ -17,6 +17,7 @@ const breakRepository = require('../../repositories/breakRepository');
 const leaveRepository = require('../../repositories/leaveRepository');
 const leaveTypesRepository = require('../../repositories/leaveTypesRepository');
 const leaveService = require('../../services/leaveService');
+const { sendAttachment } = require('../../utils/attachmentResponse');
 const leaveBalanceService = require('../../services/leaveBalanceService');
 const { jalaliYearOfDateString } = require('../../utils/jalali');
 const disputeRepository = require('../../repositories/disputeRepository');
@@ -241,6 +242,7 @@ router.post('/miniapp/leave', (req, res) => {
     startTime: b.startTime,
     endTime: b.endTime,
     reason: b.reason,
+    substituteUserId: Number.isInteger(b.substituteUserId) ? b.substituteUserId : undefined,
   });
   if (!result.ok) {
     return res.status(400).json({ error: result.errors.map((e) => e.error).join(' '), code: result.errors[0].code, errors: result.errors });
@@ -253,6 +255,13 @@ router.post('/miniapp/leave', (req, res) => {
   });
   notificationEvents.leaveRequested(request); // اعلان پنل برای تأییدکننده‌ها؛ هرگز ثبت را نمی‌شکند (S4-6b)
   res.status(201).json({ ...request, warnings: result.warnings });
+});
+
+// پیوست درخواست «خود کاربر» (S4-12b)
+router.get('/miniapp/leave/:id/attachment', (req, res) => {
+  const request = /^\d+$/.test(req.params.id) ? leaveRepository.findById(parseInt(req.params.id, 10)) : null;
+  if (!request || request.user_id !== req.miniAppUser.id) return res.status(404).json({ error: 'پیوست یافت نشد.' });
+  return sendAttachment(res, request);
 });
 
 router.get('/miniapp/leave', (req, res) => {

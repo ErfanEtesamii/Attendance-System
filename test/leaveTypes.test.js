@@ -22,7 +22,7 @@ describe('انواع مرخصی — migration، اعتبارسنجی و reposito
     ]);
 
     // migration ۰۱۳ خودش leave_requests را عوض نمی‌کند؛ ستون‌های leave_type_id/rejected_reason از migration ۰۱۴ (S4-7b) هستند
-    assert.deepEqual(db.prepare("PRAGMA table_info('leave_requests')").all().map((c) => c.name), ['id', 'user_id', 'start_date', 'end_date', 'leave_type', 'leave_type_id', 'status', 'approver_id', 'reason', 'rejected_reason', 'unit', 'half_day_part', 'start_time', 'end_time', 'duration_minutes', 'created_at', 'updated_at']);
+    assert.deepEqual(db.prepare("PRAGMA table_info('leave_requests')").all().map((c) => c.name), ['id', 'user_id', 'start_date', 'end_date', 'leave_type', 'leave_type_id', 'status', 'approver_id', 'reason', 'rejected_reason', 'unit', 'half_day_part', 'start_time', 'end_time', 'duration_minutes', 'created_at', 'updated_at', 'current_step', 'substitute_user_id', 'attachment_id', 'attachment_mime', 'attachment_size', 'attachment_name']);
 
     db.prepare("UPDATE leave_types SET title = 'استحقاقی (ویرایش‌شده)' WHERE code = 'annual'").run();
     assert.doesNotThrow(() => require('../src/db/migrations/013_leave_types').up(db));

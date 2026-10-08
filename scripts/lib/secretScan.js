@@ -13,7 +13,7 @@ const path = require('path');
 const ALLOW_MARKER = 'secret-scan:allow';
 
 // پوشه‌ها/فایل‌هایی که اسکن نمی‌شوند (راز محلیِ مجاز یا محتوای غیرمتنی)
-const SKIP_DIRS = new Set(['node_modules', '.git', 'data', '.ssl', 'dist']);
+const SKIP_DIRS = new Set(['node_modules', '.git', 'data', '.ssl', 'dist', 'attachments']); // attachments: پیوست‌های کاربران (S4-12c) — محتوای فایل کاربر نه کد پروژه
 const SKIP_FILES = new Set(['.env', 'package-lock.json']); // فقط .env محلیِ ریشه؛ هر .env.* دیگری اسکن می‌شود
 const TEXT_EXT = new Set([
   '.js', '.json', '.md', '.html', '.css', '.txt', '.ps1', '.cmd', '.bat', '.yml', '.yaml', '.example', '.sql', '.cjs', '.mjs', '.xml', '.conf', '.ini', '.env', '',

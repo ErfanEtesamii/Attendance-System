@@ -9,7 +9,7 @@ const { handlePanelLogin } = require('./commands/panelLogin');
 const { handleHelp } = require('./commands/help');
 const { handleStatus } = require('./commands/status');
 const { handleReport } = require('./commands/report');
-const { handleLeaveCommand, handleLeaveText, handleLeaveCallback } = require('./commands/leave');
+const { handleLeaveCommand, handleLeaveText, handleLeaveCallback, handleLeaveAttachment } = require('./commands/leave');
 const {
   handleAddEmployeeCommand,
   handleAddEmployeeText,
@@ -53,6 +53,12 @@ function createBot() {
 
   // پیام‌های متنی معمولی: فقط وقتی مکالمه چندمرحله‌ای فعالی وجود دارد پردازش می‌شوند.
   bot.on('message', (msg) => {
+    // پیوست مرخصی (S4-12a): عکس/سند فقط در مرحله‌ی مربوط جریان /leave پردازش می‌شود
+    if (!msg.text && (msg.photo || msg.document)) {
+      const attSess = session.get(msg.chat.id);
+      if (attSess && attSess.flow === 'leave') handleLeaveAttachment(bot, msg, attSess).catch((err) => console.error('[bot] خطا در دریافت پیوست:', err.message));
+      return;
+    }
     if (!msg.text || msg.text.startsWith('/')) return;
     const chatId = msg.chat.id;
     const sess = session.get(chatId);

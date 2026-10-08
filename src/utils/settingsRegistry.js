@@ -137,6 +137,15 @@ def('leaveAllowPastRequests', 'leave_allow_past_requests', 'boolean', { group: '
 def('leaveMaxPastDays', 'leave_max_past_days', 'number', { group: 'leave', min: 0, max: 3650, default: 0, description: 'حداکثر فاصله‌ی گذشته‌ی مجاز (روز) برای تاریخ شروع درخواست، وقتی ثبت گذشته مجاز است (۰ = بدون سقف)' });
 def('leaveMaxFutureDays', 'leave_max_future_days', 'number', { group: 'leave', min: 0, max: 3650, default: 0, description: 'حداکثر فاصله‌ی آینده (روز) برای تاریخ شروع درخواست (۰ = بدون سقف)' });
 def('leaveMinNoticeHours', 'leave_min_notice_hours', 'number', { group: 'leave', min: 0, max: 8760, default: 0, description: 'حداقل پیش‌اطلاع (ساعت) بین لحظه‌ی ثبت و شروع مرخصی (برای ساعتی از ساعت شروع، وگرنه از ابتدای روز شروع)؛ فقط برای درخواست‌های آینده (۰ = بدون حداقل)' });
+def('backupIncludeAttachments', 'backup_include_attachments', 'boolean', { group: 'retention', default: true, description: 'بک‌آپ روزانه پوشه‌ی پیوست‌های مرخصی را هم (به‌صورت آینه‌ی افزایشی در پوشه‌ی بک‌آپ) کپی کند' });
+def('leaveAttachmentMaxKb', 'leave_attachment_max_kb', 'number', { group: 'leave', min: 16, max: 20000, default: 5120, description: 'حداکثر حجم پیوست درخواست مرخصی (کیلوبایت)؛ سقف دانلود بات تلگرام حدود ۲۰ مگابایت است' });
+def('leaveAttachmentTypes', 'leave_attachment_types', 'string', { group: 'leave', default: 'image/jpeg,image/png,application/pdf', maxLength: 200, description: 'نوع‌های مجاز پیوست (mime، با ویرگول)؛ محتوای فایل با امضای JPEG/PNG/PDF هم سنجیده می‌شود، پس فقط زیرمجموعه‌ی همین سه نوع معنی دارد' });
+def('leaveApprovalReminderHours', 'leave_approval_reminder_hours', 'number', { group: 'leave', min: 0, max: 8760, default: 0, description: 'اگر درخواست مرخصی بیش از این ساعت در مرحله‌ی فعلی بی‌اقدام ماند، به تأییدکننده‌ی همان مرحله یادآوری می‌رود (۰ = خاموش)' });
+def('leaveApprovalEscalateHours', 'leave_approval_escalate_hours', 'number', { group: 'leave', min: 0, max: 8760, default: 0, description: 'اگر پس از یادآوریِ مرحله‌ی «سرپرست» این‌قدر ساعت دیگر هم بی‌اقدام ماند، مرحله به ادمین ارجاع می‌شود (۰ = ارجاعِ زمان‌محور خاموش)' });
+def('leaveEscalateWhenApproverOnLeave', 'leave_escalate_when_approver_on_leave', 'boolean', { group: 'leave', default: false, description: 'اگر سرپرست مستقیم خودش مرخصی/مأموریت تأییدشده‌ی امروز (روزانه یا نیم‌روز) دارد، مرحله‌ی او فوراً به ادمین ارجاع شود' });
+def('leaveApprovalExtraStepDays', 'leave_approval_extra_step_days', 'number', { group: 'leave', min: 0, max: 3650, default: 0, description: 'اگر طول بازه‌ی درخواست (روز تقویمی) بیشتر از این عدد باشد، علاوه بر سرپرست یک مرحله‌ی تأیید دیگر هم لازم است (۰ = خاموش)' });
+def('leaveApprovalExtraStepTypes', 'leave_approval_extra_step_types', 'string', { group: 'leave', default: '', maxLength: 200, description: 'کدهای نوع مرخصی (با ویرگول، مثل annual,sick) که همیشه مرحله‌ی تأیید اضافه می‌خواهند؛ خالی = هیچ' });
+def('leaveApprovalExtraStepRole', 'leave_approval_extra_step_role', 'enum', { group: 'leave', values: ['admin', 'hr'], default: 'admin', description: 'تأییدکننده‌ی مرحله‌ی اضافه: ادمین یا منابع انسانی' });
 // تأخیر و یادآوری
 def('lateCheckinGraceMinutes', 'late_checkin_grace_minutes', 'number', { group: 'reminders', min: 0, max: 720, default: () => config.lateCheckinGraceMinutes, fallback: 15, description: 'مهلت تأخیر ورود (دقیقه) پس از ساعت شروع، پیش از یادآوری ورود' });
 def('checkoutReminderMinutesBefore', 'checkout_reminder_minutes_before', 'number', { group: 'reminders', min: 0, max: 720, default: () => config.checkoutReminderMinutesBefore, fallback: 15, description: 'یادآوری ثبت خروج، این‌قدر دقیقه پیش از پایان کار' });
@@ -167,6 +176,7 @@ defCron('markNonWorkingDays', 'cronMarkNonWorkingDays', 'cron_mark_non_working_d
 defCron('dailyBackup', 'cronDailyBackup', 'cron_daily_backup', () => config.cron.dailyBackup, '30 2 * * *', 'بک‌آپ روزانه');
 defCron('auditArchive', 'cronAuditArchive', 'cron_audit_archive', () => config.cron.auditArchive, '0 3 1 * *', 'آرشیو ماهانه‌ی audit');
 defCron('dbMaintenance', 'cronDbMaintenance', 'cron_db_maintenance', () => config.cron.dbMaintenance, '0 4 2 * *', 'نگهداری ماهانه‌ی دیتابیس');
+defCron('leaveApprovalReminder', 'cronLeaveApprovalReminder', 'cron_leave_approval_reminder', () => config.cron.leaveApprovalReminder, '15 * * * *', 'یادآوری/ارجاع تأیید مرخصی');
 defCron('watchdog', 'cronWatchdog', 'cron_watchdog', () => config.monitor.watchdogCron, '*/5 * * * *', 'watchdog (سلامت سیستم؛ روشن/خاموش‌بودنش همچنان با WATCHDOG_ENABLED در .env است)');
 
 // ---------- توابع عمومی ----------

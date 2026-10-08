@@ -23,18 +23,20 @@ function resolveLeaveType({ leaveType, leaveTypeId } = {}) {
 
 // S4-8a: ستون‌های واحد/مدت اختیاری‌اند (بدون آن‌ها: unit='day' و duration_minutes=NULL = رفتار قبلی). اعتبارسنجی و محاسبه‌ی مدت
 // در leaveDurationService است؛ اینجا فقط ذخیره می‌شود و CHECKهای جدول (migration ۰۱۵) ناهم‌خوانی را رد می‌کنند.
-function createLeaveRequest({ userId, startDate, endDate, leaveType, leaveTypeId, reason, unit, halfDayPart, startTime, endTime, durationMinutes }) {
+function createLeaveRequest({ userId, startDate, endDate, leaveType, leaveTypeId, reason, unit, halfDayPart, startTime, endTime, durationMinutes, substituteUserId, attachment }) {
   const db = getDb();
   const type = resolveLeaveType({ leaveType, leaveTypeId });
   const result = db
     .prepare(
-      `INSERT INTO leave_requests (user_id, start_date, end_date, leave_type, leave_type_id, reason, unit, half_day_part, start_time, end_time, duration_minutes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO leave_requests (user_id, start_date, end_date, leave_type, leave_type_id, reason, unit, half_day_part, start_time, end_time, duration_minutes, substitute_user_id, attachment_id, attachment_mime, attachment_size, attachment_name)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       userId, startDate, endDate, type.kind, type.id, reason || null,
       unit || 'day', halfDayPart || null, startTime || null, endTime || null,
-      durationMinutes === undefined ? null : durationMinutes
+      durationMinutes === undefined ? null : durationMinutes,
+      substituteUserId === undefined ? null : substituteUserId,
+      attachment ? attachment.id : null, attachment ? attachment.mime : null, attachment ? attachment.size : null, attachment ? attachment.name || null : null
     );
   return findById(result.lastInsertRowid);
 }

@@ -19,6 +19,7 @@ const { runWatchdog } = require('./watchdog');
 const { runDailyBackup } = require('./backup');
 const { runAuditArchive } = require('./auditArchive');
 const { runDbMaintenance } = require('./dbMaintenance');
+const { runLeaveApprovalReminder } = require('./leaveApprovalReminder');
 const { isFirstDayOfJalaliMonth } = require('../../utils/jalali');
 const { wrapJob, runAll } = require('../../utils/jobRunner');
 const jobRunsRepository = require('../../repositories/jobRunsRepository');
@@ -43,6 +44,8 @@ function buildJobs(bot) {
     { name: 'dailyBackup', run: () => runDailyBackup() },
     // آرشیو ماهانه‌ی audit (S2-6b/6c): تنظیم auditArchiveEnabled خاموش ⇒ dry-run (شمارش + لاگ)، روشن ⇒ انتقال واقعی با batch
     { name: 'auditArchive', run: () => runAuditArchive() },
+    // یادآوری/ارجاع تأیید مرخصی (S4-11c): تنظیمات leaveApprovalReminderHours/leaveApprovalEscalateHours/leaveEscalateWhenApproverOnLeave؛ همه خاموش ⇒ بی‌اثر
+    { name: 'leaveApprovalReminder', run: () => runLeaveApprovalReminder() },
     // نگهداری ماهانه‌ی دیتابیس (S2-7b): cleanup جدول‌های فرعی ← ANALYZE/optimize ← VACUUM (فقط با فضای دیسک کافی)
     { name: 'dbMaintenance', run: () => runDbMaintenance() },
     // Watchdog: فقط شکست‌هایش در job_runs ثبت می‌شود (هر ۵ دقیقه، موفقیت‌ها ردیف‌های بی‌ارزش زیاد می‌ساختند)
