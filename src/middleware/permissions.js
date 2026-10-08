@@ -39,6 +39,8 @@ const PERMISSIONS = Object.freeze([
   'system.manage', // ارسال همگانی، ابطال همه‌ی نشست‌ها، بک‌آپ
   'notifications.read', // S4-5b: فهرست/شمارنده‌ی اعلان‌های «خود کاربر» (اسکوپ سمت سرور؛ پارامتر کاربر ندارد)
   'notifications.mark', // S4-5b: علامت خوانده‌شدنِ اعلان‌های «خود کاربر» (برای همه‌ی نقش‌ها از جمله hr؛ روی داده‌ی دیگران اثر ندارد)
+  'leave.balance.read', // S4-9c: مانده‌ی مرخصی؛ اسکوپ در route (کارمند خودش، سرپرست خودش+تیم، admin/hr همه)
+  'leave.balance.edit', // S4-9c: تعدیل دستی و ثبت استحقاق/انتقالی (فقط admin)
 ]);
 
 // مجوزهای «خود کارمند»؛ هر چه خارج از اینجاست برای employee بسته است.
@@ -51,6 +53,7 @@ const EMPLOYEE_PERMISSIONS = [
   'users.details.read',
   'notifications.read',
   'notifications.mark',
+  'leave.balance.read',
 ];
 
 // سرپرست: همه‌ی مجوزهای کارمند + عملیات مدیریتی روی تیم خودش (اسکوپ در route).

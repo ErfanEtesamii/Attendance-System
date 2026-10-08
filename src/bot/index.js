@@ -75,7 +75,7 @@ function createBot() {
       if (query.data.startsWith('dispute_close:') || query.data.startsWith('dispute_reply:')) {
         return await handleDisputeCallback(bot, query);
       }
-      if (query.data.startsWith('leave_type:') || query.data.startsWith('leave_confirm:') || query.data === 'leave_cancel') {
+      if (query.data.startsWith('leave_type:') || query.data.startsWith('leave_unit:') || query.data.startsWith('leave_part:') || query.data.startsWith('leave_confirm:') || query.data === 'leave_cancel') {
         if (!sess || sess.flow !== 'leave') return bot.answerCallbackQuery(query.id);
         return await handleLeaveCallback(bot, query, sess);
       }

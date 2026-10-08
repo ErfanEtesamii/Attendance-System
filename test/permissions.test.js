@@ -43,7 +43,7 @@ test('hr: فقط‌خواندنی روی کاربران/گزارش/خروجی/م
   for (const p of ['users.read', 'users.details.read', 'attendance.read', 'reports.read', 'leave.read', 'disputes.read', 'dashboard.read']) {
     assert.equal(hasPermission('hr', p), true, `hr ${p}`);
   }
-  const forbidden = PERMISSIONS.filter((p) => !['me.read', 'dashboard.read', 'attendance.read', 'leave.read', 'disputes.read', 'reports.read', 'users.read', 'users.details.read', 'notifications.read', 'notifications.mark'].includes(p));
+  const forbidden = PERMISSIONS.filter((p) => !['me.read', 'dashboard.read', 'attendance.read', 'leave.read', 'disputes.read', 'reports.read', 'users.read', 'users.details.read', 'notifications.read', 'notifications.mark', 'leave.balance.read'].includes(p));
   for (const p of forbidden) assert.equal(hasPermission('hr', p), false, `hr ${p}`);
   // تنها استثنا: notifications.mark (S4-5b) — علامت خوانده‌شدنِ اعلان‌های «خودِ» کاربر؛ روی هیچ داده‌ی دیگری اثر ندارد
   assert.ok(permissionsFor('hr').every((p) => p.endsWith('.read') || p === 'notifications.mark'), 'همه‌ی مجوزهای hr باید .read باشند (به‌جز notifications.mark)');

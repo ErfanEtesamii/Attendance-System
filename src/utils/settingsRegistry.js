@@ -18,6 +18,7 @@ const GROUP_LABELS = {
   workHours: 'ساعت کاری',
   calendar: 'تقویم کاری',
   overtime: 'اضافه‌کاری',
+  leave: 'مرخصی و مانده',
   reminders: 'تأخیر و یادآوری',
   security: 'امنیت',
   retention: 'نگهداری و آرشیو داده',
@@ -128,6 +129,14 @@ def('overtimeRoundStep', 'overtime_round_step', 'number', { group: 'overtime', m
 def('overtimeRounding', 'overtime_rounding', 'enum', { group: 'overtime', values: ['down', 'nearest', 'up'], default: 'down', description: 'حالت گرد‌کردن به گام: down = به پایین، nearest = نزدیک‌ترین (نیم‌گام به بالا)، up = به بالا' });
 def('overtimeMonthlyCapMinutes', 'overtime_monthly_cap_minutes', 'number', { group: 'overtime', min: 0, max: 12000, default: 0, description: 'سقف ماهانه‌ی اضافه‌کاری قابل‌پرداخت (دقیقه‌ی معادل، پس از آستانه/گرد‌کردن/ضریب)؛ روزها به ترتیب تاریخ جمع می‌شوند و مازاد بر سقف قابل‌پرداخت نیست (۰ = بدون سقف). فقط در محاسبه‌ی ماهانه اعمال می‌شود، نه خروجی روزانه' });
 def('overtimeRequiresApproval', 'overtime_requires_approval', 'boolean', { group: 'overtime', default: false, description: 'الزام تأیید اضافه‌کاری: وقتی روشن باشد اضافه‌کاری هر روز تا تأیید سرپرست/ادمین «معلق» است و در اضافه‌کاری قابل‌پرداخت ماهانه نمی‌آید؛ ردشده هم نمی‌آید (خاموش = بدون نیاز به تأیید)' });
+// مرخصی و مانده (S4-9b). هیچ عدد قانونی hard-code نیست: پیش‌فرض‌ها خنثی‌اند و ادمین مقدار شرکت را می‌دهد.
+def('leaveDefaultEntitlementMinutes', 'leave_default_entitlement_minutes', 'number', { group: 'leave', min: 0, max: 10000000, default: 0, description: 'استحقاق پیش‌فرض سالانه (دقیقه) برای هر نوعِ دارای مانده، وقتی برای کاربر/سال ردیف استحقاق صریح ثبت نشده؛ ردیف صریح همیشه اولویت دارد (۰ = بدون استحقاق پیش‌فرض). مثلاً ۲۶ روز × طول روز کاری را خودتان به دقیقه بدهید' });
+def('leaveCarryOverCapMinutes', 'leave_carry_over_cap_minutes', 'number', { group: 'leave', min: 0, max: 10000000, default: 0, description: 'سقف مقدار انتقالی از سال قبل (دقیقه) هنگام ثبت انتقالی؛ بیشتر از آن رد می‌شود (۰ = بدون سقف)' });
+def('leaveBalancePolicy', 'leave_balance_policy', 'enum', { group: 'leave', values: ['block', 'warn', 'allow_negative'], default: 'warn', description: 'وقتی درخواست از مانده بیشتر است: block = ثبت رد می‌شود، warn = ثبت می‌شود ولی هشدار می‌دهد، allow_negative = بی‌صدا مانده منفی می‌شود (اعمال در ثبت درخواست: S4-10a)' });
+def('leaveAllowPastRequests', 'leave_allow_past_requests', 'boolean', { group: 'leave', default: true, description: 'اجازه‌ی ثبت درخواست مرخصی/مأموریت برای تاریخ گذشته (خاموش = فقط از امروز به بعد)' });
+def('leaveMaxPastDays', 'leave_max_past_days', 'number', { group: 'leave', min: 0, max: 3650, default: 0, description: 'حداکثر فاصله‌ی گذشته‌ی مجاز (روز) برای تاریخ شروع درخواست، وقتی ثبت گذشته مجاز است (۰ = بدون سقف)' });
+def('leaveMaxFutureDays', 'leave_max_future_days', 'number', { group: 'leave', min: 0, max: 3650, default: 0, description: 'حداکثر فاصله‌ی آینده (روز) برای تاریخ شروع درخواست (۰ = بدون سقف)' });
+def('leaveMinNoticeHours', 'leave_min_notice_hours', 'number', { group: 'leave', min: 0, max: 8760, default: 0, description: 'حداقل پیش‌اطلاع (ساعت) بین لحظه‌ی ثبت و شروع مرخصی (برای ساعتی از ساعت شروع، وگرنه از ابتدای روز شروع)؛ فقط برای درخواست‌های آینده (۰ = بدون حداقل)' });
 // تأخیر و یادآوری
 def('lateCheckinGraceMinutes', 'late_checkin_grace_minutes', 'number', { group: 'reminders', min: 0, max: 720, default: () => config.lateCheckinGraceMinutes, fallback: 15, description: 'مهلت تأخیر ورود (دقیقه) پس از ساعت شروع، پیش از یادآوری ورود' });
 def('checkoutReminderMinutesBefore', 'checkout_reminder_minutes_before', 'number', { group: 'reminders', min: 0, max: 720, default: () => config.checkoutReminderMinutesBefore, fallback: 15, description: 'یادآوری ثبت خروج، این‌قدر دقیقه پیش از پایان کار' });

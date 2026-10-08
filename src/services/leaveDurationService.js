@@ -9,7 +9,7 @@ const settingsRepository = require('../repositories/settingsRepository');
 const holidaysRepository = require('../repositories/holidaysRepository');
 const leaveRepository = require('../repositories/leaveRepository');
 const { getCalendarDay } = require('../engine/calendarService');
-const { validateUnitInput, computeDuration, overlapDates } = require('../utils/leaveUnits');
+const { validateUnitInput, computeDuration, overlapDates, requestRowToValue: rowToValue } = require('../utils/leaveUnits');
 
 // تقویم روزِ کاربر با کش در همین فراخوانی (شیفت یک‌بار خوانده می‌شود)
 function makeDayResolver(user) {
@@ -21,15 +21,6 @@ function makeDayResolver(user) {
     return cache.get(date);
   };
 }
-
-const rowToValue = (r) => ({
-  unit: r.unit || 'day',
-  startDate: r.start_date,
-  endDate: r.end_date,
-  halfDayPart: r.half_day_part || null,
-  startTime: r.start_time || null,
-  endTime: r.end_time || null,
-});
 
 // input: { userId, startDate, endDate, unit?, halfDayPart?, startTime?, endTime?, leaveTypeId? | leaveType?, excludeRequestId? }
 function prepare(input = {}) {

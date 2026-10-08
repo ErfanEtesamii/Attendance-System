@@ -111,11 +111,31 @@
               <option value="mission">مأموریت</option>
             </select>
           </label>
-          <label>از تاریخ
+          <div class="form-msg" id="leave-balance"></div>
+          <label id="leave-unit-row" hidden>واحد
+            <select name="unit">
+              <option value="day">روزانه</option>
+              <option value="half_day">نیم‌روز</option>
+              <option value="hour">ساعتی</option>
+            </select>
+          </label>
+          <label id="leave-start-row">از تاریخ
             <input type="date" name="startDate" required />
           </label>
-          <label>تا تاریخ
+          <label id="leave-end-row">تا تاریخ
             <input type="date" name="endDate" required />
+          </label>
+          <label id="leave-part-row" hidden>بخش روز
+            <select name="halfDayPart">
+              <option value="morning">صبح</option>
+              <option value="afternoon">عصر</option>
+            </select>
+          </label>
+          <label id="leave-starttime-row" hidden>از ساعت
+            <input type="time" name="startTime" />
+          </label>
+          <label id="leave-endtime-row" hidden>تا ساعت
+            <input type="time" name="endTime" />
           </label>
           <label>توضیح
             <textarea name="reason" rows="2" placeholder="اختیاری"></textarea>

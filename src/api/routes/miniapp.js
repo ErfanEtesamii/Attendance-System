@@ -15,6 +15,10 @@ const { createRateLimiter } = require('../../middleware/rateLimiter');
 const attendanceRepository = require('../../repositories/attendanceRepository');
 const breakRepository = require('../../repositories/breakRepository');
 const leaveRepository = require('../../repositories/leaveRepository');
+const leaveTypesRepository = require('../../repositories/leaveTypesRepository');
+const leaveService = require('../../services/leaveService');
+const leaveBalanceService = require('../../services/leaveBalanceService');
+const { jalaliYearOfDateString } = require('../../utils/jalali');
 const disputeRepository = require('../../repositories/disputeRepository');
 const auditRepository = require('../../repositories/auditRepository');
 const dayService = require('../../engine/dayService');
@@ -201,25 +205,54 @@ router.get('/miniapp/report', (req, res) => {
 
 // ---------- مرخصی / مأموریت ----------
 
+// انواع فعالِ قابل ثبت برای فرم (S4-10c): واحدهای مجاز هر نوع + برای نوع‌های دارای مانده، مانده‌ی سال شمسی جاری همین کاربر (دقیقه + متن روز/ساعت).
+router.get('/miniapp/leave-types', (req, res) => {
+  const year = jalaliYearOfDateString(todayDateString());
+  const items = leaveTypesRepository.listLeaveTypes({ activeOnly: true }).map((t) => {
+    const item = { id: t.id, code: t.code, title: t.title, kind: t.kind, allowedUnits: t.allowedUnits, requiresAttachment: t.requiresAttachment, maxConsecutiveDays: t.maxConsecutiveDays, balance: null };
+    if (t.countsAgainstBalance) {
+      const d = leaveBalanceService.describeBalance({ userId: req.miniAppUser.id, leaveTypeId: t.id, jalaliYear: year });
+      if (d.ok && d.tracked) item.balance = { jalaliYear: year, remaining: d.remaining, remainingText: d.display.remaining.text, policy: d.policy };
+    }
+    return item;
+  });
+  res.json(items);
+});
+
+// ثبت درخواست از Mini App: فقط از leaveService (همه‌ی قواعد آنجاست). قرارداد قدیمی (leaveType + startDate + endDate) سازگار است؛
+// فیلدهای تازه: leaveTypeId، unit (day|half_day|hour)، halfDayPart، startTime، endTime. endDate برای نیم‌روز/ساعتی اختیاری است.
 router.post('/miniapp/leave', (req, res) => {
-  const { startDate, endDate, leaveType, reason } = req.body || {};
-  if (!startDate || !endDate) {
+  const b = req.body || {};
+  if (!b.startDate) {
+    return res.status(400).json({ error: 'startDate الزامی است.' });
+  }
+  const unit = b.unit || 'day';
+  if (unit === 'day' && !b.endDate) {
     return res.status(400).json({ error: 'startDate و endDate الزامی هستند.' });
   }
-  const request = leaveRepository.createLeaveRequest({
+  const result = leaveService.create({
     userId: req.miniAppUser.id,
-    startDate,
-    endDate,
-    leaveType: leaveType === 'mission' ? 'mission' : 'leave',
-    reason,
+    leaveTypeId: Number.isInteger(b.leaveTypeId) ? b.leaveTypeId : undefined,
+    leaveType: Number.isInteger(b.leaveTypeId) ? undefined : (b.leaveType === 'mission' ? 'mission' : 'leave'),
+    unit,
+    startDate: b.startDate,
+    endDate: b.endDate || b.startDate,
+    halfDayPart: b.halfDayPart,
+    startTime: b.startTime,
+    endTime: b.endTime,
+    reason: b.reason,
   });
+  if (!result.ok) {
+    return res.status(400).json({ error: result.errors.map((e) => e.error).join(' '), code: result.errors[0].code, errors: result.errors });
+  }
+  const { request } = result;
   auditRepository.logEvent({
     userId: req.miniAppUser.id,
     action: 'leave_requested',
-    details: { source: 'miniapp', leaveType: request.kind },
+    details: { source: 'miniapp', leaveType: request.kind, unit: request.unit, durationMinutes: request.duration_minutes },
   });
   notificationEvents.leaveRequested(request); // اعلان پنل برای تأییدکننده‌ها؛ هرگز ثبت را نمی‌شکند (S4-6b)
-  res.status(201).json(request);
+  res.status(201).json({ ...request, warnings: result.warnings });
 });
 
 router.get('/miniapp/leave', (req, res) => {

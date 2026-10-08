@@ -162,4 +162,14 @@ function leaveWindowsOnDate(values, date, getDay) {
   return out;
 }
 
-module.exports = { UNITS, HALF_DAY_PARTS, MAX_RANGE_DAYS, validateUnitInput, computeDuration, overlapDates, dayWindow, leaveWindowsOnDate };
+// ردیف leave_requests ⇒ شکل value (خروجی validateUnitInput). ردیف قدیمی بدون unit ⇒ 'day'. (S4-8b-2: از leaveDurationService به اینجا آمد تا dayService هم استفاده کند.)
+const requestRowToValue = (r) => ({
+  unit: r.unit || 'day',
+  startDate: r.start_date,
+  endDate: r.end_date,
+  halfDayPart: r.half_day_part || null,
+  startTime: r.start_time || null,
+  endTime: r.end_time || null,
+});
+
+module.exports = { UNITS, HALF_DAY_PARTS, MAX_RANGE_DAYS, validateUnitInput, computeDuration, overlapDates, dayWindow, leaveWindowsOnDate, requestRowToValue };

@@ -232,7 +232,7 @@ describe('اتصال رویدادها به اعلان‌ها (S4-6b)', { skip: h
   test('خرابی اعلان هرگز جریان اصلی را نمی‌شکند: بدون جدول notifications مرخصی/اعتراض/تصمیم هنوز موفق‌اند', async () => {
     db.exec('ALTER TABLE notifications RENAME TO notifications_off');
     try {
-      const l = await miniapp(U.loner, 'leave', { startDate: '2027-01-01', endDate: '2027-01-01', leaveType: 'leave' });
+      const l = await miniapp(U.loner, 'leave', { startDate: '2027-01-04', endDate: '2027-01-04', leaveType: 'leave' });
       assert.equal(l.status, 201);
       const d = await miniapp(U.emp, 'dispute', { message: 'تست خرابی' });
       assert.equal(d.status, 201);

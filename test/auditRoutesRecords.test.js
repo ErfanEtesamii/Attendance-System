@@ -127,6 +127,7 @@ describe('audit با قالب logChange — تردد/استراحت/مرخصی/�
     assert.deepEqual(det.changes, {
       end_date: { before: '2026-10-11', after: '2026-10-12' },
       status: { before: 'approved', after: 'rejected' },
+      duration_minutes: { before: 1020, after: 1530 }, // S4-10d: مدت با تغییر تاریخ دوباره محاسبه می‌شود (۳ روز کاری)
     });
     assert.deepEqual(det.fields, ['status', 'end_date']);
 

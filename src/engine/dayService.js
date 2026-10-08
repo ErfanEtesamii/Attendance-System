@@ -15,7 +15,9 @@ const shiftsRepository = require('../repositories/shiftsRepository');
 const overtimeApprovalRepository = require('../repositories/overtimeApprovalRepository');
 const usersRepository = require('../repositories/usersRepository');
 const holidaysRepository = require('../repositories/holidaysRepository');
+const leaveRepository = require('../repositories/leaveRepository');
 const { dayNumber } = require('../utils/shiftDay');
+const { leaveWindowsOnDate, requestRowToValue } = require('../utils/leaveUnits');
 const { computeDay } = require('./computeDay');
 const { getCalendarDay } = require('./calendarService');
 
@@ -23,7 +25,7 @@ const { getCalendarDay } = require('./calendarService');
 // تا هر رکورد دوباره DB نخواند. context ساخته‌شده‌ی دستی (فقط { settings, timezone }) هم معتبر است؛ فقط کش نخواهد داشت.
 function loadContext() {
   const settings = settingsRepository.getAll();
-  return { settings, timezone: settings.timezone, shiftCache: new Map(), userCache: new Map(), holidayCache: new Map() };
+  return { settings, timezone: settings.timezone, shiftCache: new Map(), userCache: new Map(), holidayCache: new Map(), leaveCache: new Map() };
 }
 
 // شیفت کاربر رکورد (S3-6b): opts.shift صریح (null = «بدون شیفت») اولویت دارد؛ وگرنه از users.shift_id. بدون شیفت ⇒ null ⇒ تنظیمات سراسری.
@@ -60,16 +62,38 @@ function calendarForRecord(record, ctx, opts, shift) {
   return getCalendarDay(user, record.record_date, { shift, settings: ctx.settings, holidays });
 }
 
+// پنجره‌های مرخصی/مأموریتِ «تأییدشده» روزِ رکورد (S4-8b-2) برای computeDay({ approvedLeaves }).
+// opts.approvedLeaves صریح (آرایه یا null) اولویت دارد (تست/فراخواننده‌ی خاص). وگرنه: درخواست‌های approved کاربر در record_date از repository
+// (کش در context به کلید userId|date) ⇒ leaveWindowsOnDate با تقویم «همان روز» که قبلاً برای computeDay ساخته شده (calendar).
+// بدون ورود، بدون record_date معتبر، بدون user_id یا بدون تقویم (calendar=null ⇒ «بدون تقویم») ⇒ null = رفتار قبلی؛ هرگز exception.
+function leavesForRecord(record, ctx, opts, calendar) {
+  if (opts.approvedLeaves !== undefined) return opts.approvedLeaves;
+  if (!record || !record.check_in_time || !calendar) return null;
+  if (record.user_id === undefined || record.user_id === null || dayNumber(record.record_date) === null) return null;
+  const key = `${record.user_id}|${record.record_date}`;
+  const lc = ctx.leaveCache;
+  let rows = lc ? lc.get(key) : undefined;
+  if (rows === undefined) {
+    rows = leaveRepository.listApprovedOnDate(record.user_id, record.record_date);
+    if (lc) lc.set(key, rows);
+  }
+  if (!rows.length) return null;
+  const windows = leaveWindowsOnDate(rows.map(requestRowToValue), record.record_date, () => calendar);
+  return windows.length ? windows : null;
+}
+
 // خروجی کامل computeDay برای یک رکورد attendance_records (یا null).
 // opts: { now, context, shift, calendar } — now پیش‌فرض الان؛ context خروجی loadContext()؛ shift (اختیاری) شیفت صریح به‌جای شیفت منتسب به کاربر؛
-// calendar (اختیاری، S3-7c) تقویم صریح به‌جای خواندن از getCalendarDay (null = بدون تقویم).
+// calendar (اختیاری، S3-7c) تقویم صریح به‌جای خواندن از getCalendarDay (null = بدون تقویم)؛
+// approvedLeaves (اختیاری، S4-8b-2) پنجره‌های مرخصی صریح [{ start, end }] یا null (= بدون مرخصی) به‌جای خواندن از DB.
 function computeRecordDay(record, opts = {}) {
   const ctx = opts.context || loadContext();
   // مثل قبل: بدون ورود، استراحتی خوانده نمی‌شود
   const breaks = record && record.check_in_time ? breakRepository.listByAttendanceRecord(record.id) : [];
   const shift = record && record.check_in_time ? shiftForRecord(record, ctx, opts) : null;
   const calendar = record && record.check_in_time ? calendarForRecord(record, ctx, opts, shift) : null;
-  return computeDay({ record, breaks, settings: ctx.settings, now: opts.now, timezone: ctx.timezone, shift, calendar });
+  const approvedLeaves = leavesForRecord(record, ctx, opts, calendar);
+  return computeDay({ record, breaks, settings: ctx.settings, now: opts.now, timezone: ctx.timezone, shift, calendar, approvedLeaves });
 }
 
 // تبدیل خروجی computeDay به شکل قدیمی summarizeRecord (ترتیب کلیدها هم همان است ⇒ JSON یکسان)

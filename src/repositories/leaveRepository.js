@@ -51,6 +51,16 @@ function listActiveInRange(userId, startDate, endDate, { excludeId } = {}) {
     .all(userId, endDate, startDate, excludeId === undefined ? null : excludeId, excludeId === undefined ? null : excludeId);
 }
 
+// درخواست‌های «تأییدشده»ی یک کاربر که تاریخ date داخل بازه‌شان است (S4-8b-2؛ ورودی پنجره‌های مرخصی موتور). هر دو kind (leave و mission).
+// فقط approved: pending/rejected هرگز expected را کم نمی‌کند. ردیف‌ها با `kind` و ستون‌های unit/half_day_part/start_time/end_time.
+function listApprovedOnDate(userId, dateStr) {
+  return getDb()
+    .prepare(
+      `${SELECT_WITH_KIND} WHERE lr.user_id = ? AND lr.status = 'approved' AND ? BETWEEN lr.start_date AND lr.end_date ORDER BY lr.id`
+    )
+    .all(userId, dateStr);
+}
+
 // درخواست‌هایی که duration_minutes ندارند (قدیمی‌ها)، قدیمی‌ترین اول (برای backfillMissingDurations)
 function listMissingDuration({ limit = 500 } = {}) {
   return getDb().prepare(`${SELECT_WITH_KIND} WHERE lr.duration_minutes IS NULL ORDER BY lr.id LIMIT ?`).all(limit);
@@ -175,6 +185,7 @@ function updateManual(id, fields, approverId) {
 module.exports = {
   resolveLeaveType,
   listActiveInRange,
+  listApprovedOnDate,
   listMissingDuration,
   setDuration,
   remove,

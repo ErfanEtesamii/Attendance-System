@@ -204,7 +204,7 @@
 
     if (name === 'history') loadHistory();
     if (name === 'report') loadReport($('.tab-btn.active')?.dataset.period || 'week');
-    if (name === 'leave') loadLeaveList();
+    if (name === 'leave') { loadLeaveTypes(); loadLeaveList(); }
     if (name === 'profile') loadProfile();
   }
 
@@ -444,46 +444,115 @@
     return leaveDates[name] ? leaveDates[name].getValue() : form[name].value;
   }
 
+  // ---- انواع و واحدها (S4-10c) ----
+  // نوع‌ها از سرور می‌آیند (/leave-types)؛ اگر بارگذاری نشد، گزینه‌های ثابتِ HTML (مرخصی/مأموریتِ روزانه) می‌ماند و همه‌چیز مثل قبل کار می‌کند.
+  const UNIT_ROWS = { day: ['#leave-end-row'], half_day: ['#leave-part-row'], hour: ['#leave-starttime-row', '#leave-endtime-row'] };
+  const ALL_UNIT_ROWS = ['#leave-end-row', '#leave-part-row', '#leave-starttime-row', '#leave-endtime-row'];
+  let leaveTypes = [];
+  let leaveTypesLoaded = false;
+
+  const fieldValue = (form, name, fallback = '') => (form[name] && form[name].value !== undefined ? form[name].value : fallback);
+  const selectedType = (form) => {
+    const v = String(fieldValue(form, 'leaveType'));
+    return v.startsWith('id:') ? leaveTypes.find((t) => `id:${t.id}` === v) || null : null;
+  };
+
+  function applyUnitUI(form) {
+    const type = selectedType(form);
+    const units = type ? type.allowedUnits : ['day'];
+    const unitRow = $('#leave-unit-row');
+    if (unitRow) unitRow.hidden = units.length < 2;
+    if (form.unit && !units.includes(form.unit.value)) form.unit.value = units[0];
+    const unit = units.length < 2 ? units[0] : fieldValue(form, 'unit', 'day');
+    ALL_UNIT_ROWS.forEach((sel) => { const row = $(sel); if (row) row.hidden = !(UNIT_ROWS[unit] || []).includes(sel); });
+    if (form.endDate) form.endDate.required = unit === 'day';
+    const bal = $('#leave-balance');
+    if (bal) bal.textContent = type && type.balance ? `مانده‌ی مرخصی شما: ${type.balance.remainingText}` : '';
+    return unit;
+  }
+
+  async function loadLeaveTypes() {
+    if (leaveTypesLoaded) return;
+    try {
+      const items = await api('/leave-types');
+      if (!Array.isArray(items) || !items.length) return;
+      leaveTypes = items;
+      leaveTypesLoaded = true;
+      const sel = leaveForm.leaveType;
+      if (sel && typeof sel.appendChild === 'function') {
+        sel.innerHTML = '';
+        items.forEach((t) => {
+          const opt = document.createElement('option');
+          opt.value = `id:${t.id}`;
+          opt.textContent = t.title;
+          sel.appendChild(opt);
+        });
+        sel.value = `id:${items[0].id}`;
+      }
+      applyUnitUI(leaveForm);
+    } catch (_) { /* بدون نوع‌های پویا: فرم قدیمی */ }
+  }
+
+  ['leaveType', 'unit'].forEach((name) => {
+    const el = leaveForm[name];
+    if (el && typeof el.addEventListener === 'function') el.addEventListener('change', () => applyUnitUI(leaveForm));
+  });
+
   leaveForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
     const msg = $('#leave-msg');
     msg.textContent = '';
     msg.className = 'form-msg';
+    const fail = (text) => { msg.textContent = text; msg.classList.add('err'); };
+    const unit = applyUnitUI(form);
     const startDate = readLeaveDate(form, 'startDate');
-    const endDate = readLeaveDate(form, 'endDate');
+    const endDate = unit === 'day' ? readLeaveDate(form, 'endDate') : startDate;
     // ورودی شمسی نامعتبر (مثلاً ۳۰ اسفند سال غیرکبیسه) ⇒ مقدار ISO خالی می‌ماند و نباید به سرور برود
     if (!startDate || !endDate) {
-      msg.textContent = 'تاریخ شروع و پایان را معتبر و به‌صورت شمسی وارد کنید (مثل ۱۴۰۵/۰۷/۱۵).';
-      msg.classList.add('err');
+      fail(unit === 'day' ? 'تاریخ شروع و پایان را معتبر و به‌صورت شمسی وارد کنید (مثل ۱۴۰۵/۰۷/۱۵).' : 'تاریخ را معتبر و به‌صورت شمسی وارد کنید (مثل ۱۴۰۵/۰۷/۱۵).');
       return;
     }
     if (endDate < startDate) { // ISO میلادی: مقایسه‌ی متنی = مقایسه‌ی تاریخ
-      msg.textContent = 'تاریخ پایان نباید قبل از تاریخ شروع باشد.';
-      msg.classList.add('err');
+      fail('تاریخ پایان نباید قبل از تاریخ شروع باشد.');
       return;
     }
+    const typeValue = String(form.leaveType.value);
+    const body = { startDate, endDate, reason: form.reason.value };
+    if (typeValue.startsWith('id:')) body.leaveTypeId = Number(typeValue.slice(3));
+    else body.leaveType = typeValue;
+    if (unit !== 'day') body.unit = unit;
+    if (unit === 'half_day') body.halfDayPart = fieldValue(form, 'halfDayPart', 'morning');
+    if (unit === 'hour') {
+      body.startTime = fieldValue(form, 'startTime');
+      body.endTime = fieldValue(form, 'endTime');
+      if (!body.startTime || !body.endTime || body.endTime <= body.startTime) {
+        fail('ساعت شروع و پایان را درست وارد کنید (پایان بعد از شروع).');
+        return;
+      }
+    }
     try {
-      await api('/leave', {
-        method: 'POST',
-        body: {
-          leaveType: form.leaveType.value,
-          startDate,
-          endDate,
-          reason: form.reason.value,
-        },
-      });
-      msg.textContent = 'درخواست با موفقیت ارسال شد.';
+      const created = await api('/leave', { method: 'POST', body });
+      const low = created && Array.isArray(created.warnings) && created.warnings.some((w) => w.code === 'LOW_BALANCE');
+      msg.textContent = low ? 'درخواست ارسال شد؛ توجه: مانده‌ی مرخصی شما کافی نیست و ممکن است رد شود.' : 'درخواست با موفقیت ارسال شد.';
       msg.classList.add('ok');
       form.reset();
       // reset فرم حالت داخلی datepicker را پاک نمی‌کند
       Object.values(leaveDates).forEach((dp) => { if (dp) dp.setValue(''); });
+      leaveTypesLoaded = false; // مانده عوض شده؛ دفعه‌ی بعد دوباره بخوان
+      loadLeaveTypes();
       loadLeaveList();
     } catch (err) {
-      msg.textContent = err.message;
-      msg.classList.add('err');
+      fail(err.message);
     }
   });
+
+  const UNIT_TEXT = { half_day: { morning: 'نیم‌روز صبح', afternoon: 'نیم‌روز عصر' } };
+  function leaveWhenText(it) {
+    if (it.unit === 'half_day') return `${fmtDate(it.start_date)} — ${(UNIT_TEXT.half_day[it.half_day_part]) || 'نیم‌روز'}`;
+    if (it.unit === 'hour') return `${fmtDate(it.start_date)} — ${it.start_time} تا ${it.end_time}`;
+    return `${fmtDate(it.start_date)} تا ${fmtDate(it.end_date)}`;
+  }
 
   async function loadLeaveList() {
     const list = $('#leave-list');
@@ -504,7 +573,7 @@
             <span class="badge ${it.status}">${LEAVE_STATUS_LABELS[it.status] || it.status}</span>
           </div>
           <div class="li-bottom">
-            <span>${fmtDate(it.start_date)} تا ${fmtDate(it.end_date)}</span>
+            <span>${leaveWhenText(it)}</span>
           </div>`;
         list.appendChild(el);
       });

@@ -4,6 +4,63 @@
 
 ## [Unreleased] — بخش ۴ (ممیزی)
 
+### S4-10d — پنل: ثبت مرخصی توسط سرپرست/ادمین روی leaveService
+- `POST /api/admin/leave-requests` (مجوز `leave.edit`: admin و سرپرستِ تیم؛ hr/کارمند ممنوع) حالا فقط با `leaveService.create` ثبت می‌کند و بدنه‌ی آن گسترش یافته: `leaveTypeId | leaveType`، `unit`، `halfDayPart`، `startTime`، `endTime` (`endDate` برای نیم‌روز/ساعتی اختیاری)، `status` (پیش‌فرض `approved` مثل قبل). **`reason` الزامی است** (دلیل ثبت؛ همان توضیح درخواست) و در audit (`leave_request_created_by_admin`، با diff قبل/بعد شامل `unit` و `duration_minutes`) ثبت می‌شود.
+- معافیت‌ها: مدیر از «گذشته/آینده/حداقل پیش‌اطلاع» معاف است (ثبت با تأخیر کار طبیعی مدیر است)؛ تداخل، واحد مجاز، مدت کاری، **مانده** و سقف روز متوالی برقرار می‌ماند. فقط **admin** می‌تواند `force: true` بدهد تا مانده/سقف روز متوالی هم نادیده شود؛ سرپرست با `force` ⇒ ۴۰۳ و `meta.force` در audit می‌آید. خطای قواعد ⇒ ۴۰۰ با `{ error, code, errors[] }`.
+- `PATCH /api/admin/leave-requests/:id`: با تغییر تاریخ، **مدت دوباره محاسبه** و تداخل با بقیه‌ی درخواست‌های همان کارمند سنجیده می‌شود (۴۰۰ با `OVERLAP`/`NO_WORKING_TIME`)؛ پیش‌تر مدت NULL می‌شد و منتظر backfill می‌ماند (و مانده ناقص حساب می‌شد). تغییر تاریخ نیم‌روز/ساعتی به چندروزه ⇒ ۴۰۰ (قبلاً ۵۰۰ می‌داد). diff audit ویرایش حالا `duration_minutes` را هم نشان می‌دهد (تست `auditRoutesRecords` به‌روز شد).
+- تست: `test/adminLeaveCreate.test.js` (۵ تست). یادداشت: تست `backup.test.js` («آخرین بک‌آپ سالم در متن هست») یک بار در اجرای کامل نزدیک نیمه‌شب UTC شکست و در اجرای مجدد سبز بود؛ به این تغییر ربطی ندارد (وابسته به ساعت واقعی).
+
+### S4-10c — Mini App روی leaveService (انواع پویا، واحدها، مانده)
+- `GET /api/miniapp/leave-types`: انواع **فعال** با `allowedUnits`، `requiresAttachment`، `maxConsecutiveDays` و برای نوع‌های دارای مانده، `balance` (مانده‌ی سال شمسی جاری همین کاربر: دقیقه + متن روز/ساعت + سیاست).
+- `POST /api/miniapp/leave`: ثبت فقط با `leaveService.create`. قرارداد قدیمی (`leaveType` + `startDate` + `endDate`) سازگار است؛ فیلدهای تازه: `leaveTypeId`، `unit` (`day|half_day|hour`)، `halfDayPart`، `startTime`، `endTime` (`endDate` برای نیم‌روز/ساعتی اختیاری). خطای قواعد ⇒ ۴۰۰ با `{ error (متن فارسی), code, errors[] }`؛ موفق ⇒ ۲۰۱ با درخواست + `warnings` (مثلاً `LOW_BALANCE`). audit (`leave_requested`) حالا `unit` و `durationMinutes` دارد.
+- فرم Mini App: نوع‌ها از سرور پر می‌شوند؛ ردیف «واحد» فقط وقتی نوع بیش از یک واحد دارد دیده می‌شود؛ نیم‌روز ⇒ انتخاب صبح/عصر و بدون «تا تاریخ»؛ ساعتی ⇒ از/تا ساعت (پایان بعد از شروع). مانده‌ی نوع انتخاب‌شده بالای فرم نمایش داده می‌شود و پیام موفقیت با هشدار مانده می‌آید؛ لیست «درخواست‌های من» واحد را هم نشان می‌دهد. اگر `/leave-types` در دسترس نباشد، فرم قدیمی (مرخصی/مأموریتِ روزانه) بدون تغییر کار می‌کند.
+- ⚠️ **تغییر رفتار**: درخواستِ فقط‌یک‌روز که کل آن روز غیرکاری (جمعه/تعطیل) باشد از این پس با `NO_WORKING_TIME` رد می‌شود (قاعده‌ی S4-8a که تا اینجا هیچ کانالی نداشت). تست قدیمیِ `notificationEvents` که روز جمعه می‌فرستاد به یک روز کاری منتقل شد.
+- تست: `test/miniappLeave.test.js` (۹ تست: سرور و فرم با DOM ساختگی).
+
+### S4-10b — اتصال بات (/leave) به leaveService
+- `/leave` حالا **انواع فعالِ `leave_types`** را دکمه می‌کند (`leave_type:<id>`). اگر نوع بیش از یک واحد بپذیرد، واحد پرسیده می‌شود (`leave_unit:`)؛ وگرنه مستقیم به تاریخ می‌رود. روزانه: شروع → پایان؛ نیم‌روز: تاریخ → صبح/عصر (`leave_part:`)؛ ساعتی: تاریخ → ساعت شروع → ساعت پایان (`HH:MM`، «9:30» ⇒ «09:30»، پایان ≤ شروع رد می‌شود).
+- پیش از تأیید، خلاصه با **مدت** (روز/ساعت بر پایه‌ی روز کاری همان کاربر) و هشدار `LOW_BALANCE` نشان داده می‌شود؛ خطای قواعد (تداخل، مانده در حالت block، گذشته/آینده، پیش‌اطلاع، سقف روز متوالی) همان‌جا با متن سرویس نمایش داده و جریان بسته می‌شود. ثبت نهایی فقط با `leaveService.create` است؛ هیچ قاعده‌ای در بات تکرار نشده.
+- audit (`leave_request_created`) حالا `unit`، `durationMinutes` و `source: 'bot'` هم دارد؛ اعلان پنل و پیام به تأییدکننده‌ها مثل قبل.
+- سازگاری: دکمه‌ی قدیمی `leave_type:leave|mission` (پیام‌های قدیمیِ باز) و session بدون `unit` (= روزانه) همچنان کار می‌کند.
+- تست: `test/botLeaveFlow.test.js` (۶ تست).
+
+### S4-10a — `leaveService.validate/create` (دروازه‌ی واحد ثبت؛ هنوز به کانالی وصل نیست)
+- `validate(input, { now, skip })` همه‌ی قواعد را بدون نوشتن ارزیابی می‌کند و `{ ok, errors, warnings, value, type, durationMinutes, days, conflicts, balance }` می‌دهد؛ `create` = validate + ذخیره‌ی pending با همه‌ی ستون‌های واحد/مدت (خطا ⇒ هیچ‌چیز نوشته نمی‌شود). سرویس عمداً audit/اعلان نمی‌نویسد (هر کانال action و اعلان خودش را دارد).
+- قواعد به ترتیب: ۱) کاربر/نوع/واحد مجاز/مدت کاری با تقویم و شیفت و **تداخل** با pending/approved (از S4-8a؛ خطا ⇒ توقف)، ۲) گذشته/آینده/پیش‌اطلاع، ۳) سقف روز متوالی نوع (`MAX_CONSECUTIVE_EXCEEDED`؛ بر پایه‌ی **روزهای تقویمی** بازه)، ۴) **سیاست مانده**: block ⇒ `INSUFFICIENT_BALANCE`، warn ⇒ مجاز با هشدار `LOW_BALANCE`، allow_negative ⇒ بی‌صدا. مانده‌ی در دسترس = مانده − درخواست‌های **در انتظار** همان نوع/سال (رزرو، تا چند درخواست پشت‌سرهم مانده را دور نزنند)؛ سال = سال شمسیِ تاریخ شروع.
+- ۴ تنظیم تازه (گروه «مرخصی و مانده»، پیش‌فرض‌ها = رفتار قبلی): `leaveAllowPastRequests` (روشن)، `leaveMaxPastDays` (۰ = بدون سقف)، `leaveMaxFutureDays` (۰ = بدون سقف)، `leaveMinNoticeHours` (۰ = بدون حداقل؛ فقط برای تاریخ‌های آینده؛ ساعتی از ساعت شروع، وگرنه از ۰۰:۰۰ روز شروع به وقت شرکت). «امروز» به وقت شرکت (`timezone`) است نه UTC.
+- `skip`: آرایه‌ای از `past | future | notice | maxConsecutive | balance` برای ثبت توسط مدیر (S4-10d).
+- `getBalance` فیلد `pending` را هم می‌دهد؛ `checkRequest` بر پایه‌ی `available = remaining − pending` تصمیم می‌گیرد.
+- ⚠️ با پیش‌فرض‌ها (استحقاق ۰ + سیاست `warn`) تا وقتی استحقاق تعریف نشده هر درخواست دارای مانده هشدار `LOW_BALANCE` می‌گیرد (مسدود نمی‌شود).
+- تست: `test/leaveService.test.js` (۷ تست).
+
+### S4-9c — API مانده‌ی مرخصی
+- `GET /admin/leave-balances[?userId=&year=&leaveTypeId=]` (مجوز تازه‌ی `leave.balance.read` برای همه‌ی نقش‌ها؛ لیست سفید کارمند هم گسترش یافت): **اسکوپ سمت سرور** — کارمند فقط خودش، سرپرست خودش + تیم مستقیم، `admin` و `hr` همه‌ی کاربران فعال. `userId` خارج از اسکوپ ⇒ ۴۰۳، ناموجود ⇒ ۴۰۴، نامعتبر/سالِ نامعتبر ⇒ ۴۰۰. پیش‌فرض سال = سال شمسی امروز. پاسخ فقط نوع‌های دارای مانده را می‌آورد: `{ jalaliYear, items: [{ userId, fullName, department, balances: [{ leaveType, entitled, carriedOver, adjustments, used, remaining, usedCount, missingDuration, dayMinutes, display, policy }] }] }` (همه‌ی مقدارها دقیقه؛ `display` = روز/ساعت بر پایه‌ی روز کاری همان کاربر).
+- `GET /admin/leave-balances/:userId/adjustments?leaveTypeId=&year=`: تاریخچه‌ی تعدیل‌ها با همان اسکوپ.
+- نوشتن با مجوز تازه‌ی `leave.balance.edit` (**فقط admin**؛ hr فقط‌خواندنی می‌ماند): `POST /admin/leave-balances/adjust` (تعدیل امضادار) و `PUT /admin/leave-balances/entitlement` (استحقاق/انتقالی)؛ دلیل اجباری، audit، هدر `X-Requested-With`.
+- تست: `test/leaveBalancesApi.test.js` (۵ تست اسکوپ/نوشتن/تاریخچه/۴۰۱)؛ ماتریس‌های `permissionRoutes`، `adminAccess` و `permissions` به‌روز شدند.
+
+### S4-9b — تنظیمات و سیاست مانده + نمایش روز/ساعت
+- گروه تنظیمات جدید «مرخصی و مانده» با سه کلید (پیش‌فرض‌ها خنثی؛ هیچ عدد قانونی hard-code نیست): `leaveDefaultEntitlementMinutes` (استحقاق پیش‌فرض سالانه، فقط وقتی ردیف صریح ledger نیست؛ ۰ = ندارد)، `leaveCarryOverCapMinutes` (سقف مقدار انتقالی هنگام ثبت؛ ۰ = بدون سقف) و `leaveBalancePolicy` = `block | warn | allow_negative` (پیش‌فرض `warn`).
+- `utils/leaveBalanceFormat` (خالص): `formatMinutes(minutes, dayMinutes)` ⇒ روز/ساعت/دقیقه بر پایه‌ی **طول روز کاری همان کاربر** (۱ روز = طول روز، ۱ ساعت = ۶۰ دقیقه)، `evaluatePolicy(policy, remaining, requested)` ⇒ `{ allowed, warn, shortfall, remainingAfter }`، `dayLengthMinutes` (شیفت شب هم).
+- `leaveBalanceService`: `getBalance` از استحقاق پیش‌فرض استفاده می‌کند؛ `setEntitlement` سقف انتقالی را اعمال می‌کند (`CARRY_OVER_EXCEEDS_CAP`)؛ `workDayMinutesOf(user)` (شیفت کاربر ⇒ وگرنه ساعت کاری سراسری ⇒ ۴۸۰ فقط برای داده‌ی خراب)، `describeBalance` (مانده + نمایش خوانا + سیاست) و `checkRequest` (فقط ارزیابی؛ **اعمال سیاست روی ثبت درخواست در S4-10a** است).
+- تست: `test/leaveBalancePolicy.test.js` (۸ تست).
+
+### S4-9a — ledger مانده‌ی مرخصی (migration 016)
+- migration `016_leave_balances` (فقط ساختار؛ بدون عدد قانونی): `leave_balances` (کاربر، نوع، سال شمسی، `entitled_minutes`، `carried_over_minutes`؛ یکتا روی سه‌تایی) و `leave_balance_adjustments` (تعدیل‌های امضادار فقط‌افزودنی با `reason` اجباری و `actor_id`؛ ویرایش/حذف ندارد، اصلاح = تعدیل معکوس). همه به **دقیقه**.
+- مانده محاسبه می‌شود، ذخیره نمی‌شود: `remaining = entitled + carriedOver + مجموع تعدیل‌ها − مجموع duration_minutes درخواست‌های approved همان نوع`. سالِ هر درخواست = سال شمسیِ `start_date` (درخواستی که از نوروز رد شود کلاً به سال شروع می‌رود). pending/rejected و نوع‌های دیگر اثری ندارند. درخواست approved بدون `duration_minutes` در `used` نمی‌آید ولی در `missingDuration` گزارش می‌شود (با `backfillMissingDurations` پر کنید).
+- `leaveBalanceService`: `getBalance`، `setEntitlement` (استحقاق/انتقالی، دلیل اجباری، audit با before/after)، `addAdjustment` (عدد صحیح غیرصفر، دلیل اجباری، audit)، `listAdjustments`. نوعی که `counts_against_balance = 0` دارد ledger ندارد (`tracked:false` / خطای `NOT_TRACKED`). مانده می‌تواند منفی شود؛ سیاست جلوگیری S4-9b است. هنوز route/UI نیست (S4-9c).
+- `utils/jalali`: `jalaliYearOfDateString`، `jalaliYearToDateRange`.
+- تست: `test/leaveBalance.test.js` (۶ تست)؛ لیست migrationها در `migrations.test.js` به‌روز شد.
+
+### S4-8b-2 — اتصال اثر مرخصی به موتور از مسیر dayService (بخش دوم S4-8b؛ S4-8b کامل شد)
+- `leaveRepository.listApprovedOnDate(userId, date)`: درخواست‌های **approved** (هر دو kind: مرخصی و مأموریت) که تاریخ داخل بازه‌شان است. pending/rejected هرگز اثری ندارند.
+- `dayService.computeRecordDay`: برای رکوردِ دارای ورود، مرخصی‌های تأییدشده‌ی همان `record_date` خوانده، با `leaveWindowsOnDate` و **همان تقویمِ ساخته‌شده برای همان روز** به پنجره تبدیل و به `computeDay({ approvedLeaves })` داده می‌شود؛ پس همه‌ی مصرف‌کننده‌ها (پنل، Mini App، بات، Jobها، `summarizeRecord/Range`، `computeMonthOvertime`) خودکار اثر را می‌بینند. بدون مرخصی ⇒ `null` ⇒ خروجی بایت‌به‌بایت قبلی.
+- کش: `loadContext()` کلید جدید `leaveCache` (`userId|date`) دارد؛ contextِ دست‌ساز بدون کش هم معتبر است. `opts.approvedLeaves` (آرایه یا `null`) اولویت دارد.
+- `calendar = null` («بدون تقویم») ⇒ مرخصی هم اعمال نمی‌شود (پنجره بدون تقویمِ روز معنا ندارد).
+- refactor کوچک: `rowToValue` از `leaveDurationService` به `leaveUnits.requestRowToValue` منتقل شد (بدون تغییر رفتار).
+- **نکته‌ی تجاری**: مأموریتِ تأییدشده هم مثل مرخصی `expected` را کم می‌کند (روز کامل ⇒ `expected = ۰`). اگر نمی‌خواهید، فیلتر `kind` در `listApprovedOnDate` اضافه می‌شود.
+- تست: `test/leaveEngineWiring.test.js` (۴ تست: بدون اثر pending/rejected/کاربر دیگر، ساعتی و نیم‌روز صبح/عصر، چندروزه با تعطیلی وسط، override/کش).
+
 ### S4-8b-1 — اثر مرخصی تأییدشده در موتور خالص (بخش اول از دو بخش S4-8b)
 - **تقسیم S4-8b**: بخش ۱ (این‌جا) = فقط منطق خالص: `computeDay` و سازنده‌ی پنجره‌ها؛ بدون DB، بدون migration، بدون route، بدون وابستگی تازه. بخش ۲ (S4-8b-2) = اتصال: خواندن مرخصی‌های `approved` کاربر در `dayService` (repository + کش `context`) و رساندن آن‌ها به `computeDay`، و تست یکپارچه‌ی end-to-end. **تا S4-8b-2 هیچ مصرف‌کننده‌ای `approvedLeaves` نمی‌دهد، پس خروجی همه‌ی API/Job/گزارش‌ها دقیقاً مثل قبل است.**
 - `computeDay({ ..., approvedLeaves })`: ورودی اختیاری، آرایه‌ی `[{ start, end }]` (دقیقه از نیمه‌شب؛ همان مبنای شروع/پایان کار؛ شیفت شب: روز بعد ۱۴۴۰+). `null`/`undefined`/`[]` ⇒ خروجی بایت‌به‌بایت قبلی (تست `deepEqual`). پنجره‌ها به بازه‌ی کاریِ روز (پس از پایان نیم‌روزِ تقویم) بریده، مرتب و ادغام می‌شوند؛ پنجره‌ی بیرون از ساعت کاری بی‌اثر است؛ پنجره‌ی نامعتبر ⇒ `RangeError` (غیرآرایه ⇒ `TypeError`).
