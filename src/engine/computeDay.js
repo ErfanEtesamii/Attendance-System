@@ -31,6 +31,15 @@
 //                overtime = workedGross (برای رکورد بسته‌شده؛ مثل اضافه‌کاری عادی استراحت از آن کم نمی‌شود). ضریب اضافه‌کاری = overtimeHolidayFactor.
 //                پرچم outside_shift برای چنین روزی داده نمی‌شود (پنجره‌ی کاری وجود ندارد).
 //              • calendar.isWorkingDay باید boolean باشد (وگرنه RangeError)؛ ساخت calendar با خود فراخواننده است (dayService.computeRecordDay).
+//   approvedLeaves : (S4-8b-1) اختیاری؛ آرایه‌ی پنجره‌های مرخصی/مأموریتِ «تأییدشده‌ی همین روز» به شکل [{ start, end }] بر پایه‌ی همان «دقیقه از نیمه‌شب»
+//              که شروع/پایان کار با آن حساب می‌شود (شیفت شب: روز بعد = ۱۴۴۰+). ساخت پنجره‌ها با فراخواننده است (leaveUnits.leaveWindowsOnDate)؛ موتور DB نمی‌خواند.
+//              null/undefined/[] ⇒ رفتار قبلی بدون هیچ تغییر. هر پنجره به [شروع، پایانِ] روز بریده و پنجره‌های هم‌پوشان/چسبیده ادغام می‌شوند (دوبار شمرده نمی‌شوند).
+//              • expected = (پایان − شروع) − مجموع پنجره‌ها (حداقل ۰)؛ روز غیرکاری همچنان ۰ است و پنجره در آن بی‌اثر است.
+//              • «شروعِ مؤثر» = شروع کار پس از رد شدن از پنجره‌های چسبیده به آن (مرخصی صبح/ساعتیِ اول وقت)؛ «پایانِ مؤثر» به همین ترتیب از انتها.
+//                late از شروعِ مؤثر (و مهلت از همان) سنجیده می‌شود و دقیقه‌های داخل هر پنجره‌ی مرخصی از آن کم می‌شود؛ earlyLeave نسبت به پایانِ مؤثر سنجیده می‌شود
+//                و دقیقه‌های داخل پنجره از آن کم می‌شود. خروج داخل پنجره‌ی انتهاییِ مرخصی (پیش از پایان کار، پس از پایانِ مؤثر) نه زودتر رفتن است نه اضافه‌کاری.
+//              • روز کاملاً در مرخصی (مجموع پنجره‌ها ≥ طول روز) ⇒ expected = ۰، late = ۰، earlyLeave = ۰. overtime (خروج پس از پایانِ کار) و پرچم‌ها بدون تغییر می‌مانند.
+//              • پنجره‌ی نامعتبر (غیر شیء، start/end غیرعدد/غیرمتناهی، start < ۰ یا end ≤ start) ⇒ RangeError.
 //   now      : لحظه‌ی «الان» برای رکورد باز (Date یا ISO)؛ پیش‌فرض new Date()
 //   timezone : نام IANA؛ پیش‌فرض Asia/Tehran
 // خروجی (همه دقیقه، عدد صحیح مگر null):
@@ -190,7 +199,32 @@ function sumBreakMinutes(breaks, opts) {
   return sumItems(readBreaks(breaks).items, opts);
 }
 
-function computeDay({ record, breaks, settings, now, timezone, shift, calendar } = {}) {
+// پنجره‌های مرخصی (S4-8b-1): اعتبارسنجی، برش به [workStart, workEnd]، مرتب‌سازی و ادغام هم‌پوشان/چسبیده. ورودی تغییر نمی‌کند.
+// پنجره‌ی کاملاً بیرون از بازه حذف می‌شود (نه خطا). خروجی: آرایه‌ی [{ start, end }] مرتب و بدون هم‌پوشانی.
+function normalizeLeaveWindows(approvedLeaves, workStart, workEnd) {
+  if (approvedLeaves === undefined || approvedLeaves === null) return [];
+  if (!Array.isArray(approvedLeaves)) throw new TypeError('approvedLeaves باید آرایه یا null باشد.');
+  const clipped = [];
+  for (const w of approvedLeaves) {
+    if (!w || typeof w !== 'object') throw new RangeError('approvedLeaves: هر پنجره باید شیء { start, end } باشد.');
+    if (typeof w.start !== 'number' || typeof w.end !== 'number' || !Number.isFinite(w.start) || !Number.isFinite(w.end) || w.start < 0 || w.end <= w.start) {
+      throw new RangeError('approvedLeaves: start و end باید عدد متناهی با 0 ≤ start < end باشند.');
+    }
+    const start = Math.max(w.start, workStart);
+    const end = Math.min(w.end, workEnd);
+    if (end > start) clipped.push({ start, end });
+  }
+  clipped.sort((a, b) => a.start - b.start || a.end - b.end);
+  const merged = [];
+  for (const w of clipped) {
+    const last = merged[merged.length - 1];
+    if (last && w.start <= last.end) last.end = Math.max(last.end, w.end);
+    else merged.push({ ...w });
+  }
+  return merged;
+}
+
+function computeDay({ record, breaks, settings, now, timezone, shift, calendar, approvedLeaves } = {}) {
   if (!settings || typeof settings !== 'object') throw new TypeError('settings الزامی است.');
   const params = resolveShiftParams(settings, shift);
   const { workStart, lateGrace, earlyGrace, maxLunch, fixedLunch, overnight } = params;
@@ -207,6 +241,17 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar }
       if (halfEndMin !== null && halfEndMin > workStart && halfEndMin < workEnd) workEnd = halfEndMin; // نامعتبر/بیرون از بازه ⇒ روز کامل (مثل calendarService)
     }
   }
+  // مرخصی تأییدشده (S4-8b-1): پنجره‌ها پس از اعمال پایانِ نیم‌روز بریده می‌شوند؛ روز غیرکاری ⇒ بی‌اثر. بدون پنجره ⇒ effStart/effEnd = شروع/پایان کار (رفتار قبلی)
+  const leaves = normalizeLeaveWindows(approvedLeaves, workStart, workEnd);
+  const leaveTotal = dayOff ? 0 : leaves.reduce((t, w) => t + (w.end - w.start), 0);
+  const fullyOnLeave = leaveTotal > 0 && leaveTotal >= workEnd - workStart;
+  let effStart = workStart;
+  let effEnd = workEnd;
+  if (!dayOff) {
+    for (const w of leaves) if (w.start <= effStart) effStart = Math.max(effStart, w.end);
+    for (let i = leaves.length - 1; i >= 0; i -= 1) if (leaves[i].end >= effEnd) effEnd = Math.min(effEnd, leaves[i].start);
+  }
+  const leaveOverlap = (a, b) => (dayOff ? 0 : leaves.reduce((t, w) => t + Math.max(0, Math.min(w.end, b) - Math.max(w.start, a)), 0));
   if (settings.overtimeEnabled !== undefined && typeof settings.overtimeEnabled !== 'boolean') throw new RangeError('settings.overtimeEnabled باید boolean باشد.');
   const overtimeRounding = settings.overtimeRounding === undefined ? 'down' : settings.overtimeRounding;
   if (!OVERTIME_ROUNDING.includes(overtimeRounding)) throw new RangeError(`settings.overtimeRounding باید یکی از ${OVERTIME_ROUNDING.join('، ')} باشد.`);
@@ -227,7 +272,7 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar }
   if (!tz) throw new RangeError('timezone نامعتبر است.');
 
   const result = {
-    expected: dayOff ? 0 : Math.max(0, workEnd - workStart),
+    expected: dayOff ? 0 : Math.max(0, workEnd - workStart - leaveTotal),
     workedGross: null,
     break: 0,
     breakAuto: 0,
@@ -263,8 +308,11 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar }
   const refDate = overnight ? (dayNumber(record.record_date) !== null ? record.record_date : formatDate(checkIn, tz)) : null;
   const posOf = overnight ? (d) => dayDiff(formatDate(d, tz), refDate) * 1440 + minutesSinceMidnight(d, tz) : (d) => minutesSinceMidnight(d, tz);
   const checkInMinutes = posOf(checkIn);
-  const lateLine = workStart + lateGrace; // تا خودِ این لحظه تأخیر نیست
-  if (!dayOff && checkInMinutes > lateLine) result.late = checkInMinutes - (lateCountsFrom === 'after_grace' ? lateLine : workStart);
+  const lateLine = effStart + lateGrace; // تا خودِ این لحظه تأخیر نیست (بدون مرخصی effStart = workStart)
+  if (!dayOff && !fullyOnLeave && checkInMinutes > lateLine) {
+    const lateFrom = lateCountsFrom === 'after_grace' ? lateLine : effStart;
+    result.late = Math.max(0, checkInMinutes - lateFrom - leaveOverlap(lateFrom, checkInMinutes)); // دقیقه‌های داخل پنجره‌ی مرخصی تأخیر نیست (S4-8b-1)
+  }
 
   const end = checkOut || (now === undefined ? new Date() : toDate(now, 'now'));
   result.isOpen = !checkOut;
@@ -297,7 +345,7 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar }
     if (dayOff) {
       result.overtime = result.workedGross; // روز غیرکاری: کل کار اضافه‌کاری است (S3-7c)
     } else if (checkOutMinutes < workEnd) {
-      if (checkOutMinutes < workEnd - earlyGrace) result.earlyLeave = workEnd - checkOutMinutes; // تا خودِ «پایان − مهلت» زودتر رفتن نیست
+      if (!fullyOnLeave && checkOutMinutes < effEnd - earlyGrace) result.earlyLeave = Math.max(0, effEnd - checkOutMinutes - leaveOverlap(checkOutMinutes, effEnd)); // S4-8b-1: نسبت به پایانِ مؤثر و بدون دقیقه‌های مرخصی // تا خودِ «پایان − مهلت» زودتر رفتن نیست
     } else {
       result.overtime = checkOutMinutes - workEnd;
     }

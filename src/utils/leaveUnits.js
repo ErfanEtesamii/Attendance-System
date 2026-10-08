@@ -141,4 +141,25 @@ function overlapDates(a, b, getDay) {
   return out;
 }
 
-module.exports = { UNITS, HALF_DAY_PARTS, MAX_RANGE_DAYS, validateUnitInput, computeDuration, overlapDates, dayWindow };
+// S4-8b-1: پنجره‌های مرخصی یک «تاریخ» برای موتور (computeDay({ approvedLeaves })).
+// values: آرایه‌ی خروجی validateUnitInput (شکل value؛ هر کدام یک درخواست تأییدشده). getDay: تقویم همان کاربر (مثل computeDuration).
+// فقط درخواست‌هایی که بازه‌شان شامل date است و date برای کاربر روز کاری است پنجره می‌دهند؛ تعطیلی/آخر هفته‌ی وسط بازه پنجره‌ای ندارد.
+// پنجره‌ها بر پایه‌ی «دقیقه از نیمه‌شبِ date» (همان intervalOnDay؛ شیفت شب: پایان + ۱۴۴۰) و هم‌پایه با تقویم همان روز است
+// (روز نیم‌روز ⇒ پنجره‌ی کوتاه‌تر؛ day = کل روز، half_day صبح/عصر = نیمه‌ی اول/دوم، hour = ساعت‌های درخواستی).
+// خروجی: [{ start, end }] به ترتیب ورودی (مرتب‌سازی/ادغام کار computeDay است). ورودی تغییر نمی‌کند؛ بدون درخواست مرتبط ⇒ [].
+function leaveWindowsOnDate(values, date, getDay) {
+  const dn = dayNumber(date);
+  if (dn === null) throw new RangeError('date نامعتبر است (YYYY-MM-DD).');
+  const win = dayWindow(getDay(date));
+  if (!win) return [];
+  const out = [];
+  for (const v of values || []) {
+    if (!v || dayNumber(v.startDate) === null || dayNumber(v.endDate) === null) continue;
+    if (dn < dayNumber(v.startDate) || dn > dayNumber(v.endDate)) continue;
+    const iv = intervalOnDay(v, win);
+    if (iv && iv[0] < iv[1]) out.push({ start: iv[0], end: iv[1] });
+  }
+  return out;
+}
+
+module.exports = { UNITS, HALF_DAY_PARTS, MAX_RANGE_DAYS, validateUnitInput, computeDuration, overlapDates, dayWindow, leaveWindowsOnDate };
