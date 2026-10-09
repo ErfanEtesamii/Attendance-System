@@ -17,10 +17,10 @@ const PANEL_FILES = ['jalali.js', 'core.js', 'views-main.js', 'views-ops.js', 'v
 
 // منوی هر نقش پیش از S4-4b (admin: همه؛ manager: همه‌ی غیر‌ادمینی؛ employee: صفحه‌های employee:true + پروفایل من) + hr جدید.
 const NAV = {
-  admin: ['attendance', 'audit', 'broadcast', 'dashboard', 'disputes', 'employees', 'holidays', 'leave', 'live', 'nightly', 'reports', 'settings', 'shifts', 'status', 'suspicious', 'system'],
-  manager: ['attendance', 'dashboard', 'disputes', 'employees', 'leave', 'live', 'nightly', 'reports', 'suspicious'],
+  admin: ['attendance', 'audit', 'broadcast', 'dashboard', 'disputes', 'employees', 'holidays', 'leave', 'leaveQueue', 'live', 'nightly', 'reports', 'settings', 'shifts', 'status', 'suspicious', 'system'],
+  manager: ['attendance', 'dashboard', 'disputes', 'employees', 'leave', 'leaveQueue', 'live', 'nightly', 'reports', 'suspicious'],
   employee: ['attendance', 'disputes', 'leave', 'profile', 'reports'],
-  hr: ['attendance', 'dashboard', 'disputes', 'employees', 'leave', 'live', 'nightly', 'reports'],
+  hr: ['attendance', 'dashboard', 'disputes', 'employees', 'leave', 'leaveQueue', 'live', 'nightly', 'reports'],
 };
 
 function makeEl() {

@@ -386,6 +386,201 @@
   });
 
   // ======================================================
+  // صف تأیید مرخصی/مأموریت (S4-13b): UI روی API صف (S4-13a)
+  //   فیلتر وضعیت/نوع/تیم/بازه + «فقط قابل‌تصمیم من»، مانده‌ی کارمند، پیوست، انتخاب و تأیید/رد دسته‌جمعی (دلیل رد اجباری).
+  //   فقط نمایش است: اسکوپ و مجوز تصمیم را سرور اعمال می‌کند؛ مانده مانع تأیید نیست و فقط هشدار می‌دهد.
+  // ======================================================
+  const QUEUE_LIMIT = 50;
+  const queueUi = { status: 'pending', kind: '', leaveTypeId: '', team: '', from: '', to: '', decidable: false, offset: 0 };
+  const queueSel = new Set(); // شناسه‌ی درخواست‌های انتخاب‌شده (فقط قابل‌تصمیم‌های همین صفحه)
+  const ROLE_STEP = { manager: 'سرپرست', admin: 'ادمین', hr: 'منابع انسانی' };
+  const STEP_STATUS = { pending: 'در انتظار', approved: 'تأیید', rejected: 'رد' };
+  const BULK_ERR = { NOT_FOUND: 'یافت نشد', ALREADY_DECIDED: 'قبلاً بررسی شده', FORBIDDEN: 'مجاز به تصمیم نیستید', INTERNAL: 'خطای داخلی' };
+
+  const queueQs = () => {
+    const p = new URLSearchParams({ status: queueUi.status, limit: String(QUEUE_LIMIT), offset: String(queueUi.offset) });
+    ['kind', 'leaveTypeId', 'team', 'from', 'to'].forEach((k) => { if (queueUi[k]) p.set(k, queueUi[k]); });
+    if (queueUi.decidable && queueUi.status === 'pending') p.set('decidable', '1');
+    return p.toString();
+  };
+
+  const queueBalanceHtml = (b) => {
+    if (!b || !b.tracked) return '<div class="meta">این نوع از مانده کسر نمی‌شود.</div>';
+    const after = b.display && b.display.remainingAfterApproval;
+    const warn = b.insufficient === true ? ` ${AP.badge('red', 'مانده کافی نیست')}` : '';
+    const afterTxt = b.remainingAfterApproval === null || b.remainingAfterApproval === undefined
+      ? (b.status === 'pending' ? ' · پس از تأیید: نامشخص' : '')
+      : (after ? ` · پس از تأیید: ${esc(after.text)}` : '');
+    return `<div class="meta">مانده‌ی سال ${esc(String(b.jalaliYear))}: ${esc(b.display && b.display.remaining ? b.display.remaining.text : '—')}${afterTxt}${warn}</div>`;
+  };
+
+  const queueChainHtml = (it) => {
+    if (!it.chain || it.chain.length < 2) return '';
+    return `<div class="meta">زنجیره‌ی تأیید: ${it.chain.map((s) => `${esc(ROLE_STEP[s.approverRole] || s.approverRole)} (${esc(STEP_STATUS[s.status] || s.status)})`).join(' ← ')}</div>`;
+  };
+
+  const queueItemHtml = (it) => {
+    const emp = it.employee;
+    const type = it.leaveType && it.leaveType.title ? it.leaveType.title : (AP.LEAVE_TYPE[it.kind] || '—');
+    const dur = it.durationMinutes != null ? ` · مدت: ${esc(fmt.min(it.durationMinutes))}` : '';
+    const span = it.startDate === it.endDate ? esc(fmt.dateLong(it.startDate)) : `${esc(fmt.dateLong(it.startDate))} تا ${esc(fmt.dateLong(it.endDate))}`;
+    const att = it.attachment
+      ? `<div class="meta">پیوست: <a href="${esc(it.attachment.url)}" target="_blank" rel="noopener" style="color:var(--green)">${esc(it.attachment.name || 'دانلود')}</a></div>` : '';
+    const waiting = it.status === 'pending' && it.awaitingRole ? ` ${AP.badge('purple', `منتظر ${ROLE_STEP[it.awaitingRole] || it.awaitingRole}`)}` : '';
+    const check = it.canDecide
+      ? `<input type="checkbox" class="q-check" data-q="${esc(it.id)}" aria-label="انتخاب درخواست ${esc(emp ? emp.fullName : it.id)}" ${queueSel.has(it.id) ? 'checked' : ''} />` : '';
+    const actions = it.canDecide
+      ? `<button class="btn success small" data-act="approve" data-id="${esc(it.id)}">${icon('check')} تأیید</button><button class="btn danger small" data-act="reject" data-id="${esc(it.id)}">${icon('x')} رد</button>` : '';
+    return `
+      <div class="item">
+        ${check}
+        ${AP.avatar(emp ? emp.fullName : '?', '')}
+        <div class="grow">
+          <div class="title">${emp ? `<a href="#/profile/${esc(emp.id)}" style="color:inherit">${esc(emp.fullName)}</a>` : '—'}
+            ${AP.badge(it.kind === 'mission' ? 'mission' : 'leave', type)} ${AP.badge(it.status, AP.LEAVE_STATUS[it.status] || it.status)}${waiting}</div>
+          <div class="meta">${emp ? `${esc(emp.department || '')}${emp.personnelCode ? ` · کد پرسنلی <span class="ltr">${esc(emp.personnelCode)}</span>` : ''} · ` : ''}${span}${dur} · ثبت: ${esc(fmt.dateTime(it.createdAt))}</div>
+          ${it.reason ? `<p class="text">${esc(it.reason)}</p>` : ''}
+          ${queueBalanceHtml({ ...(it.balance || {}), status: it.status })}${queueChainHtml(it)}${att}
+        </div>
+        <div class="row-actions">${actions}</div>
+      </div>`;
+  };
+
+  // نتیجه‌ی تصمیم دسته‌جمعی: موفق ⇒ توست؛ ناموفق ⇒ مودال با دلیل هر مورد
+  function queueShowResult(data, names) {
+    const { summary, results } = data;
+    const failed = results.filter((r) => !r.ok);
+    if (!failed.length) return AP.toast(`${fmt.num(summary.succeeded)} درخواست ${data.action === 'approve' ? 'تأیید' : 'رد'} شد.`);
+    AP.modal({
+      title: 'نتیجه‌ی تصمیم دسته‌جمعی',
+      body: `<p style="margin:0 0 12px;line-height:1.9">${fmt.num(summary.succeeded)} مورد انجام شد و ${fmt.num(summary.failed)} مورد انجام نشد. موارد موفق ثبت شده‌اند و نیازی به تکرار ندارند.</p>
+        <div class="list">${failed.map((r) => `<div class="item"><div class="grow"><div class="title">${esc(names.get(r.id) || `درخواست ${r.id}`)}</div>
+          <div class="meta">${esc(BULK_ERR[r.code] || r.error || 'ناموفق')}${r.error && BULK_ERR[r.code] ? ` — ${esc(r.error)}` : ''}</div></div></div>`).join('')}</div>
+        <div class="modal-actions"><button class="btn ghost" type="button" data-close-x>بستن</button></div>`,
+      onMount(b, h) { $('[data-close-x]', b).addEventListener('click', () => h.close()); },
+    });
+  }
+
+  AP.view('leaveQueue', {
+    perm: ['leave.approve', 'leave.approve.hr'],
+    nav: { icon: 'check', label: 'صف تأیید', group: 'درخواست‌ها' },
+    async render() {
+      // فهرست انواع و سرپرست‌ها فقط برای فیلتر است؛ خرابی آن‌ها صفحه را نمی‌اندازد
+      const [data, types, users] = await Promise.all([
+        AP.api(`/admin/leave-queue?${queueQs()}`),
+        AP.api('/admin/leave-types').catch(() => []),
+        AP.can('users.read') ? AP.loadUsers().catch(() => []) : [],
+      ]);
+      // آخرین صفحه‌ی پس از تصمیم‌ها خالی شده؛ یک صفحه عقب برو
+      if (!data.items.length && data.total > 0 && queueUi.offset > 0) {
+        queueUi.offset = Math.max(0, Math.floor((data.total - 1) / QUEUE_LIMIT) * QUEUE_LIMIT);
+        return this.render();
+      }
+      const managers = AP.state.me && AP.state.me.role === 'manager' ? [] : users.filter((u) => u.role === 'manager' && u.isActive);
+      const names = new Map(data.items.map((i) => [i.id, i.employee ? i.employee.fullName : `درخواست ${i.id}`]));
+      const decidableIds = data.items.filter((i) => i.canDecide).map((i) => i.id);
+      [...queueSel].forEach((id) => { if (!decidableIds.includes(id)) queueSel.delete(id); });
+      const from = queueUi.offset + 1;
+      const to = queueUi.offset + data.items.length;
+
+      const html = `
+        <div class="view-header"><div><h2>صف تأیید</h2>
+          <div class="sub">${fmt.num(data.total)} درخواست${data.items.length ? ` · نمایش ${fmt.num(from)} تا ${fmt.num(to)}` : ''}</div></div></div>
+        <div class="chips" id="q-chips">${[['pending', 'در انتظار'], ['approved', 'تأییدشده'], ['rejected', 'ردشده'], ['all', 'همه']]
+          .map(([k, l]) => `<button class="chip ${k === queueUi.status ? 'active' : ''}" data-s="${k}">${l}</button>`).join('')}</div>
+        <form class="filters" id="q-filters">
+          <label class="field"><span>نوع کلی</span><select name="kind"><option value="">همه</option><option value="leave" ${queueUi.kind === 'leave' ? 'selected' : ''}>مرخصی</option><option value="mission" ${queueUi.kind === 'mission' ? 'selected' : ''}>مأموریت</option></select></label>
+          <label class="field"><span>نوع مرخصی</span><select name="leaveTypeId"><option value="">همه</option>${types.map((t) => `<option value="${esc(t.id)}" ${String(t.id) === String(queueUi.leaveTypeId) ? 'selected' : ''}>${esc(t.title)}</option>`).join('')}</select></label>
+          ${managers.length ? `<label class="field"><span>تیم (سرپرست)</span><select name="team"><option value="">همه</option>${managers.map((m) => `<option value="${esc(m.id)}" ${String(m.id) === String(queueUi.team) ? 'selected' : ''}>${esc(m.fullName)}</option>`).join('')}</select></label>` : ''}
+          <label class="field"><span>از تاریخ</span><input type="date" name="from" value="${esc(queueUi.from)}" /></label>
+          <label class="field"><span>تا تاریخ</span><input type="date" name="to" value="${esc(queueUi.to)}" /></label>
+          ${queueUi.status === 'pending' ? `<label class="check-row"><input type="checkbox" name="decidable" ${queueUi.decidable ? 'checked' : ''} /> فقط مواردی که من تصمیم می‌گیرم</label>` : ''}
+        </form>
+        ${decidableIds.length ? `<div class="filters" id="q-bulk" style="align-items:center">
+          <label class="check-row"><input type="checkbox" id="q-all" ${decidableIds.every((id) => queueSel.has(id)) ? 'checked' : ''} /> انتخاب همه‌ی این صفحه</label>
+          <span class="muted" id="q-count">${queueSel.size ? `${fmt.num(queueSel.size)} مورد انتخاب شده` : ''}</span>
+          <button class="btn success small" type="button" id="q-approve" ${queueSel.size ? '' : 'disabled'}>${icon('check')} تأیید انتخاب‌شده‌ها</button>
+          <button class="btn danger small" type="button" id="q-reject" ${queueSel.size ? '' : 'disabled'}>${icon('x')} رد انتخاب‌شده‌ها</button>
+        </div>` : ''}
+        <div class="list">${data.items.length ? data.items.map(queueItemHtml).join('') : `<div class="card">${emptyBox('درخواستی با این فیلتر وجود ندارد.')}</div>`}</div>
+        ${data.total > QUEUE_LIMIT ? `<div class="filters" style="margin-top:14px;justify-content:center;align-items:center">
+          <button class="btn ghost small" type="button" id="q-prev" ${queueUi.offset > 0 ? '' : 'disabled'}>صفحه‌ی قبل</button>
+          <button class="btn ghost small" type="button" id="q-next" ${to < data.total ? '' : 'disabled'}>صفحه‌ی بعد</button></div>` : ''}`;
+
+      return {
+        html,
+        mount(page) {
+          const form = $('#q-filters', page);
+          AP.dates.mount(form); // از/تا تاریخ شمسی؛ مقدار میلادی (قبل از بستن listenerها)
+          const reload = () => { queueSel.clear(); AP.refresh(); };
+          $$('input, select', form).forEach((el) => el.addEventListener('change', () => {
+            const f = AP.formData(form);
+            Object.assign(queueUi, { kind: f.kind || '', leaveTypeId: f.leaveTypeId || '', team: f.team || '', from: f.from || '', to: f.to || '', decidable: !!f.decidable, offset: 0 });
+            if (queueUi.from && queueUi.to && queueUi.from > queueUi.to) { AP.toast('تاریخ شروع فیلتر بعد از تاریخ پایان است.', true); return; }
+            reload();
+          }));
+          $('#q-chips', page).addEventListener('click', (e) => {
+            const c = e.target.closest('[data-s]');
+            if (c) { queueUi.status = c.dataset.s; queueUi.offset = 0; reload(); }
+          });
+          const prev = $('#q-prev', page); if (prev) prev.addEventListener('click', () => { queueUi.offset = Math.max(0, queueUi.offset - QUEUE_LIMIT); reload(); });
+          const next = $('#q-next', page); if (next) next.addEventListener('click', () => { queueUi.offset += QUEUE_LIMIT; reload(); });
+
+          // انتخاب
+          const syncBulk = () => {
+            const c = $('#q-count', page); if (c) c.textContent = queueSel.size ? `${fmt.num(queueSel.size)} مورد انتخاب شده` : '';
+            ['#q-approve', '#q-reject'].forEach((s) => { const b = $(s, page); if (b) b.disabled = !queueSel.size; });
+            const all = $('#q-all', page); if (all) all.checked = decidableIds.length > 0 && decidableIds.every((id) => queueSel.has(id));
+          };
+          $$('.q-check', page).forEach((cb) => cb.addEventListener('change', () => {
+            const id = Number(cb.dataset.q);
+            if (cb.checked) queueSel.add(id); else queueSel.delete(id);
+            syncBulk();
+          }));
+          const all = $('#q-all', page);
+          if (all) all.addEventListener('change', () => {
+            decidableIds.forEach((id) => { if (all.checked) queueSel.add(id); else queueSel.delete(id); });
+            $$('.q-check', page).forEach((cb) => { cb.checked = all.checked; });
+            syncBulk();
+          });
+
+          // تصمیم (تکی و دسته‌جمعی هر دو از endpoint دسته‌جمعی؛ منطق یکسان سمت سرور)
+          const decide = async (action, ids) => {
+            let note = '';
+            if (action === 'reject') {
+              note = await AP.askReason({
+                title: ids.length > 1 ? `رد ${fmt.num(ids.length)} درخواست` : 'رد درخواست',
+                label: 'دلیل رد (اجباری — برای کارمند در تلگرام ارسال می‌شود)',
+                confirmText: 'رد کن', danger: true,
+              });
+              if (note === null) return;
+            } else {
+              const risky = data.items.filter((i) => ids.includes(i.id) && i.balance && i.balance.insufficient === true).length;
+              const ok = await AP.confirmBox({
+                title: ids.length > 1 ? `تأیید ${fmt.num(ids.length)} درخواست` : 'تأیید درخواست',
+                message: `${ids.length > 1 ? `${fmt.num(ids.length)} درخواست` : 'درخواست'} تأیید می‌شود.${risky ? ` توجه: برای ${fmt.num(risky)} مورد مانده‌ی کارمند کافی نیست و پس از تأیید منفی می‌شود.` : ''}`,
+                confirmText: 'تأیید',
+              });
+              if (!ok) return;
+            }
+            let res;
+            try {
+              res = await AP.api('/admin/leave-queue/bulk', { method: 'POST', body: { action, ids, note } });
+            } catch (err) { AP.toast(err.message, true); return; }
+            queueSel.clear();
+            queueShowResult(res, names);
+            AP.refresh();
+            AP.refreshCounts();
+          };
+          $$('[data-act]', page).forEach((b) => b.addEventListener('click', () => decide(b.dataset.act, [Number(b.dataset.id)])));
+          const ba = $('#q-approve', page); if (ba) ba.addEventListener('click', () => decide('approve', [...queueSel]));
+          const br = $('#q-reject', page); if (br) br.addEventListener('click', () => decide('reject', [...queueSel]));
+        },
+      };
+    },
+  });
+
+  // ======================================================
   // اعتراض‌ها
   // ======================================================
   const dispUi = { status: 'open' };

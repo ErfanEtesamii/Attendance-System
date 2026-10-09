@@ -29,7 +29,8 @@
   // کاربری که فهرست کاربران را نمی‌بیند (کارمند): فقط پروفایل/داده‌ی خودش
   AP.selfOnly = () => !AP.can('users.read');
   // هر صفحه باید perm داشته باشد؛ صفحه‌ی بدون perm برای هیچ‌کس نمایش داده نمی‌شود (default-deny).
-  AP.viewAllowed = (def) => !!(def && def.perm && AP.can(def.perm));
+  // perm می‌تواند آرایه هم باشد (S4-13b): «هرکدام» از مجوزها کافی است (مثل requireAnyPermission سرور)؛ آرایه‌ی خالی ⇒ بسته.
+  AP.viewAllowed = (def) => !!(def && def.perm && (Array.isArray(def.perm) ? def.perm.some((p) => AP.can(p)) : AP.can(def.perm)));
   AP.loadPermissions = async function loadPermissions() {
     try {
       const r = await AP.api('/admin/me/permissions');
