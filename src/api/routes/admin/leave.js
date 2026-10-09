@@ -7,7 +7,7 @@ const router = express.Router();
 const { requirePermission, requireAnyPermission } = require('../../../middleware/permissions');
 const usersRepository = require('../../../repositories/usersRepository');
 const leaveRepository = require('../../../repositories/leaveRepository');
-const { notifyUser, sendMessage } = require('../../../bot/notifier');
+const { sendMessage } = require('../../../bot/notifier');
 const { DATE_RE, scopedUserIds, canAccessUser, auditChange } = require('./common');
 const { leaveRequestView } = require('../../../utils/auditViews');
 const notificationEvents = require('../../../services/notificationEvents');
@@ -16,6 +16,7 @@ const leaveDurationService = require('../../../services/leaveDurationService');
 const leaveApprovalService = require('../../../services/leaveApprovalService');
 const attachmentService = require('../../../services/attachmentService');
 const { sendAttachment } = require('../../../utils/attachmentResponse');
+const { applyDecision, normalizeNote } = require('./leaveDecision');
 
 // ---------- صف تأیید مرخصی/مأموریت ----------
 
@@ -64,43 +65,12 @@ router.post('/admin/leave-requests/:id/:decision(approve|reject)', requireAnyPer
   const request = leaveRepository.findById(requestId);
   if (!request) return res.status(404).json({ error: 'درخواست یافت نشد.' });
 
-  const note = ((req.body && req.body.note) || '').toString().trim().slice(0, 500);
-  const result = leaveApprovalService.decide({ requestId, actor: req.adminUser, decision, note });
-  if (!result.ok) {
-    const status = { NOT_FOUND: 404, ALREADY_DECIDED: 400, FORBIDDEN: 403 }[result.code] || 400;
-    return res.status(status).json({ error: result.error, code: result.code });
-  }
-  const updated = result.request;
-  const employee = usersRepository.findById(request.user_id);
-
-  const finalAction = result.finalStatus === 'approved' ? 'leave_request_approved' : 'leave_request_rejected';
-  auditChange(req, {
-    action: result.completed ? finalAction : 'leave_request_step_approved',
-    entityType: 'leave_request',
-    entityId: requestId,
-    before: leaveRequestView(request),
-    after: leaveRequestView(updated),
-    reason: note || null, // یادداشت تصمیم‌گیرنده = دلیل تصمیم
-    meta: { requestId, employeeId: request.user_id, targetUserId: request.user_id, step: result.step, role: result.role, nextRole: result.nextRole },
-  });
-
-  if (!result.completed) {
-    notificationEvents.leaveStepAdvanced(updated); // اعلان به تأییدکننده‌ی مرحله‌ی بعد (S4-11b)
-    return res.json({ ...updated, completed: false, nextRole: result.nextRole });
-  }
-
-  notificationEvents.leaveDecided(updated, { note }); // اعلان پنل برای کارمند (S4-6b)
-  if (employee?.telegram_user_id) {
-    const typeLabel = request.kind === 'mission' ? 'مأموریت' : 'مرخصی';
-    const statusLabel = result.finalStatus === 'approved' ? 'تأیید شد ✅' : 'رد شد ❌';
-    const roleLabel = { admin: 'ادمین', hr: 'منابع انسانی' }[req.adminUser.role] || 'سرپرست';
-    notifyUser(
-      employee.telegram_user_id,
-      `درخواست ${typeLabel} شما (${request.start_date} تا ${request.end_date}) ${statusLabel}` + (note ? `\nپاسخ ${roleLabel}: ${note}` : '')
-    );
-  }
-
-  res.json({ ...updated, completed: true });
+  // اجرا + audit + اعلان‌ها در leaveDecision.js مشترک با تصمیم دسته‌جمعی (S4-13a)
+  const note = normalizeNote(req.body && req.body.note);
+  const done = applyDecision(req, { requestId, decision, note });
+  if (!done.ok) return res.status(done.status).json({ error: done.error, code: done.code });
+  if (!done.result.completed) return res.json({ ...done.request, completed: false, nextRole: done.result.nextRole });
+  res.json({ ...done.request, completed: true });
 });
 
 router.post('/admin/leave-requests', requirePermission('leave.edit'), (req, res) => {

@@ -58,6 +58,8 @@ const ROUTES_2 = [
   ['GET', '/api/admin/nightly-review', [M, A]],
   ['GET', '/api/admin/leave-requests', [E, M, A]],
   ['POST', '/api/admin/leave-requests/999999/approve', [M, H, A]], // S4-11a: hr از guard رد می‌شود (leave.approve.hr)؛ تصمیم مرحله با سرویس
+  ['GET', '/api/admin/leave-queue', [M, H, A]], // S4-13a: صف تأیید (leave.approve یا leave.approve.hr)؛ اسکوپ/تصمیم هر مرحله در route/سرویس
+  ['POST', '/api/admin/leave-queue/bulk', [M, H, A]],
   ['POST', '/api/admin/leave-requests', [M, A]],
   ['GET', '/api/admin/leave-types', [M, A]], // S4-7a: خواندن leave.read؛ نوشتن settings.edit (فقط ادمین)
   ['GET', '/api/admin/leave-types/999999', [M, A]],

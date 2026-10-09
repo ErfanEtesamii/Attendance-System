@@ -129,6 +129,7 @@ docs/                      ARCHITECTURE.md، SECURITY.md (هدرها/CSP/کوک�
 | `GET/POST /admin/users`، `GET /admin/users/export`، `GET/PATCH/DELETE /admin/users/:id`، `GET /admin/users/:id/details`، `POST /admin/users/:id/message` | کارمندان |
 | `GET /admin/attendance`، `/attendance/export`؛ `GET/POST/PATCH/DELETE /admin/attendance-records…`؛ `POST /admin/attendance-records/:id/breaks`؛ `PATCH/DELETE /admin/break-records/:id` | رکوردهای تردد و استراحت |
 | `GET/POST/PATCH/DELETE /admin/leave-requests…` | مرخصی/مأموریت |
+| `GET /admin/leave-queue`، `POST /admin/leave-queue/bulk` | صف تأیید (فیلتر، مانده، تأیید/رد دسته‌جمعی) |
 | `GET /admin/disputes`، `POST /admin/disputes/:id/(resolve\|reopen)` | اعتراض‌ها |
 | `GET /admin/reports/summary`، `/reports/export` | گزارش (CSV) |
 | `GET/POST/DELETE /admin/holidays`، `GET/PATCH /admin/settings` | تعطیلات و تنظیمات |

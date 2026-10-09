@@ -97,6 +97,8 @@ describe('لیست سفید کارمند (default-deny)', () => {
       ['DELETE', '/api/admin/attendance-records/1'],
       ['POST', '/api/admin/leave-requests'],
       ['POST', '/api/admin/leave-requests/1/approve'],
+      ['GET', '/api/admin/leave-queue'], // S4-13a
+      ['POST', '/api/admin/leave-queue/bulk'],
       ['POST', '/api/admin/disputes/1/resolve'],
       ['GET', '/api/admin/suspicious'],
       ['POST', '/api/admin/suspicious/1/review'],

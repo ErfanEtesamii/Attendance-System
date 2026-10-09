@@ -98,6 +98,34 @@ function listAll({ status } = {}) {
   return db.prepare(`${SELECT_WITH_KIND} ORDER BY lr.created_at DESC`).all();
 }
 
+// S4-13a: صف تأیید با فیلتر و صفحه‌بندی (همه‌ی فیلترها در SQL).
+//   status: pending|approved|rejected|all | kind: leave|mission | leaveTypeId | userIds: آرایه‌ی اسکوپ (خالی ⇒ نتیجه‌ی خالی؛ null ⇒ بدون محدودیت)
+//   from/to: درخواست‌هایی که بازه‌شان با [from, to] هم‌پوشانی دارد (هرکدام اختیاری) | limit: null ⇒ بدون سقف
+// ترتیب: «در انتظار» قدیمی‌ترین اول (FIFO صف)، بقیه جدیدترین اول. ⇒ { rows, total } (total = پیش از صفحه‌بندی)
+function listQueue({ status, kind, leaveTypeId, userIds, from, to, limit = 50, offset = 0 } = {}) {
+  const where = [];
+  const params = [];
+  if (status && status !== 'all') { where.push('lr.status = ?'); params.push(status); }
+  if (kind) { where.push('lt.kind = ?'); params.push(kind); }
+  if (leaveTypeId !== undefined && leaveTypeId !== null) { where.push('lr.leave_type_id = ?'); params.push(leaveTypeId); }
+  if (Array.isArray(userIds)) {
+    if (!userIds.length) return { rows: [], total: 0 };
+    where.push(`lr.user_id IN (${userIds.map(() => '?').join(',')})`);
+    params.push(...userIds);
+  }
+  if (from) { where.push('lr.end_date >= ?'); params.push(from); }
+  if (to) { where.push('lr.start_date <= ?'); params.push(to); }
+  const clause = where.length ? ` WHERE ${where.join(' AND ')}` : '';
+  const db = getDb();
+  const total = db.prepare(`SELECT COUNT(*) AS n FROM leave_requests lr JOIN leave_types lt ON lt.id = lr.leave_type_id${clause}`).get(...params).n;
+  const order = status === 'pending' ? 'lr.created_at ASC, lr.id ASC' : 'lr.created_at DESC, lr.id DESC';
+  const paging = limit === null ? '' : ' LIMIT ? OFFSET ?';
+  const rows = db
+    .prepare(`${SELECT_WITH_KIND}${clause} ORDER BY ${order}${paging}`)
+    .all(...params, ...(limit === null ? [] : [limit, offset]));
+  return { rows, total };
+}
+
 function listByUser(userId) {
   const db = getDb();
   return db.prepare(`${SELECT_WITH_KIND} WHERE lr.user_id = ? ORDER BY lr.created_at DESC`).all(userId);
@@ -196,6 +224,7 @@ module.exports = {
   findById,
   listPending,
   listAll,
+  listQueue,
   listByUser,
   setStatus,
   hasApprovedMissionOnDate,
