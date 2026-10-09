@@ -180,7 +180,7 @@ describe('ثبت ۴۲۹ در audit_log (throttle‌شده)', { skip }, () => {
         const req = { ip: '10.7.' + Math.floor(i / 250) + '.' + (i % 250), method: 'POST', baseUrl: '/api', path: '/x' };
         lim(req, res, () => {}); lim(req, res, () => {});
       }
-      console.log(audit.search({ action: 'rate_limit_exceeded', limit: 1000 }).length);
+      console.log(String(audit.search({ action: 'rate_limit_exceeded', limit: 1000 }).length));
       process.exit(0);`;
     const r = spawnSync(process.execPath, ['-e', code], { cwd: root, env: process.env, encoding: 'utf8' });
     assert.equal(r.status, 0, r.stderr);

@@ -86,7 +86,7 @@ describe('computeDay (S3-2b)', () => {
 
     // خالص: با require فقط این ماژول، هیچ repository/db/config بارگذاری نمی‌شود
     const root = path.join(__dirname, '..');
-    const r = spawnSync(process.execPath, ['-e', "require('./src/engine/computeDay'); console.log(Object.keys(require.cache).filter((k) => /[\\\\/](repositories|db|config\\.js)/.test(k)).length);"], { cwd: root, encoding: 'utf8' });
+    const r = spawnSync(process.execPath, ['-e', "require('./src/engine/computeDay'); console.log(String(Object.keys(require.cache).filter((k) => /[\\\\/](repositories|db|config\\.js)/.test(k)).length));"], { cwd: root, encoding: 'utf8' });
     assert.equal(r.status, 0, r.stderr);
     assert.equal(r.stdout.trim(), '0');
   });

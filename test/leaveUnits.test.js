@@ -136,7 +136,7 @@ describe('migration ۰۱۵ — ستون‌های واحد/مدت (S4-8a)', () =>
     `);
     return db;
   }
-  after(() => fs.rmSync(work, { recursive: true, force: true }));
+  after(() => { try { fs.rmSync(work, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); } catch (_) { /* ویندوز: فایل هنوز باز است؛ پوشه‌ی temp را سیستم‌عامل بعداً پاک می‌کند */ } });
 
   test('داده‌ی قدیمی بدون تغییر می‌ماند، unit=day و بقیه NULL؛ ایندکس‌ها، شمارنده و بک‌آپ حفظ؛ اجرای دوباره بی‌اثر', () => {
     const db = makeDbBefore015();

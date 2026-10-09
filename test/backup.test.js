@@ -290,7 +290,7 @@ describe('S2-1c-2 — هشدار بک‌آپ مشکوک و سلامت', () => {
       const env = { ...process.env, NODE_ENV: 'test' };
       delete env.MONITOR_BACKUP_CHECK;
       if (value !== undefined) env.MONITOR_BACKUP_CHECK = value;
-      const out = spawnSync(process.execPath, ['-e', "console.log(require('./src/config').monitor.backupCheck)"], { cwd: path.join(__dirname, '..'), encoding: 'utf8', env });
+      const out = spawnSync(process.execPath, ['-e', "console.log(String(require('./src/config').monitor.backupCheck))"], { cwd: path.join(__dirname, '..'), encoding: 'utf8', env });
       return out.stdout.trim();
     };
     assert.equal(run(undefined), 'true');
@@ -335,7 +335,7 @@ describe('S2-1c-2 — هشدار بک‌آپ مشکوک و سلامت', () => {
     // بک‌آپ سالم دیروز، بعد بک‌آپ خرابِ امروز (از مسیر واقعی wrapJob + runDailyBackup)
     await runDailyBackup({ dir: d, now: new Date(2026, 3, 9, 2, 30) });
     ago('daily-20260409-0230.db', 24);
-    ago('monthly-202604.db', 24); // کپی ماهانه‌ی همان بک‌آپ (retention) هم دیروز حساب شود
+    ago('monthly-202604.db', 24.01); // کپی ماهانه‌ی همان بک‌آپ (retention) هم دیروز حساب شود؛ کمی قدیمی‌تر تا «آخرین» همان روزانه باشد (هم‌زمان‌بودن mtime تست را ناپایدار می‌کرد)
     const res = await wrapJob('dailyBackup', () => runDailyBackup({ db: corruptingDb, dir: d, now: new Date(2026, 3, 10, 2, 30) }))();
     assert.equal(res.ok, false);
 

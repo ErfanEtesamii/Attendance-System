@@ -12,7 +12,7 @@ const { cleanup } = require('./helpers/testEnv');
 
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'migration-test-'));
 after(() => {
-  fs.rmSync(work, { recursive: true, force: true });
+  try { fs.rmSync(work, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); } catch (_) { /* ویندوز: فایل هنوز باز است؛ پوشه‌ی temp را سیستم‌عامل بعداً پاک می‌کند */ }
   cleanup();
 });
 
