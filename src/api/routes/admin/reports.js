@@ -10,7 +10,8 @@ const auditRepository = require('../../../repositories/auditRepository');
 const dayService = require('../../../engine/dayService');
 const { sendSheets, exportAuditFields } = require('../../../utils/xlsx'); // پیش‌فرض CSV؛ ?format=xlsx ⇒ xlsx چندشیتی (بدون exceljs ⇒ CSV + اعلام fallback)
 const { buildEmployeeReportSheets } = require('../../../services/reportExportService');
-const { scopedUserIds, visibleUsers, shiftDate, parseRange, userBrief, safeSummary, aggregateRecords } = require('./common');
+const { computeMonthlyReport } = require('../../../services/monthlyReportService');
+const { scopedUserIds, canAccessUser, visibleUsers, shiftDate, parseRange, userBrief, safeSummary, aggregateRecords } = require('./common');
 const { requirePermission } = require('../../../middleware/permissions');
 
 // ---------- فاز ۶: خروجی اکسل (CSV) ----------
@@ -119,6 +120,36 @@ router.get('/admin/reports/summary', requirePermission('reports.read'), (req, re
     daily,
     departmentOptions: [...new Set(visibleUsers(req.adminUser).map((u) => u.department).filter(Boolean))],
   });
+});
+
+// ---------- گزارش ماهانه‌ی شمسی (S5-2b) ----------
+// GET /admin/reports/monthly?year=&month=&userId=&department=&days=1&includeInactive=1   (year/month شمسی؛ هر دو الزامی)
+// فقط خواندن و «بدون قفل» (بستن ماه/snapshot در S5-3). منطق محاسبه کاملاً در monthlyReportService (فقط از computeDay).
+// اسکوپ نقش مثل بقیه‌ی گزارش‌ها: admin/hr همه، manager فقط تیم مستقیمش، employee فقط خودش. userId خارج از اسکوپ ⇒ ۴۰۳.
+// پیش‌فرض فقط کاربران فعال؛ includeInactive=1 غیرفعال‌ها را هم می‌آورد. days=1 ریز روزانه‌ی هر کاربر را هم می‌دهد.
+router.get('/admin/reports/monthly', requirePermission('reports.read'), (req, res) => {
+  const q = req.query;
+  const year = /^\d{4}$/.test(String(q.year || '')) ? parseInt(q.year, 10) : NaN;
+  const month = /^\d{1,2}$/.test(String(q.month || '')) ? parseInt(q.month, 10) : NaN;
+  if (!Number.isInteger(year) || year < 1300 || year > 1500) return res.status(400).json({ error: 'سال شمسی (year) الزامی و باید ۴ رقمی معتبر باشد.', code: 'INVALID_YEAR' });
+  if (!Number.isInteger(month) || month < 1 || month > 12) return res.status(400).json({ error: 'ماه شمسی (month) الزامی و باید بین ۱ تا ۱۲ باشد.', code: 'INVALID_MONTH' });
+  const flag = (v) => v === '1' || v === 'true';
+  const me = req.adminUser;
+
+  let users = visibleUsers(me, { onlyActive: !flag(q.includeInactive) });
+  if (q.userId !== undefined && q.userId !== '') {
+    if (!/^\d+$/.test(String(q.userId))) return res.status(400).json({ error: 'شناسه‌ی کاربر نامعتبر است.', code: 'INVALID_USER' });
+    if (!canAccessUser(me, q.userId)) return res.status(403).json({ error: 'به این کاربر دسترسی ندارید.' });
+    const target = usersRepository.findById(parseInt(q.userId, 10));
+    if (!target) return res.status(404).json({ error: 'کاربر یافت نشد.' });
+    users = [target];
+  } else if (q.department) {
+    const dep = String(q.department).trim();
+    users = users.filter((u) => (u.department || '').trim() === dep);
+  }
+
+  const report = computeMonthlyReport({ users, year, month, includeDays: flag(q.days) });
+  return res.json({ ...report, departmentOptions: [...new Set(visibleUsers(me).map((u) => u.department).filter(Boolean))] });
 });
 
 module.exports = router;

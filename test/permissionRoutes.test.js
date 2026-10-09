@@ -21,7 +21,7 @@ const HR_ALLOWED = new Set([
   'GET /api/admin/me', 'GET /api/admin/me/permissions', 'GET /api/admin/dashboard', 'GET /api/admin/overview', 'GET /api/admin/live', 'GET /api/admin/nightly-review', 'GET /api/admin/calendar?year=1405&month=1',
   'GET /api/admin/users', 'GET /api/admin/users/export', 'GET /api/admin/users/999999', 'GET /api/admin/users/999999/details',
   'GET /api/admin/attendance', 'GET /api/admin/attendance/export', 'GET /api/admin/attendance-records/999999',
-  'GET /api/admin/disputes', 'GET /api/admin/leave-requests', 'GET /api/admin/leave-types', 'GET /api/admin/leave-types/999999', 'GET /api/admin/leave-balances', 'GET /api/admin/leave-balances/999999/adjustments', 'GET /api/admin/reports/export', 'GET /api/admin/reports/summary',
+  'GET /api/admin/disputes', 'GET /api/admin/leave-requests', 'GET /api/admin/leave-types', 'GET /api/admin/leave-types/999999', 'GET /api/admin/leave-balances', 'GET /api/admin/leave-balances/999999/adjustments', 'GET /api/admin/reports/export', 'GET /api/admin/reports/monthly?year=1405&month=6', 'GET /api/admin/reports/summary',
 ]);
 const ROUTES = [
   ['GET', '/api/admin/users', [M, A]],
@@ -77,6 +77,7 @@ const ROUTES_2 = [
   ['POST', '/api/admin/overtime-approvals/999999/approve', [M, A]],
   ['GET', '/api/admin/reports/export', [M, A]],
   ['GET', '/api/admin/reports/summary', [E, M, A]],
+  ['GET', '/api/admin/reports/monthly?year=1405&month=6', [E, M, A]], // S5-2b
   ['GET', '/api/admin/holidays', [M, A]],
   ['GET', '/api/admin/settings', [M, A]],
   ['GET', '/api/admin/settings/items', [M, A]],
