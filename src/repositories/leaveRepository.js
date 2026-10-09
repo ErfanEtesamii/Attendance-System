@@ -212,10 +212,26 @@ function updateManual(id, fields, approverId) {
   return findById(id);
 }
 
+// S4-14a: درخواست‌های «تأییدشده»ی چند کاربر که با بازه هم‌پوشانی دارند (تقویم تیم) — یک کوئری با IN روی idx_leave_user_status
+// (user_id, status)؛ شرط تاریخ پس از آن فیلتر می‌شود. هر سه unit (day|half_day|hour) و هر دو kind برمی‌گردد؛ مصرف‌کننده باید unit را بسنجد.
+function listApprovedInRange(userIds, fromDate, toDate) {
+  if (!Array.isArray(userIds) || !userIds.length) return [];
+  const db = getDb();
+  const placeholders = userIds.map(() => '?').join(',');
+  return db
+    .prepare(
+      `${SELECT_WITH_KIND} WHERE lr.user_id IN (${placeholders}) AND lr.status = 'approved'
+         AND lr.start_date <= ? AND lr.end_date >= ?
+       ORDER BY lr.user_id, lr.start_date, lr.id`
+    )
+    .all(...userIds, toDate, fromDate);
+}
+
 module.exports = {
   resolveLeaveType,
   listActiveInRange,
   listApprovedOnDate,
+  listApprovedInRange,
   listMissingDuration,
   setDuration,
   remove,

@@ -185,6 +185,20 @@ function search({ from, to, userIds = null, status = null, limit = 500 }) {
     .all(...params, limit);
 }
 
+// S4-14a: رکوردهای چند کاربر در یک بازه (تقویم تیم) — یک کوئری با IN روی ایندکس idx_attendance_user_date، بدون N+1.
+function listByUserIdsAndRange(userIds, fromDate, toDate) {
+  if (!Array.isArray(userIds) || !userIds.length) return [];
+  const db = getDb();
+  const placeholders = userIds.map(() => '?').join(',');
+  return db
+    .prepare(
+      `SELECT * FROM attendance_records
+       WHERE user_id IN (${placeholders}) AND record_date BETWEEN ? AND ?
+       ORDER BY user_id, record_date`
+    )
+    .all(...userIds, fromDate, toDate);
+}
+
 module.exports = {
   currentRecordDate,
   listForFraud,
@@ -194,6 +208,7 @@ module.exports = {
   findTodayRecord,
   findById,
   listByUserAndRange,
+  listByUserIdsAndRange,
   recordCheckIn,
   recordCheckOut,
   updateStatus,

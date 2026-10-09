@@ -113,6 +113,32 @@ function jalaliYearToDateRange(jy) {
   };
 }
 
+// S4-14a: بازه‌ی میلادیِ یک ماه شمسیِ دلخواه (برخلاف jalaliMonthRange که از تاریخ «الان» می‌گیرد؛ اینجا jy/jm صریح داده می‌شود).
+function jalaliMonthRangeOf(jy, jm) {
+  if (!Number.isInteger(jy) || !Number.isInteger(jm) || jm < 1 || jm > 12) {
+    throw new RangeError('سال/ماه شمسی نامعتبر است.');
+  }
+  const daysInMonth = jalaali.jalaaliMonthLength(jy, jm);
+  const startGregorian = jalaali.toGregorian(jy, jm, 1);
+  const endGregorian = jalaali.toGregorian(jy, jm, daysInMonth);
+  return {
+    from: gregorianToDateString(startGregorian),
+    to: gregorianToDateString(endGregorian),
+    daysInMonth,
+    label: `${MONTH_NAMES[jm - 1]} ${jy}`,
+  };
+}
+
+// S4-14a: فهرست همه‌ی تاریخ‌های میلادیِ یک ماه شمسی، روز به روز (برای ساخت شبکه‌ی تقویم).
+function jalaliMonthDates(jy, jm) {
+  const { daysInMonth } = jalaliMonthRangeOf(jy, jm);
+  const dates = [];
+  for (let d = 1; d <= daysInMonth; d += 1) {
+    dates.push(gregorianToDateString(jalaali.toGregorian(jy, jm, d)));
+  }
+  return dates;
+}
+
 module.exports = {
   isoDateToJalaliString,
   instantToJalaliString,
@@ -120,6 +146,8 @@ module.exports = {
   toJalaliFromDate,
   isFirstDayOfJalaliMonth,
   jalaliMonthRange,
+  jalaliMonthRangeOf,
+  jalaliMonthDates,
   jalaliMonthToDateRange,
   jalaliYearOfDateString,
   jalaliYearToDateRange,

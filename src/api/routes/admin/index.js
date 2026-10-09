@@ -14,6 +14,7 @@ const { requireAdminAuth } = require('../../../middleware/adminAuth');
 router.use('/admin', requireAdminAuth);
 
 router.use(require('./dashboard'));
+router.use(require('./calendar')); // S4-14a: تقویم تیم
 router.use(require('./users'));
 router.use(require('./attendance'));
 router.use(require('./leave'));

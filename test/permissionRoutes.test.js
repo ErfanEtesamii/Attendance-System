@@ -18,7 +18,7 @@ const H = 'hr';
 
 // hr (S4-4a): فقط‌خواندنی همه؛ همین routeها برای hr مجازند و بقیه (همه‌ی نوشتن‌ها، تنظیمات، ممیزی، سیستم، شیفت، مشکوک) ۴۰۳ گارد مجوز می‌دهند.
 const HR_ALLOWED = new Set([
-  'GET /api/admin/me', 'GET /api/admin/me/permissions', 'GET /api/admin/dashboard', 'GET /api/admin/overview', 'GET /api/admin/live', 'GET /api/admin/nightly-review',
+  'GET /api/admin/me', 'GET /api/admin/me/permissions', 'GET /api/admin/dashboard', 'GET /api/admin/overview', 'GET /api/admin/live', 'GET /api/admin/nightly-review', 'GET /api/admin/calendar?year=1405&month=1',
   'GET /api/admin/users', 'GET /api/admin/users/export', 'GET /api/admin/users/999999', 'GET /api/admin/users/999999/details',
   'GET /api/admin/attendance', 'GET /api/admin/attendance/export', 'GET /api/admin/attendance-records/999999',
   'GET /api/admin/disputes', 'GET /api/admin/leave-requests', 'GET /api/admin/leave-types', 'GET /api/admin/leave-types/999999', 'GET /api/admin/leave-balances', 'GET /api/admin/leave-balances/999999/adjustments', 'GET /api/admin/reports/export', 'GET /api/admin/reports/summary',
@@ -56,6 +56,7 @@ const ROUTES_2 = [
   ['GET', '/api/admin/overview', [M, A]],
   ['GET', '/api/admin/live', [M, A]],
   ['GET', '/api/admin/nightly-review', [M, A]],
+  ['GET', '/api/admin/calendar?year=1405&month=1', [M, A]], // S4-14a: dashboard.read (hr از HR_ALLOWED)
   ['GET', '/api/admin/leave-requests', [E, M, A]],
   ['POST', '/api/admin/leave-requests/999999/approve', [M, H, A]], // S4-11a: hr از guard رد می‌شود (leave.approve.hr)؛ تصمیم مرحله با سرویس
   ['GET', '/api/admin/leave-queue', [M, H, A]], // S4-13a: صف تأیید (leave.approve یا leave.approve.hr)؛ اسکوپ/تصمیم هر مرحله در route/سرویس
