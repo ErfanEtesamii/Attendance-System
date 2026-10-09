@@ -157,14 +157,16 @@ router.get('/admin/calendar', requirePermission('dashboard.read'), (req, res) =>
     users = users.filter((u) => (u.department || '').trim() === department);
   }
 
-  const head = { year, month, from: range.from, to: range.to, label: range.label };
+  const dayCtx = dayService.loadContext();
+  const { settings } = dayCtx;
+  // S4-14b: آستانه‌ی هشدار هم‌زمانی (تنظیم teamCalendarMaxConcurrent؛ ۰ = خاموش) برای UI؛ محاسبه‌ی هشدار سمت UI روی افراد نمایش‌داده‌شده است.
+  const maxConcurrent = Math.max(0, parseInt(settings.teamCalendarMaxConcurrent, 10) || 0);
+  const head = { year, month, from: range.from, to: range.to, label: range.label, maxConcurrent };
   if (!users.length) return res.json({ ...head, users: [] });
 
   const allIds = users.map((u) => u.id);
   const dates = jalaliMonthDates(year, month);
   const today = todayDateString();
-  const dayCtx = dayService.loadContext();
-  const { settings } = dayCtx;
 
   // ---- خواندن‌های کلی (بدون N+1) ----
   const records = attendanceRepository.listByUserIdsAndRange(allIds, range.from, range.to);

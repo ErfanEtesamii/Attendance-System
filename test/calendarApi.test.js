@@ -176,6 +176,23 @@ describe('API تقویم تیم (S4-14a)', () => {
     assert.equal((await hit('manager', currentMonthUrl(`&userId=${users.employee.id}`))).status, 200);
   });
 
+  test('آستانه‌ی هشدار هم‌زمانی (S4-14b): maxConcurrent پیش‌فرض ۰؛ مقدار تنظیم در پاسخ می‌آید، حتی وقتی فهرست کاربران خالی است', async () => {
+    const settingsRepo = require('../src/repositories/settingsRepository');
+    assert.equal((await hit('admin', currentMonthUrl())).json.maxConcurrent, 0);
+    settingsRepo.setValue('teamCalendarMaxConcurrent', 2);
+    try {
+      assert.equal((await hit('admin', currentMonthUrl())).json.maxConcurrent, 2);
+      assert.equal((await hit('manager', currentMonthUrl())).json.maxConcurrent, 2);
+      const empty = await hit('admin', currentMonthUrl('&department=دپارتمان-ناموجود'));
+      assert.equal(empty.status, 200);
+      assert.deepEqual(empty.json.users, []);
+      assert.equal(empty.json.maxConcurrent, 2);
+    } finally {
+      settingsRepo.resetValue('teamCalendarMaxConcurrent');
+    }
+    assert.equal((await hit('admin', currentMonthUrl())).json.maxConcurrent, 0);
+  });
+
   test('بدون ورود ⇒ ۴۰۱', async () => {
     assert.equal((await hit('nobody', currentMonthUrl())).status, 401);
   });

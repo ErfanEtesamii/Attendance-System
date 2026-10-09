@@ -13,14 +13,14 @@ let hasDeps = true;
 try { require.resolve('express'); } catch (_) { hasDeps = false; }
 
 const JS_DIR = path.join(__dirname, '..', 'public-admin', 'js');
-const PANEL_FILES = ['jalali.js', 'core.js', 'views-main.js', 'views-ops.js', 'views-admin.js', 'views-shifts.js']; // boot.js عمداً نه: خودش AP.boot() را صدا می‌زند
+const PANEL_FILES = ['jalali.js', 'core.js', 'views-main.js', 'views-ops.js', 'views-calendar.js', 'views-admin.js', 'views-shifts.js']; // boot.js عمداً نه: خودش AP.boot() را صدا می‌زند
 
 // منوی هر نقش پیش از S4-4b (admin: همه؛ manager: همه‌ی غیر‌ادمینی؛ employee: صفحه‌های employee:true + پروفایل من) + hr جدید.
 const NAV = {
-  admin: ['attendance', 'audit', 'broadcast', 'dashboard', 'disputes', 'employees', 'holidays', 'leave', 'leaveQueue', 'live', 'nightly', 'reports', 'settings', 'shifts', 'status', 'suspicious', 'system'],
-  manager: ['attendance', 'dashboard', 'disputes', 'employees', 'leave', 'leaveQueue', 'live', 'nightly', 'reports', 'suspicious'],
+  admin: ['attendance', 'audit', 'broadcast', 'dashboard', 'disputes', 'employees', 'holidays', 'leave', 'leaveQueue', 'live', 'nightly', 'reports', 'settings', 'shifts', 'status', 'suspicious', 'system', 'teamCalendar'],
+  manager: ['attendance', 'dashboard', 'disputes', 'employees', 'leave', 'leaveQueue', 'live', 'nightly', 'reports', 'suspicious', 'teamCalendar'],
   employee: ['attendance', 'disputes', 'leave', 'profile', 'reports'],
-  hr: ['attendance', 'dashboard', 'disputes', 'employees', 'leave', 'leaveQueue', 'live', 'nightly', 'reports'],
+  hr: ['attendance', 'dashboard', 'disputes', 'employees', 'leave', 'leaveQueue', 'live', 'nightly', 'reports', 'teamCalendar'],
 };
 
 function makeEl() {
@@ -184,7 +184,9 @@ describe('UI پنل بر پایه‌ی مجوز (S4-4b)', { skip: hasDeps ? fals
 
     const perms = new Set(PERMISSIONS);
     for (const [id, def] of Object.entries(AP.views)) {
-      assert.ok(perms.has(def.perm), `view «${id}» باید perm معتبر داشته باشد (الان: ${def.perm})`);
+      // perm رشته‌ی تکی یا آرایه‌ی غیرخالی (هرکدام کافی؛ مثل صف تأیید S4-13b) — در هر دو حالت همه‌ی مجوزهای ذکرشده باید معتبر باشند
+      const list = Array.isArray(def.perm) ? def.perm : [def.perm];
+      assert.ok(list.length > 0 && list.every((p) => perms.has(p)), `view «${id}» باید perm معتبر داشته باشد (الان: ${def.perm})`);
       assert.equal(def.admin, undefined, `${id}: admin:true حذف شده`);
       assert.equal(def.employee, undefined, `${id}: employee:true حذف شده`);
     }

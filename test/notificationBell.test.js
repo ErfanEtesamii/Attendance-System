@@ -13,7 +13,7 @@ let hasDeps = true;
 try { require.resolve('express'); } catch (_) { hasDeps = false; }
 
 const JS_DIR = path.join(__dirname, '..', 'public-admin', 'js');
-const PANEL_FILES = ['jalali.js', 'core.js', 'views-main.js', 'views-ops.js', 'views-admin.js', 'views-shifts.js', 'bell.js']; // boot.js عمداً نه
+const PANEL_FILES = ['jalali.js', 'core.js', 'views-main.js', 'views-ops.js', 'views-calendar.js', 'views-admin.js', 'views-shifts.js', 'bell.js']; // boot.js عمداً نه
 
 function makeEl() {
   const cls = new Set();
