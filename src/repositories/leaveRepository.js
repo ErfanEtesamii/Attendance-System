@@ -227,7 +227,22 @@ function listApprovedInRange(userIds, fromDate, toDate) {
     .all(...userIds, toDate, fromDate);
 }
 
+// S5-1b: همه‌ی درخواست‌های (هر وضعیتی) چند کاربر که با بازه هم‌پوشانی دارند، همراه عنوان نوع (برای شیت «مرخصی و مأموریت» خروجی xlsx).
+function listInRangeWithType(userIds, fromDate, toDate) {
+  if (!Array.isArray(userIds) || !userIds.length) return [];
+  const placeholders = userIds.map(() => '?').join(',');
+  return getDb()
+    .prepare(
+      `SELECT lr.*, lt.kind AS kind, lt.title AS type_title FROM leave_requests lr
+         JOIN leave_types lt ON lt.id = lr.leave_type_id
+       WHERE lr.user_id IN (${placeholders}) AND lr.start_date <= ? AND lr.end_date >= ?
+       ORDER BY lr.user_id, lr.start_date, lr.id`
+    )
+    .all(...userIds, toDate, fromDate);
+}
+
 module.exports = {
+  listInRangeWithType,
   resolveLeaveType,
   listActiveInRange,
   listApprovedOnDate,

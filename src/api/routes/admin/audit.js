@@ -7,7 +7,7 @@ const router = express.Router();
 const { requirePermission } = require('../../../middleware/permissions');
 const usersRepository = require('../../../repositories/usersRepository');
 const auditRepository = require('../../../repositories/auditRepository');
-const { sendCsv } = require('../../../utils/csv');
+const { sendTable, exportAuditFields } = require('../../../utils/xlsx'); // S5-1a: پیش‌فرض CSV؛ ?format=xlsx ⇒ xlsx (بدون exceljs ⇒ CSV + اعلام fallback)
 const { instantToJalaliString } = require('../../../utils/jalali');
 const settingsRepository = require('../../../repositories/settingsRepository');
 const { audit } = require('./common');
@@ -98,7 +98,10 @@ router.get('/admin/audit-log/export', requirePermission('audit.read'), (req, res
 
   const headers = ['ردیف', 'زمان', 'تاریخ شمسی', 'کارمند', 'عملیات', 'IP', 'جزئیات'];
   if (includeArchive) headers.push('منبع');
-  sendCsv(res, 'audit-log.csv', headers, rows);
+  // S5-1c: خروجی خودِ audit هم audit می‌شود (action جدا از لیست؛ قالب واقعاً تحویل‌شده و تعداد ردیف‌ها)
+  return sendTable(req, res, 'audit-log.csv', headers, rows, {
+    onExport: (info) => audit(req, 'audit_log_exported', { count: rows.length, includeArchive, ...exportAuditFields(info) }),
+  });
 });
 
 // ---------- فیلترهای Audit ----------

@@ -12,7 +12,7 @@ const breakRepository = require('../../../repositories/breakRepository');
 const disputeRepository = require('../../../repositories/disputeRepository');
 const auditRepository = require('../../../repositories/auditRepository');
 const { notifyUser } = require('../../../bot/notifier');
-const { sendCsv } = require('../../../utils/csv');
+const { sendTable, exportAuditFields } = require('../../../utils/xlsx'); // S5-1a: پیش‌فرض CSV؛ ?format=xlsx ⇒ xlsx (بدون exceljs ⇒ CSV + اعلام fallback)
 const { isoDateToJalaliString } = require('../../../utils/jalali');
 const { DATE_RE, STATUSES, scopedUserIds, visibleUsers, canAccessUser, parseRange, isoOrNull, enrichRecord, requireReason, audit, auditChange } = require('./common');
 const { attendanceRecordView, breakView } = require('../../../utils/auditViews');
@@ -114,13 +114,15 @@ router.get('/admin/attendance/export', requirePermission('attendance.read'), (re
       e.summary.earlyLeaveMinutes, e.summary.overtimeMinutes, r.status,
     ];
   });
-  audit(req, 'attendance_exported', { from, to, count: rows.length });
-  sendCsv(
+  // S5-1c: audit درست قبل از ارسال بدنه و با قالب واقعاً تحویل‌شده (csv/xlsx/fallback/streamed)
+  return sendTable(
+    req,
     res,
     `attendance-records_${from}_${to}.csv`,
     ['نام', 'کد پرسنلی', 'دپارتمان', 'تاریخ', 'تاریخ شمسی', 'ورود', 'IP ورود', 'خروج', 'IP خروج',
       'دقیقه استراحت', 'دقیقه مفید', 'دقیقه تأخیر', 'دقیقه خروج زودهنگام', 'دقیقه اضافه‌کاری', 'وضعیت'],
-    rows
+    rows,
+    { onExport: (info) => audit(req, 'attendance_exported', { from, to, count: rows.length, ...exportAuditFields(info) }) }
   );
 });
 

@@ -16,7 +16,7 @@ const settingsRepository = require('../../../repositories/settingsRepository');
 const { getCalendarDay } = require('../../../engine/calendarService');
 const { todayDateString } = require('../../../utils/serverTime');
 const { sendMessage } = require('../../../bot/notifier');
-const { sendCsv } = require('../../../utils/csv');
+const { sendTable, exportAuditFields } = require('../../../utils/xlsx'); // S5-1a: پیش‌فرض CSV؛ ?format=xlsx ⇒ xlsx (بدون exceljs ⇒ CSV + اعلام fallback)
 const { buildClearCookie } = require('../../../utils/sessionCookie');
 const { scopedUserIds, canAccessUser, parseRange, userBrief, enrichRecord, audit, auditChange, aggregateRecords, requireReason } = require('./common');
 const { userView } = require('../../../utils/auditViews');
@@ -111,11 +111,14 @@ router.get('/admin/users/export', requirePermission('users.read'), (req, res) =>
     u.is_active ? 'فعال' : 'غیرفعال',
   ]);
 
-  sendCsv(
+  return sendTable(
+    req,
     res,
     'employees.csv',
     ['نام کارمند', 'کد پرسنلی', 'دپارتمان', 'نقش', 'آیدی تلگرام', 'وضعیت'],
-    rows
+    rows,
+    // S5-1c: خروجی فهرست کارمندان (شامل آیدی تلگرام) تا حالا audit نداشت
+    { onExport: (info) => audit(req, 'users_exported', { count: rows.length, ...exportAuditFields(info) }) }
   );
 });
 

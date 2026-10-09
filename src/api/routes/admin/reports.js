@@ -8,7 +8,8 @@ const usersRepository = require('../../../repositories/usersRepository');
 const attendanceRepository = require('../../../repositories/attendanceRepository');
 const auditRepository = require('../../../repositories/auditRepository');
 const dayService = require('../../../engine/dayService');
-const { sendCsv } = require('../../../utils/csv');
+const { sendSheets, exportAuditFields } = require('../../../utils/xlsx'); // پیش‌فرض CSV؛ ?format=xlsx ⇒ xlsx چندشیتی (بدون exceljs ⇒ CSV + اعلام fallback)
+const { buildEmployeeReportSheets } = require('../../../services/reportExportService');
 const { scopedUserIds, visibleUsers, shiftDate, parseRange, userBrief, safeSummary, aggregateRecords } = require('./common');
 const { requirePermission } = require('../../../middleware/permissions');
 
@@ -42,16 +43,10 @@ router.get('/admin/reports/export', requirePermission('reports.read'), (req, res
     ];
   });
 
-  auditRepository.logEvent({
-    userId: req.adminUser.id,
-    action: 'report_exported',
-    details: { source: 'admin_panel', from, to, userId: userId || null },
-  });
-
-  sendCsv(
-    res,
-    `attendance-report_${from}_${to}.csv`,
-    [
+  // CSV: همان جدول خلاصه‌ی قبلی (ستون‌ها بدون تغییر). xlsx (S5-1b): چهار شیت — خلاصه کارمند، ریز روزانه، مرخصی و مأموریت، اضافه‌کاری
+  // (شیت‌ها فقط برای xlsx ساخته می‌شوند). همان team (اسکوپ نقش + فیلتر userId) برای هر دو قالب.
+  const csv = {
+    headers: [
       'نام کارمند',
       'کد پرسنلی',
       'دپارتمان',
@@ -61,8 +56,17 @@ router.get('/admin/reports/export', requirePermission('reports.read'), (req, res
       'تعداد خروج زودهنگام',
       'تعداد روز ناقص',
     ],
-    rows
-  );
+    rows,
+  };
+  return sendSheets(req, res, `attendance-report_${from}_${to}.csv`, () => buildEmployeeReportSheets({ users: team, from, to }), {
+    csv,
+    onExport: (info) => auditRepository.logEvent({
+      userId: req.adminUser.id,
+      action: 'report_exported',
+      ipAddress: req.ip,
+      details: { source: 'admin_panel', from, to, userId: userId || null, count: rows.length, ...exportAuditFields(info) },
+    }),
+  });
 });
 
 // ---------- گزارش تحلیلی ----------
