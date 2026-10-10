@@ -31,6 +31,6 @@
     "node-telegram-bot-api": "^0.66.0"
   },
   "optionalDependencies": {
-    "exceljs": "4.4.0"
+    "exceljs": "^4.4.0"
   }
 }
