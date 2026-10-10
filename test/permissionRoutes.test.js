@@ -21,7 +21,10 @@ const HR_ALLOWED = new Set([
   'GET /api/admin/me', 'GET /api/admin/me/permissions', 'GET /api/admin/dashboard', 'GET /api/admin/overview', 'GET /api/admin/live', 'GET /api/admin/nightly-review', 'GET /api/admin/calendar?year=1405&month=1',
   'GET /api/admin/users', 'GET /api/admin/users/export', 'GET /api/admin/users/999999', 'GET /api/admin/users/999999/details',
   'GET /api/admin/attendance', 'GET /api/admin/attendance/export', 'GET /api/admin/attendance-records/999999',
-  'GET /api/admin/disputes', 'GET /api/admin/leave-requests', 'GET /api/admin/leave-types', 'GET /api/admin/leave-types/999999', 'GET /api/admin/leave-balances', 'GET /api/admin/leave-balances/999999/adjustments', 'GET /api/admin/reports/export', 'GET /api/admin/reports/monthly?year=1405&month=6', 'GET /api/admin/reports/summary',
+  'GET /api/admin/disputes', 'GET /api/admin/leave-requests', 'GET /api/admin/leave-types', 'GET /api/admin/leave-types/999999', 'GET /api/admin/leave-balances', 'GET /api/admin/leave-balances/999999/adjustments', 'GET /api/admin/reports/export', 'GET /api/admin/reports/monthly?year=1405&month=6', 'GET /api/admin/reports/monthly/export?year=1405&month=6', 'GET /api/admin/reports/summary',
+  'GET /api/admin/month-closures?year=1405', 'GET /api/admin/month-closures/1405/6/checklist', 'GET /api/admin/month-closures/1405/6', 'GET /api/admin/month-closures/1405/6/adjustments', // S5-3a (hr: فقط‌خواندنی)
+  'GET /api/admin/analytics/late-trend', 'GET /api/admin/analytics/late-compare?year=1405&month=6', // S5-6a (hr: فقط‌خواندنی)
+  'GET /api/admin/analytics/rankings?year=1405&month=6', 'GET /api/admin/analytics/attendance-rate?year=1405&month=6', 'GET /api/admin/analytics/leave-by-type?year=1405&month=6', 'GET /api/admin/analytics/checkin-distribution', // S5-6b
 ]);
 const ROUTES = [
   ['GET', '/api/admin/users', [M, A]],
@@ -78,6 +81,19 @@ const ROUTES_2 = [
   ['GET', '/api/admin/reports/export', [M, A]],
   ['GET', '/api/admin/reports/summary', [E, M, A]],
   ['GET', '/api/admin/reports/monthly?year=1405&month=6', [E, M, A]], // S5-2b
+  ['GET', '/api/admin/reports/monthly/export?year=1405&month=6', [E, M, A]], // S5-4a
+  ['GET', '/api/admin/analytics/rankings?year=1405&month=6', [M, A]], // S5-6b
+  ['GET', '/api/admin/analytics/attendance-rate?year=1405&month=6', [M, A]], // S5-6b
+  ['GET', '/api/admin/analytics/leave-by-type?year=1405&month=6', [M, A]], // S5-6b
+  ['GET', '/api/admin/analytics/checkin-distribution', [M, A]], // S5-6b
+  ['GET', '/api/admin/analytics/late-trend', [M, A]], // S5-6a: کارمند ممنوع؛ سرپرست (تیم خودش)، hr و admin
+  ['GET', '/api/admin/analytics/late-compare?year=1405&month=6', [M, A]],
+  ['GET', '/api/admin/month-closures?year=1405', [A]], // S5-3a: admin و hr؛ سرپرست/کارمند ممنوع
+  ['GET', '/api/admin/month-closures/1405/6/checklist', [A]],
+  ['GET', '/api/admin/month-closures/1405/6', [A]], // S5-3b
+  ['POST', '/api/admin/month-closures/1405/6/close', [A], 'skip'], // بستن ماه: فقط admin (اجرا نمی‌شود چون واقعاً می‌بندد)
+  ['POST', '/api/admin/month-closures/1405/6/reopen', [A]], // S5-3c (بدون دلیل ⇒ ۴۰۰، پس چیزی را باز نمی‌کند)
+  ['GET', '/api/admin/month-closures/1405/6/adjustments', [A]],
   ['GET', '/api/admin/holidays', [M, A]],
   ['GET', '/api/admin/settings', [M, A]],
   ['GET', '/api/admin/settings/items', [M, A]],

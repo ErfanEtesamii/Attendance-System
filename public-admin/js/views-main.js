@@ -233,7 +233,7 @@
         <div class="view-header">
           <div><h2>کارمندان</h2><div class="sub">${fmt.num(users.length)} نفر ثبت‌شده</div></div>
           <div class="header-actions">
-            <a class="btn ghost" href="/api/admin/users/export" download>${icon('download')} خروجی CSV</a>
+            <span id="emp-export" class="header-actions"></span>
             ${AP.can('users.write') ? `<button class="btn primary" id="add-emp">${icon('plus')} افزودن کارمند</button>` : ''}
           </div>
         </div>
@@ -256,6 +256,8 @@
             const dp = $('#f-dept', page).value;
             const rl = $('#f-role', page).value;
             const ac = $('#f-active', page).value;
+            // دکمه‌های دانلود همیشه با فیلتر فعال (همان منطق فیلتر سمت سرور users/export)
+            $('#emp-export', page).innerHTML = AP.exportBar({ path: '/api/admin/users/export', params: { q: $('#f-q', page).value.trim(), department: dp, role: rl, isActive: ac } });
             const list = users.filter((u) =>
               (!q || u.fullName.toLowerCase().includes(q) || (u.personnelCode || '').toLowerCase().includes(q)) &&
               (!dp || u.department === dp) && (!rl || u.role === rl) && (!ac || String(u.isActive ? 1 : 0) === ac));

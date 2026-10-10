@@ -49,15 +49,28 @@
       const th = (k, l) => `<th class="sortable" data-sort="${k}">${l}${repUi.sort === k ? (repUi.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`;
       const stat = (g, ic, v, l) => `<div class="stat"><div class="stat-icon ${g}">${icon(ic)}</div><div class="stat-value" style="font-size:21px">${v}</div><div class="stat-label">${l}</div></div>`;
 
+      const now = new Date();
+      const monthlyDefault = window.Jalali.toJalali(now.getFullYear(), now.getMonth() + 1, now.getDate());
+      const monthNames = window.Jalali.MONTH_NAMES;
       const html = `
         <div class="view-header"><div><h2>گزارش‌های تحلیلی</h2><div class="sub">${esc(fmt.dateLong(d.from))} تا ${esc(fmt.dateLong(d.to))}</div></div>
-          <div class="header-actions"><a class="btn ghost" href="/api/admin/reports/export?from=${esc(d.from)}&to=${esc(d.to)}" download>${icon('download')} خروجی CSV خلاصه</a></div></div>
+          <div class="header-actions">${AP.exportBar({ path: '/api/admin/reports/export', params: { from: d.from, to: d.to, department: repUi.department } })}</div></div>
         <form class="filters" id="rep-filters">
           <label class="field"><span>از تاریخ</span><input type="date" name="from" value="${esc(d.from)}" /></label>
           <label class="field"><span>تا تاریخ</span><input type="date" name="to" value="${esc(d.to)}" /></label>
           <label class="field"><span>دپارتمان</span><select name="department"><option value="">همه</option>${d.departmentOptions.map((x) => `<option ${x === repUi.department ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
           <button type="button" class="btn ghost" data-range="6">۷ روز</button><button type="button" class="btn ghost" data-range="29">۳۰ روز</button><button type="button" class="btn ghost" data-range="89">۹۰ روز</button>
         </form>
+        <div class="card mt" id="monthly-card">
+          <h3>گزارش ماهانه (ماه شمسی)</h3>
+          <div class="sub" style="margin-bottom:10px">ماه بسته‌شده از snapshot و در غیر این صورت زنده؛ چاپ A4 در تب جدید باز می‌شود.</div>
+          <form class="filters" id="monthly-form">
+            <label class="field"><span>سال</span><input type="number" name="year" min="1300" max="1500" value="${monthlyDefault.jy}" /></label>
+            <label class="field"><span>ماه</span><select name="month">${monthNames.map((n, i) => `<option value="${i + 1}" ${i + 1 === monthlyDefault.jm ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>
+            <label class="field"><span>دپارتمان</span><select name="department"><option value="">همه</option>${d.departmentOptions.map((x) => `<option ${x === repUi.department ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
+            <div class="header-actions" id="monthly-export"></div>
+          </form>
+        </div>
         <div class="stat-grid">
           ${stat('g-green', 'in', fmt.num(t.presentDays), 'مجموع روز-نفر حضور')}
           ${stat('g-blue', 'clock', fmt.min(t.totalEffective), 'مجموع ساعت مفید')}
@@ -85,6 +98,16 @@
         html,
         mount(page) {
           const form = $('#rep-filters', page);
+          // دکمه‌های گزارش ماهانه با مقدار فعلی فرم (سال/ماه/دپارتمان) ساخته می‌شوند
+          const mform = $('#monthly-form', page);
+          const drawMonthly = () => {
+            const v = AP.formData(mform);
+            const params = { year: v.year, month: v.month, department: v.department };
+            $('#monthly-export', page).innerHTML = AP.exportBar({ path: '/api/admin/reports/monthly/export', params, print: { href: AP.buildExportUrl('/admin/print.html', params) } });
+          };
+          drawMonthly();
+          $$('input, select', mform).forEach((el) => el.addEventListener('input', drawMonthly));
+          mform.addEventListener('submit', (e) => e.preventDefault());
           AP.dates.mount(form); // از/تا تاریخ شمسی؛ قبل از بستن listenerها (S3-11b)
           $$('input, select', form).forEach((el) => el.addEventListener('change', () => { Object.assign(repUi, AP.formData(form)); AP.refresh(); }));
           $$('[data-range]', form).forEach((b) => b.addEventListener('click', () => { repUi.from = fmt.daysAgo(Number(b.dataset.range)); repUi.to = fmt.today(); AP.refresh(); }));
@@ -584,7 +607,7 @@
       const [rows, actions, users] = await Promise.all([AP.api(`/admin/audit-log?${qs}`), AP.api('/admin/audit-actions'), AP.loadUsers()]);
       const html = `
         <div class="view-header"><div><h2>گزارش رویدادها</h2><div class="sub">لاگ غیرقابل‌ویرایش همه‌ی عملیات حساس · ${fmt.num(rows.length)} مورد نمایش داده می‌شود</div></div>
-          <div class="header-actions"><a class="btn ghost" href="/api/admin/audit-log/export?${qs}" download>${icon('download')} خروجی CSV</a></div></div>
+          <div class="header-actions">${AP.exportBar({ path: '/api/admin/audit-log/export', params: auUi })}</div></div>
         <form class="filters" id="au-filters">
           <label class="field grow"><span>جستجو در جزئیات / IP</span><input type="search" name="q" value="${esc(auUi.q)}" /></label>
           <label class="field"><span>رویداد</span><select name="action"><option value="">همه</option>${actions.map((a) => `<option value="${esc(a.action)}" ${a.action === auUi.action ? 'selected' : ''}>${esc(a.action)} (${fmt.num(a.count)})</option>`).join('')}</select></label>

@@ -18,6 +18,8 @@ describe('صفحه‌ی گزارش رویدادها (S4-2b)', () => {
       view(id, def) { AP.views[id] = def; if (def.nav) AP.nav.push({ id, ...def.nav }); },
       api: async (p) => { calls.push(p); return p.startsWith('/admin/audit-actions') ? [] : rows; },
       loadUsers: async () => [],
+      // S5-5b: همان سازنده‌ی واقعی دکمه‌های دانلود (exports.js)
+      exportBar: (spec) => require('../public-admin/js/exports.js').exportBarHtml(spec, { esc, icon: () => '' }),
     };
     const src = fs.readFileSync(path.join(__dirname, '..', 'public-admin', 'js', 'views-admin.js'), 'utf8');
     vm.runInNewContext(src, { window: { AP }, document: {}, console, URLSearchParams, CSS: { escape: (s) => s } });
@@ -63,7 +65,7 @@ describe('صفحه‌ی گزارش رویدادها (S4-2b)', () => {
     const { AP } = loadAudit([row(1, 'holidays_imported', JSON.stringify({ entityType: 'holiday', entityId: null, changes: { added: { before: null, after: [long] } } }))]);
     const { html } = await AP.views.audit.render();
     assert.match(html, /<select name="entityType"><option value="">همه<\/option>.*<option value="settings" >تنظیمات<\/option>/s);
-    assert.match(html, /<a class="btn ghost" href="\/api\/admin\/audit-log\/export\?[^"]*" download>/);
+    assert.match(html, /<a class="btn ghost" data-export="csv" href="\/api\/admin\/audit-log\/export\?[^"]*format=csv" download>/); // S5-5b: Excel/CSV/چاپ
     assert.ok(html.includes('…'), 'مقدار بلند با … کوتاه می‌شود');
     assert.ok(!new RegExp('x{300}').test(html.split('diff-raw')[0]), 'در diff بیش از ۲۰۰ نویسه نمی‌آید');
   });

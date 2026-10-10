@@ -23,6 +23,8 @@ const GROUP_LABELS = {
   security: 'امنیت',
   retention: 'نگهداری و آرشیو داده',
   schedule: 'زمان‌بندی Jobها',
+  monthClose: 'بستن ماه',
+  reportDelivery: 'ارسال خودکار گزارش',
 };
 
 // ---------- اعتبارسنجی بر اساس نوع ----------
@@ -130,6 +132,17 @@ def('overtimeRoundStep', 'overtime_round_step', 'number', { group: 'overtime', m
 def('overtimeRounding', 'overtime_rounding', 'enum', { group: 'overtime', values: ['down', 'nearest', 'up'], default: 'down', description: 'حالت گرد‌کردن به گام: down = به پایین، nearest = نزدیک‌ترین (نیم‌گام به بالا)، up = به بالا' });
 def('overtimeMonthlyCapMinutes', 'overtime_monthly_cap_minutes', 'number', { group: 'overtime', min: 0, max: 12000, default: 0, description: 'سقف ماهانه‌ی اضافه‌کاری قابل‌پرداخت (دقیقه‌ی معادل، پس از آستانه/گرد‌کردن/ضریب)؛ روزها به ترتیب تاریخ جمع می‌شوند و مازاد بر سقف قابل‌پرداخت نیست (۰ = بدون سقف). فقط در محاسبه‌ی ماهانه اعمال می‌شود، نه خروجی روزانه' });
 def('overtimeRequiresApproval', 'overtime_requires_approval', 'boolean', { group: 'overtime', default: false, description: 'الزام تأیید اضافه‌کاری: وقتی روشن باشد اضافه‌کاری هر روز تا تأیید سرپرست/ادمین «معلق» است و در اضافه‌کاری قابل‌پرداخت ماهانه نمی‌آید؛ ردشده هم نمی‌آید (خاموش = بدون نیاز به تأیید)' });
+// S5-3a: چک‌لیست پیش از بستن ماه. هر مورد «مانع» (بستن را مسدود می‌کند) یا «هشدار» (فقط نمایش) است؛ تصمیم تجاری با ادمین، نه کد.
+def('monthCloseRequireMonthEnded', 'month_close_require_month_ended', 'boolean', { group: 'monthClose', default: true, description: 'بستن ماه فقط پس از پایان آخرین روز ماه شمسی ممکن باشد (خاموش = ادمین می‌تواند ماهِ در جریان را هم ببندد)' });
+def('monthCloseBlockIncomplete', 'month_close_block_incomplete', 'boolean', { group: 'monthClose', default: true, description: 'وجود روز ناقص (ورود بدون خروج) در ماه، بستن را مسدود کند؛ خاموش = فقط هشدار' });
+def('monthCloseBlockOpenDisputes', 'month_close_block_open_disputes', 'boolean', { group: 'monthClose', default: true, description: 'وجود اعتراض باز به رکوردهای ماه، بستن را مسدود کند؛ خاموش = فقط هشدار' });
+def('monthCloseBlockPendingLeave', 'month_close_block_pending_leave', 'boolean', { group: 'monthClose', default: true, description: 'وجود درخواست مرخصی/مأموریت در انتظار تصمیم که با ماه هم‌پوشانی دارد، بستن را مسدود کند؛ خاموش = فقط هشدار' });
+def('monthCloseBlockPendingOvertime', 'month_close_block_pending_overtime', 'boolean', { group: 'monthClose', default: true, description: 'وجود اضافه‌کاری منتظر تأیید (فقط وقتی «الزام تأیید اضافه‌کاری» روشن است)، بستن را مسدود کند؛ خاموش = فقط هشدار' });
+def('monthCloseBlockSuspicious', 'month_close_block_suspicious', 'boolean', { group: 'monthClose', default: false, description: 'وجود مورد مشکوکِ بررسی‌نشده در ماه، بستن را مسدود کند (پیش‌فرض خاموش: «نشانه» است نه اتهام؛ فقط هشدار می‌دهد)' });
+// S5-5a: ارسال خودکار xlsx گزارش ماهانه در تلگرام (روز اول ماه شمسی، برای ماه قبل). پیش‌فرض خاموش؛ ایمیل پشتیبانی نمی‌شود.
+def('reportXlsxEnabled', 'report_xlsx_enabled', 'boolean', { group: 'reportDelivery', default: false, description: 'ارسال خودکار فایل xlsx گزارش ماهانه (ماه شمسی قبل) در تلگرام، روز اول هر ماه شمسی (خاموش = فقط پیام متنی قبلی)' });
+def('reportXlsxRecipientRoles', 'report_xlsx_recipient_roles', 'string', { group: 'reportDelivery', default: 'admin', maxLength: 40, description: 'نقش‌های گیرنده‌ی فایل xlsx (با ویرگول، از admin,hr,manager). ادمین و منابع انسانی کل شرکت، سرپرست فقط تیم خودش را می‌گیرد؛ فقط کاربران فعالِ دارای تلگرام' });
+def('reportXlsxRequireClosed', 'report_xlsx_require_closed', 'boolean', { group: 'reportDelivery', default: false, description: 'فقط وقتی ماه قبل «بسته» شده باشد فایل ارسال شود؛ خاموش = اگر بسته نشده باشد هم با ارقام زنده ارسال می‌شود (در فایل و کپشن «زنده» اعلام می‌شود)' });
 // مرخصی و مانده (S4-9b). هیچ عدد قانونی hard-code نیست: پیش‌فرض‌ها خنثی‌اند و ادمین مقدار شرکت را می‌دهد.
 def('leaveDefaultEntitlementMinutes', 'leave_default_entitlement_minutes', 'number', { group: 'leave', min: 0, max: 10000000, default: 0, description: 'استحقاق پیش‌فرض سالانه (دقیقه) برای هر نوعِ دارای مانده، وقتی برای کاربر/سال ردیف استحقاق صریح ثبت نشده؛ ردیف صریح همیشه اولویت دارد (۰ = بدون استحقاق پیش‌فرض). مثلاً ۲۶ روز × طول روز کاری را خودتان به دقیقه بدهید' });
 def('leaveCarryOverCapMinutes', 'leave_carry_over_cap_minutes', 'number', { group: 'leave', min: 0, max: 10000000, default: 0, description: 'سقف مقدار انتقالی از سال قبل (دقیقه) هنگام ثبت انتقالی؛ بیشتر از آن رد می‌شود (۰ = بدون سقف)' });

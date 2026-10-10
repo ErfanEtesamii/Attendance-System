@@ -72,6 +72,14 @@ function emptyDayResult() {
   return { expected: 0, workedGross: null, break: 0, effective: null, late: 0, earlyLeave: 0, overtime: 0, overtimePayable: 0, isOpen: false, flags: [], status: null };
 }
 
+// جمع «جمع‌پذیر»های خروجی کاربران (totals). جدا شده تا گزارش ماهِ بسته (S5-3b) بعد از فیلتر اسکوپ از snapshot هم همان جمع را بسازد.
+function computeTotals(userRecords) {
+  const totals = {};
+  for (const path of TOTAL_PATHS) setPath(totals, path, sum(userRecords.map((r) => getPath(r, path))));
+  totals.userCount = userRecords.length;
+  return totals;
+}
+
 /**
  * @param {object} p
  * @param {object[]} p.users ردیف‌های users (اسکوپ نقش را فراخواننده قبلاً اعمال کرده؛ این سرویس خودش دسترسی تعیین نمی‌کند)
@@ -297,9 +305,7 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
     return rec;
   });
 
-  const totals = {};
-  for (const path of TOTAL_PATHS) setPath(totals, path, sum(out.map((r) => getPath(r, path))));
-  totals.userCount = out.length;
+  const totals = computeTotals(out);
 
   return {
     year, month, from: range.from, to: range.to, label: range.label, daysInMonth: range.daysInMonth, today,
@@ -309,4 +315,4 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
   };
 }
 
-module.exports = { computeMonthlyReport };
+module.exports = { computeMonthlyReport, computeTotals };

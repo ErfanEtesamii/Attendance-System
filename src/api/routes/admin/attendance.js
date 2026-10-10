@@ -16,6 +16,7 @@ const { sendTable, exportAuditFields } = require('../../../utils/xlsx'); // S5-1
 const { isoDateToJalaliString } = require('../../../utils/jalali');
 const { DATE_RE, STATUSES, scopedUserIds, visibleUsers, canAccessUser, parseRange, isoOrNull, enrichRecord, requireReason, audit, auditChange } = require('./common');
 const { attendanceRecordView, breakView } = require('../../../utils/auditViews');
+const monthLock = require('./monthLock'); // S5-3c: قفل ماه بسته
 
 // ---------- اصلاح دستی رکورد تردد (فقط ادمین کل) ----------
 
@@ -46,7 +47,10 @@ router.patch('/admin/attendance-records/:id', requirePermission('records.edit'),
   if (checkOutTime !== undefined) fields.check_out_time = checkOutTime;
   if (status !== undefined) fields.status = status;
 
+  const lock = monthLock.guard(req, res, { from: record.record_date, reason });
+  if (lock === false) return undefined;
   const updated = attendanceRepository.manualUpdate(id, fields);
+  monthLock.adjust(req, lock, { action: 'attendance_record_manually_fixed', entityType: 'attendance_record', entityId: id, userId: record.user_id, date: record.record_date, details: { fields: Object.keys(fields) } });
 
   auditChange(req, {
     action: 'attendance_record_manually_fixed',
@@ -167,9 +171,12 @@ router.post('/admin/attendance-records', requirePermission('records.edit'), (req
   if (existing) {
     return res.status(409).json({ error: 'برای این کارمند در این تاریخ از قبل رکورد وجود دارد.', recordId: existing.id });
   }
+  const lock = monthLock.guard(req, res, { from: date, reason });
+  if (lock === false) return undefined;
   const created = attendanceRepository.createManual({
     userId: user.id, recordDate: date, checkInTime: ci, checkOutTime: co, status: st,
   });
+  monthLock.adjust(req, lock, { action: 'attendance_record_manually_created', entityType: 'attendance_record', entityId: created.id, userId: user.id, date });
   auditChange(req, {
     action: 'attendance_record_manually_created',
     entityType: 'attendance_record',
@@ -188,7 +195,10 @@ router.delete('/admin/attendance-records/:id', requirePermission('records.edit')
   const record = attendanceRepository.findById(parseInt(req.params.id, 10));
   if (!record) return res.status(404).json({ error: 'رکورد یافت نشد.' });
   if (!canAccessUser(req.adminUser, record.user_id)) return res.status(403).json({ error: 'به این کارمند دسترسی ندارید.' });
+  const lock = monthLock.guard(req, res, { from: record.record_date, reason });
+  if (lock === false) return undefined;
   attendanceRepository.removeWithBreaks(record.id);
+  monthLock.adjust(req, lock, { action: 'attendance_record_deleted', entityType: 'attendance_record', entityId: record.id, userId: record.user_id, date: record.record_date });
   auditChange(req, {
     action: 'attendance_record_deleted',
     entityType: 'attendance_record',
@@ -214,6 +224,8 @@ router.post('/admin/attendance-records/:id/breaks', requirePermission('records.e
   const en = isoOrNull(endTime);
   if (!st || st === 'INVALID' || en === 'INVALID') return res.status(400).json({ error: 'زمان استراحت نامعتبر است.' });
   if (en && new Date(en) < new Date(st)) return res.status(400).json({ error: 'پایان استراحت قبل از شروع است.' });
+  const lock = monthLock.guard(req, res, { from: record.record_date, reason });
+  if (lock === false) return undefined;
   const created = breakRepository.createManual({
     attendanceRecordId: record.id,
     breakType: breakType === 'short_break' ? 'short_break' : 'lunch',
@@ -229,6 +241,7 @@ router.post('/admin/attendance-records/:id/breaks', requirePermission('records.e
     reason,
     meta: { recordId: record.id, breakId: created.id, targetUserId: record.user_id },
   });
+  monthLock.adjust(req, lock, { action: 'break_record_manually_created', entityType: 'break_record', entityId: created.id, userId: record.user_id, date: record.record_date });
   res.status(201).json(created);
 });
 
@@ -252,7 +265,10 @@ router.patch('/admin/break-records/:id', requirePermission('records.edit'), (req
   if (endFinal && new Date(endFinal) < new Date(startFinal)) {
     return res.status(400).json({ error: 'پایان استراحت قبل از شروع است.' });
   }
+  const lock = monthLock.guard(req, res, { from: ownerRec.record_date, reason });
+  if (lock === false) return undefined;
   const updated = breakRepository.updateManual(br.id, fields);
+  monthLock.adjust(req, lock, { action: 'break_record_manually_edited', entityType: 'break_record', entityId: br.id, userId: ownerRec.user_id, date: ownerRec.record_date, details: { fields: Object.keys(fields) } });
   const record = attendanceRepository.findById(br.attendance_record_id);
   auditChange(req, {
     action: 'break_record_manually_edited',
@@ -273,7 +289,10 @@ router.delete('/admin/break-records/:id', requirePermission('records.edit'), (re
   if (!br) return res.status(404).json({ error: 'استراحت یافت نشد.' });
   const ownerRec = attendanceRepository.findById(br.attendance_record_id);
   if (!ownerRec || !canAccessUser(req.adminUser, ownerRec.user_id)) return res.status(403).json({ error: 'به این کارمند دسترسی ندارید.' });
+  const lock = monthLock.guard(req, res, { from: ownerRec.record_date, reason });
+  if (lock === false) return undefined;
   breakRepository.remove(br.id);
+  monthLock.adjust(req, lock, { action: 'break_record_deleted', entityType: 'break_record', entityId: br.id, userId: ownerRec.user_id, date: ownerRec.record_date });
   const record = attendanceRepository.findById(br.attendance_record_id);
   auditChange(req, {
     action: 'break_record_deleted',

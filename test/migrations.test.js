@@ -41,9 +41,9 @@ function userTables(db) {
 function snapshot(db) {
   const out = {};
   // rate_limit_hits (migration ۰۰۳) و job_runs/monitor_alerts/monitor_state (migration ۰۰۴) جدول‌های جدیدِ عملیاتی‌اند (داده‌ی کاربری نیستند)
-  // suspicious_events (migration ۰۰۶، S2-4a) و audit_log_archive (migration ۰۰۷، S2-6a) و overtime_approvals (migration ۰۰۸، S3-5c) و work_shifts (migration ۰۰۹، S3-6a) و notifications (migration ۰۱۲، S4-5a) هم جدول جدید و خالی‌اند؛ leave_types (migration ۰۱۳، S4-7a) جدول جدیدِ تنظیماتی با دو ردیف پیش‌فرض است (داده‌ی کاربری نیست)
+  // suspicious_events (migration ۰۰۶، S2-4a) و audit_log_archive (migration ۰۰۷، S2-6a) و overtime_approvals (migration ۰۰۸، S3-5c) و work_shifts (migration ۰۰۹، S3-6a) و notifications (migration ۰۱۲، S4-5a) هم جدول جدید و خالی‌اند؛ month_closures (migration ۰۲۰، S5-3a) جدول جدیدِ خالی است؛ leave_types (migration ۰۱۳، S4-7a) جدول جدیدِ تنظیماتی با دو ردیف پیش‌فرض است (داده‌ی کاربری نیست)
   // پس از مقایسه‌ی «بدون تغییر داده» کنار می‌مانند
-  const OPERATIONAL = ['rate_limit_hits', 'job_runs', 'monitor_alerts', 'monitor_state', 'suspicious_events', 'audit_log_archive', 'overtime_approvals', 'work_shifts', 'notifications', 'leave_types', 'leave_balances', 'leave_balance_adjustments', 'leave_approvals'];
+  const OPERATIONAL = ['rate_limit_hits', 'job_runs', 'monitor_alerts', 'monitor_state', 'suspicious_events', 'audit_log_archive', 'overtime_approvals', 'work_shifts', 'notifications', 'leave_types', 'leave_balances', 'leave_balance_adjustments', 'leave_approvals', 'month_closures', 'month_closure_adjustments'];
   for (const t of userTables(db).filter((n) => !OPERATIONAL.includes(n))) {
     out[t] = db.prepare(`SELECT * FROM "${t}" ORDER BY rowid`).all().map((r) => {
       const row = { ...r };
@@ -98,19 +98,19 @@ describe('migration runner — پایه', () => {
   test('دیتابیس خالی: baseline اعمال و ثبت می‌شود، اجرای دوم هیچ کاری نمی‌کند', () => {
     const db = newDb();
     const r1 = migrate(db, {});
-    assert.deepEqual(r1.applied, ['001_baseline', '002_session_version', '003_rate_limits', '004_monitoring', '005_attendance_devices', '006_suspicious_events', '007_audit_archive', '008_overtime_approvals', '009_work_shifts', '010_holiday_scope', '011_hr_role', '012_notifications', '013_leave_types', '014_leave_requests_leave_type', '015_leave_request_units', '016_leave_balances', '017_leave_approvals', '018_leave_substitute', '019_leave_attachments']);
+    assert.deepEqual(r1.applied, ['001_baseline', '002_session_version', '003_rate_limits', '004_monitoring', '005_attendance_devices', '006_suspicious_events', '007_audit_archive', '008_overtime_approvals', '009_work_shifts', '010_holiday_scope', '011_hr_role', '012_notifications', '013_leave_types', '014_leave_requests_leave_type', '015_leave_request_units', '016_leave_balances', '017_leave_approvals', '018_leave_substitute', '019_leave_attachments', '020_month_closures', '021_month_closure_adjustments']);
     assert.equal(r1.backupPath, null, 'روی دیتابیس خالی بک‌آپ لازم نیست');
     for (const t of ['users', 'attendance_records', 'break_records', 'leave_requests', 'holidays', 'record_disputes', 'settings', 'audit_log']) {
       assert.ok(userTables(db).includes(t), `جدول ${t} باید ساخته شود`);
     }
     const row = db.prepare('SELECT * FROM schema_migrations').all();
-    assert.equal(row.length, 19);
+    assert.equal(row.length, 21);
     assert.equal(row[0].name, '001_baseline');
     assert.match(row[0].checksum, /^[0-9a-f]{64}$/);
 
     const r2 = migrate(db, {});
     assert.deepEqual(r2.applied, []);
-    assert.equal(db.prepare('SELECT COUNT(*) n FROM schema_migrations').get().n, 19);
+    assert.equal(db.prepare('SELECT COUNT(*) n FROM schema_migrations').get().n, 21);
   });
 
   test('دیتابیس قدیمی با داده: adopt می‌شود، هیچ داده‌ای تغییر نمی‌کند، بک‌آپ سالم گرفته می‌شود', () => {
@@ -120,7 +120,7 @@ describe('migration runner — پایه', () => {
 
     const logs = [];
     const res = migrate(db, { backupDir, log: (m) => logs.push(m) });
-    assert.deepEqual(res.applied, ['001_baseline', '002_session_version', '003_rate_limits', '004_monitoring', '005_attendance_devices', '006_suspicious_events', '007_audit_archive', '008_overtime_approvals', '009_work_shifts', '010_holiday_scope', '011_hr_role', '012_notifications', '013_leave_types', '014_leave_requests_leave_type', '015_leave_request_units', '016_leave_balances', '017_leave_approvals', '018_leave_substitute', '019_leave_attachments']);
+    assert.deepEqual(res.applied, ['001_baseline', '002_session_version', '003_rate_limits', '004_monitoring', '005_attendance_devices', '006_suspicious_events', '007_audit_archive', '008_overtime_approvals', '009_work_shifts', '010_holiday_scope', '011_hr_role', '012_notifications', '013_leave_types', '014_leave_requests_leave_type', '015_leave_request_units', '016_leave_balances', '017_leave_approvals', '018_leave_substitute', '019_leave_attachments', '020_month_closures', '021_month_closure_adjustments']);
     assert.deepEqual(snapshot(db), before, 'محتوای همه جدول‌ها باید دقیقاً یکسان بماند');
 
     // بک‌آپ: فایل معتبر با همان داده‌ها

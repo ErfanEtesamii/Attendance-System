@@ -14,6 +14,7 @@ const { checkCheckoutReminders } = require('./checkoutReminder');
 const { autoCloseIncompleteRecords } = require('./autoCloseIncomplete');
 const { markNonWorkingDays } = require('./markNonWorkingDays');
 const { sendDailyReport, sendWeeklyReport, sendMonthlyReport } = require('./reports');
+const { sendMonthlyXlsxReports } = require('./reportDocuments');
 const { sendNightlyReview } = require('./nightlyReview');
 const { runWatchdog } = require('./watchdog');
 const { runDailyBackup } = require('./backup');
@@ -37,7 +38,7 @@ function buildJobs(bot) {
     // گزارش ماهانه بر اساس تقویم شمسی: چون روز شروع ماه شمسی روی تقویم میلادی هر سال جابه‌جا می‌شود،
     // این Job هر روز اجرا می‌شود ولی فقط وقتی «امروز روز اول یک ماه شمسی است» گزارش ماه شمسی قبلی را ارسال می‌کند.
     // (روزهای دیگر هم در job_runs به‌صورت «موفق» ثبت می‌شود: یعنی Job اجرا شد و کاری لازم نبود.)
-    { name: 'monthlyReport', run: () => (isFirstDayOfJalaliMonth() ? sendMonthlyReport(bot) : undefined) },
+    { name: 'monthlyReport', run: () => (isFirstDayOfJalaliMonth() ? runAll(() => sendMonthlyReport(bot), () => sendMonthlyXlsxReports(bot)) : undefined) },
     { name: 'autoCloseIncomplete', run: () => autoCloseIncompleteRecords() },
     { name: 'markNonWorkingDays', run: () => markNonWorkingDays() },
     // بک‌آپ روزانه (S2-1a): db.backup() به BACKUP_DIR/daily-YYYYMMDD-HHmm.db

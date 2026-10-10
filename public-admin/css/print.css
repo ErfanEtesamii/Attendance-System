@@ -1,0 +1,44 @@
+/* نمای چاپ گزارش ماهانه (S5-4b): A4 افقی، RTL، سرصفحه‌ی تکرارشونده، بدون ناوبری پنل. CSP پنل: فقط 'self' (بدون <style> و رویداد inline). */
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #eef0f3; color: #111; font-family: Tahoma, "Segoe UI", Vazirmatn, sans-serif; font-size: 12px; line-height: 1.5; }
+.toolbar { display: flex; gap: 12px; align-items: center; padding: 10px 16px; background: #fff; border-bottom: 1px solid #ccd; position: sticky; top: 0; }
+.toolbar button { padding: 6px 14px; border: 1px solid #1b1c2c; background: #1b1c2c; color: #fff; border-radius: 6px; cursor: pointer; font: inherit; }
+.toolbar a { color: #1b1c2c; }
+.status { color: #555; }
+.status.error { color: #b00020; font-weight: bold; }
+
+.sheet { background: #fff; width: 297mm; min-height: 210mm; margin: 12px auto; padding: 10mm 10mm 14mm; box-shadow: 0 1px 6px rgba(0,0,0,.2); }
+.doc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; border-bottom: 2px solid #1b1c2c; padding-bottom: 6px; margin-bottom: 8px; }
+.org { font-size: 11px; color: #555; }
+h1 { margin: 0; font-size: 18px; }
+.subtitle { color: #333; }
+.meta { text-align: left; font-size: 11px; color: #333; white-space: pre-line; }
+.notes { margin: 4px 0; font-size: 11px; color: #333; }
+.notes:empty { display: none; }
+.notes .warn { color: #8a4b00; font-weight: bold; }
+
+table.report { width: 100%; border-collapse: collapse; table-layout: auto; }
+table.report th, table.report td { border: 1px solid #888; padding: 3px 4px; text-align: center; }
+table.report th { background: #e6e9ef; font-weight: bold; }
+table.report td.name { text-align: right; white-space: nowrap; }
+table.report td.num, table.report th { font-variant-numeric: tabular-nums; }
+table.report td.hhmm { direction: ltr; unicode-bidi: isolate; }
+table.report tfoot td { font-weight: bold; background: #f1f3f6; }
+table.report tr.zero td.dim { color: #999; }
+thead { display: table-header-group; } /* سرستون در هر صفحه تکرار شود */
+tfoot { display: table-row-group; }    /* جمع فقط یک‌بار، انتهای جدول */
+tr { break-inside: avoid; page-break-inside: avoid; }
+
+.doc-foot { display: flex; justify-content: space-between; margin-top: 8px; color: #555; font-size: 10px; }
+
+@page { size: A4 landscape; margin: 10mm; }
+@page { @bottom-center { content: "صفحه " counter(page) " از " counter(pages); font-size: 9px; color: #555; } }
+@media print {
+  html, body { background: #fff; font-size: 10.5px; }
+  .no-print { display: none !important; }
+  .sheet { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
+  table.report th { background: #e6e9ef !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  table.report tfoot td { background: #f1f3f6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  a { color: inherit; text-decoration: none; }
+}

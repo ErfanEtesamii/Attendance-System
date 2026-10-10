@@ -704,3 +704,16 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--g
 .cal-sum td { font-size: 12px; font-weight: 700; color: var(--hint); border-top: 1px solid var(--border); }
 .cal-sum td.cal-over { color: var(--red); background: var(--red-soft); box-shadow: inset 0 0 0 1px var(--red); border-radius: 8px; }
 @media (max-width: 760px) { .cal-table .cal-name { min-width: 130px; } }
+
+/* چاپ جدول‌های پنل (S5-5b: دکمه‌ی «چاپ» = window.print). فقط محتوای صفحه؛ ناوبری/فیلتر/دکمه‌ها پنهان. استایل کامل‌تر در S5-8a. */
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  .sidebar, .topbar, .sidebar-backdrop, .bell-drawer, .filters, .header-actions, .toast-wrap, .btn, #bell-drawer { display: none !important; }
+  .content { margin: 0 !important; }
+  body, .app-shell, .page { background: #fff !important; color: #000 !important; }
+  .card { box-shadow: none !important; border: 1px solid #999 !important; break-inside: avoid; }
+  .table-wrap { overflow: visible !important; }
+  table { width: 100%; font-size: 10px; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; }
+}

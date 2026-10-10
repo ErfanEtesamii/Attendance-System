@@ -30,7 +30,7 @@ const EMPLOYEE_ALLOWED = [
   ['GET', /^\/admin\/leave-balances\/\d+\/adjustments$/],
   ['GET', /^\/admin\/disputes$/],
   ['GET', /^\/admin\/reports\/summary$/],
-  ['GET', /^\/admin\/reports\/monthly$/], // S5-2b: گزارش ماهانه‌ی خود کارمند (اسکوپ در route: visibleUsers)
+  ['GET', /^\/admin\/reports\/monthly(\/export)?$/], // S5-2b: گزارش ماهانه‌ی خود کارمند (اسکوپ در route: visibleUsers)
   ['GET', /^\/admin\/notifications$/], // S4-5b: اعلان‌های خود کاربر (اسکوپ در route؛ بدون پارامتر کاربر)
   ['GET', /^\/admin\/notifications\/unread-count$/],
   ['POST', /^\/admin\/notifications\/\d+\/read$/],

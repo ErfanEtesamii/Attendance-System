@@ -228,7 +228,7 @@
         <div class="view-header">
           <div><h2>رکوردهای تردد</h2><div class="sub">${fmt.num(data.count)} رکورد · از ${esc(fmt.dateLong(data.from))} تا ${esc(fmt.dateLong(data.to))}</div></div>
           <div class="header-actions">
-            <a class="btn ghost" href="/api/admin/attendance/export?${qs()}" download>${icon('download')} خروجی CSV</a>
+            ${AP.exportBar({ path: '/api/admin/attendance/export', params: attUi })}
             ${AP.can('records.edit') ? `<button class="btn primary" id="att-new">${icon('plus')} ثبت دستی</button>` : ''}
           </div>
         </div>

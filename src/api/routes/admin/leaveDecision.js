@@ -8,6 +8,7 @@ const { auditChange } = require('./common');
 const { leaveRequestView } = require('../../../utils/auditViews');
 const notificationEvents = require('../../../services/notificationEvents');
 const leaveApprovalService = require('../../../services/leaveApprovalService');
+const monthLock = require('./monthLock'); // S5-3c
 
 const ERROR_STATUS = { NOT_FOUND: 404, ALREADY_DECIDED: 400, FORBIDDEN: 403 };
 
@@ -20,8 +21,20 @@ function applyDecision(req, { requestId, decision, note, bulk = false }) {
   const request = leaveRepository.findById(requestId);
   if (!request) return { ok: false, status: 404, code: 'NOT_FOUND', error: 'درخواست یافت نشد.' };
 
+  // قفل ماه بسته (S5-3c): تصمیم روی درخواستی که با ماه بسته هم‌پوشانی دارد فقط توسط ادمین و با یادداشت (دلیل)؛ در صف دسته‌جمعی هرگز.
+  // فقط درخواستِ «در انتظار» تصمیم می‌گیرد؛ خطای ALREADY_DECIDED مثل قبل از decide می‌آید، پس قفل فقط وقتی سنجیده می‌شود که pending باشد.
+  let lock = null;
+  if (request.status === 'pending') {
+    const ev = monthLock.evaluate({ actor: req.adminUser, from: request.start_date, to: request.end_date, reason: note, bulk });
+    if (ev.locked && !ev.ok) return { ok: false, status: ev.status, code: ev.code, error: ev.error };
+    if (ev.locked) lock = { closure: ev.closure, reason: ev.reason };
+  }
+
   const result = leaveApprovalService.decide({ requestId, actor: req.adminUser, decision, note });
   if (!result.ok) return { ok: false, status: ERROR_STATUS[result.code] || 400, code: result.code, error: result.error };
+  if (lock && result.completed) {
+    monthLock.adjust(req, lock, { action: result.finalStatus === 'approved' ? 'leave_request_approved' : 'leave_request_rejected', entityType: 'leave_request', entityId: requestId, userId: request.user_id, date: request.start_date });
+  }
   const updated = result.request;
   const employee = usersRepository.findById(request.user_id);
 

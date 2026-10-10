@@ -42,6 +42,10 @@ const PERMISSIONS = Object.freeze([
   'notifications.mark', // S4-5b: علامت خوانده‌شدنِ اعلان‌های «خود کاربر» (برای همه‌ی نقش‌ها از جمله hr؛ روی داده‌ی دیگران اثر ندارد)
   'leave.balance.read', // S4-9c: مانده‌ی مرخصی؛ اسکوپ در route (کارمند خودش، سرپرست خودش+تیم، admin/hr همه)
   'leave.balance.edit', // S4-9c: تعدیل دستی و ثبت استحقاق/انتقالی (فقط admin)
+  'monthclose.read', // S5-3a: وضعیت ماه‌های بسته و چک‌لیست پیش از بستن (admin و hr؛ کل شرکت، نه اسکوپ تیم)
+  'monthclose.close', // S5-3b: بستن ماه (فقط admin)
+  'monthclose.reopen', // S5-3c: بازکردن ماه بسته با دلیل (فقط admin)
+  'analytics.read', // S5-6a: روند/مقایسه‌ی تأخیر و تحلیل‌ها؛ admin/hr همه، سرپرست فقط تیم خودش (اسکوپ در route)، کارمند ممنوع
 ]);
 
 // مجوزهای «خود کارمند»؛ هر چه خارج از اینجاست برای employee بسته است.
@@ -72,6 +76,7 @@ const MANAGER_PERMISSIONS = [
   'suspicious.read',
   'suspicious.review',
   'settings.read',
+  'analytics.read', // S5-6a: فقط تیم خودش
 ];
 
 // منابع انسانی (S4-4a): فقط‌خواندنی روی همه‌ی کاربران (بدون اسکوپ تیم؛ scopedUserIds برای hr مثل admin همه را برمی‌گرداند).
@@ -80,6 +85,8 @@ const HR_PERMISSIONS = [
   ...EMPLOYEE_PERMISSIONS,
   'dashboard.read',
   'users.read',
+  'monthclose.read', // S5-3a: فقط‌خواندنی
+  'analytics.read', // S5-6a: فقط‌خواندنی روی همه
   'leave.approve.hr', // تنها استثنای «فقط‌خواندنی» (S4-11a): فقط مرحله‌ای که تنظیمات به hr سپرده؛ سایر مراحل ⇒ ۴۰۳ از سرویس
 ];
 

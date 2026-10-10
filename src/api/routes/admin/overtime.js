@@ -15,6 +15,7 @@ const { requirePermission } = require('../../../middleware/permissions');
 const attendanceRepository = require('../../../repositories/attendanceRepository');
 const overtimeApprovalRepository = require('../../../repositories/overtimeApprovalRepository');
 const dayService = require('../../../engine/dayService');
+const monthLock = require('./monthLock'); // S5-3c
 const { scopedUserIds, canAccessUser, DATE_RE, parseRange, userBrief, makeUserMap, requireReason, audit } = require('./common');
 
 const LIST_STATUSES = ['pending', 'approved', 'rejected'];
@@ -98,6 +99,8 @@ router.post('/admin/overtime-approvals/:recordId/:action(approve|reject)', requi
   if (existing && existing.status === newStatus) {
     return res.status(409).json({ error: 'این رکورد از قبل با همین وضعیت ثبت شده است.' });
   }
+  const lock = monthLock.guard(req, res, { from: record.record_date, reason });
+  if (lock === false) return undefined;
   const row = overtimeApprovalRepository.upsertDecision({
     attendanceRecordId: recordId, userId: record.user_id, status: newStatus, reason, decidedBy: req.adminUser.id,
   });
@@ -110,6 +113,7 @@ router.post('/admin/overtime-approvals/:recordId/:action(approve|reject)', requi
     previousStatus: existing ? existing.status : 'pending',
     reason: reason || undefined,
   });
+  monthLock.adjust(req, lock, { action: approving ? 'overtime_approved' : 'overtime_rejected', entityType: 'overtime_approval', entityId: recordId, userId: record.user_id, date: record.record_date });
   res.json(present(row, makeUserMap()));
 });
 

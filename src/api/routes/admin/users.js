@@ -97,10 +97,24 @@ router.post('/admin/users', requirePermission('users.write'), (req, res) => {
 // ---------- فاز ۶: خروجی CSV کارمندان (باید قبل از /admin/users/:id ثبت شود، وگرنه
 // اکسپرس "export" را به‌عنوان مقدار :id تفسیر می‌کند) ----------
 
+// فیلتر خروجی کارمندان (q روی نام/کد پرسنلی، department دقیق، role، isActive=1|0)؛ پارامتر خالی/نامعتبر = بدون فیلتر
+function filterUsersForExport(users, query) {
+  const one = (v) => (typeof v === 'string' ? v.trim() : '');
+  const q = one(query.q).toLowerCase();
+  const department = one(query.department);
+  const role = one(query.role);
+  const isActive = one(query.isActive);
+  return users.filter((u) => (!q || (u.full_name || '').toLowerCase().includes(q) || (u.personnel_code || '').toLowerCase().includes(q))
+    && (!department || (u.department || '') === department)
+    && (!role || u.role === role)
+    && (isActive !== '0' && isActive !== '1' ? true : (u.is_active ? '1' : '0') === isActive));
+}
+
 router.get('/admin/users/export', requirePermission('users.read'), (req, res) => {
   const allowedIds = scopedUserIds(req.adminUser);
   let users = usersRepository.listUsers({});
   if (allowedIds !== null) users = users.filter((u) => allowedIds.includes(u.id));
+  users = filterUsersForExport(users, req.query); // S5-5b: همان فیلترهای صفحه‌ی کارمندان
 
   const rows = users.map((u) => [
     u.full_name,

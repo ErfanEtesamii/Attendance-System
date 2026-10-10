@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>گزارش ماهانه — چاپ</title>
+<link rel="stylesheet" href="/admin/css/print.css" />
+</head>
+<body>
+  <!-- نوار ابزار (در چاپ پنهان است) -->
+  <div class="no-print toolbar">
+    <button id="print-btn" type="button">چاپ / ذخیره PDF</button>
+    <a id="back-link" href="/admin/">بازگشت به پنل</a>
+    <span id="status" class="status" role="status">در حال بارگذاری…</span>
+  </div>
+
+  <main id="sheet" class="sheet" hidden>
+    <header class="doc-head">
+      <div>
+        <div class="org">فرازهنر</div>
+        <h1 id="title"></h1>
+        <div id="subtitle" class="subtitle"></div>
+      </div>
+      <div class="meta" id="meta"></div>
+    </header>
+    <div id="notes" class="notes"></div>
+    <table class="report" id="report">
+      <thead id="thead"></thead>
+      <tbody id="tbody"></tbody>
+      <tfoot id="tfoot"></tfoot>
+    </table>
+    <div id="adjust" class="notes"></div>
+    <footer class="doc-foot">
+      <span id="printed-at"></span>
+      <span class="page-no"></span>
+    </footer>
+  </main>
+
+  <script src="/admin/js/print.js"></script>
+</body>
+</html>

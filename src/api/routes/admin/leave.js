@@ -73,6 +73,10 @@ router.post('/admin/leave-requests/:id/:decision(approve|reject)', requireAnyPer
   res.json({ ...done.request, completed: true });
 });
 
+const monthLock = require('./monthLock'); // S5-3c: قفل ماه بسته
+// دلیل اصلاحِ ماه بسته برای PATCH/DELETE (فیلد reason در PATCH «دلیل مرخصی» است، پس نام جدا): body.adjustmentReason یا query
+const adjustmentReasonOf = (req) => ((req.body && req.body.adjustmentReason) || req.query.adjustmentReason || '').toString();
+
 router.post('/admin/leave-requests', requirePermission('leave.edit'), (req, res) => {
   const b = req.body || {};
   const user = usersRepository.findById(parseInt(b.userId, 10));
@@ -85,6 +89,8 @@ router.post('/admin/leave-requests', requirePermission('leave.edit'), (req, res)
   if (!DATE_RE.test(b.startDate || '') || !DATE_RE.test(endDate || '') || endDate < b.startDate) {
     return res.status(400).json({ error: 'بازه‌ی تاریخ نامعتبر است.' });
   }
+  const lock = monthLock.guard(req, res, { from: b.startDate, to: endDate, reason });
+  if (lock === false) return undefined;
   const force = b.force === true;
   if (force && req.adminUser.role !== 'admin') return res.status(403).json({ error: 'فقط ادمین می‌تواند محدودیت مانده را نادیده بگیرد.' });
 
@@ -118,6 +124,7 @@ router.post('/admin/leave-requests', requirePermission('leave.edit'), (req, res)
     reason,
     meta: { requestId: saved.id, targetUserId: user.id, force },
   });
+  monthLock.adjust(req, lock, { action: 'leave_request_created_by_admin', entityType: 'leave_request', entityId: saved.id, userId: user.id, date: b.startDate, details: { startDate: b.startDate, endDate, status: finalStatus } });
   res.status(201).json({ ...saved, warnings: result.warnings });
 });
 
@@ -140,6 +147,12 @@ router.patch('/admin/leave-requests/:id', requirePermission('leave.edit'), (req,
   if (reason !== undefined) fields.reason = reason;
   // S4-10d: تغییر تاریخ ⇒ مدت دوباره با تقویم/شیفت محاسبه و تداخل با بقیه‌ی درخواست‌های همین کارمند سنجیده می‌شود (خودِ درخواست مستثناست)؛
   // نیم‌روز/ساعتی تاریخ‌اش یک روز می‌ماند (خطای updateManual). مدت قبلاً با تغییر تاریخ NULL می‌شد و منتظر backfill می‌ماند.
+  const lock = monthLock.guard(req, res, {
+    from: [reqRow.start_date, fields.start_date || reqRow.start_date].sort()[0],
+    to: [reqRow.end_date, fields.end_date || reqRow.end_date].sort().reverse()[0],
+    reason: adjustmentReasonOf(req),
+  });
+  if (lock === false) return undefined;
   let nextDuration = null;
   if (fields.start_date !== undefined || fields.end_date !== undefined) {
     const prep = leaveDurationService.prepare({
@@ -180,6 +193,7 @@ router.patch('/admin/leave-requests/:id', requirePermission('leave.edit'), (req,
     after: leaveRequestView(updated),
     meta: { requestId: reqRow.id, targetUserId: reqRow.user_id, fields: Object.keys(fields) },
   });
+  monthLock.adjust(req, lock, { action: 'leave_request_edited_by_admin', entityType: 'leave_request', entityId: reqRow.id, userId: reqRow.user_id, date: reqRow.start_date, details: { fields: Object.keys(fields) } });
   const employee = usersRepository.findById(reqRow.user_id);
   // فقط تغییر به approved/rejected «تصمیم» است؛ بازگشت به pending اعلان پنل نمی‌سازد (S4-6b)
   if (fields.status && fields.status !== reqRow.status) notificationEvents.leaveDecided(updated);
@@ -197,8 +211,11 @@ router.delete('/admin/leave-requests/:id', requirePermission('leave.edit'), (req
   const reqRow = leaveRepository.findById(parseInt(req.params.id, 10));
   if (!reqRow) return res.status(404).json({ error: 'درخواست یافت نشد.' });
   if (!canAccessUser(req.adminUser, reqRow.user_id)) return res.status(403).json({ error: 'به این کارمند دسترسی ندارید.' });
+  const lock = monthLock.guard(req, res, { from: reqRow.start_date, to: reqRow.end_date, reason: adjustmentReasonOf(req) });
+  if (lock === false) return undefined;
   leaveApprovalService.clearChain(reqRow.id);
   leaveRepository.remove(reqRow.id);
+  monthLock.adjust(req, lock, { action: 'leave_request_deleted_by_admin', entityType: 'leave_request', entityId: reqRow.id, userId: reqRow.user_id, date: reqRow.start_date });
   auditChange(req, {
     action: 'leave_request_deleted_by_admin',
     entityType: 'leave_request',
