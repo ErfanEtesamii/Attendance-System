@@ -196,7 +196,8 @@ describe('route خروجی با ?format=xlsx (S5-1a)', { skip: hasServerDeps ? f
     assert.match(res.headers.get('content-type'), /text\/csv/);
     assert.match(res.headers.get('content-disposition'), /employees\.csv/);
     assert.equal(res.headers.get('x-export-fallback'), null);
-    assert.ok((await res.text()).startsWith('\uFEFF'));
+    // res.text() مقدمه‌ی BOM را حذف می‌کند؛ بایت‌های خام را می‌خوانیم
+    assert.deepEqual([...new Uint8Array(await res.arrayBuffer()).slice(0, 3)], [0xEF, 0xBB, 0xBF], 'BOM');
   });
 
   test('?format=xlsx: با exceljs ⇒ xlsx؛ بدون آن ⇒ CSV با هدر fallback (هر دو حالت سالم)', async () => {

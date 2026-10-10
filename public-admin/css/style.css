@@ -705,6 +705,34 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--g
 .cal-sum td.cal-over { color: var(--red); background: var(--red-soft); box-shadow: inset 0 0 0 1px var(--red); border-radius: 8px; }
 @media (max-width: 760px) { .cal-table .cal-name { min-width: 130px; } }
 
+/* نمودارهای SVG سبک (S5-7a، charts.js): رنگ فقط با کلاس؛ تم تیره/روشن کامل در S5-8a. هر سری علاوه بر رنگ، شکل نشانگر و الگوی خط دارد. */
+.chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.chart-slot { min-width: 0; }
+.chart-fig { margin: 0; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; height: 100%; }
+.chart-fig figcaption { font-size: 14.5px; font-weight: 800; margin-bottom: 12px; }
+.chart text { direction: ltr; } /* text-anchor در صفحه‌ی RTL برعکس می‌شود؛ ltr یعنی start/end همان چپ/راست فیزیکی (حروف فارسی همچنان درست شکل می‌گیرند) */
+.chart .ytick, .chart .xtick, .chart .cat, .chart .val { fill: var(--hint); font-size: 11px; }
+.chart .cat { fill: var(--text); }
+.chart .ln { stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .s0, .chart-legend .s0 { fill: var(--green); stroke: var(--green); }
+.chart .s1, .chart-legend .s1 { fill: var(--orange); stroke: var(--orange); }
+.chart .s2, .chart-legend .s2 { fill: var(--blue); stroke: var(--blue); }
+.chart .s3, .chart-legend .s3 { fill: var(--purple); stroke: var(--purple); }
+.chart .s4, .chart-legend .s4 { fill: var(--yellow); stroke: var(--yellow); }
+.chart .s5, .chart-legend .s5 { fill: var(--red); stroke: var(--red); }
+.chart .bar { stroke: none; }
+.chart .ln { fill: none; }
+.chart .mk { stroke: var(--card); stroke-width: 1; }
+.chart-legend { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0 0 10px; padding: 0; font-size: 12px; color: var(--hint); }
+.chart-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.chart-note { font-size: 12px; color: var(--hint); margin: 8px 0 0; line-height: 1.8; }
+.chart-data { margin-top: 10px; font-size: 12.5px; }
+.chart-data summary { cursor: pointer; color: var(--hint); }
+.chart-table { width: 100%; margin-top: 8px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+@media (max-width: 980px) { .chart-grid { grid-template-columns: 1fr; } }
+@media print { .chart-fig { break-inside: avoid; border: 1px solid #999 !important; background: #fff !important; } }
+
 /* چاپ جدول‌های پنل (S5-5b: دکمه‌ی «چاپ» = window.print). فقط محتوای صفحه؛ ناوبری/فیلتر/دکمه‌ها پنهان. استایل کامل‌تر در S5-8a. */
 @media print {
   @page { size: A4 landscape; margin: 10mm; }

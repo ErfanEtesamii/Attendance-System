@@ -4,6 +4,14 @@
 
 ## [Unreleased] — بخش ۴ (ممیزی)
 
+### S5-7a — نمودارهای SVG سبک (هر کدام با جدول متنی معادل)
+- `public-admin/js/charts.js` (بدون CDN/وابستگی، خروجی رشته‌ی HTML مثل `exports.js`): `lineChartHtml` و `barChartHtml` (افقی/عمودی/گروهی) + آداپتورهای `fromLateTrend`، `fromLateCompare`، `fromRankings`، `fromAttendanceRate`، `fromLeaveByType`، `fromCheckinDistribution` برای APIهای S5-6.
+- هر نمودار یک `<figure>` است: `<svg role="img">` با `<title>/<desc>` و tooltip هر نقطه/میله + **«جدول داده‌ها»ی معادل** (`<details>`، همان اعداد + ستون‌های تکمیلی مثل تعداد/دقیقه/خام/معلق). رنگ تنها حامل معنی نیست (شکل نشانگر و الگوی خط هر سری فرق دارد). `null` ⇒ «بدون داده» (در خط شکاف، در میله بدون ستون، در جدول «—»)، نه صفر جعلی. خالی ⇒ پیام «داده‌ای نیست». بیش از ۶ سری ⇒ فقط ۶ تا رسم و همه در جدول. همه‌ی متن‌ها escape؛ بدون `on*`/`style` درون‌خطی (سازگار با CSP).
+- صفحه‌ی جدید «نمودارها» (`views-analytics.js`، مجوز `analytics.read`؛ کارمند ندارد): ۷ نمودار با فیلتر سال/ماه شمسی، دپارتمان، روند هفتگی/ماهانه و گروه‌بندی؛ هر نمودار مستقل بارگذاری می‌شود (خطای یکی بقیه را نمی‌اندازد). اسکوپ نقش همان سمت سرور است. هشدار الگوها در S5-7c.
+- CSS: کلاس‌های `s0…s5` با متغیرهای رنگ موجود (تم کامل در S5-8a)؛ `.chart text { direction: ltr }` چون `text-anchor` در صفحه‌ی RTL برعکس می‌شود.
+- رفع در حین کار: گردکردن محور ۱۰۰٪ به ۲۰۰٪ می‌رسید (گام ۲٫۵ اضافه شد؛ محور ثابت نرخ حضور دقیقاً ۰–۱۰۰٪).
+- تست: `test/analyticsCharts.test.js` (۲۰+ تست خالص، بدون DB)، `test/analyticsChartsApi.test.js` (تطبیق با پاسخ واقعی route‌ها).
+
 ### S5-6c — عملکرد تحلیل‌ها: ایندکس، کش کوتاه‌مدت، سنجش
 - migration `022_analytics_indexes`: `idx_break_records_attendance` (استراحت‌ها تا قبل از این ایندکس نداشتند ⇒ اسکن کامل برای هر رکورد) و `idx_leave_user_status_dates`. فقط ایندکس؛ برگشت: `DROP INDEX IF EXISTS ...`.
 - `src/utils/analyticsCache.js`: کش TTL در حافظه (پیش‌فرض ۶۰ ثانیه، `ANALYTICS_CACHE_TTL_SECONDS`؛ ۰ = خاموش، سقف ۲۰۰ ورودی، خطا کش نمی‌شود). کلید شامل مجموعه‌ی کاربران مجاز (اسکوپ نقش)، پارامترها و امروز. هدر پاسخ `X-Analytics-Cache: hit|miss|off`. هر نوشتن موفق در `/api/admin/*` کش را پاک می‌کند؛ تغییر بات/Mini App حداکثر تا TTL دیرتر دیده می‌شود.

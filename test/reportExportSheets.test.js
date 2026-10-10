@@ -154,7 +154,7 @@ describe('route گزارش و خروجی‌ها: اسکوپ، CSV قدیمی، a
     outsider = makeUser({ role: 'employee', name: 'بیرون از تیم' });
     const day = workdayDate(1);
     for (const u of [staff, outsider]) {
-      attendanceRepository.createManual({ userId: u.id, recordDate: day, checkInTime: `${day}T05:00:00.000Z`, checkOutTime: `${day}T14:00:00.000Z`, status: 'present' });
+      attendanceRepository.createManual({ userId: u.id, recordDate: day, checkInTime: `${day}T05:00:00.000Z`, checkOutTime: `${day}T14:00:00.000Z`, status: 'normal' });
     }
     leaveRepository.createLeaveRequest({ userId: staff.id, startDate: workdayDate(2), endDate: workdayDate(2), leaveType: 'leave', reason: '@evil' });
     adminCookie = sessionCookie(admin.id);

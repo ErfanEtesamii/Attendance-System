@@ -13,7 +13,7 @@ let hasDeps = true;
 try { require.resolve('express'); } catch (_) { hasDeps = false; }
 
 const JS_DIR = path.join(__dirname, '..', 'public-admin', 'js');
-const PANEL_FILES = ['jalali.js', 'core.js', 'views-main.js', 'views-ops.js', 'views-calendar.js', 'views-admin.js', 'views-shifts.js']; // boot.js عمداً نه: خودش AP.boot() را صدا می‌زند
+const PANEL_FILES = ['jalali.js', 'core.js', 'exports.js', 'views-main.js', 'views-ops.js', 'views-calendar.js', 'views-admin.js', 'views-shifts.js']; // boot.js عمداً نه: خودش AP.boot() را صدا می‌زند
 
 // منوی هر نقش پیش از S4-4b (admin: همه؛ manager: همه‌ی غیر‌ادمینی؛ employee: صفحه‌های employee:true + پروفایل من) + hr جدید.
 const NAV = {
