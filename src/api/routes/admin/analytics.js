@@ -12,6 +12,7 @@ const { computeMonthlyReport } = require('../../../services/monthlyReportService
 const { reportFromSnapshot } = require('../../../services/monthCloseService');
 const monthClosuresRepository = require('../../../repositories/monthClosuresRepository');
 const { todayDateString } = require('../../../utils/serverTime');
+const { analyticsCache, analyticsCacheKey } = require('../../../utils/analyticsCache');
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const flag = (v) => v === '1' || v === 'true';
@@ -39,6 +40,15 @@ function fail(res, err) {
   throw err;
 }
 
+// S5-6c: پاسخ با کش کوتاه‌مدت. کلید = نام تحلیل + «مجموعه‌ی کاربرانِ مجاز» (اسکوپ نقش؛ دو نقش با اسکوپ متفاوت هرگز یک ورودی را به اشتراک نمی‌گذارند)
+// + پارامترها + امروز. خطا (AnalyticsError) کش نمی‌شود. هدر X-Analytics-Cache: hit | miss | off (کش خاموش). پاک‌سازی: با هر نوشتن موفق پنل (admin/index.js).
+function respondCached(res, name, users, params, compute) {
+  const key = analyticsCacheKey(name, users.map((u) => u.id), params, todayDateString());
+  const { value, hit, enabled } = analyticsCache.memo(key, compute);
+  res.set('X-Analytics-Cache', !enabled ? 'off' : hit ? 'hit' : 'miss');
+  return res.json(value);
+}
+
 const shiftIso = (iso, days) => { const d = new Date(`${iso}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10); };
 
 // GET /admin/analytics/late-trend?granularity=week|month&groupBy=none|department|user&from=&to=[&department=][&userId=][&includeInactive=1]
@@ -55,7 +65,7 @@ router.get('/admin/analytics/late-trend', requirePermission('analytics.read'), (
   const r = resolveUsers(req);
   if (r.error) return res.status(r.error.status).json(r.error.json);
   try {
-    return res.json(lateTrend({ users: r.users, from, to, granularity, groupBy }));
+    return respondCached(res, 'late-trend', r.users, { from, to, granularity, groupBy }, () => lateTrend({ users: r.users, from, to, granularity, groupBy }));
   } catch (err) { return fail(res, err); }
 });
 
@@ -67,7 +77,7 @@ router.get('/admin/analytics/late-compare', requirePermission('analytics.read'),
   const r = resolveUsers(req);
   if (r.error) return res.status(r.error.status).json(r.error.json);
   try {
-    return res.json(compareLate({ users: r.users, year: p.year, month: p.month, groupBy }));
+    return respondCached(res, 'late-compare', r.users, { year: p.year, month: p.month, groupBy }, () => compareLate({ users: r.users, year: p.year, month: p.month, groupBy }));
   } catch (err) { return fail(res, err); }
 });
 
@@ -82,22 +92,25 @@ function monthlyReportFor(users, year, month) {
 }
 
 // قالب مشترک: اعتبارسنجی ماه + کاربران ⇒ پاسخ build(report)
-function monthlyHandler(build) {
+function monthlyHandler(name, build) {
   return (req, res) => {
     const p = parseYearMonth(req.query.year, req.query.month);
     if (p.error) return res.status(400).json(p.error);
     const r = resolveUsers(req);
     if (r.error) return res.status(r.error.status).json(r.error.json);
     try {
-      const report = monthlyReportFor(r.users, p.year, p.month);
-      return res.json({ year: p.year, month: p.month, label: report.label, from: report.from, to: report.to, source: report.source, ...build(report, req.query) });
+      // کلید روی «کل query» است (نه فقط پارامترهای شناخته‌شده): پارامتر ناشناخته فقط کش را تکه‌تکه می‌کند، هرگز جواب اشتباه نمی‌دهد
+      return respondCached(res, name, r.users, { ...req.query }, () => {
+        const report = monthlyReportFor(r.users, p.year, p.month);
+        return { year: p.year, month: p.month, label: report.label, from: report.from, to: report.to, source: report.source, ...build(report, req.query) };
+      });
     } catch (err) { return fail(res, err); }
   };
 }
 const groupOf = (q) => (q.groupBy === undefined || q.groupBy === '' ? 'none' : String(q.groupBy));
 
 // GET /admin/analytics/rankings?year=&month=&metric=overtime|shortfall[&limit=10]
-router.get('/admin/analytics/rankings', requirePermission('analytics.read'), monthlyHandler((report, q) => {
+router.get('/admin/analytics/rankings', requirePermission('analytics.read'), monthlyHandler('rankings', (report, q) => {
   const metric = q.metric === undefined || q.metric === '' ? 'overtime' : String(q.metric);
   if (!['overtime', 'shortfall'].includes(metric)) throw new AnalyticsError('INVALID_METRIC', 'metric باید overtime یا shortfall باشد.');
   const limit = breakdown.parseLimit(q.limit);
@@ -105,10 +118,10 @@ router.get('/admin/analytics/rankings', requirePermission('analytics.read'), mon
 }));
 
 // GET /admin/analytics/attendance-rate?year=&month=[&groupBy=none|department|user]
-router.get('/admin/analytics/attendance-rate', requirePermission('analytics.read'), monthlyHandler((report, q) => breakdown.attendanceRate(report, { groupBy: groupOf(q) })));
+router.get('/admin/analytics/attendance-rate', requirePermission('analytics.read'), monthlyHandler('attendance-rate', (report, q) => breakdown.attendanceRate(report, { groupBy: groupOf(q) })));
 
 // GET /admin/analytics/leave-by-type?year=&month=[&groupBy=none|department]
-router.get('/admin/analytics/leave-by-type', requirePermission('analytics.read'), monthlyHandler((report, q) => breakdown.leaveByType(report, { groupBy: groupOf(q) })));
+router.get('/admin/analytics/leave-by-type', requirePermission('analytics.read'), monthlyHandler('leave-by-type', (report, q) => breakdown.leaveByType(report, { groupBy: groupOf(q) })));
 
 // GET /admin/analytics/checkin-distribution?from=&to=[&binMinutes=30][&department=][&userId=]  (پیش‌فرض: ۳۰ روز اخیر)
 router.get('/admin/analytics/checkin-distribution', requirePermission('analytics.read'), (req, res) => {
@@ -126,7 +139,7 @@ router.get('/admin/analytics/checkin-distribution', requirePermission('analytics
   const r = resolveUsers(req);
   if (r.error) return res.status(r.error.status).json(r.error.json);
   try {
-    return res.json(breakdown.checkinDistribution({ users: r.users, from, to, binMinutes }));
+    return respondCached(res, 'checkin-distribution', r.users, { from, to, binMinutes }, () => breakdown.checkinDistribution({ users: r.users, from, to, binMinutes }));
   } catch (err) { return fail(res, err); }
 });
 

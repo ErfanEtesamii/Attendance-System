@@ -13,6 +13,7 @@
     "test": "node scripts/run-tests.js",
     "test:watch": "node scripts/run-tests.js --watch",
     "smoke": "node scripts/smoke-test.js",
+    "bench:analytics": "node scripts/bench-analytics.js",
     "create-admin": "node src/scripts/createAdmin.js",
     "dev": "node --watch src/index.js",
     "secret-scan": "node scripts/secret-scan.js",

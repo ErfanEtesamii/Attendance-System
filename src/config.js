@@ -19,6 +19,13 @@ function positiveIntEnv(value, fallback) {
   return Number.isInteger(n) && n >= 1 ? n : fallback;
 }
 
+// عدد صحیح نامنفی از env (۰ مجاز است، مثلاً «خاموش»)؛ مقدار نامعتبر/منفی = پیش‌فرض
+function nonNegativeIntEnv(value, fallback) {
+  const raw = String(value === undefined ? '' : value).trim();
+  if (!/^\d+$/.test(raw)) return fallback;
+  return parseInt(raw, 10);
+}
+
 const config = {
   port: parseInt(process.env.PORT || '3000', 10),
   dbPath: path.resolve(process.cwd(), process.env.DB_PATH || './data/attendance.db'),
@@ -32,6 +39,9 @@ const config = {
   // بخش ۲-ب۲: محل نگهداری شمارنده‌های rate limit. sqlite (پیش‌فرض) = ماندگار و بدون صفر شدن با ری‌استارت؛
   // memory = فقط حافظه‌ی پروسه (رفتار قبلی). اگر دیتابیس خطا بدهد، limiter موقتاً به حافظه برمی‌گردد (fail-open).
   rateLimitStore: enumEnv(process.env.RATE_LIMIT_STORE, ['sqlite', 'memory'], 'sqlite'),
+
+  // S5-6c: عمر کش پاسخ تحلیل‌ها (ثانیه). ۰ = خاموش. با هر نوشتن موفق در /api/admin/* کش کلاً پاک می‌شود؛ تغییرهای بات/Mini App (مثل ثبت ورود) حداکثر تا این مدت دیرتر دیده می‌شوند.
+  analyticsCacheTtlSeconds: nonNegativeIntEnv(process.env.ANALYTICS_CACHE_TTL_SECONDS, 60),
 
   // ===== بخش ۲-ج۱: مانیتورینگ و هشدار =====
   monitor: {

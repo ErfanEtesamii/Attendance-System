@@ -4,6 +4,12 @@
 
 ## [Unreleased] — بخش ۴ (ممیزی)
 
+### S5-6c — عملکرد تحلیل‌ها: ایندکس، کش کوتاه‌مدت، سنجش
+- migration `022_analytics_indexes`: `idx_break_records_attendance` (استراحت‌ها تا قبل از این ایندکس نداشتند ⇒ اسکن کامل برای هر رکورد) و `idx_leave_user_status_dates`. فقط ایندکس؛ برگشت: `DROP INDEX IF EXISTS ...`.
+- `src/utils/analyticsCache.js`: کش TTL در حافظه (پیش‌فرض ۶۰ ثانیه، `ANALYTICS_CACHE_TTL_SECONDS`؛ ۰ = خاموش، سقف ۲۰۰ ورودی، خطا کش نمی‌شود). کلید شامل مجموعه‌ی کاربران مجاز (اسکوپ نقش)، پارامترها و امروز. هدر پاسخ `X-Analytics-Cache: hit|miss|off`. هر نوشتن موفق در `/api/admin/*` کش را پاک می‌کند؛ تغییر بات/Mini App حداکثر تا TTL دیرتر دیده می‌شود.
+- سنجش: `npm run bench:analytics` (۵۰ کارمند × ۷۳۰ روز، ۲۹٬۳۶۳ رکورد). روند ۲ ساله: قبل ≈ ۷۷ ثانیه، فقط ایندکس ≈ ۴۱ ثانیه، با کش hit ≈ ۳۰ms. گلوگاه اصلی `normalizeTimezone` است (≈ ۵۵٪ زمان؛ پچ اختیاری جدا ⇒ ≈ ۷ ثانیه).
+- تست: `test/analyticsPerf.test.js`؛ `test/migrations.test.js` برای ورود 022 به‌روز شد.
+
 ### S5-6b — رتبه‌ی اضافه‌کاری/کسری، توزیع ساعت ورود، نرخ حضور، مرخصی به‌تفکیک نوع
 - `src/services/analyticsBreakdownService.js` + مسیرهای `GET /api/admin/analytics/rankings?year&month&metric=overtime|shortfall&limit`، `attendance-rate?...&groupBy=none|department|user`، `leave-by-type?...&groupBy=none|department`، `checkin-distribution?from&to&binMinutes=10|15|20|30|60`.
 - ماهانه‌ها توابع خالص روی **همان گزارش ماهانه** هستند (ماه بسته ⇒ snapshot، وگرنه زنده؛ فیلد `source`) پس با گزارش ماهانه هرگز ناسازگار نیستند. توزیع ورود از رکوردها با ساعت به وقت شرکت.

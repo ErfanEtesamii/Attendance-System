@@ -10,8 +10,18 @@
 const express = require('express');
 const router = express.Router();
 const { requireAdminAuth } = require('../../../middleware/adminAuth');
+const { analyticsCache } = require('../../../utils/analyticsCache');
 
 router.use('/admin', requireAdminAuth);
+
+// S5-6c: هر نوشتنِ موفق در پنل (POST/PUT/PATCH/DELETE با پاسخ < ۴۰۰) کش تحلیل‌ها را کامل پاک می‌کند تا ادمین بعد از ویرایش/بستن ماه/تغییر تنظیمات
+// عدد کهنه نبیند. (تغییرهای بات/Mini App، مثل ثبت ورود، از این مسیر نمی‌گذرند و فقط با گذشتن TTL کش دیده می‌شوند.)
+router.use('/admin', (req, res, next) => {
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    res.on('finish', () => { if (res.statusCode < 400) analyticsCache.clear(); });
+  }
+  next();
+});
 
 router.use(require('./dashboard'));
 router.use(require('./calendar')); // S4-14a: تقویم تیم

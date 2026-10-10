@@ -15,15 +15,25 @@ function getTimezone() {
 }
 
 // نام IANA معتبر؟ (مثل Asia/Tehran یا UTC). آفست‌هایی مثل +03:30 و رشته‌ی خالی/عدد پذیرفته نمی‌شود.
+// S5-6c: ساختن Intl.DateTimeFormat در هر فراخوانی گران است (روی تحلیل ۲ ساله ≈ ۵۵٪ کل زمان؛ موتور برای هر رکورد چند بار صدایش می‌زند).
+// نتیجه (نام استاندارد یا null) به‌ازای «رشته‌ی ورودی» حافظه می‌شود؛ خروجی عیناً همان قبل است. سقف ۶۴ ورودی تا ورودی دلخواه کاربر (تنظیمات)
+// حافظه را بی‌پایان بزرگ نکند.
+const tzNameCache = new Map();
+const TZ_NAME_CACHE_MAX = 64;
 function normalizeTimezone(tz) {
   if (typeof tz !== 'string') return null;
+  if (tzNameCache.has(tz)) return tzNameCache.get(tz);
+  let result = null;
   const name = tz.trim();
-  if (!/^[A-Za-z][A-Za-z0-9_+-]*(\/[A-Za-z0-9_+-]+)*$/.test(name)) return null;
-  try {
-    return new Intl.DateTimeFormat('en-US', { timeZone: name }).resolvedOptions().timeZone; // نام استاندارد (Asia/Tehran)
-  } catch (_) {
-    return null;
+  if (/^[A-Za-z][A-Za-z0-9_+-]*(\/[A-Za-z0-9_+-]+)*$/.test(name)) {
+    try {
+      result = new Intl.DateTimeFormat('en-US', { timeZone: name }).resolvedOptions().timeZone; // نام استاندارد (Asia/Tehran)
+    } catch (_) {
+      result = null;
+    }
   }
+  if (tzNameCache.size < TZ_NAME_CACHE_MAX) tzNameCache.set(tz, result);
+  return result;
 }
 
 function isValidTimezone(tz) {
