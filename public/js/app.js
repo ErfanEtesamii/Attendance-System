@@ -349,6 +349,24 @@
     $('#status-pill').className = 'status-pill ' + cls;
   }
 
+  // اولین بارگذاری نمای «امروز»: skeleton به‌جای مقدارهای خالی (--:--:--)؛ بعد از پایان (موفق یا ناموفق) برداشته می‌شود (S5-9c)
+  function showTodaySkeleton(on) {
+    const view = $('#view-today');
+    const box = $('#today-skeleton');
+    if (!view || !box) return;
+    if (on) {
+      box.innerHTML = U ? U.skeletonHtml('today', { label: 'در حال بارگذاری وضعیت امروز…' }) : '';
+      box.classList.remove('hidden');
+      view.classList.add('is-loading');
+      view.setAttribute('aria-busy', 'true');
+    } else {
+      box.innerHTML = '';
+      box.classList.add('hidden');
+      view.classList.remove('is-loading');
+      view.removeAttribute('aria-busy');
+    }
+  }
+
   async function loadToday() {
     const data = await api('/today');
     state.today = data;
@@ -666,7 +684,8 @@
         $('#header-date').textContent = fmtTodayShort();
       } catch (_) { /* ignore */ }
       $('#app').classList.remove('hidden');
-      await loadToday();
+      showTodaySkeleton(true);
+      try { await loadToday(); } finally { showTodaySkeleton(false); }
     } catch (err) {
       if (err.status === 403) {
         const id = (err.data && err.data.telegramUserId) || (initDataUnsafe.user && initDataUnsafe.user.id) || '-';

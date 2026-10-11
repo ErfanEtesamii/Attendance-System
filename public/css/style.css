@@ -581,3 +581,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .sk-row { display: flex; gap: 14px; align-items: center; padding: 6px 0; }
 @media (max-width: 900px) { .sk-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (prefers-reduced-motion: reduce) { .sk-line::after { animation: none; } }
+.sk-line.w100 { width: 100%; }
+.sk-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* نمای «امروز» حین اولین بارگذاری: فقط skeleton دیده می‌شود (S5-9c) */
+.view.is-loading > :not(#today-skeleton) { display: none; }
