@@ -8,3 +8,4 @@
 3. فایل را commit کنید.
 
 تا فایل نباشد، ابتدا `local("Vazirmatn")` (نصب روی دستگاه) و بعد Tahoma / فونت سیستم استفاده می‌شود (`font-display: swap`؛ متن هرگز نامرئی نمی‌ماند).
+Vazirmatn variable woff2 v33.0.3? ????: npm ?????? vazirmatn (rastikerdar/vazirmatn)? ??????: 2026-10-11? ???? SIL OFL (OFL.txt).
