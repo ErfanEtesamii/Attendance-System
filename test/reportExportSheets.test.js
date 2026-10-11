@@ -174,8 +174,11 @@ describe('route گزارش و خروجی‌ها: اسکوپ، CSV قدیمی، a
   test('CSV پیش‌فرض: ستون‌های قدیمی دست‌نخورده؛ نام شبیه فرمول در CSV خنثی', async () => {
     const res = await get(`/api/admin/reports/export?${RANGE}`, adminCookie);
     assert.equal(res.status, 200);
-    const text = await res.text();
-    assert.ok(text.startsWith('﻿نام کارمند,کد پرسنلی,دپارتمان,تعداد روز رکورد,مجموع دقیقه مفید,تعداد تأخیر,تعداد خروج زودهنگام,تعداد روز ناقص'));
+    // fetch.text() در Node جدید BOM ابتدای UTF-8 را حذف می‌کند؛ پس BOM را روی بایت‌های خام می‌سنجیم و متن را بدون آن مقایسه می‌کنیم
+    const buf = Buffer.from(await res.arrayBuffer());
+    assert.deepEqual([...buf.subarray(0, 3)], [0xEF, 0xBB, 0xBF], 'CSV با BOM');
+    const text = buf.toString('utf8').replace(/^\uFEFF/, '');
+    assert.ok(text.startsWith('نام کارمند,کد پرسنلی,دپارتمان,تعداد روز رکورد,مجموع دقیقه مفید,تعداد تأخیر,تعداد خروج زودهنگام,تعداد روز ناقص'));
     assert.ok(text.includes("'=cmd|calc"), 'injection خنثی شد');
     assert.ok(!/\r\n=cmd/.test(text));
   });
