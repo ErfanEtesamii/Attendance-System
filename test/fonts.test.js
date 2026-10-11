@@ -39,7 +39,9 @@ describe('فونت self-hosted (S5-8b)', () => {
     for (const f of files) assert.doesNotMatch(read(f), BAD, f);
     // هر URL مطلق http(s) باید در فهرست مجاز باشد (ویجت ورود تلگرام و پیوندهای مستند داخل متن)
     const ALLOWED = [/^https:\/\/telegram\.org\//, /^https:\/\/oauth\.telegram\.org/, /^https:\/\/t\.me\//, /^http:\/\/www\.w3\.org\/2000\/svg$/];
-    for (const f of files) {
+    // اسکریپت رسمی تلگرام (self-hosted، vendor) خودش URLهای تلگرام را داخل کد دارد؛ فقط از «بررسی URL مطلق» مستثنا می‌شود (بررسی CDN/فونت بالا روی آن هم اعمال می‌شود)
+    const VENDOR = [path.join('public', 'js', 'telegram-web-app.js')];
+    for (const f of files.filter((x) => !VENDOR.some((v) => path.normalize(x).endsWith(v)))) {
       for (const m of read(f).matchAll(/https?:\/\/[^\s"'`)<>]+/g)) assert.ok(ALLOWED.some((re) => re.test(m[0])), `${f}: ${m[0]}`);
     }
   });
