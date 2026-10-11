@@ -8,6 +8,7 @@ const usersRepository = require('../../../repositories/usersRepository');
 const { lateTrend, compareLate, AnalyticsError } = require('../../../services/analyticsService');
 const { parseYearMonth } = require('./monthParams');
 const breakdown = require('../../../services/analyticsBreakdownService');
+const { detectPatterns } = require('../../../services/patternService');
 const { computeMonthlyReport } = require('../../../services/monthlyReportService');
 const { reportFromSnapshot } = require('../../../services/monthCloseService');
 const monthClosuresRepository = require('../../../repositories/monthClosuresRepository');
@@ -140,6 +141,19 @@ router.get('/admin/analytics/checkin-distribution', requirePermission('analytics
   if (r.error) return res.status(r.error.status).json(r.error.json);
   try {
     return respondCached(res, 'checkin-distribution', r.users, { from, to, binMinutes }, () => breakdown.checkinDistribution({ users: r.users, from, to, binMinutes }));
+  } catch (err) { return fail(res, err); }
+});
+
+// GET /admin/analytics/patterns?year=&month=[&department=][&userId=][&includeInactive=1]  (S5-7b)
+// هشدار الگوها: «نشانه» با دلیل هر مورد (نه اتهام)؛ آستانه‌ها از تنظیمات گروه «الگوهای رفتاری». همان اسکوپ و مجوز بقیه‌ی تحلیل‌ها (analytics.read):
+// admin/hr همه، سرپرست فقط تیم خودش، کارمند ممنوع. فقط‌خواندنی؛ همیشه محاسبه‌ی زنده (source: live).
+router.get('/admin/analytics/patterns', requirePermission('analytics.read'), (req, res) => {
+  const p = parseYearMonth(req.query.year, req.query.month);
+  if (p.error) return res.status(400).json(p.error);
+  const r = resolveUsers(req);
+  if (r.error) return res.status(r.error.status).json(r.error.json);
+  try {
+    return respondCached(res, 'patterns', r.users, { year: p.year, month: p.month }, () => detectPatterns({ users: r.users, year: p.year, month: p.month }));
   } catch (err) { return fail(res, err); }
 });
 

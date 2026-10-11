@@ -40,6 +40,7 @@
   // داشبورد
   // ======================================================
   AP.view('dashboard', {
+    skeleton: 'page', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'dashboard.read',
     nav: { icon: 'dashboard', label: 'داشبورد', group: 'نمای کلی' },
     async render() {
@@ -116,6 +117,7 @@
   // تابلوی زنده
   // ======================================================
   AP.view('live', {
+    skeleton: 'table', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'dashboard.read',
     nav: { icon: 'live', label: 'تابلوی زنده امروز', group: 'نمای کلی' },
     async render(param) {
@@ -140,7 +142,7 @@
           <div><h2><span class="live-dot"></span>تابلوی زنده</h2>
             <div class="sub">${esc(fmt.dateLong(data.date))} · به‌روزرسانی خودکار هر ۳۰ ثانیه</div></div>
           <div class="header-actions">
-            <input id="live-q" type="search" placeholder="جستجوی نام…" style="width:200px" />
+            <input id="live-q" type="search" placeholder="جستجوی نام…" aria-label="جستجوی نام" style="width:200px" />
           </div>
         </div>
         <div class="chips" id="live-chips"></div>
@@ -223,6 +225,7 @@
   AP.employeeFormFields = employeeFormFields;
 
   AP.view('employees', {
+    skeleton: 'table', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'users.read',
     nav: { icon: 'employees', label: 'کارمندان', group: 'کارمندان و تردد' },
     async render() {
@@ -309,6 +312,7 @@
   const profileUi = { days: 30, tab: 'attendance' };
 
   AP.view('profile', {
+    skeleton: 'page', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'users.details.read',
     navId: 'employees',
     async render(param) {

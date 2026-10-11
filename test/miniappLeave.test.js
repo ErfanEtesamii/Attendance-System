@@ -129,6 +129,7 @@ function makeEnv(types) {
   form.startTime = { value: '' }; form.endTime = { value: '' };
   form.reason = { value: 'سفر' };
   form.reset = noop;
+  form.querySelector = () => null; // دکمه‌ی submit (S5-9c: withBusy)
   const navBtns = ['leave'].map((v) => { const b = makeEl('nav'); b.dataset.view = v; return b; });
   const document = { querySelector: $, querySelectorAll: (s) => (s === '.nav-btn' ? navBtns : []), createElement: () => makeEl('new') };
   const calls = [];

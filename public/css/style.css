@@ -3,7 +3,17 @@
    الهام‌گرفته از پنل کاربری (کارت‌های گرد، آیکون‌های گرادیانی)
    ============================================================ */
 
-:root {
+/* S5-8b: فونت self-hosted (public/fonts؛ راهنما: public/fonts/README.md). ابتدا نسخه‌ی نصب‌شده روی دستگاه؛ بدون CDN/Google Fonts (font-src 'self'). */
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: local("Vazirmatn"), url("/fonts/Vazirmatn-Variable.woff2") format("woff2");
+}
+
+:root,
+:root[data-theme="dark"] {
   --bg: #1b1c2c;
   --bg-2: #222338;
   --card-bg: #2a2b40;
@@ -17,7 +27,7 @@
   --green-soft: rgba(31, 207, 149, 0.14);
   --purple: #8b7cf6;
   --orange: #ffa94d;
-  --red: #f0506e;
+  --red: #ff7f95;
   --yellow: #f5b83d;
 
   --success: var(--green);
@@ -26,6 +36,64 @@
 
   --radius: 18px;
   --shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  --ov-08: rgba(255, 255, 255, 0.08);
+  --on-accent: #062b20;
+  --red-solid: #d12f4d;
+  --purple-text: #b3a8ff;
+  --purple-soft: rgba(139, 124, 246, 0.16);
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --bg: #f3f4f9;
+  --bg-2: #e9ebf4;
+  --card-bg: #ffffff;
+  --card-bg-2: #eef0f7;
+  --text: #1b1c2c;
+  --hint: #5b5e7a;
+  --border: rgba(27, 28, 44, 0.14);
+
+  --green: #0a7452;
+  --green-dark: #0a6b4b;
+  --green-soft: rgba(11, 125, 88, 0.12);
+  --purple: #5a49d6;
+  --orange: #a35400;
+  --red: #c0263f;
+  --yellow: #8a5f00;
+
+  --shadow: 0 8px 24px rgba(27, 28, 44, 0.12);
+  --ov-08: rgba(27, 28, 44, 0.08);
+  --on-accent: #062b20;
+  --red-solid: #c0263f;
+  --purple-text: #4a39c4;
+  --purple-soft: rgba(90, 73, 214, 0.12);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg: #f3f4f9;
+    --bg-2: #e9ebf4;
+    --card-bg: #ffffff;
+    --card-bg-2: #eef0f7;
+    --text: #1b1c2c;
+    --hint: #5b5e7a;
+    --border: rgba(27, 28, 44, 0.14);
+
+    --green: #0a7452;
+    --green-dark: #0a6b4b;
+    --green-soft: rgba(11, 125, 88, 0.12);
+    --purple: #5a49d6;
+    --orange: #a35400;
+    --red: #c0263f;
+    --yellow: #8a5f00;
+
+    --shadow: 0 8px 24px rgba(27, 28, 44, 0.12);
+    --ov-08: rgba(27, 28, 44, 0.08);
+    --on-accent: #062b20;
+    --red-solid: #c0263f;
+    --purple-text: #4a39c4;
+    --purple-soft: rgba(90, 73, 214, 0.12);
+    color-scheme: light;
+  }
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -33,7 +101,7 @@
 html, body {
   min-height: 100%;
   margin: 0;
-  font-family: "Vazirmatn", "Vazir", Tahoma, "Segoe UI", sans-serif;
+  font-family: "Vazirmatn", "Vazir", Tahoma, "Segoe UI", system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
 }
@@ -153,7 +221,7 @@ body {
 .status-pill.is-active .dot { animation: pulse 1.6s infinite; }
 .status-pill.is-break  { background: rgba(255, 169, 77, 0.15); color: var(--orange); }
 .status-pill.is-break .dot { animation: pulse 1.6s infinite; }
-.status-pill.is-done   { background: rgba(139, 124, 246, 0.16); color: #b3a8ff; }
+.status-pill.is-done   { background: var(--purple-soft); color: var(--purple-text); }
 
 @keyframes pulse {
   0%   { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
@@ -175,7 +243,7 @@ body {
   height: 8px;
   margin-top: 16px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--ov-08);
   overflow: hidden;
 }
 .progress-bar {
@@ -295,10 +363,10 @@ body {
   cursor: pointer;
   width: 100%;
 }
-.btn.primary { background: linear-gradient(135deg, #25d9a0, #14a878); color: #fff; box-shadow: 0 8px 18px rgba(31,207,149,.25); }
+.btn.primary { background: linear-gradient(135deg, #25d9a0, #14a878); color: var(--on-accent); box-shadow: 0 8px 18px rgba(31,207,149,.25); }
 .btn.secondary { background: var(--green-soft); color: var(--green); }
 .btn.warning { background: var(--orange); color: #2a1a00; }
-.btn.danger { background: var(--red); color: #fff; }
+.btn.danger { background: var(--red-solid); color: #fff; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* ---------- لیست‌ها ---------- */
@@ -324,8 +392,8 @@ body {
 .badge.normal, .badge.approved { background: var(--green-soft); color: var(--green); }
 .badge.late, .badge.pending { background: rgba(245, 184, 61, 0.15); color: var(--yellow); }
 .badge.incomplete, .badge.rejected { background: rgba(240, 80, 110, 0.15); color: var(--red); }
-.badge.leave { background: rgba(139, 124, 246, 0.16); color: #b3a8ff; }
-.badge.holiday { background: rgba(255,255,255,.08); color: var(--hint); }
+.badge.leave { background: var(--purple-soft); color: var(--purple-text); }
+.badge.holiday { background: var(--ov-08); color: var(--hint); }
 
 /* ---------- تب‌ها ---------- */
 
@@ -351,7 +419,7 @@ body {
   cursor: pointer;
   transition: background .2s, color .2s;
 }
-.tab-btn.active { background: linear-gradient(135deg, #25d9a0, #14a878); color: #fff; }
+.tab-btn.active { background: linear-gradient(135deg, #25d9a0, #14a878); color: var(--on-accent); }
 
 /* ---------- گزارش (هدر سبز مثل جدول پنل) ---------- */
 
@@ -360,7 +428,7 @@ body {
   padding: 12px 16px;
   border-radius: var(--radius) var(--radius) 0 0;
   background: linear-gradient(135deg, #25d9a0, #14a878);
-  color: #fff;
+  color: var(--on-accent);
   font-weight: 800;
   font-size: 14px;
   display: flex;
@@ -402,7 +470,7 @@ body {
   margin: 0 auto 10px;
   display: grid; place-items: center;
   border-radius: 50%;
-  font-size: 28px; font-weight: 800; color: #fff;
+  font-size: 28px; font-weight: 800; color: var(--on-accent);
   background: linear-gradient(135deg, #7be495, #16b886);
   box-shadow: 0 0 0 4px rgba(31,207,149,.18), 0 10px 22px rgba(31,207,149,.3);
 }
@@ -458,7 +526,7 @@ body {
   stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round;
 }
 .nav-btn.active {
-  color: #fff;
+  color: var(--text);
   font-weight: 700;
   background: linear-gradient(135deg, #25d9a0, #14a878);
   box-shadow: 0 6px 16px rgba(31, 207, 149, 0.3);
@@ -473,10 +541,43 @@ body {
   transform: translateX(-50%);
   background: var(--card-bg-2);
   border: 1px solid var(--border);
-  color: #fff;
+  color: var(--text);
   padding: 10px 18px;
   border-radius: 999px;
   font-size: 13px;
   z-index: 50;
   box-shadow: var(--shadow);
 }
+
+/* دسترس‌پذیری (S5-9a): حلقه‌ی فوکوس کیبورد و کاهش حرکت */
+:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; } }
+
+/* RTL و موبایل (S5-9b) */
+.ltr, .num, bdi, [dir="ltr"] { unicode-bidi: isolate; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+button, a, summary, select, input, [role="button"] { touch-action: manipulation; }
+body { padding-bottom: env(safe-area-inset-bottom, 0px); }
+@media (pointer: coarse), (max-width: 900px) {
+  .btn, .tab-btn, .nav-btn, .action-tile { min-height: 44px; }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), select { min-height: 44px; }
+}
+
+.empty { display: grid; justify-items: center; gap: 8px; padding: 24px 12px; color: var(--hint); text-align: center; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.mt { margin-top: 12px; }
+.toast.err { border-color: var(--red); }
+
+/* حالت‌های UI (S5-9c): skeleton (بدون انیمیشن با prefers-reduced-motion) */
+.skeleton { display: grid; gap: 14px; }
+.sk-line { display: block; height: 12px; border-radius: 8px; background: var(--ov-08); position: relative; overflow: hidden; }
+.sk-line.tall { height: 22px; }
+.sk-line.w15 { width: 15%; } .sk-line.w20 { width: 20%; } .sk-line.w25 { width: 25%; } .sk-line.w30 { width: 30%; } .sk-line.w40 { width: 40%; } .sk-line.w50 { width: 50%; } .sk-line.w60 { width: 60%; }
+.sk-line::after { content: ""; position: absolute; inset: 0; transform: translateX(100%); background: linear-gradient(90deg, transparent, var(--ov-12), transparent); animation: sk-shimmer 1.4s infinite; }
+@keyframes sk-shimmer { to { transform: translateX(-100%); } }
+.sk-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.sk-card, .sk-box { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: grid; gap: 10px; }
+.sk-row { display: flex; gap: 14px; align-items: center; padding: 6px 0; }
+@media (max-width: 900px) { .sk-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (prefers-reduced-motion: reduce) { .sk-line::after { animation: none; } }

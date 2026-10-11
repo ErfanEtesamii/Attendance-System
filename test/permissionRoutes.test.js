@@ -25,6 +25,7 @@ const HR_ALLOWED = new Set([
   'GET /api/admin/month-closures?year=1405', 'GET /api/admin/month-closures/1405/6/checklist', 'GET /api/admin/month-closures/1405/6', 'GET /api/admin/month-closures/1405/6/adjustments', // S5-3a (hr: فقط‌خواندنی)
   'GET /api/admin/analytics/late-trend', 'GET /api/admin/analytics/late-compare?year=1405&month=6', // S5-6a (hr: فقط‌خواندنی)
   'GET /api/admin/analytics/rankings?year=1405&month=6', 'GET /api/admin/analytics/attendance-rate?year=1405&month=6', 'GET /api/admin/analytics/leave-by-type?year=1405&month=6', 'GET /api/admin/analytics/checkin-distribution', // S5-6b
+  'GET /api/admin/analytics/patterns?year=1405&month=6', // S5-7b (hr: فقط‌خواندنی)
 ]);
 const ROUTES = [
   ['GET', '/api/admin/users', [M, A]],
@@ -86,6 +87,7 @@ const ROUTES_2 = [
   ['GET', '/api/admin/analytics/attendance-rate?year=1405&month=6', [M, A]], // S5-6b
   ['GET', '/api/admin/analytics/leave-by-type?year=1405&month=6', [M, A]], // S5-6b
   ['GET', '/api/admin/analytics/checkin-distribution', [M, A]], // S5-6b
+  ['GET', '/api/admin/analytics/patterns?year=1405&month=6', [M, A]], // S5-7b: کارمند ممنوع؛ سرپرست (تیم خودش)، hr و admin
   ['GET', '/api/admin/analytics/late-trend', [M, A]], // S5-6a: کارمند ممنوع؛ سرپرست (تیم خودش)، hr و admin
   ['GET', '/api/admin/analytics/late-compare?year=1405&month=6', [M, A]],
   ['GET', '/api/admin/month-closures?year=1405', [A]], // S5-3a: admin و hr؛ سرپرست/کارمند ممنوع

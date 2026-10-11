@@ -39,6 +39,7 @@ function makeEnv({ dp = true, jalali = true, telegram = false, routes = {} } = {
   form.reason = { value: '' };
   form.resetCalled = 0;
   form.reset = () => { form.resetCalled += 1; };
+  form.querySelector = () => null; // دکمه‌ی submit (S5-9c: withBusy)
 
   const navBtns = ['history', 'leave'].map((v) => { const b = makeEl('nav'); b.dataset.view = v; return b; });
   const document = {

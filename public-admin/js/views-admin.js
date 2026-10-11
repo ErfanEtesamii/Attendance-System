@@ -37,6 +37,7 @@
 
   const repUi = { from: null, to: null, department: '', sort: 'totalEffective', dir: -1 };
   AP.view('reports', {
+    skeleton: 'page', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'reports.read',
     nav: { icon: 'reports', label: 'گزارش‌های تحلیلی', group: 'گزارش‌ها' },
     async render() {
@@ -84,7 +85,7 @@
         <div class="card"><h3>تعداد حاضرین به تفکیک روز</h3>${dailyChart(d.daily)}</div>
         <div class="card flush mt"><div style="padding:18px 18px 0"><h3>دپارتمان‌ها</h3></div><div class="table-wrap"><table>
           <thead><tr><th>دپارتمان</th><th>کارمند</th><th>روز-نفر حضور</th><th>ساعت مفید</th><th>تأخیر</th><th>ناقص</th><th>مرخصی</th></tr></thead><tbody>
-          ${d.departments.map((x) => `<tr><td>${esc(x.name)}</td><td>${fmt.num(x.employees)}</td><td>${fmt.num(x.presentDays)}</td><td>${fmt.min(x.totalEffective)}</td><td>${fmt.num(x.lateCount)}</td><td>${fmt.num(x.incompleteCount)}</td><td>${fmt.num(x.leaveDays)}</td></tr>`).join('') || `<tr><td colspan="7">${emptyBox('داده‌ای نیست.')}</td></tr>`}</tbody></table></div></div>
+          ${d.departments.map((x) => `<tr><td>${esc(x.name)}</td><td>${fmt.num(x.employees)}</td><td>${fmt.num(x.presentDays)}</td><td>${fmt.min(x.totalEffective)}</td><td>${fmt.num(x.lateCount)}</td><td>${fmt.num(x.incompleteCount)}</td><td>${fmt.num(x.leaveDays)}</td></tr>`).join('') || `<tr><td colspan="7">${emptyBox('داده‌ای نیست.')}</td></tr>`}</tbody></table></div>${d.departments.length ? '' : emptyBox('دپارتمانی برای نمایش نیست.')}</div>
         <div class="card flush mt"><div style="padding:18px 18px 0"><h3>جزئیات هر کارمند <span class="muted" style="font-weight:400;font-size:12px">(برای مرتب‌سازی روی عنوان ستون کلیک کنید)</span></h3></div><div class="table-wrap"><table id="rep-table">
           <thead><tr>${th('name', 'کارمند')}${th('presentDays', 'روز حضور')}${th('totalEffective', 'مجموع مفید')}${th('avgEffective', 'میانگین روزانه')}${th('lateCount', 'تأخیر')}${th('earlyLeaveCount', 'خروج زودهنگام')}${th('overtimeMinutes', 'اضافه‌کاری')}${th('incompleteCount', 'ناقص')}${th('leaveDays', 'مرخصی')}<th>میانگین ورود</th></tr></thead><tbody>
           ${[...d.rows].sort((a, b) => {
@@ -93,7 +94,7 @@
             return (typeof x === 'string' ? x.localeCompare(y, 'fa') : x - y) * repUi.dir;
           }).map((r) => `<tr class="clickable" data-id="${r.user.id}"><td><div class="cell-user">${AP.avatar(r.user.fullName, 'sm')}<span><b>${esc(r.user.fullName)}</b><small>${esc(r.user.department || '')}</small></span></div></td>
             <td>${fmt.num(r.presentDays)}</td><td>${fmt.min(r.totalEffective)}</td><td>${fmt.min(r.avgEffective)}</td><td>${fmt.num(r.lateCount)}</td><td>${fmt.num(r.earlyLeaveCount)}</td>
-            <td>${fmt.min(r.overtimeMinutes)}</td><td>${fmt.num(r.incompleteCount)}</td><td>${fmt.num(r.leaveDays)}</td><td class="num">${r.avgCheckIn ? `<span class="ltr">${esc(r.avgCheckIn)}</span>` : '—'}</td></tr>`).join('')}</tbody></table></div></div>`;
+            <td>${fmt.min(r.overtimeMinutes)}</td><td>${fmt.num(r.incompleteCount)}</td><td>${fmt.num(r.leaveDays)}</td><td class="num">${r.avgCheckIn ? `<span class="ltr">${esc(r.avgCheckIn)}</span>` : '—'}</td></tr>`).join('')}</tbody></table></div>${d.rows.length ? '' : emptyBox('در این بازه داده‌ای برای کارمندان نیست.')}</div>`;
       return {
         html,
         mount(page) {
@@ -125,6 +126,7 @@
   // ارسال پیام گروهی
   // ======================================================
   AP.view('broadcast', {
+    skeleton: 'list', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'system.manage',
     nav: { icon: 'broadcast', label: 'ارسال پیام گروهی', group: 'مدیریت' },
     async render() {
@@ -205,19 +207,20 @@
 
   function setInput(it, v) {
     const k = esc(it.key);
+    const al = `aria-label="${esc(setShort(it))}"`; // برچسب دسترس‌پذیر کنترل (S5-9a)
     switch (it.type) {
       case 'boolean':
-        return `<select name="${k}" data-key="${k}"><option value="true"${v ? ' selected' : ''}>روشن</option><option value="false"${v ? '' : ' selected'}>خاموش</option></select>`;
+        return `<select name="${k}" data-key="${k}" ${al}><option value="true"${v ? ' selected' : ''}>روشن</option><option value="false"${v ? '' : ' selected'}>خاموش</option></select>`;
       case 'number':
-        return `<input type="number" step="any" name="${k}" data-key="${k}" value="${esc(v)}"${it.min !== undefined ? ` min="${it.min}"` : ''}${it.max !== undefined ? ` max="${it.max}"` : ''} class="ltr-in" />`;
+        return `<input type="number" step="any" name="${k}" data-key="${k}" ${al} value="${esc(v)}"${it.min !== undefined ? ` min="${it.min}"` : ''}${it.max !== undefined ? ` max="${it.max}"` : ''} class="ltr-in" />`;
       case 'time':
-        return `<input type="time" name="${k}" data-key="${k}" value="${esc(v)}" class="ltr-in" dir="ltr" />`;
+        return `<input type="time" name="${k}" data-key="${k}" ${al} value="${esc(v)}" class="ltr-in" dir="ltr" />`;
       case 'enum':
-        return `<select name="${k}" data-key="${k}">${it.values.map((o) => `<option value="${esc(o)}"${o === v ? ' selected' : ''}>${esc(setEnumLabel(it, o))}</option>`).join('')}</select>`;
+        return `<select name="${k}" data-key="${k}" ${al}>${it.values.map((o) => `<option value="${esc(o)}"${o === v ? ' selected' : ''}>${esc(setEnumLabel(it, o))}</option>`).join('')}</select>`;
       case 'weekdays':
-        return `<div class="chk-row" data-key="${k}">${WEEKDAY_ORDER.map(([d, n]) => `<label class="chk"><input type="checkbox" value="${d}"${(v || []).includes(d) ? ' checked' : ''} /> ${n}</label>`).join('')}</div>`;
+        return `<div class="chk-row" data-key="${k}" role="group" ${al}>${WEEKDAY_ORDER.map(([d, n]) => `<label class="chk"><input type="checkbox" value="${d}"${(v || []).includes(d) ? ' checked' : ''} /> ${n}</label>`).join('')}</div>`;
       default: // cron | string | timezone
-        return `<input type="text" name="${k}" data-key="${k}" value="${esc(v)}" dir="ltr" class="ltr-in" autocomplete="off" spellcheck="false" />`;
+        return `<input type="text" name="${k}" data-key="${k}" ${al} value="${esc(v)}" dir="ltr" class="ltr-in" autocomplete="off" spellcheck="false" />`;
     }
   }
 
@@ -237,6 +240,7 @@
   }
 
   AP.view('settings', {
+    skeleton: 'list', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'settings.edit',
     nav: { icon: 'settings', label: 'تنظیمات', group: 'مدیریت' },
     async render() {
@@ -391,6 +395,7 @@
   const localToday = () => { const d = new Date(); const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
 
   AP.view('holidays', {
+    skeleton: 'table', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'settings.edit',
     nav: { icon: 'attendance', label: 'تعطیلات', group: 'مدیریت' },
     async render() {
@@ -600,6 +605,7 @@
 
   const auUi = { userId: '', action: '', entityType: '', from: '', to: '', q: '', limit: 200 };
   AP.view('audit', {
+    skeleton: 'table', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'audit.read',
     nav: { icon: 'audit', label: 'گزارش رویدادها', group: 'مدیریت' },
     async render() {
@@ -650,6 +656,7 @@
   const yn = (v, yes, no) => (v ? AP.badge('green', yes) : AP.badge('red', no));
 
   AP.view('system', {
+    skeleton: 'list', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'system.read',
     nav: { icon: 'system', label: 'سیستم و پشتیبان', group: 'مدیریت' },
     async render() {
@@ -707,6 +714,7 @@
   const healthBadge = (ok, yes, no) => AP.badge(ok ? 'green' : 'red', ok ? yes : no);
 
   AP.view('status', {
+    skeleton: 'table', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'system.read',
     nav: { icon: 'alert', label: 'وضعیت سیستم', group: 'مدیریت' },
     async render() {

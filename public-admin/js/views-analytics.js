@@ -1,12 +1,13 @@
 // صفحه‌ی «نمودارها» (S5-7a): نمودارهای SVG سبک روی APIهای تحلیل S5-6 (کارمند ممنوع؛ سرپرست فقط تیم خودش؛ سرور اسکوپ را اعمال می‌کند).
 // منطق ساخت نمودار در charts.js است (خالص و تست‌شده)؛ اینجا فقط فیلتر، فراخوانی و نمایش.
-// هر نمودار مستقل بارگذاری می‌شود: خطا در یکی بقیه را خراب نمی‌کند. هشدار الگوها = S5-7c (اینجا نیست).
+// هر نمودار مستقل بارگذاری می‌شود: خطا در یکی بقیه را خراب نمی‌کند. «هشدار الگوها» (S5-7c) هم یک کارت مستقل است (patterns.js).
 
 (function () {
   'use strict';
   const AP = window.AP;
   const { $, $$, esc, fmt } = AP;
   const C = window.AnalyticsCharts;
+  const P = window.PatternWarnings;
   const J = window.Jalali;
 
   const ui = { year: null, month: null, department: '', granularity: 'week', groupBy: 'none' };
@@ -18,6 +19,7 @@
   const cardError = (title, err) => `<figure class="chart-fig"><figcaption>${esc(title)}</figcaption><div class="empty">${AP.icon('alert')}${esc(err && err.message ? err.message : 'بارگذاری نمودار ناموفق بود.')}</div></figure>`;
 
   AP.view('analytics', {
+    skeleton: 'cards', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'analytics.read',
     nav: { icon: 'reports', label: 'نمودارها', group: 'گزارش‌ها' },
     async render() {
@@ -27,7 +29,7 @@
       const users = await AP.loadUsers().catch(() => []);
       const departments = [...new Set(users.map((u) => (u.department || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fa'));
       const html = `
-        <div class="view-header"><div><h2>نمودارها</h2><div class="sub">هر نمودار یک «جدول داده‌ها»ی معادل دارد؛ نشانه‌های الگو در این صفحه نیست.</div></div></div>
+        <div class="view-header"><div><h2>نمودارها</h2><div class="sub">هر نمودار یک «جدول داده‌ها»ی معادل دارد؛ در انتها «هشدار الگوها» نشانه‌های آماری را با دلیل نشان می‌دهد (نه اتهام).</div></div></div>
         <form class="filters" id="an-filters">
           <label class="field"><span>سال</span><input type="number" name="year" min="1300" max="1500" value="${esc(ui.year)}" /></label>
           <label class="field"><span>ماه</span><select name="month">${J.MONTH_NAMES.map((n, i) => `<option value="${i + 1}" ${i + 1 === Number(ui.month) ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>
@@ -58,6 +60,7 @@
       ['rate', `/admin/analytics/attendance-rate?${q({ ...ym, groupBy: 'department', ...dep })}`, (r) => C.barChartHtml(C.fromAttendanceRate(r, d), d), 'نرخ حضور'],
       ['leave', `/admin/analytics/leave-by-type?${q({ ...ym, ...dep })}`, (r) => C.barChartHtml(C.fromLeaveByType(r, d), d), 'مرخصی به‌تفکیک نوع'],
       ['checkin', `/admin/analytics/checkin-distribution?${q(dep)}`, (r) => C.barChartHtml(C.fromCheckinDistribution(r, d), d), 'توزیع ساعت ورود'],
+      ['patterns', `/admin/analytics/patterns?${q({ ...ym, ...dep })}`, (r) => P.patternsHtml(r, d), 'هشدار الگوها'],
     ];
     // جای هر نمودار از قبل رزرو می‌شود تا ترتیب ثابت بماند، هرچند پاسخ‌ها نامرتب برسند
     box.innerHTML = jobs.map(([id]) => `<div class="chart-slot" data-chart="${id}"><div class="loading"><div class="spinner"></div></div></div>`).join('');

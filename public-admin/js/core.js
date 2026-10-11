@@ -186,6 +186,7 @@
     const el = $('#toast');
     el.textContent = msg;
     el.classList.toggle('err', !!isErr);
+    el.setAttribute('role', isErr ? 'alert' : 'status'); // خطا فوراً اعلام شود (S5-9c)
     el.classList.remove('hidden');
     clearTimeout(toast._t);
     toast._t = setTimeout(() => el.classList.add('hidden'), isErr ? 4200 : 2600);
@@ -215,7 +216,18 @@
   };
 
   // اجرای یک اکشن با توست خطا؛ true اگر موفق بود
-  AP.attempt = async function attempt(fn, okMsg) {
+  // آخرین دکمه‌ی کلیک‌شده بیرون از مودال؛ AP.attempt آن را تا پایان درخواست غیرفعال می‌کند تا دوبار ارسال نشود (S5-9c).
+  // دکمه‌ی دلخواه: AP.attempt(fn, msg, btn)؛ بدون غیرفعال‌سازی: AP.attempt(fn, msg, null) یا data-no-busy روی دکمه.
+  let lastBtn = null; let lastBtnAt = 0;
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest && e.target.closest('button');
+    if (b && !b.closest('.modal') && !b.hasAttribute('data-no-busy')) { lastBtn = b; lastBtnAt = Date.now(); }
+  }, true);
+  AP.attempt = async function attempt(fn, okMsg, btn) {
+    const b = btn !== undefined ? btn : (lastBtn && lastBtn.isConnected && Date.now() - lastBtnAt < 120000 ? lastBtn : null);
+    lastBtn = null; // هر کلیک فقط یک‌بار مصرف می‌شود
+    const lock = !!b && !b.disabled;
+    if (lock) { b.disabled = true; b.setAttribute('aria-busy', 'true'); }
     try {
       const r = await fn();
       if (okMsg) AP.toast(okMsg);
@@ -223,6 +235,8 @@
     } catch (err) {
       AP.toast(err.message, true);
       return false;
+    } finally {
+      if (lock) { b.disabled = false; b.removeAttribute('aria-busy'); }
     }
   };
 
@@ -306,13 +320,16 @@
   // ---------- مودال ----------
   const modalRoot = () => $('#modal-root');
   const modalStack = [];
+  let modalSeq = 0;
 
   AP.modal = function openModal({ title, body, wide, top, onMount }) {
     const bd = document.createElement('div');
+    const mid = `modal-${++modalSeq}`;
+    const opener = document.activeElement; // بعد از بستن فوکوس به همین‌جا برمی‌گردد (S5-9a)
     bd.className = `modal-backdrop${top ? ' top' : ''}`;
     bd.innerHTML = `
-      <div class="modal ${wide ? 'wide' : ''}" role="dialog" aria-modal="true">
-        <div class="modal-head"><h3>${esc(title)}</h3>
+      <div class="modal ${wide ? 'wide' : ''}" role="dialog" aria-modal="true" aria-labelledby="${mid}-t" tabindex="-1">
+        <div class="modal-head"><h3 id="${mid}-t">${esc(title)}</h3>
           <button type="button" class="icon-btn" data-close aria-label="بستن">${AP.icon('x')}</button></div>
         <div class="modal-body">${body}</div>
       </div>`;
@@ -324,6 +341,7 @@
         if (i >= 0) modalStack.splice(i, 1);
         bd.remove();
         if (handle.onClose) handle.onClose();
+        if (opener && opener.focus && document.contains(opener) && !modalStack.length) opener.focus({ preventScroll: true });
       },
     };
     let downOnBackdrop = false;
@@ -335,11 +353,19 @@
     if (onMount) onMount(handle.body, handle);
     const first = $('input:not([type=hidden]), select, textarea', handle.body);
     if (first && !top) first.focus({ preventScroll: true });
+    else { const dlg = $('.modal', bd); if (dlg) dlg.focus({ preventScroll: true }); } // بدون فیلد: فوکوس روی خودِ دیالوگ (خوانشگر عنوان را اعلام می‌کند)
     return handle;
   };
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && modalStack.length) modalStack[modalStack.length - 1].close();
+    if (!modalStack.length) {
+      // منوی جمع‌شده‌ی موبایل: Esc می‌بندد و فوکوس به دکمه‌ی منو برمی‌گردد (S5-9b)
+      if (e.key === 'Escape' && $('#sidebar').classList.contains('open')) { closeSidebar(); const mb = $('#menu-btn'); if (mb) mb.focus(); }
+      return;
+    }
+    const topModal = modalStack[modalStack.length - 1];
+    if (e.key === 'Escape') { topModal.close(); return; }
+    if (e.key === 'Tab' && window.A11y) window.A11y.trapTab(e, $('.modal', topModal.el), document.activeElement); // فوکوس در مودال می‌ماند (S5-9a)
   });
 
   AP.askReason = function askReason({ title, label = 'دلیل (اجباری)', confirmText = 'تأیید', danger = false, message = '', required = true, placeholder = '' }) {
@@ -444,20 +470,30 @@
 
     // وضعیت فعال ناوبری
     const navKey = AP.selfOnly() && id === 'profile' ? 'profile' : (def.navId || id);
-    $$('.nav-item').forEach((b) => b.classList.toggle('active', b.dataset.view === navKey));
+    $$('.nav-item').forEach((b) => {
+      const on = b.dataset.view === navKey;
+      b.classList.toggle('active', on);
+      if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    });
     closeSidebar();
 
     const page = $('#page');
-    page.innerHTML = '<div class="loading"><div class="spinner"></div>در حال بارگذاری…</div>';
+    page.setAttribute('aria-busy', 'true');
+    page.innerHTML = window.UiStates ? window.UiStates.skeletonHtml(def.skeleton || 'page') : '<div class="loading"><div class="spinner"></div>در حال بارگذاری…</div>'; // S5-9c
     try {
       const result = await def.render(param);
       if (token !== routeToken) return; // کاربر وسط بارگذاری صفحه عوض کرد
       page.innerHTML = result.html;
       window.scrollTo({ top: 0 });
       if (result.mount) result.mount(page);
+      page.removeAttribute('aria-busy');
+      if (window.A11y) window.A11y.enhance(page); // ردیف‌های کلیک‌پذیر/سرستون‌های مرتب‌سازی با کیبورد (S5-9a)
     } catch (err) {
       if (token !== routeToken) return;
-      page.innerHTML = `<div class="card"><div class="empty">${AP.icon('alert')}${esc(err.message)}
+      page.removeAttribute('aria-busy');
+      page.innerHTML = window.UiStates
+        ? window.UiStates.errorHtml(err.message, { icon: AP.icon('alert'), retryId: 'retry-btn', esc })
+        : `<div class="card"><div class="empty" role="alert">${AP.icon('alert')}${esc(err.message)}
         <div class="mt"><button class="btn ghost" id="retry-btn">تلاش دوباره</button></div></div></div>`;
       const retry = $('#retry-btn');
       if (retry) retry.addEventListener('click', route);
@@ -469,6 +505,7 @@
   function closeSidebar() {
     $('#sidebar').classList.remove('open');
     $('#sidebar-backdrop').classList.remove('open');
+    const mb = $('#menu-btn'); if (mb) mb.setAttribute('aria-expanded', 'false');
   }
 
   AP.refreshCounts = async function refreshCounts() {
@@ -552,6 +589,7 @@
     $('#menu-btn').addEventListener('click', () => {
       $('#sidebar').classList.add('open');
       $('#sidebar-backdrop').classList.add('open');
+      $('#menu-btn').setAttribute('aria-expanded', 'true');
     });
     $('#sidebar-backdrop').addEventListener('click', closeSidebar);
     $('#refresh-btn').addEventListener('click', () => { AP.state.users = null; AP.refresh(); AP.refreshCounts(); if (AP.bell) AP.bell.refresh(); });

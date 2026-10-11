@@ -164,6 +164,7 @@
   }
 
   AP.view('teamCalendar', {
+    skeleton: 'table', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'dashboard.read',
     nav: { icon: 'calendar', label: 'تقویم تیم', group: 'نمای کلی' },
     async render() {

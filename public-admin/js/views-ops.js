@@ -55,10 +55,10 @@
 
     const breakRow = (b) => `
       <tr data-break="${b.id}">
-        <td>${admin ? `<select data-f="type"><option value="lunch" ${b.break_type === 'lunch' ? 'selected' : ''}>ناهار</option><option value="short_break" ${b.break_type === 'short_break' ? 'selected' : ''}>کوتاه</option></select>`
+        <td>${admin ? `<select data-f="type" aria-label="نوع استراحت"><option value="lunch" ${b.break_type === 'lunch' ? 'selected' : ''}>ناهار</option><option value="short_break" ${b.break_type === 'short_break' ? 'selected' : ''}>کوتاه</option></select>`
           : esc(b.break_type === 'lunch' ? 'ناهار' : 'کوتاه')}</td>
-        <td>${admin ? `<input type="datetime-local" data-f="start" value="${fmt.toLocalInput(b.start_time)}" />` : fmt.clock(b.start_time)}</td>
-        <td>${admin ? `<input type="datetime-local" data-f="end" value="${fmt.toLocalInput(b.end_time)}" />` : (b.end_time ? fmt.clock(b.end_time) : AP.badge('on_break', 'در جریان'))}</td>
+        <td>${admin ? `<input type="datetime-local" data-f="start" aria-label="شروع استراحت" value="${fmt.toLocalInput(b.start_time)}" />` : fmt.clock(b.start_time)}</td>
+        <td>${admin ? `<input type="datetime-local" data-f="end" aria-label="پایان استراحت" value="${fmt.toLocalInput(b.end_time)}" />` : (b.end_time ? fmt.clock(b.end_time) : AP.badge('on_break', 'در جریان'))}</td>
         ${admin ? `<td><div class="row-actions"><button type="button" class="btn ghost small" data-save-break>ذخیره</button><button type="button" class="btn danger small" data-del-break>${icon('trash')}</button></div></td>` : ''}
       </tr>`;
 
@@ -214,6 +214,7 @@
   const attUi = { from: null, to: null, userId: '', department: '', status: '', q: '' };
 
   AP.view('attendance', {
+    skeleton: 'table', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'attendance.read',
     nav: { icon: 'attendance', label: 'رکوردهای تردد', group: 'کارمندان و تردد' },
     async render() {
@@ -340,6 +341,7 @@
 
   const leaveUi = { status: 'pending' };
   AP.view('leave', {
+    skeleton: 'list', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'leave.read',
     nav: { icon: 'leave', label: 'مرخصی و مأموریت', group: 'درخواست‌ها', counter: true },
     async render() {
@@ -462,6 +464,7 @@
   }
 
   AP.view('leaveQueue', {
+    skeleton: 'list', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: ['leave.approve', 'leave.approve.hr'],
     nav: { icon: 'check', label: 'صف تأیید', group: 'درخواست‌ها' },
     async render() {
@@ -585,6 +588,7 @@
   // ======================================================
   const dispUi = { status: 'open' };
   AP.view('disputes', {
+    skeleton: 'list', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'disputes.read',
     nav: { icon: 'disputes', label: 'اعتراض‌ها', group: 'درخواست‌ها', counter: true },
     async render() {
@@ -653,6 +657,7 @@
   }
 
   AP.view('suspicious', {
+    skeleton: 'list', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'suspicious.read',
     nav: { icon: 'alert', label: 'موارد مشکوک', group: 'کارمندان و تردد', counter: true },
     async render() {
@@ -711,6 +716,7 @@
   // ======================================================
   const nightUi = { date: null, filter: 'attention' };
   AP.view('nightly', {
+    skeleton: 'table', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'dashboard.read',
     nav: { icon: 'clock', label: 'مرور شبانه', group: 'نمای کلی', counter: true },
     async render() {

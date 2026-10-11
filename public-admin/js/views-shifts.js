@@ -55,6 +55,7 @@
   }
 
   AP.view('shifts', {
+    skeleton: 'table', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'shifts.edit',
     nav: { icon: 'clock', label: 'شیفت‌ها', group: 'مدیریت' },
     async render() {

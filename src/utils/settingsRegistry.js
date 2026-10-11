@@ -25,6 +25,7 @@ const GROUP_LABELS = {
   schedule: 'زمان‌بندی Jobها',
   monthClose: 'بستن ماه',
   reportDelivery: 'ارسال خودکار گزارش',
+  patterns: 'الگوهای رفتاری (هشدار الگو)',
 };
 
 // ---------- اعتبارسنجی بر اساس نوع ----------
@@ -173,6 +174,20 @@ def('jobRunsRetentionDays', 'job_runs_retention_days', 'number', { group: 'reten
 def('monitorAlertsRetentionDays', 'monitor_alerts_retention_days', 'number', { group: 'retention', min: 7, max: 3650, default: 180, description: 'نگهداری هشدارهای حل‌شده‌ی مانیتورینگ (روز)' });
 def('rateLimitRetentionDays', 'rate_limit_retention_days', 'number', { group: 'retention', min: 1, max: 365, default: 7, description: 'نگهداری ردیف‌های منقضی‌شده‌ی rate limit (روز)' });
 def('notificationsRetentionDays', 'notifications_retention_days', 'number', { group: 'retention', min: 7, max: 3650, default: 90, description: 'نگهداری اعلان‌های «خوانده‌شده» (روز؛ اعلان خوانده‌نشده هرگز خودکار حذف نمی‌شود)' });
+// S5-7b: آستانه‌های «قواعد الگو» (نشانه، نه اتهام). ۰ برای آستانه‌ی اصلیِ هر قاعده = همان قاعده خاموش
+def('patternConsecutiveLateDays', 'pattern_consecutive_late_days', 'number', { group: 'patterns', min: 0, max: 60, default: 3, description: 'قاعده‌ی «تأخیر پشت‌سرهم»: حداقل تعداد روزِ حضوریِ متوالی با تأخیر برای نشانه (مرخصی/تعطیلی زنجیره را نمی‌شکند؛ ۰ = قاعده خاموش)' });
+def('patternWeekdayLateMinCount', 'pattern_weekday_late_min_count', 'number', { group: 'patterns', min: 0, max: 31, default: 3, description: 'قاعده‌ی «تأخیر مکرر یک روز هفته»: حداقل تعداد تأخیر در یک روز مشخص هفته (در ماه مورد بررسی) (۰ = قاعده خاموش)' });
+def('patternWeekdayLateMinSharePercent', 'pattern_weekday_late_min_share_percent', 'number', { group: 'patterns', min: 1, max: 100, default: 75, description: 'حداقل سهم (٪) روزهای تأخیردار از روزهای حضوریِ همان روز هفته برای نشانه‌ی «تأخیر مکرر یک روز هفته»' });
+def('patternWeekdayLateMarginPercent', 'pattern_weekday_late_margin_percent', 'number', { group: 'patterns', min: 0, max: 100, default: 25, description: 'سهم تأخیرِ آن روز هفته باید دست‌کم این‌قدر واحد درصد از سهم تأخیر در بقیه‌ی روزهای هفته بیشتر باشد؛ تا کسی که هر روز دیر می‌آید «الگوی روز هفته» نگیرد (۰ = بدون این شرط)' });
+def('patternWeekendAbsenceMinCount', 'pattern_weekend_absence_min_count', 'number', { group: 'patterns', min: 0, max: 31, default: 3, description: 'قاعده‌ی «غیبت چسبیده به آخر هفته/تعطیلی»: حداقل تعداد غیبتِ چسبیده در ماه (روز قبل یا بعدش آخر هفته/تعطیلی است) (۰ = قاعده خاموش)' });
+def('patternWeekendAbsenceMinSharePercent', 'pattern_weekend_absence_min_share_percent', 'number', { group: 'patterns', min: 1, max: 100, default: 60, description: 'حداقل سهم (٪) غیبت‌های چسبیده به آخر هفته/تعطیلی از کل غیبت‌های ماه' });
+def('patternSuddenIncreaseFactor', 'pattern_sudden_increase_factor', 'number', { group: 'patterns', integer: false, min: 0, max: 20, default: 2, description: 'قاعده‌ی «افزایش ناگهانی تأخیر»: نرخ تأخیر ماه باید دست‌کم این‌قدر برابرِ میانگین ماه‌های قبل باشد (۰ = قاعده خاموش)' });
+def('patternSuddenIncreaseMinExtraLate', 'pattern_sudden_increase_min_extra_late', 'number', { group: 'patterns', min: 1, max: 31, default: 3, description: 'حداقل تعداد روز تأخیرِ اضافه نسبت به انتظار (نرخ ماه‌های قبل × حضور ماه) برای نشانه‌ی افزایش ناگهانی' });
+def('patternBaselineMonths', 'pattern_baseline_months', 'number', { group: 'patterns', min: 1, max: 12, default: 3, description: 'تعداد ماه‌های قبلِ مبنا برای میانگین در قاعده‌ی افزایش ناگهانی' });
+def('patternBaselineMinMonths', 'pattern_baseline_min_months', 'number', { group: 'patterns', min: 1, max: 12, default: 2, description: 'حداقل تعداد ماهِ مبنای معتبر (با حضور کافی) برای اجرای قاعده‌ی افزایش ناگهانی؛ کمتر از آن قاعده برای آن فرد اجرا نمی‌شود' });
+def('patternMinPresentDays', 'pattern_min_present_days', 'number', { group: 'patterns', min: 1, max: 31, default: 5, description: 'حداقل روز حضور در یک ماه تا آن ماه در قاعده‌ی افزایش ناگهانی (ماه جاری یا مبنا) معتبر شمرده شود' });
+def('patternIdenticalTimeMinDays', 'pattern_identical_time_min_days', 'number', { group: 'patterns', min: 0, max: 31, default: 5, description: 'قاعده‌ی «ساعت‌های دقیقاً یکسان»: حداقل تعداد روزی که ساعت ورود (یا خروج) دقیقاً به یک دقیقه تکرار شده؛ ورودی دستی هم چنین الگویی می‌سازد (۰ = قاعده خاموش)' });
+def('patternIdenticalTimeMinSharePercent', 'pattern_identical_time_min_share_percent', 'number', { group: 'patterns', min: 1, max: 100, default: 80, description: 'حداقل سهم (٪) روزهای هم‌ساعت از کل رکوردهای ورود (یا خروج) آن ماه' });
 // S3-8c: زمان‌بندی Jobها (عبارت cron با فرمت node-cron). default از config (.env یا پیش‌فرض کد)؛ مقدار ذخیره‌شده‌ی پنل غالب است و reset دوباره به .env برمی‌گردد.
 // job = نام Job (کلید config.cron و نام اجرای ثبت‌شده در job_runs). تغییر این کلیدها از مسیرهای settings بلافاصله با scheduler.reload() اعمال می‌شود (بدون ری‌استارت).
 // fallback = پیش‌فرض ثابت امنِ کد برای وقتی که مقدار .env نامعتبر باشد (غلط تایپی cron دیگر سرور را بالا نمی‌آورد/نمی‌شکند).

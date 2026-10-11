@@ -8,11 +8,15 @@
   if (tg) {
     tg.ready();
     tg.expand();
-    try {
-      tg.setHeaderColor('#1b1c2c');
-      tg.setBackgroundColor('#1b1c2c');
-      if (tg.setBottomBarColor) tg.setBottomBarColor('#1b1c2c');
-    } catch (_) { /* نسخه‌های قدیمی تلگرام */ }
+    // رنگ نوار بالا/پایین را theme.js با تم روشن/تیره هماهنگ می‌کند (S5-8a)؛ اینجا فقط اگر theme.js بارگذاری نشده بود
+    if (window.Theme && window.Theme.apply) window.Theme.apply();
+    else {
+      try {
+        tg.setHeaderColor('#1b1c2c');
+        tg.setBackgroundColor('#1b1c2c');
+        if (tg.setBottomBarColor) tg.setBottomBarColor('#1b1c2c');
+      } catch (_) { /* نسخه‌های قدیمی تلگرام */ }
+    }
   }
 
   // initData خام (امضاشده توسط تلگرام) - همین رشته مستقیم برای سرور فرستاده می‌شود
@@ -104,12 +108,37 @@
   function $(sel) { return document.querySelector(sel); }
   function $all(sel) { return Array.from(document.querySelectorAll(sel)); }
 
-  function showToast(msg) {
+  function showToast(msg, isErr) {
     const el = $('#toast');
     el.textContent = msg;
+    el.classList.toggle('err', !!isErr);
+    el.setAttribute('role', isErr ? 'alert' : 'status'); // خطا فوراً اعلام شود (S5-9c)
     el.classList.remove('hidden');
     clearTimeout(showToast._t);
     showToast._t = setTimeout(() => el.classList.add('hidden'), 2600);
+  }
+
+  // ---------- حالت‌های UI (S5-9c): skeleton، خالی، خطا با «تلاش دوباره»، دکمه‌ی در حال ارسال ----------
+  const U = window.UiStates;
+  function renderLoading(el, kind) {
+    el.setAttribute('aria-busy', 'true');
+    el.innerHTML = U ? U.skeletonHtml(kind, { rows: 4 }) : '<div class="list-item">در حال بارگذاری…</div>';
+  }
+  function renderEmpty(el, message) {
+    el.removeAttribute('aria-busy');
+    el.innerHTML = U ? U.emptyHtml(message) : `<div class="list-item">${message}</div>`;
+  }
+  function renderError(el, err, retry, retryId) {
+    el.removeAttribute('aria-busy');
+    el.innerHTML = U ? U.errorHtml(err.message, { retryId }) : '<div class="list-item"></div>';
+    if (!U) { el.firstChild.textContent = err.message; return; }
+    const b = el.querySelector('#' + retryId);
+    if (b) b.addEventListener('click', retry);
+  }
+  // دکمه را تا پایان درخواست غیرفعال می‌کند (جلوگیری از ارسال دوباره)
+  async function withBusy(btn, fn) {
+    if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
+    try { return await fn(); } finally { if (btn) { btn.disabled = false; btn.removeAttribute('aria-busy'); } }
   }
 
   async function api(path, options = {}) {
@@ -298,6 +327,8 @@
   }
 
   async function doAction(path, body, successMsg) {
+    const btns = $all('#today-actions button');
+    btns.forEach((b) => { b.disabled = true; });
     try {
       // S2-3: device_id فقط همراه ورود/خروج؛ نبودنش مانع ثبت نیست
       if (path === '/check-in' || path === '/check-out') {
@@ -308,7 +339,8 @@
       showToast(successMsg);
       await loadToday();
     } catch (err) {
-      showToast(err.message);
+      showToast(err.message, true);
+      btns.forEach((b) => { if (b.isConnected) b.disabled = false; });
     }
   }
 
@@ -373,13 +405,11 @@
 
   async function loadHistory() {
     const list = $('#history-list');
-    list.innerHTML = '<div class="list-item">در حال بارگذاری…</div>';
+    renderLoading(list, 'list');
     try {
       const records = await api('/history?days=30');
-      if (!records.length) {
-        list.innerHTML = '<div class="list-item">رکوردی یافت نشد.</div>';
-        return;
-      }
+      if (!records.length) { renderEmpty(list, 'رکوردی یافت نشد.'); return; }
+      list.removeAttribute('aria-busy');
       list.innerHTML = '';
       records.forEach((r) => {
         const el = document.createElement('div');
@@ -396,7 +426,7 @@
         list.appendChild(el);
       });
     } catch (err) {
-      list.innerHTML = `<div class="list-item">${err.message}</div>`;
+      renderError(list, err, loadHistory, 'retry-history');
     }
   }
 
@@ -412,9 +442,10 @@
 
   async function loadReport(period) {
     const card = $('#report-card');
-    card.innerHTML = 'در حال بارگذاری…';
+    renderLoading(card, 'table');
     try {
       const r = await api('/report?period=' + period);
+      card.removeAttribute('aria-busy');
       card.innerHTML = `
         <div class="report-head"><span>شاخص</span><span>مقدار</span></div>
         <div class="row"><span class="row-label">مجموع ساعت مفید</span><span class="row-value">${fmtDuration(r.totalEffective)}</span></div>
@@ -423,7 +454,7 @@
         <div class="row"><span class="row-label">تعداد خروج زودهنگام</span><span class="row-value">${r.earlyLeaveCount}</span></div>
         <div class="row"><span class="row-label">رکوردهای ناقص</span><span class="row-value">${r.incompleteCount}</span></div>`;
     } catch (err) {
-      card.innerHTML = err.message;
+      renderError(card, err, () => loadReport(period), 'retry-report');
     }
   }
 
@@ -531,8 +562,9 @@
         return;
       }
     }
+    const submitBtn = form.querySelector('[type="submit"]');
     try {
-      const created = await api('/leave', { method: 'POST', body });
+      const created = await withBusy(submitBtn, () => api('/leave', { method: 'POST', body }));
       const low = created && Array.isArray(created.warnings) && created.warnings.some((w) => w.code === 'LOW_BALANCE');
       msg.textContent = low ? 'درخواست ارسال شد؛ توجه: مانده‌ی مرخصی شما کافی نیست و ممکن است رد شود.' : 'درخواست با موفقیت ارسال شد.';
       msg.classList.add('ok');
@@ -556,13 +588,11 @@
 
   async function loadLeaveList() {
     const list = $('#leave-list');
-    list.innerHTML = '<div class="list-item">در حال بارگذاری…</div>';
+    renderLoading(list, 'list');
     try {
       const items = await api('/leave');
-      if (!items.length) {
-        list.innerHTML = '<div class="list-item">درخواستی ثبت نشده است.</div>';
-        return;
-      }
+      if (!items.length) { renderEmpty(list, 'درخواستی ثبت نشده است.'); return; }
+      list.removeAttribute('aria-busy');
       list.innerHTML = '';
       items.forEach((it) => {
         const el = document.createElement('div');
@@ -578,7 +608,7 @@
         list.appendChild(el);
       });
     } catch (err) {
-      list.innerHTML = `<div class="list-item">${err.message}</div>`;
+      renderError(list, err, loadLeaveList, 'retry-leave');
     }
   }
 
@@ -602,10 +632,10 @@
     msg.textContent = '';
     msg.className = 'form-msg';
     try {
-      await api('/dispute', {
+      await withBusy(form.querySelector('[type="submit"]'), () => api('/dispute', {
         method: 'POST',
         body: { message: form.message.value },
-      });
+      }));
       msg.textContent = 'اعتراض شما برای ادمین ارسال شد.';
       msg.classList.add('ok');
       form.reset();
@@ -619,6 +649,8 @@
 
   async function boot() {
     getDeviceId(); // S2-3: از همین ابتدا آماده شود تا لمس «ثبت ورود» معطل نماند
+    const errBox = $('#app-error');
+    errBox.classList.add('hidden');
     if (!initData) {
       // اجرای خارج از تلگرام (مثلاً باز کردن مستقیم در مرورگر) - initData وجود ندارد
       $('#not-registered').classList.remove('hidden');
@@ -641,7 +673,12 @@
         $('#tg-id-box').textContent = id;
         $('#not-registered').classList.remove('hidden');
       } else {
-        showToast(err.message);
+        // بدون این، برنامه خالی می‌ماند و فقط یک توست زودگذر دیده می‌شد
+        showToast(err.message, true);
+        errBox.innerHTML = '<div class="card center-card"><h2>بارگذاری ناموفق بود</h2><p id="app-error-msg"></p><button type="button" class="btn primary" id="retry-boot">تلاش دوباره</button></div>';
+        $('#app-error-msg').textContent = err.message;
+        $('#retry-boot').addEventListener('click', boot);
+        errBox.classList.remove('hidden');
       }
     }
   }

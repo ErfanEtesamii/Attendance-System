@@ -122,11 +122,11 @@
       var lastIso = J.jalaliToIso(view.jy, view.jm, J.monthLength(view.jy, view.jm));
       var nextOk = !max || lastIso < max;
       var h = '<div class="jdp-head">' +
-        '<button type="button" class="jdp-nav" data-act="prev-year" aria-label="سال قبل">«</button>' +
-        '<button type="button" class="jdp-nav" data-act="prev-month" aria-label="ماه قبل"' + (prevOk ? '' : ' disabled') + '>‹</button>' +
+        '<button type="button" class="jdp-nav" data-act="prev-year" aria-label="سال قبل">»</button>' +
+        '<button type="button" class="jdp-nav" data-act="prev-month" aria-label="ماه قبل"' + (prevOk ? '' : ' disabled') + '>›</button>' +
         '<div class="jdp-title" aria-live="polite">' + J.MONTH_NAMES[view.jm - 1] + ' ' + J.toFaDigits(String(view.jy)) + '</div>' +
-        '<button type="button" class="jdp-nav" data-act="next-month" aria-label="ماه بعد"' + (nextOk ? '' : ' disabled') + '>›</button>' +
-        '<button type="button" class="jdp-nav" data-act="next-year" aria-label="سال بعد">»</button></div>';
+        '<button type="button" class="jdp-nav" data-act="next-month" aria-label="ماه بعد"' + (nextOk ? '' : ' disabled') + '>‹</button>' +
+        '<button type="button" class="jdp-nav" data-act="next-year" aria-label="سال بعد">«</button></div>';
       h += '<div class="jdp-grid" role="grid" aria-label="' + J.MONTH_NAMES[view.jm - 1] + ' ' + J.toFaDigits(String(view.jy)) + '"><div class="jdp-row" role="row">';
       J.WEEKDAY_NAMES.forEach(function (n, i) { h += '<span class="jdp-wd' + (i === 6 ? ' jdp-fri' : '') + '" role="columnheader" title="' + n + '">' + n.charAt(0) + '</span>'; });
       h += '</div>';
