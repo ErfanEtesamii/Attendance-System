@@ -14,6 +14,7 @@ const missionNowService = require('../../services/missionNowService');
 const pendingMissionService = require('../../services/pendingMissionService');
 const planGateService = require('../../services/planGateService');
 const taskReportService = require('../../services/taskReportService');
+const teamReviewService = require('../../services/teamReviewService');
 const { maintenanceGate } = require('../../middleware/maintenanceGate');
 const { createRateLimiter } = require('../../middleware/rateLimiter');
 
@@ -172,6 +173,7 @@ router.post('/miniapp/check-out', (req, res) => {
       code: 'daily_report_required',
       date: reportGate.date,
       pendingTasks: reportGate.pendingTasks,
+      teamReview: reportGate.teamReview || null, // D9-ب: مشاهده‌نشده‌ها و گزارش‌نداده‌ها جدا از هم (فقط برای سرپرست/ادمینِ دارای تسک سیستمی)
       reasonCodes: taskReportService.REASON_CODES,
     });
   }
@@ -203,6 +205,7 @@ router.post('/miniapp/check-out', (req, res) => {
   const payload = { ...updated };
   if (planGate.action === 'remind') payload.planReminder = { weekStart: planGate.info.weekStart };
   if (reportGate.report) payload.reportSaved = { date: reportGate.date, answers: reportGate.report.answers.length, extra: reportGate.report.extras.length };
+  if (reportGate.report && reportGate.report.encouragements && reportGate.report.encouragements.length) payload.encouragements = reportGate.report.encouragements;
   if (reportGate.action === 'remind') payload.reportReminder = { date: reportGate.date, pendingTasks: reportGate.pendingTasks };
   res.json(payload);
   fraudRunner.runFraudChecksSafe({ date: updated.record_date });
@@ -462,6 +465,23 @@ router.post('/miniapp/daily-report', (req, res) => {
 // روزهایی که هنوز گزارشِ دیرهنگام می‌پذیرند (بنر Mini App)
 router.get('/miniapp/report-backfill', (req, res) => {
   res.json(taskReportService.getBackfillStatus(req.miniAppUser));
+});
+
+// ---------- مشاهده‌ی گزارش تیم (D9؛ فقط سرپرست/ادمین — نقش و اسکوپ سمت سرور در teamReviewService) ----------
+
+const sendReviewError = (res, r) => res.status(teamReviewService.statusOf(r.code)).json({ error: r.error, code: r.code });
+
+// وضعیت مشاهده‌ی گزارش اعضا برای «روز قبل» (یا ?date=YYYY-MM-DD)
+router.get('/miniapp/team-review', (req, res) => {
+  const r = teamReviewService.getTeamReview(req.miniAppUser, { date: req.query.date, detail: req.query.detail === '1' });
+  if (!r.ok) return sendReviewError(res, r);
+  return res.json(r);
+});
+// { subjectUserId, reportDate, comment?, reaction? } — «مشاهده شد» (idempotent)
+router.post('/miniapp/report-reviews', (req, res) => {
+  const r = teamReviewService.markReviewed(req.miniAppUser, req.body, { ip: req.ip });
+  if (!r.ok) return sendReviewError(res, r);
+  return res.json(r);
 });
 
 // ---------- اعتراض به رکورد ----------

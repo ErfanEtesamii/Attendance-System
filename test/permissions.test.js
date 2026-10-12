@@ -39,6 +39,16 @@ test('محدوده‌ی هر نقش: کارمند فقط خواندنی خود،
   }
 });
 
+test('D9: reviews.read/write فقط سرپرست و admin؛ کارمند و hr ندارند', () => {
+  for (const p of ['reviews.read', 'reviews.write']) {
+    assert.ok(PERMISSIONS.includes(p), p);
+    assert.equal(hasPermission('manager', p), true, `manager ${p}`);
+    assert.equal(hasPermission('admin', p), true, `admin ${p}`);
+    assert.equal(hasPermission('employee', p), false, `employee ${p}`);
+    assert.equal(hasPermission('hr', p), false, `hr ${p}`);
+  }
+});
+
 test('hr: فقط‌خواندنی روی کاربران/گزارش/خروجی/مرخصی؛ هیچ نوشتن/تنظیمات/ممیزی/سیستمی ندارد', () => {
   for (const p of ['users.read', 'users.details.read', 'attendance.read', 'reports.read', 'leave.read', 'disputes.read', 'dashboard.read']) {
     assert.equal(hasPermission('hr', p), true, `hr ${p}`);

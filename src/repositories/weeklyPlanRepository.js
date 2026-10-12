@@ -88,6 +88,11 @@ function findSystemTask(planId, systemKey) {
   return getDb().prepare('SELECT * FROM plan_tasks WHERE plan_id = ? AND system_key = ? AND deleted_at IS NULL').get(planId, systemKey) || null;
 }
 
+// تسک سیستمیِ «روزانه» (مثل review_team_reports): یکی برای هر (برنامه، کلید، روز) — D9
+function findSystemTaskOnDate(planId, systemKey, plannedDate) {
+  return getDb().prepare('SELECT * FROM plan_tasks WHERE plan_id = ? AND system_key = ? AND planned_date = ? AND deleted_at IS NULL ORDER BY id LIMIT 1').get(planId, systemKey, plannedDate) || null;
+}
+
 // پرتکرارترین عنوان‌های تسک‌های غیرسیستمیِ کاربر (برای پیشنهاد در ویزارد)
 function topTitles(userId, limit = 5) {
   return getDb().prepare(`SELECT t.title AS title, COUNT(*) AS n FROM plan_tasks t JOIN weekly_plans p ON p.id = t.plan_id
@@ -96,5 +101,5 @@ function topTitles(userId, limit = 5) {
 
 module.exports = {
   topTitles, findById, findByUserWeek, getOrCreate, listByUserRange, listByWeek, markSubmitted, touch, setSupervisorFeedback,
-  findTask, listTasks, addTask, updateTask, softDeleteTask, findSystemTask,
+  findTask, listTasks, addTask, updateTask, softDeleteTask, findSystemTask, findSystemTaskOnDate,
 };

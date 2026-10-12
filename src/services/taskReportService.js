@@ -18,12 +18,16 @@
 //     پاسخ‌های دیرهنگام همیشه answered_late=1 و انتقال «فردا/تاریخ» نسبت به «امروزِ واقعی» محاسبه می‌شود (نه روزِ گزارش).
 //   • date آینده ⇒ رد. گزینه‌ی date (بدون requestedDate) فقط برای تست/فراخوانِ مورد اعتماد است و اعتبارسنجی نمی‌شود.
 // تسک «خارج از برنامه» (extra): به برنامه‌ی همین هفته با system_key='out_of_plan' اضافه و همان لحظه done ثبت می‌شود.
+// پیام تشویقی (D8): برای هر پاسخ در applyReport ساخته و در encouragement_text ذخیره می‌شود (اگر encouragementsEnabled روشن باشد).
+//   done ⇒ یکی از سه دسته (اولویت: ۱۰۰٪ روز ← اولویت بالا ← رگه ← ساده)؛ partial/not_done ⇒ فقط «ممنون که علتش را نوشتی».
 const plansRepo = require('../repositories/weeklyPlanRepository');
 const logsRepo = require('../repositories/taskLogRepository');
 const settingsRepository = require('../repositories/settingsRepository');
 const monthClosuresRepository = require('../repositories/monthClosuresRepository');
 const attendanceRepository = require('../repositories/attendanceRepository');
 const calendarService = require('../engine/calendarService');
+const encouragements = require('../content/encouragements');
+const teamReview = require('./teamReviewService');
 const { sanitizeText } = require('../utils/sanitize');
 const { addDays, dayNumber, dayDiff } = require('../utils/shiftDay');
 const { getDb } = require('../db/connection');
@@ -133,6 +137,7 @@ function getBackfillStatus(user, { now = new Date() } = {}) {
     const r = resolveReportDate(user, { now, requestedDate: date }, settings);
     if (!r.ok || !r.late) continue;
     if (fullDayOff(user, date, settings)) continue;
+    teamReview.prepareDay(user, date, settings, { late: true }); // D9-ب: تسک سیستمیِ روزِ گذشته همین‌جا ساخته/همگام می‌شود تا شمارش pending کمتر از واقعیت نباشد
     const pending = buildList(user, date, settings);
     if (!pending.length) continue;
     out.days.push({ date, source: r.source, pendingCount: pending.length, titles: pending.slice(0, 3).map((t) => t.title) });
@@ -151,9 +156,12 @@ function getDailyTasks(user, { now, date: forcedDate, requestedDate } = {}) {
     return t ? { taskId: l.task_id, title: t.title, status: l.status, reasonCode: l.reason_code, reasonText: l.reason_text, rescheduleTo: l.reschedule_to, outOfPlan: t.system_key === OUT_OF_PLAN_KEY } : null;
   }).filter(Boolean);
   const off = fullDayOff(user, date, settings);
+  if (!off) teamReview.prepareDay(user, date, settings, { late: resolved.late }); // D9: تسک سیستمیِ سرپرست (ساخت + done خودکار)
+  const tasks = off ? [] : buildList(user, date, settings);
   return {
     ok: true, date, today: resolved.cur, late: resolved.late, source: resolved.source, mode: settings.dailyReportGateMode, fullDayOff: off,
-    tasks: off ? [] : buildList(user, date, settings),
+    tasks,
+    teamReview: teamReview.gateInfo(user, date, tasks, settings), // D9-ب: مشاهده‌نشده‌ها / گزارش‌نداده‌ها (فقط وقتی تسک سیستمی در فهرست است)
     answered, reasonCodes: REASON_CODES,
   };
 }
@@ -176,6 +184,10 @@ function validateAnswer(a, n, user, date, settings, byId, base = date) {
     return { error: answered ? fail('ALREADY_ANSWERED', `تسک پاسخ ${n} قبلاً پاسخ داده شده است.`) : fail('TASK_NOT_FOUND', `تسک پاسخ ${n} در فهرست امروز شما نیست.`) };
   }
   if (!STATUSES.includes(a.status)) return { error: fail('INVALID_STATUS', `وضعیت پاسخ ${n} نامعتبر است (done | partial | not_done).`) };
+  if (task.systemKey === teamReview.REVIEW_KEY) { // D9: «انجام شد» فقط با مشاهده‌ی واقعیِ گزارش‌ها (خودکار ثبت می‌شود)؛ انتقال/حذفِ تسک سیستمی معنا ندارد
+    if (a.status === 'done') return { error: fail('REVIEW_INCOMPLETE', `پاسخ ${n}: «انجام شد» برای این تسک فقط پس از مشاهده‌ی گزارش همه‌ی اعضای دارای گزارش ثبت می‌شود.`) };
+    if (a.reschedule !== undefined && a.reschedule !== null) return { error: fail('RESCHEDULE_NOT_ALLOWED', `انتقال/حذفِ تسک سیستمی (پاسخ ${n}) مجاز نیست.`) };
+  }
   const out = { taskId, status: a.status, reasonCode: null, reasonText: null, rescheduleTo: null };
   if (a.status === 'done') {
     if (a.reschedule) return { error: fail('RESCHEDULE_NOT_ALLOWED', `برای تسکِ انجام‌شده (پاسخ ${n}) انتقال معنا ندارد.`) };
@@ -229,6 +241,7 @@ function prepareReport(user, body, date, settings, { base = date } = {}) {
   if (monthClosuresRepository.findClosedOverlapping(date, date).length > 0) return { error: fail('MONTH_CLOSED', 'این روز در ماهِ بسته‌شده است و گزارش آن فقط‌خواندنی است.') };
   if (fullDayOff(user, date, settings)) return { error: fail('FULL_DAY_OFF', 'امروز مرخصی/ماموریتِ تمام‌روز دارید و گزارش تسک لازم نیست.') };
 
+  teamReview.prepareDay(user, date, settings, { late: base !== date }); // D9 (نوشتنِ ساختاری/مشتق‌شده، نه پاسخ کاربر)
   const list = buildList(user, date, settings);
   const byId = new Map(list.map((t) => [t.id, t]));
   const seen = new Set();
@@ -245,18 +258,79 @@ function prepareReport(user, body, date, settings, { base = date } = {}) {
   return { answers, extras: ex.extras, pending: list.filter((t) => !seen.has(t.id)) };
 }
 
+// ---------- پیام تشویقی (D8) ----------
+const STREAK_LOOKBACK_DAYS = 30;
+
+/** تعداد روزهای (دارای پاسخ) پیاپیِ قبل از date که همه‌ی پاسخ‌هایشان done بوده؛ روزهای بدون پاسخ (تعطیل/مرخصی) رگه را نمی‌شکنند. */
+function streakBefore(userId, date) {
+  const logs = logsRepo.listByUserRange(userId, addDays(date, -STREAK_LOOKBACK_DAYS), addDays(date, -1));
+  const allDone = new Map(); // روز ⇒ آیا همه‌ی پاسخ‌های آن روز done است
+  for (const l of logs) allDone.set(l.log_date, allDone.get(l.log_date) !== false && l.status === 'done');
+  let n = 0;
+  for (const d of [...allDone.keys()].sort().reverse()) {
+    if (!allDone.get(d)) break;
+    n += 1;
+  }
+  return n;
+}
+
+/**
+ * پیام‌های تشویقیِ یک گزارش، به ترتیب [...answers, ...extras]. خاموش بودن تنظیم ⇒ همه null.
+ * قوانین: آخرین تسکِ done که روز را ۱۰۰٪ می‌کند ⇒ high/fullDay (فقط وقتی روز ≥ ۲ تسک دارد)؛ تسک با اولویت بالا ⇒ high/priority؛
+ * رگه ≥ STREAK_MIN روز ⇒ streak؛ وگرنه simple. هیچ قالبی در ۵ پیام اخیرِ کاربر (و همین گزارش) تکرار نمی‌شود.
+ */
+function buildEncouragements(user, date, settings, { answers, extras }) {
+  const items = [
+    ...answers.map((a) => { const t = plansRepo.findTask(a.taskId); return { taskId: a.taskId, status: a.status, title: t ? t.title : '', priority: t ? t.priority : 'normal' }; }),
+    ...extras.map((e) => ({ taskId: null, status: 'done', title: e.title, priority: 'normal' })),
+  ];
+  if (!settings.encouragementsEnabled) return items.map(() => null);
+
+  const answeredIds = new Set(answers.map((a) => a.taskId));
+  const prior = logsRepo.listByUserDate(user.id, date).filter((l) => !answeredIds.has(l.task_id));
+  const remaining = buildList(user, date, settings).filter((t) => !answeredIds.has(t.id));
+  const dayAllDone = remaining.length === 0 && prior.every((l) => l.status === 'done') && items.every((i) => i.status === 'done');
+  const dayTaskCount = items.length + prior.length;
+  const streakActive = streakBefore(user.id, date) + (dayAllDone ? 1 : 0) >= encouragements.STREAK_MIN;
+  let lastDone = -1;
+  items.forEach((it, i) => { if (it.status === 'done') lastDone = i; });
+
+  let recent = logsRepo.listRecentEncouragements(user.id).filter((t) => encouragements.templateIndexOf(t) >= 0).slice(0, encouragements.RECENT_WINDOW);
+  return items.map((it, i) => {
+    let category = 'simple'; let variant;
+    if (dayAllDone && dayTaskCount >= 2 && i === lastDone) { category = 'high'; variant = 'fullDay'; }
+    else if (it.priority === 'high') { category = 'high'; variant = 'priority'; }
+    else if (streakActive) category = 'streak';
+    const text = encouragements.encouragementFor({ status: it.status, category, variant, name: user.full_name, task: it.title, recent });
+    if (it.status === 'done') recent = [text, ...recent].slice(0, encouragements.RECENT_WINDOW);
+    return text;
+  });
+}
+
 /** نوشتن پاسخ‌ها و تسک‌های «خارج از برنامه». باید داخل تراکنشِ فراخوان (یا همین تابع) اجرا شود. */
 function applyReport(user, date, settings, { answers, extras }, { late = false } = {}) {
-  for (const a of answers) {
-    logsRepo.upsert({ taskId: a.taskId, userId: user.id, logDate: date, status: a.status, reasonCode: a.reasonCode, reasonText: a.reasonText, rescheduleTo: a.rescheduleTo, answeredLate: late });
+  let texts;
+  try {
+    texts = buildEncouragements(user, date, settings, { answers, extras });
+  } catch (err) { // پیام تشویقی تزئینی است؛ خطا در ساختش نباید گزارش/خروج را بشکند
+    console.error('[encouragements] خطا (نادیده گرفته شد):', err && err.message ? err.message : err);
+    texts = [...answers, ...extras].map(() => null);
   }
+  const out = [];
+  answers.forEach((a, i) => {
+    logsRepo.upsert({ taskId: a.taskId, userId: user.id, logDate: date, status: a.status, reasonCode: a.reasonCode, reasonText: a.reasonText, rescheduleTo: a.rescheduleTo, encouragementText: texts[i], answeredLate: late });
+    out.push({ taskId: a.taskId, status: a.status, text: texts[i] });
+  });
   if (extras.length) {
     const plan = plansRepo.getOrCreate(user.id, calendarService.weekStartOf(date, settings.weekStartDay));
-    for (const e of extras) {
+    extras.forEach((e, j) => {
       const t = plansRepo.addTask(plan.id, { title: e.title, description: e.description, plannedDate: date, priority: 'normal', systemKey: OUT_OF_PLAN_KEY });
-      logsRepo.upsert({ taskId: t.id, userId: user.id, logDate: date, status: 'done', answeredLate: late });
-    }
+      const text = texts[answers.length + j];
+      logsRepo.upsert({ taskId: t.id, userId: user.id, logDate: date, status: 'done', encouragementText: text, answeredLate: late });
+      out.push({ taskId: t.id, status: 'done', text });
+    });
   }
+  return out.filter((e) => e.text);
 }
 
 /**
@@ -272,9 +346,9 @@ function submitDailyReport(user, body, { now, date: forcedDate, requestedDate } 
   const prep = prepareReport(user, body, date, settings, { base });
   if (prep.error) return prep.error;
   if (!prep.answers.length && !prep.extras.length) return fail('EMPTY_REPORT', 'هیچ پاسخی ارسال نشده است.');
-  getDb().transaction(() => applyReport(user, date, settings, prep, { late }))();
+  const messages = getDb().transaction(() => applyReport(user, date, settings, prep, { late }))();
   const fresh = getDailyTasks(user, { now, date });
-  return { ...fresh, late, source: resolved.source, saved: { answers: prep.answers.length, extra: prep.extras.length } };
+  return { ...fresh, late, source: resolved.source, saved: { answers: prep.answers.length, extra: prep.extras.length }, encouragements: messages };
 }
 
 // ---------- گیت خروج (D7) ----------
@@ -307,6 +381,7 @@ function checkoutGate(user, recordDate, body) {
     if (prep.answers.length || prep.extras.length) out.report = { answers: prep.answers, extras: prep.extras, settings };
     out.pendingTasks = prep.pending;
     if (out.mode === 'off' || !out.pendingTasks.length) return out;
+    out.teamReview = teamReview.gateInfo(user, recordDate, out.pendingTasks, settings); // D9-ب (برای ۴۰۹/یادآوری؛ null اگر تسک سیستمی نیست)
     out.action = out.mode === 'enforce' ? 'block' : 'remind';
     return out;
   } catch (err) {
@@ -318,7 +393,7 @@ function checkoutGate(user, recordDate, body) {
 /** fn (ثبت خروج) و ذخیره‌ی گزارش در «یک» تراکنش؛ خطا در هرکدام ⇒ هیچ‌کدام ثبت نمی‌شود. */
 function commitAtomic(user, gate, fn) {
   return getDb().transaction(() => {
-    if (gate && gate.report) applyReport(user, gate.date, gate.report.settings, gate.report);
+    if (gate && gate.report) gate.report.encouragements = applyReport(user, gate.date, gate.report.settings, gate.report);
     return fn();
   })();
 }

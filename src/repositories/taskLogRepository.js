@@ -22,6 +22,12 @@ function listByUserRange(userId, fromDate, toDate) {
   return getDb().prepare('SELECT * FROM task_daily_logs WHERE user_id = ? AND log_date BETWEEN ? AND ? ORDER BY log_date, id').all(userId, fromDate, toDate);
 }
 
+// شناسه‌ی کاربرانی (از میان userIds) که در این روز حداقل یک پاسخ/گزارش دارند — «دارای گزارش» در D9
+function listUserIdsWithLogsOnDate(userIds, logDate) {
+  if (!Array.isArray(userIds) || !userIds.length) return [];
+  return getDb().prepare(`SELECT DISTINCT user_id FROM task_daily_logs WHERE log_date = ? AND user_id IN (${userIds.map(() => '?').join(',')})`).all(logDate, ...userIds).map((r) => r.user_id);
+}
+
 function listByTask(taskId) {
   return getDb().prepare('SELECT * FROM task_daily_logs WHERE task_id = ? ORDER BY log_date').all(taskId);
 }
@@ -31,8 +37,15 @@ function listRescheduledTo(userId, date) {
   return getDb().prepare('SELECT * FROM task_daily_logs WHERE user_id = ? AND reschedule_to = ? ORDER BY id').all(userId, date);
 }
 
+// متن پیام‌های ذخیره‌شده‌ی اخیرِ کاربر (جدیدترین اول) برای جلوگیری از تکرار پیام تشویقی (D8)
+function listRecentEncouragements(userId, limit = 30) {
+  return getDb().prepare(`SELECT encouragement_text FROM task_daily_logs
+    WHERE user_id = ? AND encouragement_text IS NOT NULL AND encouragement_text <> ''
+    ORDER BY answered_at DESC, id DESC LIMIT ?`).all(userId, limit).map((r) => r.encouragement_text);
+}
+
 function remove(taskId, logDate) {
   return getDb().prepare('DELETE FROM task_daily_logs WHERE task_id = ? AND log_date = ?').run(taskId, logDate).changes;
 }
 
-module.exports = { findByTaskDate, upsert, listByUserDate, listByUserRange, listByTask, listRescheduledTo, remove };
+module.exports = { findByTaskDate, upsert, listByUserDate, listByUserRange, listUserIdsWithLogsOnDate, listByTask, listRescheduledTo, listRecentEncouragements, remove };

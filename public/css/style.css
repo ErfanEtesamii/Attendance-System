@@ -670,3 +670,8 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .dr-nav .btn { flex: 1 1 auto; }
 .dr-review-row { display: flex; flex-direction: column; gap: 6px; }
 .dr-review-row .btn { align-self: flex-start; }
+/* D9: بررسی گزارش تیم در ویزارد خروج */
+.rv-group { font-size: 14px; line-height: 1.9; }
+.rv-member { display: flex; flex-direction: column; gap: 8px; }
+.rv-items { font-size: 13px; }
+.rv-items summary { cursor: pointer; min-height: 32px; color: var(--hint); }

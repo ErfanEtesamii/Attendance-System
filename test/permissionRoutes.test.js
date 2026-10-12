@@ -112,6 +112,8 @@ const ROUTES_2 = [
   ['PATCH', '/api/admin/shifts/999999', [A]],
   ['DELETE', '/api/admin/shifts/999999', [A]],
   ['PUT', '/api/admin/users/999999/shift', [A]],
+  ['GET', '/api/admin/team-review', [M, A]], // D9: reviews.read (کارمند/hr ممنوع؛ اسکوپ تیم در سرویس)
+  ['POST', '/api/admin/report-reviews', [M, A]], // D9: reviews.write (بدنه‌ی خالی ⇒ ۴۰۰، چیزی ثبت نمی‌شود)
   ['GET', '/api/admin/audit-log', [A]],
   ['GET', '/api/admin/audit-log/export', [A]],
   ['GET', '/api/admin/audit-actions', [A]],

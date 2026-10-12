@@ -41,6 +41,7 @@ router.use(require('./shifts'));
 router.use(require('./audit'));
 router.use(require('./suspicious'));
 router.use(require('./planGate')); // D5: معافیت یک‌باره از گیت خروجِ برنامه‌ی هفتگی
+router.use(require('./teamReview')); // D9: مشاهده‌ی گزارش روزانه‌ی تیم (سرپرست/ادمین)
 router.use(require('./notifications'));
 router.use(require('./system'));
 

@@ -47,6 +47,8 @@ const PERMISSIONS = Object.freeze([
   'monthclose.reopen', // S5-3c: بازکردن ماه بسته با دلیل (فقط admin)
   'analytics.read', // S5-6a: روند/مقایسه‌ی تأخیر و تحلیل‌ها؛ admin/hr همه، سرپرست فقط تیم خودش (اسکوپ در route)، کارمند ممنوع
   'plans.exempt', // D5: معافیت یک‌باره از گیت خروجِ برنامه‌ی هفتگی (admin همه، سرپرست فقط تیم خودش؛ اسکوپ در route)
+  'reviews.read', // D9: وضعیت «مشاهده‌ی گزارش» اعضای تیم (admin و سرپرست؛ اسکوپ تیم در سرویس؛ کارمند/hr ممنوع تا D10)
+  'reviews.write', // D9: ثبت «مشاهده شد» + کامنت/واکنش روی گزارش عضو تیم (admin و سرپرست؛ اسکوپ تیم در سرویس)
 ]);
 
 // مجوزهای «خود کارمند»؛ هر چه خارج از اینجاست برای employee بسته است.
@@ -79,6 +81,8 @@ const MANAGER_PERMISSIONS = [
   'settings.read',
   'analytics.read', // S5-6a: فقط تیم خودش
   'plans.exempt', // D5: فقط تیم خودش
+  'reviews.read', // D9: فقط تیم خودش (اسکوپ در teamReviewService)
+  'reviews.write', // D9: فقط تیم خودش
 ];
 
 // منابع انسانی (S4-4a): فقط‌خواندنی روی همه‌ی کاربران (بدون اسکوپ تیم؛ scopedUserIds برای hr مثل admin همه را برمی‌گرداند).

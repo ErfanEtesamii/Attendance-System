@@ -4,6 +4,32 @@
 
 ## [Unreleased] — بخش ۴ (ممیزی)
 
+### D9-ب — گیت خروج سرپرست، UI، route پنل، اعلان کامنت، backfill
+- **پاسخ ۴۰۹ گیت خروج** (`daily_report_required`) و `GET /miniapp/daily-tasks` فیلد `teamReview` دارند (فقط وقتی تسک سیستمی در فهرست پاسخ‌نداده‌هاست): `{ taskId, reviewDate, unreviewed:[{userId, fullName, department, report}], noReport:[…], reportCount, reviewedCount }`. «گزارش‌نداده‌ها» جدا از «مشاهده‌نشده‌ها» می‌آید و شرط نیستند. `report` خلاصه‌ی گزارش عضو است (تعداد انجام‌شده/نیمه/انجام‌نشده/خارج از برنامه، درصد، فهرست تسک‌ها با علت). `teamReviewService.gateInfo` ضدخطاست (خطا ⇒ `null`؛ خودِ گیت دست نمی‌خورد).
+- `GET /miniapp/team-review?detail=1` به اعضای دارای گزارش `report` اضافه می‌کند (بدون `detail` مثل قبل).
+- **UI Mini App (ویزارد خروج):** برای تسک سیستمی کارت ویژه با دو گزینه: «الان بررسی می‌کنم» (مرحله‌ی `team`: هر گزارش جدا «✔ مشاهده شد» + واکنش 👍/🌟/🙏 و کامنت اختیاری ≤ ۳۰۰) و «❌ انجام نشد + علت» (بدون انتقال/حذف؛ `reschedule` در بدنه فرستاده نمی‌شود). پس از مشاهده‌ی همه، فهرست تازه گرفته و ویزارد با همان پاسخ‌های قبلی ادامه می‌یابد. ترتیب «گزارش (شامل بررسی تیم) ← برنامه‌ی هفته‌ی بعد ← تأیید خروج» حفظ شده (گیت گزارش در سرور قبل از گیت برنامه است). منطق خالص در `dailyReport.js` (`isReviewTask`، `taskOpts`، `reportLine`، `validateReview`، `buildReviewBody`).
+- **پنل:** `GET /api/admin/team-review?date=` (همیشه با خلاصه‌ی گزارش) و `POST /api/admin/report-reviews`؛ مجوزهای جدید `reviews.read` و `reviews.write` (manager و admin؛ کارمند و hr ندارند — hr فقط‌خواندنی در D10)، ردیف ماتریس در `test/permissionRoutes.test.js`. اسکوپ تیم همان `teamReviewService` است. نگاشت کد خطا ⇒ HTTP یکجا در `teamReviewService.statusOf`.
+- **اعلان کامنت:** کامنتِ تازه/تغییرکرده ⇒ `notificationEvents.reportCommented`: اعلان درون‌پنلی `report_commented` + پیام تلگرام به خودِ کارمند (dedupe با خلاصه‌ی متن؛ فقط‌واکنش اعلان نمی‌سازد؛ خطایش «مشاهده شد» را نمی‌شکند). `send()` در `notificationEvents` حالا `telegram` را از ورودی می‌پذیرد (پیش‌فرض همچنان false).
+- **backfill:** `getBackfillStatus` برای هر روزِ گذشته‌ی قابل‌تکمیل تسک سیستمیِ سرپرست را می‌سازد/همگام می‌کند تا `pendingCount` کمتر از واقعیت نباشد.
+- بدون migration جدید. تست‌ها: `test/teamReviewGate.test.js` + ردیف‌های `permissions.test.js` / `permissionRoutes.test.js`.
+
+### D9-الف — تسک سیستمی سرپرست + «مشاهده‌ی گزارش» (منطق، داده و API)
+- `src/services/teamReviewService.js` (جدید): برای هر سرپرست (manager) و ادمینِ دارای زیردست، در هر روز کاری تسک سیستمی `review_team_reports` ساخته می‌شود (idempotent، `is_system=1`، غیرقابل‌حذف). «روز قبل» = آخرین روز کاریِ قبل در تقویم همان سرپرست (آخر هفته/تعطیلی لحاظ می‌شود). اگر سرپرست آن روز کاری نباشد/مرخصی تمام‌روز باشد، ماه بسته باشد، یا کل تیم آن روز تعطیل/مرخصی (و بدون گزارش) بوده باشند، تسک ساخته نمی‌شود.
+- شرط done: همه‌ی اعضای **دارای گزارش** مشاهده شده باشند (گزارش‌نداده‌ها شرط نیستند و جدا گزارش می‌شوند: `no_report`). done خودکار در `task_daily_logs` نوشته می‌شود (بدون پیام تشویقی) و تسک از فهرست/گیت خروج بیرون می‌رود؛ «انجام نشد» قبلی با مشاهده‌ی کامل بعدی به done ارتقا می‌یابد.
+- `taskReportService`: `getDailyTasks`/`prepareReport` تسک را می‌سازند و همگام می‌کنند (fail-open). پاسخ دستیِ «انجام شد» به این تسک ⇒ `REVIEW_INCOMPLETE`؛ انتقال/حذف ⇒ `RESCHEDULE_NOT_ALLOWED`؛ «انجام نشد + علت» و «نیمه‌کاره» مجاز.
+- API Mini App (فقط manager/admin؛ manager فقط تیم خودش، admin هر کاربرِ دیگر): `GET /miniapp/team-review?date=` (وضعیت اعضا: reviewed | unreviewed | no_report | off) و `POST /miniapp/report-reviews` `{subjectUserId, reportDate, comment?, reaction?}` — idempotent؛ کامنت ≤ ۳۰۰؛ واکنش `like|great|thanks`؛ تاریخ نه آینده و نه بیش از ۶۰ روز قبل؛ عضو باید آن روز گزارش داشته باشد؛ ماه بسته ⇒ ۴۰۹؛ audit `report_reviewed` فقط هنگام ردیف تازه/تغییر کامنت یا واکنش.
+- repositoryها: `findSystemTaskOnDate`، `listUserIdsWithLogsOnDate`، `listByReviewerSubjectsDate`. بدون migration جدید.
+- ادامه در «D9-ب» (پایین‌تر).
+- تست‌ها: `test/teamReview.test.js`.
+
+### D8 — پیام‌های تشویقی گزارش روزانه
+- `src/content/encouragements.js`: ۴۲ جمله‌ی فارسی در سه دسته — ساده (۱۸)، رگه/streak (۱۲)، اولویت‌بالا (۶) و ۱۰۰٪ روز (۶) — با متغیرهای `{name}` (نام کوچک) و `{task}`. انتخاب تصادفی و بدون تکرارِ ۵ پیام اخیرِ همان کاربر (قالبِ پیام‌های ذخیره‌شده با الگوی هر قالب شناسایی می‌شود؛ ستون/شناسه‌ی جدید لازم نیست).
+- «انجام‌نشده» و «نیمه‌کاره» فقط «ممنون که علتش را نوشتی.» می‌گیرند (بدون قضاوت یا تشویق).
+- `taskReportService.applyReport`: پیام هر پاسخ در `encouragement_text` ذخیره و در پاسخ API برمی‌گردد (`encouragements: [{taskId,status,text}]` در `/daily-report` و `/check-out`). اولویت دسته: ۱۰۰٪ روز (فقط آخرین تسکِ انجام‌شده‌ای که روز را کامل می‌کند و روز ≥ ۲ تسک دارد) ← اولویت بالا ← رگه (≥ ۳ روز پیاپیِ همه‌done؛ روزهای بدون پاسخ رگه را نمی‌شکنند) ← ساده. خطا در ساخت پیام fail-open است و گزارش/خروج را نمی‌شکند.
+- تنظیم `encouragementsEnabled` (پیش‌فرض روشن): خاموش ⇒ هیچ پیامی ذخیره یا برگردانده نمی‌شود.
+- Mini App: `DailyReport.encouragementOf` پیام را در توستِ خروج و گزارش دیرهنگام نشان می‌دهد.
+- `taskLogRepository.listRecentEncouragements`؛ تست‌ها: `test/encouragements.test.js` (ماژول، سرویس، گیت خروج، UI).
+
 ### S5-9c (تکمیل ۲) — skeleton نمای «امروز» Mini App
 - هنگام اولین بارگذاری، به‌جای `--:--:--` و «در حال بارگذاری…» یک skeleton به شکل خودِ نما (کارت وضعیت + دو دکمه + سه ردیف) نشان داده می‌شود (`UiStates.skeletonHtml('today')`، `aria-busy` روی نما، برچسب مخصوص خوانشگر). با `finally` در هر دو حالت موفق/ناموفق برداشته می‌شود؛ در خطا کارت «تلاش دوباره» می‌ماند. فقط اولین بارگذاری (بعد از ثبت ورود/خروج دوباره skeleton نمی‌آید).
 - `test/miniappTodaySkeleton.test.js`: علاوه بر ماژول و CSS، `app.js` واقعاً با fetch/DOM ساختگی اجرا و ترتیب «روشن ⇒ /today ⇒ خاموش» بررسی می‌شود.

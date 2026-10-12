@@ -21,4 +21,10 @@ function listByReviewerDate(reviewerId, reportDate) {
   return getDb().prepare('SELECT * FROM report_reviews WHERE reviewer_id = ? AND report_date = ? ORDER BY subject_user_id').all(reviewerId, reportDate);
 }
 
-module.exports = { find, upsert, listBySubjectDate, listByReviewerDate };
+// «مشاهده شد»های یک سرپرست برای مجموعه‌ای از اعضا در یک روز (D9)
+function listByReviewerSubjectsDate(reviewerId, subjectIds, reportDate) {
+  if (!Array.isArray(subjectIds) || !subjectIds.length) return [];
+  return getDb().prepare(`SELECT * FROM report_reviews WHERE reviewer_id = ? AND report_date = ? AND subject_user_id IN (${subjectIds.map(() => '?').join(',')}) ORDER BY subject_user_id`).all(reviewerId, reportDate, ...subjectIds);
+}
+
+module.exports = { find, upsert, listBySubjectDate, listByReviewerDate, listByReviewerSubjectsDate };

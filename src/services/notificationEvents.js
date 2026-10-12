@@ -8,6 +8,7 @@
 //   disputeResolved(dispute, {note}) بسته‌شدن اعتراض               ⇒ خودِ کارمند
 //   systemAlert({...})               هشدار سیستم (watchdog)        ⇒ همه‌ی ادمین‌های فعال
 //   suspiciousCreated(event)         «نشانه»ی مورد مشکوک جدید      ⇒ ادمین‌ها + سرپرستی که «همه‌ی» کاربران مورد در تیم اویند (اسکوپ S2-5a)
+//   reportCommented({...})           کامنتِ سرپرست روی گزارش روزانه  ⇒ خودِ کارمند (D9؛ تنها رویدادی که تلگرام هم می‌فرستد، چون مسیر تلگرامِ جدا ندارد)
 //
 // قوانین:
 //   • هرگز استثنا نمی‌دهد و جریان اصلی را نمی‌شکند (ثبت تردد/مرخصی/اعتراض/watchdog)؛ خطا فقط لاگ می‌شود.
@@ -19,6 +20,8 @@ const usersRepository = require('../repositories/usersRepository');
 const { notify } = require('./notificationService');
 const leaveApprovalService = require('./leaveApprovalService');
 const { sanitizeText } = require('../utils/sanitize');
+const { isoDateToJalaliString } = require('../utils/jalali');
+const crypto = require('crypto');
 
 const SUSPICIOUS_LABEL = {
   shared_device: 'یک دستگاه برای چند نفر',
@@ -50,7 +53,7 @@ function handlersOf(employee) {
 /** ثبت یک اعلان بدون شکستن فراخواننده. @returns {Promise<object|null>} */
 function send(label, userId, input) {
   try {
-    return notify(userId, { ...input, telegram: false }).catch((err) => { logError(label, err); return null; });
+    return notify(userId, { telegram: false, ...input }).catch((err) => { logError(label, err); return null; });
   } catch (err) {
     logError(label, err);
     return Promise.resolve(null);
@@ -245,4 +248,29 @@ function weeklyPlanChanged(employee, plan, summary = {}) {
   })));
 }
 
-module.exports = { weeklyPlanChanged, leaveRequested, leaveStepAdvanced, leaveDecided, disputeOpened, disputeResolved, systemAlert, suspiciousCreated };
+const REACTION_LABEL = { like: '👍 پسندید', great: '🌟 عالی بود', thanks: '🙏 ممنون' };
+
+/**
+ * سرپرست روی گزارش روزانه‌ی کارمند کامنت گذاشت (D9-ب) ⇒ اعلان درون‌پنلی + تلگرام به خودِ کارمند.
+ * dedupeKey شامل خلاصه‌ی متن است: ثبت مجدد همان کامنت اعلان تکراری نمی‌سازد؛ ویرایش کامنت اعلان تازه می‌دهد.
+ * @param {{reviewer: object, subject: object, reportDate: string, comment: string, reaction?: string|null}} p
+ */
+function reportCommented({ reviewer, subject, reportDate, comment, reaction = null }) {
+  return guard('reportCommented', () => {
+    if (!reviewer || !subject || !comment || subject.id === reviewer.id) return [];
+    const digest = crypto.createHash('sha1').update(String(comment)).digest('hex').slice(0, 10);
+    const when = isoDateToJalaliString(reportDate) || reportDate;
+    const lines = [`${reviewer.full_name} گزارش روز ${when} شما را مشاهده کرد و نوشت:`, `«${sanitizeText(comment, 300)}»`];
+    if (reaction && REACTION_LABEL[reaction]) lines.push(REACTION_LABEL[reaction]);
+    return [send('reportCommented', subject.id, {
+      type: 'report_commented',
+      title: 'کامنت سرپرست روی گزارش شما',
+      body: lines.join('\n'),
+      data: { reviewerId: reviewer.id, reportDate },
+      dedupeKey: `report_commented:${reviewer.id}:${subject.id}:${reportDate}:${digest}`,
+      telegram: true,
+    })];
+  });
+}
+
+module.exports = { reportCommented, weeklyPlanChanged, leaveRequested, leaveStepAdvanced, leaveDecided, disputeOpened, disputeResolved, systemAlert, suspiciousCreated };

@@ -448,6 +448,8 @@
   // پیام موفقیتِ خروج: یادآوری‌های برنامه‌ی هفته‌ی بعد (D5) و گزارش روزانه در حالت soft (D7)
   function checkoutMessage(res, fallback) {
     const parts = ['خروج ثبت شد.'];
+    const cheer = window.DailyReport ? window.DailyReport.encouragementOf(res) : '';
+    if (cheer) parts.push(cheer);
     if (res && res.reportReminder && res.reportReminder.pendingTasks && res.reportReminder.pendingTasks.length) {
       parts.push(`${res.reportReminder.pendingTasks.length.toLocaleString('fa-IR')} تسک بدون پاسخ ماند؛ تا ۲۴ ساعت می‌توانید گزارش را تکمیل کنید.`);
     }
@@ -477,7 +479,7 @@
       if (path === '/check-out' && code === 'daily_report_required') {
         showToast(err.message);
         unlock();
-        openReportWizard({ mode: 'checkout', date: err.data.date, today: err.data.date, tasks: err.data.pendingTasks || [], body, allowLater: false });
+        openReportWizard({ mode: 'checkout', date: err.data.date, today: err.data.date, tasks: err.data.pendingTasks || [], body, allowLater: false, teamReview: err.data.teamReview });
         return false;
       }
       showToast(err.message, true);
@@ -1156,7 +1158,7 @@
   // دو حالت: checkout (قبل از خروج؛ پاسخ‌ها همراه /check-out می‌روند) و late (بعد از خروج/backfill؛ /daily-report با date).
   // سرور تا رد شدن همه‌ی گیت‌ها چیزی ذخیره نمی‌کند ⇒ UI پاسخ‌ها را در حافظه نگه می‌دارد و همان بدنه را دوباره می‌فرستد.
   const DR = window.DailyReport;
-  const reportUi = { mode: 'checkout', date: '', today: '', tasks: [], answers: new Map(), extras: [], step: 'q', idx: 0, allowLater: false, body: null, msg: '', busy: false };
+  const reportUi = { mode: 'checkout', date: '', today: '', tasks: [], answers: new Map(), extras: [], step: 'q', idx: 0, allowLater: false, body: null, msg: '', busy: false, teamReview: null, team: null, reviewDraft: new Map() };
 
   function dEl(tag, props, ...kids) {
     const e = planEl(tag, props, ...kids);
@@ -1171,7 +1173,7 @@
 
   function hasReportBody(body) { return !!body && (Array.isArray(body.answers) && body.answers.length > 0 || Array.isArray(body.extra) && body.extra.length > 0); }
 
-  function openReportWizard({ mode, date, today, tasks, body, allowLater }) {
+  function openReportWizard({ mode, date, today, tasks, body, allowLater, teamReview }) {
     const same = reportUi.date === date && reportUi.mode === mode;
     const kept = same ? reportUi.answers : new Map();
     reportUi.mode = mode; reportUi.date = date; reportUi.today = today || date;
@@ -1183,7 +1185,9 @@
     reportUi.body = body || null;
     reportUi.msg = '';
     reportUi.busy = false;
-    const firstOpen = reportUi.tasks.findIndex((t) => !reportUi.answers.has(t.id) || DR.validateAnswer(reportUi.answers.get(t.id), { today: reportUi.today }));
+    reportUi.teamReview = teamReview || null; // D9: مشاهده‌نشده‌ها/گزارش‌نداده‌ها برای تسک سیستمیِ سرپرست
+    reportUi.team = null;
+    const firstOpen = reportUi.tasks.findIndex((t) => !reportUi.answers.has(t.id) || DR.validateAnswer(reportUi.answers.get(t.id), DR.taskOpts(t, { today: reportUi.today })));
     reportUi.idx = firstOpen < 0 ? 0 : firstOpen;
     reportUi.step = !reportUi.tasks.length ? 'extra' : (firstOpen < 0 ? 'review' : 'q');
     switchView('dreport');
@@ -1201,7 +1205,7 @@
     try {
       const d = await api('/daily-tasks');
       if (d && d.mode === 'soft' && !d.fullDayOff && d.tasks && d.tasks.length) {
-        openReportWizard({ mode: 'checkout', date: d.date, today: d.today, tasks: d.tasks, body: null, allowLater: true });
+        openReportWizard({ mode: 'checkout', date: d.date, today: d.today, tasks: d.tasks, body: null, allowLater: true, teamReview: d.teamReview });
         return;
       }
     } catch (_) { /* پیش‌بررسی اختیاری است؛ تصمیم نهایی با /check-out */ }
@@ -1212,7 +1216,7 @@
     try {
       const d = await api('/daily-tasks?date=' + encodeURIComponent(date));
       if (!d.tasks || !d.tasks.length) { showToast('تسک بدون پاسخی برای این روز نمانده است.'); loadReportBanner(); return; }
-      openReportWizard({ mode: 'late', date: d.date, today: d.today, tasks: d.tasks, body: null, allowLater: false });
+      openReportWizard({ mode: 'late', date: d.date, today: d.today, tasks: d.tasks, body: null, allowLater: false, teamReview: d.teamReview });
     } catch (err) { showToast(err.message, true); }
   }
 
@@ -1233,6 +1237,35 @@
       });
       box.classList.remove('hidden');
     } catch (_) { box.classList.add('hidden'); }
+  }
+
+  // ---- D9: بررسی گزارش تیم (تسک سیستمیِ سرپرست) ----
+  const reviewDraftOf = (userId) => {
+    if (!reportUi.reviewDraft.has(userId)) reportUi.reviewDraft.set(userId, { comment: '', reaction: '' });
+    return reportUi.reviewDraft.get(userId);
+  };
+
+  // بعد از مشاهده‌ی همه: سرور تسک را done کرده؛ فهرست تازه می‌گیریم و ویزارد را با همان پاسخ‌های قبلی دوباره باز می‌کنیم
+  async function refreshAfterReview() {
+    const ui = reportUi;
+    const q = ui.mode === 'late' ? '?date=' + encodeURIComponent(ui.date) : '';
+    const d = await api('/daily-tasks' + q);
+    showToast('گزارش همه‌ی اعضای دارای گزارش مشاهده شد.');
+    openReportWizard({ mode: ui.mode, date: d.date, today: d.today, tasks: d.tasks || [], body: null, allowLater: ui.allowLater, teamReview: d.teamReview });
+  }
+
+  // «الان بررسی می‌کنم»: وضعیت تازه‌ی تیم را (با خلاصه‌ی گزارش‌ها) می‌گیرد؛ چیزی برای بررسی نمانده ⇒ مستقیم ادامه‌ی ویزارد
+  async function openTeamStep() {
+    const ui = reportUi;
+    try {
+      const q = ui.teamReview && ui.teamReview.reviewDate ? '&date=' + encodeURIComponent(ui.teamReview.reviewDate) : '';
+      const r = await api('/team-review?detail=1' + q);
+      const members = r.members || [];
+      ui.team = { reviewDate: r.reviewDate, unreviewed: members.filter((m) => m.status === 'unreviewed'), noReport: members.filter((m) => m.status === 'no_report') };
+      if (!r.reviewDate || !ui.team.unreviewed.length) { await refreshAfterReview(); return; }
+      ui.step = 'team'; ui.msg = '';
+      renderReport();
+    } catch (err) { ui.msg = err.message; renderReport(); }
   }
 
   function radioChip(name, value, label, checked, onChange, extraClass) {
@@ -1264,13 +1297,29 @@
       const a = reportAnswer(t.id);
       const card = dEl('div', { class: 'card dr-card' });
       card.appendChild(dEl('div', { class: 'dr-progress', text: `سؤال ${(ui.idx + 1).toLocaleString('fa-IR')} از ${total.toLocaleString('fa-IR')}`, attrs: { role: 'status' } }));
-      card.appendChild(heading(`امروز تسک «${t.title}» انجام شد؟`));
+      const isReview = DR.isReviewTask(t); // D9: تسک سیستمیِ سرپرست؛ «انجام شد» فقط با مشاهده‌ی واقعی گزارش‌ها
+      card.appendChild(heading(isReview ? 'گزارش روز قبلِ تیم را بررسی کرده‌اید؟' : `امروز تسک «${t.title}» انجام شد؟`));
       if (t.priority === 'high') card.appendChild(dEl('span', { class: 'chip chip-orange', text: 'اولویت بالا' }));
-      if (t.description) card.appendChild(dEl('div', { class: 'plan-meta', text: t.description }));
+      if (t.description && !isReview) card.appendChild(dEl('div', { class: 'plan-meta', text: t.description }));
 
-      const st = dEl('fieldset', { class: 'dr-fieldset dr-status' }, dEl('legend', { class: 'sr-only', text: 'وضعیت تسک' }));
-      DR.STATUS.forEach((s) => st.appendChild(radioChip('dr-status', s.value, `${s.icon} ${s.label}`, a.status === s.value, (v) => { a.status = v; ui.msg = ''; renderReport(); }, 'dr-opt-' + s.value)));
-      card.appendChild(st);
+      if (isReview) {
+        const info = ui.teamReview;
+        if (info) {
+          const un = info.unreviewed || [];
+          const nr = info.noReport || [];
+          card.appendChild(dEl('div', { class: 'plan-meta', text: `گزارش‌های ${fmtDate(info.reviewDate)}` }));
+          card.appendChild(dEl('div', { class: 'rv-group', text: `مشاهده‌نشده (${un.length.toLocaleString('fa-IR')}): ${un.map((m) => m.fullName).join('، ') || '—'}` }));
+          if (nr.length) card.appendChild(dEl('div', { class: 'plan-meta', text: `گزارش نداده‌اند (شرط تکمیل نیست): ${nr.map((m) => m.fullName).join('، ')}` }));
+        }
+        const choice = dEl('div', { class: 'dr-nav' });
+        choice.appendChild(dEl('button', { type: 'button', class: 'btn primary', text: 'الان بررسی می‌کنم', on: { click: () => { openTeamStep(); } } }));
+        choice.appendChild(dEl('button', { type: 'button', class: 'btn secondary', text: '❌ انجام نشد + علت', attrs: { 'aria-pressed': a.status === 'not_done' ? 'true' : 'false' }, on: { click: () => { a.status = 'not_done'; ui.msg = ''; renderReport(); } } }));
+        card.appendChild(choice);
+      } else {
+        const st = dEl('fieldset', { class: 'dr-fieldset dr-status' }, dEl('legend', { class: 'sr-only', text: 'وضعیت تسک' }));
+        DR.STATUS.forEach((s) => st.appendChild(radioChip('dr-status', s.value, `${s.icon} ${s.label}`, a.status === s.value, (v) => { a.status = v; ui.msg = ''; renderReport(); }, 'dr-opt-' + s.value)));
+        card.appendChild(st);
+      }
 
       if (a.status && a.status !== 'done') {
         const rs = dEl('fieldset', { class: 'dr-fieldset' }, dEl('legend', { text: 'علت' }));
@@ -1284,26 +1333,84 @@
           id: 'dr-reason-text', rows: 3, maxLength: DR.LIMITS.reasonText, value: a.reasonText,
           on: { input: (e) => { a.reasonText = e.target.value; } },
         }));
-        const rsch = dEl('fieldset', { class: 'dr-fieldset' }, dEl('legend', { text: 'این تسک چه شود؟' }));
-        const rchips = dEl('div', { class: 'dr-chips' });
-        DR.RESCHEDULE.forEach((r) => rchips.appendChild(radioChip('dr-res', r.value, r.label, a.resType === r.value, (v) => { a.resType = v; ui.msg = ''; renderReport(); })));
-        rsch.appendChild(rchips);
-        if (a.resType === 'date') {
-          const sel = dEl('select', { id: 'dr-res-date', on: { change: (e) => { a.resDate = e.target.value; } }, attrs: { 'aria-label': 'تاریخ انتقال' } });
-          sel.appendChild(dEl('option', { value: '', text: 'انتخاب تاریخ…' }));
-          DR.futureDates(ui.today, 30).forEach((d) => sel.appendChild(dEl('option', { value: d, text: fmtDate(d), selected: a.resDate === d })));
-          rsch.appendChild(sel);
+        if (!isReview) { // تسک سیستمی انتقال/حذف ندارد
+          const rsch = dEl('fieldset', { class: 'dr-fieldset' }, dEl('legend', { text: 'این تسک چه شود؟' }));
+          const rchips = dEl('div', { class: 'dr-chips' });
+          DR.RESCHEDULE.forEach((r) => rchips.appendChild(radioChip('dr-res', r.value, r.label, a.resType === r.value, (v) => { a.resType = v; ui.msg = ''; renderReport(); })));
+          rsch.appendChild(rchips);
+          if (a.resType === 'date') {
+            const sel = dEl('select', { id: 'dr-res-date', on: { change: (e) => { a.resDate = e.target.value; } }, attrs: { 'aria-label': 'تاریخ انتقال' } });
+            sel.appendChild(dEl('option', { value: '', text: 'انتخاب تاریخ…' }));
+            DR.futureDates(ui.today, 30).forEach((d) => sel.appendChild(dEl('option', { value: d, text: fmtDate(d), selected: a.resDate === d })));
+            rsch.appendChild(sel);
+          }
+          card.appendChild(rsch);
         }
-        card.appendChild(rsch);
       }
       card.appendChild(msg);
       const nav = dEl('div', { class: 'dr-nav' });
       if (ui.idx > 0) nav.appendChild(dEl('button', { type: 'button', class: 'btn secondary', text: 'قبلی', on: { click: () => { ui.idx -= 1; ui.msg = ''; renderReport(); } } }));
       nav.appendChild(dEl('button', {
         type: 'button', class: 'btn primary', text: ui.idx === total - 1 ? 'ادامه' : 'بعدی',
-        on: { click: () => { const e = DR.validateAnswer(a, opts); if (e) { fail(e); return; } ui.msg = ''; if (ui.idx === total - 1) ui.step = 'extra'; else ui.idx += 1; renderReport(); } },
+        on: { click: () => { const e = DR.validateAnswer(a, DR.taskOpts(t, opts)); if (e) { fail(e); return; } ui.msg = ''; if (ui.idx === total - 1) ui.step = 'extra'; else ui.idx += 1; renderReport(); } },
       }));
       if (ui.allowLater) nav.appendChild(laterBtn());
+      card.appendChild(nav);
+      body.appendChild(card);
+      focusHeading();
+      return;
+    }
+
+    if (ui.step === 'team') { // D9: «الان بررسی می‌کنم» — هر گزارش جدا «مشاهده شد» می‌خورد (کامنت/واکنش اختیاری)
+      const team = ui.team || { reviewDate: '', unreviewed: [], noReport: [] };
+      const card = dEl('div', { class: 'card dr-card' });
+      card.appendChild(heading(`گزارش‌های ${fmtDate(team.reviewDate)} تیم`));
+      card.appendChild(dEl('div', { class: 'plan-meta', text: `${team.unreviewed.length.toLocaleString('fa-IR')} گزارش مشاهده‌نشده · کامنت و واکنش اختیاری است.` }));
+      team.unreviewed.forEach((m) => {
+        const draft = reviewDraftOf(m.userId);
+        const row = dEl('div', { class: 'list-item rv-member' });
+        row.appendChild(dEl('strong', { text: m.fullName }));
+        const line = DR.reportLine(m.report);
+        if (line) row.appendChild(dEl('div', { class: 'plan-meta', text: line }));
+        const items = (m.report && m.report.items) || [];
+        if (items.length) {
+          const det = dEl('details', { class: 'rv-items' }, dEl('summary', { text: 'جزئیات گزارش' }));
+          items.forEach((it) => {
+            const s = DR.STATUS.find((x) => x.value === it.status);
+            const reason = DR.REASONS.find((x) => x.value === it.reasonCode);
+            det.appendChild(dEl('div', { class: 'plan-meta', text: [`${s ? s.icon : '⚪'} ${it.title}${it.outOfPlan ? ' (خارج از برنامه)' : ''}`, reason && it.status !== 'done' ? reason.label : '', it.reasonText || ''].filter(Boolean).join(' — ') }));
+          });
+          row.appendChild(det);
+        }
+        const chips = dEl('div', { class: 'dr-chips', attrs: { role: 'radiogroup', 'aria-label': `واکنش به گزارش ${m.fullName}` } });
+        [{ value: '', label: 'بدون واکنش', icon: '' }, ...DR.REVIEW_REACTIONS].forEach((r) => chips.appendChild(radioChip(`rv-react-${m.userId}`, r.value, `${r.icon} ${r.label}`.trim(), draft.reaction === r.value, (v) => {
+          draft.reaction = v; // بدون رندر مجدد تا فوکوس/متنِ تایپ‌شده نپرد
+          chips.querySelectorAll('.dr-opt').forEach((el) => { const inp = el.querySelector('input'); el.classList.toggle('on', !!inp && inp.value === v); });
+        })));
+        row.appendChild(chips);
+        row.appendChild(dEl('textarea', { rows: 2, maxLength: DR.LIMITS.reviewComment, value: draft.comment, placeholder: 'کامنت برای همکار (اختیاری؛ برایش ارسال می‌شود)', on: { input: (e) => { draft.comment = e.target.value; } }, attrs: { 'aria-label': `کامنت برای ${m.fullName}` } }));
+        const seen = dEl('button', { type: 'button', class: 'btn primary', text: '✔ مشاهده شد' });
+        seen.addEventListener('click', () => withBusy(seen, async () => {
+          const bad = DR.validateReview(draft);
+          if (bad) { fail(bad); return; }
+          try {
+            const hadComment = !!String(draft.comment || '').trim();
+            const res = await api('/report-reviews', { method: 'POST', body: DR.buildReviewBody({ subjectUserId: m.userId, reportDate: team.reviewDate, comment: draft.comment, reaction: draft.reaction }) });
+            team.unreviewed = team.unreviewed.filter((x) => x.userId !== m.userId);
+            ui.reviewDraft.delete(m.userId);
+            if (res && res.state && res.state.complete || !team.unreviewed.length) { await refreshAfterReview(); return; }
+            showToast(hadComment ? 'مشاهده شد؛ کامنت برای همکار ارسال می‌شود.' : 'مشاهده شد.');
+            ui.msg = '';
+            renderReport();
+          } catch (err) { ui.msg = err.message; renderReport(); }
+        }));
+        row.appendChild(seen);
+        card.appendChild(row);
+      });
+      if (team.noReport.length) card.appendChild(dEl('div', { class: 'plan-meta', text: `گزارش نداده‌اند (شرط تکمیل نیست): ${team.noReport.map((m) => m.fullName).join('، ')}` }));
+      card.appendChild(msg);
+      const nav = dEl('div', { class: 'dr-nav' });
+      nav.appendChild(dEl('button', { type: 'button', class: 'btn secondary', text: 'بازگشت', on: { click: () => { ui.step = 'q'; ui.msg = ''; renderReport(); } } }));
       card.appendChild(nav);
       body.appendChild(card);
       focusHeading();
@@ -1391,7 +1498,8 @@
       send.addEventListener('click', () => withBusy(send, async () => {
         try {
           const res = await api('/daily-report', { method: 'POST', body: bodyOf() });
-          showToast(res && res.tasks && res.tasks.length ? `گزارش ثبت شد؛ ${res.tasks.length.toLocaleString('fa-IR')} تسک هنوز بدون پاسخ است.` : 'گزارش ثبت شد.');
+          const cheer = DR.encouragementOf(res);
+          showToast([res && res.tasks && res.tasks.length ? `گزارش ثبت شد؛ ${res.tasks.length.toLocaleString('fa-IR')} تسک هنوز بدون پاسخ است.` : 'گزارش ثبت شد.', cheer].filter(Boolean).join(' '));
           reportUi.answers = new Map(); reportUi.extras = [];
           switchView('today');
           loadReportBanner();
