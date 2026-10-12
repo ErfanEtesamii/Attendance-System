@@ -42,6 +42,8 @@ function reviewDay(allUsers, date) {
     const onLeave = leaveRepository.hasApprovedLeaveOnDate(user.id, date, 'leave');
     const onMission = leaveRepository.hasApprovedMissionOnDate(user.id, date);
     const calendar = calendarOf(user, date, ctx);
+    // C5: ورود/خروج با ماموریتِ در انتظار که بعداً رد شد (و ماموریت تأییدشده‌ای نیست) ⇒ نیازمند بررسی
+    const pendingMissionRejected = !!(record && record.via_pending_mission === 1 && !onMission && leaveRepository.hasRejectedMissionOnDate(user.id, date));
 
     let state;
     if (record && record.status === 'holiday') state = 'holiday';
@@ -68,6 +70,7 @@ function reviewDay(allUsers, date) {
       state,
       calendarKind: calendar.kind, // working | half | weekend | holiday (افزایشی؛ S3-8b)
       onMission,
+      pendingMissionRejected,
       noCheckout,
       lateMinutes,
       earlyLeaveMinutes: summary ? summary.earlyLeaveMinutes : 0,
@@ -76,7 +79,7 @@ function reviewDay(allUsers, date) {
       checkIn: record ? record.check_in_time : null,
       checkOut: record ? record.check_out_time : null,
       recordId: record ? record.id : null,
-      needsAttention: state === 'absent' || state === 'incomplete' || noCheckout || lateMinutes > 0,
+      needsAttention: state === 'absent' || state === 'incomplete' || noCheckout || lateMinutes > 0 || pendingMissionRejected,
     };
   });
 }

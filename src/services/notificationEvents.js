@@ -233,4 +233,16 @@ function suspiciousCreated(event) {
   });
 }
 
-module.exports = { leaveRequested, leaveStepAdvanced, leaveDecided, disputeOpened, disputeResolved, systemAlert, suspiciousCreated };
+/** تغییر برنامه‌ی هفتگیِ «ثبت‌شده» توسط کارمند ⇒ اعلان به سرپرست (یا ادمین‌ها). */
+function weeklyPlanChanged(employee, plan, summary = {}) {
+  return guard('weeklyPlanChanged', () => handlersOf(employee).map((h) => send('weeklyPlanChanged', h.id, {
+    type: 'weekly_plan_changed',
+    title: 'برنامه‌ی هفتگی تغییر کرد',
+    body: `${employee.full_name} برنامه‌ی هفته‌ی ${plan.week_start_date} را پس از ثبت تغییر داد (افزوده ${summary.added || 0}، ویرایش ${summary.edited || 0}، حذف ${summary.removed || 0}).`,
+    link: '#/plans',
+    data: { planId: plan.id, employeeId: employee.id },
+    dedupeKey: `weekly_plan_changed:${plan.id}:${new Date().toISOString().slice(0, 16)}`, // حداکثر یک اعلان در دقیقه
+  })));
+}
+
+module.exports = { weeklyPlanChanged, leaveRequested, leaveStepAdvanced, leaveDecided, disputeOpened, disputeResolved, systemAlert, suspiciousCreated };

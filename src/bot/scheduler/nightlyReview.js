@@ -11,8 +11,26 @@ const { todayDateString } = require('../../utils/serverTime');
 const { panelWebAppButton } = require('../panelLinks');
 const { runFraudChecksSafe } = require('../../utils/fraudRunner');
 const suspiciousRepository = require('../../repositories/suspiciousRepository');
+const missionDecisionService = require('../../services/missionDecisionService');
 
 const MAX_ATTENTION_LINES = 25;
+const MAX_MISSIONS = 8; // هر ماموریت یک ردیف دکمه دارد؛ بقیه با /pending_leaves
+
+// C4: ماموریت‌های منتظر تأیید این سرپرست ⇒ { lines, shown } (ضدخطا؛ مرور شبانه هرگز نباید بشکند)
+function missionSection(supervisor) {
+  try {
+    const all = missionDecisionService.pendingForSupervisor(supervisor);
+    if (!all.length) return { lines: [], shown: [] };
+    const shown = all.slice(0, MAX_MISSIONS);
+    const lines = ['', `🚗 ماموریت‌های منتظر تأیید (${all.length}):`];
+    shown.forEach((r) => lines.push(missionDecisionService.describeMission(r, usersRepository.findById(r.user_id))));
+    if (all.length > shown.length) lines.push(`… و ${all.length - shown.length} مورد دیگر → /pending_leaves`);
+    return { lines, shown };
+  } catch (err) {
+    console.error('[bot][scheduler] خطا در بخش ماموریت‌ها:', err.message);
+    return { lines: [], shown: [] };
+  }
+}
 
 function clock(iso) {
   return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
@@ -23,6 +41,7 @@ function attentionLine(r) {
   if (r.state === 'absent') return `• ${name} — غایب / بدون ثبت ورود`;
   const parts = [];
   if (r.lateMinutes > 0) parts.push(`تأخیر ${formatMinutes(r.lateMinutes)}`);
+  if (r.pendingMissionRejected) parts.push('تردد از بیرون شبکه با ماموریتی که رد شد');
   if (r.noCheckout) parts.push(`ورود ${clock(r.checkIn)} ولی خروج ثبت نشده`);
   else if (r.state === 'incomplete') parts.push('رکورد ناقص');
   return `• ${name} — ${parts.join('، ')}`;
@@ -85,6 +104,8 @@ function buildNightlyMessage(supervisor, team, today, rows = reviewDay(team, tod
     if (openSuspicious > 0) lines.push(`🔎 ${openSuspicious} نشانه‌ی بررسی‌نشده در تیم شما (فقط نشانه، نه اتهام) → پنل ‹ موارد مشکوک`);
   }
 
+  lines.push(...missionSection(supervisor).lines);
+
   return lines.join('\n');
 }
 
@@ -107,7 +128,9 @@ async function sendNightlyReview(bot) {
     try {
       const rows = reviewDay(team, today);
       if (isTeamOffDay(rows)) continue;
-      const options = button ? { reply_markup: { inline_keyboard: [[button]] } } : {};
+      const keyboard = missionSection(sup).shown.map((r) => missionDecisionService.missionKeyboardRow(r));
+      if (button) keyboard.push([button]);
+      const options = keyboard.length ? { reply_markup: { inline_keyboard: keyboard } } : {};
       // eslint-disable-next-line no-await-in-loop
       await bot.sendMessage(sup.telegram_user_id, buildNightlyMessage(sup, team, today, rows), options);
     } catch (err) {
@@ -116,4 +139,4 @@ async function sendNightlyReview(bot) {
   }
 }
 
-module.exports = { sendNightlyReview, buildNightlyMessage, isTeamOffDay };
+module.exports = { sendNightlyReview, buildNightlyMessage, isTeamOffDay, missionSection };

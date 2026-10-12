@@ -48,7 +48,7 @@ const TOTAL_PATHS = [
   'attendance.presentDays', 'attendance.absentDays', 'attendance.lateDays', 'attendance.earlyLeaveDays', 'attendance.incompleteDays',
   'attendance.pendingDays', 'attendance.futureDays', 'attendance.manualHolidayDays', 'attendance.notStartedDays', 'attendance.workedOnNonWorkingDays', 'attendance.invalidDays',
   'leave.leaveDays', 'leave.leaveMinutes', 'leave.missionDays', 'leave.missionMinutes',
-  'time.expectedMinutes', 'time.effectiveMinutes', 'time.shortfallMinutes', 'time.lateMinutes', 'time.earlyLeaveMinutes',
+  'time.expectedMinutes', 'time.effectiveMinutes', 'time.effectiveWithMissionMinutes', 'time.shortfallMinutes', 'time.lateMinutes', 'time.earlyLeaveMinutes',
   'overtime.rawMinutes', 'overtime.payableDailyMinutes', 'overtime.pendingMinutes', 'overtime.rejectedMinutes',
   'overtime.eligibleMinutes', 'overtime.payableMinutes', 'overtime.clippedMinutes',
 ];
@@ -69,7 +69,7 @@ function startDateOf(user, timezone) {
 }
 
 function emptyDayResult() {
-  return { expected: 0, workedGross: null, break: 0, effective: null, late: 0, earlyLeave: 0, overtime: 0, overtimePayable: 0, isOpen: false, flags: [], status: null };
+  return { expected: 0, workedGross: null, break: 0, effective: null, late: 0, earlyLeave: 0, overtime: 0, overtimePayable: 0, isOpen: false, missionMinutes: 0, effectiveWithMission: null, flags: [], status: null };
 }
 
 // جمع «جمع‌پذیر»های خروجی کاربران (totals). جدا شده تا گزارش ماهِ بسته (S5-3b) بعد از فیلتر اسکوپ از snapshot هم همان جمع را بسازد.
@@ -142,7 +142,7 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
       manualHolidayDays: 0, workedOnNonWorkingDays: 0, invalidDays: 0, notStartedDays: 0,
     };
     const leave = { leaveDays: 0, leaveMinutes: 0, missionDays: 0, missionMinutes: 0 };
-    const time = { expectedMinutes: 0, effectiveMinutes: 0, shortfallMinutes: 0, lateMinutes: 0, earlyLeaveMinutes: 0 };
+    const time = { expectedMinutes: 0, effectiveMinutes: 0, effectiveWithMissionMinutes: 0, shortfallMinutes: 0, lateMinutes: 0, earlyLeaveMinutes: 0 };
     const typeAcc = new Map(); // key: leaveTypeId|null ⇒ { leaveTypeId, title, kind, days, minutes }
     const bucket = (leaveTypeId, kind) => {
       const key = leaveTypeId === null ? 'manual' : String(leaveTypeId);
@@ -199,6 +199,7 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
       // ورودِ بدون خروجِ روزِ گذشته (missing_checkout) ساعت مفیدِ بی‌معنا می‌دهد (موتور تا now می‌شمارد ⇒ ده‌ها ساعت)؛ در جمع نمی‌آید و در incompleteDays شمرده می‌شود.
       // رکورد بازِ «امروز» (هنوز در حال کار) تا همین لحظه حساب می‌شود.
       if (day.effective !== null && !day.flags.includes('missing_checkout')) time.effectiveMinutes += day.effective;
+      if (day.effectiveWithMission !== null && !day.flags.includes('missing_checkout')) time.effectiveWithMissionMinutes += day.effectiveWithMission; // C3
       if (day.late > 0) { att.lateDays += 1; time.lateMinutes += day.late; }
       if (day.earlyLeave > 0) { att.earlyLeaveDays += 1; time.earlyLeaveMinutes += day.earlyLeave; }
       if (record) otDays.push({ record, day });
@@ -256,6 +257,7 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
           expected: day.expected, effective: day.effective, late: day.late, earlyLeave: day.earlyLeave,
           overtime: day.overtime, overtimePayable: day.overtimePayable, flags: day.flags,
           leaveMinutes: sum(parts.map((p) => p.minutes)),
+          missionMinutes: day.missionMinutes, effectiveWithMission: day.effectiveWithMission,
         });
       }
     }

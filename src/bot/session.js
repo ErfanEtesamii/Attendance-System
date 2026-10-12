@@ -30,4 +30,9 @@ function clear(chatId) {
   sessions.delete(chatId);
 }
 
-module.exports = { start, get, update, clear };
+// پاک‌کردن همه‌ی مکالمه‌های نیمه‌کاره (بعد از ریست برنامه)
+function clearAll() {
+  sessions.clear();
+}
+
+module.exports = { start, get, update, clear, clearAll };

@@ -37,7 +37,75 @@ function onLeaveToday(userId, today) {
   return leaveRepository.listApprovedOnDate(userId, today).some((r) => r.unit !== 'hour');
 }
 
+// C4: یادآوری/ارجاع ماموریت‌های منتظرِ سرپرست — مستقل از تنظیمات T/E (ماموریت قاعده‌ی ثابت دارد):
+//   • از ساعت MISSION_REMINDER_HOUR (۱۰ صبح به وقت شرکت) روزِ بعد از ثبت، اگر هنوز بی‌پاسخ است ⇒ یک بار یادآوری (dedupe).
+//   • ۴۸ ساعت از شروع مرحله (MISSION_ESCALATE_HOURS) ⇒ ارجاع به ادمین (مثل escalateToAdmin موجود) + اعلان به ادمین‌ها.
+const MISSION_REMINDER_HOUR = 10;
+const MISSION_ESCALATE_HOURS = 48;
+
+async function runMissionApprovalReminder({ now = new Date() } = {}) {
+  const s = settingsRepository.getAll();
+  const out = { checked: 0, reminded: 0, escalated: 0, errors: 0 };
+  const today = todayInZone(s.timezone, now);
+  const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: s.timezone, hour: '2-digit', hourCycle: 'h23' }).format(now));
+  const pending = leaveRepository.listQueue({ status: 'pending', kind: 'mission', limit: null }).rows.filter((r) => r.current_step);
+  for (const request of pending) {
+    out.checked += 1;
+    try {
+      const employee = usersRepository.findById(request.user_id);
+      const chain = leaveApprovalService.getChain(request.id);
+      const row = chain.find((c) => c.step === request.current_step);
+      if (!employee || !row || row.status !== 'pending' || row.approverRole !== 'manager') continue;
+      const manager = recipientsOf('manager', employee)[0];
+      const createdMs = toMs(request.created_at);
+      const startedMs = request.current_step === 1 ? createdMs : toMs((chain.find((c) => c.step === request.current_step - 1) || {}).decidedAt);
+      const ageH = Number.isFinite(startedMs) ? (now.getTime() - startedMs) / HOUR : 0;
+      const createdDay = Number.isFinite(createdMs) ? todayInZone(s.timezone, new Date(createdMs)) : today;
+
+      if (ageH >= MISSION_ESCALATE_HOURS) {
+        const res = leaveApprovalService.escalateToAdmin(request.id);
+        if (res.ok) {
+          out.escalated += 1;
+          auditRepository.logChange({
+            actor: null, action: 'leave_request_escalated', entityType: 'leave_request', entityId: request.id,
+            before: { approver_role: 'manager' }, after: { approver_role: 'admin' },
+            reason: `ماموریت ${MISSION_ESCALATE_HOURS} ساعت بی‌پاسخ ماند`, meta: { requestId: request.id, targetUserId: request.user_id, step: res.step },
+          });
+          for (const a of recipientsOf('admin', employee)) {
+            await notify(a.id, {
+              type: 'leave_requested', title: 'ارجاع: ماموریت منتظر تأیید شماست',
+              body: `${employee.full_name} — ${period(request)}\nسرپرست ${MISSION_ESCALATE_HOURS} ساعت پاسخ نداد.`,
+              link: '#/leave', data: { requestId: request.id, employeeId: employee.id, escalated: true },
+              dedupeKey: `mission_escalated:${request.id}:${row.step}`, telegram: true,
+            });
+          }
+        }
+        continue;
+      }
+      if (manager && hour >= MISSION_REMINDER_HOUR && createdDay < today) {
+        const res = await notify(manager.id, {
+          type: 'leave_requested', title: 'یادآوری: ماموریت هنوز منتظر تأیید شماست',
+          body: `${employee.full_name} — ${period(request)}`,
+          link: '#/leave', data: { requestId: request.id, employeeId: employee.id, reminder: true },
+          dedupeKey: `mission_reminder:${request.id}:${row.step}`, telegram: true,
+        });
+        if (res && res.created) out.reminded += 1;
+      }
+    } catch (err) {
+      out.errors += 1;
+      console.error('[missionApprovalReminder] خطا برای درخواست', request.id, sanitizeText(err && err.message ? err.message : String(err), 200));
+    }
+  }
+  return out;
+}
+
 async function runLeaveApprovalReminder({ now = new Date() } = {}) {
+  const missions = await runMissionApprovalReminder({ now }); // C4: شکل خروجیِ قبلی حفظ می‌شود؛ شمارنده‌ی ماموریت فقط لاگ می‌شود
+  if (missions.reminded || missions.escalated || missions.errors) console.log('[leaveApprovalReminder] ماموریت:', JSON.stringify(missions));
+  return runGeneralLeaveApprovalReminder({ now });
+}
+
+async function runGeneralLeaveApprovalReminder({ now = new Date() } = {}) {
   const s = settingsRepository.getAll();
   const T = s.leaveApprovalReminderHours;
   const E = s.leaveApprovalEscalateHours;
@@ -121,4 +189,4 @@ async function runLeaveApprovalReminder({ now = new Date() } = {}) {
   return out;
 }
 
-module.exports = { runLeaveApprovalReminder };
+module.exports = { runLeaveApprovalReminder, runMissionApprovalReminder };

@@ -93,4 +93,31 @@ async function runDailyBackup({
   return { file, path: dest, sizeBytes, integrity: 'ok', monthlyCreated, removed, attachments };
 }
 
-module.exports = { runDailyBackup, backupStamp };
+/**
+ * بک‌آپ «پیش از ریست» (B2): pre-reset-YYYYMMDD-HHmm.db در همان پوشه‌ی بک‌آپ.
+ * با سیاست نگهداری روزانه/ماهانه دست‌کاری نمی‌شود (الگوی نامش با DAILY_RE/MONTHLY_RE نمی‌خواند).
+ * شکست در ساخت یا integrity_check ⇒ خطا (فراخواننده نباید ریست کند).
+ */
+async function runPreResetBackup({ db = getDb(), dir = config.monitor.backupDir, now = new Date() } = {}) {
+  fs.mkdirSync(dir, { recursive: true });
+  const file = `pre-reset-${backupStamp(now)}.db`;
+  const dest = path.join(dir, file);
+  const tmp = `${dest}.partial`;
+  try {
+    fs.rmSync(tmp, { force: true });
+    await db.backup(tmp);
+  } catch (err) {
+    try { fs.rmSync(tmp, { force: true }); } catch (_) { /* وجود ندارد */ }
+    throw err;
+  }
+  const check = integrityCheckFile(tmp);
+  removeSidecars(tmp);
+  if (!check.ok) {
+    try { fs.rmSync(tmp, { force: true }); } catch (_) { /* وجود ندارد */ }
+    throw new Error(`integrity_check بک‌آپ پیش از ریست ناموفق بود (${check.result}).`);
+  }
+  fs.renameSync(tmp, dest);
+  return { file, path: dest, sizeBytes: fs.statSync(dest).size };
+}
+
+module.exports = { runDailyBackup, runPreResetBackup, backupStamp };

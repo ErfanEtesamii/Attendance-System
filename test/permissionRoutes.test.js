@@ -122,6 +122,9 @@ const ROUTES_2 = [
   ['POST', '/api/admin/broadcast', [A], 'skip'],
   ['POST', '/api/admin/system/revoke-all-sessions', [A], 'skip'],
   ['GET', '/api/admin/system/backup', [A], 'skip'],
+  ['GET', '/api/admin/system/reset/options', [A]], // B3
+  ['POST', '/api/admin/system/reset/preview', [A]], // B3 (فقط شمارش)
+  ['POST', '/api/admin/system/reset', [A], 'skip'], // B3 (مخرب؛ ادمین اجرا نمی‌شود)
 ];
 
 describe('گارد مجوز routeهای /api/admin/* (S4-3b/S4-3c)', { skip: hasDeps ? false : 'express نصب نیست (npm install)' }, () => {

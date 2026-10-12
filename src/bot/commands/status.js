@@ -51,7 +51,7 @@ async function handleStatus(bot, msg) {
   }
 
   if (openBreak) {
-    const label = openBreak.break_type === 'lunch' ? 'ناهار' : 'استراحت کوتاه';
+    const label = openBreak.break_type === 'lunch' ? 'ناهار' : 'نماز / استراحت کوتاه';
     await bot.sendMessage(
       chatId,
       `☕ وضعیت شما: در حال استراحت (${label}) از ساعت ${formatTime(openBreak.start_time)}`

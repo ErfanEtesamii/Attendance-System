@@ -59,6 +59,12 @@ function awaitingRole(request) {
   return row ? row.approverRole : 'manager';
 }
 
+// تنها ادمین فعال سیستم؟ (استثنای خودتأییدی ماموریت)
+function isSoleActiveAdmin(user) {
+  if (!user || user.role !== 'admin') return false;
+  return !usersRepository.listUsers({ onlyActive: true }).some((u) => u.role === 'admin' && u.id !== user.id);
+}
+
 function canDecide(actor, request, role) {
   if (!actor) return false;
   if (actor.role === 'admin') return true;
@@ -74,6 +80,11 @@ function decide({ requestId, actor, decision, note }) {
   if (!request) return { ok: false, code: 'NOT_FOUND', error: 'درخواست یافت نشد.' };
   if (request.status !== 'pending') return { ok: false, code: 'ALREADY_DECIDED', error: 'این درخواست قبلاً بررسی شده است.' };
   const role = awaitingRole(request);
+  // ماموریت: هیچ‌کس درخواست خودش را تأیید/رد نمی‌کند؛ تنها استثنا ادمینِ «تنها ادمین فعال» (با audit ویژه)
+  const selfDecision = request.kind === 'mission' && actor && actor.id === request.user_id;
+  if (selfDecision && !isSoleActiveAdmin(actor)) {
+    return { ok: false, code: 'SELF_APPROVAL', role, error: 'تصمیم درباره‌ی ماموریتِ خودتان ممکن نیست؛ سرپرست یا ادمین دیگری باید تصمیم بگیرد.' };
+  }
   if (!canDecide(actor, request, role)) {
     const who = { manager: 'سرپرست مستقیم کارمند یا ادمین', admin: 'ادمین', hr: 'منابع انسانی یا ادمین' }[role];
     return { ok: false, code: 'FORBIDDEN', role, error: `تصمیم این مرحله با ${who} است.` };
@@ -96,6 +107,11 @@ function decide({ requestId, actor, decision, note }) {
     leaveApprovalRepository.setCurrentStep(requestId, null);
     return { completed: true, finalStatus: 'approved', nextRole: null };
   })();
+  if (selfDecision) {
+    try {
+      require('../repositories/auditRepository').logEvent({ userId: actor.id, action: 'mission_self_decided', details: { requestId, decision, reason: 'sole_active_admin' } });
+    } catch (_) { /* ثبت best-effort */ }
+  }
   return { ok: true, request: leaveRepository.findById(requestId), step, role, ...result };
 }
 

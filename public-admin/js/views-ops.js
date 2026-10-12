@@ -55,8 +55,8 @@
 
     const breakRow = (b) => `
       <tr data-break="${b.id}">
-        <td>${admin ? `<select data-f="type" aria-label="نوع استراحت"><option value="lunch" ${b.break_type === 'lunch' ? 'selected' : ''}>ناهار</option><option value="short_break" ${b.break_type === 'short_break' ? 'selected' : ''}>کوتاه</option></select>`
-          : esc(b.break_type === 'lunch' ? 'ناهار' : 'کوتاه')}</td>
+        <td>${admin ? `<select data-f="type" aria-label="نوع استراحت"><option value="lunch" ${b.break_type === 'lunch' ? 'selected' : ''}>ناهار</option><option value="short_break" ${b.break_type === 'short_break' ? 'selected' : ''}>نماز / استراحت کوتاه</option></select>`
+          : esc(b.break_type === 'lunch' ? 'ناهار' : 'نماز / کوتاه')}</td>
         <td>${admin ? `<input type="datetime-local" data-f="start" aria-label="شروع استراحت" value="${fmt.toLocalInput(b.start_time)}" />` : fmt.clock(b.start_time)}</td>
         <td>${admin ? `<input type="datetime-local" data-f="end" aria-label="پایان استراحت" value="${fmt.toLocalInput(b.end_time)}" />` : (b.end_time ? fmt.clock(b.end_time) : AP.badge('on_break', 'در جریان'))}</td>
         ${admin ? `<td><div class="row-actions"><button type="button" class="btn ghost small" data-save-break>ذخیره</button><button type="button" class="btn danger small" data-del-break>${icon('trash')}</button></div></td>` : ''}
@@ -635,7 +635,7 @@
   // موارد مشکوک (S2-5b): فقط «نشانه» برای بررسی انسانی، نه اتهام یا مدرک
   // ======================================================
   const suspUi = { status: 'open' };
-  const SUSP_TYPE = { shared_device: 'یک دستگاه برای چند نفر', same_ip_close: 'یک IP و ثبت‌های بسیار نزدیک', device_change: 'تغییر ناگهانی دستگاه' };
+  const SUSP_TYPE = { shared_device: 'یک دستگاه برای چند نفر', same_ip_close: 'یک IP و ثبت‌های بسیار نزدیک', device_change: 'تغییر ناگهانی دستگاه', pending_mission_outside: 'تردد از بیرون شبکه با ماموریتِ در انتظار' };
   const SUSP_STATUS = { open: ['open', 'بررسی‌نشده'], reviewed: ['resolved', 'بررسی‌شده'], ignored: ['holiday', 'بی‌اهمیت'] };
   const shortId = (v) => { const t = String(v == null ? '' : v); return t.length > 10 ? `${t.slice(0, 8)}…` : t; };
 
@@ -652,6 +652,7 @@
       out.push(`دستگاه امروز با دستگاه‌های ${fmt.num(d.historyDays)} روز اخیر (از ${fmt.num(d.lookbackDays)} روز گذشته) تفاوت دارد.`);
       out.push('تعویض گوشی یا پاک‌شدن داده‌ی مرورگر/تلگرام هم همین نشانه را می‌سازد.');
     }
+    if (e.eventType === 'pending_mission_outside') out.push(`تردد (${d.action === 'check_out' ? 'خروج' : 'ورود'}) از بیرون شبکه فقط به‌خاطر ماموریت #${fmt.num(d.requestId)} که هنوز تصمیم‌گیری نشده مجاز شد؛ پس از تصمیم سرپرست بررسی کنید.`);
     if (d.blocked) out.push('ثبت این تردد به‌دلیل تنظیم «مسدودسازی دستگاه مشترک» انجام نشد.');
     return out;
   }

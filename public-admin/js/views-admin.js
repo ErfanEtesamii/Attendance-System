@@ -178,6 +178,9 @@
   const WEEKDAY_NAME = Object.fromEntries(WEEKDAY_ORDER);
   const ENUM_LABELS = {
     lateCountsFrom: { shift_start: 'از ساعت شروع کار', after_grace: 'پس از پایان مهلت' },
+    planGateMode: { enforce: 'الزامی (بدون برنامه خروج ثبت نمی‌شود)', soft: 'یادآوری (الزامی نیست)', off: 'خاموش' },
+    dailyReportGateMode: { enforce: 'الزامی (بدون گزارش خروج ثبت نمی‌شود)', soft: 'نرم (تکمیل تا ۲۴ ساعت بعد)', off: 'خاموش' },
+    planSubmissionWeekday: { auto: 'خودکار (آخرین روز کاریِ هفته)', 0: 'یکشنبه', 1: 'دوشنبه', 2: 'سه‌شنبه', 3: 'چهارشنبه', 4: 'پنجشنبه', 5: 'جمعه', 6: 'شنبه' },
     overtimeRounding: { down: 'به پایین', nearest: 'نزدیک‌ترین', up: 'به بالا' },
   };
   // گروه‌هایی که محاسبه‌ی روز را عوض می‌کنند ⇒ روی عدد روزها/ماه‌های گذشته هم اثر دارند (گزارش‌ها همیشه با تنظیمات فعلی محاسبه می‌شوند)
@@ -713,12 +716,73 @@
   const STATUS_CLS = { success: 'green', error: 'red', running: 'blue', interrupted: 'orange' };
   const healthBadge = (ok, yes, no) => AP.badge(ok ? 'green' : 'red', ok ? yes : no);
 
+  // ---- ناحیه‌ی خطر: ریست برنامه (B4) — فقط system.manage؛ همه‌ی گیت‌ها سمت سرور اعمال می‌شوند ----
+  function resetZoneHtml(o) {
+    const groups = o.groups.map((g) => `<label class="check"><input type="checkbox" name="rz-group" value="${esc(g.key)}" ${g.defaultSelected ? 'checked' : ''}> <span>${esc(g.label)}</span></label>`).join('');
+    return `<div class="card danger-zone mt" id="reset-zone"><h3>ناحیه‌ی خطر: ریست برنامه</h3>
+      <p class="muted">داده‌ی عملیاتی برای همیشه حذف می‌شود (کاربران، شیفت‌ها، تعطیلات، انواع مرخصی، تنظیمات و گزارش رویدادها حذف نمی‌شوند). پیش از اجرا یک بک‌آپ خودکار ساخته می‌شود و اگر ساخته نشود ریست انجام نخواهد شد.</p>
+      ${o.locked ? `<div class="notice danger" role="alert">${AP.badge('red', 'قفل Go-Live')} ریست قفل است؛ فقط با ALLOW_DATA_RESET=true در .env ممکن می‌شود.</div>` : ''}
+      <fieldset class="rz-groups"><legend>گروه‌های پاک‌سازی</legend>${groups}</fieldset>
+      <label class="field"><span>فقط داده‌های قبل از تاریخ (اختیاری)</span><input type="date" id="rz-before" aria-label="تاریخ برش"></label>
+      <div class="rz-actions"><button type="button" class="btn" id="rz-preview" ${o.locked ? 'disabled' : ''}>پیش‌نمایش (بدون حذف)</button></div>
+      <div id="rz-result" aria-live="polite"></div></div>`;
+  }
+
+  function mountResetZone(root, o) {
+    const zone = $('#reset-zone', root);
+    if (!zone || o.locked) return;
+    const result = $('#rz-result', zone);
+    const words = o.confirmWords || ['RESET', 'ریست'];
+    const selected = () => $$('input[name=rz-group]:checked', zone).map((i) => i.value);
+    const beforeDate = () => { const v = $('#rz-before', zone); return v && v.value ? v.value : undefined; };
+    const body = () => ({ groups: selected(), beforeDate: beforeDate() });
+
+    $('#rz-preview', zone).addEventListener('click', async () => {
+      if (!selected().length) { AP.toast('حداقل یک گروه را انتخاب کنید.', true); return; }
+      const btn = $('#rz-preview', zone);
+      btn.disabled = true; btn.setAttribute('aria-busy', 'true'); result.innerHTML = '<div class="muted">در حال محاسبه…</div>';
+      let p;
+      try { p = await AP.api('/admin/system/reset/preview', { method: 'POST', body: body() }); } catch (err) {
+        result.innerHTML = `<div class="notice danger" role="alert">${esc(err.message)}</div>`;
+        return;
+      } finally { btn.disabled = false; btn.removeAttribute('aria-busy'); }
+      const rows = p.tables.map((t) => `<tr><td>${esc(t.label)}</td><td class="ltr">${esc(t.table)}</td><td>${fmt.num(t.count)}</td></tr>`).join('');
+      result.innerHTML = `<h4>این‌ها حذف می‌شود${p.beforeDate ? ` (قبل از ${esc(p.beforeDate)})` : ''}</h4>
+        <div class="table-wrap"><table><thead><tr><th>داده</th><th>جدول</th><th>تعداد</th></tr></thead><tbody>${rows}</tbody>
+        <tfoot><tr><th colspan="2">جمع</th><th>${fmt.num(p.total)}</th></tr></tfoot></table></div>
+        <label class="field"><span>برای تأیید عبارت RESET (یا «ریست») را بنویسید</span><input type="text" id="rz-confirm" autocomplete="off" dir="ltr" aria-label="عبارت تأیید"></label>
+        <label class="field"><span>کد ۸ رقمی تأیید هویت (از بات تلگرام، گزینه‌ی ورود به پنل)</span><input type="text" id="rz-code" inputmode="numeric" maxlength="8" autocomplete="off" dir="ltr" aria-label="کد تأیید هویت"></label>
+        <div class="rz-actions"><button type="button" class="btn danger" id="rz-run" disabled>ریست نهایی برنامه</button></div>
+        <div id="rz-done" aria-live="polite"></div>`;
+      const run = $('#rz-run', result); const c1 = $('#rz-confirm', result); const c2 = $('#rz-code', result);
+      const ready = () => { run.disabled = !(words.includes(c1.value.trim()) && /^\d{8}$/.test(c2.value.trim())); };
+      c1.addEventListener('input', ready); c2.addEventListener('input', ready);
+      run.addEventListener('click', async () => {
+        run.disabled = true; run.setAttribute('aria-busy', 'true');
+        const done = $('#rz-done', result);
+        done.innerHTML = '<div class="muted">در حال ریست… (بک‌آپ، پاک‌سازی، فشرده‌سازی)</div>';
+        try {
+          const r = await AP.api('/admin/system/reset', { method: 'POST', body: { ...body(), confirmText: c1.value.trim(), reauthCode: c2.value.trim() } });
+          const lines = Object.entries(r.deleted).map(([k, v]) => `<div class="kv-row"><span class="ltr">${esc(k)}</span><span>${fmt.num(v)}</span></div>`).join('');
+          done.innerHTML = `<div class="notice ok" role="status"><strong>ریست انجام شد.</strong> ${fmt.num(r.total)} ردیف حذف شد. بک‌آپ: <span class="ltr">${esc(r.backupFile)}</span></div><div class="kv">${lines}</div>`;
+          AP.toast('ریست انجام شد.');
+          c1.value = ''; c2.value = ''; c1.disabled = true; c2.disabled = true;
+        } catch (err) {
+          done.innerHTML = `<div class="notice danger" role="alert">${esc(err.message)}</div>`;
+          run.removeAttribute('aria-busy'); c2.value = ''; ready();
+        }
+      });
+    });
+  }
+
   AP.view('status', {
     skeleton: 'table', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'system.read',
     nav: { icon: 'alert', label: 'وضعیت سیستم', group: 'مدیریت' },
     async render() {
       const s = await AP.api('/admin/system/status');
+      let resetOpts = null;
+      if (AP.can('system.manage')) { try { resetOpts = await AP.api('/admin/system/reset/options'); } catch (_) { resetOpts = null; } }
       const c = s.checks;
       const bot = c.bot;
       const disk = c.disk;
@@ -760,12 +824,13 @@
         <div class="card flush mt"><div style="padding:18px 18px 0"><h3>Jobهای زمان‌بندی‌شده</h3></div><div class="table-wrap"><table>
           <thead><tr><th>نام</th><th>Cron</th><th>آخرین نتیجه</th><th>زمان آخرین نتیجه</th><th>آخرین موفقیت</th><th>مدت</th></tr></thead><tbody>${jobRows}</tbody></table></div></div>
         <div class="card flush mt"><div style="padding:18px 18px 0"><h3>آخرین خطاهای Job</h3></div><div class="table-wrap"><table>
-          <thead><tr><th>Job</th><th>زمان</th><th>خطا</th></tr></thead><tbody>${errRows}</tbody></table></div></div>`;
+          <thead><tr><th>Job</th><th>زمان</th><th>خطا</th></tr></thead><tbody>${errRows}</tbody></table></div></div>${resetOpts ? resetZoneHtml(resetOpts) : ''}`;
       return {
         html,
         mount(root) {
           const btn = $('#st-refresh', root);
           if (btn) btn.addEventListener('click', () => AP.refresh());
+          if (resetOpts) mountResetZone(root, resetOpts);
         },
       };
     },

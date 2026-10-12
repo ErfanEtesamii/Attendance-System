@@ -23,20 +23,21 @@ function resolveLeaveType({ leaveType, leaveTypeId } = {}) {
 
 // S4-8a: ستون‌های واحد/مدت اختیاری‌اند (بدون آن‌ها: unit='day' و duration_minutes=NULL = رفتار قبلی). اعتبارسنجی و محاسبه‌ی مدت
 // در leaveDurationService است؛ اینجا فقط ذخیره می‌شود و CHECKهای جدول (migration ۰۱۵) ناهم‌خوانی را رد می‌کنند.
-function createLeaveRequest({ userId, startDate, endDate, leaveType, leaveTypeId, reason, unit, halfDayPart, startTime, endTime, durationMinutes, substituteUserId, attachment }) {
+function createLeaveRequest({ userId, startDate, endDate, leaveType, leaveTypeId, reason, unit, halfDayPart, startTime, endTime, durationMinutes, substituteUserId, attachment, source, destination }) {
   const db = getDb();
   const type = resolveLeaveType({ leaveType, leaveTypeId });
   const result = db
     .prepare(
-      `INSERT INTO leave_requests (user_id, start_date, end_date, leave_type, leave_type_id, reason, unit, half_day_part, start_time, end_time, duration_minutes, substitute_user_id, attachment_id, attachment_mime, attachment_size, attachment_name)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO leave_requests (user_id, start_date, end_date, leave_type, leave_type_id, reason, unit, half_day_part, start_time, end_time, duration_minutes, substitute_user_id, attachment_id, attachment_mime, attachment_size, attachment_name, source, destination)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       userId, startDate, endDate, type.kind, type.id, reason || null,
       unit || 'day', halfDayPart || null, startTime || null, endTime || null,
       durationMinutes === undefined ? null : durationMinutes,
       substituteUserId === undefined ? null : substituteUserId,
-      attachment ? attachment.id : null, attachment ? attachment.mime : null, attachment ? attachment.size : null, attachment ? attachment.name || null : null
+      attachment ? attachment.id : null, attachment ? attachment.mime : null, attachment ? attachment.size : null, attachment ? attachment.name || null : null,
+      source || null, destination || null
     );
   return findById(result.lastInsertRowid);
 }
@@ -126,6 +127,18 @@ function listQueue({ status, kind, leaveTypeId, userIds, from, to, limit = 50, o
   return { rows, total };
 }
 
+// فقط ماموریت‌های یک کاربر (kind = mission)، جدیدترین اول
+function listMissionsByUser(userId) {
+  return getDb().prepare(`${SELECT_WITH_KIND} WHERE lr.user_id = ? AND lt.kind = 'mission' ORDER BY lr.created_at DESC, lr.id DESC`).all(userId);
+}
+
+// تنظیم/جایگزینی پیوست یک درخواست (فقط فراخواننده‌ی مجاز؛ مثلاً پیوست ماموریت pending)
+function setAttachment(id, attachment) {
+  getDb().prepare(`UPDATE leave_requests SET attachment_id = ?, attachment_mime = ?, attachment_size = ?, attachment_name = ?, updated_at = datetime('now') WHERE id = ?`)
+    .run(attachment ? attachment.id : null, attachment ? attachment.mime : null, attachment ? attachment.size : null, attachment ? attachment.name || null : null, id);
+  return findById(id);
+}
+
 function listByUser(userId) {
   const db = getDb();
   return db.prepare(`${SELECT_WITH_KIND} WHERE lr.user_id = ? ORDER BY lr.created_at DESC`).all(userId);
@@ -166,8 +179,34 @@ function hasApprovedMissionOnDate(userId, dateStr) {
   return hasApprovedLeaveOnDate(userId, dateStr, 'mission');
 }
 
+// C5: شناسه‌ی ماموریتِ pending امروز (قدیمی‌ترین) یا null؛ و آیا ماموریتِ ردشده‌ای در آن تاریخ هست
+function findPendingMissionOnDate(userId, dateStr) {
+  const row = getDb().prepare(`SELECT lr.id FROM leave_requests lr JOIN leave_types lt ON lt.id = lr.leave_type_id
+    WHERE lr.user_id = ? AND lt.kind = 'mission' AND lr.status = 'pending' AND ? BETWEEN lr.start_date AND lr.end_date ORDER BY lr.id LIMIT 1`).get(userId, dateStr);
+  return row ? row.id : null;
+}
+function hasRejectedMissionOnDate(userId, dateStr) {
+  return Boolean(getDb().prepare(`SELECT 1 FROM leave_requests lr JOIN leave_types lt ON lt.id = lr.leave_type_id
+    WHERE lr.user_id = ? AND lt.kind = 'mission' AND lr.status = 'rejected' AND ? BETWEEN lr.start_date AND lr.end_date LIMIT 1`).get(userId, dateStr));
+}
+
 function remove(id) {
   getDb().prepare('DELETE FROM leave_requests WHERE id = ?').run(id);
+}
+
+// C4: اصلاح ساعتِ ماموریت ساعتی توسط تأییدکننده (فقط pending)؛ مدت دوباره‌محاسبه‌شده همراه ذخیره می‌شود
+function updateTimes(id, startTime, endTime, minutes, { anyStatus = false } = {}) {
+  getDb().prepare(`UPDATE leave_requests SET start_time = ?, end_time = ?, duration_minutes = ? WHERE id = ?${anyStatus ? " AND status IN ('pending','approved')" : " AND status = 'pending'"}`).run(startTime, endTime, minutes, id);
+  return findById(id);
+}
+
+// C6: برچسب مبدأ ماموریت «همین حالا» (miniapp_now_open | miniapp_now | miniapp_now_auto)
+function setSource(id, source) {
+  getDb().prepare('UPDATE leave_requests SET source = ? WHERE id = ?').run(source, id);
+  return findById(id);
+}
+function listBySource(source) {
+  return getDb().prepare(`${SELECT_WITH_KIND} WHERE lr.source = ? AND lr.status IN ('pending','approved') ORDER BY lr.id`).all(source);
 }
 
 // ویرایش/تغییر تصمیم توسط ادمین کل (پنل وب)
@@ -242,6 +281,7 @@ function listInRangeWithType(userIds, fromDate, toDate) {
 }
 
 module.exports = {
+  listMissionsByUser, setAttachment,
   listInRangeWithType,
   resolveLeaveType,
   listActiveInRange,
@@ -251,6 +291,9 @@ module.exports = {
   setDuration,
   remove,
   updateManual,
+  updateTimes,
+  setSource,
+  listBySource,
   createLeaveRequest,
   findById,
   listPending,
@@ -260,4 +303,6 @@ module.exports = {
   setStatus,
   hasApprovedMissionOnDate,
   hasApprovedLeaveOnDate,
+  findPendingMissionOnDate,
+  hasRejectedMissionOnDate,
 };

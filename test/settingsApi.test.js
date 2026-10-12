@@ -42,7 +42,7 @@ describe('API تنظیمات (S3-1b)', { skip: hasDeps ? false : 'express نصب
   test('لیست با متادیتا: همه‌ی کلیدها با نوع، گروه، توضیح، بازه، پیش‌فرض و مقدار؛ GET قدیمی بدون تغییر', async () => {
     const r = await hit('manager', 'GET', '/api/admin/settings/items');
     assert.equal(r.status, 200);
-    assert.equal(r.json.items.length, 84); // ۳۱ + ۱۲ زمان‌بندی Job (S3-8c) + نگهداری اعلان‌ها (S4-5b) + ۳ تنظیم مرخصی (S4-9b) + آستانه‌ی هم‌زمانی تقویم تیم (S4-14b) + ۶ تنظیم بستن ماه (S5-3a) + ۳ تنظیم ارسال خودکار گزارش (S5-5a) + ۱۳ تنظیم هشدار الگوها (S5-7b)
+    assert.equal(r.json.items.length, 96); // +۸ برنامه‌ریزی (D2) +۱ allowCheckinWithPendingMission (C5) +۲ ماموریت (C1) +۱ systemGoLive (B3) | ۳۱ + ۱۲ زمان‌بندی Job (S3-8c) + نگهداری اعلان‌ها (S4-5b) + ۳ تنظیم مرخصی (S4-9b) + آستانه‌ی هم‌زمانی تقویم تیم (S4-14b) + ۶ تنظیم بستن ماه (S5-3a) + ۳ تنظیم ارسال خودکار گزارش (S5-5a) + ۱۳ تنظیم هشدار الگوها (S5-7b)
     const item = (k) => r.json.items.find((i) => i.key === k);
     assert.deepEqual(
       { ...item('lateCheckinGraceMinutes'), updatedAt: null },

@@ -157,7 +157,7 @@ function leaveWindowsOnDate(values, date, getDay) {
     if (!v || dayNumber(v.startDate) === null || dayNumber(v.endDate) === null) continue;
     if (dn < dayNumber(v.startDate) || dn > dayNumber(v.endDate)) continue;
     const iv = intervalOnDay(v, win);
-    if (iv && iv[0] < iv[1]) out.push({ start: iv[0], end: iv[1] });
+    if (iv && iv[0] < iv[1]) out.push(v.kind === 'mission' ? { start: iv[0], end: iv[1], kind: 'mission' } : { start: iv[0], end: iv[1] }); // C3: ماموریت علامت می‌خورد
   }
   return out;
 }
@@ -170,6 +170,7 @@ const requestRowToValue = (r) => ({
   halfDayPart: r.half_day_part || null,
   startTime: r.start_time || null,
   endTime: r.end_time || null,
+  ...(r.kind === 'mission' ? { kind: 'mission' } : {}),
 });
 
 module.exports = { UNITS, HALF_DAY_PARTS, MAX_RANGE_DAYS, validateUnitInput, computeDuration, overlapDates, dayWindow, leaveWindowsOnDate, requestRowToValue };

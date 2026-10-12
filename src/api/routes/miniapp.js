@@ -10,6 +10,9 @@ const router = express.Router();
 
 const { telegramAuth } = require('../../middleware/telegramAuth');
 const { networkRestriction } = require('../../middleware/networkRestriction');
+const missionNowService = require('../../services/missionNowService');
+const pendingMissionService = require('../../services/pendingMissionService');
+const { maintenanceGate } = require('../../middleware/maintenanceGate');
 const { createRateLimiter } = require('../../middleware/rateLimiter');
 
 const attendanceRepository = require('../../repositories/attendanceRepository');
@@ -17,11 +20,15 @@ const breakRepository = require('../../repositories/breakRepository');
 const leaveRepository = require('../../repositories/leaveRepository');
 const leaveTypesRepository = require('../../repositories/leaveTypesRepository');
 const leaveService = require('../../services/leaveService');
+const missionService = require('../../services/missionService');
+const { getCalendarDay } = require('../../engine/calendarService');
+const attachmentService = require('../../services/attachmentService');
 const { sendAttachment } = require('../../utils/attachmentResponse');
 const leaveBalanceService = require('../../services/leaveBalanceService');
 const { jalaliYearOfDateString } = require('../../utils/jalali');
 const disputeRepository = require('../../repositories/disputeRepository');
 const auditRepository = require('../../repositories/auditRepository');
+const settingsRepository = require('../../repositories/settingsRepository');
 const dayService = require('../../engine/dayService');
 const { extractDeviceInfo } = require('../../utils/deviceInfo');
 const fraudRunner = require('../../utils/fraudRunner');
@@ -30,6 +37,12 @@ const { todayDateString } = require('../../utils/serverTime');
 
 // همه مسیرهای زیر /miniapp ابتدا باید هویت تلگرام معتبر داشته باشند
 router.use('/miniapp', telegramAuth);
+
+// ریست برنامه (B2): هنگام نگهداری، ثبت تردد 503 می‌گیرد (قبل از چک شبکه/rate limit)
+router.use('/miniapp/check-in', maintenanceGate);
+router.use('/miniapp/check-out', maintenanceGate);
+router.use('/miniapp/break/start', maintenanceGate);
+router.use('/miniapp/break/end', maintenanceGate);
 
 // عملیات‌های واقعی ثبت تردد علاوه‌بر آن باید از چک شبکه داخلی فاز ۲ هم عبور کنند
 router.use('/miniapp/check-in', networkRestriction);
@@ -73,6 +86,8 @@ router.get('/miniapp/me', (req, res) => {
     department: u.department,
     role: u.role,
     managerId: u.manager_id,
+    // B3: با هر ریست برنامه زیاد می‌شود؛ کلاینت با تغییرش state محلی را پاک می‌کند
+    reset_epoch: settingsRepository.getResetEpoch(),
   });
 });
 
@@ -117,7 +132,8 @@ router.post('/miniapp/check-in', (req, res) => {
     return res.status(400).json({ error: 'ورود امروز قبلاً ثبت شده است.' });
   }
   if (rejectIfSharedDeviceBlocked(req, res, 'check_in')) return;
-  const record = attendanceRepository.recordCheckIn(req.miniAppUser.id, req.ip, extractDeviceInfo(req));
+  const record = attendanceRepository.recordCheckIn(req.miniAppUser.id, req.ip, extractDeviceInfo(req), { viaPendingMission: Boolean(req.viaPendingMission) });
+  if (req.viaPendingMission) pendingMissionService.flagPendingMissionOutside({ userId: req.miniAppUser.id, record, requestId: req.viaPendingMission, action: 'check_in' });
   auditRepository.logEvent({
     userId: req.miniAppUser.id,
     action: 'check_in',
@@ -142,7 +158,8 @@ router.post('/miniapp/check-out', (req, res) => {
     return res.status(400).json({ error: 'ابتدا باید استراحت باز فعلی را پایان دهید.' });
   }
   if (rejectIfSharedDeviceBlocked(req, res, 'check_out')) return;
-  const updated = attendanceRepository.recordCheckOut(record.id, req.ip, extractDeviceInfo(req));
+  const updated = attendanceRepository.recordCheckOut(record.id, req.ip, extractDeviceInfo(req), { viaPendingMission: Boolean(req.viaPendingMission) });
+  if (req.viaPendingMission) pendingMissionService.flagPendingMissionOutside({ userId: req.miniAppUser.id, record: updated, requestId: req.viaPendingMission, action: 'check_out' });
   auditRepository.logEvent({
     userId: req.miniAppUser.id,
     action: 'check_out',
@@ -266,6 +283,114 @@ router.get('/miniapp/leave/:id/attachment', (req, res) => {
 
 router.get('/miniapp/leave', (req, res) => {
   res.json(leaveRepository.listByUser(req.miniAppUser.id));
+});
+
+// ---------- ماموریت (C1) ----------
+// ثبت: علت اجباری ۵–۳۰۰ نویسه، مقصد اختیاری؛ همه‌ی قواعد مدت/تداخل/زنجیره‌ی تأیید در missionService/leaveService.
+router.post('/miniapp/mission', (req, res) => {
+  const b = req.body || {};
+  const result = missionService.create({
+    userId: req.miniAppUser.id,
+    unit: b.unit,
+    startDate: b.startDate,
+    endDate: b.endDate,
+    halfDayPart: b.halfDayPart,
+    startTime: b.startTime,
+    endTime: b.endTime,
+    reason: b.reason,
+    destination: b.destination,
+  });
+  if (!result.ok) {
+    return res.status(400).json({ error: result.errors.map((e) => e.error).join(' '), code: result.errors[0].code, errors: result.errors });
+  }
+  const { request } = result;
+  auditRepository.logEvent({
+    userId: req.miniAppUser.id,
+    action: 'mission_requested',
+    ipAddress: req.ip,
+    details: { source: 'miniapp', requestId: request.id, unit: request.unit, durationMinutes: request.duration_minutes },
+  });
+  notificationEvents.leaveRequested(request); // تأییدکننده‌ی مرحله‌ی اول؛ هرگز ثبت را نمی‌شکند
+  res.status(201).json({ ...missionService.presentMission(request), warnings: result.warnings });
+});
+
+// ساعت کاری مورد انتظار یک روز برای کاربر (برای هشدار «بیرون از ساعت کاری» در فرم ماموریت)
+router.get('/miniapp/mission/day', (req, res) => {
+  const date = String(req.query.date || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'date باید YYYY-MM-DD باشد.' });
+  const day = getCalendarDay(req.miniAppUser, date);
+  res.json({ date, isWorkingDay: !!day.isWorkingDay, expectedStart: day.expectedStart || null, expectedEnd: day.expectedEnd || null });
+});
+
+// C6: «ماموریت همین حالا»
+router.post('/miniapp/mission/now', (req, res) => {
+  const b = req.body || {};
+  const r = missionNowService.startNow({ userId: req.miniAppUser.id, reason: b.reason, destination: b.destination });
+  if (!r.ok) return res.status(r.code === 'ALREADY_OPEN' ? 409 : 400).json({ error: r.error, code: r.code });
+  return res.status(201).json(missionService.presentMission(r.request));
+});
+router.post('/miniapp/mission/now/end', (req, res) => {
+  const r = missionNowService.endNow({ userId: req.miniAppUser.id });
+  if (!r.ok) return res.status(r.code === 'NOT_OPEN' ? 404 : 400).json({ error: r.error, code: r.code });
+  return res.json(missionService.presentMission(r.request));
+});
+
+router.get('/miniapp/missions', (req, res) => {
+  res.json(missionService.listForUser(req.miniAppUser.id));
+});
+
+async function cancelMission(req, res) {
+  const id = /^\d+$/.test(req.params.id) ? parseInt(req.params.id, 10) : NaN;
+  const r = await missionService.cancel({ userId: req.miniAppUser.id, requestId: id });
+  if (!r.ok) return res.status(r.code === 'NOT_FOUND' ? 404 : 409).json({ error: r.error, code: r.code });
+  auditRepository.logEvent({
+    userId: req.miniAppUser.id,
+    action: 'mission_cancelled',
+    ipAddress: req.ip,
+    details: { source: 'miniapp', requestId: r.request.id, startDate: r.request.start_date, endDate: r.request.end_date },
+  });
+  return res.json({ ok: true });
+}
+router.delete('/miniapp/missions/:id', cancelMission);
+router.post('/miniapp/missions/:id/cancel', cancelMission);
+
+// پیوست اختیاری (تصویر/PDF) برای ماموریتِ «در انتظار» خود کاربر؛ بدنه = خودِ فایل (Content-Type = نوع فایل)
+router.post('/miniapp/missions/:id/attachment', async (req, res) => {
+  const request = /^\d+$/.test(req.params.id) ? leaveRepository.findById(parseInt(req.params.id, 10)) : null;
+  if (!request || request.user_id !== req.miniAppUser.id || request.kind !== 'mission') return res.status(404).json({ error: 'ماموریت یافت نشد.' });
+  if (request.status !== 'pending') return res.status(409).json({ error: 'پیوست فقط برای ماموریت در انتظار ممکن است.', code: 'ALREADY_DECIDED' });
+  const mime = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+  const size = parseInt(req.headers['content-length'], 10);
+  let name = '';
+  try { name = decodeURIComponent(String(req.headers['x-file-name'] || '')).slice(0, 100); } catch (_) { name = ''; }
+  const saved = await attachmentService.saveStream(req, { mime, size: Number.isFinite(size) ? size : undefined, originalName: name });
+  if (!saved.ok) return res.status(400).json({ error: saved.error, code: saved.code });
+  const old = request.attachment_id;
+  const updated = leaveRepository.setAttachment(request.id, saved.attachment);
+  if (old) await attachmentService.remove(old);
+  return res.status(201).json(missionService.presentMission(updated));
+});
+
+// ---------- برنامه‌ی هفتگی (D3) ----------
+const weeklyPlanService = require('../../services/weeklyPlanService');
+const planError = (res, r) => res.status(r.code === 'MONTH_CLOSED' ? 409 : 400).json({ error: r.error, code: r.code });
+
+router.get('/miniapp/plan', (req, res) => {
+  const r = weeklyPlanService.getPlan(req.miniAppUser, req.query.week || 'next');
+  if (!r.ok) return planError(res, r);
+  return res.json(r);
+});
+router.put('/miniapp/plan', (req, res) => {
+  const b = req.body || {};
+  const r = weeklyPlanService.saveDraft(req.miniAppUser, b.week || 'next', b.tasks);
+  if (!r.ok) return planError(res, r);
+  return res.json(r);
+});
+router.post('/miniapp/plan/submit', (req, res) => {
+  const b = req.body || {};
+  const r = weeklyPlanService.submit(req.miniAppUser, b.week || 'next');
+  if (!r.ok) return planError(res, r);
+  return res.json(r);
 });
 
 // ---------- اعتراض به رکورد ----------

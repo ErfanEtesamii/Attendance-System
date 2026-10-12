@@ -23,7 +23,7 @@ function makeDayResolver(user) {
 }
 
 // input: { userId, startDate, endDate, unit?, halfDayPart?, startTime?, endTime?, leaveTypeId? | leaveType?, excludeRequestId? }
-function prepare(input = {}) {
+function prepare(input = {}, { skipUnit = false } = {}) {
   const user = usersRepository.findById(input.userId);
   if (!user) return { ok: false, errors: [{ code: 'USER_NOT_FOUND', error: 'کاربر پیدا نشد.' }], conflicts: [] };
 
@@ -37,7 +37,7 @@ function prepare(input = {}) {
   } catch (err) {
     return { ok: false, errors: [{ code: 'INVALID_TYPE', error: err.message }], conflicts: [] };
   }
-  if (!type.allowedUnits.includes(value.unit)) {
+  if (!skipUnit && !type.allowedUnits.includes(value.unit)) {
     return { ok: false, errors: [{ code: 'UNIT_NOT_ALLOWED', error: `نوع «${type.title}» این واحد را نمی‌پذیرد.` }], conflicts: [] };
   }
 

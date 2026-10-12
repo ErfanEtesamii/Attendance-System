@@ -577,7 +577,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .sk-line::after { content: ""; position: absolute; inset: 0; transform: translateX(100%); background: linear-gradient(90deg, transparent, var(--ov-12), transparent); animation: sk-shimmer 1.4s infinite; }
 @keyframes sk-shimmer { to { transform: translateX(-100%); } }
 .sk-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-.sk-card, .sk-box { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: grid; gap: 10px; }
+.sk-card, .sk-box { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: grid; gap: 10px; }
 .sk-row { display: flex; gap: 14px; align-items: center; padding: 6px 0; }
 @media (max-width: 900px) { .sk-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (prefers-reduced-motion: reduce) { .sk-line::after { animation: none; } }
@@ -585,3 +585,61 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .sk-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 /* نمای «امروز» حین اولین بارگذاری: فقط skeleton دیده می‌شود (S5-9c) */
 .view.is-loading > :not(#today-skeleton) { display: none; }
+
+/* bottom-sheet انتخاب نوع استراحت (A1) */
+.sheet-backdrop {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.sheet-backdrop.hidden { display: none; }
+.sheet {
+  width: 100%; max-width: 520px;
+  background: var(--card-bg); color: var(--text);
+  border: 1px solid var(--border); border-bottom: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 10px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  box-shadow: var(--shadow);
+  animation: sheet-up .18s ease-out;
+}
+.sheet:focus { outline: none; }
+@keyframes sheet-up { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+.sheet-handle { width: 40px; height: 4px; border-radius: 4px; background: var(--border); margin: 0 auto 10px; }
+.sheet-title { font-size: 16px; margin: 0 0 12px; text-align: center; }
+.sheet-options { display: grid; gap: 8px; }
+.sheet-option {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  min-height: 56px; padding: 10px 14px; text-align: right;
+  background: var(--card-bg-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 14px;
+  font: inherit; cursor: pointer;
+}
+.sheet-option.is-selected { border-color: var(--orange); box-shadow: 0 0 0 1px var(--orange) inset; }
+.sheet-emoji { font-size: 24px; line-height: 1; }
+.sheet-option-text { display: grid; gap: 2px; }
+.sheet-option-title { font-size: 15px; font-weight: 600; }
+.sheet-option-sub { font-size: 12px; color: var(--hint); }
+.sheet-cancel {
+  width: 100%; min-height: 48px; margin-top: 10px; padding: 10px;
+  background: transparent; color: var(--hint);
+  border: 1px solid var(--border); border-radius: 14px; font: inherit; cursor: pointer;
+}
+
+/* ماموریت (C2) */
+.view-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.form-msg.warn { color: var(--yellow); }
+.action-tile[aria-disabled="true"], .action-tile:disabled { opacity: .55; cursor: not-allowed; }
+.mission-note { margin-top: 6px; font-size: 12px; color: var(--hint); }
+.mission-cancel { margin-top: 8px; }
+
+/* برنامه‌ی هفتگی (D4) */
+.plan-body { display: flex; flex-direction: column; gap: 10px; }
+.plan-steps { display: flex; gap: 6px; font-size: 12px; color: var(--hint); }
+.plan-steps .on { color: var(--text); font-weight: 700; }
+.plan-task { display: flex; flex-direction: column; gap: 6px; }
+.plan-task .row { display: flex; gap: 6px; align-items: center; }
+.plan-task .row > * { flex: 1; min-width: 0; }
+.plan-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.plan-chip { border-radius: 14px; padding: 4px 10px; font-size: 12px; background: var(--card-bg); border: 1px solid var(--border); color: var(--text); cursor: pointer; }
+.plan-meta { font-size: 12px; color: var(--hint); }
+.plan-sys { font-size: 11px; color: var(--hint); }

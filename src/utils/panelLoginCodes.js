@@ -38,6 +38,19 @@ function consumeCode(code) {
   return /^\d{8}$/.test(c) ? consume(codes, c) : null;
 }
 
+/**
+ * تأیید مجدد هویت برای عمل حساس (ریست برنامه): فقط اگر کد متعلق به «همین» کاربر باشد مصرف می‌شود
+ * (کد دیگران سوخته نمی‌شود). TTL کد ۳ دقیقه است (کمتر از ۵ دقیقه‌ی لازم).
+ * @returns {boolean}
+ */
+function consumeCodeForUser(code, userId) {
+  const c = String(code || '').trim();
+  if (!/^\d{8}$/.test(c)) return false;
+  const entry = codes.get(hash(c));
+  if (!entry || entry.userId !== userId) return false;
+  return consume(codes, c) === userId;
+}
+
 function issueLinkToken(userId) {
   const now = Date.now();
   cleanup(links, now);
@@ -52,4 +65,4 @@ function consumeLinkToken(token) {
   return /^[A-Za-z0-9_-]{20,64}$/.test(t) ? consume(links, t) : null;
 }
 
-module.exports = { issueCode, consumeCode, issueLinkToken, consumeLinkToken };
+module.exports = { issueCode, consumeCode, consumeCodeForUser, issueLinkToken, consumeLinkToken };

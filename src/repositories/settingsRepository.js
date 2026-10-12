@@ -156,6 +156,27 @@ function bumpGlobalSessionEpoch() {
   return tx();
 }
 
+// ---------- epoch ریست برنامه (B2/B3) ----------
+// با هر ریست موفق زیاد می‌شود؛ Mini App آن را از /miniapp/me می‌خواند و state محلی (draft/حافظه‌ی محلی) را پاک می‌کند.
+const RESET_EPOCH_KEY = 'reset_epoch';
+
+function getResetEpoch() {
+  const row = getDb().prepare('SELECT value FROM settings WHERE key = ?').get(RESET_EPOCH_KEY);
+  const n = row ? parseInt(row.value, 10) : 0;
+  return Number.isFinite(n) ? n : 0;
+}
+
+function bumpResetEpoch() {
+  const db = getDb();
+  const tx = db.transaction(() => {
+    const next = getResetEpoch() + 1;
+    db.prepare(UPSERT_SQL).run(RESET_EPOCH_KEY, String(next));
+    return next;
+  });
+  return tx();
+}
+
 module.exports = {
+  getResetEpoch, bumpResetEpoch,
   getAll, update, getTimezone, getCronExpressions, getItems, getItem, setValue, resetValue, isBlockOnSharedDeviceEnabled, isAuditArchiveEnabled, getAuditRetentionMonths, getCleanupRetention, getGlobalSessionEpoch, bumpGlobalSessionEpoch,
 };

@@ -11,7 +11,7 @@ const cron = require('node-cron');
 const config = require('../config');
 const time = require('./time');
 
-const TYPES = ['number', 'boolean', 'time', 'cron', 'enum', 'string', 'timezone', 'weekdays'];
+const TYPES = ['number', 'boolean', 'time', 'cron', 'enum', 'string', 'timezone', 'weekdays', 'date'];
 
 // برچسب فارسی گروه‌ها (برای صفحه‌ی تنظیمات گروه‌بندی‌شده در S3-9a)
 const GROUP_LABELS = {
@@ -26,6 +26,7 @@ const GROUP_LABELS = {
   monthClose: 'بستن ماه',
   reportDelivery: 'ارسال خودکار گزارش',
   patterns: 'الگوهای رفتاری (هشدار الگو)',
+  planning: 'برنامه‌ی هفتگی و گزارش روزانه',
 };
 
 // ---------- اعتبارسنجی بر اساس نوع ----------
@@ -73,6 +74,13 @@ function validateValue(def, raw) {
       if (s.length < (def.minLength || 0)) return bad(`حداقل ${def.minLength} نویسه لازم است.`);
       if (s.length > (def.maxLength || 200)) return bad(`حداکثر ${def.maxLength || 200} نویسه مجاز است.`);
       return { ok: true, value: s };
+    }
+    case 'date': { // D2: تاریخ میلادی YYYY-MM-DD یا خالی (= تنظیم نشده)
+      const s = typeof raw === 'string' ? raw.trim() : '';
+      if (s === '') return { ok: true, value: '' };
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+      const d = m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null;
+      return d && d.toISOString().slice(0, 10) === s ? { ok: true, value: s } : bad('باید تاریخ معتبر با قالب YYYY-MM-DD (یا خالی) باشد.');
     }
     case 'timezone': {
       const zone = time.normalizeTimezone(raw);
@@ -166,6 +174,19 @@ def('lateCheckinGraceMinutes', 'late_checkin_grace_minutes', 'number', { group: 
 def('checkoutReminderMinutesBefore', 'checkout_reminder_minutes_before', 'number', { group: 'reminders', min: 0, max: 720, default: () => config.checkoutReminderMinutesBefore, fallback: 15, description: 'یادآوری ثبت خروج، این‌قدر دقیقه پیش از پایان کار' });
 def('repeatedLatenessThreshold', 'repeated_lateness_threshold', 'number', { group: 'reminders', min: 1, max: 100, default: () => config.repeatedLatenessThreshold, fallback: 3, description: 'حداقل تعداد تأخیر در ماه برای اعلان «تأخیر تکراری» به مدیر' });
 // امنیت
+def('missionBackdateDays', 'mission_backdate_days', 'number', { group: 'leave', min: 0, max: 30, default: 3, description: 'حداکثر چند روز قبل می‌توان ماموریت ثبت کرد (برای ماموریت‌هایی که فراموش شده)' });
+def('missionAdvanceDays', 'mission_advance_days', 'number', { group: 'leave', min: 0, max: 365, default: 30, description: 'حداکثر چند روز جلوتر می‌توان ماموریت ثبت کرد' });
+def('allowCheckinWithPendingMission', 'allow_checkin_with_pending_mission', 'boolean', { group: 'leave', default: true, description: 'اگر ماموریتِ در انتظارِ تأییدِ امروز دارید، ورود/خروج از بیرون شبکه مجاز است (با نشانه‌ی بررسی تا تصمیم سرپرست)' });
+// ---- D2: برنامه‌ی هفتگی و گزارش روزانه ----
+def('weekStartDay', 'week_start_day', 'number', { group: 'planning', min: 0, max: 6, default: 6, description: 'اولین روز هفته‌ی برنامه‌ریزی (۰=یکشنبه … ۶=شنبه)' });
+def('planSubmissionWeekday', 'plan_submission_weekday', 'enum', { group: 'planning', values: ['auto', '0', '1', '2', '3', '4', '5', '6'], default: 'auto', description: 'روز ثبت برنامه‌ی هفته‌ی بعد: auto = آخرین روز کاریِ هفته‌ی همان کاربر؛ یا شماره‌ی روز هفته (۰=یکشنبه … ۶=شنبه)' });
+def('planMinTasks', 'plan_min_tasks', 'number', { group: 'planning', min: 0, max: 30, default: 1, description: 'حداقل تعداد تسک برای ثبت برنامه‌ی هفتگی' });
+def('planGateMode', 'plan_gate_mode', 'enum', { group: 'planning', values: ['enforce', 'soft', 'off'], default: 'off', description: 'الزام ثبت برنامه‌ی هفته‌ی بعد هنگام خروج: enforce = بدون برنامه خروج ثبت نمی‌شود، soft = فقط یادآوری، off = خاموش' });
+def('planGateStartDate', 'plan_gate_start_date', 'date', { group: 'planning', default: '', description: 'تاریخ شروع اعمال الزام برنامه‌ی هفتگی/گزارش روزانه (میلادی YYYY-MM-DD)؛ خالی = از همان لحظه‌ی روشن‌شدن' });
+def('dailyReportGateMode', 'daily_report_gate_mode', 'enum', { group: 'planning', values: ['enforce', 'soft', 'off'], default: 'off', description: 'الزام گزارش روزانه‌ی تسک‌ها هنگام خروج: enforce = بدون گزارش خروج ثبت نمی‌شود، soft = «بعداً پر می‌کنم» تا ۲۴ ساعت، off = خاموش' });
+def('reportBackfillDays', 'report_backfill_days', 'number', { group: 'planning', min: 0, max: 14, default: 2, description: 'تا چند روز بعد می‌توان گزارش روزِ گذشته را تکمیل کرد (مثلاً رکوردِ خروجِ خودکار)' });
+def('encouragementsEnabled', 'encouragements_enabled', 'boolean', { group: 'planning', default: true, description: 'نمایش پیام تشویقی کوتاه پس از ثبت گزارش روزانه' });
+def('systemGoLive', 'system_go_live', 'boolean', { group: 'security', default: false, description: 'حالت Go-Live: وقتی روشن است ریست برنامه (حذف داده‌ی عملیاتی) ۴۰۳ می‌دهد، مگر ALLOW_DATA_RESET=true در .env باشد' });
 def('blockOnSharedDevice', 'block_on_shared_device', 'boolean', { group: 'security', default: false, description: 'مسدودکردن ثبت تردد وقتی دستگاه همان روز برای کاربر دیگری استفاده شده' });
 // نگهداری و آرشیو
 def('auditRetentionMonths', 'audit_retention_months', 'number', { group: 'retention', min: 1, max: 240, default: 24, description: 'مدت نگهداری رویدادهای audit در جدول اصلی (ماه)' });

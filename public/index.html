@@ -152,7 +152,65 @@
         <div id="leave-list" class="list"></div>
       </section>
 
+      <!-- ماموریت (C2): با کاشی «ماموریت» در صفحه‌ی امروز باز می‌شود -->
+      <section id="view-mission" class="view hidden">
+        <div class="view-head"><h3 class="view-title">ثبت ماموریت</h3><button type="button" class="btn secondary" id="mission-back">بازگشت</button></div>
+        <div id="mission-now" class="card form">
+          <div class="mission-note" id="mission-now-text">ماموریتِ فوریِ همین حالا: شروع از اکنون تا پایان شیفت (یا تا زمانی که «پایان ماموریت» را بزنید).</div>
+          <button type="button" class="btn primary" id="mission-now-start">شروع ماموریت الان</button>
+          <button type="button" class="btn secondary" id="mission-now-end" hidden>پایان ماموریت</button>
+        </div>
+        <form id="mission-form" class="card form" novalidate>
+          <label>مدت
+            <select name="unit">
+              <option value="day">تمام‌روز</option>
+              <option value="half_day">نیم‌روز</option>
+              <option value="hour">ساعتی</option>
+            </select>
+          </label>
+          <label id="mission-start-row">از تاریخ
+            <input type="date" name="startDate" required />
+          </label>
+          <label id="mission-end-row">تا تاریخ
+            <input type="date" name="endDate" required />
+          </label>
+          <label id="mission-part-row" hidden>بخش روز
+            <select name="halfDayPart">
+              <option value="morning">صبح</option>
+              <option value="afternoon">عصر</option>
+            </select>
+          </label>
+          <label id="mission-starttime-row" hidden>از ساعت
+            <input type="time" name="startTime" />
+          </label>
+          <label id="mission-endtime-row" hidden>تا ساعت
+            <input type="time" name="endTime" />
+          </label>
+          <div class="form-msg warn" id="mission-warning" role="status" hidden></div>
+          <label>علت ماموریت (۵ تا ۳۰۰ نویسه)
+            <textarea name="reason" rows="3" maxlength="300" required></textarea>
+          </label>
+          <label>مقصد (اختیاری)
+            <input type="text" name="destination" maxlength="100" />
+          </label>
+          <label>پیوست (اختیاری؛ تصویر یا PDF)
+            <input type="file" name="attachment" accept="image/jpeg,image/png,application/pdf" />
+          </label>
+          <button type="submit" class="btn primary">ارسال درخواست ماموریت</button>
+          <div class="form-msg" id="mission-msg" role="status"></div>
+        </form>
+
+        <h3 class="view-title">ماموریت‌های من</h3>
+        <div id="mission-list" class="list"></div>
+      </section>
+
       <!-- پروفایل -->
+      <!-- برنامه‌ی هفتگی (D4): ویزارد؛ با کاشی «برنامه‌ی هفتگی» یا ?view=plan باز می‌شود -->
+      <section id="view-plan" class="view hidden">
+        <div class="view-head"><h3 class="view-title" id="plan-title">برنامه‌ی هفتگی</h3><button type="button" class="btn secondary" id="plan-back">بازگشت</button></div>
+        <div id="plan-body" class="plan-body"></div>
+      </section>
+
       <section id="view-profile" class="view hidden">
         <div class="card profile-card">
           <div class="avatar" id="pf-avatar">؟</div>
@@ -199,6 +257,29 @@
         <span>پروفایل</span>
       </button>
     </nav>
+  </div>
+
+  <!-- bottom-sheet انتخاب نوع استراحت (A1) -->
+  <div id="break-sheet" class="sheet-backdrop hidden">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="break-sheet-title" tabindex="-1">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <h2 id="break-sheet-title" class="sheet-title">ثبت استراحت</h2>
+      <div class="sheet-options" role="radiogroup" aria-labelledby="break-sheet-title">
+        <button type="button" class="sheet-option" role="radio" data-break-kind="lunch" data-break-type="lunch">
+          <span class="sheet-emoji" aria-hidden="true">🍽</span>
+          <span class="sheet-option-text"><span class="sheet-option-title">ناهار</span><span class="sheet-option-sub">ناهار روی ساعت کاری اثر ثابت دارد</span></span>
+        </button>
+        <button type="button" class="sheet-option" role="radio" data-break-kind="prayer" data-break-type="short_break">
+          <span class="sheet-emoji" aria-hidden="true">🕌</span>
+          <span class="sheet-option-text"><span class="sheet-option-title">نماز</span></span>
+        </button>
+        <button type="button" class="sheet-option" role="radio" data-break-kind="short" data-break-type="short_break">
+          <span class="sheet-emoji" aria-hidden="true">☕</span>
+          <span class="sheet-option-text"><span class="sheet-option-title">استراحت کوتاه</span></span>
+        </button>
+      </div>
+      <button type="button" class="sheet-cancel" id="break-sheet-cancel">انصراف</button>
+    </div>
   </div>
 
   <div id="toast" class="toast hidden" role="status" aria-live="polite" aria-atomic="true"></div>

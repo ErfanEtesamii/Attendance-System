@@ -19,6 +19,17 @@ const { audit, auditChange, requireReason } = require('./common');
 const systemHealth = require('../../../utils/systemHealth');
 const jobRunsRepository = require('../../../repositories/jobRunsRepository');
 const monitorRepository = require('../../../repositories/monitorRepository');
+const resetService = require('../../../services/resetService');
+const { createRateLimiter } = require('../../../middleware/rateLimiter');
+
+// ریست برنامه: ۳ تلاش در ساعت برای هر ادمین (شامل تلاش‌های ردشده)
+const resetLimiter = createRateLimiter({
+  name: 'system-reset',
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  message: 'تعداد تلاش برای ریست بیش از حد مجاز است (۳ بار در ساعت). بعداً دوباره تلاش کنید.',
+  keyFn: (req) => `reset:${req.adminUser ? req.adminUser.id : req.ip}`,
+});
 
 // S3-8c: cron «مؤثر» هر Job (تنظیم ذخیره‌شده در پنل ⇒ وگرنه .env/پیش‌فرض)، نه فقط مقدار config که با reload کهنه می‌شود
 function effectiveCrons() {
@@ -160,6 +171,42 @@ router.get('/admin/system/status', requirePermission('system.read'), (req, res) 
   } catch (_) { /* همان */ }
 
   res.json({ ...report, jobs, recentErrors, recentRuns, activeAlerts: alerts, watchdog: { enabled: config.monitor.watchdogEnabled, cron: watchdogCron, throttleMinutes: config.monitor.alertThrottleMinutes } });
+});
+
+// ---------- ریست برنامه (فقط ادمین کل؛ B3) ----------
+// گروه‌ها/وضعیت قفل برای UI
+router.get('/admin/system/reset/options', requirePermission('system.manage'), (req, res) => {
+  res.json({
+    groups: resetService.listGroups(),
+    locked: resetService.isResetLocked(),
+    confirmWords: resetService.CONFIRM_WORDS,
+    resetEpoch: settingsRepository.getResetEpoch(),
+  });
+});
+
+// پیش‌نمایش (dry-run): فقط می‌شمارد
+router.post('/admin/system/reset/preview', requirePermission('system.manage'), (req, res) => {
+  if (!req.adminUser || req.adminUser.role !== 'admin') return res.status(403).json({ error: 'فقط ادمین کل.', code: 'forbidden' });
+  try {
+    const preview = resetService.previewReset({ groups: (req.body || {}).groups, beforeDate: (req.body || {}).beforeDate });
+    res.json({ ...preview, locked: resetService.isResetLocked() });
+  } catch (err) {
+    if (err instanceof resetService.ResetError) return res.status(400).json({ error: err.message, code: err.code });
+    throw err;
+  }
+});
+
+router.post('/admin/system/reset', requirePermission('system.manage'), resetLimiter, async (req, res) => {
+  const check = resetService.checkResetRequest(req.body, req.adminUser);
+  if (!check.ok) return res.status(check.status).json({ error: check.error, code: check.code });
+  try {
+    const result = await resetService.executeReset(check.options, { actor: req.adminUser.id, ip: req.ip });
+    resetService.notifyAdminsOfReset(result, req.adminUser).catch(() => {});
+    res.json({ ok: true, total: result.total, deleted: result.deleted, backupFile: result.backup.file, resetEpoch: result.resetEpoch, groups: result.groups, beforeDate: result.beforeDate });
+  } catch (err) {
+    if (err instanceof resetService.ResetError) return res.status(err.code === 'BUSY' ? 409 : 500).json({ error: err.message, code: err.code });
+    return res.status(500).json({ error: `ریست ناموفق بود و همه‌ی تغییرات برگردانده شد: ${err.message}`, code: 'reset_failed' });
+  }
 });
 
 router.get('/admin/system/backup', requirePermission('system.manage'), async (req, res) => {

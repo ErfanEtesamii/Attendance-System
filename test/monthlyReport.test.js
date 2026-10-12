@@ -177,6 +177,17 @@ describe('گزارش ماهانه — سرویس (S5-2a)', () => {
     assert.equal(days.find((d) => d.date === '2026-08-31').leaveMinutes, 120);
   });
 
+  test('C3: ماموریت تمام‌روز ⇒ status=mission با missionMinutes/effectiveWithMission؛ روز عادی effectiveWithMission = effective', () => {
+    const days = get(emp, { includeDays: true }).days;
+    const m = days.find((d) => d.date === '2026-08-30');
+    assert.deepEqual([m.status, m.missionMinutes, m.effectiveWithMission], ['mission', 510, 510]);
+    const n = days.find((d) => d.date === '2026-08-31');
+    assert.equal(n.missionMinutes, 0);
+    assert.equal(n.effectiveWithMission, n.effective);
+    const t = get(emp).time;
+    assert.ok(t.effectiveWithMissionMinutes >= t.effectiveMinutes + 510);
+  });
+
   test('totals جمع کاربران است؛ لیست خالی و ورودی نامعتبر', () => {
     const rep = computeMonthlyReport({ users: [fresh(emp), fresh(newcomer)], year: Y, month: M, now: NOW });
     assert.equal(rep.totals.userCount, 2);

@@ -30,6 +30,8 @@ async function autoCloseIncompleteRecords() {
     });
   }
 
+  try { require('../../services/missionNowService').autoCloseOpen(); } catch (err) { console.error('[autoClose] پایان خودکار ماموریت ناموفق:', err.message); } // C6
+
   return openRecords.length;
 }
 

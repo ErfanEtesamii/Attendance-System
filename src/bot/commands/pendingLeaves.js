@@ -44,10 +44,12 @@ async function handlePendingLeaves(bot, msg) {
     await bot.sendMessage(chatId, text, {
       reply_markup: {
         inline_keyboard: [
-          [
-            { text: '✅ تأیید', callback_data: `leave_approve:${request.id}` },
-            { text: '❌ رد', callback_data: `leave_reject:${request.id}` },
-          ],
+          request.kind === 'mission'
+            ? require('../../services/missionDecisionService').missionKeyboardRow(request) // C4: ماموریت ⇒ + «اصلاح ساعت»
+            : [
+              { text: '✅ تأیید', callback_data: `leave_approve:${request.id}` },
+              { text: '❌ رد', callback_data: `leave_reject:${request.id}` },
+            ],
         ],
       },
     });

@@ -76,6 +76,13 @@ function networkRestriction(req, res, next) {
     }
   }
 
+  // C5: ماموریتِ در انتظارِ امروز (و تنظیم allowCheckinWithPendingMission) ⇒ عبور با پرچم؛ route رکورد و «نشانه» را ثبت می‌کند
+  const pendingId = require('../services/pendingMissionService').pendingMissionPass(userId, todayDateString());
+  if (pendingId) {
+    req.viaPendingMission = pendingId;
+    return next();
+  }
+
   auditRepository.logEvent({
     userId: userId || null,
     action: 'attendance_rejected_ip',

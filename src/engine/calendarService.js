@@ -114,4 +114,59 @@ function getCalendarDay(userOrShift, dateStr, opts = {}) {
   return resolveCalendarDay({ dateStr, shift, settings, holiday });
 }
 
-module.exports = { getCalendarDay, resolveCalendarDay, pickHoliday, weekdayOf };
+// ---------- D2: روز ثبت برنامه و روز کاریِ قبل ----------
+// اولین روز هفته‌ی برنامه‌ریزی که شامل date است (weekStartDay: ۰=یکشنبه … ۶=شنبه)
+function weekStartOf(dateStr, weekStartDay = 6) {
+  const { addDays } = require('../utils/shiftDay');
+  const back = (((weekdayOf(dateStr) - weekStartDay) % 7) + 7) % 7;
+  return addDays(dateStr, -back);
+}
+
+// آیا کاربر در این روزِ کاری «کاملاً» در مرخصی/ماموریتِ تأییدشده است؟ (ورود/خروج و برنامه‌ریزی معنا ندارد)
+function fullyOnApprovedLeave(user, dateStr, cal) {
+  if (!user || user.id === undefined) return false;
+  const leaveRepository = require('../repositories/leaveRepository');
+  const { leaveWindowsOnDate, requestRowToValue, dayWindow } = require('../utils/leaveUnits');
+  const rows = leaveRepository.listApprovedOnDate(user.id, dateStr);
+  if (!rows.length) return false;
+  const win = dayWindow(cal);
+  if (!win) return false;
+  const wins = leaveWindowsOnDate(rows.map(requestRowToValue), dateStr, () => cal).map((w) => [Math.max(w.start, win.start), Math.min(w.end, win.end)]).filter((w) => w[1] > w[0]).sort((a, b) => a[0] - b[0]);
+  let covered = 0;
+  let cursor = win.start;
+  for (const [s, e] of wins) { const from = Math.max(s, cursor); if (e > from) { covered += e - from; cursor = e; } }
+  return covered >= win.span;
+}
+
+// روز ثبت برنامه‌ی هفته‌ی بعد برای این کاربر در هفته‌ای که از weekStart شروع می‌شود (YYYY-MM-DD) یا null (هفته‌ی بدون روز کاری).
+// auto (پیش‌فرض) = آخرین روز کاریِ همان کاربر (شیفت/تعطیلی/نیم‌روز لحاظ می‌شود)؛ روزِ کاملاً مرخصی/ماموریت‌شده رد می‌شود.
+// تنظیم planSubmissionWeekday عددی ⇒ همان روز هفته؛ اگر آن روز کاری/در دسترس نبود، نزدیک‌ترین روز کاریِ «قبل‌تر» در همان هفته.
+function getPlanDay(user, weekStart, opts = {}) {
+  const { addDays } = require('../utils/shiftDay');
+  const settings = opts.settings || require('../repositories/settingsRepository').getAll();
+  const fixed = settings.planSubmissionWeekday && settings.planSubmissionWeekday !== 'auto' ? Number(settings.planSubmissionWeekday) : null;
+  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const usable = (d) => {
+    const cal = getCalendarDay(user, d, { settings });
+    return cal.isWorkingDay && !fullyOnApprovedLeave(user, d, cal);
+  };
+  let candidates = days.slice().reverse();
+  if (fixed !== null) {
+    const idx = days.findIndex((d) => weekdayOf(d) === fixed);
+    candidates = days.slice(0, idx + 1).reverse();
+  }
+  return candidates.find(usable) || null;
+}
+
+// آخرین روز کاریِ این کاربر قبل از date (حداکثر maxBack روز عقب)؛ مرخصی در نظر گرفته نمی‌شود (روز «کاری» است). null اگر نبود.
+function getPreviousWorkingDay(user, dateStr, { maxBack = 14, settings } = {}) {
+  const { addDays } = require('../utils/shiftDay');
+  const s = settings || require('../repositories/settingsRepository').getAll();
+  for (let i = 1; i <= maxBack; i += 1) {
+    const d = addDays(dateStr, -i);
+    if (getCalendarDay(user, d, { settings: s }).isWorkingDay) return d;
+  }
+  return null;
+}
+
+module.exports = { getCalendarDay, resolveCalendarDay, pickHoliday, weekdayOf, weekStartOf, getPlanDay, getPreviousWorkingDay };

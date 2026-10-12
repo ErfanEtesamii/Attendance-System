@@ -41,7 +41,7 @@ function listByUserAndRange(userId, fromDate, toDate) {
 // توجه: IP و timestamp همیشه در همین لایه (سمت سرور) تولید می‌شوند.
 // device (اختیاری، S2-3): { deviceId, userAgent } که قبلاً با utils/deviceInfo اعتبارسنجی شده؛
 // فقط ذخیره می‌شود و روی منطق ثبت اثری ندارد. بات و فراخوانی بدون device ⇒ NULL.
-function recordCheckIn(userId, ip, device = {}) {
+function recordCheckIn(userId, ip, device = {}, { viaPendingMission = false } = {}) {
   const db = getDb();
   const recordDate = currentRecordDate(userId);
   const existing = db
@@ -51,20 +51,20 @@ function recordCheckIn(userId, ip, device = {}) {
 
   const result = db
     .prepare(
-      `INSERT INTO attendance_records (user_id, record_date, check_in_time, check_in_ip, check_in_device, check_in_ua, status)
-       VALUES (?, ?, ?, ?, ?, ?, 'normal')`
+      `INSERT INTO attendance_records (user_id, record_date, check_in_time, check_in_ip, check_in_device, check_in_ua, status, via_pending_mission)
+       VALUES (?, ?, ?, ?, ?, ?, 'normal', ?)`
     )
-    .run(userId, recordDate, nowIso(), ip, device?.deviceId ?? null, device?.userAgent ?? null);
+    .run(userId, recordDate, nowIso(), ip, device?.deviceId ?? null, device?.userAgent ?? null, viaPendingMission ? 1 : 0);
   return findById(result.lastInsertRowid);
 }
 
-function recordCheckOut(attendanceRecordId, ip, device = {}) {
+function recordCheckOut(attendanceRecordId, ip, device = {}, { viaPendingMission = false } = {}) {
   const db = getDb();
   db.prepare(
     `UPDATE attendance_records
-     SET check_out_time = ?, check_out_ip = ?, check_out_device = ?, check_out_ua = ?, updated_at = datetime('now')
+     SET via_pending_mission = CASE WHEN ? = 1 THEN 1 ELSE via_pending_mission END, check_out_time = ?, check_out_ip = ?, check_out_device = ?, check_out_ua = ?, updated_at = datetime('now')
      WHERE id = ?`
-  ).run(nowIso(), ip, device?.deviceId ?? null, device?.userAgent ?? null, attendanceRecordId);
+  ).run(viaPendingMission ? 1 : 0, nowIso(), ip, device?.deviceId ?? null, device?.userAgent ?? null, attendanceRecordId);
   return findById(attendanceRecordId);
 }
 

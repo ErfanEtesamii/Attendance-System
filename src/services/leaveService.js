@@ -21,14 +21,14 @@ const { dayDiff } = require('../utils/shiftDay');
 const { jalaliYearOfDateString } = require('../utils/jalali');
 const { todayInZone, zonedTimeToUtc } = require('../utils/time');
 
-const SKIPPABLE = ['past', 'future', 'notice', 'maxConsecutive', 'balance', 'attachment'];
+const SKIPPABLE = ['past', 'future', 'notice', 'maxConsecutive', 'balance', 'attachment', 'unit'];
 
 function validate(input = {}, opts = {}) {
   const skip = new Set(opts.skip || []);
   for (const s of skip) if (!SKIPPABLE.includes(s)) throw new RangeError(`skip نامعتبر است: ${s}`);
   const now = opts.now instanceof Date ? opts.now : new Date();
 
-  const prep = leaveDurationService.prepare(input);
+  const prep = leaveDurationService.prepare(input, { skipUnit: skip.has('unit') });
   if (!prep.ok) return { ...prep, warnings: [] };
 
   const settings = settingsRepository.getAll();
@@ -106,6 +106,8 @@ function create(input = {}, opts = {}) {
     durationMinutes: result.durationMinutes,
     substituteUserId: input.substituteUserId === null ? undefined : input.substituteUserId,
     attachment: input.attachment || undefined,
+    source: input.source,
+    destination: input.destination,
   });
   // زنجیره‌ی تأیید (S4-11a): مراحل از تنظیمات؛ درخواست با current_step = 1 شروع می‌شود
   const chained = leaveApprovalService.initChain(request.id) || request;

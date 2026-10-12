@@ -67,14 +67,18 @@ describe('middleware networkRestriction', () => {
     assert.equal(auditRepository.listRecent()[0].action, 'attendance_allowed_via_mission');
   });
 
-  test('مأموریت برای روز دیگر یا هنوز تأییدنشده کافی نیست', () => {
+  test('مأموریت برای روز دیگر کافی نیست؛ pending فقط با تنظیم allowCheckinWithPendingMission (C5)', () => {
     const u = makeUser();
     makeApprovedMission(u.id, '2000-01-01');
     assert.equal(runMiddleware(networkRestriction, reqFor(u)).status, 403);
 
     const leaveRepository = require('../src/repositories/leaveRepository');
     leaveRepository.createLeaveRequest({ userId: u.id, startDate: todayDateString(), endDate: todayDateString(), leaveType: 'mission' }); // pending
+    assert.equal(runMiddleware(networkRestriction, reqFor(u)).nextCalled, true, 'C5: پیش‌فرض روشن ⇒ عبور با پرچم');
+    const db = require('../src/db/connection').getDb();
+    db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('allow_checkin_with_pending_mission', 'false')").run();
     assert.equal(runMiddleware(networkRestriction, reqFor(u)).status, 403);
+    db.prepare("DELETE FROM settings WHERE key = 'allow_checkin_with_pending_mission'").run();
   });
 
   test('مرخصی (نه مأموریت) تأییدشده، چک IP را دور نمی‌زند', () => {

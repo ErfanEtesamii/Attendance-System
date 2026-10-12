@@ -283,6 +283,8 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
     overtime: 0,
     overtimePayable: 0,
     isOpen: false,
+    missionMinutes: 0,
+    effectiveWithMission: null,
     flags: [],
     status: record && record.status !== undefined ? record.status : null,
   };
@@ -294,6 +296,10 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
 
   result.break = sumItems(read.items);
   if (maxLunch > 0) result.breakExcess = Math.max(0, sumItems(read.items, { onlyLunch: true }) - maxLunch);
+  // C3: ماموریتِ تأییدشده (پنجره‌های kind='mission' که به بازه‌ی کاری بریده شده‌اند). فقط در روز کاری؛ pending/rejected هرگز به اینجا نمی‌رسد
+  const missionWins = dayOff ? [] : normalizeLeaveWindows((approvedLeaves || []).filter((w) => w && w.kind === 'mission'), workStart, workEnd);
+  result.missionMinutes = missionWins.reduce((t, w) => t + (w.end - w.start), 0);
+  if (result.missionMinutes > 0) result.effectiveWithMission = result.missionMinutes;
   if (!record || !record.check_in_time) return emit();
 
   // زمان خراب رکورد = داده‌ی خراب: پرچم، نه exception؛ هیچ عددی از رکورد حساب نمی‌شود
@@ -339,6 +345,25 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
     result.break += result.breakAuto;
   }
   result.effective = Math.max(0, Math.round(gross - result.break));
+  result.effectiveWithMission = result.effective;
+  if (result.missionMinutes > 0) {
+    // مفید = |P ∪ M'|: P = حضور منهای استراحت‌های واقعی؛ فقط بخشی از ماموریت که با P هم‌پوشان است دوبار شمرده نمی‌شود
+    let pres = reversed ? [] : [[posOf(checkIn), posOf(end)]];
+    for (const b of read.items) {
+      if (b.endMs === null) continue;
+      const bs = posOf(new Date(b.startMs));
+      const be = posOf(new Date(b.endMs));
+      const next = [];
+      for (const [s, e] of pres) {
+        if (be <= s || bs >= e) next.push([s, e]);
+        else { if (bs > s) next.push([s, bs]); if (be < e) next.push([be, e]); }
+      }
+      pres = next;
+    }
+    let overlap = 0;
+    for (const [s, e] of pres) for (const w of missionWins) overlap += Math.max(0, Math.min(e, w.end) - Math.max(s, w.start));
+    result.effectiveWithMission = Math.max(0, Math.round(result.effective + result.missionMinutes - overlap));
+  }
 
   if (checkOut) {
     const checkOutMinutes = posOf(checkOut);

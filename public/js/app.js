@@ -234,6 +234,8 @@
     if (name === 'history') loadHistory();
     if (name === 'report') loadReport($('.tab-btn.active')?.dataset.period || 'week');
     if (name === 'leave') { loadLeaveTypes(); loadLeaveList(); }
+    if (name === 'mission') loadMissionList();
+    if (name === 'plan') openPlanWizard();
     if (name === 'profile') loadProfile();
   }
 
@@ -267,6 +269,8 @@
     out: '<svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
     lunch: '<svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8zM6 1v3M10 1v3M14 1v3"/></svg>',
     resume: '<svg viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z"/></svg>',
+    plan: '<svg viewBox="0 0 24 24"><path d="M4 5h16v15H4zM4 9h16M8 3v4M16 3v4M8 13h3M8 16h6"/></svg>',
+    mission: '<svg viewBox="0 0 24 24"><path d="M5 17h14M3 13l2-6h14l2 6v4H3v-4zM7 17v2M17 17v2M7 13h.01M17 13h.01"/></svg>',
   };
 
   function renderTodayActions() {
@@ -276,7 +280,7 @@
     const r = state.today && state.today.record;
     const openBreak = state.today && state.today.openBreak;
 
-    function addTile({ title, sub, color, icon, wide, handler }) {
+    function addTile({ title, sub, color, icon, wide, handler, locked }) {
       const b = document.createElement('button');
       b.className = 'action-tile t-' + color + (wide ? ' wide' : '');
       b.innerHTML = `
@@ -285,9 +289,17 @@
           <span class="tile-title">${title}</span>
           <span class="tile-sub">${sub}</span>
         </span>`;
-      b.addEventListener('click', handler);
+      if (locked) { b.disabled = true; b.setAttribute('aria-disabled', 'true'); b.dataset.locked = '1'; }
+      else b.addEventListener('click', handler);
       box.appendChild(b);
     }
+    // کاشی ماموریت (C2): همیشه هست؛ با استراحت باز غیرفعال است (ابتدا استراحت را پایان دهید)
+    const addMissionTile = () => addTile({
+      title: 'ماموریت 🚗', sub: openBreak ? 'ابتدا استراحت را پایان دهید' : 'ثبت درخواست ماموریت', color: 'purple', icon: 'mission', wide: true,
+      handler: () => openMissionView(), locked: !!openBreak,
+    });
+
+    const addPlanTile = () => addTile({ title: 'برنامه‌ی هفتگی 📅', sub: 'ثبت یا ویرایش برنامه‌ی هفته', color: 'green', icon: 'plan', wide: true, handler: () => switchView('plan') });
 
     if (!r) {
       box.classList.add('single');
@@ -295,6 +307,8 @@
         title: 'ثبت ورود', sub: 'شروع روز کاری', color: 'green', icon: 'in', wide: true,
         handler: () => doAction('/check-in', {}, 'ورود ثبت شد.'),
       });
+      addMissionTile();
+      addPlanTile();
       return;
     }
 
@@ -304,6 +318,8 @@
       done.className = 'card done-card';
       done.textContent = 'امروز به پایان رسید. تا فردا خوش باشید 🌤️';
       box.appendChild(done);
+      addMissionTile();
+      addPlanTile();
       return;
     }
 
@@ -313,22 +329,125 @@
         title: 'پایان استراحت', sub: 'بازگشت به کار', color: 'orange', icon: 'resume', wide: true,
         handler: () => doAction('/break/end', {}, 'استراحت پایان یافت.'),
       });
+      addMissionTile();
+      addPlanTile();
       return;
     }
 
     addTile({
-      title: 'شروع ناهار', sub: 'ثبت استراحت', color: 'orange', icon: 'lunch',
-      handler: () => doAction('/break/start', { breakType: 'lunch' }, 'استراحت ناهار شروع شد.'),
+      title: 'ثبت استراحت', sub: 'شروع وقفه', color: 'orange', icon: 'lunch',
+      handler: () => openBreakSheet(),
     });
     addTile({
       title: 'ثبت خروج', sub: 'پایان روز کاری', color: 'red', icon: 'out',
       handler: () => doAction('/check-out', {}, 'خروج ثبت شد.'),
+    });
+    addMissionTile();
+    addPlanTile();
+  }
+
+  // ---------- bottom-sheet انتخاب نوع استراحت (A1) ----------
+  // سه گزینه: ناهار (lunch)، نماز و استراحت کوتاه (هر دو short_break). آخرین انتخاب پیش‌انتخاب است.
+  const BREAK_KIND_KEY = 'lastBreakKind';
+  const BREAK_KINDS = ['lunch', 'prayer', 'short'];
+
+  function readLastBreakKind() {
+    try {
+      const v = window.localStorage.getItem(BREAK_KIND_KEY);
+      return BREAK_KINDS.includes(v) ? v : 'lunch';
+    } catch (e) { return 'lunch'; }
+  }
+  function saveLastBreakKind(kind) {
+    try { window.localStorage.setItem(BREAK_KIND_KEY, kind); } catch (e) { /* حافظه‌ی محلی در دسترس نیست؛ مشکلی نیست */ }
+  }
+
+  // ریست برنامه (B4): با تغییر reset_epoch، state محلیِ کاربر (آخرین نوع استراحت و پیش‌نویس‌ها) پاک می‌شود.
+  // شناسه‌ی دستگاه عمداً حفظ می‌شود (هویت دستگاه است، نه state برنامه).
+  const RESET_EPOCH_KEY = 'resetEpoch';
+  function syncResetEpoch(epoch) {
+    if (epoch === undefined || epoch === null) return;
+    try {
+      const ls = window.localStorage;
+      const prev = ls.getItem(RESET_EPOCH_KEY);
+      if (prev !== null && prev !== String(epoch)) {
+        ls.removeItem(BREAK_KIND_KEY);
+        Object.keys(ls).filter((k) => k.indexOf('draft:') === 0).forEach((k) => ls.removeItem(k));
+        state.today = null;
+      }
+      ls.setItem(RESET_EPOCH_KEY, String(epoch));
+    } catch (e) { /* حافظه‌ی محلی در دسترس نیست */ }
+  }
+
+  let breakSheetReturnFocus = null;
+
+  function closeBreakSheet() {
+    const root = $('#break-sheet');
+    if (!root || root.classList.contains('hidden')) return;
+    root.classList.add('hidden');
+    document.removeEventListener('keydown', onBreakSheetKey, true);
+    const back = breakSheetReturnFocus;
+    breakSheetReturnFocus = null;
+    if (back && back.isConnected) { try { back.focus(); } catch (e) { /* ignore */ } }
+  }
+
+  // Esc بسته می‌کند؛ Tab داخل sheet می‌چرخد (focus trap)
+  function onBreakSheetKey(ev) {
+    const root = $('#break-sheet');
+    if (!root || root.classList.contains('hidden')) return;
+    if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); closeBreakSheet(); return; }
+    if (ev.key !== 'Tab') return;
+    const items = Array.from(root.querySelectorAll('button:not([disabled])'));
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    const active = document.activeElement;
+    if (!root.contains(active)) { ev.preventDefault(); first.focus(); }
+    else if (ev.shiftKey && active === first) { ev.preventDefault(); last.focus(); }
+    else if (!ev.shiftKey && active === last) { ev.preventDefault(); first.focus(); }
+  }
+
+  function chooseBreakKind(btn) {
+    saveLastBreakKind(btn.dataset.breakKind);
+    closeBreakSheet();
+    doAction('/break/start', { breakType: btn.dataset.breakType }, 'استراحت شروع شد.');
+  }
+
+  function openBreakSheet() {
+    const root = $('#break-sheet');
+    if (!root) { doAction('/break/start', { breakType: 'lunch' }, 'استراحت شروع شد.'); return; }
+    breakSheetReturnFocus = document.activeElement;
+    const last = readLastBreakKind();
+    const options = Array.from(root.querySelectorAll('.sheet-option'));
+    options.forEach((b) => {
+      const on = b.dataset.breakKind === last;
+      b.classList.toggle('is-selected', on);
+      b.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+    root.classList.remove('hidden');
+    document.addEventListener('keydown', onBreakSheetKey, true);
+    const pre = options.find((b) => b.dataset.breakKind === last) || options[0];
+    if (pre) pre.focus();
+  }
+
+  let breakSheetBound = false;
+  function initBreakSheet() {
+    const root = $('#break-sheet');
+    if (!root || breakSheetBound) return;
+    breakSheetBound = true;
+    // یک شنونده‌ی واحد: گزینه‌ها، انصراف و لمس پس‌زمینه‌ی بیرون از sheet
+    root.addEventListener('click', (ev) => {
+      const t = ev.target;
+      if (t === root) { closeBreakSheet(); return; }
+      const opt = t && t.closest ? t.closest('.sheet-option') : null;
+      if (opt) { chooseBreakKind(opt); return; }
+      if (t && t.closest && t.closest('#break-sheet-cancel')) closeBreakSheet();
     });
   }
 
   async function doAction(path, body, successMsg) {
     const btns = $all('#today-actions button');
     btns.forEach((b) => { b.disabled = true; });
+    const unlock = () => btns.forEach((b) => { if (b.isConnected && !(b.dataset && b.dataset.locked)) b.disabled = false; });
     try {
       // S2-3: device_id فقط همراه ورود/خروج؛ نبودنش مانع ثبت نیست
       if (path === '/check-in' || path === '/check-out') {
@@ -340,7 +459,7 @@
       await loadToday();
     } catch (err) {
       showToast(err.message, true);
-      btns.forEach((b) => { if (b.isConnected) b.disabled = false; });
+      unlock();
     }
   }
 
@@ -630,6 +749,353 @@
     }
   }
 
+  // ---------- ماموریت (C2) ----------
+  // فرم و فهرست «ماموریت‌های من». همه‌ی قواعد (بازه‌ی ثبت، تداخل، علت ۵–۳۰۰ نویسه) سمت سرور اعمال می‌شود؛ این‌جا فقط راهنمای کاربر است.
+  const MISSION_UNIT_ROWS = { day: ['#mission-end-row'], half_day: ['#mission-part-row'], hour: ['#mission-starttime-row', '#mission-endtime-row'] };
+  const MISSION_ALL_ROWS = ['#mission-end-row', '#mission-part-row', '#mission-starttime-row', '#mission-endtime-row'];
+  const missionForm = $('#mission-form');
+  const missionDates = { startDate: null, endDate: null };
+  const missionOk = !!(missionForm && typeof missionForm.addEventListener === 'function' && typeof missionForm.querySelector === 'function');
+
+  if (missionOk) {
+    ['startDate', 'endDate'].forEach((name) => {
+      const el = missionForm[name];
+      if (!DP || !el) return;
+      el.type = 'text'; // type=date متن شمسی را نمی‌پذیرد
+      missionDates[name] = DP.attach(el, {});
+    });
+  }
+  const readMissionDate = (name) => (missionDates[name] ? missionDates[name].getValue() : missionForm[name].value);
+
+  function openMissionView() { switchView('mission'); }
+
+  function applyMissionUnitUI() {
+    const unit = missionForm.unit ? missionForm.unit.value : 'day';
+    MISSION_ALL_ROWS.forEach((sel) => { const row = $(sel); if (row) row.hidden = true; });
+    (MISSION_UNIT_ROWS[unit] || []).forEach((sel) => { const row = $(sel); if (row) row.hidden = false; });
+    return unit;
+  }
+
+  // هشدار «بیرون از ساعت کاری» (ساعت کاری روز از سرور می‌آید؛ فقط راهنماست، چیزی را مسدود نمی‌کند)
+  const toMin = (hhmm) => { const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm || ''); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
+  async function refreshMissionWarning() {
+    const box = $('#mission-warning');
+    if (!box) return;
+    const unit = applyMissionUnitUI();
+    const date = readMissionDate('startDate');
+    let text = '';
+    if (date && unit !== 'day') {
+      try {
+        const day = await api('/mission/day?date=' + encodeURIComponent(date));
+        if (!day.isWorkingDay) text = 'این روز کاری نیست؛ آن بخش ساعت کاری حساب نمی‌شود.';
+        else if (unit === 'hour') {
+          const s = toMin(fieldValue(missionForm, 'startTime')); const en = toMin(fieldValue(missionForm, 'endTime'));
+          const ws = toMin(day.expectedStart); const we = toMin(day.expectedEnd);
+          if (s !== null && en !== null && ws !== null && we !== null && (s < ws || en > we)) text = 'بخشی از بازه بیرون ساعت کاری است؛ آن بخش ساعت کاری حساب نمی‌شود.';
+        }
+      } catch (_) { text = ''; }
+    }
+    box.textContent = text;
+    box.hidden = !text;
+  }
+
+  const MISSION_STATUS = { pending: 'در انتظار تأیید', approved: 'تأیید شده', rejected: 'رد شده' };
+  function missionWhenText(m) {
+    if (m.unit === 'half_day') return `${fmtDate(m.startDate)} — ${m.halfDayPart === 'afternoon' ? 'نیم‌روز عصر' : 'نیم‌روز صبح'}`;
+    if (m.unit === 'hour') return `${fmtDate(m.startDate)} — ${m.startTime} تا ${m.endTime}`;
+    return m.startDate === m.endDate ? fmtDate(m.startDate) : `${fmtDate(m.startDate)} تا ${fmtDate(m.endDate)}`;
+  }
+
+  // C6: «ماموریت همین حالا» — دکمه‌ی شروع/پایان بر پایه‌ی وجود ماموریتِ بازِ خودِ کاربر
+  function syncMissionNow(items) {
+    const startBtn = $('#mission-now-start');
+    const endBtn = $('#mission-now-end');
+    if (!startBtn || !endBtn) return;
+    const open = (items || []).some((m) => m.openNow);
+    startBtn.hidden = open;
+    endBtn.hidden = !open;
+  }
+
+  async function loadMissionList() {
+    const list = $('#mission-list');
+    if (!list) return;
+    renderLoading(list, 'list');
+    try {
+      const items = await api('/missions');
+      syncMissionNow(items);
+      if (!items.length) { renderEmpty(list, 'ماموریتی ثبت نشده است.'); return; }
+      list.removeAttribute('aria-busy');
+      list.innerHTML = '';
+      items.forEach((m) => {
+        const el = document.createElement('div');
+        el.className = 'list-item';
+        const top = document.createElement('div');
+        top.className = 'li-top';
+        const t1 = document.createElement('span'); t1.textContent = m.destination ? `ماموریت — ${m.destination}` : 'ماموریت';
+        const badge = document.createElement('span'); badge.className = 'badge ' + m.status; badge.textContent = MISSION_STATUS[m.status] || m.status;
+        top.appendChild(t1); top.appendChild(badge);
+        const bottom = document.createElement('div');
+        bottom.className = 'li-bottom';
+        const when = document.createElement('span'); when.textContent = missionWhenText(m);
+        bottom.appendChild(when);
+        el.appendChild(top); el.appendChild(bottom);
+        const reason = document.createElement('div'); reason.className = 'mission-note'; reason.textContent = m.reason || '';
+        el.appendChild(reason);
+        if (m.managerNote) {
+          const note = document.createElement('div'); note.className = 'mission-note'; note.textContent = 'یادداشت سرپرست: ' + m.managerNote;
+          el.appendChild(note);
+        }
+        if (m.status === 'pending') {
+          const btn = document.createElement('button');
+          btn.type = 'button'; btn.className = 'btn secondary mission-cancel'; btn.textContent = 'لغو درخواست';
+          let armed = false;
+          btn.addEventListener('click', async () => {
+            if (!armed) { armed = true; btn.textContent = 'مطمئنید؟ دوباره بزنید'; setTimeout(() => { armed = false; if (btn.isConnected) btn.textContent = 'لغو درخواست'; }, 4000); return; }
+            try { await withBusy(btn, () => api('/missions/' + m.id, { method: 'DELETE' })); showToast('درخواست ماموریت لغو شد.'); loadMissionList(); } catch (err) { showToast(err.message, true); }
+          });
+          el.appendChild(btn);
+        }
+        list.appendChild(el);
+      });
+    } catch (err) {
+      renderError(list, err, loadMissionList, 'retry-mission');
+    }
+  }
+
+  // آپلود پیوست اختیاری بعد از ثبت (بدنه = خودِ فایل). شکست آپلود ثبت ماموریت را باطل نمی‌کند.
+  async function uploadMissionAttachment(id, file) {
+    const res = await fetch('/api/miniapp/missions/' + id + '/attachment', {
+      method: 'POST',
+      headers: { 'Content-Type': file.type, 'X-Telegram-Init-Data': initData, 'X-File-Name': encodeURIComponent(file.name || '') },
+      body: file,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'ارسال پیوست ناموفق بود.');
+  }
+
+  if (missionOk) {
+    const backBtn = $('#mission-back');
+    if (backBtn && typeof backBtn.addEventListener === 'function') backBtn.addEventListener('click', () => switchView('today'));
+    ['unit', 'halfDayPart', 'startTime', 'endTime'].forEach((name) => {
+      const el = missionForm[name];
+      if (el && typeof el.addEventListener === 'function') el.addEventListener('change', refreshMissionWarning);
+    });
+    if (missionDates.startDate && typeof missionForm.startDate.addEventListener === 'function') missionForm.startDate.addEventListener('change', refreshMissionWarning);
+
+    const nowStart = $('#mission-now-start');
+    const nowEnd = $('#mission-now-end');
+    if (nowStart && typeof nowStart.addEventListener === 'function') {
+      nowStart.addEventListener('click', async () => {
+        try { await withBusy(nowStart, () => api('/mission/now', { method: 'POST', body: {} })); showToast('ماموریت شروع شد. پایان آن را فراموش نکنید.'); loadMissionList(); } catch (err) { showToast(err.message, true); }
+      });
+    }
+    if (nowEnd && typeof nowEnd.addEventListener === 'function') {
+      nowEnd.addEventListener('click', async () => {
+        try { await withBusy(nowEnd, () => api('/mission/now/end', { method: 'POST', body: {} })); showToast('ماموریت پایان یافت.'); loadMissionList(); } catch (err) { showToast(err.message, true); }
+      });
+    }
+
+    missionForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const msg = $('#mission-msg');
+      msg.textContent = ''; msg.className = 'form-msg';
+      const fail = (text) => { msg.textContent = text; msg.classList.add('err'); };
+      const unit = applyMissionUnitUI();
+      const startDate = readMissionDate('startDate');
+      const endDate = unit === 'day' ? readMissionDate('endDate') : startDate;
+      if (!startDate || !endDate) { fail('تاریخ را معتبر و به‌صورت شمسی وارد کنید (مثل ۱۴۰۵/۰۷/۱۵).'); return; }
+      if (endDate < startDate) { fail('تاریخ پایان نباید قبل از تاریخ شروع باشد.'); return; }
+      const reason = String(form.reason.value || '').trim();
+      if (reason.length < 5) { fail('علت ماموریت را حداقل ۵ نویسه بنویسید.'); return; }
+      if (reason.length > 300) { fail('علت ماموریت حداکثر ۳۰۰ نویسه است.'); return; }
+      const body = { unit, startDate, endDate, reason, destination: String(form.destination.value || '').trim() };
+      if (unit === 'half_day') body.halfDayPart = fieldValue(form, 'halfDayPart', 'morning');
+      if (unit === 'hour') {
+        body.startTime = fieldValue(form, 'startTime');
+        body.endTime = fieldValue(form, 'endTime');
+        if (!body.startTime || !body.endTime || body.endTime <= body.startTime) { fail('ساعت شروع و پایان را درست وارد کنید (پایان بعد از شروع).'); return; }
+      }
+      const file = form.attachment && form.attachment.files && form.attachment.files[0];
+      const submitBtn = form.querySelector('[type="submit"]');
+      try {
+        const created = await withBusy(submitBtn, () => api('/mission', { method: 'POST', body }));
+        let note = 'درخواست ماموریت ارسال شد و منتظر تأیید است.';
+        if (file) {
+          try { await uploadMissionAttachment(created.id, file); } catch (upErr) { note += ' (پیوست ارسال نشد: ' + upErr.message + ')'; }
+        }
+        msg.textContent = note; msg.classList.add('ok');
+        form.reset();
+        Object.values(missionDates).forEach((dp) => { if (dp) dp.setValue(''); });
+        applyMissionUnitUI();
+        const box = $('#mission-warning'); if (box) { box.textContent = ''; box.hidden = true; }
+        loadMissionList();
+      } catch (err) {
+        fail(err.message);
+      }
+    });
+    applyMissionUnitUI();
+  }
+
+  // ---------- برنامه‌ی هفتگی (D4): ویزارد انتقال ← افزودن تسک ← مرور ← ثبت ----------
+  const PLAN_PRIORITY = { low: 'کم', normal: 'عادی', high: 'بالا' };
+  const planUi = { data: null, tasks: [], carry: new Set(), step: 'tasks', week: 'next', msg: '', busy: false };
+
+  function planEl(tag, props, ...kids) {
+    const e = document.createElement(tag);
+    Object.entries(props || {}).forEach(([k, v]) => {
+      if (v === undefined || v === null || v === false) return;
+      if (k === 'text') e.textContent = v; else if (k === 'class') e.className = v; else if (k === 'on') Object.entries(v).forEach(([ev, fn]) => e.addEventListener(ev, fn)); else e[k] = v;
+    });
+    kids.flat().forEach((c) => { if (c) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
+    return e;
+  }
+
+  // اعتبارسنجی سمت کاربر (سرور دوباره همه‌چیز را چک می‌کند)
+  function planValidate(tasks, data) {
+    const mine = tasks.filter((t) => !t.isSystem);
+    for (let i = 0; i < mine.length; i += 1) {
+      const t = mine[i];
+      const title = String(t.title || '').trim();
+      if (!title) return `عنوان تسک ${i + 1} را بنویسید.`;
+      if (title.length > 120) return `عنوان تسک ${i + 1} حداکثر ۱۲۰ نویسه است.`;
+      if (String(t.description || '').length > 500) return `توضیح تسک ${i + 1} حداکثر ۵۰۰ نویسه است.`;
+    }
+    if (mine.length > data.maxTasks) return `حداکثر ${data.maxTasks} تسک مجاز است.`;
+    return '';
+  }
+
+  function planWeekDays(data) {
+    const out = [];
+    const [y, m, d] = data.weekStart.split('-').map(Number);
+    for (let i = 0; i < 7; i += 1) {
+      const dt = new Date(Date.UTC(y, m - 1, d + i));
+      out.push(dt.toISOString().slice(0, 10));
+    }
+    return out;
+  }
+
+  function planPayload() {
+    return planUi.tasks.filter((t) => !t.isSystem).map((t) => ({
+      id: t.id || undefined, title: String(t.title || '').trim(), description: String(t.description || '').trim(),
+      plannedDate: t.plannedDate || null, priority: t.priority || 'normal', carriedFromTaskId: t.carriedFromTaskId || undefined,
+    }));
+  }
+
+  async function openPlanWizard(week) {
+    const body = $('#plan-body');
+    if (!body) return;
+    planUi.week = week || planUi.week || 'next';
+    planUi.msg = '';
+    renderLoading(body, 'list');
+    try {
+      const data = await api('/plan?week=' + planUi.week);
+      planUi.data = data;
+      planUi.tasks = data.tasks.map((t) => ({ ...t }));
+      planUi.carry = new Set();
+      planUi.step = data.status === 'submitted' || data.editMode === 'readonly' ? 'done' : (data.carryOver.length && !data.tasks.length ? 'carry' : 'tasks');
+      renderPlan();
+    } catch (err) {
+      renderError(body, err, () => openPlanWizard(planUi.week), 'retry-plan');
+    }
+  }
+
+  function renderPlan() {
+    const body = $('#plan-body');
+    const data = planUi.data;
+    if (!body || !data) return;
+    body.removeAttribute('aria-busy');
+    body.innerHTML = '';
+    const mine = () => planUi.tasks.filter((t) => !t.isSystem);
+    const steps = [['carry', 'انتقال'], ['tasks', 'تسک‌ها'], ['review', 'مرور']];
+    $('#plan-title').textContent = planUi.week === 'current' ? 'برنامه‌ی این هفته' : 'برنامه‌ی هفته‌ی بعد';
+    body.appendChild(planEl('div', { class: 'plan-meta', text: `هفته‌ی ${fmtDate(data.weekStart)} تا ${fmtDate(data.weekEnd)}${data.planDay ? ' · روز ثبت برنامه: ' + fmtDate(data.planDay) : ''}` }));
+    if (planUi.step !== 'done') body.appendChild(planEl('div', { class: 'plan-steps' }, steps.map(([k, l], i) => planEl('span', { class: planUi.step === k ? 'on' : '', text: `${i + 1}. ${l}` }))));
+    const msg = planEl('div', { class: 'form-msg' + (planUi.msg ? ' err' : ''), role: 'status', text: planUi.msg });
+    const go = (step) => { planUi.step = step; planUi.msg = ''; renderPlan(); };
+
+    if (planUi.step === 'done') {
+      const card = planEl('div', { class: 'card' });
+      if (data.editMode === 'readonly') card.appendChild(planEl('div', { text: 'این هفته در ماهِ بسته‌شده است و فقط قابل مشاهده است.' }));
+      else card.appendChild(planEl('div', { text: data.status === 'submitted' ? 'برنامه‌ی این هفته ثبت شده است ✅' : 'برنامه هنوز ثبت نشده است.' }));
+      if (data.supervisorComment) card.appendChild(planEl('div', { class: 'plan-meta', text: 'یادداشت سرپرست: ' + data.supervisorComment }));
+      body.appendChild(card);
+      data.tasks.forEach((t) => body.appendChild(planEl('div', { class: 'list-item' }, planEl('div', { text: t.title }), planEl('div', { class: 'plan-meta', text: [t.plannedDate ? fmtDate(t.plannedDate) : 'هر روز', PLAN_PRIORITY[t.priority]].join(' · ') }))));
+      if (data.editMode !== 'readonly') body.appendChild(planEl('button', { type: 'button', class: 'btn secondary', text: 'ویرایش برنامه', on: { click: () => go('tasks') } }));
+      return;
+    }
+
+    if (planUi.step === 'carry') {
+      body.appendChild(planEl('div', { class: 'card' }, planEl('div', { text: 'تسک‌های ناتمام هفته‌ی قبل — هر کدام را که می‌خواهید به این هفته منتقل شود، تیک بزنید.' })));
+      data.carryOver.forEach((t) => {
+        const cb = planEl('input', { type: 'checkbox', checked: planUi.carry.has(t.id), on: { change: (e) => { if (e.target.checked) planUi.carry.add(t.id); else planUi.carry.delete(t.id); } } });
+        body.appendChild(planEl('label', { class: 'list-item' }, cb, ' ', t.title));
+      });
+      body.appendChild(planEl('button', {
+        type: 'button', class: 'btn primary', text: 'ادامه',
+        on: { click: () => {
+          data.carryOver.filter((t) => planUi.carry.has(t.id) && !planUi.tasks.some((x) => x.carriedFromTaskId === t.id))
+            .forEach((t) => planUi.tasks.push({ title: t.title, description: t.description, plannedDate: null, priority: t.priority, carriedFromTaskId: t.id }));
+          go('tasks');
+        } },
+      }));
+      return;
+    }
+
+    if (planUi.step === 'tasks') {
+      const days = planWeekDays(data);
+      const addTask = (init) => { planUi.tasks.push({ title: '', description: '', plannedDate: null, priority: 'normal', ...init }); renderPlan(); };
+      const tools = planEl('div', { class: 'plan-chips' });
+      if (data.previousWeekTasks.length) {
+        tools.appendChild(planEl('button', { type: 'button', class: 'plan-chip', text: 'کپی از هفته‌ی قبل', on: { click: () => {
+          data.previousWeekTasks.forEach((t) => { if (!mine().some((x) => x.title === t.title)) planUi.tasks.push({ title: t.title, description: t.description, plannedDate: null, priority: t.priority }); });
+          renderPlan();
+        } } }));
+      }
+      (data.frequentTitles || []).forEach((title) => tools.appendChild(planEl('button', { type: 'button', class: 'plan-chip', text: '+ ' + title, on: { click: () => addTask({ title }) } })));
+      body.appendChild(tools);
+      planUi.tasks.forEach((t, idx) => {
+        if (t.isSystem) { body.appendChild(planEl('div', { class: 'list-item plan-sys', text: 'تسک خودکار: ' + t.title })); return; }
+        const title = planEl('input', { type: 'text', maxLength: 120, value: t.title, placeholder: 'عنوان تسک', on: { input: (e) => { t.title = e.target.value; } } });
+        const desc = planEl('textarea', { rows: 2, maxLength: 500, value: t.description || '', placeholder: 'توضیح (اختیاری)', on: { input: (e) => { t.description = e.target.value; } } });
+        const prio = planEl('select', { on: { change: (e) => { t.priority = e.target.value; } } }, Object.entries(PLAN_PRIORITY).map(([v, l]) => planEl('option', { value: v, text: l, selected: (t.priority || 'normal') === v })));
+        const day = planEl('select', { on: { change: (e) => { t.plannedDate = e.target.value || null; } } },
+          [planEl('option', { value: '', text: 'هر روز', selected: !t.plannedDate }), ...days.map((d) => planEl('option', { value: d, text: fmtDate(d), selected: t.plannedDate === d }))]);
+        const rm = planEl('button', { type: 'button', class: 'btn secondary', text: 'حذف', on: { click: () => { planUi.tasks.splice(idx, 1); renderPlan(); } } });
+        body.appendChild(planEl('div', { class: 'card plan-task' }, title, desc, planEl('div', { class: 'row' }, prio, day, rm)));
+      });
+      body.appendChild(planEl('button', { type: 'button', class: 'btn secondary', text: '+ افزودن تسک', on: { click: () => addTask() } }));
+      body.appendChild(planEl('button', {
+        type: 'button', class: 'btn primary', text: 'مرور',
+        on: { click: () => { const e = planValidate(planUi.tasks, data); if (e) { planUi.msg = e; renderPlan(); return; } if (mine().length < data.minTasks) { planUi.msg = `حداقل ${data.minTasks} تسک لازم است.`; renderPlan(); return; } go('review'); } },
+      }));
+      body.appendChild(msg);
+      return;
+    }
+
+    // review
+    body.appendChild(planEl('div', { class: 'card' }, planEl('div', { text: `${mine().length} تسک برای این هفته ثبت می‌شود:` })));
+    mine().forEach((t) => body.appendChild(planEl('div', { class: 'list-item' }, planEl('div', { text: t.title }), planEl('div', { class: 'plan-meta', text: [t.plannedDate ? fmtDate(t.plannedDate) : 'هر روز', PLAN_PRIORITY[t.priority || 'normal']].join(' · ') }))));
+    const submitBtn = planEl('button', { type: 'button', class: 'btn primary', text: 'ثبت برنامه' });
+    submitBtn.addEventListener('click', async () => {
+      try {
+        await withBusy(submitBtn, async () => {
+          await api('/plan', { method: 'PUT', body: { week: planUi.week, tasks: planPayload() } });
+          return api('/plan/submit', { method: 'POST', body: { week: planUi.week } });
+        });
+        showToast('برنامه‌ی هفتگی ثبت شد.');
+        await openPlanWizard(planUi.week);
+        if (typeof planUi.onSubmitted === 'function') { const cb = planUi.onSubmitted; planUi.onSubmitted = null; cb(); }
+      } catch (err) { planUi.msg = err.message; renderPlan(); }
+    });
+    body.appendChild(planEl('button', { type: 'button', class: 'btn secondary', text: 'بازگشت به ویرایش', on: { click: () => go('tasks') } }));
+    body.appendChild(submitBtn);
+    body.appendChild(msg);
+  }
+
+  const planBack = $('#plan-back');
+  if (planBack && typeof planBack.addEventListener === 'function') planBack.addEventListener('click', () => switchView('today'));
+
   // ---------- پروفایل و اعتراض ----------
 
   async function loadProfile() {
@@ -665,7 +1131,18 @@
 
   // ---------- بوت‌استرپ ----------
 
+  // دسترسی مستقیم (D4): ?view=plan یا start_param=plan (دکمه‌ی بات)
+  function openDeepLink() {
+    try {
+      const q = new URLSearchParams(window.location.search).get('view');
+      const sp = initDataUnsafe && initDataUnsafe.start_param;
+      const target = q || sp;
+      if (target === 'plan') switchView('plan');
+    } catch (_) { /* نادیده */ }
+  }
+
   async function boot() {
+    initBreakSheet();
     getDeviceId(); // S2-3: از همین ابتدا آماده شود تا لمس «ثبت ورود» معطل نماند
     const errBox = $('#app-error');
     errBox.classList.add('hidden');
@@ -679,6 +1156,7 @@
 
     try {
       state.me = await api('/me');
+      syncResetEpoch(state.me.reset_epoch);
       $('#user-name').textContent = state.me.fullName;
       try {
         $('#header-date').textContent = fmtTodayShort();
@@ -686,6 +1164,7 @@
       $('#app').classList.remove('hidden');
       showTodaySkeleton(true);
       try { await loadToday(); } finally { showTodaySkeleton(false); }
+      openDeepLink();
     } catch (err) {
       if (err.status === 403) {
         const id = (err.data && err.data.telegramUserId) || (initDataUnsafe.user && initDataUnsafe.user.id) || '-';
