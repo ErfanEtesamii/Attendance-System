@@ -647,3 +647,26 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 /* بنر الزام برنامه‌ی هفتگی (D5) */
 .plan-gate-banner { border: 1px solid var(--orange, #f59e0b); display: flex; flex-direction: column; gap: 8px; line-height: 1.8; }
 .plan-gate-banner .btn { align-self: flex-start; }
+
+/* گزارش روزانه‌ی تسک‌ها (D7-ب): ویزارد یک‌سؤال‌یک‌صفحه */
+.report-banner { margin-top: 8px; }
+.dr-card { display: flex; flex-direction: column; gap: 10px; }
+.dr-progress { font-size: 12px; color: var(--hint); }
+.dr-q { margin: 0; font-size: 17px; line-height: 1.8; }
+.dr-q:focus { outline: none; }
+.dr-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.dr-fieldset legend { padding: 0; font-size: 13px; color: var(--hint); margin-bottom: 6px; }
+.dr-status { flex-direction: row; flex-wrap: wrap; gap: 8px; }
+.dr-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.dr-opt { position: relative; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px 14px; border-radius: 14px; border: 1px solid var(--border); background: var(--card-bg-2); color: var(--text); font-size: 14px; cursor: pointer; }
+.dr-status .dr-opt { flex: 1 1 30%; text-align: center; }
+.dr-opt input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.dr-opt.on { border-color: var(--green); box-shadow: 0 0 0 1px var(--green) inset; background: var(--green-soft); }
+.dr-opt-not_done.on { border-color: var(--red); box-shadow: 0 0 0 1px var(--red) inset; background: rgba(240, 80, 110, 0.15); }
+.dr-opt-partial.on { border-color: var(--orange); box-shadow: 0 0 0 1px var(--orange) inset; background: rgba(255, 169, 77, 0.15); }
+.dr-opt:focus-within { outline: 2px solid var(--purple); outline-offset: 2px; }
+.dr-label { font-size: 13px; color: var(--hint); }
+.dr-nav { display: flex; gap: 8px; flex-wrap: wrap; }
+.dr-nav .btn { flex: 1 1 auto; }
+.dr-review-row { display: flex; flex-direction: column; gap: 6px; }
+.dr-review-row .btn { align-self: flex-start; }

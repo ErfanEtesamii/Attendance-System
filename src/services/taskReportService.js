@@ -10,7 +10,13 @@
 //
 // انتقال (reschedule) روی پاسخ‌های «انجام‌نشده/نیمه‌کاره»: tomorrow (روز کاریِ بعدی) | date | drop.
 //   drop در ستون reschedule_to به‌صورت رشته‌ی 'drop' ذخیره می‌شود (ستون TEXT است؛ تاریخ‌ها همیشه YYYY-MM-DD).
-// پارامتر date (اختیاری) فقط برای تست/backfill آینده است؛ route آن را نمی‌دهد.
+// پارامتر date (D7-ب): route می‌تواند requestedDate بدهد (query/body)؛ همیشه با resolveReportDate اعتبارسنجی می‌شود:
+//   • date = امروز (record_date) ⇒ عادی؛ اگر رکوردِ امروز خروج خورده/خودکار-بسته شده، پاسخ «دیرهنگام» (answered_late=1) است.
+//   • date در گذشته ⇒ فقط با رکورد حضور و بدون ماهِ بسته؛ دو حالت مجاز:
+//       - backfill: رکورد بدون خروج (خودکار-بسته) تا reportBackfillDays روز؛
+//       - «بعداً پر می‌کنم»: حالت soft و حداکثر ۲۴ ساعت بعد از خروج.
+//     پاسخ‌های دیرهنگام همیشه answered_late=1 و انتقال «فردا/تاریخ» نسبت به «امروزِ واقعی» محاسبه می‌شود (نه روزِ گزارش).
+//   • date آینده ⇒ رد. گزینه‌ی date (بدون requestedDate) فقط برای تست/فراخوانِ مورد اعتماد است و اعتبارسنجی نمی‌شود.
 // تسک «خارج از برنامه» (extra): به برنامه‌ی همین هفته با system_key='out_of_plan' اضافه و همان لحظه done ثبت می‌شود.
 const plansRepo = require('../repositories/weeklyPlanRepository');
 const logsRepo = require('../repositories/taskLogRepository');
@@ -19,7 +25,7 @@ const monthClosuresRepository = require('../repositories/monthClosuresRepository
 const attendanceRepository = require('../repositories/attendanceRepository');
 const calendarService = require('../engine/calendarService');
 const { sanitizeText } = require('../utils/sanitize');
-const { addDays, dayNumber } = require('../utils/shiftDay');
+const { addDays, dayNumber, dayDiff } = require('../utils/shiftDay');
 const { getDb } = require('../db/connection');
 
 const REASON_CODES = ['no_time', 'needs_more_time', 'blocked_by_others', 'priority_changed', 'technical_issue', 'other'];
@@ -28,6 +34,7 @@ const OUT_OF_PLAN_KEY = 'out_of_plan';
 const MAX_EXTRA = 10;
 const MAX_RESCHEDULE_DAYS = 60;
 const DROP = 'drop';
+const LATE_SOFT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 const fail = (code, error, extra = {}) => ({ ok: false, code, error, ...extra });
 const clean = (v, max) => sanitizeText(v == null ? '' : String(v), max + 1).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -82,17 +89,70 @@ function buildList(user, date, settings) {
   return [...picked.values()].sort((a, b) => (PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]) || (a.id - b.id));
 }
 
-/** GET /miniapp/daily-tasks */
-function getDailyTasks(user, { now, date: forcedDate } = {}) {
+function recordOn(user, date) {
+  return attendanceRepository.listByUserAndRange(user.id, date, date)[0] || null;
+}
+
+/**
+ * تعیین تاریخ گزارش و «دیرهنگام»بودن. خروجی: { ok:true, date, cur, late, source, record } | fail(...)
+ * source: 'normal' | 'after_checkout' | 'backfill' | 'soft_later'
+ */
+function resolveReportDate(user, { now = new Date(), date: trustedDate, requestedDate } = {}, settings = settingsRepository.getAll()) {
+  const cur = reportDateFor(user, now);
+  if (trustedDate) return { ok: true, date: trustedDate, cur, late: false, source: 'normal', record: null };
+  const explicit = requestedDate !== undefined && requestedDate !== null && requestedDate !== '';
+  const date = explicit ? requestedDate : cur;
+  if (explicit && (typeof date !== 'string' || dayNumber(date) === null)) return fail('INVALID_DATE', 'تاریخ گزارش نامعتبر است (قالب YYYY-MM-DD).');
+  if (date > cur) return fail('DATE_IN_FUTURE', 'گزارشِ روزِ آینده ممکن نیست.');
+  const record = recordOn(user, date);
+  if (date === cur) {
+    const closedAlready = !!(record && (record.check_out_time || record.status === 'incomplete'));
+    return { ok: true, date, cur, late: closedAlready, source: closedAlready ? 'after_checkout' : 'normal', record };
+  }
+  if (monthClosuresRepository.findClosedOverlapping(date, date).length > 0) return fail('MONTH_CLOSED', 'این روز در ماهِ بسته‌شده است و گزارش آن فقط‌خواندنی است.');
+  if (!record) return fail('NO_RECORD', 'برای این روز رکورد حضور ندارید؛ گزارش آن ممکن نیست.');
+  if (!record.check_out_time) { // رکوردِ خودکار-بسته (یا بدون خروج) ⇒ backfill
+    if (dayDiff(cur, date) > settings.reportBackfillDays) return fail('BACKFILL_EXPIRED', `مهلت تکمیل گزارش این روز (${settings.reportBackfillDays} روز) تمام شده است.`);
+    return { ok: true, date, cur, late: true, source: 'backfill', record };
+  }
+  if (settings.dailyReportGateMode !== 'soft') return fail('LATE_NOT_ALLOWED', 'تکمیل دیرهنگام گزارش برای این روز مجاز نیست.');
+  const outAt = Date.parse(record.check_out_time);
+  if (!Number.isFinite(outAt) || now.getTime() - outAt > LATE_SOFT_WINDOW_MS) return fail('LATE_WINDOW_EXPIRED', 'مهلت ۲۴ ساعته‌ی تکمیل گزارش این روز تمام شده است.');
+  return { ok: true, date, cur, late: true, source: 'soft_later', record };
+}
+
+/** GET /miniapp/report-backfill — روزهایی که هنوز گزارشِ دیرهنگام می‌پذیرند (برای بنر UI). حالت off ⇒ خالی. */
+function getBackfillStatus(user, { now = new Date() } = {}) {
   const settings = settingsRepository.getAll();
-  const date = forcedDate || reportDateFor(user, now);
+  const cur = reportDateFor(user, now);
+  const out = { ok: true, mode: settings.dailyReportGateMode, backfillDays: settings.reportBackfillDays, days: [] };
+  if (settings.dailyReportGateMode === 'off') return out;
+  const span = Math.max(1, Math.min(14, settings.reportBackfillDays));
+  for (let i = 0; i <= span; i += 1) {
+    const date = addDays(cur, -i);
+    const r = resolveReportDate(user, { now, requestedDate: date }, settings);
+    if (!r.ok || !r.late) continue;
+    if (fullDayOff(user, date, settings)) continue;
+    const pending = buildList(user, date, settings);
+    if (!pending.length) continue;
+    out.days.push({ date, source: r.source, pendingCount: pending.length, titles: pending.slice(0, 3).map((t) => t.title) });
+  }
+  return out;
+}
+
+/** GET /miniapp/daily-tasks */
+function getDailyTasks(user, { now, date: forcedDate, requestedDate } = {}) {
+  const settings = settingsRepository.getAll();
+  const resolved = resolveReportDate(user, { now, date: forcedDate, requestedDate }, settings);
+  if (!resolved.ok) return resolved;
+  const { date } = resolved;
   const answered = logsRepo.listByUserDate(user.id, date).map((l) => {
     const t = plansRepo.findTask(l.task_id);
     return t ? { taskId: l.task_id, title: t.title, status: l.status, reasonCode: l.reason_code, reasonText: l.reason_text, rescheduleTo: l.reschedule_to, outOfPlan: t.system_key === OUT_OF_PLAN_KEY } : null;
   }).filter(Boolean);
   const off = fullDayOff(user, date, settings);
   return {
-    ok: true, date, fullDayOff: off,
+    ok: true, date, today: resolved.cur, late: resolved.late, source: resolved.source, mode: settings.dailyReportGateMode, fullDayOff: off,
     tasks: off ? [] : buildList(user, date, settings),
     answered, reasonCodes: REASON_CODES,
   };
@@ -106,7 +166,7 @@ function nextWorkingDay(user, date, settings) {
   return addDays(date, 1);
 }
 
-function validateAnswer(a, n, user, date, settings, byId) {
+function validateAnswer(a, n, user, date, settings, byId, base = date) {
   if (!a || typeof a !== 'object') return { error: fail('INVALID_ANSWER', `پاسخ ${n} نامعتبر است.`) };
   const taskId = Number(a.taskId);
   if (!Number.isInteger(taskId) || taskId <= 0) return { error: fail('INVALID_TASK', `شناسه‌ی تسک در پاسخ ${n} نامعتبر است.`) };
@@ -131,12 +191,12 @@ function validateAnswer(a, n, user, date, settings, byId) {
   if (a.reschedule !== undefined && a.reschedule !== null) {
     const r = a.reschedule;
     const type = r && typeof r === 'object' ? r.type : null;
-    if (type === 'tomorrow') out.rescheduleTo = nextWorkingDay(user, date, settings);
+    if (type === 'tomorrow') out.rescheduleTo = nextWorkingDay(user, base, settings);
     else if (type === DROP) out.rescheduleTo = DROP;
     else if (type === 'date') {
       const d = r.date;
       if (typeof d !== 'string' || dayNumber(d) === null) return { error: fail('INVALID_DATE', `تاریخ انتقال پاسخ ${n} نامعتبر است.`) };
-      if (d <= date || d > addDays(date, MAX_RESCHEDULE_DAYS)) return { error: fail('DATE_OUT_OF_RANGE', `تاریخ انتقال پاسخ ${n} باید بعد از امروز و حداکثر ${MAX_RESCHEDULE_DAYS} روز آینده باشد.`) };
+      if (d <= base || d > addDays(base, MAX_RESCHEDULE_DAYS)) return { error: fail('DATE_OUT_OF_RANGE', `تاریخ انتقال پاسخ ${n} باید بعد از امروز و حداکثر ${MAX_RESCHEDULE_DAYS} روز آینده باشد.`) };
       out.rescheduleTo = d;
     } else return { error: fail('INVALID_RESCHEDULE', `نوع انتقال پاسخ ${n} نامعتبر است (tomorrow | date | drop).`) };
   }
@@ -160,48 +220,107 @@ function validateExtras(input) {
   return { extras };
 }
 
-/**
- * POST /miniapp/daily-report  { answers: [{taskId, status, reasonCode?, reasonText?, reschedule?}], extra: [{title, description?}] }
- * همه‌یاهیچ: اول همه‌چیز اعتبارسنجی، بعد یک تراکنش. پاسخِ ناقص مجاز است (کامل‌بودنِ گزارش را گیت خروج D7 می‌سنجد).
- */
-function submitDailyReport(user, body, { now, date: forcedDate } = {}) {
-  const settings = settingsRepository.getAll();
-  const date = forcedDate || reportDateFor(user, now);
+/** اعتبارسنجی بدنه‌ی گزارش (بدون نوشتن). خروجی: { error } | { answers, extras, pendingIds }. */
+function prepareReport(user, body, date, settings, { base = date } = {}) {
   const b = body && typeof body === 'object' ? body : {};
   const answersIn = b.answers === undefined ? [] : b.answers;
-  if (!Array.isArray(answersIn)) return fail('INVALID_ANSWERS', 'answers باید آرایه باشد.');
-  if (answersIn.length > 100) return fail('TOO_MANY_ANSWERS', 'تعداد پاسخ‌ها بیش از حد مجاز است.');
-  if (monthClosuresRepository.findClosedOverlapping(date, date).length > 0) return fail('MONTH_CLOSED', 'این روز در ماهِ بسته‌شده است و گزارش آن فقط‌خواندنی است.');
-  if (fullDayOff(user, date, settings)) return fail('FULL_DAY_OFF', 'امروز مرخصی/ماموریتِ تمام‌روز دارید و گزارش تسک لازم نیست.');
+  if (!Array.isArray(answersIn)) return { error: fail('INVALID_ANSWERS', 'answers باید آرایه باشد.') };
+  if (answersIn.length > 100) return { error: fail('TOO_MANY_ANSWERS', 'تعداد پاسخ‌ها بیش از حد مجاز است.') };
+  if (monthClosuresRepository.findClosedOverlapping(date, date).length > 0) return { error: fail('MONTH_CLOSED', 'این روز در ماهِ بسته‌شده است و گزارش آن فقط‌خواندنی است.') };
+  if (fullDayOff(user, date, settings)) return { error: fail('FULL_DAY_OFF', 'امروز مرخصی/ماموریتِ تمام‌روز دارید و گزارش تسک لازم نیست.') };
 
-  const byId = new Map(buildList(user, date, settings).map((t) => [t.id, t]));
+  const list = buildList(user, date, settings);
+  const byId = new Map(list.map((t) => [t.id, t]));
   const seen = new Set();
   const answers = [];
   for (let i = 0; i < answersIn.length; i += 1) {
-    const v = validateAnswer(answersIn[i], i + 1, user, date, settings, byId);
-    if (v.error) return v.error;
-    if (seen.has(v.out.taskId)) return fail('DUPLICATE_ANSWER', `تسک پاسخ ${i + 1} بیش از یک‌بار ارسال شده است.`);
+    const v = validateAnswer(answersIn[i], i + 1, user, date, settings, byId, base);
+    if (v.error) return { error: v.error };
+    if (seen.has(v.out.taskId)) return { error: fail('DUPLICATE_ANSWER', `تسک پاسخ ${i + 1} بیش از یک‌بار ارسال شده است.`) };
     seen.add(v.out.taskId);
     answers.push(v.out);
   }
   const ex = validateExtras(b.extra);
-  if (ex.error) return ex.error;
-  if (!answers.length && !ex.extras.length) return fail('EMPTY_REPORT', 'هیچ پاسخی ارسال نشده است.');
-
-  getDb().transaction(() => {
-    for (const a of answers) {
-      logsRepo.upsert({ taskId: a.taskId, userId: user.id, logDate: date, status: a.status, reasonCode: a.reasonCode, reasonText: a.reasonText, rescheduleTo: a.rescheduleTo });
-    }
-    if (ex.extras.length) {
-      const plan = plansRepo.getOrCreate(user.id, calendarService.weekStartOf(date, settings.weekStartDay));
-      for (const e of ex.extras) {
-        const t = plansRepo.addTask(plan.id, { title: e.title, description: e.description, plannedDate: date, priority: 'normal', systemKey: OUT_OF_PLAN_KEY });
-        logsRepo.upsert({ taskId: t.id, userId: user.id, logDate: date, status: 'done' });
-      }
-    }
-  })();
-  const fresh = getDailyTasks(user, { now, date });
-  return { ...fresh, saved: { answers: answers.length, extra: ex.extras.length } };
+  if (ex.error) return { error: ex.error };
+  return { answers, extras: ex.extras, pending: list.filter((t) => !seen.has(t.id)) };
 }
 
-module.exports = { getDailyTasks, submitDailyReport, buildList, reportDateFor, REASON_CODES, OUT_OF_PLAN_KEY, DROP };
+/** نوشتن پاسخ‌ها و تسک‌های «خارج از برنامه». باید داخل تراکنشِ فراخوان (یا همین تابع) اجرا شود. */
+function applyReport(user, date, settings, { answers, extras }, { late = false } = {}) {
+  for (const a of answers) {
+    logsRepo.upsert({ taskId: a.taskId, userId: user.id, logDate: date, status: a.status, reasonCode: a.reasonCode, reasonText: a.reasonText, rescheduleTo: a.rescheduleTo, answeredLate: late });
+  }
+  if (extras.length) {
+    const plan = plansRepo.getOrCreate(user.id, calendarService.weekStartOf(date, settings.weekStartDay));
+    for (const e of extras) {
+      const t = plansRepo.addTask(plan.id, { title: e.title, description: e.description, plannedDate: date, priority: 'normal', systemKey: OUT_OF_PLAN_KEY });
+      logsRepo.upsert({ taskId: t.id, userId: user.id, logDate: date, status: 'done', answeredLate: late });
+    }
+  }
+}
+
+/**
+ * POST /miniapp/daily-report  { answers: [{taskId, status, reasonCode?, reasonText?, reschedule?}], extra: [{title, description?}] }
+ * همه‌یاهیچ: اول همه‌چیز اعتبارسنجی، بعد یک تراکنش. پاسخِ ناقص مجاز است (کامل‌بودنِ گزارش را گیت خروج D7 می‌سنجد).
+ */
+function submitDailyReport(user, body, { now, date: forcedDate, requestedDate } = {}) {
+  const settings = settingsRepository.getAll();
+  const resolved = resolveReportDate(user, { now, date: forcedDate, requestedDate }, settings);
+  if (!resolved.ok) return resolved;
+  const { date, late } = resolved;
+  const base = late && resolved.cur > date ? resolved.cur : date; // انتقالِ پاسخ‌های دیرهنگام نسبت به امروزِ واقعی
+  const prep = prepareReport(user, body, date, settings, { base });
+  if (prep.error) return prep.error;
+  if (!prep.answers.length && !prep.extras.length) return fail('EMPTY_REPORT', 'هیچ پاسخی ارسال نشده است.');
+  getDb().transaction(() => applyReport(user, date, settings, prep, { late }))();
+  const fresh = getDailyTasks(user, { now, date });
+  return { ...fresh, late, source: resolved.source, saved: { answers: prep.answers.length, extra: prep.extras.length } };
+}
+
+// ---------- گیت خروج (D7) ----------
+// تصمیم برای /check-out بر پایه‌ی dailyReportGateMode:
+//   enforce ⇒ اگر بعد از اعمال پاسخ‌های همین درخواست هنوز تسکِ پاسخ‌نداده مانده باشد: block (چیزی ذخیره نمی‌شود)
+//   soft    ⇒ خروج مجاز است؛ پاسخ‌های ارسال‌شده ذخیره می‌شوند و pendingTasks برای یادآوری برمی‌گردد
+//   off     ⇒ گیت اعمال نمی‌شود (اگر کلاینت پاسخ فرستاده باشد همچنان ذخیره می‌شود)
+// ماهِ بسته یا مرخصی/ماموریتِ تمام‌روز ⇒ گیت اعمال نمی‌شود (و ارسال گزارش رد می‌شود).
+// پاسخ‌ها فقط وقتی ذخیره می‌شوند که خروج هم ثبت شود: دو مرحله‌ی «تصمیم» و «commitAtomic».
+// خطای داخلی در ارزیابیِ گیت ⇒ fail-open (ثبت تردد نباید بشکند).
+//   خروجی: { action: 'allow'|'block'|'remind'|'invalid', report, pendingTasks, mode, date, error?, code? }
+function hasReportInput(body) {
+  return !!body && typeof body === 'object' && (body.answers !== undefined || body.extra !== undefined);
+}
+
+function checkoutGate(user, recordDate, body) {
+  const out = { action: 'allow', report: null, pendingTasks: [], mode: 'off', date: recordDate };
+  try {
+    const settings = settingsRepository.getAll();
+    out.mode = settings.dailyReportGateMode;
+    const provided = hasReportInput(body);
+    if (out.mode !== 'enforce' && out.mode !== 'soft' && !provided) return out;
+
+    const closed = monthClosuresRepository.findClosedOverlapping(recordDate, recordDate).length > 0;
+    if (closed || fullDayOff(user, recordDate, settings)) {
+      if (!provided) return out; // گیت اعمال نمی‌شود
+    }
+    const prep = prepareReport(user, provided ? body : {}, recordDate, settings);
+    if (prep.error) return { ...out, action: 'invalid', error: prep.error.error, code: prep.error.code };
+    if (prep.answers.length || prep.extras.length) out.report = { answers: prep.answers, extras: prep.extras, settings };
+    out.pendingTasks = prep.pending;
+    if (out.mode === 'off' || !out.pendingTasks.length) return out;
+    out.action = out.mode === 'enforce' ? 'block' : 'remind';
+    return out;
+  } catch (err) {
+    console.error('[dailyReportGate] خطا (نادیده گرفته شد، خروج مجاز):', err && err.message ? err.message : err);
+    return { action: 'allow', report: null, pendingTasks: [], mode: out.mode, date: recordDate, failedOpen: true };
+  }
+}
+
+/** fn (ثبت خروج) و ذخیره‌ی گزارش در «یک» تراکنش؛ خطا در هرکدام ⇒ هیچ‌کدام ثبت نمی‌شود. */
+function commitAtomic(user, gate, fn) {
+  return getDb().transaction(() => {
+    if (gate && gate.report) applyReport(user, gate.date, gate.report.settings, gate.report);
+    return fn();
+  })();
+}
+
+module.exports = { getDailyTasks, submitDailyReport, resolveReportDate, getBackfillStatus, checkoutGate, commitAtomic, buildList, reportDateFor, REASON_CODES, OUT_OF_PLAN_KEY, DROP };

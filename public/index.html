@@ -72,6 +72,7 @@
         </div>
 
         <div class="card plan-gate-banner hidden" id="plan-gate-banner" role="alert"></div>
+        <div class="card plan-gate-banner report-banner hidden" id="report-banner" role="status"></div>
 
         <div class="actions" id="today-actions"></div>
 
@@ -213,6 +214,12 @@
         <div id="plan-body" class="plan-body"></div>
       </section>
 
+      <!-- گزارش روزانه‌ی تسک‌ها (D7): ویزارد یک‌سؤال‌یک‌صفحه؛ از گیت خروج یا بنر «تکمیل گزارش» باز می‌شود -->
+      <section id="view-dreport" class="view hidden" aria-labelledby="dreport-title">
+        <div class="view-head"><h3 class="view-title" id="dreport-title">گزارش تسک‌های امروز</h3><button type="button" class="btn secondary" id="dreport-back">بازگشت</button></div>
+        <div id="dreport-body" class="plan-body"></div>
+      </section>
+
       <section id="view-profile" class="view hidden">
         <div class="card profile-card">
           <div class="avatar" id="pf-avatar">؟</div>
@@ -290,6 +297,7 @@
   <script src="/admin/js/jalali.js"></script>
   <script src="/admin/js/datepicker.js"></script>
   <script src="/js/states.js"></script>
+  <script src="/js/dailyReport.js"></script>
   <script src="/js/app.js"></script>
 </body>
 </html>

@@ -341,7 +341,7 @@
     });
     addTile({
       title: 'ثبت خروج', sub: 'پایان روز کاری', color: 'red', icon: 'out',
-      handler: () => doAction('/check-out', {}, 'خروج ثبت شد.'),
+      handler: () => startCheckout(),
     });
     addMissionTile();
     addPlanTile();
@@ -445,6 +445,17 @@
     });
   }
 
+  // پیام موفقیتِ خروج: یادآوری‌های برنامه‌ی هفته‌ی بعد (D5) و گزارش روزانه در حالت soft (D7)
+  function checkoutMessage(res, fallback) {
+    const parts = ['خروج ثبت شد.'];
+    if (res && res.reportReminder && res.reportReminder.pendingTasks && res.reportReminder.pendingTasks.length) {
+      parts.push(`${res.reportReminder.pendingTasks.length.toLocaleString('fa-IR')} تسک بدون پاسخ ماند؛ تا ۲۴ ساعت می‌توانید گزارش را تکمیل کنید.`);
+    }
+    if (res && res.planReminder) parts.push('فراموش نکنید برنامه‌ی هفته‌ی بعد را ثبت کنید.');
+    return parts.length > 1 ? parts.join(' ') : fallback;
+  }
+
+  // خروجی: true در موفقیت. گیت‌های سرور (D5/D7) خطای 409 با code می‌دهند و UI کاربر را به ویزارد مربوط می‌برد.
   async function doAction(path, body, successMsg) {
     const btns = $all('#today-actions button');
     btns.forEach((b) => { b.disabled = true; });
@@ -456,17 +467,32 @@
         if (deviceId) body = { ...(body || {}), deviceId };
       }
       const res = await api(path, { method: 'POST', body });
-      showToast(path === '/check-out' && res && res.planReminder ? 'خروج ثبت شد. فراموش نکنید برنامه‌ی هفته‌ی بعد را ثبت کنید.' : successMsg);
+      showToast(path === '/check-out' ? checkoutMessage(res, successMsg) : successMsg);
+      if (path === '/check-out') { reportUi.answers = new Map(); reportUi.extras = []; reportUi.date = ''; switchView('today'); }
       await loadToday();
+      return true;
     } catch (err) {
+      const code = err && err.data && err.data.code;
+      // گیت D7: گزارش تسک‌های امروز لازم است ⇒ ویزارد؛ پاسخ‌های قبلیِ همین بدنه حفظ می‌شود
+      if (path === '/check-out' && code === 'daily_report_required') {
+        showToast(err.message);
+        unlock();
+        openReportWizard({ mode: 'checkout', date: err.data.date, today: err.data.date, tasks: err.data.pendingTasks || [], body, allowLater: false });
+        return false;
+      }
       showToast(err.message, true);
       unlock();
-      // گیت D5: ثبت برنامه‌ی هفته‌ی بعد لازم است ⇒ ویزارد؛ بعد از ثبت، خروج دوباره فرستاده می‌شود (سرور دوباره همه‌چیز را چک می‌کند)
-      if (path === '/check-out' && err && err.data && err.data.code === 'weekly_plan_required') {
+      // گیت D5: ثبت برنامه‌ی هفته‌ی بعد لازم است ⇒ ویزارد؛ سرور چیزی ذخیره نکرده، پس بعد از ثبت برنامه همان بدنه (با گزارش) دوباره فرستاده می‌شود
+      if (path === '/check-out' && code === 'weekly_plan_required') {
         planUi.week = 'next';
-        planUi.onSubmitted = () => { switchView('today'); doAction('/check-out', {}, 'خروج ثبت شد.'); };
+        const resend = body;
+        planUi.onSubmitted = () => {
+          if (hasReportBody(resend)) openReportConfirm(resend); // ترتیب: گزارش ← برنامه ← تأیید خروج
+          else { switchView('today'); doAction('/check-out', resend, 'خروج ثبت شد.'); }
+        };
         switchView('plan');
       }
+      return false;
     }
   }
 
@@ -544,6 +570,7 @@
 
     renderTodayActions();
     loadPlanGateBanner();
+    loadReportBanner();
   }
 
   // بنر الزام برنامه‌ی هفتگی (D5): فقط اطلاع‌رسانی؛ خطای آن هرگز نمای امروز را نمی‌شکند
@@ -1124,6 +1151,261 @@
 
   const planBack = $('#plan-back');
   if (planBack && typeof planBack.addEventListener === 'function') planBack.addEventListener('click', () => switchView('today'));
+
+  // ---------- گزارش روزانه‌ی تسک‌ها (D7-ب): ویزارد «یک‌سؤال‌یک‌صفحه» ----------
+  // دو حالت: checkout (قبل از خروج؛ پاسخ‌ها همراه /check-out می‌روند) و late (بعد از خروج/backfill؛ /daily-report با date).
+  // سرور تا رد شدن همه‌ی گیت‌ها چیزی ذخیره نمی‌کند ⇒ UI پاسخ‌ها را در حافظه نگه می‌دارد و همان بدنه را دوباره می‌فرستد.
+  const DR = window.DailyReport;
+  const reportUi = { mode: 'checkout', date: '', today: '', tasks: [], answers: new Map(), extras: [], step: 'q', idx: 0, allowLater: false, body: null, msg: '', busy: false };
+
+  function dEl(tag, props, ...kids) {
+    const e = planEl(tag, props, ...kids);
+    if (props && props.attrs) Object.entries(props.attrs).forEach(([k, v]) => e.setAttribute(k, v));
+    return e;
+  }
+
+  function reportAnswer(taskId) {
+    if (!reportUi.answers.has(taskId)) reportUi.answers.set(taskId, DR.emptyAnswer());
+    return reportUi.answers.get(taskId);
+  }
+
+  function hasReportBody(body) { return !!body && (Array.isArray(body.answers) && body.answers.length > 0 || Array.isArray(body.extra) && body.extra.length > 0); }
+
+  function openReportWizard({ mode, date, today, tasks, body, allowLater }) {
+    const same = reportUi.date === date && reportUi.mode === mode;
+    const kept = same ? reportUi.answers : new Map();
+    reportUi.mode = mode; reportUi.date = date; reportUi.today = today || date;
+    reportUi.tasks = tasks || [];
+    reportUi.answers = new Map([...kept, ...DR.seedFromBody(reportUi.tasks, body)]);
+    if (body && Array.isArray(body.extra) && body.extra.length) reportUi.extras = body.extra.map((e) => ({ title: e.title || '', description: e.description || '' }));
+    else if (!same) reportUi.extras = [];
+    reportUi.allowLater = !!allowLater;
+    reportUi.body = body || null;
+    reportUi.msg = '';
+    reportUi.busy = false;
+    const firstOpen = reportUi.tasks.findIndex((t) => !reportUi.answers.has(t.id) || DR.validateAnswer(reportUi.answers.get(t.id), { today: reportUi.today }));
+    reportUi.idx = firstOpen < 0 ? 0 : firstOpen;
+    reportUi.step = !reportUi.tasks.length ? 'extra' : (firstOpen < 0 ? 'review' : 'q');
+    switchView('dreport');
+    renderReport();
+  }
+
+  function openReportConfirm(body) {
+    reportUi.step = 'confirm'; reportUi.body = body; reportUi.msg = '';
+    switchView('dreport');
+    renderReport();
+  }
+
+  // checkout: اگر تسکِ پاسخ‌نداده هست و حالت soft است، اول ویزارد با «بعداً پر می‌کنم»؛ در enforce سرور با 409 ویزارد را باز می‌کند
+  async function startCheckout() {
+    try {
+      const d = await api('/daily-tasks');
+      if (d && d.mode === 'soft' && !d.fullDayOff && d.tasks && d.tasks.length) {
+        openReportWizard({ mode: 'checkout', date: d.date, today: d.today, tasks: d.tasks, body: null, allowLater: true });
+        return;
+      }
+    } catch (_) { /* پیش‌بررسی اختیاری است؛ تصمیم نهایی با /check-out */ }
+    doAction('/check-out', {}, 'خروج ثبت شد.');
+  }
+
+  async function openLateReport(date) {
+    try {
+      const d = await api('/daily-tasks?date=' + encodeURIComponent(date));
+      if (!d.tasks || !d.tasks.length) { showToast('تسک بدون پاسخی برای این روز نمانده است.'); loadReportBanner(); return; }
+      openReportWizard({ mode: 'late', date: d.date, today: d.today, tasks: d.tasks, body: null, allowLater: false });
+    } catch (err) { showToast(err.message, true); }
+  }
+
+  // بنر «گزارش‌های تکمیل‌نشده» (backfill/soft)؛ خطای آن هرگز نمای امروز را نمی‌شکند
+  async function loadReportBanner() {
+    const box = $('#report-banner');
+    if (!box) return;
+    try {
+      const g = await api('/report-backfill');
+      box.textContent = '';
+      if (!g || !g.days || !g.days.length) { box.classList.add('hidden'); return; }
+      g.days.forEach((d) => {
+        const msg = d.source === 'backfill'
+          ? `خروج ${fmtDate(d.date)} به‌صورت خودکار بسته شد و گزارش ${d.pendingCount.toLocaleString('fa-IR')} تسک ثبت نشده است. تا ${(g.backfillDays || 0).toLocaleString('fa-IR')} روز می‌توانید تکمیل کنید.`
+          : `گزارش ${d.pendingCount.toLocaleString('fa-IR')} تسکِ ${fmtDate(d.date)} هنوز ثبت نشده است؛ تا ۲۴ ساعت بعد از خروج می‌توانید تکمیل کنید.`;
+        box.appendChild(dEl('div', { text: msg }));
+        box.appendChild(dEl('button', { type: 'button', class: 'btn primary', text: 'تکمیل گزارش', on: { click: () => openLateReport(d.date) } }));
+      });
+      box.classList.remove('hidden');
+    } catch (_) { box.classList.add('hidden'); }
+  }
+
+  function radioChip(name, value, label, checked, onChange, extraClass) {
+    const input = dEl('input', { type: 'radio', name, value, checked: !!checked, on: { change: () => onChange(value) } });
+    return dEl('label', { class: 'dr-opt' + (extraClass ? ' ' + extraClass : '') + (checked ? ' on' : '') }, input, dEl('span', { text: label }));
+  }
+
+  function renderReport() {
+    const body = $('#dreport-body');
+    if (!body) return;
+    body.innerHTML = '';
+    const ui = reportUi;
+    const opts = { today: ui.today };
+    const total = ui.tasks.length;
+    const heading = (text) => dEl('h4', { class: 'dr-q', id: 'dr-heading', text, attrs: { tabindex: '-1' } });
+    const msg = dEl('div', { class: 'form-msg' + (ui.msg ? ' err' : ''), text: ui.msg, attrs: { role: 'status', 'aria-live': 'polite' } });
+    $('#dreport-title').textContent = ui.mode === 'late' ? `تکمیل گزارش ${fmtDate(ui.date)}` : 'گزارش تسک‌های امروز';
+    const focusHeading = () => { const h = $('#dr-heading'); if (h && h.focus) h.focus(); };
+    const fail = (m) => { ui.msg = m; renderReport(); };
+    // soft: «بعداً پر می‌کنم» از هر مرحله؛ فقط پاسخ‌های معتبرِ تا اینجا همراه خروج می‌رود و بقیه تا ۲۴ ساعت قابل تکمیل است
+    const laterBtn = () => {
+      const b = dEl('button', { type: 'button', class: 'btn warning', text: 'بعداً پر می‌کنم' });
+      b.addEventListener('click', () => withBusy(b, () => doAction('/check-out', DR.buildBody({ tasks: ui.tasks, answers: ui.answers, extras: ui.extras }, opts), 'خروج ثبت شد.')));
+      return b;
+    };
+
+    if (ui.step === 'q') {
+      const t = ui.tasks[ui.idx];
+      const a = reportAnswer(t.id);
+      const card = dEl('div', { class: 'card dr-card' });
+      card.appendChild(dEl('div', { class: 'dr-progress', text: `سؤال ${(ui.idx + 1).toLocaleString('fa-IR')} از ${total.toLocaleString('fa-IR')}`, attrs: { role: 'status' } }));
+      card.appendChild(heading(`امروز تسک «${t.title}» انجام شد؟`));
+      if (t.priority === 'high') card.appendChild(dEl('span', { class: 'chip chip-orange', text: 'اولویت بالا' }));
+      if (t.description) card.appendChild(dEl('div', { class: 'plan-meta', text: t.description }));
+
+      const st = dEl('fieldset', { class: 'dr-fieldset dr-status' }, dEl('legend', { class: 'sr-only', text: 'وضعیت تسک' }));
+      DR.STATUS.forEach((s) => st.appendChild(radioChip('dr-status', s.value, `${s.icon} ${s.label}`, a.status === s.value, (v) => { a.status = v; ui.msg = ''; renderReport(); }, 'dr-opt-' + s.value)));
+      card.appendChild(st);
+
+      if (a.status && a.status !== 'done') {
+        const rs = dEl('fieldset', { class: 'dr-fieldset' }, dEl('legend', { text: 'علت' }));
+        const chips = dEl('div', { class: 'dr-chips' });
+        DR.REASONS.forEach((r) => chips.appendChild(radioChip('dr-reason', r.value, r.label, a.reasonCode === r.value, (v) => { a.reasonCode = v; ui.msg = ''; renderReport(); })));
+        rs.appendChild(chips);
+        card.appendChild(rs);
+        const otherNeeded = a.reasonCode === 'other';
+        card.appendChild(dEl('label', { class: 'dr-label', htmlFor: 'dr-reason-text', text: otherNeeded ? `توضیح علت (الزامی، حداقل ${DR.LIMITS.otherMin.toLocaleString('fa-IR')} نویسه)` : 'توضیح بیشتر (اختیاری)' }));
+        card.appendChild(dEl('textarea', {
+          id: 'dr-reason-text', rows: 3, maxLength: DR.LIMITS.reasonText, value: a.reasonText,
+          on: { input: (e) => { a.reasonText = e.target.value; } },
+        }));
+        const rsch = dEl('fieldset', { class: 'dr-fieldset' }, dEl('legend', { text: 'این تسک چه شود؟' }));
+        const rchips = dEl('div', { class: 'dr-chips' });
+        DR.RESCHEDULE.forEach((r) => rchips.appendChild(radioChip('dr-res', r.value, r.label, a.resType === r.value, (v) => { a.resType = v; ui.msg = ''; renderReport(); })));
+        rsch.appendChild(rchips);
+        if (a.resType === 'date') {
+          const sel = dEl('select', { id: 'dr-res-date', on: { change: (e) => { a.resDate = e.target.value; } }, attrs: { 'aria-label': 'تاریخ انتقال' } });
+          sel.appendChild(dEl('option', { value: '', text: 'انتخاب تاریخ…' }));
+          DR.futureDates(ui.today, 30).forEach((d) => sel.appendChild(dEl('option', { value: d, text: fmtDate(d), selected: a.resDate === d })));
+          rsch.appendChild(sel);
+        }
+        card.appendChild(rsch);
+      }
+      card.appendChild(msg);
+      const nav = dEl('div', { class: 'dr-nav' });
+      if (ui.idx > 0) nav.appendChild(dEl('button', { type: 'button', class: 'btn secondary', text: 'قبلی', on: { click: () => { ui.idx -= 1; ui.msg = ''; renderReport(); } } }));
+      nav.appendChild(dEl('button', {
+        type: 'button', class: 'btn primary', text: ui.idx === total - 1 ? 'ادامه' : 'بعدی',
+        on: { click: () => { const e = DR.validateAnswer(a, opts); if (e) { fail(e); return; } ui.msg = ''; if (ui.idx === total - 1) ui.step = 'extra'; else ui.idx += 1; renderReport(); } },
+      }));
+      if (ui.allowLater) nav.appendChild(laterBtn());
+      card.appendChild(nav);
+      body.appendChild(card);
+      focusHeading();
+      return;
+    }
+
+    if (ui.step === 'extra') {
+      const card = dEl('div', { class: 'card dr-card' });
+      card.appendChild(heading('کار خارج از برنامه'));
+      card.appendChild(dEl('div', { class: 'plan-meta', text: 'کاری انجام دادید که در برنامه نبود؟ (اختیاری)' }));
+      ui.extras.forEach((x, i) => {
+        const row = dEl('div', { class: 'plan-task' });
+        row.appendChild(dEl('input', { type: 'text', value: x.title, maxLength: DR.LIMITS.extraTitle, placeholder: 'عنوان کار', on: { input: (e) => { x.title = e.target.value; } }, attrs: { 'aria-label': `عنوان کار خارج از برنامه ${i + 1}` } }));
+        row.appendChild(dEl('textarea', { rows: 2, value: x.description, maxLength: DR.LIMITS.extraDesc, placeholder: 'توضیح (اختیاری)', on: { input: (e) => { x.description = e.target.value; } }, attrs: { 'aria-label': `توضیح کار خارج از برنامه ${i + 1}` } }));
+        row.appendChild(dEl('button', { type: 'button', class: 'btn secondary', text: 'حذف', on: { click: () => { ui.extras.splice(i, 1); renderReport(); } } }));
+        card.appendChild(row);
+      });
+      if (ui.extras.length < DR.LIMITS.maxExtra) card.appendChild(dEl('button', { type: 'button', class: 'btn secondary', text: '+ افزودن کار', on: { click: () => { ui.extras.push({ title: '', description: '' }); renderReport(); } } }));
+      card.appendChild(msg);
+      const nav = dEl('div', { class: 'dr-nav' });
+      if (total) nav.appendChild(dEl('button', { type: 'button', class: 'btn secondary', text: 'قبلی', on: { click: () => { ui.step = 'q'; ui.idx = total - 1; ui.msg = ''; renderReport(); } } }));
+      nav.appendChild(dEl('button', {
+        type: 'button', class: 'btn primary', text: 'مرور',
+        on: { click: () => {
+          ui.extras = ui.extras.filter((x) => String(x.title || '').trim() || String(x.description || '').trim());
+          const bad = ui.extras.map((x) => DR.validateExtra(x)).find(Boolean);
+          if (bad) { fail(bad); return; }
+          ui.msg = ''; ui.step = 'review'; renderReport();
+        } },
+      }));
+      if (ui.allowLater) nav.appendChild(laterBtn());
+      card.appendChild(nav);
+      body.appendChild(card);
+      focusHeading();
+      return;
+    }
+
+    if (ui.step === 'confirm') {
+      const card = dEl('div', { class: 'card dr-card' });
+      card.appendChild(heading('تأیید خروج'));
+      card.appendChild(dEl('div', { text: 'گزارش امروز و برنامه‌ی هفته‌ی بعد آماده است. خروج را تأیید می‌کنید؟' }));
+      card.appendChild(msg);
+      const nav = dEl('div', { class: 'dr-nav' });
+      nav.appendChild(dEl('button', { type: 'button', class: 'btn secondary', text: 'انصراف', on: { click: () => switchView('today') } }));
+      const ok = dEl('button', { type: 'button', class: 'btn primary', text: 'تأیید خروج' });
+      ok.addEventListener('click', () => withBusy(ok, async () => { await doAction('/check-out', ui.body || {}, 'خروج ثبت شد.'); }));
+      nav.appendChild(ok);
+      card.appendChild(nav);
+      body.appendChild(card);
+      focusHeading();
+      return;
+    }
+
+    // review
+    const sum = DR.summarize(ui.tasks, ui.answers);
+    const missing = DR.unanswered(ui.tasks, ui.answers, opts);
+    const card = dEl('div', { class: 'card dr-card' });
+    card.appendChild(heading('مرور گزارش'));
+    card.appendChild(dEl('div', { class: 'plan-meta', text: `${sum.done.toLocaleString('fa-IR')} انجام شد · ${sum.partial.toLocaleString('fa-IR')} نیمه‌کاره · ${sum.not_done.toLocaleString('fa-IR')} انجام نشد${sum.missing ? ' · ' + sum.missing.toLocaleString('fa-IR') + ' بدون پاسخ' : ''}` }));
+    ui.tasks.forEach((t, i) => {
+      const a = ui.answers.get(t.id);
+      const s = a && DR.STATUS.find((x) => x.value === a.status);
+      const row = dEl('div', { class: 'list-item dr-review-row' });
+      row.appendChild(dEl('div', { text: `${s ? s.icon : '⚪'} ${t.title}` }));
+      if (a && a.status && a.status !== 'done') {
+        const r = DR.REASONS.find((x) => x.value === a.reasonCode);
+        row.appendChild(dEl('div', { class: 'plan-meta', text: [r ? r.label : '', String(a.reasonText || '').trim()].filter(Boolean).join(' — ') }));
+      }
+      row.appendChild(dEl('button', { type: 'button', class: 'btn secondary', text: 'ویرایش', on: { click: () => { ui.step = 'q'; ui.idx = i; ui.msg = ''; renderReport(); } } }));
+      card.appendChild(row);
+    });
+    if (ui.extras.length) card.appendChild(dEl('div', { class: 'plan-meta', text: `${ui.extras.length.toLocaleString('fa-IR')} کار خارج از برنامه` }));
+    card.appendChild(msg);
+    const nav = dEl('div', { class: 'dr-nav' });
+    nav.appendChild(dEl('button', { type: 'button', class: 'btn secondary', text: 'قبلی', on: { click: () => { ui.step = 'extra'; ui.msg = ''; renderReport(); } } }));
+    const bodyOf = () => DR.buildBody({ tasks: ui.tasks, answers: ui.answers, extras: ui.extras, date: ui.mode === 'late' ? ui.date : undefined }, opts);
+    if (ui.mode === 'checkout') {
+      const go = dEl('button', { type: 'button', class: 'btn primary', text: 'ثبت گزارش و خروج', disabled: missing.length > 0 });
+      go.addEventListener('click', () => withBusy(go, () => doAction('/check-out', bodyOf(), 'خروج ثبت شد.')));
+      nav.appendChild(go);
+      if (ui.allowLater) nav.appendChild(laterBtn());
+    } else {
+      const b = bodyOf();
+      const send = dEl('button', { type: 'button', class: 'btn primary', text: 'ثبت گزارش', disabled: !(b.answers.length || b.extra.length) });
+      send.addEventListener('click', () => withBusy(send, async () => {
+        try {
+          const res = await api('/daily-report', { method: 'POST', body: bodyOf() });
+          showToast(res && res.tasks && res.tasks.length ? `گزارش ثبت شد؛ ${res.tasks.length.toLocaleString('fa-IR')} تسک هنوز بدون پاسخ است.` : 'گزارش ثبت شد.');
+          reportUi.answers = new Map(); reportUi.extras = [];
+          switchView('today');
+          loadReportBanner();
+        } catch (err) { ui.msg = err.message; renderReport(); }
+      }));
+      nav.appendChild(send);
+    }
+    card.appendChild(nav);
+    body.appendChild(card);
+    focusHeading();
+  }
+
+  const dreportBack = $('#dreport-back');
+  if (dreportBack && typeof dreportBack.addEventListener === 'function') dreportBack.addEventListener('click', () => switchView('today'));
 
   // ---------- پروفایل و اعتراض ----------
 

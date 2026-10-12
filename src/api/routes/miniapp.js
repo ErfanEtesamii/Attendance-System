@@ -159,7 +159,23 @@ router.post('/miniapp/check-out', (req, res) => {
   if (openBreak) {
     return res.status(400).json({ error: 'ابتدا باید استراحت باز فعلی را پایان دهید.' });
   }
-  // گیت D5: برنامه‌ی هفته‌ی بعد (بعد از بررسی «خروج قبلاً ثبت شده»، تا دبل‌کلیکِ موفق 409 نگیرد)
+  // گیت D7: گزارش روزانه‌ی تسک‌ها. ترتیب گیت‌ها: گزارش امروز ← برنامه‌ی هفته‌ی بعد ← ثبت خروج.
+  // (بعد از بررسی «خروج قبلاً ثبت شده»، تا دبل‌کلیکِ موفق 409 نگیرد؛ تا همه‌ی گیت‌ها رد نشوند چیزی نوشته نمی‌شود.)
+  const reportGate = taskReportService.checkoutGate(req.miniAppUser, record.record_date, req.body);
+  if (reportGate.action === 'invalid') {
+    return res.status(['MONTH_CLOSED', 'FULL_DAY_OFF', 'ALREADY_ANSWERED'].includes(reportGate.code) ? 409 : 400).json({ error: reportGate.error, code: reportGate.code });
+  }
+  if (reportGate.action === 'block') {
+    auditRepository.logEvent({ userId: req.miniAppUser.id, action: 'check_out_blocked', ipAddress: req.ip, details: { source: 'miniapp', reason: 'daily_report_required', date: reportGate.date, pending: reportGate.pendingTasks.length } });
+    return res.status(409).json({
+      error: 'برای ثبت خروج، ابتدا گزارش تسک‌های امروز را کامل کنید.',
+      code: 'daily_report_required',
+      date: reportGate.date,
+      pendingTasks: reportGate.pendingTasks,
+      reasonCodes: taskReportService.REASON_CODES,
+    });
+  }
+  // گیت D5: برنامه‌ی هفته‌ی بعد
   const planGate = planGateService.check(req.miniAppUser, record.record_date);
   if (planGate.action === 'block') {
     auditRepository.logEvent({ userId: req.miniAppUser.id, action: 'check_out_blocked', ipAddress: req.ip, details: { source: 'miniapp', reason: 'weekly_plan_required', weekStart: planGate.info.weekStart } });
@@ -171,7 +187,8 @@ router.post('/miniapp/check-out', (req, res) => {
     });
   }
   if (rejectIfSharedDeviceBlocked(req, res, 'check_out')) return;
-  const updated = attendanceRepository.recordCheckOut(record.id, req.ip, extractDeviceInfo(req), { viaPendingMission: Boolean(req.viaPendingMission) });
+  // ذخیره‌ی گزارش (اگر در همین درخواست آمده) و ثبت خروج: اتمیک، در یک تراکنش
+  const updated = taskReportService.commitAtomic(req.miniAppUser, reportGate, () => attendanceRepository.recordCheckOut(record.id, req.ip, extractDeviceInfo(req), { viaPendingMission: Boolean(req.viaPendingMission) }));
   if (req.viaPendingMission) pendingMissionService.flagPendingMissionOutside({ userId: req.miniAppUser.id, record: updated, requestId: req.viaPendingMission, action: 'check_out' });
   auditRepository.logEvent({
     userId: req.miniAppUser.id,
@@ -179,8 +196,15 @@ router.post('/miniapp/check-out', (req, res) => {
     ipAddress: req.ip,
     details: { source: 'miniapp' },
   });
+  if (reportGate.report) {
+    auditRepository.logEvent({ userId: req.miniAppUser.id, action: 'daily_report_submitted', ipAddress: req.ip, details: { source: 'miniapp_check_out', date: reportGate.date, answers: reportGate.report.answers.length, extra: reportGate.report.extras.length } });
+  }
   planGateService.consumeExemption(req.miniAppUser, planGate, updated, req.ip);
-  res.json(planGate.action === 'remind' ? { ...updated, planReminder: { weekStart: planGate.info.weekStart } } : updated);
+  const payload = { ...updated };
+  if (planGate.action === 'remind') payload.planReminder = { weekStart: planGate.info.weekStart };
+  if (reportGate.report) payload.reportSaved = { date: reportGate.date, answers: reportGate.report.answers.length, extra: reportGate.report.extras.length };
+  if (reportGate.action === 'remind') payload.reportReminder = { date: reportGate.date, pendingTasks: reportGate.pendingTasks };
+  res.json(payload);
   fraudRunner.runFraudChecksSafe({ date: updated.record_date });
 });
 
@@ -414,13 +438,30 @@ router.post('/miniapp/plan/submit', (req, res) => {
 
 // ---------- گزارش روزانه‌ی تسک‌ها (D6) ----------
 
+const REPORT_ERROR_STATUS = {
+  MONTH_CLOSED: 409, ALREADY_ANSWERED: 409, FULL_DAY_OFF: 409,
+  BACKFILL_EXPIRED: 409, LATE_WINDOW_EXPIRED: 409, LATE_NOT_ALLOWED: 409, NO_RECORD: 404,
+};
+const sendReportError = (res, r) => res.status(REPORT_ERROR_STATUS[r.code] || 400).json({ error: r.error, code: r.code });
+
+// date (اختیاری، YYYY-MM-DD): گزارش دیرهنگام/backfill؛ اعتبارسنجی کامل سمت سرور (taskReportService.resolveReportDate)
 router.get('/miniapp/daily-tasks', (req, res) => {
-  res.json(taskReportService.getDailyTasks(req.miniAppUser));
+  const r = taskReportService.getDailyTasks(req.miniAppUser, { requestedDate: req.query.date });
+  if (!r.ok) return sendReportError(res, r);
+  return res.json(r);
 });
 router.post('/miniapp/daily-report', (req, res) => {
-  const r = taskReportService.submitDailyReport(req.miniAppUser, req.body);
-  if (!r.ok) return res.status(['MONTH_CLOSED', 'ALREADY_ANSWERED', 'FULL_DAY_OFF'].includes(r.code) ? 409 : 400).json({ error: r.error, code: r.code });
+  const body = req.body || {};
+  const r = taskReportService.submitDailyReport(req.miniAppUser, body, { requestedDate: body.date });
+  if (!r.ok) return sendReportError(res, r);
+  if (r.late) {
+    auditRepository.logEvent({ userId: req.miniAppUser.id, action: 'daily_report_submitted', ipAddress: req.ip, details: { source: 'miniapp_late', mode: r.source, date: r.date, late: true, answers: r.saved.answers, extra: r.saved.extra } });
+  }
   return res.json(r);
+});
+// روزهایی که هنوز گزارشِ دیرهنگام می‌پذیرند (بنر Mini App)
+router.get('/miniapp/report-backfill', (req, res) => {
+  res.json(taskReportService.getBackfillStatus(req.miniAppUser));
 });
 
 // ---------- اعتراض به رکورد ----------
