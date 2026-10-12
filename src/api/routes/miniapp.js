@@ -12,6 +12,8 @@ const { telegramAuth } = require('../../middleware/telegramAuth');
 const { networkRestriction } = require('../../middleware/networkRestriction');
 const missionNowService = require('../../services/missionNowService');
 const pendingMissionService = require('../../services/pendingMissionService');
+const planGateService = require('../../services/planGateService');
+const taskReportService = require('../../services/taskReportService');
 const { maintenanceGate } = require('../../middleware/maintenanceGate');
 const { createRateLimiter } = require('../../middleware/rateLimiter');
 
@@ -157,6 +159,17 @@ router.post('/miniapp/check-out', (req, res) => {
   if (openBreak) {
     return res.status(400).json({ error: 'ابتدا باید استراحت باز فعلی را پایان دهید.' });
   }
+  // گیت D5: برنامه‌ی هفته‌ی بعد (بعد از بررسی «خروج قبلاً ثبت شده»، تا دبل‌کلیکِ موفق 409 نگیرد)
+  const planGate = planGateService.check(req.miniAppUser, record.record_date);
+  if (planGate.action === 'block') {
+    auditRepository.logEvent({ userId: req.miniAppUser.id, action: 'check_out_blocked', ipAddress: req.ip, details: { source: 'miniapp', reason: 'weekly_plan_required', weekStart: planGate.info.weekStart } });
+    return res.status(409).json({
+      error: 'برای ثبت خروج، ابتدا برنامه‌ی هفته‌ی بعد را ثبت کنید.',
+      code: 'weekly_plan_required',
+      weekStart: planGate.info.weekStart,
+      planDay: planGate.info.planDay,
+    });
+  }
   if (rejectIfSharedDeviceBlocked(req, res, 'check_out')) return;
   const updated = attendanceRepository.recordCheckOut(record.id, req.ip, extractDeviceInfo(req), { viaPendingMission: Boolean(req.viaPendingMission) });
   if (req.viaPendingMission) pendingMissionService.flagPendingMissionOutside({ userId: req.miniAppUser.id, record: updated, requestId: req.viaPendingMission, action: 'check_out' });
@@ -166,8 +179,14 @@ router.post('/miniapp/check-out', (req, res) => {
     ipAddress: req.ip,
     details: { source: 'miniapp' },
   });
-  res.json(updated);
+  planGateService.consumeExemption(req.miniAppUser, planGate, updated, req.ip);
+  res.json(planGate.action === 'remind' ? { ...updated, planReminder: { weekStart: planGate.info.weekStart } } : updated);
   fraudRunner.runFraudChecksSafe({ date: updated.record_date });
+});
+
+// وضعیت گیت برنامه‌ی هفتگی برای UI (بنر/هشدار)؛ تصمیم نهایی همیشه با خود /check-out است.
+router.get('/miniapp/plan-gate', (req, res) => {
+  res.json(planGateService.status(req.miniAppUser, todayDateString()));
 });
 
 router.post('/miniapp/break/start', (req, res) => {
@@ -390,6 +409,17 @@ router.post('/miniapp/plan/submit', (req, res) => {
   const b = req.body || {};
   const r = weeklyPlanService.submit(req.miniAppUser, b.week || 'next');
   if (!r.ok) return planError(res, r);
+  return res.json(r);
+});
+
+// ---------- گزارش روزانه‌ی تسک‌ها (D6) ----------
+
+router.get('/miniapp/daily-tasks', (req, res) => {
+  res.json(taskReportService.getDailyTasks(req.miniAppUser));
+});
+router.post('/miniapp/daily-report', (req, res) => {
+  const r = taskReportService.submitDailyReport(req.miniAppUser, req.body);
+  if (!r.ok) return res.status(['MONTH_CLOSED', 'ALREADY_ANSWERED', 'FULL_DAY_OFF'].includes(r.code) ? 409 : 400).json({ error: r.error, code: r.code });
   return res.json(r);
 });
 

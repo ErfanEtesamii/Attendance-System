@@ -169,4 +169,4 @@ function getPreviousWorkingDay(user, dateStr, { maxBack = 14, settings } = {}) {
   return null;
 }
 
-module.exports = { getCalendarDay, resolveCalendarDay, pickHoliday, weekdayOf, weekStartOf, getPlanDay, getPreviousWorkingDay };
+module.exports = { getCalendarDay, resolveCalendarDay, pickHoliday, weekdayOf, weekStartOf, getPlanDay, getPreviousWorkingDay, fullyOnApprovedLeave };

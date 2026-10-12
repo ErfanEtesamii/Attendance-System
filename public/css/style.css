@@ -643,3 +643,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .plan-chip { border-radius: 14px; padding: 4px 10px; font-size: 12px; background: var(--card-bg); border: 1px solid var(--border); color: var(--text); cursor: pointer; }
 .plan-meta { font-size: 12px; color: var(--hint); }
 .plan-sys { font-size: 11px; color: var(--hint); }
+
+/* بنر الزام برنامه‌ی هفتگی (D5) */
+.plan-gate-banner { border: 1px solid var(--orange, #f59e0b); display: flex; flex-direction: column; gap: 8px; line-height: 1.8; }
+.plan-gate-banner .btn { align-self: flex-start; }

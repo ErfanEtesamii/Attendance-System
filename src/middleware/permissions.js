@@ -46,6 +46,7 @@ const PERMISSIONS = Object.freeze([
   'monthclose.close', // S5-3b: بستن ماه (فقط admin)
   'monthclose.reopen', // S5-3c: بازکردن ماه بسته با دلیل (فقط admin)
   'analytics.read', // S5-6a: روند/مقایسه‌ی تأخیر و تحلیل‌ها؛ admin/hr همه، سرپرست فقط تیم خودش (اسکوپ در route)، کارمند ممنوع
+  'plans.exempt', // D5: معافیت یک‌باره از گیت خروجِ برنامه‌ی هفتگی (admin همه، سرپرست فقط تیم خودش؛ اسکوپ در route)
 ]);
 
 // مجوزهای «خود کارمند»؛ هر چه خارج از اینجاست برای employee بسته است.
@@ -77,6 +78,7 @@ const MANAGER_PERMISSIONS = [
   'suspicious.review',
   'settings.read',
   'analytics.read', // S5-6a: فقط تیم خودش
+  'plans.exempt', // D5: فقط تیم خودش
 ];
 
 // منابع انسانی (S4-4a): فقط‌خواندنی روی همه‌ی کاربران (بدون اسکوپ تیم؛ scopedUserIds برای hr مثل admin همه را برمی‌گرداند).

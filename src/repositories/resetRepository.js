@@ -37,6 +37,7 @@ const ENTRIES = Object.freeze([
   { table: 'report_reviews', group: 'operational', label: 'مشاهده‌ی گزارش‌ها توسط سرپرست', where: 'report_date < ?' },
   { table: 'task_daily_logs', group: 'operational', label: 'پاسخ‌های روزانه‌ی تسک‌ها', where: 'task_id IN (SELECT id FROM plan_tasks WHERE plan_id IN (SELECT id FROM weekly_plans WHERE week_start_date < ?))' },
   { table: 'plan_tasks', group: 'operational', label: 'تسک‌های برنامه‌ی هفتگی', where: 'plan_id IN (SELECT id FROM weekly_plans WHERE week_start_date < ?)' },
+  { table: 'plan_gate_exemptions', group: 'operational', label: 'معافیت‌های گیت برنامه‌ی هفتگی', where: 'week_start_date < ?' },
   { table: 'weekly_plans', group: 'operational', label: 'برنامه‌های هفتگی', where: 'week_start_date < ?' },
   { table: 'month_closure_adjustments', group: 'operational', label: 'تعدیل‌های ماه بسته', where: 'closure_id IN (SELECT id FROM month_closures WHERE period_to < ?)' },
   { table: 'month_closures', group: 'operational', label: 'ماه‌های بسته‌شده', where: 'period_to < ?' },

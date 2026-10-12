@@ -40,6 +40,7 @@ router.use(require('./settings'));
 router.use(require('./shifts'));
 router.use(require('./audit'));
 router.use(require('./suspicious'));
+router.use(require('./planGate')); // D5: معافیت یک‌باره از گیت خروجِ برنامه‌ی هفتگی
 router.use(require('./notifications'));
 router.use(require('./system'));
 

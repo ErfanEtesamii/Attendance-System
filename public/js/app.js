@@ -235,6 +235,7 @@
     if (name === 'report') loadReport($('.tab-btn.active')?.dataset.period || 'week');
     if (name === 'leave') { loadLeaveTypes(); loadLeaveList(); }
     if (name === 'mission') loadMissionList();
+    if (name !== 'plan') planUi.onSubmitted = null; // خروجِ معلق فقط با ثبت برنامه اجرا شود، نه با برگشت به صفحه‌ی دیگر
     if (name === 'plan') openPlanWizard();
     if (name === 'profile') loadProfile();
   }
@@ -454,12 +455,18 @@
         const deviceId = await getDeviceId();
         if (deviceId) body = { ...(body || {}), deviceId };
       }
-      await api(path, { method: 'POST', body });
-      showToast(successMsg);
+      const res = await api(path, { method: 'POST', body });
+      showToast(path === '/check-out' && res && res.planReminder ? 'خروج ثبت شد. فراموش نکنید برنامه‌ی هفته‌ی بعد را ثبت کنید.' : successMsg);
       await loadToday();
     } catch (err) {
       showToast(err.message, true);
       unlock();
+      // گیت D5: ثبت برنامه‌ی هفته‌ی بعد لازم است ⇒ ویزارد؛ بعد از ثبت، خروج دوباره فرستاده می‌شود (سرور دوباره همه‌چیز را چک می‌کند)
+      if (path === '/check-out' && err && err.data && err.data.code === 'weekly_plan_required') {
+        planUi.week = 'next';
+        planUi.onSubmitted = () => { switchView('today'); doAction('/check-out', {}, 'خروج ثبت شد.'); };
+        switchView('plan');
+      }
     }
   }
 
@@ -536,6 +543,28 @@
     $('#progress-text').textContent = pct.toLocaleString('fa-IR') + '٪ از ۸ ساعت';
 
     renderTodayActions();
+    loadPlanGateBanner();
+  }
+
+  // بنر الزام برنامه‌ی هفتگی (D5): فقط اطلاع‌رسانی؛ خطای آن هرگز نمای امروز را نمی‌شکند
+  async function loadPlanGateBanner() {
+    const box = $('#plan-gate-banner');
+    if (!box) return;
+    try {
+      const g = await api('/plan-gate');
+      box.textContent = '';
+      const show = g && (g.banner || (g.blocked && !(state.today && state.today.record && state.today.record.check_out_time)));
+      if (!show) { box.classList.add('hidden'); return; }
+      const msg = document.createElement('div');
+      msg.textContent = g.banner
+        ? 'خروج دیروز به‌صورت خودکار بسته شد و برنامه‌ی هفته‌ی بعد ثبت نشده بود. لطفاً همین حالا برنامه را ثبت کنید.'
+        : 'امروز روز ثبت برنامه‌ی هفته‌ی بعد است؛ بدون ثبت برنامه، خروج ثبت نمی‌شود.';
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'btn primary'; btn.textContent = 'ثبت برنامه‌ی هفتگی';
+      btn.addEventListener('click', () => { planUi.week = g.banner ? 'current' : 'next'; switchView('plan'); });
+      box.appendChild(msg); box.appendChild(btn);
+      box.classList.remove('hidden');
+    } catch (_) { box.classList.add('hidden'); }
   }
 
   // ---------- تاریخچه ----------
