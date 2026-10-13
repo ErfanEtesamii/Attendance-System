@@ -41,15 +41,23 @@ function panelWebAppButton(opts = {}) {
   return canUseWebApp(url) ? { text: opts.text || '🖥 ورود به پنل', web_app: { url } } : null;
 }
 
-/** کیبورد ثابت پایین چت برای همه‌ی کاربران ثبت‌شده: [پنل] [ثبت تردد] */
-function persistentKeyboard() {
-  const panel = panelUrl();
-  const miniApp = config.miniAppUrl;
-  const row = [];
-  if (canUseWebApp(panel)) row.push({ text: '🖥 پنل', web_app: { url: panel } });
-  if (canUseWebApp(miniApp)) row.push({ text: '🕒 ثبت تردد', web_app: { url: miniApp } });
-  if (row.length === 0) return null;
-  return { keyboard: [row], resize_keyboard: true, is_persistent: true };
+/** آدرس Mini App (ثبت تردد). view = صفحه‌ی بازشونده (مثلاً plan ⇒ ?view=plan). */
+function miniAppLink({ view } = {}) {
+  const base = config.miniAppUrl;
+  if (!base) return null;
+  if (!view) return base;
+  try {
+    const u = new URL(base);
+    u.searchParams.set('view', view);
+    return u.toString();
+  } catch (_) {
+    return null;
+  }
 }
 
-module.exports = { ROLE_LABELS, ROLE_ACCESS, panelUrl, panelWebAppButton, persistentKeyboard, canUseWebApp };
+/** کیبورد ثابت پایین چت برای کاربر ثبت‌شده — منوی نقش‌محور (E1)؛ برای کاربر ثبت‌نشده/چت غیرخصوصی null. */
+function persistentKeyboard(user, opts) {
+  return require('./menu/menuRouter').buildMainKeyboard(user, opts); // lazy: menuRouter خودش panelLinks را می‌خواهد
+}
+
+module.exports = { ROLE_LABELS, ROLE_ACCESS, panelUrl, panelWebAppButton, persistentKeyboard, miniAppLink, canUseWebApp };

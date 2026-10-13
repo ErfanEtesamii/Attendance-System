@@ -49,7 +49,7 @@ async function handlePanelLogin(bot, msg) {
   });
 
   // کیبورد ثابتِ «پنل / ثبت تردد» را هم زیر چت فعال می‌کنیم تا دفعه‌ی بعد نیازی به تایپ دستور نباشد
-  const kb = persistentKeyboard();
+  const kb = persistentKeyboard(user, { chatType: msg.chat.type });
   if (kb) await bot.sendMessage(chatId, 'دکمه‌ی «🖥 پنل» حالا پایین صفحه‌ی چت همیشه در دسترس است.', { reply_markup: kb });
 }
 

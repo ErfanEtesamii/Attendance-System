@@ -18,7 +18,7 @@ async function handleStart(bot, msg) {
     '',
     'دستورات قابل استفاده را با /help ببینید.',
   ];
-  const kb = persistentKeyboard();
+  const kb = persistentKeyboard(user, { chatType: msg.chat.type });
   if (kb) lines.push('', 'برای ورود به پنل، دکمه‌ی «🖥 پنل» را در پایین صفحه بزنید (یا /panel).');
   await bot.sendMessage(chatId, lines.join('\n'), kb && msg.chat.type === 'private' ? { reply_markup: kb } : {});
 }

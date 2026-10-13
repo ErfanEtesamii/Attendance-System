@@ -1,6 +1,7 @@
 const TelegramBot = require('node-telegram-bot-api');
 const config = require('../config');
 const session = require('./session');
+const { routeMenuText } = require('./menu/menuRouter');
 const { startSchedulers } = require('./scheduler');
 const { instrumentBot } = require('../utils/botHealth');
 
@@ -54,7 +55,7 @@ function createBot() {
   bot.onText(/^\/fix_record/, (msg) => handleFixRecordCommand(bot, msg));
 
   // پیام‌های متنی معمولی: فقط وقتی مکالمه چندمرحله‌ای فعالی وجود دارد پردازش می‌شوند.
-  bot.on('message', (msg) => {
+  bot.on('message', async (msg) => {
     // پیوست مرخصی (S4-12a): عکس/سند فقط در مرحله‌ی مربوط جریان /leave پردازش می‌شود
     if (!msg.text && (msg.photo || msg.document)) {
       const attSess = session.get(msg.chat.id);
@@ -63,6 +64,15 @@ function createBot() {
     }
     if (!msg.text || msg.text.startsWith('/')) return;
     const chatId = msg.chat.id;
+
+    // E1/E2: دکمه‌های منوی اصلی — پیش از مسیر session؛ تطبیق دقیق متن و چک نقش سمت سرور در menuRouter
+    try {
+      if (await routeMenuText(bot, msg)) return;
+    } catch (err) {
+      console.error('[bot] خطا در پردازش دکمه‌ی منو:', err.message);
+      return;
+    }
+
     const sess = session.get(chatId);
     if (!sess) return;
 
