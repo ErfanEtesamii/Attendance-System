@@ -28,7 +28,7 @@ describe('سرویس برنامه‌ی هفتگی (D3)', () => {
     const n = svc.getPlan(u, 'next', { now: SUN });
     assert.deepEqual([n.weekStart, n.weekEnd, n.planDay, n.editMode, n.status, n.tasks.length], ['2026-08-08', '2026-08-14', '2026-08-13', 'free', 'draft', 0]);
     const c = svc.getPlan(u, 'current', { now: SUN });
-    assert.deepEqual([c.weekStart, c.editMode], ['2026-08-01', 'restricted']);
+    assert.deepEqual([c.weekStart, c.editMode, c.lockReason, n.lockReason], ['2026-08-01', 'readonly', 'week_started', null]);
     assert.equal(svc.getPlan(u, 'foo', { now: SUN }).code, 'INVALID_WEEK');
   });
 
@@ -94,18 +94,64 @@ describe('سرویس برنامه‌ی هفتگی (D3)', () => {
     assert.ok(noteRepo.listForUser(boss.id, {}).some((n) => n.type === 'weekly_plan_changed'));
   });
 
-  test('بعد از شروع هفته (current): فقط افزودن و انتقال تاریخ؛ حذف/تغییر عنوان رد', () => {
+  test('هفته‌ی شروع‌شده (current) قفل است: افزودن/ویرایش/حذف/انتقال/ثبت همه PLAN_LOCKED', () => {
     reset();
-    const a = svc.saveDraft(u, 'current', [t('الف', { plannedDate: '2026-08-03' })], { now: at('2026-08-01') });
-    // هفته‌ی جاری از امروز شروع شده ⇒ محدود: تسک اول اضافه شد چون برنامه خالی بود
-    assert.equal(a.ok, true);
-    const [x] = a.tasks;
-    assert.equal(svc.saveDraft(u, 'current', [{ ...x, title: 'تغییر' }], { now: SUN }).code, 'EDIT_RESTRICTED');
-    assert.equal(svc.saveDraft(u, 'current', [{ ...x, priority: 'high' }], { now: SUN }).code, 'EDIT_RESTRICTED');
-    const moved = svc.saveDraft(u, 'current', [{ ...x, plannedDate: '2026-08-05' }, t('تازه')], { now: SUN });
-    assert.deepEqual(moved.tasks.map((y) => [y.title, y.plannedDate]), [['الف', '2026-08-05'], ['تازه', null]]);
-    const noDelete = svc.saveDraft(u, 'current', [t('فقط‌این')], { now: SUN });
-    assert.equal(noDelete.tasks.length, 3, 'حذف در حالت محدود ممکن نیست');
+    // برنامه‌ی هفته‌ی ۰۸-۰۱ پیش از شروع هفته (آخرین جمعه‌ی قبلش) ثبت شده است
+    const a = svc.saveDraft(u, 'next', [t('الف', { plannedDate: '2026-08-03' }), t('ب')], { now: at('2026-07-31') });
+    assert.equal(a.ok, true, JSON.stringify(a));
+    svc.submit(u, 'next', { now: at('2026-07-31') });
+    const cur = svc.getPlan(u, 'current', { now: SUN });
+    assert.deepEqual([cur.editMode, cur.lockReason, cur.status], ['readonly', 'week_started', 'submitted']);
+    const [x, y] = cur.tasks;
+    const snapshot = () => JSON.stringify(plans.listTasks(plans.findByUserWeek(u.id, '2026-08-01').id, { includeDeleted: true }));
+    const before = snapshot();
+    const changedAudits = () => db.prepare("SELECT COUNT(*) n FROM audit_log WHERE action = 'weekly_plan_changed'").get().n;
+    const auditsBefore = changedAudits();
+    const attempts = {
+      افزودن: [...cur.tasks, t('تازه')],
+      'تغییر عنوان': [{ ...x, title: 'تغییر' }, y],
+      'تغییر اولویت': [{ ...x, priority: 'high' }, y],
+      'انتقال تاریخ': [{ ...x, plannedDate: '2026-08-05' }, y],
+      حذف: [x],
+      'فهرست خالی': [],
+    };
+    for (const [name, tasks] of Object.entries(attempts)) {
+      const r = svc.saveDraft(u, 'current', tasks, { now: SUN });
+      assert.deepEqual([r.ok, r.code], [false, 'PLAN_LOCKED'], name);
+      assert.match(r.error, /شروع شده/);
+    }
+    assert.equal(svc.submit(u, 'current', { now: SUN }).code, 'PLAN_LOCKED');
+    assert.equal(snapshot(), before, 'هیچ‌چیز در دیتابیس تغییر نکرده است');
+    assert.equal(changedAudits(), auditsBefore, 'تلاش رد‌شده audit تغییر نمی‌سازد');
+    // حتی بدون هیچ برنامه‌ای در هفته‌ی شروع‌شده، ساخت برنامه ممکن نیست
+    reset();
+    assert.equal(svc.saveDraft(u, 'current', [t('الف')], { now: SUN }).code, 'PLAN_LOCKED');
+    assert.equal(svc.submit(u, 'current', { now: SUN }).code, 'PLAN_LOCKED');
+    assert.equal(plans.findByUserWeek(u.id, '2026-08-01'), null);
+  });
+
+  test('مرز قفل: روزِ قبل از شروع هفته آزاد است؛ از روز شروع قفل (هفته‌ی بعدی همیشه آزاد)', () => {
+    reset();
+    const fri = at('2026-07-31'); // هفته‌ی ۰۸-۰۱ هنوز شروع نشده
+    assert.equal(svc.getPlan(u, 'next', { now: fri }).editMode, 'free');
+    assert.equal(svc.saveDraft(u, 'next', [t('الف')], { now: fri }).ok, true);
+    const sat = at('2026-08-01'); // روز شروع هفته ⇒ قفل
+    assert.equal(svc.getPlan(u, 'current', { now: sat }).editMode, 'readonly');
+    assert.equal(svc.saveDraft(u, 'current', [t('الف'), t('ب')], { now: sat }).code, 'PLAN_LOCKED');
+    assert.equal(svc.getPlan(u, 'next', { now: sat }).editMode, 'free'); // ۰۸-۰۸
+    assert.equal(svc.saveDraft(u, 'next', [t('هفته‌ی بعد')], { now: sat }).ok, true);
+    const late = at('2026-08-06'); // وسط هفته هم همان قفل
+    assert.equal(svc.saveDraft(u, 'current', [t('الف')], { now: late }).code, 'PLAN_LOCKED');
+  });
+
+  test('هفته‌ی آینده‌ی شروع‌نشده بعد از ثبت هم ویرایش‌پذیر است (حذف و تغییر عنوان مجاز)', () => {
+    reset();
+    svc.saveDraft(u, 'next', [t('الف'), t('ب')], { now: SUN });
+    svc.submit(u, 'next', { now: SUN });
+    const [x] = svc.getPlan(u, 'next', { now: SUN }).tasks;
+    const r = svc.saveDraft(u, 'next', [{ ...x, title: 'الف‌نو', priority: 'high' }], { now: SUN });
+    assert.deepEqual(r.tasks.map((y) => [y.title, y.priority]), [['الف‌نو', 'high']]);
+    assert.equal(r.status, 'submitted');
   });
 
   test('ماه بسته ⇒ فقط‌خواندنی (ذخیره و ثبت)', () => {
@@ -114,6 +160,10 @@ describe('سرویس برنامه‌ی هفتگی (D3)', () => {
     assert.equal(svc.getPlan(u, 'next', { now: SUN }).editMode, 'readonly');
     assert.equal(svc.saveDraft(u, 'next', [t('الف')], { now: SUN }).code, 'MONTH_CLOSED');
     assert.equal(svc.submit(u, 'next', { now: SUN }).code, 'MONTH_CLOSED');
+    // هفته‌ی شروع‌شده در ماه بسته: همان قفل ماه بسته (MONTH_CLOSED) و lockReason مربوط
+    const cur = svc.getPlan(u, 'current', { now: SUN });
+    assert.deepEqual([cur.editMode, cur.lockReason], ['readonly', 'month_closed']);
+    assert.equal(svc.saveDraft(u, 'current', [t('الف')], { now: SUN }).code, 'MONTH_CLOSED');
     db.exec('DELETE FROM month_closures;');
   });
 
@@ -143,5 +193,33 @@ describe('سرویس برنامه‌ی هفتگی (D3)', () => {
     assert.equal(r.tasks.length, 2);
     const cleared = svc.saveDraft(u, 'next', [], { now: SUN });
     assert.deepEqual(cleared.tasks.map((x) => x.isSystem), [true]);
+  });
+
+  test('قفل هفته‌ی شروع‌شده: تسک سیستمی، reschedule_to گزارش روزانه و carry over سالم می‌مانند', () => {
+    reset();
+    const reports = require('../src/services/taskReportService');
+    const settings = require('../src/repositories/settingsRepository').getAll();
+    const plan = svc.saveDraft(u, 'next', [t('الف'), t('ب', { plannedDate: '2026-08-03' }), t('پ')], { now: at('2026-07-31') });
+    assert.equal(plan.ok, true, JSON.stringify(plan));
+    const [ta, tb, tc] = plan.tasks;
+    const p = plans.findByUserWeek(u.id, '2026-08-01');
+    const sys = plans.addTask(p.id, { title: 'بررسی گزارش‌ها', plannedDate: '2026-08-03', isSystem: true, systemKey: 'review_team_reports' });
+    // هفته قفل است
+    assert.equal(svc.saveDraft(u, 'current', [], { now: SUN }).code, 'PLAN_LOCKED');
+    assert.equal(plans.findTask(sys.id).deleted_at, null, 'تسک سیستمی دست‌نخورده است');
+    // reschedule_to روی هفته‌ی قفل‌شده کار می‌کند: «ب» (روز ۰۸-۰۳) به ۰۸-۰۵ منتقل می‌شود
+    logs.upsert({ taskId: tb.id, userId: u.id, logDate: '2026-08-03', status: 'not_done', reasonCode: 'other', rescheduleTo: '2026-08-05' });
+    assert.deepEqual(reports.buildList(u, '2026-08-03', settings).map((x) => x.title).sort(), ['الف', 'پ', 'بررسی گزارش‌ها'].sort());
+    const moved = reports.buildList(u, '2026-08-05', settings).find((x) => x.id === tb.id);
+    assert.equal(moved && moved.source, 'rescheduled');
+    // drop و «انجام‌شده» هم مثل قبل
+    logs.upsert({ taskId: tc.id, userId: u.id, logDate: '2026-08-03', status: 'done' });
+    assert.ok(!reports.buildList(u, '2026-08-04', settings).some((x) => x.id === tc.id));
+    // carry over: ناتمام‌های هفته‌ی شروع‌شده به هفته‌ی بعد می‌روند (هفته‌ی بعد آزاد است)
+    const next = svc.getPlan(u, 'next', { now: SUN });
+    assert.deepEqual(next.carryOver.map((x) => x.title).sort(), ['الف', 'ب']);
+    const saved = svc.saveDraft(u, 'next', [t('الف', { carriedFromTaskId: ta.id })], { now: SUN });
+    assert.equal(saved.ok, true);
+    assert.equal(saved.tasks[0].carriedFromTaskId, ta.id);
   });
 });

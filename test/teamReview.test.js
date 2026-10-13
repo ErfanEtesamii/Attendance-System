@@ -101,8 +101,8 @@ describe('تسک سیستمی و مشاهده‌ی گزارش تیم (D9-الف)
     assert.equal(db.prepare("SELECT COUNT(*) n FROM plan_tasks WHERE system_key = 'review_team_reports'").get().n, 1);
     // روز دیگر ⇒ تسکِ جدا
     assert.notEqual(svc.ensureTask(boss, '2026-08-09').id, t1.id);
-    // ذخیره‌ی پیش‌نویس با فهرست خالی، تسک سیستمی را حذف نمی‌کند
-    weekly.saveDraft(boss, 'current', [], { now: new Date(`${SAT}T08:00:00Z`) });
+    // هفته‌ی شروع‌شده قفل است (PLAN_LOCKED) و تسک سیستمی دست‌نخورده می‌ماند
+    assert.equal(weekly.saveDraft(boss, 'current', [], { now: new Date(`${SAT}T08:00:00Z`) }).code, 'PLAN_LOCKED');
     assert.ok(sysTask(boss, SAT));
   });
 

@@ -420,7 +420,7 @@ router.post('/miniapp/missions/:id/attachment', async (req, res) => {
 
 // ---------- برنامه‌ی هفتگی (D3) ----------
 const weeklyPlanService = require('../../services/weeklyPlanService');
-const planError = (res, r) => res.status(r.code === 'MONTH_CLOSED' ? 409 : 400).json({ error: r.error, code: r.code });
+const planError = (res, r) => res.status(r.code === 'MONTH_CLOSED' || r.code === 'PLAN_LOCKED' ? 409 : 400).json({ error: r.error, code: r.code });
 
 router.get('/miniapp/plan', (req, res) => {
   const r = weeklyPlanService.getPlan(req.miniAppUser, req.query.week || 'next');

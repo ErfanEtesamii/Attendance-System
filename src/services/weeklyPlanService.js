@@ -1,8 +1,9 @@
 // برنامه‌ی هفتگی (D3): خواندن/ذخیره‌ی پیش‌نویس/ثبت نهایی + پیشنهاد انتقال و کپی از هفته‌ی قبل.
 // قواعد (سمت سرور، نه UI):
 //   • هفته‌ی هدف: next (هفته‌ی بعد) | current؛ شروع هفته از تنظیم weekStartDay.
-//   • قبل از شروع هفته‌ی هدف: ویرایش آزاد (افزودن/ویرایش/حذف حتی بعد از ثبت). بعد از شروع: فقط «افزودن» و «انتقال» (تغییر planned_date)؛
-//     حذف/تغییر عنوان/توضیح/اولویت رد می‌شود (EDIT_RESTRICTED).
+//   • قبل از شروع هفته‌ی هدف (today < weekStart): ویرایش آزاد (افزودن/ویرایش/حذف/انتقال تاریخ، حتی بعد از ثبت).
+//     از روز شروع هفته به بعد (today >= weekStart): کل برنامه‌ی آن هفته فقط‌خواندنی است (editMode = readonly) و
+//     saveDraft/submit با PLAN_LOCKED (۴۰۹) رد می‌شود. فقط هفته‌های آینده قابل ویرایش‌اند؛ مسیر استثنا برای ادمین وجود ندارد.
 //   • هر تغییرِ بعد از ثبت ⇒ audit (weekly_plan_changed) + اعلان به سرپرست.
 //   • ماه بسته ⇒ فقط‌خواندنی (MONTH_CLOSED). حداکثر ۳۰ تسک؛ عنوان ≤۱۲۰؛ توضیح ≤۵۰۰؛ planned_date داخل همان هفته یا خالی («هر روز»).
 //   • تسک سیستمی (is_system) هرگز حذف/ویرایش نمی‌شود و در شمارش حداقل/سقف نمی‌آید.
@@ -69,10 +70,23 @@ function isMonthClosed(weekStart) {
   return monthClosuresRepository.findClosedOverlapping(weekStart, addDays(weekStart, 6)).length > 0;
 }
 
-// وضعیت ویرایش برای هفته‌ی هدف
+// دلیل قفل‌بودن هفته‌ی هدف: month_closed (ماه بسته) | week_started (هفته شروع شده) | null (قابل ویرایش)
+function lockReason(weekStart, ctx) {
+  if (isMonthClosed(weekStart)) return 'month_closed';
+  return ctx.today >= weekStart ? 'week_started' : null;
+}
+
+// وضعیت ویرایش برای هفته‌ی هدف: free | readonly
 function editMode(weekStart, ctx) {
-  if (isMonthClosed(weekStart)) return 'readonly';
-  return ctx.today < weekStart ? 'free' : 'restricted';
+  return lockReason(weekStart, ctx) ? 'readonly' : 'free';
+}
+
+// خطای مشخصِ قفل (یا null اگر ویرایش مجاز است): تنها نقطه‌ی اعمال قفل برای همه‌ی مسیرهای نوشتن
+function lockFailure(weekStart, ctx) {
+  const reason = lockReason(weekStart, ctx);
+  if (reason === 'month_closed') return fail('MONTH_CLOSED', 'این هفته در ماهِ بسته‌شده است و فقط‌خواندنی است.');
+  if (reason === 'week_started') return fail('PLAN_LOCKED', 'هفته شروع شده و برنامه‌اش قابل ویرایش نیست. فقط برنامه‌ی هفته‌های آینده قابل ویرایش است.');
+  return null;
 }
 
 function getPlan(user, which, { now } = {}) {
@@ -91,6 +105,7 @@ function getPlan(user, which, { now } = {}) {
     supervisorSeenAt: plan ? plan.supervisor_seen_at : null,
     supervisorComment: plan ? plan.supervisor_comment : null,
     editMode: editMode(weekStart, ctx),
+    lockReason: lockReason(weekStart, ctx),
     minTasks: ctx.settings.planMinTasks,
     maxTasks: MAX_TASKS,
     tasks: plan ? plansRepo.listTasks(plan.id).map(presentTask) : [],
@@ -149,14 +164,15 @@ function reportChange(user, plan, summary) {
 
 /**
  * ذخیره‌ی پیش‌نویس/ویرایش. input.tasks = وضعیت مطلوب فهرست تسک‌ها.
- * free: تسک‌های حذف‌شده از فهرست soft-delete می‌شوند. restricted: فقط افزودن و تغییر plannedDate؛ بقیه رد.
+ * فقط وقتی هفته‌ی هدف free باشد (هنوز شروع نشده و ماهش بسته نیست)؛ تسک‌های حذف‌شده از فهرست soft-delete می‌شوند.
+ * هفته‌ی شروع‌شده ⇒ PLAN_LOCKED؛ ماه بسته ⇒ MONTH_CLOSED.
  */
 function saveDraft(user, which, tasksInput, { now } = {}) {
   const ctx = context(now);
   const weekStart = targetWeek(which, ctx);
   if (!weekStart) return fail('INVALID_WEEK', 'week باید next یا current باشد.');
-  const mode = editMode(weekStart, ctx);
-  if (mode === 'readonly') return fail('MONTH_CLOSED', 'این هفته در ماهِ بسته‌شده است و فقط‌خواندنی است.');
+  const locked = lockFailure(weekStart, ctx);
+  if (locked) return locked;
   const v = validateTasks(tasksInput, weekStart, user);
   if (v.error) return v.error;
 
@@ -173,12 +189,11 @@ function saveDraft(user, which, tasksInput, { now } = {}) {
   }
   const adds = v.tasks.filter((t) => t.id === null);
   const edits = [];
-  const removes = mode === 'free' ? userTasks.filter((t) => !keepIds.has(t.id)) : [];
+  const removes = userTasks.filter((t) => !keepIds.has(t.id));
   for (const t of v.tasks.filter((x) => x.id !== null)) {
     const cur = byId.get(t.id);
     const changedMeta = cur.title !== t.title || (cur.description || null) !== t.description || cur.priority !== t.priority;
     const changedDate = (cur.planned_date || null) !== t.plannedDate;
-    if (mode === 'restricted' && changedMeta) return fail('EDIT_RESTRICTED', 'پس از شروع هفته فقط افزودن تسک و انتقال تاریخ مجاز است.');
     if (changedMeta || changedDate) edits.push({ cur, t });
   }
   if (userTasks.length - removes.length + adds.length > MAX_TASKS) return fail('TOO_MANY_TASKS', `حداکثر ${MAX_TASKS} تسک مجاز است.`);
@@ -200,7 +215,8 @@ function submit(user, which, { now } = {}) {
   const ctx = context(now);
   const weekStart = targetWeek(which, ctx);
   if (!weekStart) return fail('INVALID_WEEK', 'week باید next یا current باشد.');
-  if (editMode(weekStart, ctx) === 'readonly') return fail('MONTH_CLOSED', 'این هفته در ماهِ بسته‌شده است و فقط‌خواندنی است.');
+  const locked = lockFailure(weekStart, ctx);
+  if (locked) return locked;
   const plan = plansRepo.findByUserWeek(user.id, weekStart);
   const count = plan ? plansRepo.listTasks(plan.id).filter((t) => !t.is_system).length : 0;
   const min = Math.max(0, ctx.settings.planMinTasks);
