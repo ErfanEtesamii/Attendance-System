@@ -189,7 +189,7 @@ function validateAnswer(a, n, user, date, settings, byId, base = date) {
   const task = byId.get(taskId);
   if (!task) {
     const answered = logsRepo.findByTaskDate(taskId, date);
-    return { error: answered ? fail('ALREADY_ANSWERED', `تسک پاسخ ${n} قبلاً پاسخ داده شده است.`) : fail('TASK_NOT_FOUND', `تسک پاسخ ${n} در فهرست امروز شما نیست.`) };
+    return { error: answered && answered.user_id === user.id ? fail('ALREADY_ANSWERED', `تسک پاسخ ${n} قبلاً پاسخ داده شده است.`) : fail('TASK_NOT_FOUND', `تسک پاسخ ${n} در فهرست امروز شما نیست.`) };
   }
   if (!STATUSES.includes(a.status)) return { error: fail('INVALID_STATUS', `وضعیت پاسخ ${n} نامعتبر است (done | partial | not_done).`) };
   if (task.systemKey === teamReview.REVIEW_KEY) { // D9: «انجام شد» فقط با مشاهده‌ی واقعیِ گزارش‌ها (خودکار ثبت می‌شود)؛ انتقال/حذفِ تسک سیستمی معنا ندارد

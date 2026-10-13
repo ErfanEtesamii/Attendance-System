@@ -606,7 +606,7 @@ describe('تست یکپارچه‌ی اعتراض — سناریوی کامل (D
       const e = fresh();
       const id = await create(e, 'متن اولیه');
       await aReply(id, 'پاسخ ادمین');
-      await aAct('resolve', id, { note: 'حل شد' });
+      await aAct('resolve', id); // بدون یادداشت ⇒ پیامی اضافه نمی‌شود
       closeTheMonth();
 
       const list = await S.call(e.user, 'GET', 'dispute');
