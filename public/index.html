@@ -240,6 +240,16 @@
           <button type="submit" class="btn secondary">ارسال به ادمین</button>
           <div class="form-msg" id="dispute-msg"></div>
         </form>
+
+        <!-- اعتراض‌های من (D5): فهرست با وضعیت و نشان پیام خوانده‌نشده؛ با لمس هر مورد صفحه‌ی گفت‌وگو باز می‌شود -->
+        <h3 class="view-title" id="dispute-list-title">اعتراض‌های من</h3>
+        <div id="dispute-list" class="list" role="group" aria-labelledby="dispute-list-title"></div>
+      </section>
+
+      <!-- گفت‌وگوی اعتراض (D5): حباب‌های کارمند/ادمین، فیلد نوشتن، «ادامه‌ی اعتراض» و «خاتمه» -->
+      <section id="view-dispute" class="view hidden" aria-labelledby="dispute-title">
+        <div class="view-head"><h3 class="view-title" id="dispute-title" tabindex="-1">گفت‌وگوی اعتراض</h3><button type="button" class="btn secondary" id="dispute-back">بازگشت</button></div>
+        <div id="dispute-thread" class="dispute-thread"></div>
       </section>
 
     </main>

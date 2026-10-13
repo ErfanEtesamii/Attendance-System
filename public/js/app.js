@@ -229,7 +229,8 @@
   function switchView(name) {
     $all('.view').forEach((v) => v.classList.add('hidden'));
     $('#view-' + name).classList.remove('hidden');
-    $all('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.view === name));
+    const navName = name === 'dispute' ? 'profile' : name; // گفت‌وگوی اعتراض زیرمجموعه‌ی «پروفایل» است
+    $all('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.view === navName));
 
     if (name === 'history') loadHistory();
     if (name === 'report') loadReport($('.tab-btn.active')?.dataset.period || 'week');
@@ -237,7 +238,8 @@
     if (name === 'mission') loadMissionList();
     if (name !== 'plan') planUi.onSubmitted = null; // خروجِ معلق فقط با ثبت برنامه اجرا شود، نه با برگشت به صفحه‌ی دیگر
     if (name === 'plan') openPlanWizard();
-    if (name === 'profile') loadProfile();
+    if (name === 'profile') { loadProfile(); loadDisputeList(); }
+    if (name === 'dispute') loadDisputeThread();
   }
 
   $all('.nav-btn').forEach((btn) => {
@@ -372,7 +374,7 @@
       const prev = ls.getItem(RESET_EPOCH_KEY);
       if (prev !== null && prev !== String(epoch)) {
         ls.removeItem(BREAK_KIND_KEY);
-        Object.keys(ls).filter((k) => k.indexOf('draft:') === 0).forEach((k) => ls.removeItem(k));
+        Object.keys(ls).filter((k) => k.indexOf('draft:') === 0 || k.indexOf(DISPUTE_SEEN_PREFIX) === 0).forEach((k) => ls.removeItem(k));
         state.today = null;
       }
       ls.setItem(RESET_EPOCH_KEY, String(epoch));
@@ -1704,11 +1706,320 @@
       msg.textContent = 'اعتراض شما برای ادمین ارسال شد.';
       msg.classList.add('ok');
       form.reset();
+      loadDisputeList();
     } catch (err) {
       msg.textContent = err.message;
       msg.classList.add('err');
     }
   });
+
+  // ---------- «اعتراض‌های من» و گفت‌وگو (D5) ----------
+  // قواعد (چه کسی می‌تواند پیام بدهد/ادامه دهد/ببندد، سقف ادامه، ماه بسته) فقط سمت سرور است (GET/POST /miniapp/dispute*)؛
+  // این بخش فقط flagهای can_reply / can_reopen / can_close پاسخ را نشان می‌دهد و پیام خطای سرور را بی‌تغییر نمایش می‌دهد.
+  // «پیام خوانده‌نشده» سمت کلاینت است (سرور وضعیت خواندن ندارد): اثرانگشتِ آخرین وضعیتِ دیده‌شده‌ی هر اعتراض در localStorage.
+  const DISPUTE_SEEN_PREFIX = 'attendance_dispute_seen:';
+  const DISPUTE_MSG_MAX = 500; // همان سقف سرور (disputeService.MESSAGE_MAX)
+  const DISPUTE_PHASES = {
+    open: ['باز', 'dsp-open'],
+    answered: ['پاسخ داده شده', 'dsp-answered'],
+    resolved: ['حل‌شده', 'dsp-resolved'],
+    closed_by_user: ['خاتمه‌یافته', 'dsp-closed'],
+  };
+  // بعد از این خطاها وضعیت اعتراض سمت سرور فرق کرده؛ thread را تازه می‌گیریم و پیام سرور می‌ماند
+  const DISPUTE_STALE_CODES = ['DISPUTE_CLOSED', 'DISPUTE_NOT_CLOSED', 'DISPUTE_ALREADY_CLOSED'];
+  const disputeUi = { id: null, data: null, mode: 'idle', draft: '', msg: '', listSeq: 0, threadSeq: 0 }; // mode: idle | confirmClose | reopen
+
+  function dEl(tag, cls, text) {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function dBtn(text, cls, onClick) {
+    const b = dEl('button', cls, text);
+    b.type = 'button';
+    b.addEventListener('click', onClick);
+    return b;
+  }
+  const faNum = (n) => Number(n || 0).toLocaleString('fa-IR');
+
+  // «YYYY-MM-DD HH:MM:SS» (UTC دیتابیس) ⇒ «۱۵ مهر ۱۴۰۵ ۱۴:۳۰» به وقت دستگاه
+  function fmtDateTime(s) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/.exec(String(s == null ? '' : s));
+    if (!m) return s ? String(s) : '—';
+    const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0)));
+    if (Number.isNaN(d.getTime())) return String(s);
+    const iso = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+    return `${fmtDate(iso)} ${fmtClock(d.toISOString())}`;
+  }
+
+  // اثرانگشت آخرین وضعیت؛ با هر پیام/بستن/بازشدن عوض می‌شود
+  const disputeFingerprint = (d) => [d.message_count, d.last_message_at, d.status, d.closed_by || '', d.closed_at || ''].join('|');
+  // آخرین رویداد از طرف ادمین بوده؟ باز: آخرین پیام ادمین؛ بسته: closed_by === 'admin' (NULL/user ⇒ نه)
+  const disputeFromAdmin = (d) => (d.status === 'open' ? d.last_sender_role === 'admin' : d.closed_by === 'admin');
+  const disputeIsUnread = (d, seen) => disputeFromAdmin(d) && seen[d.id] !== disputeFingerprint(d);
+
+  function disputeSeenKey() { return DISPUTE_SEEN_PREFIX + (state.me && state.me.id != null ? state.me.id : '0'); }
+  // ⇒ { map, fresh }؛ fresh = هنوز هیچ‌چیز ذخیره نشده. حافظه‌ی در دسترس نبود ⇒ { map: {}, fresh: false } (بدون نوشتن)
+  function readDisputeSeen() {
+    try {
+      const raw = window.localStorage.getItem(disputeSeenKey());
+      if (raw === null || raw === undefined) return { map: {}, fresh: true };
+      const parsed = JSON.parse(raw);
+      return { map: parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}, fresh: false };
+    } catch (_) { return { map: {}, fresh: false }; }
+  }
+  function writeDisputeSeen(map) {
+    try { window.localStorage.setItem(disputeSeenKey(), JSON.stringify(map)); } catch (_) { /* حالت خصوصی/محدود */ }
+  }
+  function markDisputeSeen(d) {
+    if (!d || d.id == null) return;
+    const { map } = readDisputeSeen();
+    map[d.id] = disputeFingerprint(d);
+    writeDisputeSeen(map);
+  }
+
+  function disputeBadge(phase) {
+    const [label, cls] = DISPUTE_PHASES[phase] || DISPUTE_PHASES.open;
+    return dEl('span', `badge ${cls}`, label);
+  }
+
+  function disputeListItem(d, unread) {
+    const b = dEl('button', 'list-item dispute-item');
+    b.type = 'button';
+    const top = dEl('div', 'li-top');
+    top.appendChild(dEl('span', 'dsp-title', d.record_date ? `اعتراض به رکورد ${fmtDate(d.record_date)}` : 'اعتراض'));
+    const tags = dEl('span', 'dsp-tags');
+    if (unread) tags.appendChild(dEl('span', 'dsp-unread', 'پیام جدید'));
+    tags.appendChild(disputeBadge(d.phase));
+    top.appendChild(tags);
+    b.appendChild(top);
+    const preview = dEl('p', 'dsp-preview', d.message);
+    preview.setAttribute('dir', 'auto');
+    b.appendChild(preview);
+    const bottom = dEl('div', 'li-bottom');
+    bottom.appendChild(dEl('span', null, `${faNum(d.message_count)} پیام`));
+    bottom.appendChild(dEl('span', null, fmtDateTime(d.last_message_at)));
+    b.appendChild(bottom);
+    b.addEventListener('click', () => openDispute(d.id));
+    return b;
+  }
+
+  async function loadDisputeList() {
+    const list = $('#dispute-list');
+    if (!list) return;
+    const seq = ++disputeUi.listSeq;
+    renderLoading(list, 'list');
+    try {
+      const items = await api('/dispute');
+      if (seq !== disputeUi.listSeq) return; // پاسخ کهنه (درخواست تازه‌تری در راه است)
+      if (!Array.isArray(items) || !items.length) { renderEmpty(list, 'هنوز اعتراضی ثبت نکرده‌اید.'); return; }
+      const seen = readDisputeSeen();
+      if (seen.fresh) { // اولین بار روی این دستگاه: اعتراض‌های از قبل بسته‌شده «جدید» حساب نشوند
+        items.forEach((d) => { if (d.status !== 'open') seen.map[d.id] = disputeFingerprint(d); });
+        writeDisputeSeen(seen.map);
+      }
+      list.removeAttribute('aria-busy');
+      list.innerHTML = '';
+      items.forEach((d) => list.appendChild(disputeListItem(d, disputeIsUnread(d, seen.map))));
+    } catch (err) {
+      if (seq !== disputeUi.listSeq) return;
+      renderError(list, err, loadDisputeList, 'retry-dispute-list');
+    }
+  }
+
+  function openDispute(id) {
+    disputeUi.id = id; disputeUi.data = null; disputeUi.mode = 'idle'; disputeUi.draft = ''; disputeUi.msg = '';
+    switchView('dispute');
+  }
+
+  async function loadDisputeThread() {
+    const box = $('#dispute-thread');
+    const id = disputeUi.id;
+    if (!box || id == null) return;
+    const seq = ++disputeUi.threadSeq;
+    renderLoading(box, 'list');
+    try {
+      const data = await api('/dispute/' + encodeURIComponent(String(id)));
+      if (seq !== disputeUi.threadSeq) return;
+      disputeUi.data = data;
+      markDisputeSeen(data.dispute);
+      renderDisputeThread({ focus: 'title' });
+    } catch (err) {
+      if (seq !== disputeUi.threadSeq) return;
+      renderError(box, err, loadDisputeThread, 'retry-dispute-thread');
+    }
+  }
+
+  function disputeBubble(m) {
+    const wrap = dEl('div', `dsp-msg ${m.is_mine ? 'mine' : 'theirs'}`);
+    const who = m.is_mine ? ((state.me && state.me.fullName) || 'شما') : 'ادمین';
+    const meta = dEl('div', 'dsp-meta');
+    meta.appendChild(dEl('span', 'dsp-who', who));
+    meta.appendChild(dEl('span', 'dsp-time', fmtDateTime(m.created_at)));
+    wrap.appendChild(meta);
+    const text = dEl('div', 'dsp-text', m.message);
+    text.setAttribute('dir', 'auto');
+    wrap.appendChild(text);
+    return wrap;
+  }
+
+  // فیلد نوشتن با label، شمارنده‌ی نویسه و دکمه‌ی ارسال؛ پیش‌نویس در disputeUi.draft می‌ماند تا با خطا از دست نرود
+  function disputeComposer({ sendText, onSend, onCancel }) {
+    const wrap = dEl('div', 'dsp-composer form');
+    const label = dEl('label', null, 'پیام شما');
+    label.setAttribute('for', 'dispute-msg-input');
+    const ta = dEl('textarea');
+    ta.id = 'dispute-msg-input';
+    ta.rows = 3;
+    ta.maxLength = DISPUTE_MSG_MAX;
+    ta.value = disputeUi.draft;
+    ta.setAttribute('dir', 'auto');
+    ta.setAttribute('placeholder', 'پیام خود را بنویسید…');
+    const count = dEl('span', 'dsp-count', `${faNum(ta.value.length)} / ${faNum(DISPUTE_MSG_MAX)}`);
+    ta.addEventListener('input', () => { disputeUi.draft = ta.value; count.textContent = `${faNum(ta.value.length)} / ${faNum(DISPUTE_MSG_MAX)}`; });
+    label.appendChild(ta);
+    wrap.appendChild(label);
+    const row = dEl('div', 'dsp-actions');
+    row.appendChild(count);
+    if (onCancel) row.appendChild(dBtn('انصراف', 'btn ghost', onCancel));
+    const send = dBtn(sendText, 'btn primary', () => onSend(send, ta));
+    row.appendChild(send);
+    wrap.appendChild(row);
+    return { node: wrap, input: ta };
+  }
+
+  async function sendDisputeMessage(btn, ta) {
+    const d = disputeUi.data && disputeUi.data.dispute;
+    if (!d) return;
+    const reopening = disputeUi.mode === 'reopen';
+    disputeUi.draft = ta.value;
+    try {
+      const res = await withBusy(btn, () => api(`/dispute/${encodeURIComponent(String(d.id))}/${reopening ? 'reopen' : 'messages'}`, { method: 'POST', body: { message: ta.value } }));
+      disputeUi.data = { dispute: res.dispute, messages: res.messages };
+      disputeUi.draft = ''; disputeUi.msg = ''; disputeUi.mode = 'idle';
+      markDisputeSeen(res.dispute);
+      renderDisputeThread({ focus: reopening ? 'title' : 'composer' });
+      showToast(reopening ? 'اعتراض دوباره باز شد.' : 'پیام ارسال شد.');
+    } catch (err) { handleDisputeError(err); }
+  }
+
+  async function closeDisputeByUser(btn) {
+    const d = disputeUi.data && disputeUi.data.dispute;
+    if (!d) return;
+    try {
+      const res = await withBusy(btn, () => api(`/dispute/${encodeURIComponent(String(d.id))}/close`, { method: 'POST', body: {} }));
+      disputeUi.data = { dispute: res.dispute, messages: res.messages };
+      disputeUi.draft = ''; disputeUi.msg = ''; disputeUi.mode = 'idle';
+      markDisputeSeen(res.dispute);
+      renderDisputeThread({ focus: 'title' });
+      showToast('اعتراض خاتمه یافت.');
+    } catch (err) { handleDisputeError(err); }
+  }
+
+  async function handleDisputeError(err) {
+    disputeUi.msg = err.message;
+    const code = err.data && err.data.code;
+    if (err.status === 404) { showToast(err.message, true); switchView('profile'); return; }
+    if (DISPUTE_STALE_CODES.includes(code)) { // وضعیت عوض شده: thread تازه، پیام سرور می‌ماند، حالت به idle
+      disputeUi.mode = 'idle';
+      try {
+        const data = await api('/dispute/' + encodeURIComponent(String(disputeUi.id)));
+        disputeUi.data = data; markDisputeSeen(data.dispute);
+      } catch (_) { /* همان نمای قبلی با پیام خطا */ }
+    }
+    renderDisputeThread({ focus: 'msg' });
+  }
+
+  function disputeNote(text) { return dEl('p', 'plan-note dsp-note', text); }
+
+  function renderDisputeThread(opts) {
+    const o = opts || {};
+    const box = $('#dispute-thread');
+    const data = disputeUi.data;
+    if (!box || !data) return;
+    const d = data.dispute;
+    if (d.can_reply && disputeUi.mode === 'reopen') disputeUi.mode = 'idle'; // وضعیت سمت سرور عوض شده (مثلاً ادمین بازگشایی کرده)
+    if (!d.can_reply && disputeUi.mode === 'confirmClose') disputeUi.mode = 'idle';
+    box.removeAttribute('aria-busy');
+    box.innerHTML = '';
+
+    // سرآیند: رکورد، وضعیت، شمارنده‌ی ادامه
+    const head = dEl('div', 'card dsp-head');
+    const line = dEl('div', 'li-top');
+    line.appendChild(dEl('span', 'dsp-title', d.record_date ? `اعتراض به رکورد ${fmtDate(d.record_date)}` : 'اعتراض'));
+    line.appendChild(disputeBadge(d.phase));
+    head.appendChild(line);
+    if (d.max_reopens > 0) head.appendChild(dEl('div', 'plan-meta', `ادامه‌ی اعتراض: ${faNum(d.reopen_count)} از ${faNum(d.max_reopens)} بار`));
+    box.appendChild(head);
+
+    // پیام‌ها (حباب)
+    const log = dEl('div', 'dsp-messages');
+    log.setAttribute('role', 'log');
+    log.setAttribute('aria-live', 'polite');
+    log.setAttribute('aria-label', 'پیام‌های گفت‌وگو');
+    (data.messages || []).forEach((m) => log.appendChild(disputeBubble(m)));
+    box.appendChild(log);
+
+    // پیام خطا/وضعیت عملیات
+    const msg = dEl('div', `form-msg${disputeUi.msg ? ' err' : ''}`, disputeUi.msg || '');
+    msg.id = 'dispute-thread-msg';
+    msg.setAttribute('role', 'alert');
+    msg.tabIndex = -1;
+    box.appendChild(msg);
+
+    let composerInput = null;
+    if (d.can_reply) {
+      // باز: نوشتن + «مشکلم حل شد، خاتمه» (با تأیید)
+      const c = disputeComposer({ sendText: 'ارسال', onSend: sendDisputeMessage });
+      composerInput = c.input;
+      box.appendChild(c.node);
+      if (disputeUi.mode === 'confirmClose') {
+        const confirm = dEl('div', 'card dsp-confirm');
+        confirm.setAttribute('role', 'group');
+        confirm.setAttribute('aria-label', 'تأیید خاتمه‌ی اعتراض');
+        confirm.appendChild(dEl('p', null, 'با خاتمه دادن، این اعتراض بسته می‌شود.' + (d.max_reopens > 0 && d.reopen_count < d.max_reopens
+          ? ' اگر لازم شد، بعداً می‌توانید آن را ادامه دهید.' : ' بعد از خاتمه امکان ادامه‌ی این اعتراض نیست.')));
+        const row = dEl('div', 'dsp-actions');
+        row.appendChild(dBtn('انصراف', 'btn ghost', () => { disputeUi.mode = 'idle'; disputeUi.msg = ''; renderDisputeThread({ focus: 'composer' }); }));
+        const yes = dBtn('بله، خاتمه بده', 'btn danger', () => closeDisputeByUser(yes));
+        row.appendChild(yes);
+        confirm.appendChild(row);
+        box.appendChild(confirm);
+      } else if (d.can_close) {
+        box.appendChild(dBtn('مشکلم حل شد، خاتمه', 'btn secondary dsp-close', () => { disputeUi.mode = 'confirmClose'; disputeUi.msg = ''; renderDisputeThread({ focus: 'confirm' }); }));
+      }
+    } else {
+      // بسته: توضیح وضعیت + «ادامه‌ی اعتراض» (اگر سقف پر نشده)
+      box.appendChild(disputeNote(d.closed_by === 'user' ? 'شما این اعتراض را خاتمه داده‌اید.' : 'این اعتراض توسط ادمین بسته شده است.'));
+      if (d.can_reopen && disputeUi.mode === 'reopen') {
+        const c = disputeComposer({
+          sendText: 'ارسال و ادامه‌ی اعتراض',
+          onSend: sendDisputeMessage,
+          onCancel: () => { disputeUi.mode = 'idle'; disputeUi.msg = ''; disputeUi.draft = ''; renderDisputeThread({ focus: 'title' }); },
+        });
+        composerInput = c.input;
+        box.appendChild(c.node);
+      } else if (d.can_reopen) {
+        const left = d.max_reopens - d.reopen_count;
+        box.appendChild(dBtn('ادامه‌ی اعتراض', 'btn primary dsp-reopen', () => { disputeUi.mode = 'reopen'; disputeUi.msg = ''; renderDisputeThread({ focus: 'composer' }); }));
+        box.appendChild(dEl('div', 'plan-meta', `${faNum(left)} بار دیگر می‌توانید این اعتراض را ادامه دهید.`));
+      } else {
+        box.appendChild(disputeNote(d.max_reopens > 0 ? `سقف دفعات ادامه‌ی اعتراض (${faNum(d.max_reopens)} بار) پر شده است.` : 'ادامه‌ی اعتراضِ بسته‌شده فعال نیست.'));
+      }
+    }
+
+    // فوکوس و اسکرول
+    if (o.focus === 'composer' && composerInput) composerInput.focus();
+    else if (o.focus === 'msg' && disputeUi.msg) msg.focus();
+    else if (o.focus === 'confirm') { const y = box.querySelector && box.querySelector('.dsp-confirm .btn.danger'); if (y) y.focus(); }
+    else if (o.focus === 'title') { const t = $('#dispute-title'); if (t && typeof t.focus === 'function') t.focus(); }
+    const last = log.lastChild;
+    if (last && typeof last.scrollIntoView === 'function' && o.focus !== 'title') last.scrollIntoView({ block: 'end' });
+  }
+
+  const disputeBack = $('#dispute-back');
+  if (disputeBack && typeof disputeBack.addEventListener === 'function') disputeBack.addEventListener('click', () => switchView('profile'));
 
   // ---------- بوت‌استرپ ----------
 

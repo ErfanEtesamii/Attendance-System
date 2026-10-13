@@ -370,6 +370,7 @@ body {
 .btn.secondary { background: var(--green-soft); color: var(--green); }
 .btn.warning { background: var(--orange); color: #2a1a00; }
 .btn.danger { background: var(--red-solid); color: #fff; }
+.btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* ---------- لیست‌ها ---------- */
@@ -768,3 +769,37 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .rv-member { display: flex; flex-direction: column; gap: 8px; }
 .rv-items { font-size: 13px; }
 .rv-items summary { cursor: pointer; min-height: 32px; color: var(--hint); }
+
+/* اعتراض‌های من و گفت‌وگو (D5): فقط متغیرهای تم (روشن/تیره) و ویژگی‌های منطقی؛ وضعیت همیشه با متن هم گفته می‌شود نه فقط رنگ */
+.dispute-item { display: block; width: 100%; min-height: 44px; text-align: start; font: inherit; font-size: 13px; color: inherit; cursor: pointer; }
+.dispute-item:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.dispute-item .li-top { gap: 8px; }
+.dsp-title { min-width: 0; overflow-wrap: anywhere; }
+.dsp-tags { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.dsp-preview { margin: 6px 0 0; color: var(--hint); font-weight: 400; line-height: 1.8; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.dsp-unread { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--green); color: var(--on-accent); }
+.badge.dsp-open { background: rgba(245, 184, 61, 0.15); color: var(--yellow); }
+.badge.dsp-answered { background: var(--green-soft); color: var(--green); }
+.badge.dsp-resolved { background: var(--purple-soft); color: var(--purple-text); }
+.badge.dsp-closed { background: var(--ov-08); color: var(--hint); }
+.dispute-thread { display: flex; flex-direction: column; gap: 10px; }
+.dsp-head { display: flex; flex-direction: column; gap: 6px; }
+.dsp-head .li-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 700; }
+.dsp-messages { display: flex; flex-direction: column; gap: 8px; }
+/* در RTL شروع = راست: پیام خودِ کارمند سمت شروع، پیام ادمین سمت پایان */
+.dsp-msg { max-width: 88%; padding: 8px 12px; border-radius: 16px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.dsp-msg.mine { align-self: flex-start; background: var(--green-soft); border-start-start-radius: 4px; }
+.dsp-msg.theirs { align-self: flex-end; background: var(--card-bg-2); border-start-end-radius: 4px; }
+.dsp-meta { display: flex; justify-content: space-between; gap: 12px; font-size: 11px; color: var(--hint); }
+.dsp-who { font-weight: 700; color: var(--text); }
+.dsp-text { font-size: 14px; line-height: 1.9; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text); }
+.dsp-composer { display: flex; flex-direction: column; gap: 8px; }
+.dsp-composer textarea { width: 100%; resize: vertical; min-height: 88px; }
+.dsp-actions { display: flex; align-items: center; gap: 8px; }
+.dsp-actions .btn { width: auto; flex: 1 1 auto; }
+.dsp-count { font-size: 11px; color: var(--hint); flex: none; }
+.dsp-confirm { border: 1px solid var(--orange); line-height: 1.9; }
+.dsp-confirm p { margin: 0 0 8px; }
+.dsp-note { margin: 0; }
+.dsp-close, .dsp-reopen { margin-top: 0; }
+#dispute-thread-msg:empty { min-height: 0; }

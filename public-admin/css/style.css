@@ -925,3 +925,21 @@ button, a, summary, select, input, [role="button"], .clickable, th.sortable { to
 .notice.danger { background: var(--red-soft); color: var(--red); }
 .notice.ok { background: var(--green-soft); }
 .plain { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+
+/* گفت‌وگوی اعتراض (D6): متغیرهای تم و ویژگی‌های منطقی (RTL)؛ وضعیت همیشه با متن هم گفته می‌شود */
+.dsp-emp { color: inherit; }
+.dsp-rec { color: var(--green); }
+.dsp-sub { font-weight: 400; font-size: 12px; }
+.dsp-head { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.dsp-thread { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+/* در RTL شروع = راست: پیام کارمند سمت شروع، پاسخ ادمین/سرپرست سمت پایان */
+.dsp-msg { max-width: min(88%, 640px); padding: 10px 14px; border-radius: 16px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.dsp-msg.user { align-self: flex-start; background: var(--card-2); border-start-start-radius: 4px; }
+.dsp-msg.admin { align-self: flex-end; background: var(--green-soft); border-start-end-radius: 4px; }
+.dsp-meta { display: flex; justify-content: space-between; gap: 14px; font-size: 12px; color: var(--hint); }
+.dsp-meta b { color: var(--text); }
+.dsp-text { line-height: 1.9; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text); }
+.dsp-reply textarea { width: 100%; resize: vertical; min-height: 88px; }
+.dsp-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.dsp-counter { margin-inline-end: auto; font-size: 12px; }
+.dsp-note { margin: 0 0 8px; line-height: 1.9; }

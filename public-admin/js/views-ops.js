@@ -584,49 +584,150 @@
   });
 
   // ======================================================
-  // اعتراض‌ها
+  // اعتراض‌ها و گفت‌وگو (فاز ۱۱، D6)
+  // فهرست در #/disputes و thread کامل در #/disputes/<id> (همین view؛ روتر skeleton، خطا و «تلاش دوباره» را می‌دهد).
+  // قواعد (اسکوپ نقش، disputes.read/resolve، پاسخ فقط روی اعتراضِ باز، سقف ۵۰۰ نویسه) سمت سرور است؛
+  // UI فقط دکمه‌ها را بر اساس وضعیت و مجوز نشان می‌دهد و پیام خطای سرور را بی‌تغییر در توست می‌آورد.
   // ======================================================
-  const dispUi = { status: 'open' };
+  const dispUi = { status: 'open', stickBottom: false };
+  const DISP_MSG_MAX = 500; // همان سقف سرور (disputeService.MESSAGE_MAX)
+  // فیلتر وضعیت (مدل جدید) و کلید شمارنده‌ی هرکدام در GET /admin/disputes/counts
+  const DISP_FILTERS = [
+    ['open', 'باز', 'open'], ['awaiting_admin', 'منتظر پاسخ', 'awaitingAdmin'], ['answered', 'پاسخ داده‌شده', 'answered'],
+    ['resolved_by_admin', 'حل‌شده توسط ادمین', 'resolvedByAdmin'], ['closed_by_user', 'خاتمه توسط کارمند', 'closedByUser'], ['all', 'همه', 'total'],
+  ];
+  // phase سرور ⇒ [کلاس badge پنل، متن]؛ «منتظر پاسخ» = باز و آخرین پیام از کارمند
+  const DISP_PHASE = { open: ['pending', 'منتظر پاسخ'], answered: ['blue', 'پاسخ داده شد'], resolved: ['resolved', 'حل‌شده'], closed_by_user: ['holiday', 'خاتمه توسط کارمند'] };
+  const dispBadge = (d) => { const [cls, label] = DISP_PHASE[d.phase] || DISP_PHASE.open; return AP.badge(cls, label, true); };
+  const dispCountBadge = (d) => AP.badge('holiday', `${fmt.num(d.messageCount)} پیام`);
+
+  async function disputeResolve(id) {
+    const note = await AP.askReason({ title: 'بستن اعتراض', label: 'پیام پایانی به کارمند (اختیاری — در گفت‌وگو ثبت و در تلگرام ارسال می‌شود)', confirmText: 'بستن اعتراض', required: false });
+    if (note === null) return false;
+    const ok = await AP.attempt(() => AP.api(`/admin/disputes/${id}/resolve`, { method: 'POST', body: { note } }), 'اعتراض بسته شد.');
+    if (ok) { dispUi.stickBottom = true; AP.refresh(); AP.refreshCounts(); }
+    return !!ok;
+  }
+  async function disputeReopen(id) {
+    const note = await AP.askReason({ title: 'بازگشایی اعتراض', label: 'پیام به کارمند (اختیاری)', confirmText: 'بازگشایی', required: false });
+    if (note === null) return false;
+    const ok = await AP.attempt(() => AP.api(`/admin/disputes/${id}/reopen`, { method: 'POST', body: { note } }), 'اعتراض دوباره باز شد.');
+    if (ok) { dispUi.stickBottom = true; AP.refresh(); AP.refreshCounts(); }
+    return !!ok;
+  }
+
+  // ---------- thread کامل ----------
+  async function renderDisputeThread(param) {
+    if (!/^\d+$/.test(String(param))) throw new Error('شناسه‌ی اعتراض نامعتبر است.');
+    const t = await AP.api(`/admin/disputes/${param}`); // اسکوپ نقش/۴۰۴ را سرور تصمیم می‌گیرد؛ خطا ⇒ صفحه‌ی خطا با «تلاش دوباره»
+    const d = t.dispute;
+    const emp = t.employee;
+    const isOpen = d.status === 'open';
+    const canWrite = AP.can('disputes.resolve');
+    const empName = emp ? emp.fullName : '—';
+    const bubble = (m) => {
+      const who = m.sender ? m.sender.fullName : (m.senderRole === 'admin' ? 'ادمین' : empName);
+      return `<div class="dsp-msg ${m.senderRole === 'admin' ? 'admin' : 'user'}">
+        <div class="dsp-meta"><b>${esc(who)}</b><span>${esc(fmt.dateTime(m.createdAt))}</span></div>
+        <div class="dsp-text" dir="auto">${esc(m.message)}</div></div>`;
+    };
+    let footer;
+    if (!canWrite) {
+      footer = `<div class="card"><p class="muted dsp-note">فقط‌مشاهده: مجوز پاسخ‌دادن به اعتراض را ندارید.</p></div>`;
+    } else if (isOpen) {
+      footer = `<form class="card form dsp-reply" id="dsp-reply">
+        <label class="field"><span>پاسخ به کارمند</span><textarea name="message" rows="3" maxlength="${DISP_MSG_MAX}" dir="auto" required></textarea></label>
+        <div class="dsp-actions">
+          <span class="muted dsp-counter" id="dsp-counter">${esc(fmt.num(0))} / ${esc(fmt.num(DISP_MSG_MAX))}</span>
+          <button type="submit" class="btn primary">ارسال پاسخ</button>
+          <button type="button" class="btn success" data-resolve="${d.id}">${icon('check')} بستن و پیام پایانی</button>
+        </div></form>`;
+    } else {
+      footer = `<div class="card dsp-closed"><p class="muted dsp-note">این اعتراض ${d.closedBy === 'user' ? 'توسط کارمند خاتمه یافته' : 'بسته شده'} است. برای پاسخ‌دادن ابتدا آن را بازگشایی کنید.</p>
+        <button type="button" class="btn ghost" data-reopen="${d.id}">بازگشایی اعتراض</button></div>`;
+    }
+    const html = `
+      <div class="view-header"><div><h2>گفت‌وگوی اعتراض</h2><div class="sub">ثبت‌شده: ${esc(fmt.dateTime(d.createdAt))}</div></div>
+        <div class="row-actions"><button type="button" class="btn ghost" data-back>بازگشت به فهرست</button></div></div>
+      <div class="card dsp-head">
+        <div class="title">${AP.avatar(empName, 'purple')}
+          ${emp ? `<a href="#/profile/${emp.id}" class="dsp-emp">${esc(empName)}</a>` : esc(empName)}
+          ${dispBadge(d)} ${dispCountBadge(d)}
+          ${d.reopenCount ? `<span class="muted dsp-sub">ادامه: ${fmt.num(d.reopenCount)} بار</span>` : ''}</div>
+        ${t.record ? `<div class="meta">رکورد مرتبط: <a href="#" data-rec="${t.record.id}" class="dsp-rec">${esc(fmt.dateLong(t.record.date))}</a></div>` : ''}
+      </div>
+      <div class="dsp-thread" role="log" aria-live="polite" aria-label="پیام‌های گفت‌وگو">${t.messages.length ? t.messages.map(bubble).join('') : emptyBox('هنوز پیامی در این گفت‌وگو نیست.')}</div>
+      ${footer}`;
+    return {
+      html,
+      mount(page) {
+        $('[data-back]', page).addEventListener('click', () => AP.go('disputes'));
+        $$('[data-rec]', page).forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); AP.openRecord(a.dataset.rec); }));
+        $$('[data-resolve]', page).forEach((b) => b.addEventListener('click', () => disputeResolve(b.dataset.resolve)));
+        $$('[data-reopen]', page).forEach((b) => b.addEventListener('click', () => disputeReopen(b.dataset.reopen)));
+        const form = $('#dsp-reply', page);
+        if (form) {
+          const ta = $('textarea', form);
+          const counter = $('#dsp-counter', page);
+          ta.addEventListener('input', () => { counter.textContent = `${fmt.num(ta.value.length)} / ${fmt.num(DISP_MSG_MAX)}`; });
+          form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            // خطای سرور (طول، متن خالی، «بسته شده» …) در توست می‌آید و متن نوشته‌شده می‌ماند؛ فقط با موفقیت صفحه تازه می‌شود
+            const ok = await AP.attempt(() => AP.api(`/admin/disputes/${d.id}/messages`, { method: 'POST', body: { message: ta.value } }), 'پاسخ ارسال شد.', $('button[type=submit]', form));
+            if (ok) { dispUi.stickBottom = true; AP.refresh(); AP.refreshCounts(); }
+          });
+        }
+        if (dispUi.stickBottom) { // بعد از ارسال/بستن: آخرین پیام دیده شود (روتر بعد از رندر به بالا می‌پرد)
+          dispUi.stickBottom = false;
+          const last = $('.dsp-msg:last-child', page);
+          if (last && typeof last.scrollIntoView === 'function') last.scrollIntoView({ block: 'end' });
+        }
+      },
+    };
+  }
+
+  // فهرست (بدون param) همین‌جا رندر می‌شود؛ thread کامل (#/disputes/<id>) در renderDisputeThread
   AP.view('disputes', {
     skeleton: 'list', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'disputes.read',
     nav: { icon: 'disputes', label: 'اعتراض‌ها', group: 'درخواست‌ها', counter: true },
-    async render() {
-      const items = await AP.api(`/admin/disputes${dispUi.status === 'all' ? '' : `?status=${dispUi.status}`}`);
+    async render(param) {
+      if (param) return renderDisputeThread(param);
+      const [items, counts] = await Promise.all([
+        AP.api(`/admin/disputes${dispUi.status === 'all' ? '' : `?status=${encodeURIComponent(dispUi.status)}`}`),
+        AP.api('/admin/disputes/counts').catch(() => null), // شمارنده‌ها تزئینی‌اند؛ شکستشان فهرست را نمی‌اندازد
+      ]);
+      const canWrite = AP.can('disputes.resolve');
+      const chips = DISP_FILTERS.map(([k, label, ck]) => `<button class="chip ${k === dispUi.status ? 'active' : ''}" data-s="${k}">${esc(label)}${counts && counts[ck] != null ? ` <b>${fmt.num(counts[ck])}</b>` : ''}</button>`).join('');
+      const rows = items.map((d) => `
+        <div class="item">
+          ${AP.avatar(d.employee ? d.employee.fullName : '?', 'purple')}
+          <div class="grow">
+            <div class="title"><a href="#/profile/${d.employee ? d.employee.id : ''}" class="dsp-emp">${esc(d.employee ? d.employee.fullName : '—')}</a>
+              ${dispBadge(d)} ${dispCountBadge(d)}
+              ${d.reopenCount ? `<span class="muted dsp-sub">ادامه: ${fmt.num(d.reopenCount)} بار</span>` : ''}
+              <span class="muted dsp-sub">${esc(fmt.dateTime(d.lastMessageAt))}</span></div>
+            <p class="text" dir="auto">${esc(d.message)}</p>
+            ${d.record ? `<div class="meta">رکورد مرتبط: <a href="#" data-rec="${d.record.id}" class="dsp-rec">${esc(fmt.dateLong(d.record.date))}</a></div>` : ''}
+          </div>
+          <div class="row-actions">
+            <button class="btn primary small" data-open="${d.id}">گفت‌وگو</button>
+            ${!canWrite ? '' : d.status === 'open' ? `<button class="btn success small" data-resolve="${d.id}">${icon('check')} بستن و پاسخ</button>` : `<button class="btn ghost small" data-reopen="${d.id}">بازگشایی</button>`}
+            ${d.employee && AP.can('records.edit') ? `<button class="btn ghost small" data-new="${d.employee.id}">ثبت/اصلاح تردد</button>` : ''}
+          </div></div>`).join('');
       const html = `
         <div class="view-header"><div><h2>${AP.selfOnly() ? 'اعتراض‌های من' : 'اعتراض‌های کارمندان'}</h2><div class="sub">${fmt.num(items.length)} مورد</div></div></div>
-        <div class="chips" id="d-chips">${[['open', 'باز'], ['resolved', 'بسته‌شده'], ['all', 'همه']]
-          .map(([k, l]) => `<button class="chip ${k === dispUi.status ? 'active' : ''}" data-s="${k}">${l}</button>`).join('')}</div>
-        <div class="list">${items.length ? items.map((d) => `
-          <div class="item">
-            ${AP.avatar(d.employee ? d.employee.fullName : '?', 'purple')}
-            <div class="grow">
-              <div class="title"><a href="#/profile/${d.employee ? d.employee.id : ''}" style="color:inherit">${esc(d.employee ? d.employee.fullName : '—')}</a>
-                ${AP.badge(d.status, d.status === 'open' ? 'باز' : 'بسته‌شده')}
-                <span class="muted" style="font-weight:400;font-size:12px">${esc(fmt.dateTime(d.createdAt))}</span></div>
-              <p class="text">${esc(d.message)}</p>
-              ${d.record ? `<div class="meta">رکورد مرتبط: <a href="#" data-rec="${d.record.id}" style="color:var(--green)">${esc(fmt.dateLong(d.record.date))}</a></div>` : ''}
-            </div>
-            <div class="row-actions">
-              ${!AP.can('disputes.resolve') ? '' : d.status === 'open' ? `<button class="btn success small" data-resolve="${d.id}">${icon('check')} بستن و پاسخ</button>` : `<button class="btn ghost small" data-reopen="${d.id}">بازگشایی</button>`}
-              ${d.employee && AP.can('records.edit') ? `<button class="btn ghost small" data-new="${d.employee.id}">ثبت/اصلاح تردد</button>` : ''}
-            </div></div>`).join('') : `<div class="card">${emptyBox('اعتراضی وجود ندارد.')}</div>`}</div>`;
+        <div class="chips" id="d-chips">${chips}</div>
+        <div class="list">${items.length ? rows : `<div class="card">${emptyBox('اعتراضی وجود ندارد.')}</div>`}</div>`;
       return {
         html,
         mount(page) {
           $('#d-chips', page).addEventListener('click', (e) => { const c = e.target.closest('[data-s]'); if (c) { dispUi.status = c.dataset.s; AP.refresh(); } });
+          $$('[data-open]', page).forEach((b) => b.addEventListener('click', () => AP.go('disputes', b.dataset.open)));
           $$('[data-rec]', page).forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); AP.openRecord(a.dataset.rec); }));
           $$('[data-new]', page).forEach((b) => b.addEventListener('click', () => AP.openCreateRecord({ userId: b.dataset.new })));
-          $$('[data-resolve]', page).forEach((b) => b.addEventListener('click', async () => {
-            const note = await AP.askReason({ title: 'بستن اعتراض', label: 'پاسخ به کارمند (اختیاری — در تلگرام ارسال می‌شود)', confirmText: 'بستن اعتراض', required: false });
-            if (note === null) return;
-            const ok = await AP.attempt(() => AP.api(`/admin/disputes/${b.dataset.resolve}/resolve`, { method: 'POST', body: { note } }), 'اعتراض بسته شد.');
-            if (ok) { AP.refresh(); AP.refreshCounts(); }
-          }));
-          $$('[data-reopen]', page).forEach((b) => b.addEventListener('click', async () => {
-            const ok = await AP.attempt(() => AP.api(`/admin/disputes/${b.dataset.reopen}/reopen`, { method: 'POST', body: {} }), 'اعتراض دوباره باز شد.');
-            if (ok) { AP.refresh(); AP.refreshCounts(); }
-          }));
+          $$('[data-resolve]', page).forEach((b) => b.addEventListener('click', () => disputeResolve(b.dataset.resolve)));
+          $$('[data-reopen]', page).forEach((b) => b.addEventListener('click', () => disputeReopen(b.dataset.reopen)));
         },
       };
     },
