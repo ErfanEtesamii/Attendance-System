@@ -133,6 +133,54 @@ describe('جدول → کارت در موبایل', () => {
   });
 });
 
+describe('برنامه‌ی هفتگی: حالت‌ها و دسترسی‌پذیری (C3)', () => {
+  const app = read('public/js/app.js');
+  const css = read('public/css/style.css');
+  const planFn = (name) => { const i = app.indexOf(`function ${name}(`); return app.slice(i, app.indexOf('\n  }\n', i)); };
+
+  test('بارگذاری با skeleton «plan» و خطا با «تلاش دوباره» (retry-plan)', () => {
+    const body = app.slice(app.indexOf('async function openPlanWizard('), app.indexOf('function renderPlan()'));
+    assert.match(body, /renderLoading\(body, 'plan'\)/);
+    assert.match(body, /renderError\(body, err, \(\) => openPlanWizard\(planUi\.week\), 'retry-plan'\)/);
+  });
+
+  test('خطای ثبت role=alert؛ مرحله‌ی فعال aria-current؛ فوکوس عنوان با tabindex=-1 بعد از تغییر مرحله', () => {
+    const r = planFn('renderPlan');
+    assert.match(r, /role: planUi\.msg \? 'alert' : 'status'/);
+    assert.match(r, /setAttribute\('aria-current', 'step'\)/);
+    assert.match(r, /heading\.setAttribute\('tabindex', '-1'\)/);
+    assert.match(r, /const go = \(step\) => \{[^}]*planUi\.focusTop = true/);
+    assert.match(css, /\.view-title:focus \{ outline: none; \}/);
+  });
+
+  test('هر فیلد label دارد؛ فیلدهای متنی dir=auto؛ هر کارت section با aria-labelledby', () => {
+    const r = app.slice(app.indexOf('function renderPlan()'), app.indexOf('const planBack'));
+    assert.match(r, /class: 'day-task-title'[^)]*dir: 'auto'|dir: 'auto', class: 'day-task-title'/);
+    assert.match(r, /dir: 'auto', class: 'day-add-input'/);
+    assert.match(r, /dir: 'auto', rows: 2/);
+    for (const re of [/`عنوان تسک \$\{where\}`/, /`حذف تسک \$\{where\}`/, /`توضیح تسک \$\{where\}`/, /`روز تسک \$\{where\}`/, /`اولویت تسک \$\{where\}`/, /`تسک جدید برای \$\{titleText\}`/]) assert.match(r, re);
+    assert.equal((r.match(/setAttribute\('aria-labelledby'/g) || []).length, 1);
+    assert.match(app, /setAttribute\('aria-labelledby', 'plan-ro-' \+ seq\)/);
+  });
+
+  test('هدف لمسی ≥ ۴۴px: دکمه‌ی افزودن (btn)، حذف، چیپ، گزینه‌ی اولویت، summary، چک‌باکس انتقال', () => {
+    for (const re of [/\.plan-chip \{[^}]*min-height: 44px/, /\.day-task-del \{[^}]*min-height: 44px/, /\.prio-opt \{[^}]*min-height: 44px/, /\.day-task-more summary \{[^}]*min-height: 44px/, /\.plan-carry \{[^}]*min-height: 44px/]) assert.match(css, re);
+  });
+
+  test('RTL: در CSS تخته/کارت/اولویت ویژگی فیزیکی چپ/راست نیست', () => {
+    const from = css.indexOf('/* C1: کارت‌های روزانه');
+    const to = css.indexOf('/* بنر الزام برنامه‌ی هفتگی (D5) */');
+    const block = css.slice(from, to);
+    assert.ok(block.length > 2000);
+    assert.doesNotMatch(block, /(^|[\s;{])(left|right)\s*:|margin-(left|right)|padding-(left|right)|border-(left|right)|text-align:\s*(left|right)|float:/);
+  });
+
+  test('skeleton «plan» و گرید کارت‌ها با reduced-motion بی‌حرکت‌اند (shimmer عمومی)', () => {
+    assert.match(css, /\.sk-plan \{/);
+    assert.match(css, /prefers-reduced-motion: reduce\) \{ \.sk-line::after \{ animation: none; \}/);
+  });
+});
+
 describe('فایل قدیمی و مستندات', () => {
   test('public-admin/js/app.js حذف شده و هیچ‌جا ارجاع زنده ندارد', () => {
     assert.equal(fs.existsSync(path.join(root, 'public-admin', 'js', 'app.js')), false);
@@ -144,5 +192,10 @@ describe('فایل قدیمی و مستندات', () => {
     assert.match(doc, /Mini App/);
     assert.match(doc, /انجام نشده/);
     assert.doesNotMatch(doc, /فایل قدیمی است و در `index.html` بارگذاری نمی‌شود؛ حالت‌هایش بررسی نشد/);
+  });
+  test('docs/UI_STATES.md: برنامه‌ی هفتگی (C3) با بارگذاری/خطا/خالی/فقط‌خواندنی/دسترسی‌پذیری ثبت شده', () => {
+    const doc = read('docs/UI_STATES.md');
+    assert.match(doc, /برنامه‌ی هفتگی \(کارت‌های روزانه\)/);
+    for (const w of ['retry-plan', 'skeletonHtml(\'plan\')', 'فقط‌خواندنی', 'aria-current', 'dir="auto"', 'aria-labelledby', 'tabindex=-1']) assert.ok(doc.includes(w), w);
   });
 });

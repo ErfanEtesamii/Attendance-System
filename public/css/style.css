@@ -643,7 +643,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .plan-task .row { display: flex; gap: 6px; align-items: center; }
 .plan-task .row > * { flex: 1; min-width: 0; }
 .plan-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.plan-chip { border-radius: 14px; padding: 4px 10px; font-size: 12px; background: var(--card-bg); border: 1px solid var(--border); color: var(--text); cursor: pointer; }
+.plan-chip { display: inline-flex; align-items: center; min-height: 44px; border-radius: 22px; padding: 4px 14px; font-size: 13px; background: var(--card-bg); border: 1px solid var(--border); color: var(--text); cursor: pointer; }
 .plan-meta { font-size: 12px; color: var(--hint); }
 .plan-sys { font-size: 11px; color: var(--hint); }
 
@@ -692,7 +692,7 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .day-task-main { display: flex; gap: 6px; align-items: center; }
 .day-task-title { flex: 1; }
 .day-task-del { flex: none; min-height: 44px; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--plan-field-border); background: transparent; color: #a12b2b; font: inherit; font-size: 13px; cursor: pointer; }
-.day-task-more summary { font-size: 12px; color: var(--plan-hint); cursor: pointer; min-height: 32px; display: flex; align-items: center; }
+.day-task-more summary { font-size: 12px; color: var(--plan-hint); cursor: pointer; min-height: 44px; display: flex; align-items: center; }
 .day-task-more[open] { display: flex; flex-direction: column; gap: 6px; }
 .day-task-more .row { display: flex; gap: 6px; }
 .day-task-more .row > * { flex: 1; min-width: 0; }
@@ -726,6 +726,16 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .day-task-ro { gap: 2px; }
 .day-task-text { min-width: 0; overflow-wrap: anywhere; }
 .day-card-ro .plan-meta { color: var(--plan-hint); }
+
+/* C3: حالت‌های بارگذاری/خالی/خطا، لمس‌پسندی و فوکوس در سبک جدید */
+.sk-plan { display: grid; gap: 10px; }
+.sk-plan .day-card { min-height: 96px; }
+.sk-day .sk-line { background: var(--plan-line); }
+.plan-empty { padding: 12px; font-size: 13px; line-height: 1.9; }
+.plan-carry { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.plan-carry input { width: 22px; height: 22px; flex: none; margin: 0; }
+.view-title:focus { outline: none; }
+.plan-days > .day-card { scroll-margin-top: 12px; }
 
 /* بنر الزام برنامه‌ی هفتگی (D5) */
 .plan-gate-banner { border: 1px solid var(--orange, #f59e0b); display: flex; flex-direction: column; gap: 8px; line-height: 1.8; }

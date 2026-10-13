@@ -18,13 +18,14 @@ class Node_ {
   get innerHTML() { return ''; }
   addEventListener(t, fn) { (this.handlers[t] = this.handlers[t] || []).push(fn); }
   appendChild(c) { this.children.push(c); return c; }
-  setAttribute() {} removeAttribute() {} get isConnected() { return true; }
+  setAttribute(k, v) { this.attrs = this.attrs || {}; this.attrs[k] = v; } removeAttribute() {} get isConnected() { return true; }
+  focus() { Node_.focused = this; }
   querySelector() { return null; }
   fire(t, ev = {}) { return Promise.all((this.handlers[t] || []).map((fn) => fn({ preventDefault() {}, target: this, ...ev }))); }
 }
 const walk = (n, out = []) => { out.push(n); (n.children || []).forEach((c) => walk(c, out)); return out; };
 
-function makeEnv({ plan, search = '', startParam = '', fail = null } = {}) {
+function makeEnv({ plan, search = '', startParam = '', fail = null, states = false } = {}) {
   const els = new Map();
   const $ = (sel) => { if (!els.has(sel)) els.set(sel, new Node_(sel)); return els.get(sel); };
   const nav = Object.assign(new Node_('nav'), { dataset: { view: 'plan' } });
@@ -45,7 +46,7 @@ function makeEnv({ plan, search = '', startParam = '', fail = null } = {}) {
     }
     return { ok: true, status: 200, json: async () => data };
   };
-  const window = { location: { search }, Telegram: undefined };
+  const window = { location: { search }, Telegram: undefined, UiStates: states ? require('../public/js/states.js') : undefined };
   vm.runInNewContext(appSrc, { window, document, fetch: fetchStub, console, setTimeout, clearTimeout, setInterval, clearInterval, Date, Intl, JSON, Promise, encodeURIComponent, URLSearchParams });
   return { $, nav, calls, body: () => $('#plan-body') };
 }
@@ -402,5 +403,85 @@ describe('استایل اولویت (C2)', () => {
     assert.doesNotMatch(css2, /\.prio-opt input \{[^}]*display: none/);
     assert.match(css2, /\.prio-opt:focus-within/);
     assert.match(css2, /\.prio-badge\.prio-high::before \{ content: "▲"/);
+  });
+});
+
+describe('حالت‌ها، فوکوس و label (C3)', () => {
+  const field = (env, ph) => walk(env.body()).filter((n) => n.tag === 'input' && n.placeholder === ph);
+
+  test('بارگذاری: skeleton «plan» با aria-busy؛ بعد از رندر ویزارد دیگر skeleton نیست', async () => {
+    const env = makeEnv({ states: true });
+    const html = [];
+    Object.defineProperty(env.body(), 'innerHTML', { set(v) { html.push(v); this.children = []; this._text = ''; }, get() { return ''; } });
+    await open(env);
+    assert.ok(html.some((h) => /sk-plan/.test(h) && /aria-busy="true"/.test(h)));
+    assert.match(env.body().textContent, /هفته‌ی/);
+  });
+
+  test('بدون تسک: پیام راهنمای خالی با حداقل تسک؛ با اولین تسک ناپدید می‌شود', async () => {
+    const env = makeEnv({ plan: { minTasks: 3 } });
+    await open(env);
+    const hint = walk(env.body()).find((n) => /plan-empty/.test(n.className));
+    assert.ok(hint);
+    assert.match(hint.textContent, /حداقل 3 تسک لازم است/);
+    await addIn(env, 0, 'الف');
+    assert.equal(walk(env.body()).filter((n) => /plan-empty/.test(n.className)).length, 0);
+  });
+
+  test('هفته‌ی فقط‌خواندنی بدون تسک: پیام خالی؛ بدون کنترل', async () => {
+    const env = makeEnv({ plan: { editMode: 'readonly', lockReason: 'week_started', tasks: [] } });
+    await open(env);
+    assert.match(env.body().textContent, /تسکی در این برنامه ثبت نشده است/);
+    assert.equal(walk(env.body()).filter((n) => ['input', 'textarea', 'select', 'button'].includes(n.tag)).length, 0);
+  });
+
+  test('هر فیلد label یکتا دارد (شماره + روز) و فیلدهای متنی dir=auto؛ هر کارت aria-labelledby به عنوان خودش', async () => {
+    const env = makeEnv({ plan: { days: WEEK } });
+    await open(env);
+    await addIn(env, 1, 'الف');
+    await addIn(env, 1, 'ب');
+    const labels = walk(cards(env)[1]).filter((n) => n.attrs && n.attrs['aria-label']).map((n) => n.attrs['aria-label']);
+    assert.equal(new Set(labels).size, labels.length);
+    assert.ok(labels.some((l) => /^عنوان تسک 1 — /.test(l)) && labels.some((l) => /^عنوان تسک 2 — /.test(l)));
+    assert.ok(labels.some((l) => /^حذف تسک 2 — /.test(l)) && labels.some((l) => /^اولویت تسک 1 — /.test(l)));
+    assert.ok(walk(cards(env)[1]).filter((n) => n.tag === 'input' && n.type === 'text').every((n) => n.dir === 'auto'));
+    assert.ok(walk(cards(env)[1]).filter((n) => n.tag === 'textarea').every((n) => n.dir === 'auto'));
+    for (const c of cards(env)) {
+      const h = walk(c).find((n) => n.tag === 'h4');
+      assert.equal(c.attrs['aria-labelledby'], h.id);
+    }
+    assert.equal(new Set(cards(env).map((c) => c.attrs['aria-labelledby'])).size, cards(env).length);
+  });
+
+  test('فوکوس: بعد از افزودن و حذف به فیلد همان کارت؛ با تغییر مرحله و بعد از ثبت به عنوان صفحه', async () => {
+    const env = makeEnv({ plan: { days: WEEK } });
+    await open(env);
+    await addIn(env, 2, 'الف');
+    await flush();
+    assert.equal(Node_.focused, field(env, 'تسک جدید…')[2]);
+    await click(env, 'حذف');
+    await flush();
+    assert.equal(Node_.focused, field(env, 'تسک جدید…')[2]);
+    await addIn(env, 0, 'ب');
+    await click(env, 'مرور');
+    await flush();
+    assert.equal(Node_.focused, env.$('#plan-title'));
+    assert.equal(env.$('#plan-title').attrs.tabindex, '-1');
+    Node_.focused = null;
+    await click(env, 'ثبت برنامه');
+    await flush();
+    assert.equal(Node_.focused, env.$('#plan-title'));
+  });
+
+  test('خطا: پیام ثبت role=alert؛ مرحله‌ی فعال aria-current=step', async () => {
+    const env = makeEnv({ fail: 'خطای سرور.' });
+    await open(env);
+    const step = walk(env.body()).find((n) => n.attrs && n.attrs['aria-current'] === 'step');
+    assert.match(step.textContent, /تسک‌ها/);
+    await addIn(env, 0, 'کار');
+    await click(env, 'مرور');
+    await click(env, 'ثبت برنامه');
+    const alert = walk(env.body()).find((n) => n.role === 'alert');
+    assert.match(alert.textContent, /خطای سرور/);
   });
 });

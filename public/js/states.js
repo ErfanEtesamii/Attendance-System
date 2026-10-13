@@ -5,7 +5,7 @@
   const FALLBACK_ESC = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const bar = (cls) => `<span class="sk-line ${cls || ''}"></span>`;
 
-  // kind: 'page' (تیتر + کارت‌های آمار + جدول) | 'table' | 'cards' | 'list' | 'today' (نمای «امروز» Mini App: کارت وضعیت + دو دکمه + سه ردیف)
+  // kind: 'page' (تیتر + کارت‌های آمار + جدول) | 'table' | 'cards' | 'list' | 'plan' (تخته‌ی سبز با کارت‌های روزانه‌ی برنامه‌ی هفتگی) | 'today' (نمای «امروز» Mini App: کارت وضعیت + دو دکمه + سه ردیف)
   function skeletonHtml(kind, opts) {
     const o = opts || {};
     const rows = Math.max(1, Math.min(12, Number(o.rows) || 6));
@@ -21,6 +21,7 @@
           `<div class="sk-grid two"><div class="sk-card">${bar('w50')}${bar('w30')}</div><div class="sk-card">${bar('w50')}${bar('w30')}</div></div>` +
           `<div class="sk-box">${bar('w60')}${bar('w60')}${bar('w60')}</div>`;
         break;
+      case 'plan': body = `<div class="plan-board sk-plan">${Array.from({ length: 3 }, () => `<div class="day-card sk-day">${bar('w40 tall')}${bar('w100')}${bar('w60')}</div>`).join('')}</div>`; break;
       case 'list': body = Array.from({ length: Math.min(rows, 5) }, () => `<div class="sk-box">${bar('w60')}${bar('w40')}</div>`).join(''); break;
       default: body = `${bar('w25 tall')}<div class="sk-grid">${cards}</div><div class="sk-box">${tableRows}</div>`;
     }

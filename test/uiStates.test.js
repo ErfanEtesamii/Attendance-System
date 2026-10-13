@@ -13,7 +13,7 @@ const SAFE = (h) => { assert.doesNotMatch(h, /<[^>]*\s(on[a-z]+|style)\s*=|<scri
 
 describe('ماژول حالت‌ها', () => {
   test('skeleton: هر نوع، aria-busy، متن مخصوص خوانشگر، محدودکردن ردیف‌ها، بدون style/on*', () => {
-    for (const kind of ['page', 'table', 'cards', 'list', undefined]) {
+    for (const kind of ['page', 'table', 'cards', 'list', 'plan', undefined]) {
       const h = S.skeletonHtml(kind);
       SAFE(h);
       assert.match(h, /role="status" aria-busy="true"/);
@@ -23,6 +23,13 @@ describe('ماژول حالت‌ها', () => {
     assert.equal((S.skeletonHtml('table', { rows: 999 }).match(/class="sk-row"/g) || []).length, 12);
     assert.equal((S.skeletonHtml('table', { rows: 0 }).match(/class="sk-row"/g) || []).length, 6);
     assert.match(S.skeletonHtml('table', { label: '<b>x</b>' }), /&lt;b&gt;x&lt;\/b&gt;/);
+  });
+  test('skeleton «plan» (C3): تخته با ۳ کارت روزانه، متن مخصوص خوانشگر، بدون style/on*', () => {
+    const h = S.skeletonHtml('plan');
+    SAFE(h);
+    assert.match(h, /<div class="plan-board sk-plan">/);
+    assert.equal((h.match(/class="day-card sk-day"/g) || []).length, 3);
+    assert.match(h, /<span class="sr-only">در حال بارگذاری…<\/span>/);
   });
   test('خالی: پیام escape‌شده با آیکن اختیاری', () => {
     const h = S.emptyHtml('<i>چیزی نیست</i>', { icon: '<svg></svg>' });
