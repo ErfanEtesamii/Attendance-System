@@ -496,6 +496,8 @@ const disputeMessageLimiter = createRateLimiter({
   keyFn: miniAppRateLimitKey,
 });
 
+const lastDisputeMessage = (r) => r.messages[r.messages.length - 1]; // پیامی که همین الان ثبت شد (آخرین پیام thread)
+
 const sendDisputeError = (res, r) => res.status(disputeService.statusOf(r.code)).json({ error: r.error, code: r.code, ...(r.maxReopens !== undefined ? { maxReopens: r.maxReopens } : {}) });
 
 router.post('/miniapp/dispute', (req, res) => {
@@ -521,6 +523,7 @@ router.get('/miniapp/dispute/:id', (req, res) => {
 router.post('/miniapp/dispute/:id/messages', disputeMessageLimiter, (req, res) => {
   const r = disputeService.postMessage(req.miniAppUser, req.params.id, req.body || {}, { ip: req.ip });
   if (!r.ok) return sendDisputeError(res, r);
+  notificationEvents.disputeUserMessage(r.dispute, lastDisputeMessage(r)); // D4: اعلان به ادمین‌های مجاز
   return res.status(201).json(r);
 });
 
@@ -528,6 +531,7 @@ router.post('/miniapp/dispute/:id/messages', disputeMessageLimiter, (req, res) =
 router.post('/miniapp/dispute/:id/reopen', disputeMessageLimiter, (req, res) => {
   const r = disputeService.reopen(req.miniAppUser, req.params.id, req.body || {}, { ip: req.ip });
   if (!r.ok) return sendDisputeError(res, r);
+  notificationEvents.disputeUserMessage(r.dispute, lastDisputeMessage(r), { reopened: true }); // D4
   return res.json(r);
 });
 

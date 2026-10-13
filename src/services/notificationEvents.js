@@ -6,6 +6,8 @@
 //   leaveDecided(request, {note})    تأیید/رد درخواست              ⇒ خودِ کارمند (+ در تأیید: جانشین، اگر ثبت شده)
 //   disputeOpened(dispute)           اعتراض جدید به رکورد          ⇒ همان تأییدکننده‌ها
 //   disputeResolved(dispute, {note}) بسته‌شدن اعتراض               ⇒ خودِ کارمند
+//   disputeAdminMessage(dispute, message, {actor})  پیام تازه‌ی ادمین/سرپرست در گفت‌وگوی اعتراض (D4) ⇒ خودِ کارمند (پنل + تلگرام)
+//   disputeUserMessage(dispute, message, {reopened}) پیام تازه‌ی کارمند یا «ادامه‌ی اعتراض» (D4)       ⇒ همان تأییدکننده‌های disputeOpened (فقط پنل)
 //   systemAlert({...})               هشدار سیستم (watchdog)        ⇒ همه‌ی ادمین‌های فعال
 //   suspiciousCreated(event)         «نشانه»ی مورد مشکوک جدید      ⇒ ادمین‌ها + سرپرستی که «همه‌ی» کاربران مورد در تیم اویند (اسکوپ S2-5a)
 //   reportCommented({...})           کامنتِ سرپرست روی گزارش روزانه  ⇒ خودِ کارمند (D9؛ تنها رویدادی که تلگرام هم می‌فرستد، چون مسیر تلگرامِ جدا ندارد)
@@ -190,6 +192,56 @@ function disputeResolved(dispute, { note = null } = {}) {
   });
 }
 
+/**
+ * پیام تازه‌ی ادمین/سرپرست در گفت‌وگوی اعتراض (D4) ⇒ اعلان درون‌پنلی + تلگرام به خودِ کارمند (مثل reportCommented؛ مسیر تلگرامِ جدا ندارد).
+ * dedupeKey = شناسه‌ی پیام: ثبت مجدد همان پیام اعلان تکراری نمی‌سازد، هر پیام تازه اعلان تازه می‌دهد.
+ * بستن اعتراض اینجا نیست (disputeResolved + تلگرام مسیر خودش را دارد؛ پیام پایانی دوبار اعلام نمی‌شود).
+ * @param {{id: number, user_id: number}} dispute
+ * @param {{id: number, message: string}} message پیام ثبت‌شده
+ * @param {{actor?: {role?: string}}} [opts]
+ */
+function disputeAdminMessage(dispute, message, { actor = null } = {}) {
+  return guard('disputeAdminMessage', () => {
+    if (!dispute || !message || message.id == null) return [];
+    const who = actor && actor.role === 'admin' ? 'ادمین' : 'سرپرست';
+    return [
+      send('disputeAdminMessage', dispute.user_id, {
+        type: 'dispute_admin_message',
+        title: 'پاسخ تازه به اعتراض شما',
+        body: `پاسخ ${who}: ${sanitizeText(message.message || '', 300)}`,
+        link: '#/disputes',
+        data: { disputeId: dispute.id, messageId: message.id },
+        dedupeKey: `dispute_admin_message:${message.id}`,
+        telegram: true,
+      }),
+    ];
+  });
+}
+
+/**
+ * پیام تازه‌ی کارمند در اعتراض (یا «ادامه‌ی اعتراض»، reopened) (D4) ⇒ تأییدکننده‌ها (مدیر مستقیم‌ِ فعال؛ وگرنه ادمین‌های فعال) مثل disputeOpened؛ فقط پنل.
+ * @param {{id: number, user_id: number}} dispute
+ * @param {{id: number, message: string}} message پیام ثبت‌شده
+ * @param {{reopened?: boolean}} [opts]
+ */
+function disputeUserMessage(dispute, message, { reopened = false } = {}) {
+  return guard('disputeUserMessage', () => {
+    if (!dispute || !message || message.id == null) return [];
+    const employee = usersRepository.findById(dispute.user_id);
+    if (!employee) return [];
+    return handlersOf(employee).map((h) =>
+      send('disputeUserMessage', h.id, {
+        type: 'dispute_user_message',
+        title: reopened ? 'کارمند اعتراض را ادامه داد' : 'پیام تازه در اعتراض',
+        body: `${employee.full_name}: ${sanitizeText(message.message || '', 200)}`,
+        link: '#/disputes',
+        data: { disputeId: dispute.id, employeeId: employee.id, messageId: message.id, reopened: !!reopened },
+        dedupeKey: `dispute_user_message:${message.id}`,
+      })
+    );
+  });
+}
+
 /** firstSeenAt شروع «همین دوره‌ی» هشدار است؛ بازگشت/ادامه‌ی همان دوره اعلان دوباره نمی‌سازد. */
 function systemAlert({ key, title, detail = null, firstSeenAt }) {
   return guard('systemAlert', () =>
@@ -273,4 +325,4 @@ function reportCommented({ reviewer, subject, reportDate, comment, reaction = nu
   });
 }
 
-module.exports = { reportCommented, weeklyPlanChanged, leaveRequested, leaveStepAdvanced, leaveDecided, disputeOpened, disputeResolved, systemAlert, suspiciousCreated };
+module.exports = { reportCommented, weeklyPlanChanged, leaveRequested, leaveStepAdvanced, leaveDecided, disputeOpened, disputeResolved, disputeAdminMessage, disputeUserMessage, systemAlert, suspiciousCreated };
