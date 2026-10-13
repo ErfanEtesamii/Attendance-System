@@ -1,6 +1,6 @@
 # حالت‌های UI (S5-9c): وضعیت صفحه‌ها
 
-بارگذاری، خالی، خطا، توست و تأیید عملیات مخرب. ماژول مشترک: `public-admin/js/states.js` (`skeletonHtml`، `emptyHtml`، `errorHtml`).
+بارگذاری، خالی، خطا، توست و تأیید عملیات مخرب. تصمیم‌های فاز ۱۱ (قفل برنامه، اعتراض): [`PHASE11_DECISIONS.md`](PHASE11_DECISIONS.md). ماژول مشترک: `public-admin/js/states.js` (`skeletonHtml`، `emptyHtml`، `errorHtml`).
 منطق عمومی در روتر (`core.js`) برای **همه‌ی** صفحه‌های پنل اعمال می‌شود: skeleton هنگام بارگذاری (`aria-busy`)، و در خطا پیام + «تلاش دوباره».
 توست جایگزین `alert/confirm/prompt` است (هیچ‌کدام در کد نیست؛ تست می‌کند). عملیات مخرب (DELETE، ابطال نشست‌ها، بازنشانی تنظیم) با `AP.confirmBox`/`AP.askReason` تأیید می‌گیرند.
 

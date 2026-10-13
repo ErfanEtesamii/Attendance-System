@@ -59,9 +59,10 @@
 | ماموریت | `missionService.js`، `missionDecisionService.js`، `missionNowService.js`، `pendingMissionService.js`، اثر روی `engine/computeDay.js`، تأیید شبانه `bot/commands/missionApproval.js` |
 | برنامه‌ی هفتگی و گزارش روزانه | `weeklyPlanService.js`، `taskReportService.js`، `planGateService.js`، `content/encouragements.js`، repositoryهای `weeklyPlan`/`taskLog`/`reportReview`/`planGate` |
 | گزارش تیم | `teamReviewService.js`، `teamReportsService.js`، `nightlyTaskReportService.js`، `taskExportService.js`، Job صبحگاهی `bot/scheduler/morningDigest.js` |
+| گفت‌وگوی اعتراض (فاز ۱۱) | `disputeService.js` (قواعد کارمند و ادمین، `phase` مشتق)، `disputeRepository.js` (`dispute_messages`، `closed_by`)، اعلان‌ها در `notificationEvents.js`، بستن ماه در `monthCloseService.js` |
 | بات دکمه‌ای | `bot/menu/menuRouter.js` (منوی نقش‌محور، تطبیق متن دقیق)، `bot/ui/pickers.js` + `pickerRouter.js` (تقویم شمسی/ساعت/کارمند) |
 
-اصول: گیت‌های خروج (`weekly_plan_required`، `daily_report_required`) **سمت سرور** و idempotent هستند و پیش‌فرض خاموش‌اند؛ ریست فقط با تأیید دوگانه + re-auth و قفل Go-Live؛ جدول‌های جدید حتماً در رجیستری ریست (`resetRepository.js`) ثبت شوند.
+اصول: گیت‌های خروج (`weekly_plan_required`، `daily_report_required`) **سمت سرور** و idempotent هستند و پیش‌فرض خاموش‌اند؛ برنامه‌ی هفته‌ی شروع‌شده فقط‌خواندنی است (`PLAN_LOCKED`)؛ تسک low مانع خروج نیست؛ ریست فقط با تأیید دوگانه + re-auth و قفل Go-Live؛ جدول‌های جدید حتماً در رجیستری ریست (`resetRepository.js`) ثبت شوند.
 
 ## تصمیمات ثابت (بدون دلیل قوی تغییر نکنند)
 

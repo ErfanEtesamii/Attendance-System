@@ -6,6 +6,7 @@
 - وضعیت فازها و کارهای باقی‌مانده: [`PROJECT_STATUS.md`](PROJECT_STATUS.md)
 - تاریخچه‌ی تغییرات: [`CHANGELOG.md`](CHANGELOG.md)
 - فاز ۱۰ (استراحت، ریست برنامه، ماموریت، برنامه‌ی هفتگی/گزارش روزانه، بات دکمه‌ای): تصمیم‌ها [`docs/PHASE10_DECISIONS.md`](docs/PHASE10_DECISIONS.md) و استقرار/تست دستی [`docs/PHASE10_DEPLOY.md`](docs/PHASE10_DEPLOY.md)
+- فاز ۱۱ (گیت خروج بر اساس اولویت، قفل برنامه‌ی هفتگی با شروع هفته، UI کارت‌های روزانه، گفت‌وگوی دوطرفه روی اعتراض): تصمیم‌ها [`docs/PHASE11_DECISIONS.md`](docs/PHASE11_DECISIONS.md) و استقرار/تست دستی [`docs/PHASE11_DEPLOY.md`](docs/PHASE11_DEPLOY.md)
 
 ## فناوری‌ها
 
@@ -91,7 +92,7 @@ public-admin/              پنل مدیریتی وب (بدون build)، زیر 
 scripts/                   install-service.ps1 (NSSM)، setup-ssl-renewal.ps1، run-tests.js، smoke-test.js،
                            package-release.js (zip بدون راز)، secret-scan.js، lib/ (zip، اسکنر، قوانین release)
 test/                      تست‌های خودکار (node:test)
-docs/                      ARCHITECTURE.md، PHASE10_DECISIONS.md، PHASE10_DEPLOY.md، SECURITY.md (هدرها/CSP/کوکی/CSRF/ابطال نشست)، SECRETS.md (مدیریت رازها)
+docs/                      ARCHITECTURE.md، PHASE10_DECISIONS.md، PHASE10_DEPLOY.md، PHASE11_DECISIONS.md، PHASE11_DEPLOY.md، UI_STATES.md، SECURITY.md (هدرها/CSP/کوکی/CSRF/ابطال نشست)، SECRETS.md (مدیریت رازها)
 ```
 
 ## نقش‌ها
@@ -124,10 +125,11 @@ docs/                      ARCHITECTURE.md، PHASE10_DECISIONS.md، PHASE10_DEPL
 | `GET /health` | سلامت سرویس (عمومی): فقط `status` (`ok`/`degraded`) و `time` |
 | `GET /miniapp/me`، `/today`، `/history`، `/report` | داده‌ی کارمند (پشت `telegramAuth`) |
 | `POST /miniapp/check-in`، `/check-out`، `/break/start`، `/break/end` | ثبت تردد (+ شبکه + rate limit) |
-| `GET/POST /miniapp/leave`، `GET/POST /miniapp/dispute` | مرخصی/مأموریت و اعتراض |
+| `GET/POST /miniapp/leave` | مرخصی/مأموریت |
+| `GET/POST /miniapp/dispute`، `GET /miniapp/dispute/:id`، `POST /miniapp/dispute/:id/(messages\|reopen\|close)` | اعتراض کارمند و گفت‌وگو روی آن (پیام، ادامه تا سقف `disputeMaxReopens`، خاتمه) |
 | `POST /miniapp/mission`، `/mission/now`، `/mission/now/end`، `/missions/:id/cancel`؛ `GET /miniapp/missions`، `/mission/day` | ماموریت (ثبت، «همین حالا»، لغو، فهرست) |
-| `GET/PUT /miniapp/plan`، `POST /miniapp/plan/submit`، `GET /miniapp/plan-gate` | برنامه‌ی هفتگی و وضعیت گیت خروج |
-| `GET /miniapp/daily-tasks`، `POST /miniapp/daily-report`، `GET /miniapp/report-backfill` | گزارش روزانه‌ی تسک‌ها |
+| `GET/PUT /miniapp/plan`، `POST /miniapp/plan/submit`، `GET /miniapp/plan-gate` | برنامه‌ی هفتگی و وضعیت گیت خروج (هفته‌ی شروع‌شده ⇒ `editMode=readonly`، نوشتن ⇒ ۴۰۹ `PLAN_LOCKED`) |
+| `GET /miniapp/daily-tasks`، `POST /miniapp/daily-report`، `GET /miniapp/report-backfill` | گزارش روزانه‌ی تسک‌ها (تسک low اختیاری است: `optional:true`، مانع خروج نیست) |
 | `GET /miniapp/team-review`، `POST /miniapp/report-reviews` | مشاهده‌ی گزارش تیم (سرپرست) |
 | `POST /admin/auth/webapp`، `/token`، `/code`، `/telegram`، `/logout`؛ `GET /admin/public-config` | ورود/خروج پنل |
 | `GET /admin/me`، `/dashboard`، `/overview`، `/live`، `/nightly-review` | نمای کلی |
@@ -135,7 +137,7 @@ docs/                      ARCHITECTURE.md، PHASE10_DECISIONS.md، PHASE10_DEPL
 | `GET /admin/attendance`، `/attendance/export`؛ `GET/POST/PATCH/DELETE /admin/attendance-records…`؛ `POST /admin/attendance-records/:id/breaks`؛ `PATCH/DELETE /admin/break-records/:id` | رکوردهای تردد و استراحت |
 | `GET/POST/PATCH/DELETE /admin/leave-requests…` | مرخصی/مأموریت |
 | `GET /admin/leave-queue`، `POST /admin/leave-queue/bulk` | صف تأیید (فیلتر، مانده، تأیید/رد دسته‌جمعی) |
-| `GET /admin/disputes`، `POST /admin/disputes/:id/(resolve\|reopen)` | اعتراض‌ها |
+| `GET /admin/disputes`، `/disputes/counts`، `/disputes/:id`؛ `POST /admin/disputes/:id/messages`، `/disputes/:id/(resolve\|reopen)` | اعتراض‌ها و thread گفت‌وگو (پاسخ/حل/بازکردن با `disputes.resolve`) |
 | `GET /admin/reports/summary`، `/reports/export` | گزارش (CSV) |
 | `GET/POST/DELETE /admin/holidays`، `GET/PATCH /admin/settings` | تعطیلات و تنظیمات |
 | `GET /admin/audit-log`، `/audit-log/export`، `/audit-actions` | Audit Log (فقط ادمین) |
@@ -159,6 +161,8 @@ Jobهای `node-cron` (`src/bot/scheduler/`): یادآور تأخیر و خرو�
 4. در BotFather: `/setdomain` برای دامنه‌ی پنل (لازم برای Login Widget).
 5. هر ارتقا: `nssm stop` ← جایگزینی کد ← `npm install` ← `npm run migrate` ← `nssm start`.
 
+ارتقا به فاز ۱۱ (فقط migration ۰۲۷، افزایشی؛ بدون متغیر `.env` جدید؛ تنظیم تازه‌ی `disputeMaxReopens`): دستورها و چک‌لیست تست دستی در [`docs/PHASE11_DEPLOY.md`](docs/PHASE11_DEPLOY.md).
+
 ارتقا به فاز ۱۰ (migration ۰۲۳ تا ۰۲۶، فقط افزایشی): دستورها و چک‌لیست تست دستی در [`docs/PHASE10_DEPLOY.md`](docs/PHASE10_DEPLOY.md). گیت‌های برنامه‌ی هفتگی و گزارش روزانه و قفل Go-Live پیش‌فرض **خاموش**اند؛ فعال‌سازی تدریجی توصیه می‌شود. متغیرهای جدید `.env`: `CRON_MORNING_DIGEST`، `ALLOW_DATA_RESET`.
 
 > اسکریپت‌های PowerShell روی ویندوز واقعی با دسترسی Administrator باید یک‌بار امتحان شوند.
@@ -173,4 +177,4 @@ npm run secret-scan  # جست‌وجوی توکن/کلید/راز در پروژ�
 npm run package      # zip تحویل بدون .env/.ssl/data/node_modules/.git → dist/
 ```
 
-تست‌ها hermetic هستند: دیتابیس موقت، توکن و راز ساختگی، و `.env` واقعی خوانده نمی‌شود. پوشش فعلی: migration، `initData` و Login Widget، سشن، `networkRestriction`، ماتریس دسترسی نقش × route، ساختار ترتیب routeها، و (بخش ۲-الف) هدرها/CSP، کوکی، CSRF و ابطال نشست، و (بخش ۲-ب۱) کنترل رازهای راه‌اندازی، اسکنر رازها و بسته‌ساز release، و (بخش ۲-ج۱) ثبت اجرای Jobها، نبض polling، سلامت سیستم، watchdog با بات ماک‌شده و `/api/health` + `/api/admin/system/status`. تست‌های موتور محاسبه با بخش ۳ می‌آید. فاز ۱۰: استراحت، ریست برنامه (rollback، قفل Go-Live، rate limit)، ماموریت (اعتبارسنجی، اثر روی ساعت کاری، تأیید شبانه، ورود با ماموریت pending)، برنامه‌ی هفتگی و گیت‌های خروج، گزارش روزانه/تشویقی، گزارش تیم، منوی نقش‌محور بات و انتخابگرهای دکمه‌ای.
+تست‌ها hermetic هستند: دیتابیس موقت، توکن و راز ساختگی، و `.env` واقعی خوانده نمی‌شود. پوشش فعلی: migration، `initData` و Login Widget، سشن، `networkRestriction`، ماتریس دسترسی نقش × route، ساختار ترتیب routeها، و (بخش ۲-الف) هدرها/CSP، کوکی، CSRF و ابطال نشست، و (بخش ۲-ب۱) کنترل رازهای راه‌اندازی، اسکنر رازها و بسته‌ساز release، و (بخش ۲-ج۱) ثبت اجرای Jobها، نبض polling، سلامت سیستم، watchdog با بات ماک‌شده و `/api/health` + `/api/admin/system/status`. تست‌های موتور محاسبه با بخش ۳ می‌آید. فاز ۱۰: استراحت، ریست برنامه (rollback، قفل Go-Live، rate limit)، ماموریت (اعتبارسنجی، اثر روی ساعت کاری، تأیید شبانه، ورود با ماموریت pending)، برنامه‌ی هفتگی و گیت‌های خروج، گزارش روزانه/تشویقی، گزارش تیم، منوی نقش‌محور بات و انتخابگرهای دکمه‌ای. فاز ۱۱: گیت خروج بر اساس اولویت، قفل برنامه‌ی هفتگی (`PLAN_LOCKED`)، UI برنامه‌ی هفتگی، گفت‌وگوی اعتراض (migration ۰۲۷، API کارمند/ادمین، اعلان‌ها، بستن ماه، UI) و سناریوی یکپارچه‌ی اعتراض.

@@ -4,6 +4,17 @@
 
 ## [Unreleased] — بخش ۴ (ممیزی)
 
+### فاز ۱۱ — E1: مستندسازی و استقرار
+- **مستندات جدید:** [`docs/PHASE11_DECISIONS.md`](docs/PHASE11_DECISIONS.md) (رفتار تسک low در گزارش‌ها، مدل وضعیت اعتراض، سقف reopen، قفل برنامه، فرض‌ها و ریسک‌های باز) و [`docs/PHASE11_DEPLOY.md`](docs/PHASE11_DEPLOY.md) (دستورهای استقرار PowerShell با `deploy\nssm.exe`، چک‌لیست تست دستی، rollback).
+- **به‌روزرسانی:** `README.md` (routeهای اعتراض و برنامه، استقرار، پوشش تست)، `PROJECT_STATUS.md`، `docs/ARCHITECTURE.md`، `docs/UI_STATES.md` (مرجع تصمیم‌ها).
+- **migration:** آخرین migration `027_dispute_messages`؛ فاز ۱۱ فقط همین یکی را دارد (افزایشی). `.env` تغییری ندارد؛ تنظیم جدید `disputeMaxReopens` (پیش‌فرض ۳).
+
+### فاز ۱۱ — خلاصه‌ی مراحل A تا D
+- **A1/A2 — گیت خروج بر اساس اولویت:** high/normal الزامی‌اند، low اختیاری (`optional:true`، `optionalTasks` در ۴۰۹)؛ پیام ۴۰۹ عنوان تسک‌های مانع و کار لازم را می‌گوید؛ backfill و گزارش شبانه تسک low پاسخ‌نشده را معطل نمی‌شمارند؛ ویزارد بخش «اختیاری» جدا دارد.
+- **B1 — قفل برنامه:** از روز شروع هفته برنامه‌ی همان هفته `readonly` است؛ `saveDraft`/`submit` ⇒ ۴۰۹ `PLAN_LOCKED`؛ `getPlan` فیلدهای `editMode` و `lockReason` دارد؛ حالت `restricted` و `EDIT_RESTRICTED` حذف شد.
+- **C1–C3 — UI برنامه‌ی هفتگی:** کارت روزانه (روز کاری/نیم‌روز)، پالت سبز–کرم، انتخاب اولویت با توضیح و نشان رنگی، نمای فقط‌خواندنی، مدیریت `PLAN_LOCKED`، حالت‌های لودینگ/خالی/خطا و دسترس‌پذیری.
+- **D1–D7 — گفت‌وگوی اعتراض:** migration ۰۲۷ (جدول `dispute_messages`، ستون‌های `closed_by`/`closed_at`/`reopen_count`/`last_message_at`)؛ API کارمند (فهرست، thread، پیام، ادامه، خاتمه؛ rate limit ۱۰ در دقیقه) و ادمین (thread، پاسخ، resolve/reopen، شمارنده‌ها)؛ اعلان پیام ادمین (پنل + تلگرام) و پیام کارمند (پنل)؛ فقط اعتراض باز مانع بستن ماه است؛ UI «اعتراض‌های من» و thread پنل؛ تست یکپارچه‌ی سناریوی کامل.
+
 ### فاز ۱۰ — F1: مستندسازی و استقرار
 - **مستندات جدید:** [`docs/PHASE10_DECISIONS.md`](docs/PHASE10_DECISIONS.md) (تصمیم‌ها و فرض‌های مراحل A تا E) و [`docs/PHASE10_DEPLOY.md`](docs/PHASE10_DEPLOY.md) (دستورهای استقرار PowerShell، تنظیمات جدید، چک‌لیست تست دستی سناریوی کامل، فعال‌سازی تدریجی، rollback).
 - **به‌روزرسانی:** `README.md` (routeهای فاز ۱۰، استقرار، ساختار پوشه‌ها، پوشش تست)، `docs/ARCHITECTURE.md` (ماژول‌های فاز ۱۰ و تصمیم‌های ثابت جدید)، `PROJECT_STATUS.md` (وضعیت فاز ۱۰ و کارهای باقی‌مانده).
