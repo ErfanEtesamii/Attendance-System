@@ -48,6 +48,7 @@ const PERMISSIONS = Object.freeze([
   'analytics.read', // S5-6a: روند/مقایسه‌ی تأخیر و تحلیل‌ها؛ admin/hr همه، سرپرست فقط تیم خودش (اسکوپ در route)، کارمند ممنوع
   'plans.exempt', // D5: معافیت یک‌باره از گیت خروجِ برنامه‌ی هفتگی (admin همه، سرپرست فقط تیم خودش؛ اسکوپ در route)
   'reviews.read', // D9: وضعیت «مشاهده‌ی گزارش» اعضای تیم (admin و سرپرست؛ اسکوپ تیم در سرویس؛ کارمند/hr ممنوع تا D10)
+  'taskreports.read', // D10: صفحه‌ی «گزارش‌های تیم» — کارمند فقط خودش، سرپرست تیم، admin/hr همه (hr فقط‌خواندنی؛ اسکوپ در teamReportsService)
   'reviews.write', // D9: ثبت «مشاهده شد» + کامنت/واکنش روی گزارش عضو تیم (admin و سرپرست؛ اسکوپ تیم در سرویس)
 ]);
 
@@ -62,6 +63,7 @@ const EMPLOYEE_PERMISSIONS = [
   'notifications.read',
   'notifications.mark',
   'leave.balance.read',
+  'taskreports.read', // D10: اسکوپ نقش در teamReportsService
 ];
 
 // سرپرست: همه‌ی مجوزهای کارمند + عملیات مدیریتی روی تیم خودش (اسکوپ در route).

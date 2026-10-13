@@ -221,6 +221,7 @@ defCron('dailyReport', 'cronDailyReport', 'cron_daily_report', () => config.cron
 defCron('weeklyReport', 'cronWeeklyReport', 'cron_weekly_report', () => config.cron.weeklyReport, '0 8 * * 6', 'گزارش هفتگی');
 defCron('monthlyReport', 'cronMonthlyReport', 'cron_monthly_report', () => config.cron.monthlyReport, '0 8 * * *', 'بررسی گزارش ماهانه‌ی شمسی (فقط روز اول ماه شمسی می‌فرستد؛ هر روز اجرا شود)');
 defCron('nightlyReview', 'cronNightlyReview', 'cron_nightly_review', () => config.cron.nightlyReview, '0 20 * * *', 'مرور شبانه‌ی سرپرستان');
+defCron('morningDigest', 'cronMorningDigest', 'cron_morning_digest', () => config.cron.morningDigest, '0 8 * * *', 'خلاصه‌ی صبحگاهی گزارش تسک‌ها برای سرپرستان (فقط روز کاری)');
 defCron('autoCloseIncomplete', 'cronAutoCloseIncomplete', 'cron_auto_close_incomplete', () => config.cron.autoCloseIncomplete, '59 23 * * *', 'بستن رکوردهای بدون خروج');
 defCron('markNonWorkingDays', 'cronMarkNonWorkingDays', 'cron_mark_non_working_days', () => config.cron.markNonWorkingDays, '5 0 * * *', 'علامت‌گذاری تعطیل/مرخصی');
 defCron('dailyBackup', 'cronDailyBackup', 'cron_daily_backup', () => config.cron.dailyBackup, '30 2 * * *', 'بک‌آپ روزانه');

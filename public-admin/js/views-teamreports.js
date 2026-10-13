@@ -1,0 +1,129 @@
+// صفحه‌ی «گزارش‌های تیم» (D10): برنامه‌ی هفتگی · گزارش روزانه · معطل‌مانده‌ها · بررسی‌نشده‌ها.
+// اسکوپ نقش را سرور اعمال می‌کند (کارمند خودش، سرپرست تیم، hr/admin همه؛ hr فقط‌خواندنی)؛ دکمه‌های «مشاهده شد»/کامنت فقط با مجوز reviews.write دیده می‌شوند.
+(function () {
+  'use strict';
+  const AP = window.AP;
+  const { $, $$, esc, fmt } = AP;
+
+  const TABS = [['daily', 'گزارش روزانه'], ['plan', 'برنامه‌ی هفتگی'], ['stuck', 'معطل‌مانده‌ها'], ['unreviewed', 'بررسی‌نشده‌ها']];
+  const REASONS = { no_time: 'وقت نشد', needs_more_time: 'زمان بیشتری لازم دارد', blocked_by_others: 'منتظر دیگران', priority_changed: 'اولویت عوض شد', technical_issue: 'مشکل فنی', other: 'سایر' };
+  const STATUS = { reviewed: ['approved', 'مشاهده شد'], unreviewed: ['pending', 'مشاهده‌نشده'], no_report: ['rejected', 'گزارش نداده'], off: ['normal', 'تعطیل/مرخصی'] };
+  const TASK_STATUS = { done: 'انجام شد', partial: 'ناقص', not_done: 'انجام نشد' };
+  const PLAN_STATUS = { submitted: ['approved', 'ثبت‌شده'], draft: ['pending', 'پیش‌نویس'], none: ['rejected', 'ثبت نشده'] };
+
+  const ui = { tab: 'daily', date: '', weekStart: '', userId: '', empty: (m) => esc(m) };
+
+  const pct = (s) => (s && s.percent != null ? `${fmt.num(s.percent)}٪` : '—');
+
+  function dailyRows(r, canWrite) {
+    if (!r.members.length) return '<tr><td colspan="6" class="muted">موردی برای نمایش نیست.</td></tr>';
+    return r.members.map((m) => {
+      const [cls, label] = STATUS[m.status] || ['normal', m.status];
+      const s = m.summary;
+      const notDone = (m.notDone || []).map((t) => `<li>${esc(t.title)} — <span class="muted">${esc(TASK_STATUS[t.status] || t.status)}${t.reasonCode ? ` · ${esc(REASONS[t.reasonCode] || t.reasonCode)}` : ''}${t.reasonText ? `: ${esc(t.reasonText)}` : ''}</span></li>`).join('');
+      const extras = (m.extras || []).length ? `<div class="muted">➕ خارج از برنامه: ${m.extras.map(esc).join('، ')}</div>` : '';
+      const act = canWrite && m.hasReport
+        ? `<button type="button" class="btn ghost small" data-act="seen" data-uid="${m.userId}">${m.status === 'reviewed' ? 'ویرایش کامنت' : 'مشاهده شد'}</button>`
+        : '';
+      const comment = m.comment ? `<div class="muted">💬 ${esc(m.comment)}</div>` : '';
+      return `<tr><td>${esc(m.fullName)}<div class="muted">${esc(m.department || '')}</div></td><td>${AP.badge(cls, label, true)}</td>
+        <td>${s ? `${fmt.num(s.done)} از ${fmt.num(s.total)} (${pct(s)})` : '—'}</td>
+        <td>${notDone ? `<ul class="plain">${notDone}</ul>` : '—'}${extras}</td><td>${comment || '—'}</td><td>${act}</td></tr>`;
+    }).join('');
+  }
+
+  function table(head, body) {
+    return `<div class="card flush"><div class="table-wrap"><table><thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div></div>`;
+  }
+
+  function renderResult(r) {
+    const canWrite = !r.readOnly && AP.can('reviews.write');
+    if (r.tab === 'plan') {
+      const body = r.members.map((m) => {
+        const [cls, label] = PLAN_STATUS[m.status] || PLAN_STATUS.none;
+        const tasks = m.tasks.length ? `<ul class="plain">${m.tasks.map((t) => `<li>${esc(t.title)}${t.plannedDate ? ` <span class="muted">(${esc(fmt.date(t.plannedDate))})</span>` : ''}</li>`).join('')}</ul>` : '—';
+        return `<tr><td>${esc(m.fullName)}</td><td>${AP.badge(cls, label, true)}</td><td>${tasks}</td></tr>`;
+      }).join('') || '<tr><td colspan="3" class="muted">موردی برای نمایش نیست.</td></tr>';
+      return `<p class="sub">هفته‌ی شروع ${esc(fmt.date(r.weekStart))} — ${fmt.num(r.summary.submitted)} برنامه ثبت‌شده، ${fmt.num(r.summary.missing)} ثبت‌نشده</p>${table(['نام', 'وضعیت', 'تسک‌ها'], body)}`;
+    }
+    if (r.tab === 'stuck') {
+      const body = r.members.map((m) => `<tr><td>${esc(m.fullName)}</td><td><ul class="plain">${m.tasks.map((t) => `<li>🔴 ${esc(t.title)} — ${fmt.num(t.carriedCount)} بار منتقل‌شده${t.lastReason ? ` <span class="muted">(${esc(REASONS[t.lastReason] || t.lastReason)})</span>` : ''}</li>`).join('')}</ul></td></tr>`).join('') || '<tr><td colspan="2" class="muted">تسک معطل‌مانده‌ای نیست.</td></tr>';
+      return table(['نام', 'تسک‌های معطل‌مانده'], body);
+    }
+    const s = r.summary || {};
+    const head = `<p class="sub">گزارش روز ${esc(r.date ? fmt.date(r.date) : '—')} — میانگین انجام: ${s.percent != null ? `${fmt.num(s.percent)}٪` : '—'} · ${fmt.num(s.reports || 0)} گزارش · ${fmt.num(s.noReport || 0)} بدون گزارش · ${fmt.num(s.unreviewed || 0)} مشاهده‌نشده</p>`;
+    const note = r.readOnly ? '<p class="muted">این صفحه برای شما فقط‌خواندنی است.</p>' : '';
+    return `${head}${note}${table(['نام', 'وضعیت', 'انجام', 'انجام‌نشده‌ها / خارج از برنامه', 'کامنت', ''], dailyRows(r, canWrite))}`;
+  }
+
+  async function load(page) {
+    const box = $('#tr-result', page);
+    box.innerHTML = '<div class="loading"><div class="spinner"></div>در حال بارگذاری…</div>';
+    try {
+      const q = new URLSearchParams(Object.entries({ tab: ui.tab, date: ui.date, weekStart: ui.weekStart, userId: ui.userId }).filter(([, v]) => v)).toString();
+      const r = await AP.api(`/admin/team-reports?${q}`);
+      box.innerHTML = renderResult(r);
+      $$('[data-act="seen"]', box).forEach((b) => b.addEventListener('click', () => seen(page, r, Number(b.dataset.uid))));
+    } catch (err) {
+      box.innerHTML = ui.empty(err.message);
+    }
+  }
+
+  // شاخص‌های مدیریتی (D13): نرخ انجام هر تیم، نرخ بررسی به‌موقع هر سرپرست، برنامه‌ی ثبت‌نشده
+  async function loadKpis(page) {
+    const box = $('#tr-kpis', page);
+    if (!box) return;
+    try {
+      const k = await AP.api('/admin/task-kpis');
+      const rate = (v) => (v == null ? '—' : `${fmt.num(v)}٪`);
+      const teams = k.teams.map((t) => `<tr><td>${esc(t.managerName)}</td><td>${fmt.num(t.members)}</td><td>${fmt.num(t.done)} از ${fmt.num(t.planned)}</td><td>${rate(t.completionRate)}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">داده‌ای نیست.</td></tr>';
+      const revs = k.reviewers.map((r) => `<tr><td>${esc(r.reviewerName)}</td><td>${fmt.num(r.reports)}</td><td>${fmt.num(r.onTime)}</td><td>${rate(r.onTimeRate)}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">داده‌ای نیست.</td></tr>';
+      box.innerHTML = `<h3>شاخص‌ها (۳۰ روز اخیر)</h3>
+        <div class="table-wrap"><table><thead><tr><th>تیم</th><th>اعضا</th><th>انجام‌شده</th><th>نرخ انجام</th></tr></thead><tbody>${teams}</tbody></table></div>
+        <div class="table-wrap"><table><thead><tr><th>سرپرست</th><th>گزارش‌ها</th><th>بررسی به‌موقع</th><th>نرخ</th></tr></thead><tbody>${revs}</tbody></table></div>
+        <p class="sub">برنامه‌ی هفته‌ی بعد ثبت‌نشده: ${fmt.num(k.unplanned.count)} نفر${k.unplanned.users.length ? ` — ${k.unplanned.users.slice(0, 10).map((u) => esc(u.fullName)).join('، ')}` : ''}</p>`;
+    } catch (err) {
+      box.innerHTML = ui.empty(err.message);
+    }
+  }
+
+  async function seen(page, r, userId) {
+    const res = await AP.askReason({ title: 'مشاهده‌ی گزارش', label: 'کامنت برای کارمند (اختیاری)', confirmText: 'ثبت «مشاهده شد»', required: false });
+    if (res === null || res === undefined || res === false) return;
+    const comment = typeof res === 'string' ? res : (res && res.reason) || '';
+    const ok = await AP.attempt(() => AP.api('/admin/report-reviews', { method: 'POST', body: { subjectUserId: userId, reportDate: r.date, ...(comment ? { comment } : {}) } }), 'ثبت شد.');
+    if (ok !== false) load(page);
+  }
+
+  AP.view('teamreports', {
+    skeleton: 'table',
+    perm: 'taskreports.read',
+    nav: { icon: 'reports', label: 'گزارش‌های تیم', group: 'گزارش‌ها' },
+    async render() {
+      ui.empty = (msg) => `<div class="empty">${AP.icon('alert')}${esc(msg)}</div>`; // حالت خطا/خالی (S5-9c)
+      const users = AP.selfOnly() ? [] : await AP.loadUsers().catch(() => []);
+      const html = `
+        <div class="view-header"><div><h2>گزارش‌های تیم</h2><div class="sub">برنامه‌ی هفتگی و گزارش روزانه‌ی تسک‌ها؛ پیش‌فرض «روز کاریِ قبل».</div></div>
+          <div class="header-actions">${AP.exportBar({ path: '/api/admin/team-reports/export', params: { userId: ui.userId }, print: false })}</div></div>
+        ${AP.can('analytics.read') ? '<div id="tr-kpis" class="card" aria-live="polite"></div>' : ''}
+        <div class="filters" role="tablist">${TABS.map(([k, l]) => `<button type="button" class="btn ${k === ui.tab ? 'primary' : 'ghost'}" data-tab="${k}" role="tab" aria-selected="${k === ui.tab}">${l}</button>`).join('')}</div>
+        <form class="filters" id="tr-filters">
+          <label class="field"><span>تاریخ گزارش</span><input type="date" name="date" value="${esc(ui.date)}" /></label>
+          <label class="field"><span>هفته (هر روزِ آن)</span><input type="date" name="weekStart" value="${esc(ui.weekStart)}" /></label>
+          ${users.length ? `<label class="field"><span>فرد</span><select name="userId"><option value="">همه</option>${users.map((u) => `<option value="${u.id}" ${String(u.id) === String(ui.userId) ? 'selected' : ''}>${esc(u.full_name)}</option>`).join('')}</select></label>` : ''}
+        </form>
+        <div id="tr-result" aria-live="polite"></div>`;
+      return {
+        html,
+        mount: (page) => {
+          $$('[data-tab]', page).forEach((b) => b.addEventListener('click', () => { ui.tab = b.dataset.tab; AP.refresh(); }));
+          const form = $('#tr-filters', page);
+          form.addEventListener('submit', (e) => e.preventDefault());
+          $$('input, select', form).forEach((el) => el.addEventListener('change', () => { Object.assign(ui, AP.formData(form)); load(page); }));
+          load(page);
+          loadKpis(page);
+        },
+      };
+    },
+  });
+})();

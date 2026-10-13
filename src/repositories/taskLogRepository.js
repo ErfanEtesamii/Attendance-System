@@ -44,8 +44,22 @@ function listRecentEncouragements(userId, limit = 30) {
     ORDER BY answered_at DESC, id DESC LIMIT ?`).all(userId, limit).map((r) => r.encouragement_text);
 }
 
+// پاسخ‌های چند کاربر در یک بازه همراه با مشخصات تسک (برای «معطل‌مانده‌ها» و خروجی‌ها؛ D10/D13)
+function listRangeWithTasks(userIds, fromDate, toDate) {
+  if (!Array.isArray(userIds) || !userIds.length) return [];
+  return getDb().prepare(`SELECT l.*, t.title AS task_title, t.is_system AS task_is_system, t.system_key AS task_system_key, t.deleted_at AS task_deleted_at
+    FROM task_daily_logs l JOIN plan_tasks t ON t.id = l.task_id
+    WHERE l.user_id IN (${userIds.map(() => '?').join(',')}) AND l.log_date BETWEEN ? AND ? ORDER BY l.user_id, l.task_id, l.log_date`).all(...userIds, fromDate, toDate);
+}
+
+// پاسخ‌های ثبت‌شده از لحظه‌ی sinceIso به بعد (UTC ISO) برای چند کاربر، با log_date ≥ fromDate (خلاصه‌ی صبحگاهی؛ D12)
+function listAnsweredSince(userIds, sinceIso, fromDate) {
+  if (!Array.isArray(userIds) || !userIds.length) return [];
+  return getDb().prepare(`SELECT * FROM task_daily_logs WHERE user_id IN (${userIds.map(() => '?').join(',')}) AND answered_at >= ? AND log_date >= ? ORDER BY user_id, log_date, id`).all(...userIds, sinceIso, fromDate);
+}
+
 function remove(taskId, logDate) {
   return getDb().prepare('DELETE FROM task_daily_logs WHERE task_id = ? AND log_date = ?').run(taskId, logDate).changes;
 }
 
-module.exports = { findByTaskDate, upsert, listByUserDate, listByUserRange, listUserIdsWithLogsOnDate, listByTask, listRescheduledTo, listRecentEncouragements, remove };
+module.exports = { findByTaskDate, upsert, listByUserDate, listByUserRange, listUserIdsWithLogsOnDate, listByTask, listRescheduledTo, listRecentEncouragements, remove, listRangeWithTasks, listAnsweredSince };

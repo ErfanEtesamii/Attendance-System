@@ -27,7 +27,7 @@ describe('رجیستری تنظیمات (S3-1a)', () => {
       repeatedLatenessThreshold: 3, blockOnSharedDevice: false, auditRetentionMonths: 24, auditArchiveEnabled: false,
       jobRunsRetentionDays: 180, monitorAlertsRetentionDays: 180, rateLimitRetentionDays: 7, notificationsRetentionDays: 90,
       patternConsecutiveLateDays: 3, patternWeekdayLateMinCount: 3, patternWeekdayLateMinSharePercent: 75, patternWeekdayLateMarginPercent: 25, patternWeekendAbsenceMinCount: 3, patternWeekendAbsenceMinSharePercent: 60, patternSuddenIncreaseFactor: 2, patternSuddenIncreaseMinExtraLate: 3, patternBaselineMonths: 3, patternBaselineMinMonths: 2, patternMinPresentDays: 5, patternIdenticalTimeMinDays: 5, patternIdenticalTimeMinSharePercent: 80,
-      cronLateCheckinCheck: '*/5 8-12 * * *', cronLeaveApprovalReminder: '15 * * * *', cronCheckoutReminderCheck: '*/5 9-18 * * *', cronDailyReport: '0 17 * * *', cronWeeklyReport: '0 8 * * 6', cronMonthlyReport: '0 8 * * *', cronNightlyReview: '0 20 * * *',
+      cronLateCheckinCheck: '*/5 8-12 * * *', cronLeaveApprovalReminder: '15 * * * *', cronCheckoutReminderCheck: '*/5 9-18 * * *', cronDailyReport: '0 17 * * *', cronWeeklyReport: '0 8 * * 6', cronMonthlyReport: '0 8 * * *', cronNightlyReview: '0 20 * * *', cronMorningDigest: '0 8 * * *',
       cronAutoCloseIncomplete: '59 23 * * *', cronMarkNonWorkingDays: '5 0 * * *', cronDailyBackup: '30 2 * * *', cronAuditArchive: '0 3 1 * *', cronDbMaintenance: '0 4 2 * *', cronWatchdog: '*/5 * * * *',
     });
   });

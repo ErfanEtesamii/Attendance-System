@@ -12,6 +12,7 @@ const { panelWebAppButton } = require('../panelLinks');
 const { runFraudChecksSafe } = require('../../utils/fraudRunner');
 const suspiciousRepository = require('../../repositories/suspiciousRepository');
 const missionDecisionService = require('../../services/missionDecisionService');
+const nightlyTaskReportService = require('../../services/nightlyTaskReportService');
 
 const MAX_ATTENTION_LINES = 25;
 const MAX_MISSIONS = 8; // هر ماموریت یک ردیف دکمه دارد؛ بقیه با /pending_leaves
@@ -109,6 +110,42 @@ function buildNightlyMessage(supervisor, team, today, rows = reviewDay(team, tod
   return lines.join('\n');
 }
 
+// D11: گزارش تسک‌های امروز برای سرپرست‌ها (و خلاصه‌ی شرکت برای ادمین). هر گیرنده مستقل و ضدخطا؛ شکست آن مرور شبانه‌ی اصلی را نمی‌شکند.
+// دکمه‌ها: «👁 مشاهده شد» و «💬 کامنت» به‌ازای هر عضوِ دارای گزارش + «🖥 گزارش کامل در پنل» (callback_data ≤ ۶۴ بایت: rvs:<id>:<date> / rvc:<id>:<date>).
+async function sendNightlyTaskReports(bot, today = todayDateString()) {
+  let reports = [];
+  try {
+    reports = nightlyTaskReportService.buildNightlyTaskReports(today);
+  } catch (err) {
+    console.error('[bot][scheduler] خطا در ساخت گزارش تسک‌های شبانه:', err.message);
+    return 0;
+  }
+  const panelBtn = panelWebAppButton({ view: 'teamreports', text: '🖥 گزارش کامل در پنل' });
+  let sent = 0;
+  for (const rep of reports) {
+    if (!rep.reviewer.telegram_user_id) continue;
+    try {
+      for (let i = 0; i < rep.messages.length; i += 1) {
+        const last = i === rep.messages.length - 1;
+        const keyboard = [];
+        if (last) {
+          rep.commentTargets.forEach((t) => keyboard.push([
+            { text: `👁 مشاهده شد: ${t.name}`.slice(0, 40), callback_data: `rvs:${t.userId}:${rep.date}` },
+            { text: '💬 کامنت', callback_data: `rvc:${t.userId}:${rep.date}` },
+          ]));
+          if (panelBtn) keyboard.push([panelBtn]);
+        }
+        // eslint-disable-next-line no-await-in-loop
+        await bot.sendMessage(rep.reviewer.telegram_user_id, rep.messages[i], keyboard.length ? { reply_markup: { inline_keyboard: keyboard } } : {});
+      }
+      sent += 1;
+    } catch (err) {
+      console.error('[bot][scheduler] خطا در ارسال گزارش تسک‌های شبانه:', err.message);
+    }
+  }
+  return sent;
+}
+
 // S3-8b: Job هر روز اجرا می‌شود؛ برای هر سرپرست از تقویم کاری تیمش تصمیم می‌گیرد: اگر امروز برای کل تیم روز غیرکاری است
 // (و کسی ورود نزده) پیامی نمی‌فرستد؛ در غیر این صورت مثل قبل (تعطیلی دپارتمان/آخر هفته‌ی بقیه‌ی تیم فقط در شمارش «تعطیل» می‌آید).
 async function sendNightlyReview(bot) {
@@ -137,6 +174,7 @@ async function sendNightlyReview(bot) {
       console.error('[bot][scheduler] خطا در ارسال مرور شبانه:', err.message);
     }
   }
+  await sendNightlyTaskReports(bot, today);
 }
 
-module.exports = { sendNightlyReview, buildNightlyMessage, isTeamOffDay, missionSection };
+module.exports = { sendNightlyReview, sendNightlyTaskReports, buildNightlyMessage, isTeamOffDay, missionSection };

@@ -19,6 +19,7 @@ const { handleListEmployees } = require('./commands/listEmployees');
 const { handleTeamReport } = require('./commands/teamReport');
 const { handlePendingLeaves, handlePendingLeavesCallback } = require('./commands/pendingLeaves');
 const { startMissionReject, startMissionEdit, handleMissionRejectText, handleMissionEditText } = require('./commands/missionApproval');
+const { handleReportReviewCallback, handleReportCommentText } = require('./commands/reportReview');
 const { handlePendingDisputes, handleDisputeCallback, handleDisputeReplyText } = require('./commands/pendingDisputes');
 const {
   handleFixRecordCommand,
@@ -71,6 +72,7 @@ function createBot() {
     if (sess.flow === 'dispute_reply') return handleDisputeReplyText(bot, msg, sess);
     if (sess.flow === 'mission_reject') return handleMissionRejectText(bot, msg, sess);
     if (sess.flow === 'mission_edit') return handleMissionEditText(bot, msg, sess);
+    if (sess.flow === 'report_comment') return handleReportCommentText(bot, msg, sess);
   });
 
   bot.on('callback_query', async (query) => {
@@ -78,6 +80,7 @@ function createBot() {
     const sess = session.get(chatId);
 
     try {
+      if (query.data.startsWith('rvs:') || query.data.startsWith('rvc:')) return await handleReportReviewCallback(bot, query);
       if (query.data.startsWith('mission_edit:')) return await startMissionEdit(bot, query);
       if (query.data.startsWith('leave_reject:') && missionRequestOf(query.data)) return await startMissionReject(bot, query);
       if (query.data.startsWith('leave_approve:') || query.data.startsWith('leave_reject:')) {

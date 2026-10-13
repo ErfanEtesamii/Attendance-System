@@ -924,3 +924,4 @@ button, a, summary, select, input, [role="button"], .clickable, th.sortable { to
 .notice { padding: 10px 14px; border-radius: 12px; margin: 10px 0; line-height: 1.9; }
 .notice.danger { background: var(--red-soft); color: var(--red); }
 .notice.ok { background: var(--green-soft); }
+.plain { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }

@@ -26,6 +26,8 @@ const HR_ALLOWED = new Set([
   'GET /api/admin/analytics/late-trend', 'GET /api/admin/analytics/late-compare?year=1405&month=6', // S5-6a (hr: فقط‌خواندنی)
   'GET /api/admin/analytics/rankings?year=1405&month=6', 'GET /api/admin/analytics/attendance-rate?year=1405&month=6', 'GET /api/admin/analytics/leave-by-type?year=1405&month=6', 'GET /api/admin/analytics/checkin-distribution', // S5-6b
   'GET /api/admin/analytics/patterns?year=1405&month=6', // S5-7b (hr: فقط‌خواندنی)
+  'GET /api/admin/team-reports', // D10 (hr: فقط‌خواندنی)
+  'GET /api/admin/team-reports/export', 'GET /api/admin/task-kpis', // D13 (hr: فقط‌خواندنی)
 ]);
 const ROUTES = [
   ['GET', '/api/admin/users', [M, A]],
@@ -114,6 +116,9 @@ const ROUTES_2 = [
   ['PUT', '/api/admin/users/999999/shift', [A]],
   ['GET', '/api/admin/team-review', [M, A]], // D9: reviews.read (کارمند/hr ممنوع؛ اسکوپ تیم در سرویس)
   ['POST', '/api/admin/report-reviews', [M, A]], // D9: reviews.write (بدنه‌ی خالی ⇒ ۴۰۰، چیزی ثبت نمی‌شود)
+  ['GET', '/api/admin/team-reports', [E, M, A]], // D10: taskreports.read (hr هم مجاز: HR_ALLOWED؛ اسکوپ نقش در سرویس)
+  ['GET', '/api/admin/team-reports/export', [E, M, A]], // D13: taskreports.read (hr هم مجاز)
+  ['GET', '/api/admin/task-kpis', [M, A]], // D13: analytics.read (کارمند ممنوع؛ hr فقط‌خواندنی)
   ['GET', '/api/admin/audit-log', [A]],
   ['GET', '/api/admin/audit-log/export', [A]],
   ['GET', '/api/admin/audit-actions', [A]],

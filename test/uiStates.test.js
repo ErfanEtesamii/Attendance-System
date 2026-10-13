@@ -100,7 +100,7 @@ const PAGES = {
   audit: ['views-admin.js', 'inline'], system: ['views-admin.js', 'n/a'], status: ['views-admin.js', 'n/a'], analytics: ['views-analytics.js', 'chart'],
   teamCalendar: ['views-calendar.js', 'helper'], dashboard: ['views-main.js', 'inline'], live: ['views-main.js', 'inline'], employees: ['views-main.js', 'inline'],
   profile: ['views-main.js', 'inline'], attendance: ['views-ops.js', 'inline'], leave: ['views-ops.js', 'inline'], leaveQueue: ['views-ops.js', 'inline'],
-  disputes: ['views-ops.js', 'inline'], suspicious: ['views-ops.js', 'inline'], nightly: ['views-ops.js', 'inline'], shifts: ['views-shifts.js', 'inline'],
+  disputes: ['views-ops.js', 'inline'], suspicious: ['views-ops.js', 'inline'], nightly: ['views-ops.js', 'inline'], shifts: ['views-shifts.js', 'inline'], teamreports: ['views-teamreports.js', 'inline'],
 };
 
 describe('پوشش صفحه‌ها', () => {
