@@ -27,6 +27,7 @@ const GROUP_LABELS = {
   reportDelivery: 'ارسال خودکار گزارش',
   patterns: 'الگوهای رفتاری (هشدار الگو)',
   planning: 'برنامه‌ی هفتگی و گزارش روزانه',
+  disputes: 'اعتراض‌ها',
 };
 
 // ---------- اعتبارسنجی بر اساس نوع ----------
@@ -186,6 +187,7 @@ def('planGateStartDate', 'plan_gate_start_date', 'date', { group: 'planning', de
 def('dailyReportGateMode', 'daily_report_gate_mode', 'enum', { group: 'planning', values: ['enforce', 'soft', 'off'], default: 'off', description: 'الزام گزارش روزانه‌ی تسک‌ها هنگام خروج: enforce = بدون گزارش خروج ثبت نمی‌شود، soft = «بعداً پر می‌کنم» تا ۲۴ ساعت، off = خاموش' });
 def('reportBackfillDays', 'report_backfill_days', 'number', { group: 'planning', min: 0, max: 14, default: 2, description: 'تا چند روز بعد می‌توان گزارش روزِ گذشته را تکمیل کرد (مثلاً رکوردِ خروجِ خودکار)' });
 def('encouragementsEnabled', 'encouragements_enabled', 'boolean', { group: 'planning', default: true, description: 'نمایش پیام تشویقی کوتاه پس از ثبت گزارش روزانه' });
+def('disputeMaxReopens', 'dispute_max_reopens', 'number', { group: 'disputes', min: 0, max: 20, default: 3, description: 'حداکثر دفعاتی که کارمند می‌تواند اعتراضِ حل‌شده را «ادامه» دهد (۰ = ادامه‌ی اعتراض خاموش)' });
 def('systemGoLive', 'system_go_live', 'boolean', { group: 'security', default: false, description: 'حالت Go-Live: وقتی روشن است ریست برنامه (حذف داده‌ی عملیاتی) ۴۰۳ می‌دهد، مگر ALLOW_DATA_RESET=true در .env باشد' });
 def('blockOnSharedDevice', 'block_on_shared_device', 'boolean', { group: 'security', default: false, description: 'مسدودکردن ثبت تردد وقتی دستگاه همان روز برای کاربر دیگری استفاده شده' });
 // نگهداری و آرشیو

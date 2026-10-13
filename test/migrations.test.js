@@ -43,7 +43,7 @@ function snapshot(db) {
   // rate_limit_hits (migration ۰۰۳) و job_runs/monitor_alerts/monitor_state (migration ۰۰۴) جدول‌های جدیدِ عملیاتی‌اند (داده‌ی کاربری نیستند)
   // suspicious_events (migration ۰۰۶، S2-4a) و audit_log_archive (migration ۰۰۷، S2-6a) و overtime_approvals (migration ۰۰۸، S3-5c) و work_shifts (migration ۰۰۹، S3-6a) و notifications (migration ۰۱۲، S4-5a) هم جدول جدید و خالی‌اند؛ month_closures (migration ۰۲۰، S5-3a) جدول جدیدِ خالی است؛ leave_types (migration ۰۱۳، S4-7a) جدول جدیدِ تنظیماتی با دو ردیف پیش‌فرض است (داده‌ی کاربری نیست)
   // پس از مقایسه‌ی «بدون تغییر داده» کنار می‌مانند
-  const OPERATIONAL = ['rate_limit_hits', 'job_runs', 'monitor_alerts', 'monitor_state', 'suspicious_events', 'audit_log_archive', 'overtime_approvals', 'work_shifts', 'notifications', 'leave_types', 'leave_balances', 'leave_balance_adjustments', 'leave_approvals', 'month_closures', 'month_closure_adjustments', 'weekly_plans', 'plan_tasks', 'task_daily_logs', 'report_reviews', 'plan_gate_exemptions'];
+  const OPERATIONAL = ['rate_limit_hits', 'job_runs', 'monitor_alerts', 'monitor_state', 'suspicious_events', 'audit_log_archive', 'overtime_approvals', 'work_shifts', 'notifications', 'leave_types', 'leave_balances', 'leave_balance_adjustments', 'leave_approvals', 'month_closures', 'month_closure_adjustments', 'weekly_plans', 'plan_tasks', 'task_daily_logs', 'report_reviews', 'plan_gate_exemptions', 'dispute_messages'];
   for (const t of userTables(db).filter((n) => !OPERATIONAL.includes(n))) {
     out[t] = db.prepare(`SELECT * FROM "${t}" ORDER BY rowid`).all().map((r) => {
       const row = { ...r };
@@ -53,6 +53,8 @@ function snapshot(db) {
       // ستون‌های kind/half_end_time/scope/department (migration ۰۱۰، S3-7b) روی ردیف‌های قدیمی مقدار پیش‌فرض می‌گیرند؛ در تست migration 010 جدا بررسی می‌شوند
       if (t === 'holidays') for (const c of ['kind', 'half_end_time', 'scope', 'department']) delete row[c];
       // ستون‌های device/UA (migration ۰۰۵، S2-3) جدیدند و روی رکوردهای قدیمی NULL می‌مانند
+      // ستون‌های closed_by/closed_at/reopen_count/last_message_at (migration ۰۲۷، D1): جدید و backfill‌شده؛ نگاشت و حفظ داده در test/disputeMessages.test.js بررسی می‌شود
+      if (t === 'record_disputes') for (const c of ['closed_by', 'closed_at', 'reopen_count', 'last_message_at']) delete row[c];
       if (t === 'attendance_records') for (const c of ['check_in_device', 'check_out_device', 'check_in_ua', 'check_out_ua', 'via_pending_mission']) delete row[c]; /* via_pending_mission: ۰۲۴ (C5) */
       return row;
     });

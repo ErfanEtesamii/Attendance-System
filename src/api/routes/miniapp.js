@@ -13,6 +13,7 @@ const { networkRestriction } = require('../../middleware/networkRestriction');
 const missionNowService = require('../../services/missionNowService');
 const pendingMissionService = require('../../services/pendingMissionService');
 const planGateService = require('../../services/planGateService');
+const disputeService = require('../../services/disputeService');
 const taskReportService = require('../../services/taskReportService');
 const teamReviewService = require('../../services/teamReviewService');
 const { maintenanceGate } = require('../../middleware/maintenanceGate');
@@ -29,7 +30,6 @@ const attachmentService = require('../../services/attachmentService');
 const { sendAttachment } = require('../../utils/attachmentResponse');
 const leaveBalanceService = require('../../services/leaveBalanceService');
 const { jalaliYearOfDateString } = require('../../utils/jalali');
-const disputeRepository = require('../../repositories/disputeRepository');
 const auditRepository = require('../../repositories/auditRepository');
 const settingsRepository = require('../../repositories/settingsRepository');
 const dayService = require('../../engine/dayService');
@@ -485,35 +485,57 @@ router.post('/miniapp/report-reviews', (req, res) => {
   return res.json(r);
 });
 
-// ---------- اعتراض به رکورد ----------
+// ---------- اعتراض به رکورد و گفت‌وگو روی آن (D2؛ قواعد در disputeService) ----------
 
-router.post('/miniapp/dispute', (req, res) => {
-  const { attendanceRecordId, message } = req.body || {};
-  if (!message || !message.trim()) {
-    return res.status(400).json({ error: 'message الزامی است.' });
-  }
-  if (attendanceRecordId) {
-    const record = attendanceRepository.findById(attendanceRecordId);
-    if (!record || record.user_id !== req.miniAppUser.id) {
-      return res.status(404).json({ error: 'رکورد یافت نشد.' });
-    }
-  }
-  const dispute = disputeRepository.createDispute({
-    userId: req.miniAppUser.id,
-    attendanceRecordId: attendanceRecordId || null,
-    message: message.trim(),
-  });
-  auditRepository.logEvent({
-    userId: req.miniAppUser.id,
-    action: 'record_dispute_submitted',
-    details: { attendanceRecordId: attendanceRecordId || null },
-  });
-  notificationEvents.disputeOpened(dispute); // S4-6b
-  res.status(201).json(dispute);
+// ارسال پیام و «ادامه‌ی اعتراض» (هر دو پیام می‌نویسند) یک سطل مشترک دارند: ۱۰ مورد در دقیقه برای هر کارمند
+const disputeMessageLimiter = createRateLimiter({
+  name: 'miniapp-dispute-message',
+  windowMs: 60 * 1000,
+  max: 10,
+  message: 'تعداد پیام‌های اعتراض بیش از حد مجاز است. لطفاً یک دقیقه صبر کنید.',
+  keyFn: miniAppRateLimitKey,
 });
 
+const sendDisputeError = (res, r) => res.status(disputeService.statusOf(r.code)).json({ error: r.error, code: r.code, ...(r.maxReopens !== undefined ? { maxReopens: r.maxReopens } : {}) });
+
+router.post('/miniapp/dispute', (req, res) => {
+  const r = disputeService.create(req.miniAppUser, req.body || {}, { ip: req.ip });
+  if (!r.ok) return sendDisputeError(res, r);
+  notificationEvents.disputeOpened(r.dispute); // S4-6b
+  return res.status(201).json(r.dispute);
+});
+
+// فهرست اعتراض‌های خودِ کارمند: وضعیت (phase)، تعداد پیام و امکان ادامه/خاتمه
 router.get('/miniapp/dispute', (req, res) => {
-  res.json(disputeRepository.listByUser(req.miniAppUser.id));
+  res.json(disputeService.listMine(req.miniAppUser));
+});
+
+// thread کامل (فقط مالک؛ اعتراض دیگران ⇒ ۴۰۴)
+router.get('/miniapp/dispute/:id', (req, res) => {
+  const r = disputeService.getMine(req.miniAppUser, req.params.id);
+  if (!r.ok) return sendDisputeError(res, r);
+  return res.json(r);
+});
+
+// { message } — پیام کارمند روی اعتراضِ باز (۱ تا ۵۰۰ نویسه)
+router.post('/miniapp/dispute/:id/messages', disputeMessageLimiter, (req, res) => {
+  const r = disputeService.postMessage(req.miniAppUser, req.params.id, req.body || {}, { ip: req.ip });
+  if (!r.ok) return sendDisputeError(res, r);
+  return res.status(201).json(r);
+});
+
+// { message } — «ادامه‌ی اعتراض» بعد از بسته‌شدن، همراه پیام جدید (سقف: تنظیم disputeMaxReopens)
+router.post('/miniapp/dispute/:id/reopen', disputeMessageLimiter, (req, res) => {
+  const r = disputeService.reopen(req.miniAppUser, req.params.id, req.body || {}, { ip: req.ip });
+  if (!r.ok) return sendDisputeError(res, r);
+  return res.json(r);
+});
+
+// «خاتمه توسط کارمند» (فقط وقتی اعتراض باز است)
+router.post('/miniapp/dispute/:id/close', (req, res) => {
+  const r = disputeService.close(req.miniAppUser, req.params.id, { ip: req.ip });
+  if (!r.ok) return sendDisputeError(res, r);
+  return res.json(r);
 });
 
 module.exports = router;

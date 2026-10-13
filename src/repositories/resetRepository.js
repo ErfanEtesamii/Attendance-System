@@ -26,6 +26,8 @@ const viaRecord = (col = 'attendance_record_id') => `${col} IN (SELECT id FROM a
 const ENTRIES = Object.freeze([
   // ---- گروه الف: operational ----
   { table: 'break_records', group: 'operational', label: 'استراحت‌ها', where: viaRecord() },
+  // D1 (فاز ۱۱): پیام‌های گفت‌وگوی اعتراض (فرزندِ record_disputes ⇒ قبل از آن؛ برش تاریخی همان برش خود اعتراض‌ها)
+  { table: 'dispute_messages', group: 'operational', label: 'پیام‌های گفت‌وگوی اعتراض‌ها', where: 'dispute_id IN (SELECT id FROM record_disputes WHERE attendance_record_id IN (SELECT id FROM attendance_records WHERE record_date < ?))' },
   { table: 'record_disputes', group: 'operational', label: 'اعتراض‌ها', where: viaRecord() },
   { table: 'overtime_approvals', group: 'operational', label: 'تأیید اضافه‌کاری', where: viaRecord() },
   { table: 'suspicious_events', group: 'operational', label: 'موارد مشکوک', where: 'event_date < ?' },
