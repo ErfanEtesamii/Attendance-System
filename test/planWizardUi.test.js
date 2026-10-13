@@ -37,7 +37,12 @@ function makeEnv({ plan, search = '', startParam = '', fail = null } = {}) {
   const fetchStub = async (url, init = {}) => {
     calls.push({ url, init });
     const m = init.method || 'GET';
-    if (fail && m !== 'GET') return { ok: false, status: 400, json: async () => ({ error: fail }) };
+    // fail: متن خطا (۴۰۰) یا { error, code, status, lockAfter } — lockAfter: بعد از شکست، GET بعدی هفته را فقط‌خواندنی برمی‌گرداند
+    if (fail && m !== 'GET') {
+      const f = typeof fail === 'string' ? { error: fail } : fail;
+      if (f.lockAfter) { data.editMode = 'readonly'; data.lockReason = 'week_started'; }
+      return { ok: false, status: f.status || 400, json: async () => ({ error: f.error, code: f.code }) };
+    }
     return { ok: true, status: 200, json: async () => data };
   };
   const window = { location: { search }, Telegram: undefined };
@@ -273,5 +278,129 @@ describe('استایل کارت‌ها (C1)', () => {
     assert.match(css, /\.day-card-head \{[^}]*dashed/);
     assert.match(css, /\.day-task \{[^}]*dashed/);
     assert.match(css, /\.day-task-del \{[^}]*min-height: 44px/);
+  });
+});
+
+describe('انتخاب اولویت و نشان رنگی (C2)', () => {
+  const radios = (env, i = 0) => walk(cards(env)[i]).filter((n) => n.type === 'radio');
+  const badges = (env) => walk(env.body()).filter((n) => /prio-badge/.test(n.className));
+
+  test('هر تسک سه گزینه‌ی «بالا / عادی / کم» دارد؛ پیش‌فرض عادی؛ توضیح کامل بالای تخته', async () => {
+    const env = makeEnv({ plan: { days: WEEK } });
+    await open(env);
+    assert.match(env.body().textContent, /بالا و عادی: تا انجام ندهی یا علتش را ننویسی نمی‌توانی ثبت خروج کنی\. کم: ثبت خروج را مسدود نمی‌کند\./);
+    await addIn(env, 0, 'کار');
+    const r = radios(env);
+    assert.deepEqual(r.map((x) => x.value), ['high', 'normal', 'low']);
+    assert.deepEqual(r.map((x) => !!x.checked), [false, true, false]);
+    const group = walk(cards(env)[0]).find((n) => n.tag === 'fieldset');
+    assert.deepEqual(walk(group).filter((n) => n.tag === 'label').map((n) => n.textContent), ['بالا', 'عادی', 'کم']);
+  });
+
+  test('تغییر اولویت: نشان، توضیح کوتاه و بدنه‌ی PUT به‌روز می‌شوند', async () => {
+    const env = makeEnv({ plan: { days: WEEK } });
+    await open(env);
+    await addIn(env, 1, 'کار شنبه');
+    assert.deepEqual(badges(env).map((b) => [b.textContent, b.className]), [['عادی', 'prio-badge prio-normal']]);
+    assert.match(cards(env)[1].textContent, /تا انجام ندهی یا علتش را ننویسی/);
+    const low = radios(env, 1)[2];
+    low.checked = true;
+    await low.fire('change', { target: low });
+    assert.deepEqual(badges(env).map((b) => [b.textContent, b.className]), [['کم', 'prio-badge prio-low']]);
+    assert.match(cards(env)[1].textContent, /ثبت خروج را مسدود نمی‌کند/);
+    await click(env, 'مرور');
+    await click(env, 'ثبت برنامه');
+    const put = JSON.parse(env.calls.find((c) => c.init.method === 'PUT').init.body);
+    assert.deepEqual(put.tasks.map((t) => [t.title, t.priority]), [['کار شنبه', 'low']]);
+  });
+
+  test('کپی از هفته‌ی قبل/انتقال: اولویت اصلی در نشان و گزینه‌ی انتخاب‌شده می‌ماند', async () => {
+    const env = makeEnv({ plan: { previousWeekTasks: [{ id: 1, title: 'قبلی', description: '', priority: 'high' }] } });
+    await open(env);
+    await click(env, 'کپی از هفته‌ی قبل');
+    assert.deepEqual(badges(env).map((b) => b.textContent), ['بالا']);
+    assert.deepEqual(radios(env, 0).map((x) => !!x.checked), [true, false, false]);
+  });
+
+  test('نمای مرور هم نشان اولویت دارد', async () => {
+    const env = makeEnv({ plan: { days: WEEK } });
+    await open(env);
+    await addIn(env, 0, 'الف');
+    const hi = radios(env, 0)[0];
+    hi.checked = true;
+    await hi.fire('change', { target: hi });
+    await click(env, 'مرور');
+    assert.deepEqual(badges(env).map((b) => b.textContent), ['بالا']);
+  });
+});
+
+describe('هفته‌ی شروع‌شده و خطاهای سرور (C2)', () => {
+  const task = (title, priority, plannedDate = null, extra = {}) => ({ id: Math.floor(Math.random() * 1e6), title, description: '', plannedDate, priority, isSystem: false, ...extra });
+  const controls = (env) => walk(env.body()).filter((n) => ['input', 'textarea', 'select', 'button'].includes(n.tag));
+
+  test('editMode=readonly و lockReason=week_started: پیام قفل، کارت‌های فقط‌خواندنی با نشان اولویت، بدون هیچ کنترلی', async () => {
+    const env = makeEnv({ plan: { days: WEEK, editMode: 'readonly', lockReason: 'week_started', status: 'submitted', tasks: [task('بالا', 'high', '2027-05-01'), task('کم', 'low'), task('سیستمی', 'normal', null, { isSystem: true })] } });
+    await open(env);
+    assert.match(env.body().textContent, /هفته شروع شده و برنامه‌اش قابل ویرایش نیست/);
+    assert.doesNotMatch(env.body().textContent, /ماهِ بسته/);
+    assert.equal(controls(env).length, 0);
+    assert.deepEqual(cards(env).map((c) => /day-card-ro/.test(c.className)), [true, true]); // فقط کارت‌های فقط‌خواندنی (عمومی + شنبه)
+    assert.deepEqual(walk(env.body()).filter((n) => /prio-badge/.test(n.className)).map((b) => b.textContent).sort(), ['بالا', 'کم']);
+    assert.match(env.body().textContent, /تسک خودکار: سیستمی/);
+    assert.equal(btn(env, 'ویرایش برنامه'), undefined);
+  });
+
+  test('ماه بسته (lockReason=month_closed): همان پیام قبلی', async () => {
+    const env = makeEnv({ plan: { editMode: 'readonly', lockReason: 'month_closed' } });
+    await open(env);
+    assert.match(env.body().textContent, /ماهِ بسته/);
+    assert.doesNotMatch(env.body().textContent, /هفته شروع شده/);
+  });
+
+  test('PLAN_LOCKED هنگام ثبت: وضعیت تازه گرفته می‌شود، همه‌چیز فقط‌خواندنی و پیام سرور نمایش داده می‌شود', async () => {
+    const env = makeEnv({ fail: { error: 'هفته شروع شده و برنامه‌اش قابل ویرایش نیست (سرور).', code: 'PLAN_LOCKED', status: 409, lockAfter: true } });
+    await open(env);
+    await addIn(env, 0, 'کار');
+    await click(env, 'مرور');
+    await click(env, 'ثبت برنامه');
+    assert.match(env.body().textContent, /\(سرور\)/);
+    assert.equal(controls(env).length, 0);
+    assert.equal(env.calls.filter((c) => (c.init.method || 'GET') === 'GET' && c.url.includes('/plan?week=')).length, 2); // بازخوانی بعد از قفل
+  });
+
+  test('خطای عادی سرور (مثلاً عنوان بلند) در صفحه‌ی مرور می‌ماند و ویرایش ممکن است', async () => {
+    const env = makeEnv({ fail: { error: 'عنوان تسک 1 حداکثر 120 نویسه است (سرور).', code: 'TITLE_TOO_LONG', status: 400 } });
+    await open(env);
+    await addIn(env, 0, 'کار');
+    await click(env, 'مرور');
+    await click(env, 'ثبت برنامه');
+    assert.match(env.body().textContent, /TITLE|حداکثر 120/);
+    assert.ok(btn(env, 'بازگشت به ویرایش'));
+  });
+});
+
+describe('استایل اولویت (C2)', () => {
+  const css2 = read('public/css/style.css');
+  const lum2 = (h) => { const [r, g, b] = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+  const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const hex = (a) => '#' + a.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
+  const ratio2 = (a, b) => { const [x, y] = [lum2(a), lum2(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+  const blend = (fg, alpha, bg) => hex(rgb(fg).map((v, i) => v * alpha + rgb(bg)[i] * (1 - alpha)));
+
+  test('نشان و گزینه‌ی انتخاب‌شده‌ی هر اولویت روی کارت هر دو تم کنتراست ≥ 4.5 دارد', () => {
+    const cardsBg = ['#fffdf5', '#efe8d3'];
+    assert.ok(css2.includes('background: var(--plan-card)') || css2.includes('--plan-card: #fffdf5'));
+    for (const v of ['high', 'normal', 'low']) {
+      const color = new RegExp(`--prio-${v}:\\s*(#[0-9a-fA-F]{6})`).exec(css2)[1];
+      for (const card of cardsBg) assert.ok(ratio2(blend(color, 0.12, card), color) >= 4.5, `${v} روی ${card}`);
+    }
+  });
+
+  test('گزینه‌های اولویت لمس‌پسند (۴۴px)، رادیو قابل‌فوکوس (نه display:none) و نماد غیررنگی', () => {
+    assert.match(css2, /\.prio-opt \{[^}]*min-height: 44px/);
+    assert.match(css2, /\.prio-opt input \{[^}]*opacity: 0/);
+    assert.doesNotMatch(css2, /\.prio-opt input \{[^}]*display: none/);
+    assert.match(css2, /\.prio-opt:focus-within/);
+    assert.match(css2, /\.prio-badge\.prio-high::before \{ content: "▲"/);
   });
 });

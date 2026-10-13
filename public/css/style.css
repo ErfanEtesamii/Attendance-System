@@ -658,6 +658,10 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
   --plan-line: rgba(10, 107, 75, 0.45);
   --plan-field: #ffffff;
   --plan-field-border: rgba(10, 107, 75, 0.35);
+  /* C2: رنگ اولویت‌ها روی کارت کرمی (هر دو تم؛ کنتراست متن ≥ 4.5 در تست) */
+  --prio-high: #9a2525;
+  --prio-normal: #0a5c40;
+  --prio-low: #2f4f80;
 }
 :root[data-theme="dark"] {
   --plan-board: #0c2a21;
@@ -696,6 +700,32 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .day-empty { margin: 0; font-size: 12px; color: var(--plan-hint); }
 .day-card .plan-sys { color: var(--plan-hint); font-size: 12px; }
 .day-card :focus-visible { outline: 2px solid var(--plan-title); outline-offset: 2px; }
+
+/* C2: انتخاب اولویت، نشان رنگی و نمای فقط‌خواندنی */
+.plan-note { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px; font-size: 12.5px; line-height: 1.9; color: var(--hint); }
+.plan-note strong { color: var(--text); }
+.plan-lock { border: 1px solid var(--orange, #f59e0b); line-height: 1.8; }
+.prio-badge { flex: none; display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+.prio-badge.prio-high { color: var(--prio-high); background: rgba(154, 37, 37, 0.12); }
+.prio-badge.prio-normal { color: var(--prio-normal); background: rgba(10, 92, 64, 0.12); }
+.prio-badge.prio-low { color: var(--prio-low); background: rgba(47, 79, 128, 0.12); }
+.prio-badge.prio-high::before { content: "▲"; font-size: 8px; }
+.prio-badge.prio-normal::before { content: "●"; font-size: 8px; }
+.prio-badge.prio-low::before { content: "▼"; font-size: 8px; }
+.prio-group { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.prio-legend { padding: 0; font-size: 12px; color: var(--plan-hint); }
+.prio-opts { display: flex; gap: 6px; }
+.prio-opt { position: relative; flex: 1 1 0; min-width: 0; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 6px 8px; border-radius: 12px; border: 1px solid var(--plan-field-border); background: var(--plan-field); color: var(--plan-ink); font-size: 14px; cursor: pointer; }
+.prio-opt input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.prio-opt.on { font-weight: 700; }
+.prio-opt.prio-high.on { color: var(--prio-high); border-color: var(--prio-high); box-shadow: 0 0 0 1px var(--prio-high) inset; background: rgba(154, 37, 37, 0.1); }
+.prio-opt.prio-normal.on { color: var(--prio-normal); border-color: var(--prio-normal); box-shadow: 0 0 0 1px var(--prio-normal) inset; background: rgba(10, 92, 64, 0.1); }
+.prio-opt.prio-low.on { color: var(--prio-low); border-color: var(--prio-low); box-shadow: 0 0 0 1px var(--prio-low) inset; background: rgba(47, 79, 128, 0.1); }
+.prio-opt:focus-within { outline: 2px solid var(--plan-title); outline-offset: 2px; }
+.prio-help { margin: 0; font-size: 12px; line-height: 1.8; color: var(--plan-hint); }
+.day-task-ro { gap: 2px; }
+.day-task-text { min-width: 0; overflow-wrap: anywhere; }
+.day-card-ro .plan-meta { color: var(--plan-hint); }
 
 /* بنر الزام برنامه‌ی هفتگی (D5) */
 .plan-gate-banner { border: 1px solid var(--orange, #f59e0b); display: flex; flex-direction: column; gap: 8px; line-height: 1.8; }

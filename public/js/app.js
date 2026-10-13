@@ -998,6 +998,17 @@
 
   // ---------- برنامه‌ی هفتگی (D4): ویزارد انتقال ← افزودن تسک ← مرور ← ثبت ----------
   const PLAN_PRIORITY = { low: 'کم', normal: 'عادی', high: 'بالا' };
+  // C2: ترتیب نمایش «بالا / عادی / کم»، توضیح هر اولویت و پیام قفل هفته‌ی شروع‌شده
+  const PLAN_PRIORITY_ORDER = ['high', 'normal', 'low'];
+  const PLAN_PRIORITY_HELP = {
+    high: 'تا انجام ندهی یا علتش را ننویسی نمی‌توانی ثبت خروج کنی.',
+    normal: 'تا انجام ندهی یا علتش را ننویسی نمی‌توانی ثبت خروج کنی.',
+    low: 'ثبت خروج را مسدود نمی‌کند.',
+  };
+  const PLAN_PRIORITY_NOTE = 'بالا و عادی: تا انجام ندهی یا علتش را ننویسی نمی‌توانی ثبت خروج کنی. کم: ثبت خروج را مسدود نمی‌کند.';
+  const PLAN_LOCKED_MSG = 'هفته شروع شده و برنامه‌اش قابل ویرایش نیست.';
+  const PLAN_MONTH_CLOSED_MSG = 'این هفته در ماهِ بسته‌شده است و فقط قابل مشاهده است.';
+  const planPrio = (p) => (PLAN_PRIORITY[p] ? p : 'normal');
   const planUi = { data: null, tasks: [], carry: new Set(), step: 'tasks', week: 'next', msg: '', busy: false, drafts: {}, focus: null };
 
   function planEl(tag, props, ...kids) {
@@ -1059,6 +1070,34 @@
     });
   }
 
+  // نشان رنگی اولویت (متن + نماد؛ فقط به رنگ متکی نیست)
+  function prioBadge(p) {
+    const v = planPrio(p);
+    return planEl('span', { class: 'prio-badge prio-' + v, text: PLAN_PRIORITY[v] });
+  }
+
+  // C2: نمای فقط‌خواندنی برنامه (هفته‌ی ثبت‌شده/شروع‌شده/ماه بسته) با همان ظاهر کارت‌ها؛ هیچ کنترل فعالی ندارد
+  function planReadonlyBoard(data) {
+    const days = planDays(data);
+    const dayDates = new Set(days.map((d) => d.date));
+    const rows = (list) => list.map((t) => planEl('li', { class: 'day-task day-task-ro' },
+      t.isSystem ? planEl('span', { class: 'plan-sys', text: 'تسک خودکار: ' + t.title })
+        : [planEl('div', { class: 'day-task-main' }, prioBadge(t.priority), planEl('span', { class: 'day-task-text', text: t.title })),
+          t.description ? planEl('div', { class: 'plan-meta', text: t.description }) : null]));
+    const card = (titleText, badge, list) => planEl('section', { class: 'day-card day-card-ro' },
+      planEl('div', { class: 'day-card-head' }, planEl('h4', { class: 'day-card-title', text: titleText }), badge ? planEl('span', { class: 'day-badge', text: badge }) : null),
+      planEl('ul', { class: 'day-list' }, rows(list)));
+    const cards = [];
+    const general = data.tasks.filter((t) => !t.plannedDate || !dayDates.has(t.plannedDate));
+    if (general.length) cards.push(card('هر روز / بدون روز مشخص', '', general));
+    days.forEach((d) => {
+      const list = data.tasks.filter((t) => t.plannedDate === d.date);
+      if (list.length) cards.push(card(fmtPlanDay(d.date), PLAN_DAY_BADGE[d.kind] || '', list));
+    });
+    if (!cards.length) return planEl('p', { class: 'day-empty plan-meta', text: 'تسکی در این برنامه ثبت نشده است.' });
+    return planEl('div', { class: 'plan-board' }, planEl('div', { class: 'plan-days' }, cards));
+  }
+
   function planPayload() {
     return planUi.tasks.filter((t) => !t.isSystem).map((t) => ({
       id: t.id || undefined, title: String(t.title || '').trim(), description: String(t.description || '').trim(),
@@ -1101,13 +1140,14 @@
     const go = (step) => { planUi.step = step; planUi.msg = ''; renderPlan(); };
 
     if (planUi.step === 'done') {
-      const card = planEl('div', { class: 'card' });
-      if (data.editMode === 'readonly') card.appendChild(planEl('div', { text: 'این هفته در ماهِ بسته‌شده است و فقط قابل مشاهده است.' }));
+      const readonly = data.editMode === 'readonly';
+      const card = planEl('div', { class: 'card' + (readonly ? ' plan-lock' : '') });
+      if (readonly) card.appendChild(planEl('div', { role: 'status', text: data.lockReason === 'week_started' ? (planUi.msg || PLAN_LOCKED_MSG) : PLAN_MONTH_CLOSED_MSG }));
       else card.appendChild(planEl('div', { text: data.status === 'submitted' ? 'برنامه‌ی این هفته ثبت شده است ✅' : 'برنامه هنوز ثبت نشده است.' }));
       if (data.supervisorComment) card.appendChild(planEl('div', { class: 'plan-meta', text: 'یادداشت سرپرست: ' + data.supervisorComment }));
       body.appendChild(card);
-      data.tasks.forEach((t) => body.appendChild(planEl('div', { class: 'list-item' }, planEl('div', { text: t.title }), planEl('div', { class: 'plan-meta', text: [t.plannedDate ? fmtDate(t.plannedDate) : 'هر روز', PLAN_PRIORITY[t.priority]].join(' · ') }))));
-      if (data.editMode !== 'readonly') body.appendChild(planEl('button', { type: 'button', class: 'btn secondary', text: 'ویرایش برنامه', on: { click: () => go('tasks') } }));
+      body.appendChild(planReadonlyBoard(data));
+      if (!readonly) body.appendChild(planEl('button', { type: 'button', class: 'btn secondary', text: 'ویرایش برنامه', on: { click: () => go('tasks') } }));
       return;
     }
 
@@ -1142,6 +1182,7 @@
       }
       (data.frequentTitles || []).forEach((title) => tools.appendChild(planEl('button', { type: 'button', class: 'plan-chip', text: '+ ' + title, on: { click: () => addTask({ title }) } })));
       body.appendChild(tools);
+      body.appendChild(planEl('div', { class: 'plan-note' }, planEl('strong', { text: 'اولویت تسک‌ها' }), planEl('div', { text: PLAN_PRIORITY_NOTE })));
 
       // افزودن از فیلد بالای هر کارت؛ متن نیمه‌نوشته‌ی کارت‌ها بین رندرها در planUi.drafts می‌ماند
       const addFromDraft = (key, plannedDate) => {
@@ -1157,14 +1198,30 @@
       };
 
       const taskRow = (t, idx) => {
+        const badge = prioBadge(t.priority);
         const title = label(planEl('input', { type: 'text', class: 'day-task-title', maxLength: 120, value: t.title, placeholder: 'عنوان تسک', on: { input: (e) => { t.title = e.target.value; } } }), 'عنوان تسک');
         const rm = label(planEl('button', { type: 'button', class: 'day-task-del', text: 'حذف', on: { click: () => { planUi.tasks.splice(idx, 1); renderPlan(); } } }), 'حذف تسک');
         const desc = label(planEl('textarea', { rows: 2, maxLength: 500, value: t.description || '', placeholder: 'توضیح (اختیاری)', on: { input: (e) => { t.description = e.target.value; } } }), 'توضیح تسک');
-        const prio = label(planEl('select', { on: { change: (e) => { t.priority = e.target.value; } } }, Object.entries(PLAN_PRIORITY).map(([v, l]) => planEl('option', { value: v, text: l, selected: (t.priority || 'normal') === v }))), 'اولویت تسک');
+        // انتخاب اولویت: سه گزینه‌ی رادیویی (بالا/عادی/کم)؛ تغییر در همان‌جا اعمال می‌شود تا فوکوس کیبورد نپرد
+        const help = planEl('p', { class: 'prio-help', text: PLAN_PRIORITY_HELP[planPrio(t.priority)] });
+        help.setAttribute('aria-live', 'polite');
+        const opts = PLAN_PRIORITY_ORDER.map((v) => {
+          const input = planEl('input', { type: 'radio', name: `plan-prio-${idx}`, value: v, checked: planPrio(t.priority) === v });
+          const opt = planEl('label', { class: `prio-opt prio-${v}${planPrio(t.priority) === v ? ' on' : ''}` }, input, planEl('span', { text: PLAN_PRIORITY[v] }));
+          return { v, input, opt };
+        });
+        opts.forEach(({ v, input }) => input.addEventListener('change', () => {
+          t.priority = v;
+          opts.forEach((o) => { o.opt.className = `prio-opt prio-${o.v}${o.v === v ? ' on' : ''}`; });
+          badge.className = 'prio-badge prio-' + v;
+          badge.textContent = PLAN_PRIORITY[v];
+          help.textContent = PLAN_PRIORITY_HELP[v];
+        }));
+        const group = planEl('fieldset', { class: 'prio-group' }, planEl('legend', { class: 'prio-legend', text: 'اولویت' }), planEl('div', { class: 'prio-opts' }, opts.map((o) => o.opt)), help);
         const day = label(planEl('select', { on: { change: (e) => { t.plannedDate = e.target.value || null; renderPlan(); } } },
           [planEl('option', { value: '', text: 'بدون روز مشخص', selected: !t.plannedDate }), ...days.map((d) => planEl('option', { value: d.date, text: fmtPlanDay(d.date), selected: t.plannedDate === d.date }))]), 'روز تسک');
-        const more = planEl('details', { class: 'day-task-more' }, planEl('summary', { text: 'توضیح، اولویت و روز' }), desc, planEl('div', { class: 'row' }, prio, day));
-        return planEl('li', { class: 'day-task' }, planEl('div', { class: 'day-task-main' }, title, rm), more);
+        const more = planEl('details', { class: 'day-task-more' }, planEl('summary', { text: 'توضیح و جابه‌جایی روز' }), desc, planEl('div', { class: 'row' }, day));
+        return planEl('li', { class: 'day-task' }, planEl('div', { class: 'day-task-main' }, badge, title, rm), group, more);
       };
 
       const dayCard = (key, titleText, badge, plannedDate, matches, extra) => {
@@ -1199,7 +1256,7 @@
 
     // review
     body.appendChild(planEl('div', { class: 'card' }, planEl('div', { text: `${mine().length} تسک برای این هفته ثبت می‌شود:` })));
-    mine().forEach((t) => body.appendChild(planEl('div', { class: 'list-item' }, planEl('div', { text: t.title }), planEl('div', { class: 'plan-meta', text: [t.plannedDate ? fmtDate(t.plannedDate) : 'هر روز', PLAN_PRIORITY[t.priority || 'normal']].join(' · ') }))));
+    mine().forEach((t) => body.appendChild(planEl('div', { class: 'list-item' }, planEl('div', { class: 'day-task-main' }, prioBadge(t.priority), planEl('span', { text: t.title })), planEl('div', { class: 'plan-meta', text: t.plannedDate ? fmtDate(t.plannedDate) : 'هر روز' }))));
     const submitBtn = planEl('button', { type: 'button', class: 'btn primary', text: 'ثبت برنامه' });
     submitBtn.addEventListener('click', async () => {
       try {
@@ -1210,7 +1267,17 @@
         showToast('برنامه‌ی هفتگی ثبت شد.');
         await openPlanWizard(planUi.week);
         if (typeof planUi.onSubmitted === 'function') { const cb = planUi.onSubmitted; planUi.onSubmitted = null; cb(); }
-      } catch (err) { planUi.msg = err.message; renderPlan(); }
+      } catch (err) {
+        const code = err.data && err.data.code;
+        if (code === 'PLAN_LOCKED' || code === 'MONTH_CLOSED') {
+          // هفته بین ویرایش و ثبت شروع شد/ماه بسته شد ⇒ وضعیت تازه را بگیر (فقط‌خواندنی) و پیام سرور را نشان بده
+          await openPlanWizard(planUi.week);
+          planUi.msg = err.message;
+          renderPlan();
+          return;
+        }
+        planUi.msg = err.message; renderPlan();
+      }
     });
     body.appendChild(planEl('button', { type: 'button', class: 'btn secondary', text: 'بازگشت به ویرایش', on: { click: () => go('tasks') } }));
     body.appendChild(submitBtn);
