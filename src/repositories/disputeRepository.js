@@ -39,6 +39,7 @@ function listOpen() {
 }
 
 // S5-3a: اعتراض‌های «باز» مربوط به یک بازه‌ی میلادی (چک‌لیست بستن ماه).
+// D4 (مدل گفت‌وگو): «باز» = status 'open' (شامل پاسخ‌داده‌شده و reopen‌شده). resolved (توسط ادمین) و خاتمه‌یافته توسط کارمند (resolved + closed_by='user') مانع نیستند.
 // اعتراضِ وصل‌به‌رکورد با record_date رکورد سنجیده می‌شود؛ اعتراضِ بدون رکورد با روز ثبت (created_at به UTC).
 function listOpenInRange(fromDate, toDate) {
   return getDb()
@@ -126,6 +127,7 @@ function getThread(disputeId) {
 
 // «ادامه‌ی اعتراض»: فقط از وضعیت resolved؛ باز می‌شود (closed_* پاک)، پیام جدید ثبت می‌شود و (countAsReopen) reopen_count زیاد می‌شود.
 // maxReopens (اختیاری) فقط وقتی countAsReopen است سقف را در همان UPDATE اعمال می‌کند. ⇒ ردیف به‌روز | null (resolved نبود/سقف پر)
+// message = null (فقط reopen ادمین بدون یادداشت، D3): بدون پیام باز می‌شود.
 function reopenWithMessage({ id, senderUserId = null, senderRole = 'user', message, countAsReopen = true, maxReopens = null }) {
   const db = getDb();
   return db.transaction(() => {
@@ -140,7 +142,25 @@ function reopenWithMessage({ id, senderUserId = null, senderRole = 'user', messa
       )
       .run(...params);
     if (res.changes !== 1) return null;
-    insertMessage(db, findById(id), { senderUserId, senderRole, message });
+    if (message != null) insertMessage(db, findById(id), { senderUserId, senderRole, message });
+    return findById(id);
+  })();
+}
+
+// بستن اعتراضِ باز توسط ادمین/سرپرست (D3) با پیام پایانیِ اختیاری، در یک تراکنش.
+// فقط از وضعیت open (UPDATE شرطی)؛ closed_by = admin. ⇒ ردیف به‌روز | null (باز نبود)
+function resolveWithMessage({ id, senderUserId = null, message = null }) {
+  const db = getDb();
+  return db.transaction(() => {
+    const res = db
+      .prepare(
+        `UPDATE record_disputes
+            SET status = 'resolved', closed_by = 'admin', closed_at = datetime('now'), updated_at = datetime('now')
+          WHERE id = ? AND status = 'open'`
+      )
+      .run(id);
+    if (res.changes !== 1) return null;
+    if (message != null) insertMessage(db, findById(id), { senderUserId, senderRole: 'admin', message });
     return findById(id);
   })();
 }
@@ -165,6 +185,31 @@ function listByUserWithSummary(userId) {
     .all(userId);
 }
 
+// فهرست ادمین (D3): همه‌ی اعتراض‌ها با خلاصه‌ی گفت‌وگو (تعداد پیام و فرستنده‌ی آخرین پیام) و تاریخ رکورد؛ جدیدترین اول.
+// status: open | resolved | null؛ userIds: آرایه‌ی شناسه (اسکوپ سرپرست/کارمند) یا null = همه (آرایه‌ی خالی ⇒ نتیجه‌ی خالی).
+// اعتراض قدیمیِ بدون پیام = یک پیام از کارمند (مثل listByUserWithSummary).
+function listAllWithSummary({ status = null, userIds = null } = {}) {
+  if (Array.isArray(userIds) && userIds.length === 0) return [];
+  const where = [];
+  const params = [];
+  if (status) { where.push('d.status = ?'); params.push(status); }
+  if (Array.isArray(userIds)) {
+    where.push(`d.user_id IN (${userIds.map(() => '?').join(',')})`);
+    params.push(...userIds);
+  }
+  return getDb()
+    .prepare(
+      `SELECT d.*, r.record_date AS record_date,
+              MAX(1, (SELECT COUNT(*) FROM dispute_messages m WHERE m.dispute_id = d.id)) AS message_count,
+              COALESCE((SELECT m.sender_role FROM dispute_messages m WHERE m.dispute_id = d.id ORDER BY m.id DESC LIMIT 1), 'user') AS last_sender_role
+         FROM record_disputes d
+         LEFT JOIN attendance_records r ON r.id = d.attendance_record_id
+        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+        ORDER BY d.created_at DESC, d.id DESC`
+    )
+    .all(...params);
+}
+
 function listAll({ status } = {}) {
   const db = getDb();
   if (status) {
@@ -177,5 +222,5 @@ function listAll({ status } = {}) {
 
 module.exports = {
   listAll, createDispute, findById, listByUser, listOpen, listOpenInRange, setStatus,
-  addMessage, listMessages, getThread, reopenWithMessage, incrementReopenCount, listByUserWithSummary,
+  addMessage, listMessages, getThread, reopenWithMessage, resolveWithMessage, incrementReopenCount, listByUserWithSummary, listAllWithSummary,
 };

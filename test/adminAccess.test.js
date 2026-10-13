@@ -102,6 +102,10 @@ describe('لیست سفید کارمند (default-deny)', () => {
       ['GET', '/api/admin/leave-queue'], // S4-13a
       ['POST', '/api/admin/leave-queue/bulk'],
       ['POST', '/api/admin/disputes/1/resolve'],
+      ['POST', '/api/admin/disputes/1/reopen'], // D3
+      ['POST', '/api/admin/disputes/1/messages'], // D3: پاسخ ادمین؛ کارمند از Mini App استفاده می‌کند
+      ['GET', '/api/admin/disputes/1'], // D3: thread
+      ['GET', '/api/admin/disputes/counts'], // D3
       ['GET', '/api/admin/suspicious'],
       ['POST', '/api/admin/suspicious/1/review'],
       ['GET', '/api/admin/some-future-feature'],

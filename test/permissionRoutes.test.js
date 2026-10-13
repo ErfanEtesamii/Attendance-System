@@ -21,7 +21,7 @@ const HR_ALLOWED = new Set([
   'GET /api/admin/me', 'GET /api/admin/me/permissions', 'GET /api/admin/dashboard', 'GET /api/admin/overview', 'GET /api/admin/live', 'GET /api/admin/nightly-review', 'GET /api/admin/calendar?year=1405&month=1',
   'GET /api/admin/users', 'GET /api/admin/users/export', 'GET /api/admin/users/999999', 'GET /api/admin/users/999999/details',
   'GET /api/admin/attendance', 'GET /api/admin/attendance/export', 'GET /api/admin/attendance-records/999999',
-  'GET /api/admin/disputes', 'GET /api/admin/leave-requests', 'GET /api/admin/leave-types', 'GET /api/admin/leave-types/999999', 'GET /api/admin/leave-balances', 'GET /api/admin/leave-balances/999999/adjustments', 'GET /api/admin/reports/export', 'GET /api/admin/reports/monthly?year=1405&month=6', 'GET /api/admin/reports/monthly/export?year=1405&month=6', 'GET /api/admin/reports/summary',
+  'GET /api/admin/disputes', 'GET /api/admin/disputes/counts', 'GET /api/admin/disputes/999999', 'GET /api/admin/leave-requests', 'GET /api/admin/leave-types', 'GET /api/admin/leave-types/999999', 'GET /api/admin/leave-balances', 'GET /api/admin/leave-balances/999999/adjustments', 'GET /api/admin/reports/export', 'GET /api/admin/reports/monthly?year=1405&month=6', 'GET /api/admin/reports/monthly/export?year=1405&month=6', 'GET /api/admin/reports/summary',
   'GET /api/admin/month-closures?year=1405', 'GET /api/admin/month-closures/1405/6/checklist', 'GET /api/admin/month-closures/1405/6', 'GET /api/admin/month-closures/1405/6/adjustments', // S5-3a (hr: فقط‌خواندنی)
   'GET /api/admin/analytics/late-trend', 'GET /api/admin/analytics/late-compare?year=1405&month=6', // S5-6a (hr: فقط‌خواندنی)
   'GET /api/admin/analytics/rankings?year=1405&month=6', 'GET /api/admin/analytics/attendance-rate?year=1405&month=6', 'GET /api/admin/analytics/leave-by-type?year=1405&month=6', 'GET /api/admin/analytics/checkin-distribution', // S5-6b
@@ -51,6 +51,10 @@ const ROUTES = [
   ['GET', '/api/admin/disputes', [E, M, A]],
   ['POST', '/api/admin/disputes/999999/resolve', [M, A]],
   ['POST', '/api/admin/disputes/999999/reopen', [M, A]],
+  // D3 (فاز ۱۱): کارمند از لیست سفید رد می‌شود (Mini App مسیر خودش را دارد)؛ hr فقط می‌خواند (thread/شمارنده)؛ پاسخ فقط با disputes.resolve
+  ['GET', '/api/admin/disputes/counts', [M, A]],
+  ['GET', '/api/admin/disputes/999999', [M, A]],
+  ['POST', '/api/admin/disputes/999999/messages', [M, A]],
 ];
 
 // نیمه‌ی دوم (S4-3c). عنصر چهارم 'skip' = اجرای واقعی برای نقش مجاز عوارض دارد (ارسال همگانی، ابطال همه‌ی نشست‌ها، بک‌آپ)،
