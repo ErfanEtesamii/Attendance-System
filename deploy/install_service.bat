@@ -55,7 +55,7 @@ REM --- Install (or re-configure) ----------------------------------------------
 sc query "%SERVICE_NAME%" >nul 2>&1
 if errorlevel 1 (
     echo Installing service %SERVICE_NAME% ...
-    "%NSSM%" install "%SERVICE_NAME%" "%NODE%" "%ENTRY%"
+    "%NSSM%" install "%SERVICE_NAME%" "%NODE%" src\index.js
     if errorlevel 1 (
         echo [ERROR] nssm install failed.
         exit /b 1
@@ -64,11 +64,11 @@ if errorlevel 1 (
     echo Service %SERVICE_NAME% already exists - stopping and re-configuring it ...
     "%NSSM%" stop "%SERVICE_NAME%" >nul 2>&1
     "%NSSM%" set "%SERVICE_NAME%" Application "%NODE%"
-    "%NSSM%" set "%SERVICE_NAME%" AppParameters "\"%ENTRY%\""
+    "%NSSM%" set "%SERVICE_NAME%" AppParameters src\index.js
 )
 
-REM Always set AppParameters with quotes (project path may contain spaces)
-"%NSSM%" set "%SERVICE_NAME%" AppParameters "\"%ENTRY%\""
+REM Relative entry path (AppDirectory is the project root) so spaces in the project path never matter
+"%NSSM%" set "%SERVICE_NAME%" AppParameters src\index.js
 "%NSSM%" set "%SERVICE_NAME%" AppDirectory "%PROJECT_DIR%"
 "%NSSM%" set "%SERVICE_NAME%" DisplayName "%DISPLAY_NAME%"
 "%NSSM%" set "%SERVICE_NAME%" Description "%DESCRIPTION%"
