@@ -4,6 +4,8 @@
 // همه‌ی قواعد (تداخل، مانده، گذشته/آینده، پیش‌اطلاع، سقف روز متوالی) فقط در leaveService است؛ بات فقط پیام را نمایش می‌دهد.
 // مقدار قدیمیِ leave_type:leave|mission و sessionی که unit ندارد (= روزانه) هنوز کار می‌کند.
 // وضعیت مکالمه در src/bot/session.js نگه‌داری می‌شود (فقط در حافظه، نه دیتابیس).
+// E3: تاریخ با تقویم شمسی inline و ساعت با اسلات ۳۰ دقیقه‌ای انتخاب می‌شود (تایپ YYYY-MM-DD / HH:MM هم همچنان پذیرفته است)؛
+//   زیر هر مرحله «❌ انصراف | 🏠 منوی اصلی»؛ دکمه‌ی مرحله‌ی قدیمی/منقضی ⇒ پیام «این دکمه منقضی شده». فقط توضیح تایپ می‌ماند (با «رد شدن»).
 
 const { getRegisteredUser, notRegisteredMessage } = require('../auth');
 const session = require('../session');
@@ -15,11 +17,14 @@ const leaveBalanceService = require('../../services/leaveBalanceService');
 const leaveTypesRepository = require('../../repositories/leaveTypesRepository');
 const attachmentService = require('../../services/attachmentService');
 const { formatMinutes } = require('../../utils/leaveBalanceFormat');
+const ui = require('../ui/pickers');
+const { addDays } = require('../../utils/shiftDay');
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^([01]?\d|2[0-3]):([0-5]\d)$/;
 const UNIT_LABEL = { day: '📅 روزانه', half_day: '🌗 نیم‌روز', hour: '⏱ ساعتی' };
 const PART_LABEL = { morning: 'صبح', afternoon: 'عصر' };
+const CANCEL = 'leave_cancel'; // callback انصرافِ همین جریان (پیام‌های قدیمی هم کار می‌کنند)
 
 // «9:05» ⇒ «09:05»؛ نامعتبر ⇒ null
 function normalizeTime(str) {
@@ -45,16 +50,16 @@ async function notifyApprovers(bot, employee, request) {
     `از: ${employee.full_name}`,
     `بازه: ${request.start_date} تا ${request.end_date}`,
     request.reason ? `توضیح: ${request.reason}` : null,
-    '',
-    'برای بررسی از دستور /pending_leaves استفاده کنید.',
   ]
     .filter(Boolean)
     .join('\n');
+  // E4: به‌جای ارجاع به دستور، دکمه‌ی بررسی (همان handlerِ «📥 درخواست‌های منتظر»؛ نقش سمت سرور دوباره چک می‌شود)
+  const options = { reply_markup: { inline_keyboard: [[{ text: '📥 درخواست‌های منتظر', callback_data: 'mn:pending_leaves' }]] } };
 
   for (const approver of approvers) {
     if (!approver.telegram_user_id) continue;
     try {
-      await bot.sendMessage(approver.telegram_user_id, text);
+      await bot.sendMessage(approver.telegram_user_id, text, options);
     } catch (err) {
       console.error('[bot] خطا در اطلاع‌رسانی به تأییدکننده:', err.message);
     }
@@ -76,8 +81,7 @@ async function handleLeaveCommand(bot, msg) {
   }
   session.start(chatId, 'leave', { userId: user.id });
   const rows = types.map((ty) => [{ text: `${ty.kind === 'mission' ? '🚗' : '🏖'} ${ty.title}`, callback_data: `leave_type:${ty.id}` }]);
-  rows.push([{ text: '❌ لغو', callback_data: 'leave_cancel' }]);
-  await bot.sendMessage(chatId, 'نوع درخواست را انتخاب کنید:', { reply_markup: { inline_keyboard: rows } });
+  await bot.sendMessage(chatId, 'نوع درخواست را انتخاب کنید:', { reply_markup: ui.withNav(rows, { cancelData: CANCEL }) });
 }
 
 // ورودی leaveService از دادهٔ session (unit ندارد ⇒ روزانه)
@@ -98,20 +102,50 @@ function toServiceInput(data) {
 }
 
 async function askStartDate(bot, chatId, unit) {
-  await bot.sendMessage(chatId, unit === 'day' ? 'تاریخ شروع را وارد کنید (YYYY-MM-DD):' : 'تاریخ را وارد کنید (YYYY-MM-DD):');
+  await ui.askDate(bot, chatId, {
+    text: unit === 'day' ? 'تاریخ شروع را از تقویم انتخاب کنید (یا به‌صورت YYYY-MM-DD تایپ کنید):' : 'تاریخ را از تقویم انتخاب کنید (یا به‌صورت YYYY-MM-DD تایپ کنید):',
+    label: unit === 'day' ? 'تاریخ شروع' : 'تاریخ',
+    quick: ui.quickDates([0, 1, 2]),
+    cancelData: CANCEL,
+  });
+}
+
+async function askEndDate(bot, chatId, startDate) {
+  await ui.askDate(bot, chatId, {
+    text: 'تاریخ پایان را از تقویم انتخاب کنید (یا به‌صورت YYYY-MM-DD تایپ کنید):',
+    label: 'تاریخ پایان',
+    min: startDate,
+    quick: [{ text: 'همان روز', date: startDate }, { text: 'روز بعد', date: addDays(startDate, 1) }, { text: '۲ روز بعد', date: addDays(startDate, 2) }],
+    cancelData: CANCEL,
+  });
+}
+
+async function askStartTime(bot, chatId) {
+  await ui.askTime(bot, chatId, { text: 'ساعت شروع را انتخاب کنید (یا به‌صورت HH:MM تایپ کنید؛ مثال: 10:15):', label: 'ساعت شروع', cancelData: CANCEL });
+}
+
+async function askEndTime(bot, chatId, startTime) {
+  await ui.askTime(bot, chatId, { text: 'ساعت پایان را انتخاب کنید (یا به‌صورت HH:MM تایپ کنید):', label: 'ساعت پایان', after: startTime, cancelData: CANCEL });
+}
+
+async function askPart(bot, chatId) {
+  await bot.sendMessage(chatId, 'کدام بخش روز؟', {
+    reply_markup: ui.withNav([[{ text: '🌅 صبح', callback_data: 'leave_part:morning' }, { text: '🌇 عصر', callback_data: 'leave_part:afternoon' }]], { cancelData: CANCEL }),
+  });
 }
 
 async function askReason(bot, chatId) {
-  await bot.sendMessage(chatId, 'توضیح کوتاه بنویسید (یا "-" برای رد شدن):');
+  await ui.askText(bot, chatId, 'توضیح کوتاه بنویسید (یا با دکمه‌ی «رد شدن» ادامه دهید):', { skip: true, cancelData: CANCEL });
 }
 
-// خلاصه با مدت و هشدارها؛ خطای قواعد ⇒ پیام خطا و پایان جریان (کاربر دوباره /leave می‌زند)
+// خلاصه با مدت و هشدارها؛ خطای قواعد ⇒ پیام خطا و پایان جریان (کاربر از دکمه‌ی منو دوباره شروع می‌کند)
 async function sendSummary(bot, chatId, data) {
   const result = leaveService.validate(toServiceInput(data));
   if (!result.ok) {
     session.clear(chatId);
     if (data.attachment) await attachmentService.remove(data.attachment.id); // فایل یتیم نماند
-    await bot.sendMessage(chatId, ['❌ این درخواست قابل ثبت نیست:', ...result.errors.map((e) => `• ${e.error}`), '', 'برای شروع دوباره /leave را بفرستید.'].join('\n'));
+    // E4: به‌جای «دوباره /leave را بفرستید» ⇒ ارجاع به دکمه‌ی منوی پایین (بدون opts: دکمه‌ی اضافه نمی‌گذاریم)
+    await bot.sendMessage(chatId, ['❌ این درخواست قابل ثبت نیست:', ...result.errors.map((e) => `• ${e.error}`), '', 'برای شروع دوباره، «🏖 مرخصی / 🚗 ماموریت» را از منوی پایین بزنید.'].join('\n'));
     return;
   }
   const user = usersRepository.findById(data.userId);
@@ -135,10 +169,13 @@ async function sendSummary(bot, chatId, data) {
   session.update(chatId, { step: 4, data });
   await bot.sendMessage(chatId, lines.join('\n'), {
     reply_markup: {
-      inline_keyboard: [[
-        { text: '✅ تأیید و ارسال', callback_data: 'leave_confirm:yes' },
-        { text: '❌ لغو', callback_data: 'leave_confirm:no' },
-      ]],
+      inline_keyboard: [
+        [
+          { text: '✅ تأیید و ارسال', callback_data: 'leave_confirm:yes' },
+          { text: '❌ انصراف', callback_data: 'leave_confirm:no' },
+        ],
+        [{ text: '🏠 منوی اصلی', callback_data: ui.CB.HOME }],
+      ],
     },
   });
 }
@@ -151,28 +188,26 @@ async function handleLeaveText(bot, msg, sess) {
 
   if (sess.step === 1) {
     if (!isValidDate(text)) {
-      await bot.sendMessage(chatId, 'فرمت تاریخ نامعتبر است. لطفاً به‌صورت YYYY-MM-DD وارد کنید (مثال: 2026-09-25):');
+      await ui.retry(bot, chatId, 'فرمت تاریخ نامعتبر است. تاریخ را از تقویم بالا انتخاب کنید یا به‌صورت YYYY-MM-DD تایپ کنید (مثال: 2026-09-25):', { cancelData: CANCEL });
       return;
     }
     const data = { ...sess.data, startDate: text };
     if (unit === 'day') {
       session.update(chatId, { step: 2, data });
-      await bot.sendMessage(chatId, 'تاریخ پایان را وارد کنید (YYYY-MM-DD):');
+      await askEndDate(bot, chatId, text);
     } else if (unit === 'half_day') {
       session.update(chatId, { step: 7, data: { ...data, endDate: text } });
-      await bot.sendMessage(chatId, 'کدام بخش روز؟', {
-        reply_markup: { inline_keyboard: [[{ text: '🌅 صبح', callback_data: 'leave_part:morning' }, { text: '🌇 عصر', callback_data: 'leave_part:afternoon' }], [{ text: '❌ لغو', callback_data: 'leave_cancel' }]] },
-      });
+      await askPart(bot, chatId);
     } else {
       session.update(chatId, { step: 5, data: { ...data, endDate: text } });
-      await bot.sendMessage(chatId, 'ساعت شروع را وارد کنید (HH:MM، مثال: 10:00):');
+      await askStartTime(bot, chatId);
     }
     return;
   }
 
   if (sess.step === 2) {
     if (!isValidDate(text) || text < sess.data.startDate) {
-      await bot.sendMessage(chatId, 'تاریخ پایان نامعتبر است یا قبل از تاریخ شروع است. دوباره وارد کنید:');
+      await ui.retry(bot, chatId, 'تاریخ پایان نامعتبر است یا قبل از تاریخ شروع است. دوباره انتخاب کنید یا تایپ کنید:', { cancelData: CANCEL });
       return;
     }
     session.update(chatId, { step: 3, data: { ...sess.data, endDate: text } });
@@ -183,18 +218,18 @@ async function handleLeaveText(bot, msg, sess) {
   if (sess.step === 5) {
     const t = normalizeTime(text);
     if (!t) {
-      await bot.sendMessage(chatId, 'ساعت نامعتبر است. به‌صورت HH:MM وارد کنید (مثال: 10:00):');
+      await ui.retry(bot, chatId, 'ساعت نامعتبر است. از دکمه‌های بالا انتخاب کنید یا به‌صورت HH:MM تایپ کنید (مثال: 10:00):', { cancelData: CANCEL });
       return;
     }
     session.update(chatId, { step: 6, data: { ...sess.data, startTime: t } });
-    await bot.sendMessage(chatId, 'ساعت پایان را وارد کنید (HH:MM):');
+    await askEndTime(bot, chatId, t);
     return;
   }
 
   if (sess.step === 6) {
     const t = normalizeTime(text);
     if (!t || t <= sess.data.startTime) {
-      await bot.sendMessage(chatId, 'ساعت پایان نامعتبر است یا قبل از ساعت شروع است. دوباره وارد کنید (HH:MM):');
+      await ui.retry(bot, chatId, 'ساعت پایان نامعتبر است یا قبل از ساعت شروع است. دوباره انتخاب کنید یا تایپ کنید (HH:MM):', { cancelData: CANCEL });
       return;
     }
     session.update(chatId, { step: 3, data: { ...sess.data, endTime: t } });
@@ -209,7 +244,7 @@ async function handleLeaveText(bot, msg, sess) {
     if (type && type.requiresAttachment) {
       session.update(chatId, { step: 9, data });
       await bot.sendMessage(chatId, 'این نوع درخواست پیوست لازم دارد. تصویر (عکس) یا فایل PDF را همین‌جا بفرستید:', {
-        reply_markup: { inline_keyboard: [[{ text: '❌ لغو', callback_data: 'leave_cancel' }]] },
+        reply_markup: ui.withNav([], { cancelData: CANCEL }),
       });
       return;
     }
@@ -218,7 +253,7 @@ async function handleLeaveText(bot, msg, sess) {
   }
 
   if (sess.step === 9) {
-    await bot.sendMessage(chatId, 'لطفاً به‌جای متن، عکس یا فایل PDF بفرستید (یا با دکمه‌ی لغو خارج شوید).');
+    await ui.retry(bot, chatId, 'لطفاً به‌جای متن، عکس یا فایل PDF بفرستید (یا با دکمه‌ی انصراف خارج شوید).', { cancelData: CANCEL });
   }
 }
 
@@ -260,6 +295,16 @@ async function handleLeaveCallback(bot, query, sess) {
   const chatId = query.message.chat.id;
   const [action, value] = query.data.split(':');
 
+  // E3: دکمه‌ی مرحله‌ی قدیمی (session نیست یا در مرحله‌ی دیگری است) ⇒ «این دکمه منقضی شده، منو را باز کنید»
+  const stepOf = { leave_type: 0, leave_unit: 8, leave_part: 7, leave_confirm: 4 };
+  // sessionِ ناقص (بدون flow/step؛ فراخوانی قدیمی/تست) رد نمی‌شود — index.js خودش flow را پیش از صدا زدن چک می‌کند
+  const flowBad = !sess || (sess.flow !== undefined && sess.flow !== 'leave');
+  const stepBad = sess && sess.step !== undefined && action !== 'leave_cancel' && sess.step !== stepOf[action];
+  if (flowBad || stepBad) {
+    await ui.expire(bot, query);
+    return;
+  }
+
   if (action === 'leave_cancel') {
     if (sess && sess.data && sess.data.attachment) await attachmentService.remove(sess.data.attachment.id);
     session.clear(chatId);
@@ -273,7 +318,7 @@ async function handleLeaveCallback(bot, query, sess) {
     const type = /^\d+$/.test(value || '') ? leaveTypesRepository.findById(Number(value)) : null;
     if (/^\d+$/.test(value || '') && (!type || !type.isActive)) {
       session.clear(chatId);
-      await bot.sendMessage(chatId, 'این نوع درخواست دیگر در دسترس نیست. دوباره /leave را بفرستید.');
+      await bot.sendMessage(chatId, 'این نوع درخواست دیگر در دسترس نیست. برای شروع دوباره، «🏖 مرخصی / 🚗 ماموریت» را از منوی پایین بزنید.'); // E4
       return;
     }
     // مقدار قدیمی leave|mission (دکمه‌ی پیام‌های قدیمی): روزانه با leaveType قدیمی
@@ -282,7 +327,7 @@ async function handleLeaveCallback(bot, query, sess) {
     if (units.length > 1) {
       session.update(chatId, { step: 8, data: base });
       await bot.sendMessage(chatId, 'واحد درخواست را انتخاب کنید:', {
-        reply_markup: { inline_keyboard: [units.map((u) => ({ text: UNIT_LABEL[u], callback_data: `leave_unit:${u}` })), [{ text: '❌ لغو', callback_data: 'leave_cancel' }]] },
+        reply_markup: ui.withNav([units.map((u) => ({ text: UNIT_LABEL[u], callback_data: `leave_unit:${u}` }))], { cancelData: CANCEL }),
       });
       return;
     }
@@ -292,14 +337,14 @@ async function handleLeaveCallback(bot, query, sess) {
 
   if (action === 'leave_unit') {
     await bot.answerCallbackQuery(query.id);
-    if (sess.step !== 8 || !UNIT_LABEL[value]) return;
+    if (!UNIT_LABEL[value]) return;
     await chooseUnit(bot, chatId, sess, value);
     return;
   }
 
   if (action === 'leave_part') {
     await bot.answerCallbackQuery(query.id);
-    if (sess.step !== 7 || !PART_LABEL[value]) return;
+    if (!PART_LABEL[value]) return;
     session.update(chatId, { step: 3, data: { ...sess.data, halfDayPart: value } });
     await askReason(bot, chatId);
     return;

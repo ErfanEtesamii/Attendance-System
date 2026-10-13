@@ -1,4 +1,4 @@
-// /fix_record: طبق سند، اصلاح دستی رکورد فقط توسط ادمین کل مجاز است و باید
+// «🛠 اصلاح رکورد» (دکمه‌ی منوی ادمین): طبق سند، اصلاح دستی رکورد فقط توسط ادمین کل مجاز است و باید
 // «چه‌کسی، چه‌زمانی، چرا» به‌صورت اجباری در audit_log ثبت شود.
 
 const { getRegisteredUser, notRegisteredMessage, hasRole } = require('../auth');
@@ -6,6 +6,11 @@ const session = require('../session');
 const usersRepository = require('../../repositories/usersRepository');
 const attendanceRepository = require('../../repositories/attendanceRepository');
 const auditRepository = require('../../repositories/auditRepository');
+const ui = require('../ui/pickers');
+const { todayDateString } = require('../../utils/serverTime');
+
+// E3: کارمند از فهرست دکمه‌ای، تاریخ از تقویم شمسی، ساعت از اسلات ۳۰ دقیقه‌ای؛ فقط «دلیل» تایپ می‌شود (اجباری، بدون «رد شدن»).
+// تایپ آیدی تلگرام / YYYY-MM-DD / HH:mm هم همچنان پذیرفته است. نقش ادمین هر بار سمت سرور دوباره چک می‌شود.
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^\d{2}:\d{2}$/;
@@ -24,7 +29,34 @@ async function handleFixRecordCommand(bot, msg) {
   }
 
   session.start(chatId, 'fix_record', { adminId: user.id });
-  await bot.sendMessage(chatId, 'آیدی تلگرام کارمند مورد نظر را وارد کنید:');
+  await ui.askEmployee(bot, chatId, { text: 'کارمند مورد نظر را انتخاب کنید (یا آیدی عددی تلگرامش را تایپ کنید):', label: 'کارمند', filter: 'any' });
+}
+
+function sessionAdmin(sess) {
+  const admin = sess && sess.data && sess.data.adminId ? usersRepository.findById(sess.data.adminId) : null;
+  return admin && admin.is_active && admin.role === 'admin' ? admin : null;
+}
+
+// بعد از انتخاب کارمند (از فهرست یا تایپ): مرحله‌ی تاریخ
+async function proceedWithEmployee(bot, chatId, sess, employee) {
+  session.update(chatId, { step: 1, data: { ...sess.data, employeeId: employee.id, employeeName: employee.full_name } });
+  await ui.askDate(bot, chatId, {
+    text: 'تاریخ رکورد را از تقویم انتخاب کنید (یا به‌صورت YYYY-MM-DD تایپ کنید):',
+    label: 'تاریخ رکورد',
+    max: todayDateString(),
+    quick: ui.quickDates([-1, 0]),
+  });
+}
+
+// انتخاب کارمند از فهرست (pickerRouter)
+async function handleEmployeePick(bot, chatId, sess, chosen) {
+  if (!sess || sess.flow !== 'fix_record' || sess.step !== 0 || !chosen) return;
+  if (!sessionAdmin(sess)) {
+    session.clear(chatId);
+    await bot.sendMessage(chatId, '⛔️ اصلاح دستی رکورد فقط توسط ادمین کل مجاز است.');
+    return;
+  }
+  await proceedWithEmployee(bot, chatId, sess, chosen);
 }
 
 async function handleFixRecordText(bot, msg, sess) {
@@ -34,17 +66,16 @@ async function handleFixRecordText(bot, msg, sess) {
   if (sess.step === 0) {
     const employee = usersRepository.findByTelegramId(text);
     if (!employee) {
-      await bot.sendMessage(chatId, 'کارمندی با این آیدی تلگرام پیدا نشد. دوباره وارد کنید:');
+      await ui.retry(bot, chatId, 'کارمندی با این آیدی تلگرام پیدا نشد. از فهرست بالا انتخاب کنید یا دوباره تایپ کنید:');
       return;
     }
-    session.update(chatId, { step: 1, data: { ...sess.data, employeeId: employee.id, employeeName: employee.full_name } });
-    await bot.sendMessage(chatId, `تاریخ رکورد را وارد کنید (YYYY-MM-DD):`);
+    await proceedWithEmployee(bot, chatId, sess, employee);
     return;
   }
 
   if (sess.step === 1) {
     if (!DATE_RE.test(text)) {
-      await bot.sendMessage(chatId, 'فرمت تاریخ نامعتبر است. دوباره وارد کنید (YYYY-MM-DD):');
+      await ui.retry(bot, chatId, 'فرمت تاریخ نامعتبر است. از تقویم بالا انتخاب کنید یا به‌صورت YYYY-MM-DD تایپ کنید:');
       return;
     }
     const [record] = attendanceRepository.listByUserAndRange(sess.data.employeeId, text, text);
@@ -66,16 +97,13 @@ async function handleFixRecordText(bot, msg, sess) {
         'کدام فیلد اصلاح شود؟',
       ].join('\n'),
       {
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: 'زمان ورود', callback_data: 'fix_field:check_in_time' },
-              { text: 'زمان خروج', callback_data: 'fix_field:check_out_time' },
-            ],
-            [{ text: 'وضعیت', callback_data: 'fix_field:status' }],
-            [{ text: '❌ لغو', callback_data: 'fix_cancel' }],
+        reply_markup: ui.withNav([
+          [
+            { text: 'زمان ورود', callback_data: 'fix_field:check_in_time' },
+            { text: 'زمان خروج', callback_data: 'fix_field:check_out_time' },
           ],
-        },
+          [{ text: 'وضعیت', callback_data: 'fix_field:status' }],
+        ], { cancelData: 'fix_cancel' }),
       }
     );
     return;
@@ -84,18 +112,23 @@ async function handleFixRecordText(bot, msg, sess) {
   if (sess.step === 3) {
     // مقدار جدید برای check_in_time / check_out_time به‌صورت HH:mm
     if (!TIME_RE.test(text)) {
-      await bot.sendMessage(chatId, 'فرمت زمان نامعتبر است. به‌صورت HH:mm وارد کنید (مثال: 08:30):');
+      await ui.retry(bot, chatId, 'فرمت زمان نامعتبر است. از دکمه‌های بالا انتخاب کنید یا به‌صورت HH:mm تایپ کنید (مثال: 08:30):');
       return;
     }
     const newValueIso = new Date(`${sess.data.recordDate}T${text}:00`).toISOString();
     session.update(chatId, { step: 4, data: { ...sess.data, newValue: newValueIso } });
-    await bot.sendMessage(chatId, 'دلیل این اصلاح را وارد کنید (اجباری):');
+    await ui.askText(bot, chatId, 'دلیل این اصلاح را بنویسید (اجباری):');
     return;
   }
 
   if (sess.step === 4) {
     if (!text) {
-      await bot.sendMessage(chatId, 'ذکر دلیل اجباری است. لطفاً دلیل را وارد کنید:');
+      await ui.retry(bot, chatId, 'ذکر دلیل اجباری است. لطفاً دلیل را بنویسید:');
+      return;
+    }
+    if (!sessionAdmin(sess)) {
+      session.clear(chatId);
+      await bot.sendMessage(chatId, '⛔️ اصلاح دستی رکورد فقط توسط ادمین کل مجاز است.');
       return;
     }
     await finalizeFix(bot, chatId, { ...sess.data, reason: text });
@@ -114,28 +147,38 @@ async function handleFixRecordCallback(bot, query, sess) {
   }
 
   const [, field] = query.data.split(':');
+  if (!sess || sess.flow !== 'fix_record' || sess.step !== 2 || !['check_in_time', 'check_out_time', 'status'].includes(field)) {
+    await ui.expire(bot, query); // دکمه‌ی مرحله‌ی قدیمی
+    return;
+  }
   await bot.answerCallbackQuery(query.id);
 
   if (field === 'status') {
     session.update(chatId, { step: 3.5, data: { ...sess.data, field } });
     await bot.sendMessage(chatId, 'وضعیت جدید را انتخاب کنید:', {
-      reply_markup: {
-        inline_keyboard: [STATUS_OPTIONS.map((s) => ({ text: s, callback_data: `fix_status:${s}` }))],
-      },
+      reply_markup: ui.withNav([STATUS_OPTIONS.map((s) => ({ text: s, callback_data: `fix_status:${s}` }))], { cancelData: 'fix_cancel' }),
     });
     return;
   }
 
   session.update(chatId, { step: 3, data: { ...sess.data, field } });
-  await bot.sendMessage(chatId, 'مقدار جدید را به‌صورت HH:mm وارد کنید (بر اساس همان تاریخ رکورد):');
+  await ui.askTime(bot, chatId, {
+    text: `${field === 'check_in_time' ? 'زمان ورود' : 'زمان خروج'} جدید را انتخاب کنید (یا به‌صورت HH:mm تایپ کنید؛ بر اساس همان تاریخ رکورد):`,
+    label: field === 'check_in_time' ? 'زمان ورود' : 'زمان خروج',
+    cancelData: 'fix_cancel',
+  });
 }
 
 async function handleFixStatusCallback(bot, query, sess) {
   const chatId = query.message.chat.id;
   const [, status] = query.data.split(':');
+  if (!sess || sess.flow !== 'fix_record' || sess.step !== 3.5 || !STATUS_OPTIONS.includes(status)) {
+    await ui.expire(bot, query);
+    return;
+  }
   await bot.answerCallbackQuery(query.id);
   session.update(chatId, { step: 4, data: { ...sess.data, newValue: status } });
-  await bot.sendMessage(chatId, 'دلیل این اصلاح را وارد کنید (اجباری):');
+  await ui.askText(bot, chatId, 'دلیل این اصلاح را بنویسید (اجباری):');
 }
 
 async function finalizeFix(bot, chatId, data) {
@@ -167,4 +210,5 @@ module.exports = {
   handleFixRecordText,
   handleFixRecordCallback,
   handleFixStatusCallback,
+  handleEmployeePick,
 };

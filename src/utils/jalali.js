@@ -103,6 +103,19 @@ function jalaliYearOfDateString(iso) {
   return jalaali.toJalaali(gy, gm, gd).jy;
 }
 
+// E3: اجزای شمسیِ یک تاریخ میلادی «YYYY-MM-DD» ⇒ { jy, jm, jd } (نامعتبر ⇒ null). برای تقویم inline بات.
+function jalaliPartsOfDateString(iso) {
+  const m = typeof iso === 'string' ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso) : null;
+  if (!m) return null;
+  const gy = Number(m[1]);
+  const gm = Number(m[2]);
+  const gd = Number(m[3]);
+  const check = new Date(Date.UTC(gy, gm - 1, gd));
+  if (check.getUTCFullYear() !== gy || check.getUTCMonth() !== gm - 1 || check.getUTCDate() !== gd) return null;
+  const j = jalaali.toJalaali(gy, gm, gd);
+  return { jy: j.jy, jm: j.jm, jd: j.jd };
+}
+
 // S4-9a: اولین و آخرین روز (میلادی، YYYY-MM-DD) یک سال شمسی؛ jy باید عدد صحیح باشد.
 function jalaliYearToDateRange(jy) {
   if (!Number.isInteger(jy)) throw new RangeError('سال شمسی باید عدد صحیح باشد.');
@@ -151,4 +164,5 @@ module.exports = {
   jalaliMonthToDateRange,
   jalaliYearOfDateString,
   jalaliYearToDateRange,
+  jalaliPartsOfDateString,
 };

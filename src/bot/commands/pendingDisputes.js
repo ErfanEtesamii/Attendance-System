@@ -1,4 +1,4 @@
-// /pending_disputes — اعتراض‌های باز کارمندان تیم (ادمین: همه) با امکان پاسخ و بستن از داخل بات.
+// «💬 اعتراض‌ها» — اعتراض‌های باز کارمندان تیم (ادمین: همه) با امکان پاسخ و بستن از داخل بات.
 const { getRegisteredUser, notRegisteredMessage, hasRole } = require('../auth');
 const session = require('../session');
 const usersRepository = require('../../repositories/usersRepository');
@@ -6,6 +6,7 @@ const disputeRepository = require('../../repositories/disputeRepository');
 const attendanceRepository = require('../../repositories/attendanceRepository');
 const auditRepository = require('../../repositories/auditRepository');
 const notificationEvents = require('../../services/notificationEvents');
+const ui = require('../ui/pickers');
 
 function canHandle(actor, dispute) {
   if (actor.role === 'admin') return true;
@@ -42,7 +43,7 @@ async function handlePendingDisputes(bot, msg) {
     return;
   }
   if (!hasRole(user, ['admin', 'manager'])) {
-    await bot.sendMessage(chatId, '⛔️ این دستور فقط برای سرپرستان و ادمین قابل استفاده است.');
+    await bot.sendMessage(chatId, '⛔️ این گزینه فقط برای سرپرستان و ادمین در دسترس است.');
     return;
   }
 
@@ -104,10 +105,11 @@ async function handleDisputeCallback(bot, query) {
   // dispute_reply: منتظر متن پاسخ می‌مانیم
   session.start(chatId, 'dispute_reply', { disputeId: dispute.id });
   await bot.answerCallbackQuery(query.id);
-  await bot.sendMessage(
-    chatId,
-    `پاسخ خود را برای اعتراض #${dispute.id} بنویسید و بفرستید.\nبرای بستن بدون پاسخ «-» و برای انصراف «انصراف» را بفرستید.`
-  );
+  // E3: انصراف/منوی اصلی با دکمه؛ «بستن بدون پاسخ» همان «رد شدن» است (متن «-» به handler می‌رود). تایپ «انصراف» هم هنوز کار می‌کند.
+  await ui.askText(bot, chatId, `پاسخ خود را برای اعتراض #${dispute.id} بنویسید و بفرستید (یا اعتراض را بدون پاسخ ببندید).`, {
+    skip: true,
+    skipText: '✅ بستن بدون پاسخ',
+  });
 }
 
 async function handleDisputeReplyText(bot, msg, sess) {

@@ -1,27 +1,28 @@
+// «❓ راهنما»: توضیح دکمه‌های منوی پایین صفحه بر اساس نقش (E4: بدون ارجاع به /دستور).
 const { getRegisteredUser, notRegisteredMessage } = require('../auth');
 
-const EMPLOYEE_COMMANDS = [
-  '/status — وضعیت لحظه‌ای من',
-  '/report — خلاصه ساعت کاری هفته/ماه جاری',
-  '/leave — ثبت درخواست مرخصی یا مأموریت',
-  '/panel — ورود به پنل (ادمین: همه، سرپرست: تیم من، کارمند: فقط خودم)',
-  '/help — همین راهنما',
+const EMPLOYEE_BUTTONS = [
+  '🕒 ثبت تردد — ثبت ورود، خروج و استراحت',
+  '📊 وضعیت من — وضعیت لحظه‌ای امروز',
+  '📈 گزارش من — خلاصه ساعت کاری هفته/ماه جاری',
+  '🏖 مرخصی / 🚗 ماموریت — ثبت درخواست',
+  '📋 برنامه هفتگی — برنامه‌ی کاری هفته',
+  '🖥 پنل — ورود به پنل (ادمین: همه، سرپرست: تیم من، کارمند: فقط خودم)',
+  '❓ راهنما — همین توضیح',
 ];
 
-const MANAGER_COMMANDS = [
-  '/list_employees — لیست اعضای تیم من',
-  '/team_report — گزارش تیم من',
-  '/pending_leaves — درخواست‌های مرخصی در انتظار تأیید تیم من',
-  '/pending_disputes — اعتراض‌های باز تیم من (پاسخ و بستن)',
+const MANAGER_BUTTONS = [
+  '👥 گزارش تیم — گزارش تیم من',
+  '📥 درخواست‌های منتظر — مرخصی/ماموریت‌های منتظر تأیید (ادمین: همه)',
+  '💬 اعتراض‌ها — اعتراض‌های باز (پاسخ و بستن)',
+  '📝 گزارش‌های دیروز تیم — گزارش تسک‌های دیروز تیم در پنل',
+  '👤 لیست اعضا — اعضای تیم من (ادمین: همه)',
 ];
 
-const ADMIN_COMMANDS = [
-  '/add_employee — افزودن کارمند جدید',
-  '/list_employees — لیست همه کارمندان',
-  '/team_report — گزارش کل تیم‌ها',
-  '/pending_leaves — همه درخواست‌های مرخصی در انتظار',
-  '/pending_disputes — همه اعتراض‌های باز',
-  '/fix_record — اصلاح دستی یک رکورد تردد',
+const ADMIN_BUTTONS = [
+  '➕ افزودن کارمند — ثبت کارمند جدید',
+  '🛠 اصلاح رکورد — اصلاح دستی یک رکورد تردد (با ثبت دلیل)',
+  '⚙️ پنل مدیریت — ورود مستقیم به پنل مدیریت',
 ];
 
 async function handleHelp(bot, msg) {
@@ -33,13 +34,15 @@ async function handleHelp(bot, msg) {
     return;
   }
 
-  const lines = ['دستورات کارمندی:', ...EMPLOYEE_COMMANDS];
+  const lines = ['همه‌ی کارها با دکمه‌های پایین صفحه انجام می‌شود:', '', 'دکمه‌های کارمندی:', ...EMPLOYEE_BUTTONS];
 
-  if (user.role === 'manager') {
-    lines.push('', 'دستورات مدیریتی:', ...MANAGER_COMMANDS);
-  } else if (user.role === 'admin') {
-    lines.push('', 'دستورات ادمین:', ...ADMIN_COMMANDS);
+  if (user.role === 'manager' || user.role === 'admin') {
+    lines.push('', 'دکمه‌های تیم:', ...MANAGER_BUTTONS);
   }
+  if (user.role === 'admin') {
+    lines.push('', 'دکمه‌های ادمین:', ...ADMIN_BUTTONS);
+  }
+  lines.push('', 'در هر مرحله‌ی چندمرحله‌ای، «❌ انصراف» و «🏠 منوی اصلی» زیر پیام هست.');
 
   await bot.sendMessage(chatId, lines.join('\n'));
 }

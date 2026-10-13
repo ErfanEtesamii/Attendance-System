@@ -15,7 +15,7 @@ const missionDecisionService = require('../../services/missionDecisionService');
 const nightlyTaskReportService = require('../../services/nightlyTaskReportService');
 
 const MAX_ATTENTION_LINES = 25;
-const MAX_MISSIONS = 8; // هر ماموریت یک ردیف دکمه دارد؛ بقیه با /pending_leaves
+const MAX_MISSIONS = 8; // هر ماموریت یک ردیف دکمه دارد؛ بقیه با دکمه‌ی «📥 درخواست‌های منتظر»
 
 // C4: ماموریت‌های منتظر تأیید این سرپرست ⇒ { lines, shown } (ضدخطا؛ مرور شبانه هرگز نباید بشکند)
 function missionSection(supervisor) {
@@ -25,7 +25,7 @@ function missionSection(supervisor) {
     const shown = all.slice(0, MAX_MISSIONS);
     const lines = ['', `🚗 ماموریت‌های منتظر تأیید (${all.length}):`];
     shown.forEach((r) => lines.push(missionDecisionService.describeMission(r, usersRepository.findById(r.user_id))));
-    if (all.length > shown.length) lines.push(`… و ${all.length - shown.length} مورد دیگر → /pending_leaves`);
+    if (all.length > shown.length) lines.push(`… و ${all.length - shown.length} مورد دیگر → «📥 درخواست‌های منتظر» (منوی پایین)`);
     return { lines, shown };
   } catch (err) {
     console.error('[bot][scheduler] خطا در بخش ماموریت‌ها:', err.message);
@@ -99,8 +99,8 @@ function buildNightlyMessage(supervisor, team, today, rows = reviewDay(team, tod
   const openSuspicious = openSuspiciousCount(supervisor);
   if (pendingLeave > 0 || openDisputes > 0 || openSuspicious > 0) {
     lines.push('');
-    if (pendingLeave > 0) lines.push(`⏳ ${pendingLeave} درخواست مرخصی/مأموریت منتظر پاسخ شماست → /pending_leaves`);
-    if (openDisputes > 0) lines.push(`💬 ${openDisputes} اعتراض باز منتظر پاسخ شماست → /pending_disputes`);
+    if (pendingLeave > 0) lines.push(`⏳ ${pendingLeave} درخواست مرخصی/مأموریت منتظر پاسخ شماست → «📥 درخواست‌های منتظر» (منوی پایین)`);
+    if (openDisputes > 0) lines.push(`💬 ${openDisputes} اعتراض باز منتظر پاسخ شماست → «💬 اعتراض‌ها» (منوی پایین)`);
     // «نشانه» است نه اتهام؛ جزئیات فقط در پنل (بخش «موارد مشکوک»)
     if (openSuspicious > 0) lines.push(`🔎 ${openSuspicious} نشانه‌ی بررسی‌نشده در تیم شما (فقط نشانه، نه اتهام) → پنل ‹ موارد مشکوک`);
   }

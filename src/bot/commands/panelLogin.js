@@ -1,4 +1,4 @@
-// /panel — ورود به پنل وب برای هر سه نقش (ادمین / سرپرست / کارمند)، فقط در چت خصوصی.
+// «🖥 پنل» — ورود به پنل وب برای هر سه نقش (ادمین / سرپرست / کارمند)، فقط در چت خصوصی.
 // سه راه ورود در یک پیام:
 //   ۱) دکمه‌ی «ورود به پنل» (Web App داخل تلگرام — بدون کد)
 //   ۲) دکمه‌ی «باز کردن در مرورگر» (لینک یک‌بارمصرف ۵ دقیقه‌ای)
@@ -11,7 +11,7 @@ const { ROLE_LABELS, ROLE_ACCESS, panelUrl, panelWebAppButton, persistentKeyboar
 async function handlePanelLogin(bot, msg) {
   const chatId = msg.chat.id;
   if (msg.chat.type !== 'private') {
-    await bot.sendMessage(chatId, 'این دستور را فقط در چت خصوصی با بات بزنید.');
+    await bot.sendMessage(chatId, 'این بخش را فقط در چت خصوصی با بات باز کنید.');
     return;
   }
   const user = getRegisteredUser(msg.from.id);
@@ -48,7 +48,7 @@ async function handlePanelLogin(bot, msg) {
     reply_markup: { inline_keyboard: buttons },
   });
 
-  // کیبورد ثابتِ «پنل / ثبت تردد» را هم زیر چت فعال می‌کنیم تا دفعه‌ی بعد نیازی به تایپ دستور نباشد
+  // کیبورد ثابتِ «پنل / ثبت تردد» را هم زیر چت فعال می‌کنیم تا دفعه‌ی بعد نیازی به تایپ چیزی نباشد
   const kb = persistentKeyboard(user, { chatType: msg.chat.type });
   if (kb) await bot.sendMessage(chatId, 'دکمه‌ی «🖥 پنل» حالا پایین صفحه‌ی چت همیشه در دسترس است.', { reply_markup: kb });
 }

@@ -19,7 +19,7 @@ async function handleTeamReport(bot, msg) {
     return;
   }
   if (!hasRole(user, ['admin', 'manager'])) {
-    await bot.sendMessage(chatId, '⛔️ این دستور فقط برای سرپرستان و ادمین قابل استفاده است.');
+    await bot.sendMessage(chatId, '⛔️ این گزینه فقط برای سرپرستان و ادمین در دسترس است.');
     return;
   }
 

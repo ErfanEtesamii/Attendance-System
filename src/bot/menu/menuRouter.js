@@ -148,7 +148,7 @@ async function routeMenuText(bot, msg, handlers) {
     return true;
   }
 
-  session.clear(chatId); // دکمه‌ی منو = شروع تازه؛ مکالمه‌ی قبلی (مثلاً /leave نیمه‌کاره) لغو می‌شود
+  session.clear(chatId); // دکمه‌ی منو = شروع تازه؛ مکالمه‌ی قبلی (مثلاً ثبت مرخصیِ نیمه‌کاره) لغو می‌شود
   if (item.url) {
     await sendWebAppLink(bot, chatId, item);
     return true;
@@ -158,4 +158,31 @@ async function routeMenuText(bot, msg, handlers) {
   return true;
 }
 
-module.exports = { ITEMS, normalizeLabel, buildMainKeyboard, routeMenuText, defaultHandlers };
+/**
+ * دکمه‌ی inline «mn:<id>» (مثلاً «📥 درخواست‌های منتظر» زیر اعلان درخواست مرخصی) ⇒ همان handlerِ دکمه‌ی منو.
+ * نقش هر بار از دیتابیس خوانده می‌شود؛ دکمه‌ی ناشناخته/web_app ⇒ «این دکمه منقضی شده». هر callback دقیقاً یک‌بار answer می‌شود.
+ */
+async function handleMenuCallback(bot, query, handlers) {
+  const id = String(query.data || '').slice(3);
+  const item = ITEMS.find((it) => it.id === id && !it.url);
+  const chat = query.message && query.message.chat;
+  if (!item || !chat || chat.type !== 'private' || !query.from) {
+    await bot.answerCallbackQuery(query.id, { text: 'این دکمه منقضی شده، منو را باز کنید.', show_alert: true });
+    return;
+  }
+  const user = getRegisteredUser(query.from.id);
+  if (!user) {
+    await bot.answerCallbackQuery(query.id, { text: 'شما در سیستم ثبت نیستید.', show_alert: true });
+    return;
+  }
+  if (!roleAllowed(item, user)) {
+    await bot.answerCallbackQuery(query.id, { text: '⛔️ این گزینه برای نقش شما در دسترس نیست.', show_alert: true });
+    return;
+  }
+  await bot.answerCallbackQuery(query.id);
+  session.clear(chat.id);
+  const fn = (handlers || defaultHandlers())[item.handler];
+  await fn(bot, { chat, from: query.from, text: item.label });
+}
+
+module.exports = { ITEMS, normalizeLabel, buildMainKeyboard, routeMenuText, handleMenuCallback, defaultHandlers };

@@ -1,7 +1,9 @@
 const TelegramBot = require('node-telegram-bot-api');
 const config = require('../config');
 const session = require('./session');
-const { routeMenuText } = require('./menu/menuRouter');
+const { routeMenuText, handleMenuCallback } = require('./menu/menuRouter');
+const { isPickerCallback, handlePickerCallback } = require('./ui/pickerRouter');
+const ui = require('./ui/pickers');
 const { startSchedulers } = require('./scheduler');
 const { instrumentBot } = require('../utils/botHealth');
 
@@ -86,36 +88,44 @@ function createBot() {
   });
 
   bot.on('callback_query', async (query) => {
-    const chatId = query.message.chat.id;
-    const sess = session.get(chatId);
-
     try {
-      if (query.data.startsWith('rvs:') || query.data.startsWith('rvc:')) return await handleReportReviewCallback(bot, query);
-      if (query.data.startsWith('mission_edit:')) return await startMissionEdit(bot, query);
-      if (query.data.startsWith('leave_reject:') && missionRequestOf(query.data)) return await startMissionReject(bot, query);
-      if (query.data.startsWith('leave_approve:') || query.data.startsWith('leave_reject:')) {
+      const data = String(query.data || '');
+      if (!query.message || !query.message.chat) return await ui.expire(bot, query);
+      const chatId = query.message.chat.id;
+      const sess = session.get(chatId);
+
+      // E3: انتخابگرهای مشترک (تقویم/ساعت/کارمند) و ناوبری (انصراف، منوی اصلی، رد شدن) — پیش از callbackهای مخصوص هر جریان
+      if (isPickerCallback(data)) return await handlePickerCallback(bot, query);
+      // E4: دکمه‌های inline که به handlerِ دکمه‌ی منو می‌روند (mn:<id>)؛ نقش سمت سرور چک می‌شود
+      if (data.startsWith('mn:')) return await handleMenuCallback(bot, query);
+
+      if (data.startsWith('rvs:') || data.startsWith('rvc:')) return await handleReportReviewCallback(bot, query);
+      if (data.startsWith('mission_edit:')) return await startMissionEdit(bot, query);
+      if (data.startsWith('leave_reject:') && missionRequestOf(data)) return await startMissionReject(bot, query);
+      if (data.startsWith('leave_approve:') || data.startsWith('leave_reject:')) {
         return await handlePendingLeavesCallback(bot, query);
       }
-      if (query.data.startsWith('dispute_close:') || query.data.startsWith('dispute_reply:')) {
+      if (data.startsWith('dispute_close:') || data.startsWith('dispute_reply:')) {
         return await handleDisputeCallback(bot, query);
       }
-      if (query.data.startsWith('leave_type:') || query.data.startsWith('leave_unit:') || query.data.startsWith('leave_part:') || query.data.startsWith('leave_confirm:') || query.data === 'leave_cancel') {
-        if (!sess || sess.flow !== 'leave') return bot.answerCallbackQuery(query.id);
+      // callbackهای جریان‌ها: session نیست یا جریان دیگری است ⇒ «این دکمه منقضی شده»؛ چک مرحله داخل خود handler است
+      if (data.startsWith('leave_type:') || data.startsWith('leave_unit:') || data.startsWith('leave_part:') || data.startsWith('leave_confirm:') || data === 'leave_cancel') {
+        if (!sess || sess.flow !== 'leave') return await ui.expire(bot, query);
         return await handleLeaveCallback(bot, query, sess);
       }
-      if (query.data.startsWith('add_emp_role:')) {
-        if (!sess || sess.flow !== 'add_employee') return bot.answerCallbackQuery(query.id);
+      if (data.startsWith('add_emp_role:')) {
+        if (!sess || sess.flow !== 'add_employee') return await ui.expire(bot, query);
         return await handleAddEmployeeCallback(bot, query, sess);
       }
-      if (query.data.startsWith('fix_field:') || query.data === 'fix_cancel') {
-        if (!sess || sess.flow !== 'fix_record') return bot.answerCallbackQuery(query.id);
+      if (data.startsWith('fix_field:') || data === 'fix_cancel') {
+        if (!sess || sess.flow !== 'fix_record') return await ui.expire(bot, query);
         return await handleFixRecordCallback(bot, query, sess);
       }
-      if (query.data.startsWith('fix_status:')) {
-        if (!sess || sess.flow !== 'fix_record') return bot.answerCallbackQuery(query.id);
+      if (data.startsWith('fix_status:')) {
+        if (!sess || sess.flow !== 'fix_record') return await ui.expire(bot, query);
         return await handleFixStatusCallback(bot, query, sess);
       }
-      await bot.answerCallbackQuery(query.id);
+      await ui.expire(bot, query); // callback ناشناخته (دکمه‌ی پیام خیلی قدیمی)
     } catch (err) {
       console.error('[bot] خطا در پردازش callback_query:', err);
       try {
@@ -138,14 +148,8 @@ function missionRequestOf(data) {
 }
 
 async function configureBotUi(bot) {
-  await bot.setMyCommands([
-    { command: 'start', description: 'شروع' },
-    { command: 'status', description: 'وضعیت لحظه‌ای من' },
-    { command: 'report', description: 'گزارش شخصی' },
-    { command: 'leave', description: 'ثبت درخواست مرخصی/مأموریت' },
-    { command: 'panel', description: 'ورود به پنل' },
-    { command: 'help', description: 'راهنما' },
-  ]);
+  // E5: همه‌ی کارها با دکمه‌های منوی پایین انجام می‌شود؛ منوی «/» تلگرام خالی می‌شود (/start همچنان کار می‌کند)
+  await bot.setMyCommands([]);
 
   // دکمه منو برای باز کردن Mini App - فقط اگر آدرس واقعی در .env تنظیم شده باشد.
   // Mini App واقعی در فاز ۴ ساخته می‌شود؛ تا آن زمان این دکمه عمداً تنظیم نمی‌شود.
