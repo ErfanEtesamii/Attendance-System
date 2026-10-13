@@ -1,6 +1,6 @@
 // D9 (بخش اول): تسک سیستمی review_team_reports، «مشاهده‌ی گزارش» و اتصال آن به گزارش روزانه/گیت خروج.
 const { resetDb, cleanup } = require('./helpers/testEnv');
-const { test, describe, before, after } = require('node:test');
+const { test, describe, before, after, mock } = require('node:test');
 const assert = require('node:assert/strict');
 const F = require('./helpers/factories');
 const { startServer } = require('./helpers/miniappClient');
@@ -47,6 +47,9 @@ describe('تسک سیستمی و مشاهده‌ی گزارش تیم (D9-الف)
     weekly = require('../src/services/weeklyPlanService');
     audit = require('../src/repositories/auditRepository');
     attendance = require('../src/repositories/attendanceRepository');
+    // ساعت را روی یک دوشنبه ثابت می‌کنیم: markReviewed تسکِ «امروز» سرپرست را همگام می‌کند، پس MON باید برابر «امروز» باشد
+    // (وگرنه تست فقط روزهای دوشنبه پاس می‌شد).
+    mock.timers.enable({ apis: ['Date'], now: new Date('2026-10-12T08:00:00Z') });
     TODAY = require('../src/utils/serverTime').todayDateString();
     MON = TODAY;
     while (new Date(`${MON}T00:00:00Z`).getUTCDay() !== 1) MON = addDays(MON, -1);
@@ -60,7 +63,7 @@ describe('تسک سیستمی و مشاهده‌ی گزارش تیم (D9-الف)
     plain = F.makeUser({ name: 'بدون سرپرست' });
     settings.setValue('dailyReportGateMode', 'enforce');
   });
-  after(cleanup);
+  after(() => { mock.timers.reset(); cleanup(); });
 
   // ---------- روز قبل و ساخت تسک ----------
 
