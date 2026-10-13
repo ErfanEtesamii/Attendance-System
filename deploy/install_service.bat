@@ -67,6 +67,8 @@ if errorlevel 1 (
     "%NSSM%" set "%SERVICE_NAME%" AppParameters "\"%ENTRY%\""
 )
 
+REM Always set AppParameters with quotes (project path may contain spaces)
+"%NSSM%" set "%SERVICE_NAME%" AppParameters "\"%ENTRY%\""
 "%NSSM%" set "%SERVICE_NAME%" AppDirectory "%PROJECT_DIR%"
 "%NSSM%" set "%SERVICE_NAME%" DisplayName "%DISPLAY_NAME%"
 "%NSSM%" set "%SERVICE_NAME%" Description "%DESCRIPTION%"
