@@ -47,7 +47,8 @@ function memberReport(member, date, settings) {
   const hasReport = logs.length > 0;
   const planMissing = settings.planGateMode !== 'off' && planDay === date && !(nextPlan && nextPlan.status === 'submitted');
   // ویژگی‌ی برنامه/گزارش برای این عضو «در استفاده» نیست (نه گزارشی، نه تسکِ انتظار، نه الزام برنامه) ⇒ نویز نمی‌سازیم
-  if (!hasReport && !planMissing && taskReportService.buildList(member, date, settings).length === 0) return null;
+  // (A2: تسک اختیاریِ low پاسخ‌نشده «کار در انتظار» حساب نمی‌شود؛ وگرنه عضوی که فقط تسک low دارد «گزارش نداده ⚠️» می‌خورد)
+  if (!hasReport && !planMissing && taskReportService.buildList(member, date, settings).filter((t) => !t.optional).length === 0) return null;
   return {
     member, hasReport, total: planned.length, done, percent: pct(done, planned.length), notDone,
     extra: items.length - planned.length,

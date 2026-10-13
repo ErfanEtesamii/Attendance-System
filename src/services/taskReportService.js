@@ -20,6 +20,11 @@
 // تسک «خارج از برنامه» (extra): به برنامه‌ی همین هفته با system_key='out_of_plan' اضافه و همان لحظه done ثبت می‌شود.
 // پیام تشویقی (D8): برای هر پاسخ در applyReport ساخته و در encouragement_text ذخیره می‌شود (اگر encouragementsEnabled روشن باشد).
 //   done ⇒ یکی از سه دسته (اولویت: ۱۰۰٪ روز ← اولویت بالا ← رگه ← ساده)؛ partial/not_done ⇒ فقط «ممنون که علتش را نوشتی».
+// اولویت و گیت خروج (A1):
+//   • تسک high و normal «الزامی»اند: تا done نشوند (یا partial/not_done همراه با علت) ثبت خروج مسدود است.
+//   • تسک low «اختیاری»ست (present ⇒ optional:true): در فهرست می‌آید و پاسخش (و پیام تشویقی‌اش) مثل بقیه ذخیره می‌شود،
+//     ولی نه در pendingTasks/تصمیم گیت شمرده می‌شود و نه در بنر/گزارش‌های معطل (A2). تسک سیستمی هیچ‌وقت اختیاری نیست.
+//   • پاسخ‌نداده‌های اختیاری جدا در optionalTasks برمی‌گردند تا UI بتواند همراه الزامی‌ها نشانشان دهد.
 const plansRepo = require('../repositories/weeklyPlanRepository');
 const logsRepo = require('../repositories/taskLogRepository');
 const settingsRepository = require('../repositories/settingsRepository');
@@ -54,10 +59,13 @@ function fullDayOff(user, date, settings) {
   return calendarService.fullyOnApprovedLeave(user, date, cal);
 }
 
+/** تسک اختیاری (A1): اولویت low و غیرسیستمی. */
+const isOptionalRow = (t) => !!t && t.priority === 'low' && !t.is_system;
+
 const present = (t, extra = {}) => ({
   id: t.id, title: t.title, description: t.description || '', priority: t.priority,
   plannedDate: t.planned_date || null, isSystem: !!t.is_system, systemKey: t.system_key || null,
-  outOfPlan: t.system_key === OUT_OF_PLAN_KEY, ...extra,
+  outOfPlan: t.system_key === OUT_OF_PLAN_KEY, optional: isOptionalRow(t), ...extra,
 });
 
 function lastLog(taskId) {
@@ -138,7 +146,7 @@ function getBackfillStatus(user, { now = new Date() } = {}) {
     if (!r.ok || !r.late) continue;
     if (fullDayOff(user, date, settings)) continue;
     teamReview.prepareDay(user, date, settings, { late: true }); // D9-ب: تسک سیستمیِ روزِ گذشته همین‌جا ساخته/همگام می‌شود تا شمارش pending کمتر از واقعیت نباشد
-    const pending = buildList(user, date, settings);
+    const pending = buildList(user, date, settings).filter((t) => !t.optional); // A2: تسک اختیاری (low) پاسخ‌نشده معطل/هشدار نیست
     if (!pending.length) continue;
     out.days.push({ date, source: r.source, pendingCount: pending.length, titles: pending.slice(0, 3).map((t) => t.title) });
   }
@@ -255,7 +263,9 @@ function prepareReport(user, body, date, settings, { base = date } = {}) {
   }
   const ex = validateExtras(b.extra);
   if (ex.error) return { error: ex.error };
-  return { answers, extras: ex.extras, pending: list.filter((t) => !seen.has(t.id)) };
+  const open = list.filter((t) => !seen.has(t.id));
+  // pending = الزامی‌های پاسخ‌نداده (مبنای گیت)؛ optional = اختیاری‌های (low) پاسخ‌نداده (فقط برای نمایش)
+  return { answers, extras: ex.extras, pending: open.filter((t) => !t.optional), optional: open.filter((t) => t.optional) };
 }
 
 // ---------- پیام تشویقی (D8) ----------
@@ -365,7 +375,7 @@ function hasReportInput(body) {
 }
 
 function checkoutGate(user, recordDate, body) {
-  const out = { action: 'allow', report: null, pendingTasks: [], mode: 'off', date: recordDate };
+  const out = { action: 'allow', report: null, pendingTasks: [], optionalTasks: [], mode: 'off', date: recordDate };
   try {
     const settings = settingsRepository.getAll();
     out.mode = settings.dailyReportGateMode;
@@ -380,14 +390,29 @@ function checkoutGate(user, recordDate, body) {
     if (prep.error) return { ...out, action: 'invalid', error: prep.error.error, code: prep.error.code };
     if (prep.answers.length || prep.extras.length) out.report = { answers: prep.answers, extras: prep.extras, settings };
     out.pendingTasks = prep.pending;
+    out.optionalTasks = prep.optional;
     if (out.mode === 'off' || !out.pendingTasks.length) return out;
     out.teamReview = teamReview.gateInfo(user, recordDate, out.pendingTasks, settings); // D9-ب (برای ۴۰۹/یادآوری؛ null اگر تسک سیستمی نیست)
     out.action = out.mode === 'enforce' ? 'block' : 'remind';
     return out;
   } catch (err) {
     console.error('[dailyReportGate] خطا (نادیده گرفته شد، خروج مجاز):', err && err.message ? err.message : err);
-    return { action: 'allow', report: null, pendingTasks: [], mode: out.mode, date: recordDate, failedOpen: true };
+    return { action: 'allow', report: null, pendingTasks: [], optionalTasks: [], mode: out.mode, date: recordDate, failedOpen: true };
   }
+}
+
+const BLOCK_MSG_MAX_TITLES = 5;
+const BLOCK_MSG_TITLE_LEN = 40;
+
+/** متن ۴۰۹ گیت خروج (A1): کدام تسک‌ها مانع‌اند و چه کاری لازم است (تکمیل یا نوشتن علت). pendingTasks فقط الزامی‌هاست. */
+function blockMessage(pendingTasks) {
+  const list = Array.isArray(pendingTasks) ? pendingTasks : [];
+  if (!list.length) return 'برای ثبت خروج، ابتدا گزارش تسک‌های امروز را کامل کنید.';
+  const clip = (s) => (s.length > BLOCK_MSG_TITLE_LEN ? `${s.slice(0, BLOCK_MSG_TITLE_LEN - 1)}…` : s);
+  const label = (t) => (t.systemKey === teamReview.REVIEW_KEY ? `«${clip(t.title)}» (مشاهده‌ی گزارش‌ها یا ثبت علت)` : `«${clip(t.title)}»`);
+  const names = list.slice(0, BLOCK_MSG_MAX_TITLES).map(label).join('، ');
+  const more = list.length > BLOCK_MSG_MAX_TITLES ? ` و ${list.length - BLOCK_MSG_MAX_TITLES} مورد دیگر` : '';
+  return `برای ثبت خروج، ${list.length} تسک با اولویت بالا یا عادی هنوز بدون پاسخ است: ${names}${more}. هرکدام را «انجام شد» بزنید یا اگر انجام نشده، وضعیت «انجام نشد/نیمه‌کاره» را همراه با علت ثبت کنید. تسک‌های اولویت کم مانع خروج نیستند.`;
 }
 
 /** fn (ثبت خروج) و ذخیره‌ی گزارش در «یک» تراکنش؛ خطا در هرکدام ⇒ هیچ‌کدام ثبت نمی‌شود. */
@@ -398,4 +423,4 @@ function commitAtomic(user, gate, fn) {
   })();
 }
 
-module.exports = { getDailyTasks, submitDailyReport, resolveReportDate, getBackfillStatus, checkoutGate, commitAtomic, buildList, reportDateFor, REASON_CODES, OUT_OF_PLAN_KEY, DROP };
+module.exports = { getDailyTasks, submitDailyReport, resolveReportDate, getBackfillStatus, checkoutGate, commitAtomic, blockMessage, buildList, reportDateFor, REASON_CODES, OUT_OF_PLAN_KEY, DROP };

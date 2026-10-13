@@ -31,6 +31,8 @@
     { value: 'thanks', label: 'ممنون', icon: '🙏' },
   ];
   const isReviewTask = (t) => !!t && t.systemKey === REVIEW_KEY;
+  // A1/A2: تسک اولویت کم «اختیاری»ست (سرور optional:true می‌دهد) و مانع ثبت خروج نیست.
+  const isOptional = (t) => !!t && t.optional === true;
   // گزینه‌های اعتبارسنجی برای یک تسک: تسک سیستمی انتقال ندارد و «انجام شد»ش فقط با مشاهده‌ی واقعی (خودکار) ثبت می‌شود
   const taskOpts = (t, opts) => (isReviewTask(t) ? { ...(opts || {}), reviewTask: true } : (opts || {}));
   const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -95,20 +97,30 @@
     return body;
   }
 
+  const answerOf = (answers, id) => (answers instanceof Map ? answers.get(id) : answers && answers[id]);
+
+  /**
+   * تسک‌های «مانع»: الزامی‌ها تا پاسخ معتبر ندارند مانع‌اند. اختیاری‌ها فقط وقتی مانع‌اند که کاربر وضعیتی زده ولی پاسخ نامعتبر مانده
+   * (مثلاً «انجام نشد» بدون علت) تا چیزی بی‌صدا دور ریخته نشود؛ اختیاریِ دست‌نخورده مانع نیست.
+   */
   const unanswered = (tasks, answers, opts) => (tasks || []).filter((t) => {
-    const a = answers instanceof Map ? answers.get(t.id) : answers && answers[t.id];
-    return !a || !!validateAnswer(a, taskOpts(t, opts));
+    const a = answerOf(answers, t.id);
+    const bad = !a || !!validateAnswer(a, taskOpts(t, opts));
+    return isOptional(t) ? !!(a && a.status) && bad : bad;
   });
 
-  /** خلاصه‌ی مرور: چند تا انجام/نیمه/نشده/بی‌پاسخ. */
+  /** خلاصه‌ی مرور: چند تا انجام/نیمه/نشده/بی‌پاسخ (بی‌پاسخ فقط الزامی‌هاست؛ اختیاریِ رد‌شده در skippedOptional). */
   function summarize(tasks, answers) {
     const s = { done: 0, partial: 0, not_done: 0, missing: 0 };
     for (const t of tasks || []) {
-      const a = answers instanceof Map ? answers.get(t.id) : answers && answers[t.id];
-      if (a && s[a.status] !== undefined) s[a.status] += 1; else s.missing += 1;
+      const a = answerOf(answers, t.id);
+      if (a && s[a.status] !== undefined) s[a.status] += 1; else if (!isOptional(t)) s.missing += 1;
     }
     return s;
   }
+
+  /** تعداد تسک‌های اختیاری که پاسخی (حتی ناقص) برایشان نیست. */
+  const skippedOptional = (tasks, answers) => (tasks || []).filter((t) => isOptional(t) && !(answerOf(answers, t.id) && answerOf(answers, t.id).status)).length;
 
   /** بذر پاسخ‌ها از بدنه‌ی قبلیِ ارسال‌نشده (بعد از 409 گیت برنامه‌ی هفتگی) تا کاربر دوباره تایپ نکند. */
   function seedFromBody(tasks, body) {
@@ -169,7 +181,7 @@
     return body;
   }
 
-  const api = { STATUS, REASONS, RESCHEDULE, LIMITS, REVIEW_KEY, REVIEW_REACTIONS, isReviewTask, taskOpts, reportLine, validateReview, buildReviewBody, emptyAnswer, validateAnswer, toApiAnswer, validateExtra, buildBody, unanswered, summarize, seedFromBody, futureDates, encouragementOf };
+  const api = { STATUS, REASONS, RESCHEDULE, LIMITS, REVIEW_KEY, REVIEW_REACTIONS, isReviewTask, isOptional, skippedOptional, taskOpts, reportLine, validateReview, buildReviewBody, emptyAnswer, validateAnswer, toApiAnswer, validateExtra, buildBody, unanswered, summarize, seedFromBody, futureDates, encouragementOf };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (root) root.DailyReport = api;
 }(typeof window !== 'undefined' ? window : undefined));

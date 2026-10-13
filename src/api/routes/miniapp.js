@@ -169,10 +169,11 @@ router.post('/miniapp/check-out', (req, res) => {
   if (reportGate.action === 'block') {
     auditRepository.logEvent({ userId: req.miniAppUser.id, action: 'check_out_blocked', ipAddress: req.ip, details: { source: 'miniapp', reason: 'daily_report_required', date: reportGate.date, pending: reportGate.pendingTasks.length } });
     return res.status(409).json({
-      error: 'برای ثبت خروج، ابتدا گزارش تسک‌های امروز را کامل کنید.',
+      error: taskReportService.blockMessage(reportGate.pendingTasks), // A1: فقط تسک‌های الزامی (high/normal) مانع‌اند؛ پیام نام‌ها و کار لازم را می‌گوید
       code: 'daily_report_required',
       date: reportGate.date,
       pendingTasks: reportGate.pendingTasks,
+      optionalTasks: reportGate.optionalTasks || [], // A1: تسک‌های اختیاریِ (low) پاسخ‌نداده؛ مانع نیستند ولی ویزارد می‌تواند نشانشان دهد
       teamReview: reportGate.teamReview || null, // D9-ب: مشاهده‌نشده‌ها و گزارش‌نداده‌ها جدا از هم (فقط برای سرپرست/ادمینِ دارای تسک سیستمی)
       reasonCodes: taskReportService.REASON_CODES,
     });

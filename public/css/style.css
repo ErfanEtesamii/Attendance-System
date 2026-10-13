@@ -292,6 +292,9 @@ body {
 .chip-green  { background: var(--green-soft); color: var(--green); }
 .chip-orange { background: rgba(255, 169, 77, 0.15); color: var(--orange); }
 .chip-red    { background: rgba(240, 80, 110, 0.15); color: var(--red); }
+/* برچسب متنیِ «اختیاری» در گزارش روزانه (A2) */
+.dr-tag { align-self: flex-start; display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 12px; background: var(--card-bg-2); color: var(--hint); border: 1px solid var(--border); }
+.dr-sep { margin-top: 6px; font-size: 13px; color: var(--hint); }
 
 /* ---------- دکمه‌ها و کاشی‌های عملیات ---------- */
 

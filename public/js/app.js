@@ -479,7 +479,8 @@
       if (path === '/check-out' && code === 'daily_report_required') {
         showToast(err.message);
         unlock();
-        openReportWizard({ mode: 'checkout', date: err.data.date, today: err.data.date, tasks: err.data.pendingTasks || [], body, allowLater: false, teamReview: err.data.teamReview });
+        // A1: pendingTasks فقط الزامی‌هاست؛ اختیاری‌ها (low) بعد از آن‌ها می‌آیند و مانع نیستند
+        openReportWizard({ mode: 'checkout', date: err.data.date, today: err.data.date, tasks: [...(err.data.pendingTasks || []), ...(err.data.optionalTasks || [])], body, allowLater: false, teamReview: err.data.teamReview });
         return false;
       }
       showToast(err.message, true);
@@ -1187,7 +1188,10 @@
     reportUi.busy = false;
     reportUi.teamReview = teamReview || null; // D9: مشاهده‌نشده‌ها/گزارش‌نداده‌ها برای تسک سیستمیِ سرپرست
     reportUi.team = null;
-    const firstOpen = reportUi.tasks.findIndex((t) => !reportUi.answers.has(t.id) || DR.validateAnswer(reportUi.answers.get(t.id), DR.taskOpts(t, { today: reportUi.today })));
+    // اول اولین تسکِ «مانع» (الزامی بدون پاسخ معتبر)؛ اگر نبود، اولین اختیاریِ دیده‌نشده تا کاربر بتواند پاسخش بدهد یا رد کند
+    const blockIdx = reportUi.tasks.findIndex((t) => DR.unanswered([t], reportUi.answers, { today: reportUi.today }).length > 0);
+    const optIdx = reportUi.tasks.findIndex((t) => DR.isOptional(t) && !reportUi.answers.has(t.id));
+    const firstOpen = blockIdx >= 0 ? blockIdx : optIdx;
     reportUi.idx = firstOpen < 0 ? 0 : firstOpen;
     reportUi.step = !reportUi.tasks.length ? 'extra' : (firstOpen < 0 ? 'review' : 'q');
     switchView('dreport');
@@ -1215,7 +1219,7 @@
   async function openLateReport(date) {
     try {
       const d = await api('/daily-tasks?date=' + encodeURIComponent(date));
-      if (!d.tasks || !d.tasks.length) { showToast('تسک بدون پاسخی برای این روز نمانده است.'); loadReportBanner(); return; }
+      if (!d.tasks || !d.tasks.some((t) => !t.optional)) { showToast('تسک بدون پاسخی برای این روز نمانده است.'); loadReportBanner(); return; } // A2: اختیاری‌ها «بدون پاسخ» حساب نمی‌شوند
       openReportWizard({ mode: 'late', date: d.date, today: d.today, tasks: d.tasks, body: null, allowLater: false, teamReview: d.teamReview });
     } catch (err) { showToast(err.message, true); }
   }
@@ -1298,8 +1302,14 @@
       const card = dEl('div', { class: 'card dr-card' });
       card.appendChild(dEl('div', { class: 'dr-progress', text: `سؤال ${(ui.idx + 1).toLocaleString('fa-IR')} از ${total.toLocaleString('fa-IR')}`, attrs: { role: 'status' } }));
       const isReview = DR.isReviewTask(t); // D9: تسک سیستمیِ سرپرست؛ «انجام شد» فقط با مشاهده‌ی واقعی گزارش‌ها
+      const optional = DR.isOptional(t); // A2: تسک اولویت کم؛ مانع خروج نیست و جدا از الزامی‌ها (آخر فهرست) می‌آید
+      if (optional && !(ui.idx > 0 && DR.isOptional(ui.tasks[ui.idx - 1]))) card.appendChild(dEl('div', { class: 'dr-sep', text: 'تسک‌های اختیاری (جدا از الزامی‌ها)' }));
       card.appendChild(heading(isReview ? 'گزارش روز قبلِ تیم را بررسی کرده‌اید؟' : `امروز تسک «${t.title}» انجام شد؟`));
       if (t.priority === 'high') card.appendChild(dEl('span', { class: 'chip chip-orange', text: 'اولویت بالا' }));
+      if (optional) {
+        card.appendChild(dEl('span', { class: 'dr-tag', text: 'اختیاری' }));
+        card.appendChild(dEl('div', { class: 'plan-meta', text: 'اولویتِ این تسک کم است و ثبت خروج را مسدود نمی‌کند؛ اگر نخواستید پاسخ بدهید رد کنید.' }));
+      }
       if (t.description && !isReview) card.appendChild(dEl('div', { class: 'plan-meta', text: t.description }));
 
       if (isReview) {
@@ -1350,9 +1360,11 @@
       card.appendChild(msg);
       const nav = dEl('div', { class: 'dr-nav' });
       if (ui.idx > 0) nav.appendChild(dEl('button', { type: 'button', class: 'btn secondary', text: 'قبلی', on: { click: () => { ui.idx -= 1; ui.msg = ''; renderReport(); } } }));
+      const skipping = optional && !a.status; // اختیاریِ دست‌نخورده: «رد کردن» بدون اعتبارسنجی؛ اگر وضعیتی زده شده، اعتبارسنجیِ معمول
+      const lastOne = ui.idx === total - 1;
       nav.appendChild(dEl('button', {
-        type: 'button', class: 'btn primary', text: ui.idx === total - 1 ? 'ادامه' : 'بعدی',
-        on: { click: () => { const e = DR.validateAnswer(a, DR.taskOpts(t, opts)); if (e) { fail(e); return; } ui.msg = ''; if (ui.idx === total - 1) ui.step = 'extra'; else ui.idx += 1; renderReport(); } },
+        type: 'button', class: 'btn primary', text: skipping ? (lastOne ? 'رد کردن و ادامه' : 'رد کردن') : (lastOne ? 'ادامه' : 'بعدی'),
+        on: { click: () => { if (!skipping) { const e = DR.validateAnswer(a, DR.taskOpts(t, opts)); if (e) { fail(e); return; } } ui.msg = ''; if (lastOne) ui.step = 'extra'; else ui.idx += 1; renderReport(); } },
       }));
       if (ui.allowLater) nav.appendChild(laterBtn());
       card.appendChild(nav);
@@ -1469,12 +1481,14 @@
     const missing = DR.unanswered(ui.tasks, ui.answers, opts);
     const card = dEl('div', { class: 'card dr-card' });
     card.appendChild(heading('مرور گزارش'));
-    card.appendChild(dEl('div', { class: 'plan-meta', text: `${sum.done.toLocaleString('fa-IR')} انجام شد · ${sum.partial.toLocaleString('fa-IR')} نیمه‌کاره · ${sum.not_done.toLocaleString('fa-IR')} انجام نشد${sum.missing ? ' · ' + sum.missing.toLocaleString('fa-IR') + ' بدون پاسخ' : ''}` }));
+    const skippedOpt = DR.skippedOptional(ui.tasks, ui.answers);
+    card.appendChild(dEl('div', { class: 'plan-meta', text: `${sum.done.toLocaleString('fa-IR')} انجام شد · ${sum.partial.toLocaleString('fa-IR')} نیمه‌کاره · ${sum.not_done.toLocaleString('fa-IR')} انجام نشد${sum.missing ? ' · ' + sum.missing.toLocaleString('fa-IR') + ' بدون پاسخ' : ''}${skippedOpt ? ' · ' + skippedOpt.toLocaleString('fa-IR') + ' اختیاری رد شد' : ''}` }));
     ui.tasks.forEach((t, i) => {
       const a = ui.answers.get(t.id);
       const s = a && DR.STATUS.find((x) => x.value === a.status);
+      if (DR.isOptional(t) && !(i > 0 && DR.isOptional(ui.tasks[i - 1]))) card.appendChild(dEl('div', { class: 'dr-sep', text: 'اختیاری' })); // A2: جدا از الزامی‌ها
       const row = dEl('div', { class: 'list-item dr-review-row' });
-      row.appendChild(dEl('div', { text: `${s ? s.icon : '⚪'} ${t.title}` }));
+      row.appendChild(dEl('div', { text: `${s ? s.icon : '⚪'} ${t.title}${DR.isOptional(t) ? ' (اختیاری)' : ''}` }));
       if (a && a.status && a.status !== 'done') {
         const r = DR.REASONS.find((x) => x.value === a.reasonCode);
         row.appendChild(dEl('div', { class: 'plan-meta', text: [r ? r.label : '', String(a.reasonText || '').trim()].filter(Boolean).join(' — ') }));
@@ -1499,7 +1513,8 @@
         try {
           const res = await api('/daily-report', { method: 'POST', body: bodyOf() });
           const cheer = DR.encouragementOf(res);
-          showToast([res && res.tasks && res.tasks.length ? `گزارش ثبت شد؛ ${res.tasks.length.toLocaleString('fa-IR')} تسک هنوز بدون پاسخ است.` : 'گزارش ثبت شد.', cheer].filter(Boolean).join(' '));
+          const left = res && res.tasks ? res.tasks.filter((t) => !t.optional).length : 0; // A2: اختیاری‌ها «هنوز بدون پاسخ» حساب نمی‌شوند
+          showToast([left ? `گزارش ثبت شد؛ ${left.toLocaleString('fa-IR')} تسک هنوز بدون پاسخ است.` : 'گزارش ثبت شد.', cheer].filter(Boolean).join(' '));
           reportUi.answers = new Map(); reportUi.extras = [];
           switchView('today');
           loadReportBanner();
