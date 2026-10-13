@@ -21,3 +21,5 @@ data/attachments/
 logs/
 dist/
 data/attachments/
+
+deploy/nssm.exe
