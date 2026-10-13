@@ -647,6 +647,56 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .plan-meta { font-size: 12px; color: var(--hint); }
 .plan-sys { font-size: 11px; color: var(--hint); }
 
+/* C1: کارت‌های روزانه‌ی برنامه‌ی هفتگی — تخته‌ی سبز تیره، هر روز یک کارت کرمی با عنوان سبز و خط‌چین‌های برگه‌ی کاغذ.
+   پالت مخصوص همین بخش است و با data-theme عوض می‌شود؛ کنتراست متن روی کارت در هر دو تم ≥ AA (تست). */
+:root {
+  --plan-board: #14543f;
+  --plan-card: #fffdf5;
+  --plan-ink: #1b1c2c;
+  --plan-hint: #5b5e7a;
+  --plan-title: #0a6b4b;
+  --plan-line: rgba(10, 107, 75, 0.45);
+  --plan-field: #ffffff;
+  --plan-field-border: rgba(10, 107, 75, 0.35);
+}
+:root[data-theme="dark"] {
+  --plan-board: #0c2a21;
+  --plan-card: #efe8d3;
+  --plan-ink: #1b1c2c;
+  --plan-hint: #4f526e;
+  --plan-title: #08573c;
+  --plan-line: rgba(8, 87, 60, 0.5);
+  --plan-field: #f8f3e4;
+  --plan-field-border: rgba(8, 87, 60, 0.45);
+}
+.plan-board { background: var(--plan-board); border-radius: 18px; padding: 10px; }
+.plan-days { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 10px; }
+.day-card { background: var(--plan-card); color: var(--plan-ink); border-radius: 16px; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.day-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 2px dashed var(--plan-line); padding-bottom: 6px; }
+.day-card-title { margin: 0; font-size: 15px; font-weight: 800; color: var(--plan-title); }
+.day-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: rgba(10, 107, 75, 0.12); color: var(--plan-title); white-space: nowrap; }
+.day-add { display: flex; gap: 6px; align-items: stretch; }
+.day-add-input, .day-task-title, .day-card textarea, .day-card select {
+  min-width: 0; font: inherit; color: var(--plan-ink); background: var(--plan-field);
+  border: 1px solid var(--plan-field-border); border-radius: 10px; padding: 8px 10px;
+}
+.day-add-input { flex: 1; }
+.day-add-btn { margin-top: 0; width: auto; flex: none; padding: 8px 12px; }
+.day-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.day-task { padding: 8px 0; border-bottom: 1px dashed var(--plan-line); display: flex; flex-direction: column; gap: 6px; }
+.day-task:last-child { border-bottom: 0; }
+.day-task-main { display: flex; gap: 6px; align-items: center; }
+.day-task-title { flex: 1; }
+.day-task-del { flex: none; min-height: 44px; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--plan-field-border); background: transparent; color: #a12b2b; font: inherit; font-size: 13px; cursor: pointer; }
+.day-task-more summary { font-size: 12px; color: var(--plan-hint); cursor: pointer; min-height: 32px; display: flex; align-items: center; }
+.day-task-more[open] { display: flex; flex-direction: column; gap: 6px; }
+.day-task-more .row { display: flex; gap: 6px; }
+.day-task-more .row > * { flex: 1; min-width: 0; }
+.day-card textarea { width: 100%; resize: vertical; }
+.day-empty { margin: 0; font-size: 12px; color: var(--plan-hint); }
+.day-card .plan-sys { color: var(--plan-hint); font-size: 12px; }
+.day-card :focus-visible { outline: 2px solid var(--plan-title); outline-offset: 2px; }
+
 /* بنر الزام برنامه‌ی هفتگی (D5) */
 .plan-gate-banner { border: 1px solid var(--orange, #f59e0b); display: flex; flex-direction: column; gap: 8px; line-height: 1.8; }
 .plan-gate-banner .btn { align-self: flex-start; }

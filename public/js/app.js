@@ -998,7 +998,7 @@
 
   // ---------- برنامه‌ی هفتگی (D4): ویزارد انتقال ← افزودن تسک ← مرور ← ثبت ----------
   const PLAN_PRIORITY = { low: 'کم', normal: 'عادی', high: 'بالا' };
-  const planUi = { data: null, tasks: [], carry: new Set(), step: 'tasks', week: 'next', msg: '', busy: false };
+  const planUi = { data: null, tasks: [], carry: new Set(), step: 'tasks', week: 'next', msg: '', busy: false, drafts: {}, focus: null };
 
   function planEl(tag, props, ...kids) {
     const e = document.createElement(tag);
@@ -1034,6 +1034,31 @@
     return out;
   }
 
+  // C1: روز هفته + تاریخ شمسی برای عنوان کارت («شنبه ۱۲ مهر»)؛ بدون سال چون جا کم است
+  function fmtPlanDay(iso) {
+    if (J) {
+      try {
+        const j = J.isoToJalali(iso);
+        return `${J.weekdayName(iso)} ${J.toFaDigits(j.jd)} ${J.MONTH_NAMES[j.jm - 1]}`;
+      } catch (_) { /* جایگزین */ }
+    }
+    try {
+      return new Date(`${iso}T12:00:00`).toLocaleDateString('fa-IR-u-ca-persian', { weekday: 'long', month: 'long', day: 'numeric' });
+    } catch (_) {
+      return iso;
+    }
+  }
+
+  // روزهای هفته با نوع روز از سرور (data.days)؛ اگر سرور نفرستاد همه کاری فرض می‌شود
+  const PLAN_DAY_BADGE = { half: 'نیم‌روز', weekend: 'تعطیل', holiday: 'تعطیل رسمی' };
+  function planDays(data) {
+    const info = new Map((data.days || []).map((d) => [d.date, d]));
+    return planWeekDays(data).map((date) => {
+      const d = info.get(date) || {};
+      return { date, kind: d.kind || 'working', holidayTitle: d.holidayTitle || null };
+    });
+  }
+
   function planPayload() {
     return planUi.tasks.filter((t) => !t.isSystem).map((t) => ({
       id: t.id || undefined, title: String(t.title || '').trim(), description: String(t.description || '').trim(),
@@ -1046,6 +1071,8 @@
     if (!body) return;
     planUi.week = week || planUi.week || 'next';
     planUi.msg = '';
+    planUi.drafts = {};
+    planUi.focus = null;
     renderLoading(body, 'list');
     try {
       const data = await api('/plan?week=' + planUi.week);
@@ -1102,7 +1129,9 @@
     }
 
     if (planUi.step === 'tasks') {
-      const days = planWeekDays(data);
+      const days = planDays(data);
+      const dayDates = new Set(days.map((d) => d.date));
+      const label = (el, text) => { el.setAttribute('aria-label', text); return el; };
       const addTask = (init) => { planUi.tasks.push({ title: '', description: '', plannedDate: null, priority: 'normal', ...init }); renderPlan(); };
       const tools = planEl('div', { class: 'plan-chips' });
       if (data.previousWeekTasks.length) {
@@ -1113,22 +1142,58 @@
       }
       (data.frequentTitles || []).forEach((title) => tools.appendChild(planEl('button', { type: 'button', class: 'plan-chip', text: '+ ' + title, on: { click: () => addTask({ title }) } })));
       body.appendChild(tools);
-      planUi.tasks.forEach((t, idx) => {
-        if (t.isSystem) { body.appendChild(planEl('div', { class: 'list-item plan-sys', text: 'تسک خودکار: ' + t.title })); return; }
-        const title = planEl('input', { type: 'text', maxLength: 120, value: t.title, placeholder: 'عنوان تسک', on: { input: (e) => { t.title = e.target.value; } } });
-        const desc = planEl('textarea', { rows: 2, maxLength: 500, value: t.description || '', placeholder: 'توضیح (اختیاری)', on: { input: (e) => { t.description = e.target.value; } } });
-        const prio = planEl('select', { on: { change: (e) => { t.priority = e.target.value; } } }, Object.entries(PLAN_PRIORITY).map(([v, l]) => planEl('option', { value: v, text: l, selected: (t.priority || 'normal') === v })));
-        const day = planEl('select', { on: { change: (e) => { t.plannedDate = e.target.value || null; } } },
-          [planEl('option', { value: '', text: 'هر روز', selected: !t.plannedDate }), ...days.map((d) => planEl('option', { value: d, text: fmtDate(d), selected: t.plannedDate === d }))]);
-        const rm = planEl('button', { type: 'button', class: 'btn secondary', text: 'حذف', on: { click: () => { planUi.tasks.splice(idx, 1); renderPlan(); } } });
-        body.appendChild(planEl('div', { class: 'card plan-task' }, title, desc, planEl('div', { class: 'row' }, prio, day, rm)));
+
+      // افزودن از فیلد بالای هر کارت؛ متن نیمه‌نوشته‌ی کارت‌ها بین رندرها در planUi.drafts می‌ماند
+      const addFromDraft = (key, plannedDate) => {
+        const title = String(planUi.drafts[key] || '').trim();
+        planUi.focus = key;
+        if (!title) { planUi.msg = 'عنوان تسک را بنویسید.'; renderPlan(); return; }
+        if (title.length > 120) { planUi.msg = 'عنوان تسک حداکثر ۱۲۰ نویسه است.'; renderPlan(); return; }
+        if (mine().length >= data.maxTasks) { planUi.msg = `حداکثر ${data.maxTasks} تسک مجاز است.`; renderPlan(); return; }
+        planUi.drafts[key] = '';
+        planUi.msg = '';
+        planUi.tasks.push({ title, description: '', plannedDate, priority: 'normal' });
+        renderPlan();
+      };
+
+      const taskRow = (t, idx) => {
+        const title = label(planEl('input', { type: 'text', class: 'day-task-title', maxLength: 120, value: t.title, placeholder: 'عنوان تسک', on: { input: (e) => { t.title = e.target.value; } } }), 'عنوان تسک');
+        const rm = label(planEl('button', { type: 'button', class: 'day-task-del', text: 'حذف', on: { click: () => { planUi.tasks.splice(idx, 1); renderPlan(); } } }), 'حذف تسک');
+        const desc = label(planEl('textarea', { rows: 2, maxLength: 500, value: t.description || '', placeholder: 'توضیح (اختیاری)', on: { input: (e) => { t.description = e.target.value; } } }), 'توضیح تسک');
+        const prio = label(planEl('select', { on: { change: (e) => { t.priority = e.target.value; } } }, Object.entries(PLAN_PRIORITY).map(([v, l]) => planEl('option', { value: v, text: l, selected: (t.priority || 'normal') === v }))), 'اولویت تسک');
+        const day = label(planEl('select', { on: { change: (e) => { t.plannedDate = e.target.value || null; renderPlan(); } } },
+          [planEl('option', { value: '', text: 'بدون روز مشخص', selected: !t.plannedDate }), ...days.map((d) => planEl('option', { value: d.date, text: fmtPlanDay(d.date), selected: t.plannedDate === d.date }))]), 'روز تسک');
+        const more = planEl('details', { class: 'day-task-more' }, planEl('summary', { text: 'توضیح، اولویت و روز' }), desc, planEl('div', { class: 'row' }, prio, day));
+        return planEl('li', { class: 'day-task' }, planEl('div', { class: 'day-task-main' }, title, rm), more);
+      };
+
+      const dayCard = (key, titleText, badge, plannedDate, matches, extra) => {
+        const items = planUi.tasks.map((t, idx) => [t, idx]).filter(([t]) => !t.isSystem && matches(t));
+        const list = planEl('ul', { class: 'day-list' }, (extra || []), items.map(([t, idx]) => taskRow(t, idx)));
+        const add = label(planEl('input', {
+          type: 'text', class: 'day-add-input', maxLength: 120, value: planUi.drafts[key] || '', placeholder: 'تسک جدید…',
+          on: { input: (e) => { planUi.drafts[key] = e.target.value; }, keydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); addFromDraft(key, plannedDate); } } },
+        }), `تسک جدید برای ${titleText}`);
+        if (planUi.focus === key) { planUi.focus = null; setTimeout(() => { if (typeof add.focus === 'function') add.focus(); }, 0); }
+        const head = planEl('div', { class: 'day-card-head' }, planEl('h4', { class: 'day-card-title', text: titleText }), badge ? planEl('span', { class: 'day-badge', text: badge }) : null);
+        return planEl('section', { class: 'day-card' }, head,
+          planEl('div', { class: 'day-add' }, add, planEl('button', { type: 'button', class: 'btn primary day-add-btn', text: '+ افزودن', on: { click: () => addFromDraft(key, plannedDate) } })),
+          items.length || (extra || []).length ? list : planEl('p', { class: 'day-empty', text: 'هنوز تسکی ندارد.' }));
+      };
+
+      const sysRows = planUi.tasks.filter((t) => t.isSystem).map((t) => planEl('li', { class: 'day-task plan-sys', text: 'تسک خودکار: ' + t.title }));
+      const cards = [dayCard('any', 'هر روز / بدون روز مشخص', '', null, (t) => !t.plannedDate || !dayDates.has(t.plannedDate), sysRows)];
+      days.forEach((d) => {
+        const has = planUi.tasks.some((t) => !t.isSystem && t.plannedDate === d.date);
+        if ((d.kind === 'weekend' || d.kind === 'holiday') && !has) return; // روز تعطیلِ بدون تسک کارت ندارد
+        cards.push(dayCard(d.date, fmtPlanDay(d.date), PLAN_DAY_BADGE[d.kind] || '', d.date, (t) => t.plannedDate === d.date));
       });
-      body.appendChild(planEl('button', { type: 'button', class: 'btn secondary', text: '+ افزودن تسک', on: { click: () => addTask() } }));
+      body.appendChild(planEl('div', { class: 'plan-board' }, planEl('div', { class: 'plan-days' }, cards)));
+      body.appendChild(msg);
       body.appendChild(planEl('button', {
         type: 'button', class: 'btn primary', text: 'مرور',
         on: { click: () => { const e = planValidate(planUi.tasks, data); if (e) { planUi.msg = e; renderPlan(); return; } if (mine().length < data.minTasks) { planUi.msg = `حداقل ${data.minTasks} تسک لازم است.`; renderPlan(); return; } go('review'); } },
       }));
-      body.appendChild(msg);
       return;
     }
 

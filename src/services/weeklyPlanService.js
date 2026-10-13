@@ -95,11 +95,18 @@ function getPlan(user, which, { now } = {}) {
   if (!weekStart) return fail('INVALID_WEEK', 'week باید next یا current باشد.');
   const plan = plansRepo.findByUserWeek(user.id, weekStart);
   const planDay = calendarService.getPlanDay(user, weekStart, { settings: ctx.settings });
+  // C1: روزهای هفته با نوع روز (working|half|weekend|holiday) برای کارت‌های روزانه‌ی UI؛ از همان تقویمِ کاربر (شیفت/آخر هفته/نیم‌روز/تعطیلی) می‌آید
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(weekStart, i);
+    const cal = calendarService.getCalendarDay(user, date, { settings: ctx.settings });
+    return { date, kind: cal.kind, isWorkingDay: !!cal.isWorkingDay, holidayTitle: cal.holidayTitle || null };
+  });
   return {
     ok: true,
     week: which === 'current' ? 'current' : 'next',
     weekStart, weekEnd: addDays(weekStart, 6),
     planDay,
+    days,
     status: plan ? plan.status : 'draft',
     submittedAt: plan ? plan.submitted_at : null,
     supervisorSeenAt: plan ? plan.supervisor_seen_at : null,

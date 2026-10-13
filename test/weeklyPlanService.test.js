@@ -32,6 +32,15 @@ describe('سرویس برنامه‌ی هفتگی (D3)', () => {
     assert.equal(svc.getPlan(u, 'foo', { now: SUN }).code, 'INVALID_WEEK');
   });
 
+  test('days (C1): ۷ روز هفته با نوع روز از تقویم کاربر — پنجشنبه نیم‌روز، جمعه آخر هفته', () => {
+    reset();
+    const n = svc.getPlan(u, 'next', { now: SUN });
+    assert.equal(n.days.length, 7);
+    assert.deepEqual(n.days.map((d) => d.date), ['2026-08-08', '2026-08-09', '2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14']);
+    assert.deepEqual([n.days[0].kind, n.days[5].kind, n.days[6].kind], ['working', 'half', 'weekend']);
+    assert.deepEqual([n.days[0].isWorkingDay, n.days[6].isWorkingDay], [true, false]);
+  });
+
   test('اعتبارسنجی: عنوان/توضیح/اولویت/تاریخ/سقف ۳۰', () => {
     reset();
     const save = (tasks) => svc.saveDraft(u, 'next', tasks, { now: SUN });
