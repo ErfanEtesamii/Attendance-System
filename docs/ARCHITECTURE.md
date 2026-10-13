@@ -49,6 +49,20 @@
 
 ترتیب ثبت فقط وقتی مهم است که دو الگو یک URL را بپوشانند (مثل `/admin/users/export` قبل از `/admin/users/:id`)؛ `test/routeOrder.test.js` وجود هر نوع پنهان‌شدگی را رد می‌کند.
 
+## ماژول‌های فاز ۱۰
+
+جزئیات تصمیم‌ها: [`PHASE10_DECISIONS.md`](PHASE10_DECISIONS.md).
+
+| حوزه | سرویس‌ها / فایل‌های اصلی |
+|---|---|
+| ریست برنامه | `resetRepository.js` (رجیستری گروه‌های پاک‌سازی)، `resetService.js` (پیش‌نمایش/اجرا)، `middleware/maintenanceGate.js` + `utils/maintenanceMode.js` (503 هنگام ریست)، routeهای `admin/system.js` |
+| ماموریت | `missionService.js`، `missionDecisionService.js`، `missionNowService.js`، `pendingMissionService.js`، اثر روی `engine/computeDay.js`، تأیید شبانه `bot/commands/missionApproval.js` |
+| برنامه‌ی هفتگی و گزارش روزانه | `weeklyPlanService.js`، `taskReportService.js`، `planGateService.js`، `content/encouragements.js`، repositoryهای `weeklyPlan`/`taskLog`/`reportReview`/`planGate` |
+| گزارش تیم | `teamReviewService.js`، `teamReportsService.js`، `nightlyTaskReportService.js`، `taskExportService.js`، Job صبحگاهی `bot/scheduler/morningDigest.js` |
+| بات دکمه‌ای | `bot/menu/menuRouter.js` (منوی نقش‌محور، تطبیق متن دقیق)، `bot/ui/pickers.js` + `pickerRouter.js` (تقویم شمسی/ساعت/کارمند) |
+
+اصول: گیت‌های خروج (`weekly_plan_required`، `daily_report_required`) **سمت سرور** و idempotent هستند و پیش‌فرض خاموش‌اند؛ ریست فقط با تأیید دوگانه + re-auth و قفل Go-Live؛ جدول‌های جدید حتماً در رجیستری ریست (`resetRepository.js`) ثبت شوند.
+
 ## تصمیمات ثابت (بدون دلیل قوی تغییر نکنند)
 
 1. **سرور محلی ویندوز** (`192.168.10.2`، رنج `192.168.10.0/24`)، اجرا با NSSM. نه Docker، نه سرویس ابری.
@@ -61,3 +75,5 @@
 8. **سشن پنل**: کوکی امضاشده‌ی stateless. نقش `employee` به‌صورت پیش‌فرض بسته است (default-deny): فقط مسیرهای لیست سفید `EMPLOYEE_ALLOWED` در `src/middleware/adminAuth.js`.
 9. **تنظیمات سیستم** در جدول `settings` (قابل تغییر از پنل بدون ری‌استارت)؛ `.env` فقط مقدار پیش‌فرض است.
 10. **زبان**: رابط و پیام‌ها فارسی (RTL)، نام‌های کد انگلیسی، کامنت‌ها فارسی. تاریخ در دیتابیس میلادی (`YYYY-MM-DD`) و نمایش شمسی.
+11. **ریست برنامه** هرگز `users`، `work_shifts`، `holidays`، `leave_types`، `settings`، نشست‌های ادمین و `audit_log` را پاک نمی‌کند؛ پیش از ریست بک‌آپ خودکار الزامی است (شکست بک‌آپ ⇒ ریست انجام نمی‌شود).
+12. **بات بدون دستور slash**: منوی «/» تلگرام خالی است؛ دکمه‌ها با تطبیق متن دقیق کار می‌کنند و نقش هر بار سمت سرور چک می‌شود (متن دستی دکمه‌ی ادمین توسط کارمند اجرا نمی‌شود).

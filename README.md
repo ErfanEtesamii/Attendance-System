@@ -5,6 +5,7 @@
 - معماری و تصمیمات ثابت: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - وضعیت فازها و کارهای باقی‌مانده: [`PROJECT_STATUS.md`](PROJECT_STATUS.md)
 - تاریخچه‌ی تغییرات: [`CHANGELOG.md`](CHANGELOG.md)
+- فاز ۱۰ (استراحت، ریست برنامه، ماموریت، برنامه‌ی هفتگی/گزارش روزانه، بات دکمه‌ای): تصمیم‌ها [`docs/PHASE10_DECISIONS.md`](docs/PHASE10_DECISIONS.md) و استقرار/تست دستی [`docs/PHASE10_DEPLOY.md`](docs/PHASE10_DEPLOY.md)
 
 ## فناوری‌ها
 
@@ -90,7 +91,7 @@ public-admin/              پنل مدیریتی وب (بدون build)، زیر 
 scripts/                   install-service.ps1 (NSSM)، setup-ssl-renewal.ps1، run-tests.js، smoke-test.js،
                            package-release.js (zip بدون راز)، secret-scan.js، lib/ (zip، اسکنر، قوانین release)
 test/                      تست‌های خودکار (node:test)
-docs/                      ARCHITECTURE.md، SECURITY.md (هدرها/CSP/کوکی/CSRF/ابطال نشست)، SECRETS.md (مدیریت رازها)
+docs/                      ARCHITECTURE.md، PHASE10_DECISIONS.md، PHASE10_DEPLOY.md، SECURITY.md (هدرها/CSP/کوکی/CSRF/ابطال نشست)، SECRETS.md (مدیریت رازها)
 ```
 
 ## نقش‌ها
@@ -124,6 +125,10 @@ docs/                      ARCHITECTURE.md، SECURITY.md (هدرها/CSP/کوک�
 | `GET /miniapp/me`، `/today`، `/history`، `/report` | داده‌ی کارمند (پشت `telegramAuth`) |
 | `POST /miniapp/check-in`، `/check-out`، `/break/start`، `/break/end` | ثبت تردد (+ شبکه + rate limit) |
 | `GET/POST /miniapp/leave`، `GET/POST /miniapp/dispute` | مرخصی/مأموریت و اعتراض |
+| `POST /miniapp/mission`، `/mission/now`، `/mission/now/end`، `/missions/:id/cancel`؛ `GET /miniapp/missions`، `/mission/day` | ماموریت (ثبت، «همین حالا»، لغو، فهرست) |
+| `GET/PUT /miniapp/plan`، `POST /miniapp/plan/submit`، `GET /miniapp/plan-gate` | برنامه‌ی هفتگی و وضعیت گیت خروج |
+| `GET /miniapp/daily-tasks`، `POST /miniapp/daily-report`، `GET /miniapp/report-backfill` | گزارش روزانه‌ی تسک‌ها |
+| `GET /miniapp/team-review`، `POST /miniapp/report-reviews` | مشاهده‌ی گزارش تیم (سرپرست) |
 | `POST /admin/auth/webapp`، `/token`، `/code`، `/telegram`، `/logout`؛ `GET /admin/public-config` | ورود/خروج پنل |
 | `GET /admin/me`، `/dashboard`، `/overview`، `/live`، `/nightly-review` | نمای کلی |
 | `GET/POST /admin/users`، `GET /admin/users/export`، `GET/PATCH/DELETE /admin/users/:id`، `GET /admin/users/:id/details`، `POST /admin/users/:id/message` | کارمندان |
@@ -135,6 +140,8 @@ docs/                      ARCHITECTURE.md، SECURITY.md (هدرها/CSP/کوک�
 | `GET/POST/DELETE /admin/holidays`، `GET/PATCH /admin/settings` | تعطیلات و تنظیمات |
 | `GET /admin/audit-log`، `/audit-log/export`، `/audit-actions` | Audit Log (فقط ادمین) |
 | `POST /admin/broadcast`، `GET /admin/system`، `/system/status`، `/system/backup` | سیستم و وضعیت/مانیتورینگ (فقط ادمین) |
+| `GET /admin/system/reset/options`، `POST /admin/system/reset/preview`، `POST /admin/system/reset` | ریست برنامه (فقط ادمین؛ تأیید دوگانه، بک‌آپ، rate limit؛ قفل Go-Live) |
+| `GET /admin/team-review`، `/team-reports`، `/team-reports/export`، `/task-kpis`؛ `POST /admin/report-reviews`، `/plan-gate/exemptions` | گزارش‌های تیم، شاخص‌های تسک، مشاهده‌ی گزارش و معافیت یک‌باره‌ی گیت برنامه |
 
 > مسیرهای قدیمی فاز ۱ (`/api/users*`، `/api/attendance/*`، `/api/audit-log`) در نسخه‌ی `1.0.0-rc.1` حذف شدند (بدون مصرف‌کننده و بدون احراز هویت درست). دلیل در `CHANGELOG.md`.
 
@@ -152,6 +159,8 @@ Jobهای `node-cron` (`src/bot/scheduler/`): یادآور تأخیر و خرو�
 4. در BotFather: `/setdomain` برای دامنه‌ی پنل (لازم برای Login Widget).
 5. هر ارتقا: `nssm stop` ← جایگزینی کد ← `npm install` ← `npm run migrate` ← `nssm start`.
 
+ارتقا به فاز ۱۰ (migration ۰۲۳ تا ۰۲۶، فقط افزایشی): دستورها و چک‌لیست تست دستی در [`docs/PHASE10_DEPLOY.md`](docs/PHASE10_DEPLOY.md). گیت‌های برنامه‌ی هفتگی و گزارش روزانه و قفل Go-Live پیش‌فرض **خاموش**اند؛ فعال‌سازی تدریجی توصیه می‌شود. متغیرهای جدید `.env`: `CRON_MORNING_DIGEST`، `ALLOW_DATA_RESET`.
+
 > اسکریپت‌های PowerShell روی ویندوز واقعی با دسترسی Administrator باید یک‌بار امتحان شوند.
 
 ## تست
@@ -164,4 +173,4 @@ npm run secret-scan  # جست‌وجوی توکن/کلید/راز در پروژ�
 npm run package      # zip تحویل بدون .env/.ssl/data/node_modules/.git → dist/
 ```
 
-تست‌ها hermetic هستند: دیتابیس موقت، توکن و راز ساختگی، و `.env` واقعی خوانده نمی‌شود. پوشش فعلی: migration، `initData` و Login Widget، سشن، `networkRestriction`، ماتریس دسترسی نقش × route، ساختار ترتیب routeها، و (بخش ۲-الف) هدرها/CSP، کوکی، CSRF و ابطال نشست، و (بخش ۲-ب۱) کنترل رازهای راه‌اندازی، اسکنر رازها و بسته‌ساز release، و (بخش ۲-ج۱) ثبت اجرای Jobها، نبض polling، سلامت سیستم، watchdog با بات ماک‌شده و `/api/health` + `/api/admin/system/status`. تست‌های موتور محاسبه با بخش ۳ می‌آید.
+تست‌ها hermetic هستند: دیتابیس موقت، توکن و راز ساختگی، و `.env` واقعی خوانده نمی‌شود. پوشش فعلی: migration، `initData` و Login Widget، سشن، `networkRestriction`، ماتریس دسترسی نقش × route، ساختار ترتیب routeها، و (بخش ۲-الف) هدرها/CSP، کوکی، CSRF و ابطال نشست، و (بخش ۲-ب۱) کنترل رازهای راه‌اندازی، اسکنر رازها و بسته‌ساز release، و (بخش ۲-ج۱) ثبت اجرای Jobها، نبض polling، سلامت سیستم، watchdog با بات ماک‌شده و `/api/health` + `/api/admin/system/status`. تست‌های موتور محاسبه با بخش ۳ می‌آید. فاز ۱۰: استراحت، ریست برنامه (rollback، قفل Go-Live، rate limit)، ماموریت (اعتبارسنجی، اثر روی ساعت کاری، تأیید شبانه، ورود با ماموریت pending)، برنامه‌ی هفتگی و گیت‌های خروج، گزارش روزانه/تشویقی، گزارش تیم، منوی نقش‌محور بات و انتخابگرهای دکمه‌ای.
