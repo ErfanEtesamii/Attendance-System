@@ -31,6 +31,8 @@ const PERMISSIONS = Object.freeze([
   'users.message',
   'shifts.read',
   'shifts.edit',
+  'schedule.read', // B2: برنامه‌ی روزبه‌روز کارمند (خواندن؛ admin/hr همه، سرپرست زیرمجموعه — اسکوپ در سرویس)
+  'schedule.manage', // B2: ثبت/ویرایش/حذف برنامه‌ی روز (admin همه، سرپرست فقط زیرمجموعه‌ی مستقیم؛ hr ندارد)
   'suspicious.read',
   'suspicious.review',
   'settings.read', // تنظیمات و تعطیلات (خواندن)
@@ -78,6 +80,8 @@ const MANAGER_PERMISSIONS = [
   'users.read',
   'users.message',
   'shifts.read',
+  'schedule.read', // B2: فقط تیم خودش
+  'schedule.manage', // B2: فقط تیم خودش
   'suspicious.read',
   'suspicious.review',
   'settings.read',
@@ -93,6 +97,7 @@ const HR_PERMISSIONS = [
   ...EMPLOYEE_PERMISSIONS,
   'dashboard.read',
   'users.read',
+  'schedule.read', // B2: فقط‌خواندنی روی همه
   'monthclose.read', // S5-3a: فقط‌خواندنی
   'analytics.read', // S5-6a: فقط‌خواندنی روی همه
   'leave.approve.hr', // تنها استثنای «فقط‌خواندنی» (S4-11a): فقط مرحله‌ای که تنظیمات به hr سپرده؛ سایر مراحل ⇒ ۴۰۳ از سرویس

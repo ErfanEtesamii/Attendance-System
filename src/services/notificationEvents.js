@@ -20,6 +20,8 @@
 
 const usersRepository = require('../repositories/usersRepository');
 const { notify } = require('./notificationService');
+const { sendMessage } = require('../bot/notifier');
+const panelLinks = require('../bot/panelLinks');
 const leaveApprovalService = require('./leaveApprovalService');
 const { sanitizeText } = require('../utils/sanitize');
 const { isoDateToJalaliString } = require('../utils/jalali');
@@ -193,6 +195,24 @@ function disputeResolved(dispute, { note = null } = {}) {
 }
 
 /**
+ * پیام تلگرامِ «اعتراض شما بسته شد» به کارمند (مسیر مشترکِ پنل و بات؛ همان متن قبلی) + دکمه‌ی باز کردن مستقیم همان گفت‌وگو.
+ * خطا هرگز استثنا نمی‌دهد. اعلان درون‌پنلی جدا با disputeResolved است.
+ * @param {{id: number, user_id: number}} dispute
+ * @param {{note?: string|null, actor?: {role?: string}}} [opts]
+ */
+function disputeResolvedTelegram(dispute, { note = null, actor = null } = {}) {
+  return guard('disputeResolvedTelegram', () => {
+    const employee = dispute ? usersRepository.findById(dispute.user_id) : null;
+    if (!employee || !employee.telegram_user_id) return [];
+    const who = actor && actor.role === 'admin' ? 'ادمین' : 'سرپرست';
+    const text = `اعتراض شما بررسی و بسته شد ✅${note ? `\nپاسخ ${who}: ${note}` : ''}`;
+    const btn = panelLinks.disputeButton(dispute.id);
+    const options = btn ? { reply_markup: { inline_keyboard: [[btn]] } } : undefined;
+    return [Promise.resolve(sendMessage(employee.telegram_user_id, text, options)).catch((err) => { logError('disputeResolvedTelegram', err); return null; })];
+  });
+}
+
+/**
  * پیام تازه‌ی ادمین/سرپرست در گفت‌وگوی اعتراض (D4) ⇒ اعلان درون‌پنلی + تلگرام به خودِ کارمند (مثل reportCommented؛ مسیر تلگرامِ جدا ندارد).
  * dedupeKey = شناسه‌ی پیام: ثبت مجدد همان پیام اعلان تکراری نمی‌سازد، هر پیام تازه اعلان تازه می‌دهد.
  * بستن اعتراض اینجا نیست (disputeResolved + تلگرام مسیر خودش را دارد؛ پیام پایانی دوبار اعلام نمی‌شود).
@@ -213,6 +233,7 @@ function disputeAdminMessage(dispute, message, { actor = null } = {}) {
         data: { disputeId: dispute.id, messageId: message.id },
         dedupeKey: `dispute_admin_message:${message.id}`,
         telegram: true,
+        telegramButton: panelLinks.disputeButton(dispute.id) || undefined, // لینک مستقیم به همان گفت‌وگو
       }),
     ];
   });
@@ -325,4 +346,4 @@ function reportCommented({ reviewer, subject, reportDate, comment, reaction = nu
   });
 }
 
-module.exports = { reportCommented, weeklyPlanChanged, leaveRequested, leaveStepAdvanced, leaveDecided, disputeOpened, disputeResolved, disputeAdminMessage, disputeUserMessage, systemAlert, suspiciousCreated };
+module.exports = { reportCommented, weeklyPlanChanged, leaveRequested, leaveStepAdvanced, leaveDecided, disputeOpened, disputeResolved, disputeResolvedTelegram, disputeAdminMessage, disputeUserMessage, systemAlert, suspiciousCreated };

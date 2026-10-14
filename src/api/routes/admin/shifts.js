@@ -8,6 +8,8 @@ const { requirePermission } = require('../../../middleware/permissions');
 const shiftsRepository = require('../../../repositories/shiftsRepository');
 const usersRepository = require('../../../repositories/usersRepository');
 const { validateShiftInput, checkConsistency } = require('../../../utils/shiftValidation');
+const monthClosuresRepository = require('../../../repositories/monthClosuresRepository');
+const { todayDateString } = require('../../../utils/serverTime');
 const { requireReason, audit, scopedUserIds, userBrief } = require('./common');
 
 const NOT_FOUND = { error: 'شیفت یافت نشد.' };
@@ -89,7 +91,46 @@ router.delete('/admin/shifts/:id', requirePermission('shifts.edit'), (req, res) 
   return res.json({ ok: true });
 });
 
-// PUT /admin/users/:id/shift  { shiftId: عدد | null, reason } → { changed, userId, shiftId, shift }
+// ---------- انتساب شیفت با تاریخ اعمال (فاز ۱۲، B1) ----------
+// effectiveFrom (YYYY-MM-DD، پیش‌فرض امروز): شیفت از آن روز به بعد مؤثر است؛ روزهای قبل از آن (و ماه‌های بسته) دست نمی‌خورند.
+// تاریخ گذشته فقط وقتی مجاز است که هیچ ماه بسته‌شده‌ای بین آن تاریخ و امروز نباشد (وگرنه ۴۰۹).
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MAX_BULK = 200;
+
+function parseEffectiveFrom(raw) {
+  const today = todayDateString();
+  if (raw === undefined || raw === null || raw === '') return { value: today };
+  if (typeof raw !== 'string' || !DATE_RE.test(raw) || Number.isNaN(Date.parse(`${raw}T00:00:00Z`)) || new Date(`${raw}T00:00:00Z`).toISOString().slice(0, 10) !== raw) {
+    return { error: { status: 400, body: { error: '«effectiveFrom» باید تاریخ معتبر YYYY-MM-DD باشد.', field: 'effectiveFrom' } } };
+  }
+  if (raw < today && monthClosuresRepository.findClosedOverlapping(raw, today).length > 0) {
+    return { error: { status: 409, code: 'MONTH_CLOSED', body: { code: 'MONTH_CLOSED', error: 'از این تاریخ به بعد ماهِ بسته‌شده وجود دارد؛ تغییر شیفت روی ماه بسته ممکن نیست. تاریخ اعمال را بعد از آن بگذارید.', field: 'effectiveFrom' } } };
+  }
+  return { value: raw };
+}
+
+// شیفت از بدنه: عدد | null ⇒ { shift } | { error }
+function parseShiftRef(raw) {
+  if (raw === undefined) return { error: { status: 400, body: { error: '«shiftId» الزامی است (عدد یا null برای برداشتن شیفت).', field: 'shiftId' } } };
+  if (raw === null) return { shift: null };
+  const sid = typeof raw === 'number' && Number.isInteger(raw) ? raw : parseId(raw);
+  const shift = sid === null ? null : shiftsRepository.findById(sid);
+  if (!shift) return { error: { status: 404, body: { error: 'شیفت یافت نشد.', field: 'shiftId' } } };
+  return { shift };
+}
+
+// یک انتساب + audit ⇒ { changed, userId, shiftId, shift, effectiveFrom }
+function applyAssignment(req, user, shift, effectiveFrom, reason) {
+  const afterId = shift ? shift.id : null;
+  const current = shiftsRepository.shiftOn(user.id, effectiveFrom);
+  const beforeId = current ? current.id : null;
+  if (beforeId === afterId) return { changed: false, userId: user.id, shiftId: afterId, shift, effectiveFrom };
+  shiftsRepository.assignShift({ userId: user.id, shiftId: afterId, effectiveFrom, createdBy: req.adminUser.id });
+  audit(req, 'user_shift_assigned', { targetUserId: user.id, effectiveFrom, changes: { shiftId: { before: beforeId, after: afterId } }, reason });
+  return { changed: true, userId: user.id, shiftId: afterId, shift, effectiveFrom };
+}
+
+// PUT /admin/users/:id/shift  { shiftId: عدد | null, [effectiveFrom], reason } → { changed, userId, shiftId, shift, effectiveFrom }
 router.put('/admin/users/:id/shift', requirePermission('shifts.edit'), (req, res) => {
   const userId = parseId(req.params.id);
   const user = userId === null ? null : usersRepository.findById(userId);
@@ -97,22 +138,35 @@ router.put('/admin/users/:id/shift', requirePermission('shifts.edit'), (req, res
   const reason = requireReason(req, res);
   if (reason === null) return undefined;
 
-  const raw = (req.body || {}).shiftId;
-  let shift = null;
-  if (raw === undefined) return res.status(400).json({ error: '«shiftId» الزامی است (عدد یا null برای برداشتن شیفت).', field: 'shiftId' });
-  if (raw !== null) {
-    const sid = typeof raw === 'number' && Number.isInteger(raw) ? raw : parseId(raw);
-    shift = sid === null ? null : shiftsRepository.findById(sid);
-    if (!shift) return res.status(404).json({ error: 'شیفت یافت نشد.', field: 'shiftId' });
-  }
+  const ref = parseShiftRef((req.body || {}).shiftId);
+  if (ref.error) return res.status(ref.error.status).json(ref.error.body);
+  const eff = parseEffectiveFrom((req.body || {}).effectiveFrom);
+  if (eff.error) return res.status(eff.error.status).json(eff.error.body);
+  return res.json(applyAssignment(req, user, ref.shift, eff.value, reason));
+});
 
-  const beforeId = user.shift_id == null ? null : user.shift_id;
-  const afterId = shift ? shift.id : null;
-  if (beforeId === afterId) return res.json({ changed: false, userId, shiftId: afterId, shift });
+// POST /admin/shifts/assign  { shiftId: عدد | null, userIds: [..حداکثر ۲۰۰], [effectiveFrom], reason }
+//   انتساب گروهیِ چند کارمند به یک شیفت (یا برداشتن شیفت). هر کاربر جدا اعمال و audit می‌شود؛ کاربر ناموجود فقط در results خطا می‌گیرد.
+//   → { effectiveFrom, shiftId, changedCount, results: [{ userId, changed, error? }] }
+router.post('/admin/shifts/assign', requirePermission('shifts.edit'), (req, res) => {
+  const reason = requireReason(req, res);
+  if (reason === null) return undefined;
+  const body = req.body || {};
+  const ref = parseShiftRef(body.shiftId);
+  if (ref.error) return res.status(ref.error.status).json(ref.error.body);
+  const eff = parseEffectiveFrom(body.effectiveFrom);
+  if (eff.error) return res.status(eff.error.status).json(eff.error.body);
+  const ids = Array.isArray(body.userIds) ? [...new Set(body.userIds.map((x) => (Number.isInteger(x) ? x : parseId(x))))] : null;
+  if (!ids || ids.length === 0 || ids.some((x) => x === null || x <= 0)) return res.status(400).json({ error: '«userIds» باید فهرست غیرخالی از شناسه‌ی کارمندان باشد.', field: 'userIds' });
+  if (ids.length > MAX_BULK) return res.status(400).json({ error: `حداکثر ${MAX_BULK} کارمند در هر درخواست.`, field: 'userIds' });
 
-  usersRepository.setUserShift(userId, afterId);
-  audit(req, 'user_shift_assigned', { targetUserId: userId, changes: { shiftId: { before: beforeId, after: afterId } }, reason });
-  return res.json({ changed: true, userId, shiftId: afterId, shift });
+  const results = ids.map((id) => {
+    const user = usersRepository.findById(id);
+    if (!user) return { userId: id, changed: false, error: 'کارمند یافت نشد.' };
+    const r = applyAssignment(req, user, ref.shift, eff.value, reason);
+    return { userId: id, changed: r.changed };
+  });
+  return res.json({ effectiveFrom: eff.value, shiftId: ref.shift ? ref.shift.id : null, changedCount: results.filter((r) => r.changed).length, results });
 });
 
 module.exports = router;

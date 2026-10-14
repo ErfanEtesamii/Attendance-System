@@ -13,7 +13,6 @@ const router = express.Router();
 const usersRepository = require('../../../repositories/usersRepository');
 const disputeRepository = require('../../../repositories/disputeRepository');
 const disputeService = require('../../../services/disputeService');
-const { sendMessage } = require('../../../bot/notifier');
 const { scopedUserIds, canAccessUser, userBrief, makeUserMap, auditChange, audit } = require('./common');
 const { disputeView } = require('../../../utils/auditViews');
 const { requirePermission } = require('../../../middleware/permissions');
@@ -103,13 +102,7 @@ router.post('/admin/disputes/:id/:action(resolve|reopen)', requirePermission('di
   });
   if (resolving) notificationEvents.disputeResolved(updated, { note }); // اعلان پنل برای کارمند (S4-6b)
   else if (r.message) notificationEvents.disputeAdminMessage(updated, r.message, { actor: req.adminUser }); // بازگشایی همراه پیام ⇒ مثل پاسخ (D4)
-  const employee = usersRepository.findById(dispute.user_id);
-  if (resolving && employee?.telegram_user_id) {
-    sendMessage(
-      employee.telegram_user_id,
-      `اعتراض شما بررسی و بسته شد ✅${note ? `\nپاسخ ${req.adminUser.role === 'admin' ? 'ادمین' : 'سرپرست'}: ${note}` : ''}`
-    );
-  }
+  if (resolving) notificationEvents.disputeResolvedTelegram(updated, { note, actor: req.adminUser }); // تلگرام + دکمه‌ی گفت‌وگو (مسیر مشترک با بات)
   res.json(updated);
 });
 

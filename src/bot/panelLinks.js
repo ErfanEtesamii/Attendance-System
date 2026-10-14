@@ -42,17 +42,24 @@ function panelWebAppButton(opts = {}) {
 }
 
 /** آدرس Mini App (ثبت تردد). view = صفحه‌ی بازشونده (مثلاً plan ⇒ ?view=plan). */
-function miniAppLink({ view } = {}) {
+function miniAppLink({ view, params } = {}) {
   const base = config.miniAppUrl;
   if (!base) return null;
   if (!view) return base;
   try {
     const u = new URL(base);
     u.searchParams.set('view', view);
+    Object.entries(params || {}).forEach(([k, v]) => u.searchParams.set(k, String(v)));
     return u.toString();
   } catch (_) {
     return null;
   }
+}
+
+/** دکمه‌ی اینلاینِ باز کردن مستقیم گفت‌وگوی یک اعتراض در Mini App (?view=dispute&id=N)؛ روی http/بدون آدرس null. */
+function disputeButton(disputeId, text = '💬 مشاهده‌ی گفت‌وگو') {
+  const url = miniAppLink({ view: 'dispute', params: { id: disputeId } });
+  return canUseWebApp(url) ? { text, web_app: { url } } : null;
 }
 
 /** کیبورد ثابت پایین چت برای کاربر ثبت‌شده — منوی نقش‌محور (E1)؛ برای کاربر ثبت‌نشده/چت غیرخصوصی null. */
@@ -60,4 +67,4 @@ function persistentKeyboard(user, opts) {
   return require('./menu/menuRouter').buildMainKeyboard(user, opts); // lazy: menuRouter خودش panelLinks را می‌خواهد
 }
 
-module.exports = { ROLE_LABELS, ROLE_ACCESS, panelUrl, panelWebAppButton, persistentKeyboard, miniAppLink, canUseWebApp };
+module.exports = { ROLE_LABELS, ROLE_ACCESS, panelUrl, panelWebAppButton, persistentKeyboard, miniAppLink, canUseWebApp, disputeButton };

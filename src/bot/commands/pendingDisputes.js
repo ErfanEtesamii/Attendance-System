@@ -3,6 +3,7 @@ const { getRegisteredUser, notRegisteredMessage, hasRole } = require('../auth');
 const session = require('../session');
 const usersRepository = require('../../repositories/usersRepository');
 const disputeRepository = require('../../repositories/disputeRepository');
+const disputeService = require('../../services/disputeService');
 const attendanceRepository = require('../../repositories/attendanceRepository');
 const auditRepository = require('../../repositories/auditRepository');
 const notificationEvents = require('../../services/notificationEvents');
@@ -14,25 +15,20 @@ function canHandle(actor, dispute) {
   return !!employee && employee.manager_id === actor.id;
 }
 
+// بستن اعتراض از بات: فقط لایه‌ی تعامل؛ قواعد در disputeService (همان resolveAsAdmin پنل): پاسخ/یادداشت به‌صورت پیام ادمین
+// در thread کارمند ثبت می‌شود، closed_by='admin' و last_message_at به‌روز می‌شود. note=null ⇒ بستن بدون پیام.
+// ⇒ { ok: true } | { ok: false, error }
 async function closeDispute(bot, actor, dispute, note) {
-  const updated = disputeRepository.setStatus(dispute.id, 'resolved');
-  notificationEvents.disputeResolved(updated, { note }); // اعلان پنل برای کارمند (S4-6b)
+  const r = disputeService.resolveAsAdmin(actor, dispute.id, { note });
+  if (!r.ok) return r;
+  notificationEvents.disputeResolved(r.updated, { note: r.note }); // اعلان پنل برای کارمند (S4-6b)
   auditRepository.logEvent({
     userId: actor.id,
     action: 'dispute_resolved',
-    details: { source: 'telegram_bot', disputeId: dispute.id, targetUserId: dispute.user_id, note: note || undefined },
+    details: { source: 'telegram_bot', disputeId: dispute.id, targetUserId: dispute.user_id, note: r.note || undefined },
   });
-  const employee = usersRepository.findById(dispute.user_id);
-  if (employee && employee.telegram_user_id) {
-    try {
-      await bot.sendMessage(
-        employee.telegram_user_id,
-        `اعتراض شما بررسی و بسته شد ✅${note ? `\nپاسخ ${actor.role === 'admin' ? 'ادمین' : 'سرپرست'}: ${note}` : ''}`
-      );
-    } catch (err) {
-      console.error('[bot] خطا در اطلاع‌رسانی بسته‌شدن اعتراض به کارمند:', err.message);
-    }
-  }
+  await notificationEvents.disputeResolvedTelegram(r.updated, { note: r.note, actor }); // تلگرام + دکمه‌ی گفت‌وگو (مسیر مشترک با پنل)
+  return { ok: true };
 }
 
 async function handlePendingDisputes(bot, msg) {
@@ -95,7 +91,11 @@ async function handleDisputeCallback(bot, query) {
   }
 
   if (action === 'dispute_close') {
-    await closeDispute(bot, actor, dispute, null);
+    const closed = await closeDispute(bot, actor, dispute, null);
+    if (!closed.ok) {
+      await bot.answerCallbackQuery(query.id, { text: closed.error, show_alert: true });
+      return;
+    }
     await bot.answerCallbackQuery(query.id, { text: 'اعتراض بسته شد.' });
     await bot.editMessageReplyMarkup({ inline_keyboard: [] }, { chat_id: chatId, message_id: query.message.message_id });
     await bot.sendMessage(chatId, `اعتراض #${dispute.id} بسته شد ✅`);
@@ -131,8 +131,12 @@ async function handleDisputeReplyText(bot, msg, sess) {
   }
 
   const note = text === '-' ? null : text.slice(0, 500);
-  await closeDispute(bot, actor, dispute, note);
+  const closed = await closeDispute(bot, actor, dispute, note);
   session.clear(chatId);
+  if (!closed.ok) {
+    await bot.sendMessage(chatId, closed.error);
+    return;
+  }
   await bot.sendMessage(chatId, `اعتراض #${dispute.id} بسته شد ✅${note ? ' و پاسخ شما برای کارمند ارسال شد.' : ''}`);
 }
 

@@ -59,8 +59,8 @@ function telegramText(n) {
 
 /**
  * @param {number} userId
- * @param {{type: string, title: string, body?: string, link?: string, data?: object, dedupeKey?: string, telegram?: boolean}} input
- * @param {{sendTelegram?: (telegramUserId: string, text: string) => Promise<boolean>}} [deps] برای تست
+ * @param {{type: string, title: string, body?: string, link?: string, data?: object, dedupeKey?: string, telegram?: boolean, telegramButton?: {text: string, web_app: {url: string}}}} input
+ * @param {{sendTelegram?: (telegramUserId: string, text: string, options?: object) => Promise<boolean>}} [deps] برای تست
  * @returns {Promise<{created: boolean, notification: object}>}
  */
 async function notify(userId, input, deps = {}) {
@@ -76,7 +76,9 @@ async function notify(userId, input, deps = {}) {
   if (user.is_active && user.telegram_user_id) {
     const send = deps.sendTelegram || sendMessage;
     try {
-      status = (await send(String(user.telegram_user_id), telegramText(res.notification))) ? 'sent' : 'failed';
+      const btn = input.telegramButton && input.telegramButton.text && input.telegramButton.web_app ? input.telegramButton : null;
+      const options = btn ? { reply_markup: { inline_keyboard: [[btn]] } } : undefined; // دکمه‌ی اینلاین (مثلاً باز کردن مستقیم یک گفت‌وگو)
+      status = (await send(String(user.telegram_user_id), telegramText(res.notification), options)) ? 'sent' : 'failed';
     } catch (err) {
       console.error('[notify] ارسال تلگرام ناموفق:', sanitizeText(err && err.message, 200));
       status = 'failed';

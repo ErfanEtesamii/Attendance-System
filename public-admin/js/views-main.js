@@ -247,7 +247,7 @@
           <label class="field"><span>وضعیت حساب</span><select id="f-active"><option value="">همه</option><option value="1">فعال</option><option value="0">غیرفعال</option></select></label>
         </div>
         <div class="card flush"><div class="table-wrap"><table>
-          <thead><tr><th>کارمند</th><th>کد پرسنلی</th><th>دپارتمان</th><th>نقش</th><th>سرپرست مستقیم</th><th>وضعیت امروز</th><th>آیدی تلگرام</th><th>حساب</th></tr></thead>
+          <thead><tr><th>کارمند</th><th>کد پرسنلی</th><th>دپارتمان</th><th>نقش</th><th>سرپرست مستقیم</th><th>شیفت مؤثر</th><th>وضعیت امروز</th><th>آیدی تلگرام</th><th>حساب</th></tr></thead>
           <tbody id="emp-body"></tbody></table></div></div>`;
       const todayMap = { not_checked_in: 'absent', checked_in: 'present', checked_out: 'checked_out', incomplete: 'incomplete', holiday: 'holiday', leave: 'leave' };
       return {
@@ -271,10 +271,11 @@
                 <td>${esc(u.department || '—')}</td>
                 <td>${AP.badge(u.role === 'admin' ? 'purple' : u.role === 'manager' ? 'blue' : '', AP.ROLE[u.role])}</td>
                 <td>${esc(u.managerId && byId.get(u.managerId) ? byId.get(u.managerId).fullName : '—')}</td>
+                <td>${u.shiftName ? `${esc(u.shiftName)} <span class="ltr muted">${esc(u.shiftTime)}</span>` : '<span class="muted">پیش‌فرض</span>'}</td>
                 <td>${AP.stateBadge(todayMap[u.todayStatus] || 'absent')}</td>
                 <td><span class="ltr muted">${esc(u.telegramUserId || '—')}</span></td>
                 <td>${u.isActive ? AP.badge('green', 'فعال') : AP.badge('red', 'غیرفعال')}</td></tr>`).join('')
-              : `<tr><td colspan="8">${emptyBox('کارمندی با این فیلتر پیدا نشد.')}</td></tr>`;
+              : `<tr><td colspan="9">${emptyBox('کارمندی با این فیلتر پیدا نشد.')}</td></tr>`;
           };
           draw();
           $$('.filters input, .filters select', page).forEach((el) => el.addEventListener('input', draw));
@@ -338,6 +339,7 @@
       const stat = (g, ic, v, l, hint) => `<div class="stat"><div class="stat-icon ${g}">${icon(ic)}</div><div class="stat-value" style="font-size:21px">${v}</div><div class="stat-label">${l}</div>${hint ? `<div class="stat-hint">${hint}</div>` : ''}</div>`;
 
       const tabs = [['attendance', 'تردد'], ['leave', 'مرخصی و مأموریت'], ['disputes', 'اعتراض‌ها'], ['info', 'اطلاعات و ویرایش']];
+      if (AP.scheduleTab && AP.can('schedule.read')) tabs.push(['schedule', 'برنامه‌ی روزبه‌روز']); // B2
       if (d.team.length) tabs.push(['team', 'اعضای تیم']);
       if (AP.can('audit.read')) tabs.push(['activity', 'سوابق و رویدادها']);
       if (!tabs.some((t) => t[0] === profileUi.tab)) profileUi.tab = 'attendance';
@@ -445,6 +447,8 @@
         },
       };
 
+      panels.schedule = () => (AP.scheduleTab ? AP.scheduleTab.html() : '');
+
       return {
         html,
         mount(page) {
@@ -456,6 +460,7 @@
             $$('[data-leave]', panel).forEach((el) => el.addEventListener('click', () => AP.openLeaveEditor(el.dataset.leave)));
             $$('[data-go-disputes]', panel).forEach((el) => el.addEventListener('click', () => AP.go('disputes')));
             if (AP.bindShiftAssign) AP.bindShiftAssign(panel, u);
+            if (profileUi.tab === 'schedule' && AP.scheduleTab) AP.scheduleTab.mount(panel, u);
             const form = $('#pf-form', panel);
             if (form) form.addEventListener('submit', async (e) => {
               e.preventDefault();

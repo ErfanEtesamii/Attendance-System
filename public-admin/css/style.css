@@ -943,3 +943,19 @@ button, a, summary, select, input, [role="button"], .clickable, th.sortable { to
 .dsp-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .dsp-counter { margin-inline-end: auto; font-size: 12px; }
 .dsp-note { margin: 0 0 8px; line-height: 1.9; }
+/* B2: شبکه‌ی ماهانه‌ی «برنامه‌ی روزبه‌روز» در پرونده‌ی کارمند */
+.sch-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.sch-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.sch-w { text-align: center; font-size: 12px; font-weight: 700; opacity: .7; }
+.sch-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 52px; padding: 4px 2px; border: 1px solid var(--border, rgba(128,128,128,.25)); border-radius: 8px; background: transparent; color: inherit; font-family: inherit; }
+button.sch-cell { cursor: pointer; }
+.sch-blank { border-color: transparent; }
+.sch-d { font-weight: 800; font-size: 13px; }
+.sch-t { font-size: 10.5px; opacity: .85; direction: ltr; unicode-bidi: plaintext; }
+.sch-work { background: rgba(52, 199, 89, .10); }
+.sch-off { background: rgba(128, 128, 128, .12); opacity: .75; }
+.sch-sp-work { background: rgba(255, 149, 0, .22); border-color: rgba(255, 149, 0, .7); }
+.sch-sp-off { background: rgba(255, 59, 48, .16); border-color: rgba(255, 59, 48, .6); }
+.sch-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin-top: 10px; }
+.sch-key { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(128,128,128,.4); }
+@media (max-width: 520px) { .sch-cell { min-height: 46px; } .sch-t { font-size: 9px; } }

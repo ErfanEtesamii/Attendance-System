@@ -37,6 +37,7 @@ const { extractDeviceInfo } = require('../../utils/deviceInfo');
 const fraudRunner = require('../../utils/fraudRunner');
 const notificationEvents = require('../../services/notificationEvents');
 const { todayDateString } = require('../../utils/serverTime');
+const { addDays } = require('../../utils/shiftDay');
 
 // همه مسیرهای زیر /miniapp ابتدا باید هویت تلگرام معتبر داشته باشند
 router.use('/miniapp', telegramAuth);
@@ -367,6 +368,16 @@ router.get('/miniapp/mission/day', (req, res) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'date باید YYYY-MM-DD باشد.' });
   const day = getCalendarDay(req.miniAppUser, date);
   res.json({ date, isWorkingDay: !!day.isWorkingDay, expectedStart: day.expectedStart || null, expectedEnd: day.expectedEnd || null });
+});
+
+// B2: ساعت کاری «مؤثر» امروز و فردای خود کارمند (override روز ← شیفت ← سراسری)؛ special = برنامه‌ی ویژه‌ی همان روز ('work'|'off'|null)
+router.get('/miniapp/schedule/upcoming', (req, res) => {
+  const today = todayDateString();
+  const days = [today, addDays(today, 1)].map((date) => {
+    const d = getCalendarDay(req.miniAppUser, date);
+    return { date, isWorkingDay: !!d.isWorkingDay, kind: d.kind, expectedStart: d.expectedStart || null, expectedEnd: d.expectedEnd || null, holidayTitle: d.holidayTitle || null, special: d.override || null };
+  });
+  res.json({ days });
 });
 
 // C6: «ماموریت همین حالا»

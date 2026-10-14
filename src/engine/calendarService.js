@@ -59,8 +59,16 @@ function pickHoliday(rows, department) {
  * @param {object} p.settings تنظیمات (workDayStart, workDayEnd, weekendDays, halfDayWeekdays, halfDayEndTime)
  * @param {{title:string, kind?:string, half_end_time?:string}|null} [p.holiday] ردیفِ مؤثر (خروجی pickHoliday)؛ kind نبودن = full
  */
-function resolveCalendarDay({ dateStr, shift = null, settings, holiday = null }) {
+function resolveCalendarDay({ dateStr, shift = null, settings, holiday = null, override = null }) {
   const weekday = weekdayOf(dateStr);
+  // B2 (فاز ۱۲): برنامه‌ی ویژه‌ی همان روز (user_day_schedules) بر شیفت/تنظیمات/تعطیلی غالب است.
+  //   off ⇒ روز غیرکاری (kind='weekend')؛ work ⇒ روز کاری با ساعت همان override (نیم‌روز/تعطیلی اعمال نمی‌شود). فیلد override فقط وقتی هست.
+  if (override && override.kind === 'off') {
+    return { isWorkingDay: false, isHoliday: !!holiday, holidayTitle: holiday ? holiday.title || '' : null, expectedStart: null, expectedEnd: null, kind: 'weekend', override: 'off' };
+  }
+  if (override && override.kind === 'work') {
+    return { isWorkingDay: true, isHoliday: false, holidayTitle: null, expectedStart: override.start_time, expectedEnd: override.end_time, kind: 'working', override: 'work' };
+  }
   const start = shift ? shift.startTime : settings.workDayStart;
   const end = shift ? shift.endTime : settings.workDayEnd;
   const isFullHoliday = !!holiday && (holiday.kind || 'full') === 'full';
@@ -91,6 +99,23 @@ function resolveCalendarDay({ dateStr, shift = null, settings, holiday = null })
   return { isWorkingDay: true, ...info, expectedStart: start, expectedEnd, kind };
 }
 
+// شیفتِ مجازیِ یک روز (B2): override نوع work ⇒ همان شیفتِ مؤثر (یا پارامترهای سراسری) ولی با ساعت شروع/پایانِ override؛
+// مهلت‌های تأخیر/زودتر رفتن/ناهار همان مقدار شیفت مؤثر یا تنظیمات سراسری می‌ماند. شب‌بودن فقط وقتی که شیفتِ مؤثر شب باشد و پایان < شروع.
+// بدون override یا kind='off' ⇒ خود shift (بدون تغییر).
+function virtualShiftFor(shift, override, settings) {
+  if (!override || override.kind !== 'work') return shift;
+  const base = shift || {
+    graceLateMinutes: settings.lateGraceMinutes,
+    graceEarlyMinutes: settings.earlyGraceMinutes,
+    maxLunchMinutes: settings.maxLunchMinutes,
+    fixedLunchDeductMinutes: settings.fixedLunchDeductMinutes,
+    workDays: [], overnight: false,
+  };
+  const s = minutesOf(override.start_time);
+  const e = minutesOf(override.end_time);
+  return { ...base, startTime: override.start_time, endTime: override.end_time, overnight: !!base.overnight && s !== null && e !== null && e < s };
+}
+
 // userOrShift: شیفت (دارای startTime)، کاربر (ردیف users؛ شیفتش با findByUserId خوانده می‌شود) یا null/undefined = تنظیمات سراسری.
 // دپارتمان فقط از «ردیف کاربر» می‌آید (شیفتِ تنها دپارتمان ندارد ⇒ فقط تعطیلی‌های scope='all').
 // opts (برای تست/حلقه‌ها): { settings، shift، holidays (آرایه‌ی ردیف‌های همان تاریخ)، holiday (ردیفِ مؤثر یا null؛ pickHoliday را دور می‌زند) }؛ ندادن ⇒ خواندن از DB.
@@ -102,16 +127,23 @@ function getCalendarDay(userOrShift, dateStr, opts = {}) {
   let shift = null;
   if (opts.shift !== undefined) shift = opts.shift;
   else if (userOrShift && userOrShift.startTime !== undefined) shift = userOrShift;
-  else if (userOrShift && userOrShift.id !== undefined) shift = shiftsRepository.findByUserId(userOrShift.id);
+  else if (userOrShift && userOrShift.id !== undefined) shift = shiftsRepository.shiftOn(userOrShift.id, dateStr); // B1: شیفتِ مؤثر در همان روز
 
   const settings = opts.settings || settingsRepository.getAll();
+  // B2: override روز؛ فقط برای «ردیف کاربر» از DB خوانده می‌شود (opts.override صریح اولویت دارد؛ null = بدون override)
+  let override = null;
+  if (opts.override !== undefined) override = opts.override;
+  else if (userOrShift && userOrShift.startTime === undefined && userOrShift.id !== undefined) {
+    override = require('../repositories/userDayScheduleRepository').get(userOrShift.id, dateStr);
+  }
+  shift = virtualShiftFor(shift, override, settings);
   let holiday;
   if (opts.holiday !== undefined) holiday = opts.holiday;
   else {
     const isUserRow = userOrShift && userOrShift.startTime === undefined;
     holiday = pickHoliday(opts.holidays || holidaysRepository.listByDate(dateStr), isUserRow ? userOrShift.department : null);
   }
-  return resolveCalendarDay({ dateStr, shift, settings, holiday });
+  return resolveCalendarDay({ dateStr, shift, settings, holiday, override });
 }
 
 // ---------- D2: روز ثبت برنامه و روز کاریِ قبل ----------
@@ -169,4 +201,4 @@ function getPreviousWorkingDay(user, dateStr, { maxBack = 14, settings } = {}) {
   return null;
 }
 
-module.exports = { getCalendarDay, resolveCalendarDay, pickHoliday, weekdayOf, weekStartOf, getPlanDay, getPreviousWorkingDay, fullyOnApprovedLeave };
+module.exports = { getCalendarDay, resolveCalendarDay, virtualShiftFor, pickHoliday, weekdayOf, weekStartOf, getPlanDay, getPreviousWorkingDay, fullyOnApprovedLeave };

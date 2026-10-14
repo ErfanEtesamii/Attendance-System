@@ -29,7 +29,8 @@ const holidaysRepository = require('../../../repositories/holidaysRepository');
 const shiftsRepository = require('../../../repositories/shiftsRepository');
 const dayService = require('../../../engine/dayService');
 const { computeDay } = require('../../../engine/computeDay');
-const { resolveCalendarDay, pickHoliday } = require('../../../engine/calendarService');
+const { resolveCalendarDay, pickHoliday, virtualShiftFor } = require('../../../engine/calendarService');
+const userDayScheduleRepository = require('../../../repositories/userDayScheduleRepository');
 const { leaveWindowsOnDate, requestRowToValue } = require('../../../utils/leaveUnits');
 const { jalaliMonthRangeOf, jalaliMonthDates } = require('../../../utils/jalali');
 const { todayDateString } = require('../../../utils/serverTime');
@@ -78,9 +79,10 @@ function lateMinutesOf({ record, dateStr, shift, cal, dayLeaves, dayCtx }) {
 }
 
 // وضعیت یک سلول. همه‌ی ورودی‌ها از قبل در حافظه‌اند.
-function buildDayCell({ dateStr, user, shift, record, dayLeaves, settings, holidayRows, today, dayCtx }) {
+function buildDayCell({ dateStr, user, shift: baseShift, override = null, record, dayLeaves, settings, holidayRows, today, dayCtx }) {
   const holiday = pickHoliday(holidayRows, user.department);
-  const cal = resolveCalendarDay({ dateStr, shift, settings, holiday });
+  const shift = virtualShiftFor(baseShift, override, settings); // B2: برنامه‌ی ویژه‌ی روز بر شیفت/سراسری غالب است
+  const cal = resolveCalendarDay({ dateStr, shift, settings, holiday, override });
   const fullDayLeave = dayLeaves.find((l) => unitOf(l) === 'day') || null;
 
   let status;
@@ -114,6 +116,7 @@ function buildDayCell({ dateStr, user, shift, record, dayLeaves, settings, holid
     isHoliday: cal.isHoliday,
     holidayTitle: cal.holidayTitle,
     kind: cal.kind,
+    scheduleOverride: cal.override || null, // 'work' | 'off' | null (برنامه‌ی ویژه‌ی روز؛ B2)
     leave: shown
       ? {
         kind: shown.kind,
@@ -177,7 +180,8 @@ router.get('/admin/calendar', requirePermission('dashboard.read'), (req, res) =>
     if (!holidaysByDate.has(h.holiday_date)) holidaysByDate.set(h.holiday_date, []);
     holidaysByDate.get(h.holiday_date).push(h);
   }
-  const shiftById = new Map(shiftsRepository.listShifts().map((sh) => [sh.id, sh]));
+  const overrideOnDate = userDayScheduleRepository.makeResolver(allIds, range.from, range.to); // B2
+  const shiftOnDate = shiftsRepository.makeShiftResolver(allIds); // B1: شیفتِ مؤثر هر کاربر در هر روز (یک‌بار خواندن)
   const recordsByUser = new Map();
   for (const r of records) {
     if (!recordsByUser.has(r.user_id)) recordsByUser.set(r.user_id, new Map());
@@ -190,13 +194,13 @@ router.get('/admin/calendar', requirePermission('dashboard.read'), (req, res) =>
   }
 
   const result = users.map((u) => {
-    const shift = (u.shift_id != null && shiftById.get(u.shift_id)) || null; // از کش یک‌باره‌ی شیفت‌ها (بدون کوئری به‌ازای کاربر)
     const recMap = recordsByUser.get(u.id) || new Map();
     const userLeaves = leavesByUser.get(u.id) || [];
     const days = dates.map((dateStr) => buildDayCell({
       dateStr,
       user: u,
-      shift,
+      shift: shiftOnDate(u.id, dateStr),
+      override: overrideOnDate(u.id, dateStr),
       record: recMap.get(dateStr) || null,
       dayLeaves: userLeaves.filter((l) => dateStr >= l.start_date && dateStr <= l.end_date),
       settings,

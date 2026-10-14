@@ -574,8 +574,44 @@
     $('#progress-text').textContent = pct.toLocaleString('fa-IR') + '٪ از ۸ ساعت';
 
     renderTodayActions();
+    loadWorkHours();
     loadPlanGateBanner();
     loadReportBanner();
+  }
+
+  // ساعت کاری مؤثر امروز و فردا (B2): اگر ادمین/سرپرست «برنامه‌ی ویژه» گذاشته باشد با نشان جدا؛ خطا هرگز نمای امروز را نمی‌شکند.
+  // متن‌ها (از جمله عنوان تعطیلی که ادمین وارد کرده) فقط با textContent درج می‌شوند.
+  async function loadWorkHours() {
+    const card = $('#work-hours-card');
+    if (!card) return;
+    try {
+      const { days } = await api('/schedule/upcoming');
+      const fa = (t) => (J ? J.toFaDigits(t) : t);
+      card.textContent = '';
+      days.forEach((d, i) => {
+        const row = document.createElement('div');
+        row.className = 'row';
+        const label = document.createElement('span');
+        label.className = 'row-label';
+        label.textContent = i === 0 ? 'ساعت کاری امروز' : 'ساعت کاری فردا';
+        const value = document.createElement('span');
+        value.className = 'row-value';
+        value.textContent = d.isWorkingDay
+          ? `${fa(d.expectedStart)} تا ${fa(d.expectedEnd)}`
+          : (d.special === 'off' ? 'آف' : (d.holidayTitle ? `تعطیل — ${d.holidayTitle}` : 'روز غیرکاری'));
+        if (d.special) {
+          const badge = document.createElement('span');
+          badge.className = 'chip-special';
+          badge.textContent = 'برنامه‌ی ویژه';
+          value.append(' ', badge);
+        }
+        row.append(label, value);
+        card.appendChild(row);
+      });
+      card.classList.remove('hidden');
+    } catch (_) {
+      card.classList.add('hidden');
+    }
   }
 
   // بنر الزام برنامه‌ی هفتگی (D5): فقط اطلاع‌رسانی؛ خطای آن هرگز نمای امروز را نمی‌شکند
@@ -2026,10 +2062,15 @@
   // دسترسی مستقیم (D4): ?view=plan یا start_param=plan (دکمه‌ی بات)
   function openDeepLink() {
     try {
-      const q = new URLSearchParams(window.location.search).get('view');
+      const params = new URLSearchParams(window.location.search);
+      const q = params.get('view');
       const sp = initDataUnsafe && initDataUnsafe.start_param;
       const target = q || sp;
       if (target === 'plan') switchView('plan');
+      else if (target === 'dispute') { // ?view=dispute&id=N (دکمه‌ی پیام تلگرام پاسخ ادمین) ⇒ مستقیم باز شدن همان گفت‌وگو
+        const id = parseInt(params.get('id'), 10);
+        if (Number.isInteger(id) && id > 0) openDispute(id);
+      }
     } catch (_) { /* نادیده */ }
   }
 

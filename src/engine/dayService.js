@@ -15,28 +15,44 @@ const shiftsRepository = require('../repositories/shiftsRepository');
 const overtimeApprovalRepository = require('../repositories/overtimeApprovalRepository');
 const usersRepository = require('../repositories/usersRepository');
 const holidaysRepository = require('../repositories/holidaysRepository');
+const userDayScheduleRepository = require('../repositories/userDayScheduleRepository');
 const leaveRepository = require('../repositories/leaveRepository');
 const { dayNumber } = require('../utils/shiftDay');
 const { leaveWindowsOnDate, requestRowToValue } = require('../utils/leaveUnits');
 const { computeDay } = require('./computeDay');
-const { getCalendarDay } = require('./calendarService');
+const { getCalendarDay, virtualShiftFor } = require('./calendarService');
 
 // تنظیمات مؤثر + منطقه‌ی زمانی (+ کش شیفت کاربران، S3-6b). برای حلقه روی چند رکورد یک‌بار بگیرید و با { context } بدهید
 // تا هر رکورد دوباره DB نخواند. context ساخته‌شده‌ی دستی (فقط { settings, timezone }) هم معتبر است؛ فقط کش نخواهد داشت.
 function loadContext() {
   const settings = settingsRepository.getAll();
-  return { settings, timezone: settings.timezone, shiftCache: new Map(), userCache: new Map(), holidayCache: new Map(), leaveCache: new Map() };
+  return { settings, timezone: settings.timezone, shiftCache: new Map(), userCache: new Map(), holidayCache: new Map(), leaveCache: new Map(), overrideCache: new Map() };
 }
 
 // شیفت کاربر رکورد (S3-6b): opts.shift صریح (null = «بدون شیفت») اولویت دارد؛ وگرنه از users.shift_id. بدون شیفت ⇒ null ⇒ تنظیمات سراسری.
+// برنامه‌ی ویژه‌ی روزِ رکورد (B2؛ user_day_schedules) یا null. با opts.shift صریح، override نادیده است (رفتار قبلی).
+function overrideForRecord(record, ctx, opts) {
+  if (opts.shift !== undefined || !record || record.user_id === undefined || record.user_id === null || dayNumber(record.record_date) === null) return null;
+  const key = `${record.user_id}|${record.record_date}`;
+  const cache = ctx.overrideCache;
+  if (cache && cache.has(key)) return cache.get(key);
+  const row = userDayScheduleRepository.get(record.user_id, record.record_date);
+  if (cache) cache.set(key, row);
+  return row;
+}
+
 function shiftForRecord(record, ctx, opts) {
   if (opts.shift !== undefined) return opts.shift;
   if (!record || record.user_id === undefined || record.user_id === null) return null;
+  // B1 (فاز ۱۲): شیفتِ مؤثر «در روزِ رکورد» (تاریخ اعمال)؛ تغییر شیفت روی روزهای گذشته اثر نمی‌گذارد. بدون record_date معتبر ⇒ شیفت امروز.
+  const date = dayNumber(record.record_date) === null ? null : record.record_date;
+  const key = `${record.user_id}|${date || ''}`;
   const cache = ctx.shiftCache;
-  if (cache && cache.has(record.user_id)) return cache.get(record.user_id);
-  const shift = shiftsRepository.findByUserId(record.user_id);
-  if (cache) cache.set(record.user_id, shift);
-  return shift;
+  if (cache && cache.has(key)) return cache.get(key);
+  const shift = date ? shiftsRepository.shiftOn(record.user_id, date) : shiftsRepository.findByUserId(record.user_id);
+  if (cache) cache.set(key, shift);
+  // B2: اولویت override روز ← شیفت مؤثر ← تنظیمات سراسری (override work ⇒ شیفتِ مجازی با ساعت همان روز)
+  return virtualShiftFor(shift, overrideForRecord(record, ctx, opts), ctx.settings);
 }
 
 // تقویم روزِ رکورد (S3-7c): getCalendarDay برای کاربر رکورد در record_date (دپارتمان ⇒ تعطیلی دپارتمانی؛ شیفت ⇒ روزهای کاری/نیم‌روز شیفت).
@@ -59,7 +75,7 @@ function calendarForRecord(record, ctx, opts, shift) {
     holidays = holidaysRepository.listByDate(record.record_date);
     if (hc) hc.set(record.record_date, holidays);
   }
-  return getCalendarDay(user, record.record_date, { shift, settings: ctx.settings, holidays });
+  return getCalendarDay(user, record.record_date, { shift, settings: ctx.settings, holidays, override: overrideForRecord(record, ctx, opts) });
 }
 
 // پنجره‌های مرخصی/مأموریتِ «تأییدشده» روزِ رکورد (S4-8b-2) برای computeDay({ approvedLeaves }).

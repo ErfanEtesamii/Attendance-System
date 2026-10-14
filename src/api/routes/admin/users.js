@@ -12,6 +12,7 @@ const holidaysRepository = require('../../../repositories/holidaysRepository');
 const disputeRepository = require('../../../repositories/disputeRepository');
 const auditRepository = require('../../../repositories/auditRepository');
 const dayService = require('../../../engine/dayService');
+const shiftsRepository = require('../../../repositories/shiftsRepository');
 const settingsRepository = require('../../../repositories/settingsRepository');
 const { getCalendarDay } = require('../../../engine/calendarService');
 const { todayDateString } = require('../../../utils/serverTime');
@@ -32,8 +33,10 @@ router.get('/admin/users', requirePermission('users.read'), (req, res) => {
   // S3-7c: «تعطیل» بودن امروز برای هر کاربر از getCalendarDay (تعطیلی کامل؛ شامل دامنه‌ی دپارتمان). یک‌بار خواندن تنظیمات/ردیف‌های امروز
   const calSettings = settingsRepository.getAll();
   const calHolidays = holidaysRepository.listByDate(today);
+  const shiftOnDate = shiftsRepository.makeShiftResolver(users.map((u) => u.id)); // B1: «شیفت مؤثر» امروز هر کارمند (بدون N+1)
   const withToday = users.map((u) => {
     const record = attendanceRepository.findTodayRecord(u.id);
+    const effShift = shiftOnDate(u.id, today);
     let todayStatus = 'not_checked_in';
     if (record) {
       todayStatus = record.check_out_time ? 'checked_out' : 'checked_in';
@@ -55,6 +58,9 @@ router.get('/admin/users', requirePermission('users.read'), (req, res) => {
       telegramUserId: u.telegram_user_id,
       managerId: u.manager_id,
       createdAt: u.created_at,
+      shiftId: effShift ? effShift.id : null,
+      shiftName: effShift ? effShift.name : null,
+      shiftTime: effShift ? `${effShift.startTime}–${effShift.endTime}` : null,
       todayStatus,
     };
   });
@@ -322,7 +328,7 @@ router.get('/admin/users/:id/details', requirePermission('users.details.read'), 
       ...userBrief(user),
       managerId: user.manager_id,
       managerName: manager ? manager.full_name : null,
-      shiftId: user.shift_id == null ? null : user.shift_id,
+      shiftId: (shiftsRepository.findByUserId(user.id) || {}).id ?? null, // B1: شیفتِ مؤثر امروز (طبق تاریخ اعمال)
       createdAt: user.created_at,
       updatedAt: user.updated_at,
     },

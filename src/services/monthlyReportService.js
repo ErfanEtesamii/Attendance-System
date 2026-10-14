@@ -34,7 +34,8 @@ const overtimeApprovalRepository = require('../repositories/overtimeApprovalRepo
 const dayService = require('../engine/dayService');
 const leaveBalanceService = require('./leaveBalanceService');
 const { computeDay } = require('../engine/computeDay');
-const { resolveCalendarDay, pickHoliday } = require('../engine/calendarService');
+const { resolveCalendarDay, pickHoliday, virtualShiftFor } = require('../engine/calendarService');
+const userDayScheduleRepository = require('../repositories/userDayScheduleRepository');
 const { leaveWindowsOnDate, requestRowToValue } = require('../utils/leaveUnits');
 const { jalaliMonthRangeOf, jalaliMonthDates } = require('../utils/jalali');
 const { todayInZone } = require('../utils/time');
@@ -119,7 +120,8 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
     if (!holidaysByDate.has(h.holiday_date)) holidaysByDate.set(h.holiday_date, []);
     holidaysByDate.get(h.holiday_date).push(h);
   }
-  const shiftById = new Map(shiftsRepository.listShifts().map((sh) => [sh.id, sh]));
+  const shiftOnDate = shiftsRepository.makeShiftResolver(ids); // B1: شیفتِ مؤثر هر کاربر در هر روز (یک‌بار خواندن)
+  const overrideOnDate = userDayScheduleRepository.makeResolver(ids, range.from, range.to); // B2: برنامه‌ی ویژه‌ی روز
   const types = leaveTypesRepository.listLeaveTypes();
   const typeById = new Map(types.map((t) => [t.id, t]));
   const trackedTypes = types.filter((t) => t.isActive && t.countsAgainstBalance);
@@ -131,7 +133,6 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
   const decisions = requiresApproval ? overtimeApprovalRepository.mapByRecordIds(allRecordIds) : new Map();
 
   const out = list.map((u) => {
-    const shift = (u.shift_id != null && shiftById.get(u.shift_id)) || null;
     const recMap = recordsByUser.get(u.id) || new Map();
     const activeFrom = startDateOf(u, timezone);
     const userLeaves = leavesByUser.get(u.id) || [];
@@ -157,7 +158,9 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
 
     for (const dateStr of dates) {
       const holiday = pickHoliday(holidaysByDate.get(dateStr) || [], u.department);
-      const cal = resolveCalendarDay({ dateStr, shift, settings, holiday });
+      const override = overrideOnDate(u.id, dateStr);
+      const shift = virtualShiftFor(shiftOnDate(u.id, dateStr), override, settings);
+      const cal = resolveCalendarDay({ dateStr, shift, settings, holiday, override });
       const record = recMap.get(dateStr) || null;
       const hasCheckIn = !!(record && record.check_in_time);
 

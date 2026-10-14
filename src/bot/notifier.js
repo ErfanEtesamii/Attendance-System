@@ -27,11 +27,12 @@ async function notifyUser(telegramUserId, text) {
 }
 
 // مثل notifyUser ولی نتیجه (موفق/ناموفق) را برمی‌گرداند - برای پیام مستقیم/گروهی پنل ادمین
-async function sendMessage(telegramUserId, text) {
+// options (اختیاری): همان گزینه‌های Bot API، مثلاً reply_markup با دکمه‌ی inline
+async function sendMessage(telegramUserId, text, options) {
   const bot = getNotifierBot();
   if (!bot || !telegramUserId) return false;
   try {
-    await bot.sendMessage(telegramUserId, text);
+    await bot.sendMessage(telegramUserId, text, options);
     return true;
   } catch (err) {
     console.error('[notifier] خطا در ارسال پیام:', err.message);

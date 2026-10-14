@@ -803,3 +803,5 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .dsp-note { margin: 0; }
 .dsp-close, .dsp-reopen { margin-top: 0; }
 #dispute-thread-msg:empty { min-height: 0; }
+/* B2: نشان «برنامه‌ی ویژه» کنار ساعت کاری امروز/فردا */
+.chip-special { display: inline-block; margin-inline-start: 6px; padding: 1px 8px; border-radius: 999px; font-size: 11px; background: var(--orange-soft, rgba(255,149,0,.15)); color: var(--orange, #c76b00); }

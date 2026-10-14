@@ -38,6 +38,7 @@ router.use(require('./monthClosures')); // S5-3: بستن ماه (چک‌لیس�
 router.use(require('./analytics')); // S5-6a: روند/مقایسه‌ی تأخیر (فقط‌خواندنی؛ کارمند ممنوع)
 router.use(require('./settings'));
 router.use(require('./shifts'));
+router.use(require('./userSchedule')); // B2: برنامه‌ی کاری روزبه‌روز هر کارمند
 router.use(require('./audit'));
 router.use(require('./suspicious'));
 router.use(require('./planGate')); // D5: معافیت یک‌باره از گیت خروجِ برنامه‌ی هفتگی
