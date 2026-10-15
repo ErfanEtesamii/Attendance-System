@@ -95,6 +95,22 @@ function search({ userId, action, entityType, entityId, from, to, q, limit = 200
     .all(...params, limit);
 }
 
+// A2-۵: رویدادهای ویرایشِ مدیر روی یک برنامه که هنوز «اطلاع داده نشده‌اند» (فقط audit_log؛ آرشیو بررسی نمی‌شود).
+// «آخرین اعلان» = بزرگ‌ترین meta.upToAuditId در رکوردهای notifyAction همان برنامه (نه شناسه‌ی خودِ رکوردِ اعلان؛ تا ویرایشی که
+// هم‌زمان با ارسال اعلان ثبت شده گم نشود). فقط خواندنی؛ ردیف‌های غیر JSON هرگز خطا نمی‌دهند.
+// خروجی: [{ id, occurred_at, details }] به ترتیب id صعودی (details رشته‌ی JSON).
+function listPlanEditEventsPending(planId, { editAction, notifyAction }) {
+  const f = (field) => `CASE WHEN json_valid(details) THEN json_extract(details, '$.${field}') END`;
+  return getDb()
+    .prepare(
+      `SELECT id, occurred_at, details FROM audit_log
+       WHERE action = ? AND ${f('planId')} = ?
+         AND id > COALESCE((SELECT MAX(CAST(${f('upToAuditId')} AS INTEGER)) FROM audit_log WHERE action = ? AND ${f('planId')} = ?), 0)
+       ORDER BY id`
+    )
+    .all(editAction, Number(planId), notifyAction, Number(planId));
+}
+
 // خلاصه‌ی رکوردهای «قدیمی‌تر از cutoff» برای dry-run آرشیو (S2-6b). فقط خواندنی.
 // cutoff به قالب ذخیره‌ی occurred_at (YYYY-MM-DD HH:MM:SS) است؛ مقایسه‌ی متنی مستقیم تا ایندکس idx_audit_occurred کار کند.
 function summarizeOlderThan(cutoff) {
@@ -140,4 +156,4 @@ function listActions() {
     .all();
 }
 
-module.exports = { logEvent, logChange, listByUser, listRecent, search, listActions, summarizeOlderThan, archiveBatch };
+module.exports = { logEvent, logChange, listByUser, listRecent, search, listActions, listPlanEditEventsPending, summarizeOlderThan, archiveBatch };

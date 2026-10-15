@@ -13,6 +13,7 @@
 //   reportCommented({...})           کامنتِ سرپرست روی گزارش روزانه  ⇒ خودِ کارمند (D9؛ تنها رویدادی که تلگرام هم می‌فرستد، چون مسیر تلگرامِ جدا ندارد)
 //   urgentTaskAssigned({...})        تسک فوریِ تازه (E1)             ⇒ خودِ کارمند (پنل + تلگرام، با دکمه‌ی باز کردن Mini App)
 //   urgentTaskReminder({...})        یادآوریِ نزدیک‌شدن مهلتِ تسک فوری (E1) ⇒ خودِ کارمند (پنل + تلگرام)
+//   weeklyPlanEditedByManager(employee, actor, plan, summary)  اعلان «تجمیعی» ویرایش برنامه‌ی هفتگی توسط مدیر (A2-۵؛ فقط با دکمه‌ی «اطلاع به کارمند») ⇒ خودِ کارمند (پنل + تلگرام)
 //
 // قوانین:
 //   • هرگز استثنا نمی‌دهد و جریان اصلی را نمی‌شکند (ثبت تردد/مرخصی/اعتراض/watchdog)؛ خطا فقط لاگ می‌شود.
@@ -28,6 +29,7 @@ const leaveApprovalService = require('./leaveApprovalService');
 const { sanitizeText } = require('../utils/sanitize');
 const { isoDateToJalaliString } = require('../utils/jalali');
 const crypto = require('crypto');
+const { addDays } = require('../utils/shiftDay');
 const lateLimitService = require('./lateLimitService');
 const settingsRepository = require('../repositories/settingsRepository');
 
@@ -398,6 +400,40 @@ function urgentTaskReminder({ task, employeeId, minutesLeft }) {
   });
 }
 
+// ---------- ویرایش برنامه‌ی هفتگی توسط مدیر (فاز ۱۳، A2-۵) ----------
+/**
+ * اعلان تجمیعی تغییرهای مدیر در برنامه‌ی یک هفته ⇒ پنل + تلگرام (با دکمه‌ی باز کردن برنامه‌ی هفتگی در Mini App) به خودِ کارمند.
+ * «سرپرست برنامه‌ی هفته‌ی … شما را تغییر داد: ۲ افزودن، ۱ ویرایش، ۱ حذف». صفرها در متن نمی‌آیند؛ همه صفر ⇒ بی‌اثر.
+ * dedupeKey = برنامه + آخرین رکورد audit پوشش‌داده‌شده ⇒ دوبار کلیک/تکرار درخواست اعلان تکراری نمی‌سازد.
+ * @param {{id: number}} employee گیرنده
+ * @param {{id?: number, full_name?: string}} actor مدیرِ ویرایش‌کننده
+ * @param {{id: number, week_start_date: string}} plan ردیف برنامه
+ * @param {{added?: number, edited?: number, removed?: number, upToAuditId?: number}} summary
+ */
+function weeklyPlanEditedByManager(employee, actor, plan, summary = {}) {
+  return guard('weeklyPlanEditedByManager', () => {
+    if (!employee || !actor || !plan || employee.id === actor.id) return [];
+    const parts = [];
+    if (summary.added) parts.push(`${summary.added} افزودن`);
+    if (summary.edited) parts.push(`${summary.edited} ویرایش`);
+    if (summary.removed) parts.push(`${summary.removed} حذف`);
+    if (!parts.length) return [];
+    const from = jalaliOf(plan.week_start_date);
+    const to = jalaliOf(addDays(plan.week_start_date, 6));
+    const url = panelLinks.miniAppLink({ view: 'plan' });
+    return [send('weeklyPlanEditedByManager', employee.id, {
+      type: 'weekly_plan_edited_by_manager',
+      title: '📝 برنامه‌ی هفتگی شما تغییر کرد',
+      body: `${actor.full_name || 'سرپرست'} برنامه‌ی هفته‌ی ${from} تا ${to} شما را تغییر داد: ${parts.join('، ')}.`,
+      link: '#/today',
+      data: { planId: plan.id, weekStart: plan.week_start_date, changedBy: actor.id || null, added: summary.added || 0, edited: summary.edited || 0, removed: summary.removed || 0 },
+      dedupeKey: `weekly_plan_edited_by_manager:${plan.id}:${summary.upToAuditId || 0}`,
+      telegram: true,
+      telegramButton: url && panelLinks.canUseWebApp(url) ? { text: '📅 باز کردن برنامه‌ی هفتگی', web_app: { url } } : undefined,
+    })];
+  });
+}
+
 // ---------- اجازه‌ی ورود (فاز ۱۲، D3) ----------
 const CHECKIN_PERMISSION_LINK = '#/checkin_permissions';
 
@@ -477,4 +513,4 @@ function checkinPermissionDecided(permission, { actor = null, note = null } = {}
   });
 }
 
-module.exports = { urgentTaskAssigned, urgentTaskReminder, checkinPermissionRequested, checkinPermissionDecided, reportCommented, weeklyPlanChanged, leaveRequested, leaveStepAdvanced, leaveDecided, disputeOpened, disputeResolved, disputeResolvedTelegram, disputeAdminMessage, disputeUserMessage, systemAlert, suspiciousCreated };
+module.exports = { urgentTaskAssigned, urgentTaskReminder, weeklyPlanEditedByManager, checkinPermissionRequested, checkinPermissionDecided, reportCommented, weeklyPlanChanged, leaveRequested, leaveStepAdvanced, leaveDecided, disputeOpened, disputeResolved, disputeResolvedTelegram, disputeAdminMessage, disputeUserMessage, systemAlert, suspiciousCreated };

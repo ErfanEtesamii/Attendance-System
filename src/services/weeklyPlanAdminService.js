@@ -7,6 +7,13 @@
 //   A1-۳ (این بخش، انجام‌شده): addTask / updateTask / removeTask / moveTask / reorderTasks.
 //        هیچ audit/اعلانی اینجا نیست (A2)؛ هر تابع before/after را برمی‌گرداند تا route برای audit استفاده کند.
 //
+// A2 (فاز ۱۳) به پنج بخش تقسیم شده است؛ وضعیت هر بخش:
+//   A2-۱ (انجام‌شده): GET /admin/users/:id/plan ← getPlanState (فقط‌خواندنی) + version + route جدید employeePlan.js.
+//   A2-۲ (انجام‌شده): endpointهای نوشتن (POST/PATCH/DELETE/reorder) روی توابع A1-۳؛ پاسخ = getPlanState تازه (withState/taskOwnerId).
+//   A2-۳ (انجام‌شده): همزمانی — version = شمارنده‌ی weekly_plans.version (migration ۰۳۴)؛ همه‌ی نوشتن‌ها expectedVersion می‌گیرند ⇒ PLAN_CONFLICT (۴۰۹).
+//   A2-۴ (انجام‌شده): audit weekly_plan_edited_by_manager — در route (employeePlan.js) با before/after همین توابع؛ سرویس هنوز audit نمی‌نویسد.
+//   A2-۵ (انجام‌شده): اعلان تجمیعی دستی (POST .../plan/notify + notificationEvents.weeklyPlanEditedByManager). این فایل فقط «خلاصه‌ی تغییرهای
+//        اطلاع‌داده‌نشده» را از audit می‌سازد (pendingNotify)؛ ارسال و ثبت رکورد «اعلان شد» در route است (مثل audit در A2-۴).
 // قواعد (همه سمت سرور):
 //   • مجوز: plan.edit_team — admin همه‌ی کارمندان (سرپرست‌ها هم)؛ manager فقط کارمندان مستقیمش؛ hr و کارمند ندارند.
 //   • برنامه‌ی «خودِ» actor از این مسیر ممنوع است (SELF_NOT_ALLOWED)؛ او از Mini App ویرایش می‌کند.
@@ -18,7 +25,9 @@ const plansRepo = require('../repositories/weeklyPlanRepository');
 const calendarService = require('../engine/calendarService');
 const weeklyPlan = require('./weeklyPlanService');
 const { hasPermission } = require('../middleware/permissions');
-const { dayNumber } = require('../utils/shiftDay');
+const employeeWeek = require('./employeeWeekService'); // فقط canView (اسکوپ خواندن؛ منبع واحد با F1)
+const { dayNumber, addDays } = require('../utils/shiftDay');
+const auditRepository = require('../repositories/auditRepository');
 const { getDb } = require('../db/connection');
 
 const ERROR_STATUS = {
@@ -26,12 +35,35 @@ const ERROR_STATUS = {
   USER_NOT_FOUND: 404, TASK_NOT_FOUND: 404,
   PLAN_LOCKED: 409, MONTH_CLOSED: 409, PLAN_CONFLICT: 409,
   SYSTEM_TASK_READONLY: 409, URGENT_TASK_READONLY: 409,
+  INVALID_VERSION: 400,
+  NOTHING_TO_NOTIFY: 409, NOTIFY_FAILED: 502,
 };
 const statusOf = (code) => ERROR_STATUS[code] || 400;
 
 // خطاهای weeklyPlanService status ندارند؛ اینجا برای route ها اضافه می‌شود.
 const fail = (code, error, extra = {}) => ({ ok: false, code, error, status: statusOf(code), ...extra });
 const withStatus = (f) => (f && f.ok === false && f.status === undefined ? { ...f, status: statusOf(f.code) } : f);
+
+/**
+ * بررسی همزمانی (A2-۳). expectedVersion همان plan.version است که UI آخرین‌بار دیده:
+ *   undefined ⇒ بررسی نمی‌شود (فراخواننده‌های برنامه‌نویسی/سازگاری)؛ UI همیشه می‌فرستد.
+ *   null ⇒ «برنامه‌ای وجود نداشت» (برنامه‌ی ناموجود version=null دارد).
+ *   عدد صحیح (یا رشته‌ی عددی) ⇒ باید با نسخه‌ی فعلی برابر باشد.
+ * در همان فراخوانیِ sync و قبل از هر نوشتن اجرا می‌شود، پس بین بررسی و نوشتن چیزی فاصله نمی‌اندازد.
+ * @returns {null|{ok:false}} null = مجاز
+ */
+function versionFailure(plan, expectedVersion) {
+  if (expectedVersion === undefined) return null;
+  let expected = null;
+  if (expectedVersion !== null) {
+    const n = typeof expectedVersion === 'string' && /^\d+$/.test(expectedVersion.trim()) ? Number(expectedVersion) : expectedVersion;
+    if (!Number.isInteger(n) || n < 1) return fail('INVALID_VERSION', 'نسخه‌ی برنامه نامعتبر است.');
+    expected = n;
+  }
+  const current = plan ? plan.version : null;
+  if (expected !== current) return fail('PLAN_CONFLICT', 'برنامه در این فاصله تغییر کرده؛ صفحه را تازه کنید.');
+  return null;
+}
 
 /** آیا actor مجاز است برنامه‌ی target را ویرایش کند؟ → null (مجاز) یا fail(...). ترتیب: مجوز، وجود کارمند، خود، اسکوپ تیم. */
 function scopeFailure(actor, target) {
@@ -42,32 +74,40 @@ function scopeFailure(actor, target) {
   return null;
 }
 
+/** تعیین هفته‌ی هدف: خالی ⇒ هفته‌ی بعد؛ در غیر این صورت باید دقیقاً روز شروع هفته (weekStartDay) باشد. بدون دسترسی به DB. */
+function resolveWeekStart(weekStartInput, ctx) {
+  if (weekStartInput === undefined || weekStartInput === null || weekStartInput === '') {
+    return { ok: true, weekStart: weeklyPlan.targetWeek('next', ctx) };
+  }
+  const valid = typeof weekStartInput === 'string' && dayNumber(weekStartInput) !== null
+    && calendarService.weekStartOf(weekStartInput, ctx.settings.weekStartDay) === weekStartInput;
+  if (!valid) return fail('INVALID_WEEK', 'تاریخ شروع هفته نامعتبر است (باید اولین روز یک هفته باشد).');
+  return { ok: true, weekStart: weekStartInput };
+}
+
 /**
  * گیت مشترکِ همه‌ی عملیات ویرایش: مجوز + اسکوپ + هفته‌ی معتبر + قفل. هیچ نوشتنی در دیتابیس انجام نمی‌دهد
  * (ساخت برنامه‌ی draft خالی در A1-۳ و فقط بعد از موفق‌شدن اعتبارسنجی انجام می‌شود).
  * @param {object} actor ردیف کاربرِ مدیر
  * @param {number|string} employeeId شناسه‌ی کارمند
  * @param {string} [weekStartInput] YYYY-MM-DD و باید دقیقاً روز شروع هفته (weekStartDay) باشد؛ پیش‌فرض: هفته‌ی بعد
+ * @param {{now?: Date, expectedVersion?: number|string|null}} [opts] expectedVersion: نسخه‌ی دیده‌شده‌ی UI (A2-۳؛ نبودن = بدون بررسی)
  * @returns {{ok: true, target: object, weekStart: string, ctx: object}|{ok: false, code: string, error: string, status: number}}
  */
-function openWeek(actor, employeeId, weekStartInput, { now } = {}) {
+function openWeek(actor, employeeId, weekStartInput, { now, expectedVersion } = {}) {
   const id = Number(employeeId);
   const target = Number.isInteger(id) && id > 0 ? usersRepository.findById(id) : null;
   const denied = scopeFailure(actor, target);
   if (denied) return denied;
 
   const ctx = weeklyPlan.context(now);
-  let weekStart;
-  if (weekStartInput === undefined || weekStartInput === null || weekStartInput === '') {
-    weekStart = weeklyPlan.targetWeek('next', ctx);
-  } else {
-    const valid = typeof weekStartInput === 'string' && dayNumber(weekStartInput) !== null
-      && calendarService.weekStartOf(weekStartInput, ctx.settings.weekStartDay) === weekStartInput;
-    if (!valid) return fail('INVALID_WEEK', 'تاریخ شروع هفته نامعتبر است (باید اولین روز یک هفته باشد).');
-    weekStart = weekStartInput;
-  }
+  const wk = resolveWeekStart(weekStartInput, ctx);
+  if (!wk.ok) return wk;
+  const weekStart = wk.weekStart;
   const locked = weeklyPlan.lockFailure(weekStart, ctx);
   if (locked) return withStatus(locked);
+  const conflict = versionFailure(plansRepo.findByUserWeek(target.id, weekStart), expectedVersion);
+  if (conflict) return conflict;
   return { ok: true, target, weekStart, ctx };
 }
 
@@ -86,7 +126,7 @@ const presentTask = (t) => ({
 const presentPlan = (p) => ({ id: p.id, weekStart: p.week_start_date, status: p.status, updatedAt: p.updated_at });
 
 /** مثل openWeek ولی برای عملیات روی یک تسک موجود: هفته از خودِ برنامه‌ی تسک می‌آید (نه ورودی). */
-function openTask(actor, employeeId, taskId, { now } = {}) {
+function openTask(actor, employeeId, taskId, { now, expectedVersion } = {}) {
   const id = toId(employeeId);
   const target = id ? usersRepository.findById(id) : null;
   const denied = scopeFailure(actor, target);
@@ -101,6 +141,8 @@ function openTask(actor, employeeId, taskId, { now } = {}) {
   // مستقیم از lockFailure (نه openWeek): اگر weekStartDay بعداً عوض شده باشد، برنامه‌ی آینده‌ی موجود نباید ویرایش‌ناپذیر شود.
   const locked = weeklyPlan.lockFailure(plan.week_start_date, weeklyPlan.context(now));
   if (locked) return withStatus(locked);
+  const conflict = versionFailure(plan, expectedVersion);
+  if (conflict) return conflict;
 
   if (task.is_system) return fail('SYSTEM_TASK_READONLY', 'تسک سیستمی قابل ویرایش یا حذف نیست.');
   if (task.is_urgent) return fail('URGENT_TASK_READONLY', 'تسک فوری از این مسیر قابل ویرایش یا حذف نیست؛ از بخش تسک فوری استفاده کنید.');
@@ -108,8 +150,8 @@ function openTask(actor, employeeId, taskId, { now } = {}) {
 }
 
 /** افزودن تسک به برنامه‌ی یک هفته‌ی آینده (برنامه‌ی خالیِ draft در صورت نبود ساخته می‌شود، فقط بعد از موفق‌شدن اعتبارسنجی). */
-function addTask(actor, employeeId, weekStartInput, input, { now } = {}) {
-  const gate = openWeek(actor, employeeId, weekStartInput, { now });
+function addTask(actor, employeeId, weekStartInput, input, { now, expectedVersion } = {}) {
+  const gate = openWeek(actor, employeeId, weekStartInput, { now, expectedVersion });
   if (!gate.ok) return gate;
   const v = weeklyPlan.validateTask(input, 'تسک', gate.weekStart);
   if (v.error) return withStatus(v.error);
@@ -130,8 +172,8 @@ function addTask(actor, employeeId, weekStartInput, input, { now } = {}) {
 const PATCH_KEYS = ['title', 'description', 'plannedDate', 'priority'];
 
 /** ویرایش بخشی از تسک (title/description/plannedDate/priority). فیلدِ نیامده دست‌نخورده می‌ماند؛ plannedDate=null یعنی «هر روز». */
-function updateTask(actor, employeeId, taskId, patch, { now } = {}) {
-  const gate = openTask(actor, employeeId, taskId, { now });
+function updateTask(actor, employeeId, taskId, patch, { now, expectedVersion } = {}) {
+  const gate = openTask(actor, employeeId, taskId, { now, expectedVersion });
   if (!gate.ok) return gate;
   const { task: cur, plan } = gate;
   const p = patch && typeof patch === 'object' ? patch : {};
@@ -163,8 +205,8 @@ function updateTask(actor, employeeId, taskId, patch, { now } = {}) {
 }
 
 /** حذف نرم (soft delete) تسک عادی. before = تسکِ حذف‌شده برای audit. */
-function removeTask(actor, employeeId, taskId, { now } = {}) {
-  const gate = openTask(actor, employeeId, taskId, { now });
+function removeTask(actor, employeeId, taskId, { now, expectedVersion } = {}) {
+  const gate = openTask(actor, employeeId, taskId, { now, expectedVersion });
   if (!gate.ok) return gate;
   const before = presentTask(gate.task);
   getDb().transaction(() => {
@@ -185,8 +227,8 @@ function moveTask(actor, employeeId, taskId, plannedDate, opts = {}) {
  * تسک‌های فهرست‌شده همان «جایگاه‌هایی» (sort_order) را که از قبل داشتند به ترتیب جدید می‌گیرند؛ بقیه‌ی تسک‌ها (سیستمی/فوری/روزهای دیگر) سر جای خود می‌مانند.
  * علامت manager_locked نمی‌زند (ترتیب محتوای تسک نیست).
  */
-function reorderTasks(actor, employeeId, weekStartInput, orderedIds, { now } = {}) {
-  const gate = openWeek(actor, employeeId, weekStartInput, { now });
+function reorderTasks(actor, employeeId, weekStartInput, orderedIds, { now, expectedVersion } = {}) {
+  const gate = openWeek(actor, employeeId, weekStartInput, { now, expectedVersion });
   if (!gate.ok) return gate;
   const ids = Array.isArray(orderedIds) ? orderedIds.map(toId) : null;
   if (!ids || !ids.length || ids.length > weeklyPlan.MAX_TASKS + 5 || ids.some((x) => x === null) || new Set(ids).size !== ids.length) {
@@ -219,4 +261,124 @@ function reorderTasks(actor, employeeId, weekStartInput, orderedIds, { now } = {
   return { ok: true, changed: true, before: idsBefore, order, plan: presentPlan(plansRepo.findById(plan.id)) };
 }
 
-module.exports = { scopeFailure, openWeek, statusOf, addTask, updateTask, removeTask, moveTask, reorderTasks };
+// ---------- A2-۱: خواندن وضعیت برنامه‌ی یک هفته (فقط‌خواندنی) ----------
+// نسخه‌ی برنامه برای تشخیص همزمانی (A2-۳): شمارنده‌ی weekly_plans.version (migration ۰۳۴؛ با تریگر در هر تغییرِ برنامه یا تسک‌هایش
+// — از هر مسیری — یکی زیاد می‌شود). برنامه‌ی ناموجود ⇒ null. تنها نقطه‌ی تعریف version همین تابع است.
+const planVersion = (plan) => (plan ? plan.version : null);
+
+/**
+ * وضعیت برنامه‌ی یک هفته‌ی کارمند برای پنل (هیچ نوشتنی در دیتابیس ندارد؛ برنامه‌ی ناموجود ساخته نمی‌شود).
+ * اسکوپ خواندن همان F1: team.week_view + canView (admin/hr همه، manager فقط کارمندان مستقیمش).
+ * @param {string} [startInput] هر تاریخ داخل هفته (YYYY-MM-DD)؛ به شروع هفته (weekStartDay) نرمال می‌شود؛ پیش‌فرض: هفته‌ی بعد.
+ * @returns {{ok: true, employee, weekStart, weekEnd, isNextWeek, plan, tasks}|{ok: false, code, error, status}}
+ *   plan = {id, status, version, updatedAt, submittedAt, supervisorComment, editable, lockReason, minTasks, maxTasks}
+ *   editable = «این actor الان می‌تواند برنامه را ویرایش کند» (مجوز plan.edit_team + اسکوپ + بدون قفل) — فقط راهنمای UI؛ گیت اصلی در عملیات نوشتن است.
+ */
+function getPlanState(actor, employeeId, startInput, { now } = {}) {
+  const id = toId(employeeId);
+  const target = id ? usersRepository.findById(id) : null;
+  if (!target) return fail('USER_NOT_FOUND', 'کارمند یافت نشد.');
+  if (!actor || !hasPermission(actor.role, 'team.week_view') || !employeeWeek.canView(actor, target)) {
+    return fail('FORBIDDEN', 'این کارمند خارج از دامنه‌ی دسترسی شماست.');
+  }
+
+  const ctx = weeklyPlan.context(now);
+  let weekStart;
+  if (startInput === undefined || startInput === null || startInput === '') {
+    weekStart = weeklyPlan.targetWeek('next', ctx);
+  } else {
+    if (typeof startInput !== 'string' || dayNumber(startInput) === null) return fail('INVALID_WEEK', 'تاریخ هفته نامعتبر است (YYYY-MM-DD).');
+    weekStart = calendarService.weekStartOf(startInput, ctx.settings.weekStartDay);
+  }
+
+  const lockReason = weeklyPlan.lockReason(weekStart, ctx);
+  const plan = plansRepo.findByUserWeek(target.id, weekStart);
+  const editable = scopeFailure(actor, target) === null && !lockReason;
+  const tasks = (plan ? plansRepo.listTasks(plan.id) : []).map((t) => ({
+    ...presentTask(t), canEdit: editable && !t.is_system && !t.is_urgent,
+  }));
+  return {
+    ok: true,
+    employee: { id: target.id, fullName: target.full_name, managerId: target.manager_id || null },
+    weekStart, weekEnd: addDays(weekStart, 6),
+    isNextWeek: weekStart === weeklyPlan.targetWeek('next', ctx),
+    plan: {
+      id: plan ? plan.id : null, status: plan ? plan.status : 'draft',
+      version: planVersion(plan), updatedAt: plan ? plan.updated_at : null, submittedAt: plan ? plan.submitted_at : null,
+      supervisorComment: plan ? plan.supervisor_comment : null,
+      editable, lockReason,
+      minTasks: ctx.settings.planMinTasks, maxTasks: weeklyPlan.MAX_TASKS,
+    },
+    tasks,
+  };
+}
+
+/** شناسه‌ی کارمندِ مالکِ یک تسک (برای مسیرهایی که فقط taskId دارند)؛ تسک ناموجود/حذف‌شده ⇒ null. اسکوپ را بررسی نمی‌کند (کار توابع A1 است). */
+function taskOwnerId(taskId) {
+  const tid = toId(taskId);
+  const task = tid ? plansRepo.findTask(tid) : null;
+  const plan = task && !task.deleted_at ? plansRepo.findById(task.plan_id) : null;
+  return plan ? plan.user_id : null;
+}
+
+/**
+ * نتیجه‌ی یک عملیات نوشتن (خروجی add/update/remove/reorder) را به «وضعیت تازه‌ی برنامه» تبدیل می‌کند تا UI حدس نزند:
+ * { ok, ...getPlanState, changed, task? }. خطا بدون تغییر برمی‌گردد. هفته از r.plan.weekStart می‌آید.
+ */
+function withState(actor, employeeId, r, { now } = {}) {
+  if (!r.ok) return r;
+  const state = getPlanState(actor, employeeId, r.plan.weekStart, { now });
+  if (!state.ok) return state;
+  return { ...state, changed: r.changed, ...(r.task ? { task: r.task } : {}) };
+}
+
+// ---------- A2-۵: خلاصه‌ی تغییرهای اطلاع‌داده‌نشده (برای اعلان تجمیعی) ----------
+const AUDIT_EDIT_ACTION = 'weekly_plan_edited_by_manager'; // A2-۴ (route employeePlan.js)
+const AUDIT_NOTIFY_ACTION = 'weekly_plan_manager_notified'; // رکوردِ «اعلان شد»؛ meta.upToAuditId = آخرین رکورد ویرایشِ پوشش‌داده‌شده
+
+/**
+ * رکوردهای ویرایش (خروجی auditRepository.listPlanEditEventsPending) ⇒ { added, edited, removed, total, upToAuditId }.
+ * شمارش «خالصِ» هر تسک است نه هر کلیک: افزودن+حذفِ همان تسک در یک بازه ⇒ هیچ (کارمند هرگز آن را ندیده)؛ افزودن+چند ویرایش ⇒ ۱ افزودن؛
+ * چند ویرایش ⇒ ۱ ویرایش؛ ویرایش+حذف ⇒ ۱ حذف. reorder شمرده نمی‌شود (محتوای تسک نیست) و total را زیاد نمی‌کند، ولی در upToAuditId می‌آید.
+ */
+function summarizeEdits(rows) {
+  const opsByTask = new Map();
+  let upToAuditId = 0;
+  for (const row of rows) {
+    upToAuditId = Math.max(upToAuditId, row.id);
+    let d = null;
+    try { d = JSON.parse(row.details); } catch (_) { d = null; }
+    if (!d || d.op === 'reorder' || !d.taskId) continue;
+    if (!opsByTask.has(d.taskId)) opsByTask.set(d.taskId, []);
+    opsByTask.get(d.taskId).push(d.op);
+  }
+  const s = { added: 0, edited: 0, removed: 0 };
+  for (const ops of opsByTask.values()) {
+    const first = ops[0];
+    const last = ops[ops.length - 1];
+    if (last === 'remove') { if (first !== 'add') s.removed += 1; } else if (first === 'add') s.added += 1; else s.edited += 1;
+  }
+  return { ...s, total: s.added + s.edited + s.removed, upToAuditId };
+}
+
+/**
+ * آماده‌سازی اعلان تجمیعی: مجوز + اسکوپ (مثل ویرایش)، تعیین هفته (پیش‌فرض: هفته‌ی بعد)، خلاصه‌ی تغییرهای بعد از آخرین اعلان.
+ * قفل هفته/نسخه بررسی نمی‌شود (اطلاع‌دادنِ تغییرهای انجام‌شده ممنوع نیست). هیچ نوشتنی ندارد؛ ارسال و ثبت رکورد «اعلان شد» با route است.
+ * @returns {{ok: true, target, plan, summary}|{ok: false, code, error, status}} بدون تغییرِ اطلاع‌داده‌نشده ⇒ NOTHING_TO_NOTIFY (۴۰۹)
+ */
+function pendingNotify(actor, employeeId, weekStartInput, { now } = {}) {
+  const id = toId(employeeId);
+  const target = id ? usersRepository.findById(id) : null;
+  const denied = scopeFailure(actor, target);
+  if (denied) return denied;
+  const wk = resolveWeekStart(weekStartInput, weeklyPlan.context(now));
+  if (!wk.ok) return wk;
+  const plan = plansRepo.findByUserWeek(target.id, wk.weekStart);
+  const summary = plan
+    ? summarizeEdits(auditRepository.listPlanEditEventsPending(plan.id, { editAction: AUDIT_EDIT_ACTION, notifyAction: AUDIT_NOTIFY_ACTION }))
+    : null;
+  if (!summary || !summary.total) return fail('NOTHING_TO_NOTIFY', 'تغییر اطلاع‌داده‌نشده‌ای برای این برنامه وجود ندارد.');
+  return { ok: true, target, plan, summary };
+}
+
+module.exports = { scopeFailure, openWeek, statusOf, planVersion, getPlanState, taskOwnerId, withState, addTask, updateTask, removeTask, moveTask, reorderTasks, summarizeEdits, pendingNotify, AUDIT_NOTIFY_ACTION };

@@ -16,5 +16,8 @@ const leaveRequestView = (l) => pick(l, ['leave_type', 'start_date', 'end_date',
 const disputeView = (d) => pick(d, ['status']);
 // S4-7a: نوع مرخصی/مأموریت (ورودی = شیء camelCase خروجی leaveTypesRepository؛ code برای شناسایی در diff می‌آید)
 const leaveTypeView = (t) => pick(t, ['code', 'title', 'kind', 'isPaid', 'requiresAttachment', 'countsAgainstBalance', 'allowedUnits', 'maxConsecutiveDays', 'isActive']);
+// A2-۴ (فاز ۱۳): تسک برنامه‌ی هفتگی (ورودی = شیء camelCase خروجی presentTask سرویس ویرایش مدیر). فقط محتوای تسک؛
+// علامت‌های سیستمی (managerLocked/editedAt/...) عمداً نیستند تا در diff نویز نشوند.
+const planTaskView = (t) => pick(t, ['title', 'description', 'plannedDate', 'priority']);
 
-module.exports = { pick, userView, attendanceRecordView, breakView, leaveRequestView, disputeView, leaveTypeView };
+module.exports = { pick, userView, attendanceRecordView, breakView, leaveRequestView, disputeView, leaveTypeView, planTaskView };
