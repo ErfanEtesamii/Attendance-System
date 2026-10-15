@@ -584,6 +584,72 @@
   });
 
   // ======================================================
+  // صف «اجازه‌ی ورود» (فاز ۱۲، D3): کارمندی که سقف تأخیر ماهانه را رد کرده برای ثبت ورودِ دیر از سرپرست اجازه می‌خواهد.
+  // قواعد (اسکوپ تیم، چه کسی تصمیم می‌گیرد، فقط روی pending، ۴۰۹ برای تصمیم دوباره) سمت سرور است؛ UI فقط دکمه‌ها را با canDecide نشان می‌دهد
+  // و پیام خطای سرور را بی‌تغییر در توست می‌آورد. HR فقط می‌بیند (canDecide=false).
+  // ======================================================
+  const cpUi = { status: 'pending' };
+  const CP_STATUS = { pending: ['pending', 'در انتظار'], approved: ['approved', 'تأییدشده'], rejected: ['rejected', 'ردشده'], used: ['holiday', 'استفاده‌شده'], expired: ['holiday', 'منقضی‌شده'] };
+  const CP_FILTERS = [['pending', 'در انتظار'], ['approved', 'تأییدشده'], ['rejected', 'ردشده'], ['used', 'استفاده‌شده'], ['expired', 'منقضی‌شده'], ['all', 'همه']];
+
+  const cpItemHtml = (it) => {
+    const u = it.user;
+    const [cls, label] = CP_STATUS[it.status] || ['holiday', it.status];
+    const late = it.limit > 0 ? ` · تأخیر این ماه: ${esc(fmt.num(it.lateCount))} از ${esc(fmt.num(it.limit))}` : '';
+    const actions = it.canDecide
+      ? `<button class="btn success small" data-act="approve" data-id="${esc(it.id)}">${icon('check')} اجازه می‌دهم</button><button class="btn danger small" data-act="reject" data-id="${esc(it.id)}">${icon('x')} رد</button>` : '';
+    const decided = it.decidedAt ? `<div class="meta">تصمیم: ${esc(fmt.dateTime(it.decidedAt))}${it.decisionNote ? ` — ${esc(it.decisionNote)}` : ''}</div>` : '';
+    return `
+      <div class="item">
+        ${AP.avatar(u ? u.fullName : '?', '')}
+        <div class="grow">
+          <div class="title">${u ? `<a href="#/profile/${esc(u.id)}" style="color:inherit">${esc(u.fullName)}</a>` : '—'} ${AP.badge(cls, label)}</div>
+          <div class="meta">${u ? `${esc(u.department || '')}${u.personnelCode ? ` · کد پرسنلی <span class="ltr">${esc(u.personnelCode)}</span>` : ''} · ` : ''}${esc(fmt.dateLong(it.date))}${late} · درخواست: ${esc(fmt.dateTime(it.requestedAt))}</div>
+          <p class="text">${esc(it.reason)}</p>
+          ${decided}
+        </div>
+        <div class="row-actions">${actions}</div>
+      </div>`;
+  };
+
+  AP.view('checkin_permissions', {
+    skeleton: 'list',
+    perm: 'checkin_permissions.read',
+    nav: { icon: 'clock', label: 'اجازه‌ی ورود', group: 'درخواست‌ها', counter: true },
+    async render() {
+      const data = await AP.api(`/admin/checkin-permissions?status=${encodeURIComponent(cpUi.status)}`);
+      const items = data.items || [];
+      const html = `
+        <div class="view-header"><div><h2>درخواست‌های اجازه‌ی ورود</h2>
+          <div class="sub">${fmt.num(items.length)} درخواست · کارمندی که در یک ماه شمسی به سقف تأخیر برسد، برای ثبت ورودِ دیر به اجازه‌ی سرپرست نیاز دارد.</div></div></div>
+        <div class="chips" id="cp-chips">${CP_FILTERS.map(([k, l]) => `<button class="chip ${k === cpUi.status ? 'active' : ''}" data-s="${k}">${l}</button>`).join('')}</div>
+        <div class="list">${items.length ? items.map(cpItemHtml).join('') : `<div class="card">${emptyBox('درخواستی با این فیلتر وجود ندارد.')}</div>`}</div>`;
+      return {
+        html,
+        mount(page) {
+          $('#cp-chips', page).addEventListener('click', (e) => {
+            const c = e.target.closest('[data-s]');
+            if (c) { cpUi.status = c.dataset.s; AP.refresh(); }
+          });
+          const decide = async (id, approve) => {
+            let note = '';
+            if (approve) {
+              const ok = await AP.confirmBox({ title: 'اجازه‌ی ورود', message: 'ورود این کارمند برای مدت محدود آزاد می‌شود (ساعت واقعی ورود و تأخیر همچنان ثبت می‌شود). تأیید می‌کنید؟', confirmText: 'اجازه می‌دهم' });
+              if (!ok) return;
+            } else {
+              note = await AP.askReason({ title: 'رد درخواست اجازه‌ی ورود', label: 'دلیل رد (اختیاری — برای کارمند ارسال می‌شود)', confirmText: 'رد کن', danger: true, required: false });
+              if (note === null) return;
+            }
+            const done = await AP.attempt(() => AP.api(`/admin/checkin-permissions/${id}/decide`, { method: 'POST', body: { decision: approve ? 'approve' : 'reject', note } }), approve ? 'اجازه‌ی ورود داده شد.' : 'درخواست رد شد.');
+            if (done) { AP.refresh(); AP.refreshCounts(); }
+          };
+          $$('[data-act]', page).forEach((b) => b.addEventListener('click', () => decide(Number(b.dataset.id), b.dataset.act === 'approve')));
+        },
+      };
+    },
+  });
+
+  // ======================================================
   // اعتراض‌ها و گفت‌وگو (فاز ۱۱، D6)
   // فهرست در #/disputes و thread کامل در #/disputes/<id> (همین view؛ روتر skeleton، خطا و «تلاش دوباره» را می‌دهد).
   // قواعد (اسکوپ نقش، disputes.read/resolve، پاسخ فقط روی اعتراضِ باز، سقف ۵۰۰ نویسه) سمت سرور است؛

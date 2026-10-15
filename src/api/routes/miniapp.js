@@ -412,6 +412,7 @@ router.post('/miniapp/checkin-permission', (req, res) => {
   const r = lateLimitService.requestPermission(req.miniAppUser, (req.body || {}).reason);
   if (!r.ok) return res.status(r.status).json({ error: r.error, code: r.code, permission: r.permission || null });
   auditRepository.logEvent({ userId: req.miniAppUser.id, action: 'checkin_permission_requested', ipAddress: req.ip, details: { source: 'miniapp', permissionId: r.permission.id, date: r.permission.date } });
+  notificationEvents.checkinPermissionRequested(r.permission); // D3: اعلان پنل + تلگرام (با دکمه‌های تأیید/رد) به سرپرست مستقیم؛ هرگز ثبت را نمی‌شکند
   return res.status(201).json({ permission: r.permission });
 });
 

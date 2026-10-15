@@ -15,6 +15,7 @@
 | `attendance` | ✅ | ✅ | ✅ | انجام شد |
 | `leave` | ✅ | ✅ | ✅ | انجام شد |
 | `leaveQueue` | ✅ | ✅ | ✅ | انجام شد |
+| `checkin_permissions` | ✅ | ✅ | ✅ | انجام شد (فاز ۱۲، D3) — صف «اجازه‌ی ورود»؛ تصمیم با `canDecide` سرور، HR فقط‌مشاهده |
 | `disputes` | ✅ | ✅ | ✅ (فهرست و thread بدون پیام) | انجام شد — شامل thread در `#/disputes/<id>` (D6) |
 | `suspicious` | ✅ | ✅ | ✅ | انجام شد |
 | `nightly` | ✅ | ✅ | ✅ | انجام شد |

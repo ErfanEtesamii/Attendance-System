@@ -29,6 +29,7 @@ router.use(require('./users'));
 router.use(require('./attendance'));
 router.use(require('./leave'));
 router.use(require('./leaveQueue'));
+router.use(require('./checkinPermissions')); // D3: صف اجازه‌ی ورود (سقف تأخیر ماهانه)
 router.use(require('./leaveTypes'));
 router.use(require('./leaveBalances'));
 router.use(require('./disputes'));

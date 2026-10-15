@@ -26,6 +26,8 @@ const leaveApprovalService = require('./leaveApprovalService');
 const { sanitizeText } = require('../utils/sanitize');
 const { isoDateToJalaliString } = require('../utils/jalali');
 const crypto = require('crypto');
+const lateLimitService = require('./lateLimitService');
+const settingsRepository = require('../repositories/settingsRepository');
 
 const SUSPICIOUS_LABEL = {
   shared_device: 'یک دستگاه برای چند نفر',
@@ -346,4 +348,83 @@ function reportCommented({ reviewer, subject, reportDate, comment, reaction = nu
   });
 }
 
-module.exports = { reportCommented, weeklyPlanChanged, leaveRequested, leaveStepAdvanced, leaveDecided, disputeOpened, disputeResolved, disputeResolvedTelegram, disputeAdminMessage, disputeUserMessage, systemAlert, suspiciousCreated };
+// ---------- اجازه‌ی ورود (فاز ۱۲، D3) ----------
+const CHECKIN_PERMISSION_LINK = '#/checkin_permissions';
+
+// ساعت HH:MM به وقت شرکت (timezone تنظیمات)؛ خطا ⇒ null
+function hhmmInCompanyZone(iso) {
+  try {
+    return new Intl.DateTimeFormat('en-GB', { timeZone: settingsRepository.getAll().timezone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso));
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * درخواست تازه‌ی اجازه‌ی ورود ⇒ سرپرست مستقیمِ فعال (وگرنه ادمین‌های فعال؛ همان handlersOf): اعلان پنل + تلگرام با دکمه‌های «✅ اجازه می‌دهم / ❌ رد»
+ * (callback: cp_ok:<id> | cp_no:<id>، پردازش در bot/commands/checkinPermission.js). hr اعلان نمی‌گیرد (فقط‌خواندنی). dedupeKey = شناسه‌ی درخواست.
+ * @param {{id: number, userId: number, reason: string}} permission نمای lateLimitService (camelCase)
+ */
+function checkinPermissionRequested(permission) {
+  return guard('checkinPermissionRequested', () => {
+    if (!permission || permission.id == null) return [];
+    const employee = usersRepository.findById(permission.userId);
+    if (!employee) return [];
+    let counts = '';
+    try {
+      const m = lateLimitService.monthSummary(employee.id);
+      if (m.limit > 0) counts = `\nتأخیر این ماه: ${m.lateCount} از ${m.limit}`;
+    } catch (err) {
+      logError('checkinPermissionRequested(count)', err); // شمارش شکست بخورد، اعلان می‌رود
+    }
+    const keyboard = [[
+      { text: '✅ اجازه می‌دهم', callback_data: `cp_ok:${permission.id}` },
+      { text: '❌ رد', callback_data: `cp_no:${permission.id}` },
+    ]];
+    return handlersOf(employee).map((h) =>
+      send('checkinPermissionRequested', h.id, {
+        type: 'checkin_permission_requested',
+        title: 'درخواست اجازه‌ی ورود',
+        body: `${employee.full_name} برای ثبت ورود امروز اجازه می‌خواهد.\nعلت: ${sanitizeText(permission.reason || '', 200)}${counts}`,
+        link: CHECKIN_PERMISSION_LINK,
+        data: { permissionId: permission.id, employeeId: employee.id },
+        dedupeKey: `checkin_permission_requested:${permission.id}`,
+        telegram: true,
+        telegramKeyboard: keyboard,
+      })
+    );
+  });
+}
+
+/**
+ * تصمیم سرپرست/ادمین روی اجازه‌ی ورود ⇒ اعلان پنل + تلگرام به خودِ کارمند. غیر از approved|rejected ⇒ بی‌اثر.
+ * تأیید: ساعتِ پایانِ اعتبار (expiresAt) در متن می‌آید و (روی https) دکمه‌ی باز کردن Mini App برای ثبت ورود.
+ * @param {{id: number, userId: number, status: string, expiresAt?: string|null}} permission
+ * @param {{actor?: {role?: string}, note?: string|null}} [opts]
+ */
+function checkinPermissionDecided(permission, { actor = null, note = null } = {}) {
+  return guard('checkinPermissionDecided', () => {
+    if (!permission || !['approved', 'rejected'].includes(permission.status)) return [];
+    const approved = permission.status === 'approved';
+    const who = actor && actor.role === 'admin' ? 'ادمین' : 'سرپرست';
+    const until = approved && permission.expiresAt ? hhmmInCompanyZone(permission.expiresAt) : null;
+    const lines = [approved
+      ? `اکنون می‌توانید ورود خود را ثبت کنید${until ? ` (تا ساعت ${until} معتبر است)` : ''}.`
+      : 'ورود شما با این درخواست ثبت نمی‌شود؛ با سرپرست خود هماهنگ کنید.'];
+    if (note) lines.push(`پاسخ ${who}: ${sanitizeText(note, 300)}`);
+    const url = approved ? panelLinks.miniAppLink() : null;
+    return [
+      send('checkinPermissionDecided', permission.userId, {
+        type: approved ? 'checkin_permission_approved' : 'checkin_permission_rejected',
+        title: approved ? 'اجازه‌ی ورود شما تأیید شد' : 'درخواست اجازه‌ی ورود شما رد شد',
+        body: lines.join('\n'),
+        data: { permissionId: permission.id, status: permission.status },
+        dedupeKey: `checkin_permission_decided:${permission.id}:${permission.status}`,
+        telegram: true,
+        telegramButton: url && panelLinks.canUseWebApp(url) ? { text: '🕘 ثبت ورود', web_app: { url } } : undefined,
+      }),
+    ];
+  });
+}
+
+module.exports = { checkinPermissionRequested, checkinPermissionDecided, reportCommented, weeklyPlanChanged, leaveRequested, leaveStepAdvanced, leaveDecided, disputeOpened, disputeResolved, disputeResolvedTelegram, disputeAdminMessage, disputeUserMessage, systemAlert, suspiciousCreated };

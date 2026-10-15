@@ -17,10 +17,10 @@ const PANEL_FILES = ['jalali.js', 'core.js', 'exports.js', 'views-main.js', 'vie
 
 // منوی هر نقش پیش از S4-4b (admin: همه؛ manager: همه‌ی غیر‌ادمینی؛ employee: صفحه‌های employee:true + پروفایل من) + hr جدید.
 const NAV = {
-  admin: ['attendance', 'audit', 'broadcast', 'dashboard', 'disputes', 'employees', 'holidays', 'leave', 'leaveQueue', 'live', 'nightly', 'reports', 'settings', 'shifts', 'status', 'suspicious', 'system', 'teamCalendar'],
-  manager: ['attendance', 'dashboard', 'disputes', 'employees', 'leave', 'leaveQueue', 'live', 'nightly', 'reports', 'suspicious', 'teamCalendar'],
+  admin: ['attendance', 'audit', 'broadcast', 'checkin_permissions', 'dashboard', 'disputes', 'employees', 'holidays', 'leave', 'leaveQueue', 'live', 'nightly', 'reports', 'settings', 'shifts', 'status', 'suspicious', 'system', 'teamCalendar'],
+  manager: ['attendance', 'checkin_permissions', 'dashboard', 'disputes', 'employees', 'leave', 'leaveQueue', 'live', 'nightly', 'reports', 'suspicious', 'teamCalendar'],
   employee: ['attendance', 'disputes', 'leave', 'profile', 'reports'],
-  hr: ['attendance', 'dashboard', 'disputes', 'employees', 'leave', 'leaveQueue', 'live', 'nightly', 'reports', 'teamCalendar'],
+  hr: ['attendance', 'checkin_permissions', 'dashboard', 'disputes', 'employees', 'leave', 'leaveQueue', 'live', 'nightly', 'reports', 'teamCalendar'],
 };
 
 function makeEl() {

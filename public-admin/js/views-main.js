@@ -357,6 +357,7 @@
               ${u.personnelCode ? AP.badge('', `کد ${u.personnelCode}`) : ''}
               ${u.isActive ? AP.badge('green', 'فعال') : AP.badge('red', 'غیرفعال')}
               ${AP.stateBadge(todayKey)}
+              ${d.lateLimit && d.lateLimit.limit > 0 ? AP.badge(d.lateLimit.overLimit ? 'red' : '', `تأخیر این ماه: ${fmt.num(d.lateLimit.lateCount)} از ${fmt.num(d.lateLimit.limit)}${d.lateLimit.enabled ? '' : ' (اعمال خاموش)'}`) : ''}
             </div>
             <div class="muted mt" style="margin-top:10px;font-size:12.5px">سرپرست مستقیم: ${esc(u.managerName || '—')} · عضویت از ${esc(fmt.dateLong(u.createdAt))}</div>
           </div>

@@ -520,8 +520,13 @@
       if (AP.can('suspicious.read')) {
         try { suspicious = await AP.api('/admin/suspicious?status=open'); } catch (_) { suspicious = []; }
       }
-      AP.state.counts = { leave: leave.length, disputes: disputes.length, nightly: leave.length + disputes.length, suspicious: suspicious.length };
-      ['leave', 'disputes', 'nightly', 'suspicious'].forEach((k) => {
+      // D3: درخواست‌های اجازه‌ی ورودِ در انتظار (فقط با مجوز؛ شکست شمارنده‌های دیگر را خراب نمی‌کند)
+      let checkinPerms = [];
+      if (AP.can('checkin_permissions.read')) {
+        try { checkinPerms = (await AP.api('/admin/checkin-permissions?status=pending')).items || []; } catch (_) { checkinPerms = []; }
+      }
+      AP.state.counts = { leave: leave.length, disputes: disputes.length, nightly: leave.length + disputes.length, suspicious: suspicious.length, checkin_permissions: checkinPerms.length };
+      ['leave', 'disputes', 'nightly', 'suspicious', 'checkin_permissions'].forEach((k) => {
         const el = $(`.nav-item[data-view="${k}"] .nav-count`);
         if (!el) return;
         el.textContent = fmt.num(AP.state.counts[k]);

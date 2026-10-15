@@ -23,6 +23,7 @@ const { handleTeamReport } = require('./commands/teamReport');
 const { handlePendingLeaves, handlePendingLeavesCallback } = require('./commands/pendingLeaves');
 const { startMissionReject, startMissionEdit, handleMissionRejectText, handleMissionEditText } = require('./commands/missionApproval');
 const { handleReportReviewCallback, handleReportCommentText } = require('./commands/reportReview');
+const { handleCheckinPermissionCallback } = require('./commands/checkinPermission');
 const { handlePendingDisputes, handleDisputeCallback, handleDisputeReplyText } = require('./commands/pendingDisputes');
 const {
   handleFixRecordCommand,
@@ -100,6 +101,7 @@ function createBot() {
       if (data.startsWith('mn:')) return await handleMenuCallback(bot, query);
 
       if (data.startsWith('rvs:') || data.startsWith('rvc:')) return await handleReportReviewCallback(bot, query);
+      if (data.startsWith('cp_ok:') || data.startsWith('cp_no:')) return await handleCheckinPermissionCallback(bot, query); // D3: تأیید/رد اجازه‌ی ورود
       if (data.startsWith('mission_edit:')) return await startMissionEdit(bot, query);
       if (data.startsWith('leave_reject:') && missionRequestOf(data)) return await startMissionReject(bot, query);
       if (data.startsWith('leave_approve:') || data.startsWith('leave_reject:')) {

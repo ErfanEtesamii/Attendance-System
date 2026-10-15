@@ -191,4 +191,17 @@ function listForQueue({ status = null, userIds = null, now = new Date() } = {}) 
   });
 }
 
-module.exports = { countLateInMonth, getGateState, wouldBeLate, evaluateCheckIn, requestPermission, decide, consumeOnCheckIn, listForQueue, canDecide };
+// خلاصه‌ی «فقط‌خواندنیِ» تأخیر ماه جاریِ یک کارمند برای نمایش (پروفایل پنل، متن اعلان) — بدون هیچ نوشتنی (expireStale نمی‌زند).
+// ⇒ { limit, mode, enabled, lateCount, overLimit, month: { jy, jm, label } | null }   limit=۰ ⇒ سقف تعریف نشده (UI چیزی نشان ندهد)
+function monthSummary(userId, now = new Date()) {
+  const settings = settingsRepository.getAll();
+  const limit = Number(settings.lateMonthlyLimit) || 0;
+  const mode = settings.lateLimitGateMode;
+  const parts = jalaliPartsOfDateString(todayInZone(settings.timezone, now));
+  const out = { limit, mode, enabled: limit > 0 && mode !== 'off', lateCount: 0, overLimit: false, month: null };
+  if (limit <= 0 || !parts) return out;
+  const { count, label } = countLateInMonth(userId, { jy: parts.jy, jm: parts.jm }, { now, settings });
+  return { ...out, lateCount: count, overLimit: count >= limit, month: { jy: parts.jy, jm: parts.jm, label } };
+}
+
+module.exports = { countLateInMonth, monthSummary, getGateState, wouldBeLate, evaluateCheckIn, requestPermission, decide, consumeOnCheckIn, listForQueue, canDecide };

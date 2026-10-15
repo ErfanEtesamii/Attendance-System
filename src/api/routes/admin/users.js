@@ -13,6 +13,7 @@ const disputeRepository = require('../../../repositories/disputeRepository');
 const auditRepository = require('../../../repositories/auditRepository');
 const dayService = require('../../../engine/dayService');
 const shiftsRepository = require('../../../repositories/shiftsRepository');
+const lateLimitService = require('../../../services/lateLimitService');
 const settingsRepository = require('../../../repositories/settingsRepository');
 const { getCalendarDay } = require('../../../engine/calendarService');
 const { todayDateString } = require('../../../utils/serverTime');
@@ -341,6 +342,7 @@ router.get('/admin/users/:id/details', requirePermission('users.details.read'), 
     team,
     audit: audits,
     onLeaveToday: leaveRepository.hasApprovedLeaveOnDate(user.id, today, 'leave'),
+    lateLimit: (() => { try { return lateLimitService.monthSummary(user.id); } catch (_) { return null; } })(), // D3: «۲ از ۳» (limit=۰ ⇒ سقف تعریف نشده)
   });
 });
 

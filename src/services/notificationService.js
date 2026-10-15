@@ -53,13 +53,24 @@ function validate(userId, input) {
   };
 }
 
+// دکمه‌های inline چندردیفه (مثلاً «اجازه می‌دهم / رد» با callback_data)؛ فقط دکمه‌ی معتبر (text + یکی از callback_data|url|web_app)، حداکثر ۴ ردیف × ۴ دکمه.
+function cleanKeyboard(kb) {
+  if (!Array.isArray(kb)) return null;
+  const rows = kb
+    .filter(Array.isArray)
+    .slice(0, 4)
+    .map((row) => row.filter((b) => b && typeof b.text === 'string' && b.text && (typeof b.callback_data === 'string' || b.url || b.web_app)).slice(0, 4))
+    .filter((row) => row.length);
+  return rows.length ? rows : null;
+}
+
 function telegramText(n) {
   return n.body ? `${n.title}\n\n${n.body}` : n.title;
 }
 
 /**
  * @param {number} userId
- * @param {{type: string, title: string, body?: string, link?: string, data?: object, dedupeKey?: string, telegram?: boolean, telegramButton?: {text: string, web_app: {url: string}}}} input
+ * @param {{type: string, title: string, body?: string, link?: string, data?: object, dedupeKey?: string, telegram?: boolean, telegramButton?: {text: string, web_app: {url: string}}, telegramKeyboard?: Array<Array<{text: string, callback_data?: string, url?: string, web_app?: object}>>}} input
  * @param {{sendTelegram?: (telegramUserId: string, text: string, options?: object) => Promise<boolean>}} [deps] برای تست
  * @returns {Promise<{created: boolean, notification: object}>}
  */
@@ -77,7 +88,8 @@ async function notify(userId, input, deps = {}) {
     const send = deps.sendTelegram || sendMessage;
     try {
       const btn = input.telegramButton && input.telegramButton.text && input.telegramButton.web_app ? input.telegramButton : null;
-      const options = btn ? { reply_markup: { inline_keyboard: [[btn]] } } : undefined; // دکمه‌ی اینلاین (مثلاً باز کردن مستقیم یک گفت‌وگو)
+      const rows = cleanKeyboard(input.telegramKeyboard); // D3: کیبورد چندردیفه (callback) اولویت دارد
+      const options = rows ? { reply_markup: { inline_keyboard: rows } } : (btn ? { reply_markup: { inline_keyboard: [[btn]] } } : undefined); // دکمه‌ی اینلاین (مثلاً باز کردن مستقیم یک گفت‌وگو)
       status = (await send(String(user.telegram_user_id), telegramText(res.notification), options)) ? 'sent' : 'failed';
     } catch (err) {
       console.error('[notify] ارسال تلگرام ناموفق:', sanitizeText(err && err.message, 200));
