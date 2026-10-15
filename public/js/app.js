@@ -471,7 +471,7 @@
       const prev = ls.getItem(RESET_EPOCH_KEY);
       if (prev !== null && prev !== String(epoch)) {
         ls.removeItem(BREAK_KIND_KEY);
-        Object.keys(ls).filter((k) => k.indexOf('draft:') === 0 || k.indexOf(DISPUTE_SEEN_PREFIX) === 0).forEach((k) => ls.removeItem(k));
+        Object.keys(ls).filter((k) => k.indexOf('draft:') === 0 || k.indexOf(DISPUTE_SEEN_PREFIX) === 0 || k.indexOf(URGENT_SEEN_PREFIX) === 0).forEach((k) => ls.removeItem(k));
         state.today = null;
       }
       ls.setItem(RESET_EPOCH_KEY, String(epoch));
@@ -706,6 +706,7 @@
     renderTodayActions();
     if (!(data && data.record)) syncLateGate();
     loadWorkHours();
+    loadUrgentCard();
     loadPlanGateBanner();
     loadReportBanner();
   }
@@ -743,6 +744,49 @@
     } catch (_) {
       card.classList.add('hidden');
     }
+  }
+
+  // تسک‌های فوریِ امروز (E2): کارت بالای فهرست با برچسب «⚡ فوری»، تعیین‌کننده و مهلت، و بنر «N تسک فوری جدید».
+  // «جدید» سمت کلاینت است (سرور وضعیت دیده‌شدن ندارد): شناسه‌ی تسک‌های دیده‌شده در localStorage (هر دستگاه جدا)؛ حافظه در دسترس نبود ⇒ همه «جدید»اند.
+  // منبع داده همان GET /daily-tasks است (سرور فوری‌ها را بالا می‌دهد). خطای آن هرگز نمای امروز را نمی‌شکند.
+  const URGENT_SEEN_PREFIX = 'attendance_urgent_seen:';
+  const urgentSeenKey = () => URGENT_SEEN_PREFIX + (state.me && state.me.id != null ? state.me.id : '0');
+  function readUrgentSeen() {
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(urgentSeenKey()) || '[]');
+      return new Set(Array.isArray(parsed) ? parsed : []);
+    } catch (_) { return new Set(); }
+  }
+  function writeUrgentSeen(set) {
+    try { window.localStorage.setItem(urgentSeenKey(), JSON.stringify([...set].slice(-200))); } catch (_) { /* حالت خصوصی/محدود */ }
+  }
+  function renderUrgentCard(box, list) {
+    box.textContent = '';
+    const seen = readUrgentSeen();
+    const fresh = list.filter((t) => !seen.has(t.id));
+    box.appendChild(planEl('h4', { class: 'urgent-card-title', id: 'urgent-card-title', text: '⚡ تسک فوری امروز' }));
+    if (fresh.length) box.appendChild(planEl('div', { class: 'urgent-new', role: 'status', text: `${fresh.length.toLocaleString('fa-IR')} تسک فوری جدید` }));
+    box.appendChild(planEl('ul', { class: 'urgent-list' }, list.map((t) => planEl('li', { class: 'urgent-item' },
+      planEl('div', { class: 'day-task-main' }, urgentBadge(), planEl('strong', { class: 'urgent-title', text: t.title }), !seen.has(t.id) ? planEl('span', { class: 'urgent-fresh', text: 'جدید' }) : null),
+      planEl('div', { class: 'plan-meta', text: urgentMetaText(t) }),
+      t.urgentNote ? planEl('div', { class: 'plan-meta', text: t.urgentNote }) : null))));
+    if (fresh.length) {
+      box.appendChild(planEl('button', {
+        type: 'button', class: 'btn secondary urgent-seen-btn', text: 'دیدم',
+        on: { click: () => { const s = readUrgentSeen(); list.forEach((t) => s.add(t.id)); writeUrgentSeen(s); renderUrgentCard(box, list); } },
+      }));
+    }
+    box.classList.remove('hidden');
+  }
+  async function loadUrgentCard() {
+    const box = $('#urgent-card');
+    if (!box) return;
+    try {
+      const d = await api('/daily-tasks');
+      const list = d && !d.fullDayOff && Array.isArray(d.tasks) ? d.tasks.filter((t) => t.isUrgent) : [];
+      if (!list.length) { box.classList.add('hidden'); return; }
+      renderUrgentCard(box, list);
+    } catch (_) { box.classList.add('hidden'); }
   }
 
   // بنر الزام برنامه‌ی هفتگی (D5): فقط اطلاع‌رسانی؛ خطای آن هرگز نمای امروز را نمی‌شکند
@@ -1192,7 +1236,7 @@
 
   // اعتبارسنجی سمت کاربر (سرور دوباره همه‌چیز را چک می‌کند)
   function planValidate(tasks, data) {
-    const mine = tasks.filter((t) => !t.isSystem);
+    const mine = tasks.filter((t) => !t.isSystem && !t.isUrgent);
     for (let i = 0; i < mine.length; i += 1) {
       const t = mine[i];
       const title = String(t.title || '').trim();
@@ -1245,11 +1289,29 @@
     return planEl('span', { class: 'prio-badge prio-' + v, text: PLAN_PRIORITY[v] });
   }
 
+  // E2: تسک فوری — برچسب «⚡ فوری» (متن + نماد؛ فقط به رنگ متکی نیست)، تعیین‌کننده و مهلت. همه‌ی متن‌ها با textContent درج می‌شوند.
+  const URGENT_LABEL = '⚡ فوری';
+  function urgentBadge() { return planEl('span', { class: 'urgent-badge', text: URGENT_LABEL }); }
+  function urgentMetaText(t) {
+    const fa = (s) => (J ? J.toFaDigits(String(s)) : String(s));
+    const parts = [t.assignedByName ? `از طرف ${t.assignedByName}` : 'از طرف مدیر'];
+    if (t.urgentDeadlineTime) parts.push(`مهلت: ساعت ${fa(t.urgentDeadlineTime)}`);
+    return parts.join(' · ');
+  }
+  const urgentFirst = (list) => [...list].sort((a, b) => Number(!!b.isUrgent) - Number(!!a.isUrgent)); // مرتب‌سازی پایدار؛ فوری بالا
+  // ردیف فقط‌خواندنیِ تسک فوری (کارمند نمی‌تواند ویرایش/حذف کند)
+  function urgentRow(t) {
+    return planEl('li', { class: 'day-task day-task-ro day-task-urgent' },
+      planEl('div', { class: 'day-task-main' }, urgentBadge(), planEl('span', { class: 'day-task-text', text: t.title }), planEl('span', { class: 'sr-only', text: 'فقط‌خواندنی' })),
+      planEl('div', { class: 'plan-meta', text: urgentMetaText(t) }),
+      t.urgentNote ? planEl('div', { class: 'plan-meta', text: t.urgentNote }) : null);
+  }
+
   // C2: نمای فقط‌خواندنی برنامه (هفته‌ی ثبت‌شده/شروع‌شده/ماه بسته) با همان ظاهر کارت‌ها؛ هیچ کنترل فعالی ندارد
   function planReadonlyBoard(data) {
     const days = planDays(data);
     const dayDates = new Set(days.map((d) => d.date));
-    const rows = (list) => list.map((t) => planEl('li', { class: 'day-task day-task-ro' },
+    const rows = (list) => urgentFirst(list).map((t) => t.isUrgent ? urgentRow(t) : planEl('li', { class: 'day-task day-task-ro' },
       t.isSystem ? planEl('span', { class: 'plan-sys', text: 'تسک خودکار: ' + t.title })
         : [planEl('div', { class: 'day-task-main' }, prioBadge(t.priority), planEl('span', { class: 'day-task-text', text: t.title })),
           t.description ? planEl('div', { class: 'plan-meta', text: t.description }) : null]));
@@ -1274,7 +1336,7 @@
   }
 
   function planPayload() {
-    return planUi.tasks.filter((t) => !t.isSystem).map((t) => ({
+    return planUi.tasks.filter((t) => !t.isSystem && !t.isUrgent).map((t) => ({
       id: t.id || undefined, title: String(t.title || '').trim(), description: String(t.description || '').trim(),
       plannedDate: t.plannedDate || null, priority: t.priority || 'normal', carriedFromTaskId: t.carriedFromTaskId || undefined,
     }));
@@ -1293,7 +1355,7 @@
       planUi.data = data;
       planUi.tasks = data.tasks.map((t) => ({ ...t }));
       planUi.carry = new Set();
-      planUi.step = data.status === 'submitted' || data.editMode === 'readonly' ? 'done' : (data.carryOver.length && !data.tasks.length ? 'carry' : 'tasks');
+      planUi.step = data.status === 'submitted' || data.editMode === 'readonly' ? 'done' : (data.carryOver.length && !data.tasks.some((t) => !t.isUrgent) ? 'carry' : 'tasks');
       renderPlan();
     } catch (err) {
       renderError(body, err, () => openPlanWizard(planUi.week), 'retry-plan');
@@ -1306,7 +1368,7 @@
     if (!body || !data) return;
     body.removeAttribute('aria-busy');
     body.innerHTML = '';
-    const mine = () => planUi.tasks.filter((t) => !t.isSystem);
+    const mine = () => planUi.tasks.filter((t) => !t.isSystem && !t.isUrgent);
     const steps = [['carry', 'انتقال'], ['tasks', 'تسک‌ها'], ['review', 'مرور']];
     const heading = $('#plan-title');
     heading.textContent = planUi.week === 'current' ? 'برنامه‌ی این هفته' : 'برنامه‌ی هفته‌ی بعد';
@@ -1406,8 +1468,9 @@
       };
 
       const dayCard = (key, titleText, badge, plannedDate, matches, extra) => {
-        const items = planUi.tasks.map((t, idx) => [t, idx]).filter(([t]) => !t.isSystem && matches(t));
-        const list = planEl('ul', { class: 'day-list' }, (extra || []), items.map(([t, idx], pos) => taskRow(t, idx, key, pos + 1, titleText)));
+        const items = planUi.tasks.map((t, idx) => [t, idx]).filter(([t]) => !t.isSystem && !t.isUrgent && matches(t));
+        const urgentRows = planUi.tasks.filter((t) => t.isUrgent && matches(t)).map(urgentRow); // E2: بالای کارت، فقط‌خواندنی
+        const list = planEl('ul', { class: 'day-list' }, urgentRows, (extra || []), items.map(([t, idx], pos) => taskRow(t, idx, key, pos + 1, titleText)));
         const add = label(planEl('input', {
           type: 'text', dir: 'auto', class: 'day-add-input', maxLength: 120, value: planUi.drafts[key] || '', placeholder: 'تسک جدید…',
           on: { input: (e) => { planUi.drafts[key] = e.target.value; }, keydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); addFromDraft(key, plannedDate); } } },
@@ -1416,7 +1479,7 @@
         const head = planEl('div', { class: 'day-card-head' }, planEl('h4', { class: 'day-card-title', id: 'plan-card-' + key, text: titleText }), badge ? planEl('span', { class: 'day-badge', text: badge }) : null);
         const section = planEl('section', { class: 'day-card' }, head,
           planEl('div', { class: 'day-add' }, add, planEl('button', { type: 'button', class: 'btn primary day-add-btn', text: '+ افزودن', on: { click: () => addFromDraft(key, plannedDate) } })),
-          items.length || (extra || []).length ? list : planEl('p', { class: 'day-empty', text: 'هنوز تسکی ندارد.' }));
+          items.length || urgentRows.length || (extra || []).length ? list : planEl('p', { class: 'day-empty', text: 'هنوز تسکی ندارد.' }));
         section.setAttribute('aria-labelledby', 'plan-card-' + key);
         return section;
       };
@@ -1615,13 +1678,18 @@
     if (ui.step === 'q') {
       const t = ui.tasks[ui.idx];
       const a = reportAnswer(t.id);
-      const card = dEl('div', { class: 'card dr-card' });
+      const urgent = DR.isUrgent(t); // E2: تسک فوری (سرور آن‌ها را بالای فهرست می‌دهد)
+      const card = dEl('div', { class: 'card dr-card' + (urgent ? ' dr-card-urgent' : '') });
       card.appendChild(dEl('div', { class: 'dr-progress', text: `سؤال ${(ui.idx + 1).toLocaleString('fa-IR')} از ${total.toLocaleString('fa-IR')}`, attrs: { role: 'status' } }));
       const isReview = DR.isReviewTask(t); // D9: تسک سیستمیِ سرپرست؛ «انجام شد» فقط با مشاهده‌ی واقعی گزارش‌ها
       const optional = DR.isOptional(t); // A2: تسک اولویت کم؛ مانع خروج نیست و جدا از الزامی‌ها (آخر فهرست) می‌آید
       if (optional && !(ui.idx > 0 && DR.isOptional(ui.tasks[ui.idx - 1]))) card.appendChild(dEl('div', { class: 'dr-sep', text: 'تسک‌های اختیاری (جدا از الزامی‌ها)' }));
-      card.appendChild(heading(isReview ? 'گزارش روز قبلِ تیم را بررسی کرده‌اید؟' : `امروز تسک «${t.title}» انجام شد؟`));
-      if (t.priority === 'high') card.appendChild(dEl('span', { class: 'chip chip-orange', text: 'اولویت بالا' }));
+      card.appendChild(heading(isReview ? 'گزارش روز قبلِ تیم را بررسی کرده‌اید؟' : (urgent ? `تسک فوری «${t.title}» انجام شد؟` : `امروز تسک «${t.title}» انجام شد؟`)));
+      if (urgent) {
+        card.appendChild(urgentBadge());
+        card.appendChild(dEl('div', { class: 'urgent-meta', text: urgentMetaText(t) }));
+        if (t.urgentNote) card.appendChild(dEl('div', { class: 'plan-meta', text: t.urgentNote }));
+      } else if (t.priority === 'high') card.appendChild(dEl('span', { class: 'chip chip-orange', text: 'اولویت بالا' }));
       if (optional) {
         card.appendChild(dEl('span', { class: 'dr-tag', text: 'اختیاری' }));
         card.appendChild(dEl('div', { class: 'plan-meta', text: 'اولویتِ این تسک کم است و ثبت خروج را مسدود نمی‌کند؛ اگر نخواستید پاسخ بدهید رد کنید.' }));
@@ -1662,7 +1730,7 @@
         if (!isReview) { // تسک سیستمی انتقال/حذف ندارد
           const rsch = dEl('fieldset', { class: 'dr-fieldset' }, dEl('legend', { text: 'این تسک چه شود؟' }));
           const rchips = dEl('div', { class: 'dr-chips' });
-          DR.RESCHEDULE.forEach((r) => rchips.appendChild(radioChip('dr-res', r.value, r.label, a.resType === r.value, (v) => { a.resType = v; ui.msg = ''; renderReport(); })));
+          DR.rescheduleOptionsFor(t).forEach((r) => rchips.appendChild(radioChip('dr-res', r.value, r.label, a.resType === r.value, (v) => { a.resType = v; ui.msg = ''; renderReport(); })));
           rsch.appendChild(rchips);
           if (a.resType === 'date') {
             const sel = dEl('select', { id: 'dr-res-date', on: { change: (e) => { a.resDate = e.target.value; } }, attrs: { 'aria-label': 'تاریخ انتقال' } });
@@ -1804,7 +1872,7 @@
       const s = a && DR.STATUS.find((x) => x.value === a.status);
       if (DR.isOptional(t) && !(i > 0 && DR.isOptional(ui.tasks[i - 1]))) card.appendChild(dEl('div', { class: 'dr-sep', text: 'اختیاری' })); // A2: جدا از الزامی‌ها
       const row = dEl('div', { class: 'list-item dr-review-row' });
-      row.appendChild(dEl('div', { text: `${s ? s.icon : '⚪'} ${t.title}${DR.isOptional(t) ? ' (اختیاری)' : ''}` }));
+      row.appendChild(dEl('div', { text: `${s ? s.icon : '⚪'} ${DR.isUrgent(t) ? URGENT_LABEL + ' ' : ''}${t.title}${DR.isOptional(t) ? ' (اختیاری)' : ''}` }));
       if (a && a.status && a.status !== 'done') {
         const r = DR.REASONS.find((x) => x.value === a.reasonCode);
         row.appendChild(dEl('div', { class: 'plan-meta', text: [r ? r.label : '', String(a.reasonText || '').trim()].filter(Boolean).join(' — ') }));

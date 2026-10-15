@@ -43,7 +43,7 @@ function targetWeek(which, ctx) {
 const presentTask = (t) => ({
   id: t.id, title: t.title, description: t.description || '', plannedDate: t.planned_date || null, priority: t.priority,
   isSystem: !!t.is_system, systemKey: t.system_key || null, carriedFromTaskId: t.carried_from_task_id || null,
-  isUrgent: !!t.is_urgent, assignedByUserId: t.assigned_by_user_id || null, urgentNote: t.urgent_note || null, urgentDeadlineTime: t.urgent_deadline_time || null,
+  isUrgent: !!t.is_urgent, assignedByUserId: t.assigned_by_user_id || null, assignedByName: t.assigned_by_name || null, urgentNote: t.urgent_note || null, urgentDeadlineTime: t.urgent_deadline_time || null,
 });
 
 // آخرین پاسخ هر تسک (برای «ناتمام»)

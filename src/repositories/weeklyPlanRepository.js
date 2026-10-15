@@ -51,12 +51,15 @@ function setSupervisorFeedback(id, { seen = true, comment = undefined } = {}) {
 }
 
 // ---------- تسک‌ها ----------
+// assigned_by_name (E2): نام تعیین‌کننده‌ی تسک فوری برای نمایش به کارمند؛ برای تسک‌های عادی NULL
+const TASK_SELECT = 'SELECT t.*, u.full_name AS assigned_by_name FROM plan_tasks t LEFT JOIN users u ON u.id = t.assigned_by_user_id';
+
 function findTask(id) {
-  return getDb().prepare('SELECT * FROM plan_tasks WHERE id = ?').get(id) || null;
+  return getDb().prepare(`${TASK_SELECT} WHERE t.id = ?`).get(id) || null;
 }
 
 function listTasks(planId, { includeDeleted = false } = {}) {
-  return getDb().prepare(`SELECT * FROM plan_tasks WHERE plan_id = ?${includeDeleted ? '' : ' AND deleted_at IS NULL'} ORDER BY sort_order, id`).all(planId);
+  return getDb().prepare(`${TASK_SELECT} WHERE t.plan_id = ?${includeDeleted ? '' : ' AND t.deleted_at IS NULL'} ORDER BY t.sort_order, t.id`).all(planId);
 }
 
 function addTask(planId, { title, description = null, plannedDate = null, priority = 'normal', sortOrder = null, isSystem = false, systemKey = null, carriedFromTaskId = null,

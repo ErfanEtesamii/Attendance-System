@@ -34,7 +34,15 @@
   // A1/A2: تسک اولویت کم «اختیاری»ست (سرور optional:true می‌دهد) و مانع ثبت خروج نیست.
   const isOptional = (t) => !!t && t.optional === true;
   // گزینه‌های اعتبارسنجی برای یک تسک: تسک سیستمی انتقال ندارد و «انجام شد»ش فقط با مشاهده‌ی واقعی (خودکار) ثبت می‌شود
-  const taskOpts = (t, opts) => (isReviewTask(t) ? { ...(opts || {}), reviewTask: true } : (opts || {}));
+  // E2: تسک فوری (is_urgent از سرور). حذف از برنامه (drop) برایش مجاز نیست؛ انتقال به روز دیگر مجاز است.
+  const isUrgent = (t) => !!t && t.isUrgent === true;
+  const rescheduleOptionsFor = (t) => (isUrgent(t) ? RESCHEDULE.filter((r) => r.value !== 'drop') : RESCHEDULE);
+  const taskOpts = (t, opts) => {
+    const o = { ...(opts || {}) };
+    if (isReviewTask(t)) o.reviewTask = true;
+    if (isUrgent(t)) o.urgent = true;
+    return o;
+  };
   const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
   const fa = (n) => String(n).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]);
@@ -42,7 +50,7 @@
   const emptyAnswer = () => ({ status: '', reasonCode: '', reasonText: '', resType: 'tomorrow', resDate: '' });
 
   /** پیام خطای فارسی برای یک پاسخ؛ رشته‌ی خالی = معتبر. */
-  function validateAnswer(a, { today, reviewTask } = {}) {
+  function validateAnswer(a, { today, reviewTask, urgent } = {}) {
     if (reviewTask && (!a || a.status !== 'not_done')) return 'گزارش‌ها را مشاهده کنید یا «انجام نشد + علت» را بزنید.';
     if (!a || !STATUS.some((s) => s.value === a.status)) return 'وضعیت این تسک را انتخاب کنید.';
     if (a.status === 'done') return '';
@@ -51,6 +59,7 @@
     if (text.length > LIMITS.reasonText) return `متن علت حداکثر ${fa(LIMITS.reasonText)} نویسه است.`;
     if (a.reasonCode === 'other' && text.length < LIMITS.otherMin) return `برای «سایر» حداقل ${fa(LIMITS.otherMin)} نویسه توضیح بنویسید.`;
     if (reviewTask) return ''; // تسک سیستمی: انتقال/حذف ندارد
+    if (urgent && a.resType === 'drop') return 'تسک فوری را نمی‌توان از برنامه حذف کرد؛ آن را به روز دیگری منتقل کنید.';
     if (!RESCHEDULE.some((r) => r.value === a.resType)) return 'نوع انتقال را انتخاب کنید.';
     if (a.resType === 'date') {
       if (!DATE_RE.test(a.resDate || '')) return 'تاریخ انتقال را انتخاب کنید.';
@@ -181,7 +190,7 @@
     return body;
   }
 
-  const api = { STATUS, REASONS, RESCHEDULE, LIMITS, REVIEW_KEY, REVIEW_REACTIONS, isReviewTask, isOptional, skippedOptional, taskOpts, reportLine, validateReview, buildReviewBody, emptyAnswer, validateAnswer, toApiAnswer, validateExtra, buildBody, unanswered, summarize, seedFromBody, futureDates, encouragementOf };
+  const api = { STATUS, REASONS, RESCHEDULE, LIMITS, REVIEW_KEY, REVIEW_REACTIONS, isReviewTask, isOptional, isUrgent, rescheduleOptionsFor, skippedOptional, taskOpts, reportLine, validateReview, buildReviewBody, emptyAnswer, validateAnswer, toApiAnswer, validateExtra, buildBody, unanswered, summarize, seedFromBody, futureDates, encouragementOf };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (root) root.DailyReport = api;
 }(typeof window !== 'undefined' ? window : undefined));

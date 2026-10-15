@@ -66,7 +66,7 @@ const present = (t, extra = {}) => ({
   id: t.id, title: t.title, description: t.description || '', priority: t.priority,
   plannedDate: t.planned_date || null, isSystem: !!t.is_system, systemKey: t.system_key || null,
   outOfPlan: t.system_key === OUT_OF_PLAN_KEY, optional: isOptionalRow(t),
-  isUrgent: !!t.is_urgent, assignedByUserId: t.assigned_by_user_id || null, urgentNote: t.urgent_note || null, urgentDeadlineTime: t.urgent_deadline_time || null, ...extra,
+  isUrgent: !!t.is_urgent, assignedByUserId: t.assigned_by_user_id || null, assignedByName: t.assigned_by_name || null, urgentNote: t.urgent_note || null, urgentDeadlineTime: t.urgent_deadline_time || null, ...extra,
 });
 
 function lastLog(taskId) {
