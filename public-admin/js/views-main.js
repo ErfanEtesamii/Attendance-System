@@ -362,6 +362,7 @@
             <div class="muted mt" style="margin-top:10px;font-size:12.5px">سرپرست مستقیم: ${esc(u.managerName || '—')} · عضویت از ${esc(fmt.dateLong(u.createdAt))}</div>
           </div>
           <div class="header-actions">
+            ${AP.can('team.week_view') ? `<button class="btn ghost" id="pf-week">${icon('reports')} برنامه‌ی هفتگی</button>` : ''}
             ${u.telegramUserId && AP.can('users.message') ? `<button class="btn ghost" id="pf-msg">${icon('mail')} پیام تلگرام</button>` : ''}
             ${AP.can('records.edit') ? `<button class="btn ghost" id="pf-rec">${icon('plus')} ثبت دستی تردد</button>` : ''}${AP.can('leave.edit') ? `<button class="btn ghost" id="pf-leave">${icon('leave')} ثبت مرخصی</button>` : ''}
             ${AP.can('users.write') ? `<button class="btn ghost" id="pf-revoke" title="باطل‌کردن همه‌ی نشست‌های ورود این کاربر در پنل">خروج از همه‌ی نشست‌ها</button>` : ''}
@@ -476,6 +477,7 @@
           $('#pf-tabs', page).addEventListener('click', (e) => { const t = e.target.closest('[data-tab]'); if (t) { profileUi.tab = t.dataset.tab; drawTab(); } });
           $('#pf-days', page).addEventListener('change', (e) => { profileUi.days = Number(e.target.value); AP.refresh(); });
           $$('[data-go]', page).forEach((b) => b.addEventListener('click', () => AP.go(b.dataset.go)));
+          const week = $('#pf-week', page); if (week) week.addEventListener('click', () => AP.go('weekly', u.id));
           const msg = $('#pf-msg', page); if (msg) msg.addEventListener('click', () => AP.openMessage(u.id));
           const rec = $('#pf-rec', page); if (rec) rec.addEventListener('click', () => AP.openCreateRecord({ userId: u.id }));
           const revoke = $('#pf-revoke', page);

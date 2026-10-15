@@ -372,6 +372,38 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 .view-header .sub { color: var(--hint); font-size: 13px; margin-top: 3px; }
 .header-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 
+/* F2-a: ناوبری هفته در نمای هفتگی کارمند */
+.week-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+@media (max-width: 480px) { .week-nav { width: 100%; justify-content: space-between; } .week-nav .btn { flex: 1; } }
+
+/* F2-b: شبکه‌ی ۷ روزه‌ی نمای هفتگی کارمند؛ دسکتاپ ستونی کنار هم، موبایل زیر هم (بدون اسکرول افقی روی ۳۲۰px) */
+.week-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; align-items: start; margin-bottom: 18px; }
+@media (max-width: 980px) { .week-grid { grid-template-columns: 1fr; } }
+.day-card { padding: 0; overflow: visible; }
+.day-card > summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+  padding: 12px 14px; cursor: pointer; list-style: none;
+}
+.day-card > summary::-webkit-details-marker { display: none; }
+.day-card > summary::after { content: "–"; color: var(--hint); font-weight: 700; flex: none; } /* باز: خط، بسته: + (زیر) */
+.day-card:not([open]) > summary::after { content: "+"; }
+.day-card[open] > summary { border-bottom: 1px solid var(--border); }
+.day-card.is-today > summary { background: var(--green-soft); border-radius: var(--radius) var(--radius) 0 0; }
+.day-card-date { font-weight: 700; font-size: 13px; }
+.day-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.day-card-body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+.day-att { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 12.5px; font-weight: 600; }
+.day-tasks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.day-task { background: var(--card-2); border-radius: 10px; padding: 8px 10px; font-size: 12px; }
+.day-task.is-urgent { outline: 1px solid rgba(240, 80, 110, .35); }
+.day-task .title { font-weight: 700; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.day-task-meta { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.day-task .reason { color: var(--hint); margin-top: 4px; line-height: 1.7; }
+.day-reviewed { font-size: 11.5px; display: flex; align-items: center; gap: 6px; }
+.day-reviewed svg { width: 14px; height: 14px; stroke: var(--green); }
+.day-card-actions { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 4px; border-top: 1px dashed var(--border); }
+.day-card-actions .btn svg { width: 14px; height: 14px; }
+
 /* ---------- کارت‌ها ---------- */
 
 .card {
@@ -913,6 +945,13 @@ button, a, summary, select, input, [role="button"], .clickable, th.sortable { to
   table { width: 100%; font-size: 10px; }
   thead { display: table-header-group; }
   tr { break-inside: avoid; }
+}
+
+/* F2-c: چاپ نمای هفتگی کارمند — کارت‌های جمع‌شده‌ی <details> باید باز چاپ شوند؛ دکمه‌های مدیریتی (قبلاً با .btn) پنهان می‌مانند */
+@media print {
+  .day-card:not([open]) > summary ~ * { display: block !important; }
+  .day-card-actions, .day-card > summary::after { display: none !important; }
+  .week-grid { break-inside: auto; }
 }
 
 /* ناحیه‌ی خطر ریست برنامه (B4) */

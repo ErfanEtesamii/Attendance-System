@@ -111,6 +111,9 @@
     html() {
       return '<div class="card" id="sch-root"></div>';
     },
+    // F2-c: نمای هفتگی کارمند (views-weekly.js) از همین مودال برای «ویرایش برنامه‌ی این روز» استفاده می‌کند
+    // تا منطق و قواعد B2 (قفل ماه بسته، PUT/DELETE) یک‌جا بماند. day باید شکل پاسخ GET /admin/users/:id/schedule را داشته باشد.
+    editModal,
     // panel: عنصر محتوای تب؛ u: کارمند ({ id, fullName })
     mount(panel, u) {
       ensureMonth();

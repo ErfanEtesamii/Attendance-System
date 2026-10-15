@@ -37,13 +37,13 @@
   const urgentBtn = (userId, name) => (AP.can('tasks.assign_urgent') && userId !== (AP.state.me && AP.state.me.id)
     ? `<button type="button" class="btn ghost small" data-act="urgent" data-uid="${userId}" data-name="${esc(name)}">⚡ تسک فوری</button>` : '');
 
-  function openUrgentForm(userId, name, onDone) {
+  function openUrgentForm(userId, name, onDone, prefillDate) {
     AP.modal({
       title: `⚡ تسک فوری برای ${name}`,
       body: `<form class="form" id="urgent-form">
         <div class="form-grid">
           <label class="field"><span>عنوان</span><input name="title" required maxlength="120" placeholder="مثلاً: ارسال پیش‌فاکتور به مشتری" /></label>
-          <label class="field"><span>تاریخ انجام</span><input type="date" name="date" required value="${esc(fmt.today())}" /></label>
+          <label class="field"><span>تاریخ انجام</span><input type="date" name="date" required value="${esc(prefillDate || fmt.today())}" /></label>
           <label class="field"><span>ساعت مهلت (اختیاری)</span><input type="time" name="deadlineTime" dir="ltr" class="ltr-in" /></label>
           <label class="field"><span>توضیح (اختیاری)</span><textarea name="description" rows="3" maxlength="500"></textarea></label>
         </div>
@@ -131,6 +131,10 @@
     const ok = await AP.attempt(() => AP.api('/admin/report-reviews', { method: 'POST', body: { subjectUserId: userId, reportDate: r.date, ...(comment ? { comment } : {}) } }), 'ثبت شد.');
     if (ok !== false) load(page);
   }
+
+  // F2-c: نمای هفتگی کارمند (views-weekly.js) همین فرم را برای «⚡ تسک فوری» روی کارت هر روز صدا می‌زند
+  // تا منطق/اعتبارسنجی E3 یک‌جا بماند؛ prefillDate تاریخ همان روز کارت را پیش‌فرض می‌کند.
+  AP.openUrgentTaskForm = openUrgentForm;
 
   AP.view('teamreports', {
     skeleton: 'table',
