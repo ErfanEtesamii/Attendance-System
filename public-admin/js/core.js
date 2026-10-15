@@ -245,7 +245,11 @@
     $$('[name]', form).forEach((el) => {
       if (el.type === 'checkbox') out[el.name] = el.checked;
       else if (el.type === 'radio') { if (el.checked) out[el.name] = el.value; }
-      else out[el.name] = el.value;
+      else if (el.classList && el.classList.contains('time-in') && window.TimeInput) {
+        // H4: ساعت تایپی همیشه «HH:MM» می‌رود (مثلاً «1:30»/«15:3» که هنوز blur نشده)؛ نامعتبر همان متن خام می‌ماند تا سرور/اعتبارسنجی رد کند
+        const t = window.TimeInput.parse(el.value);
+        out[el.name] = t.ok ? t.value : el.value;
+      } else out[el.name] = el.value;
     });
     return out;
   };
@@ -255,7 +259,8 @@
   //   <input type="date">           ⇒ datepicker شمسی؛ مقدار فرم (AP.formData) همچنان میلادی «YYYY-MM-DD» است
   //   <input type="datetime-local"> ⇒ جفت «تاریخ شمسی + ساعت HH:MM(LTR)»؛ input اصلی (name/data-f) پنهان می‌شود و
   //                                   همان قالب قبلی «YYYY-MM-DDTHH:MM» را نگه می‌دارد (fmt.fromLocalInput/AP.formData بدون تغییر)
-  //   <input type="time">           ⇒ dir=ltr (ساعت در صفحه‌ی RTL برعکس نمایش داده نشود)
+  //   <input type="time">           ⇒ (H4) ورودی متنی قابل‌تایپ با کیبورد عددی، ماسک HH:MM، ارقام فارسی و پیام خطای فارسی (TimeInput)؛
+  //                                   مقدار همیشه «HH:MM» لاتین؛ بدون timeinput.js همان type=time با dir=ltr می‌ماند
   // قرارداد: قبل از بستن listenerهای خود صفحه صدا زده شود، چون تغییر تایپی input ظاهری (متن شمسی) با
   // stopImmediatePropagation بلعیده می‌شود و فقط change input مخفیِ حامل ISO به صفحه می‌رسد.
   // خروجی: آرایه‌ی نمونه‌های datepicker (برای getValue/setValue).
@@ -267,6 +272,7 @@
     },
     mount(root) {
       const DP = window.JalaliDatepicker;
+      const TI = window.TimeInput;
       const out = [];
       if (!DP) return out;
       $$('input[type="date"]', root).forEach((el) => {
@@ -288,20 +294,33 @@
         timeEl.value = init.time;
         el.type = 'hidden';
         el.after(wrap);
+        const tin = TI ? TI.attach(timeEl) : null; // H4: ساعت قابل‌تایپ؛ پیام خطا داخل همین جفت می‌آید
+        const timeVal = () => (tin ? tin.getValue() : timeEl.value);
         let dp = null;
+        const combined = () => AP.dates.combine(dp ? dp.getValue() : init.date, timeVal());
         const sync = () => {
           const iso = dp ? dp.getValue() : init.date;
-          el.value = AP.dates.combine(iso, timeEl.value);
+          const t = timeVal();
+          el.value = AP.dates.combine(iso, t);
           // نیمه‌کاره (فقط تاریخ یا فقط ساعت) ⇒ مقدار خالی می‌ماند؛ خانه‌ی خالی قرمز می‌شود تا بی‌صدا حذف نشود
-          if (iso && !timeEl.value) timeEl.setAttribute('aria-invalid', 'true'); else timeEl.removeAttribute('aria-invalid');
-          if (!iso && timeEl.value && !dateEl.value) dateEl.setAttribute('aria-invalid', 'true');
+          if (iso && !t) timeEl.setAttribute('aria-invalid', 'true'); else if (!(tin && tin.invalid())) timeEl.removeAttribute('aria-invalid');
+          if (!iso && t && !dateEl.value) dateEl.setAttribute('aria-invalid', 'true');
           el.dispatchEvent(new Event('change', { bubbles: true }));
         };
         dp = DP.attach(dateEl, { value: init.date, onChange: sync });
         timeEl.addEventListener('change', (e) => { e.stopPropagation(); sync(); });
+        if (tin) {
+          // H4: ISO پنهان بدون انتظار برای blur به‌روز شود (ذخیره‌ی بلافاصله بعد از تایپ)؛ فقط وقتی مقدار واقعاً فرق کرده تا change اضافه نرود
+          const keepFresh = () => { if (combined() !== el.value) sync(); };
+          timeEl.addEventListener('input', keepFresh);
+          timeEl.addEventListener('blur', keepFresh);
+        }
         out.push(dp);
       });
-      $$('input[type="time"]', root).forEach((el) => { el.setAttribute('dir', 'ltr'); el.classList.add('ltr-in'); });
+      $$('input[type="time"]', root).forEach((el) => {
+        if (TI) TI.attach(el); // H4: ساعت‌های تکی هم متنیِ قابل‌تایپ
+        else { el.setAttribute('dir', 'ltr'); el.classList.add('ltr-in'); }
+      });
       return out;
     },
   };

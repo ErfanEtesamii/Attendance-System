@@ -100,6 +100,7 @@
           wide: true,
           body: formHtml(cur, !!s),
           onMount(body, m) {
+            AP.dates.mount(body); // H4: ساعت شروع/پایان شیفت قابل‌تایپ (کیبورد عددی)
             const form = $('#shift-form', body);
             $('[data-cancel]', form).addEventListener('click', () => m.close());
             form.addEventListener('submit', async (e) => {

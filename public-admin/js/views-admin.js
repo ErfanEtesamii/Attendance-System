@@ -239,6 +239,7 @@
     const el = $(`[data-key="${CSS.escape(it.key)}"]`, row);
     if (!el) return undefined;
     if (it.type === 'weekdays') return $$('input:checked', el).map((c) => Number(c.value));
+    if (it.type === 'time' && window.TimeInput) { const t = window.TimeInput.parse(el.value); return t.ok ? t.value : el.value; } // H4: ساعت تایپی همیشه HH:MM
     return el.value;
   }
 
@@ -304,6 +305,7 @@
 
           function bind(g) {
             const card = $(`.set-group[data-group="${CSS.escape(g)}"]`, page);
+            AP.dates.mount(card); // H4: ساعت‌های تنظیمات (شروع/پایان کار و ...) قابل‌تایپ؛ بعد از هر repaint دوباره
             $$('.set-row', card).forEach((row) => {
               const it = byKey[row.dataset.row];
               const onChange = () => {

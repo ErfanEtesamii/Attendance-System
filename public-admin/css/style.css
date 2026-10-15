@@ -649,9 +649,11 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--g
   overflow-y: auto;
 }
 .modal-backdrop.top { z-index: 120; }
+/* H4: وقتی کیبورد گوشی بالاست (--kb را TimeInput از visualViewport می‌گذارد) مودال بالای کیبورد جا بگیرد */
+.modal-backdrop { padding-bottom: calc(16px + var(--kb, 0px)); }
 .modal {
   width: 100%; max-width: 480px;
-  max-height: calc(100vh - 32px);
+  max-height: calc(100vh - 32px - var(--kb, 0px));
   overflow-y: auto;
   background: var(--card);
   border: 1px solid var(--border);

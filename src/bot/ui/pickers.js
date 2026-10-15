@@ -4,6 +4,7 @@
 //   • askTime: ساعت در بازه‌های ۳۰ دقیقه‌ای (۴ صفحه‌ی ۶ ساعته).
 //   • askEmployee: فهرست صفحه‌بندی‌شده‌ی کارمندان (+ «بدون سرپرست» اختیاری).
 //   • askText: مرحله‌ی متن آزاد (فقط همین‌ها تایپ می‌مانند)، با دکمه‌ی «رد شدن» اگر فیلد اختیاری باشد.
+// H4: askDate/askTime/askText گزینه‌ی typeHint دارند (پیام force_reply برای باز شدن خودکار کیبورد سیستم).
 // وضعیت هر مرحله‌ی «انتخابی» در session.data.pick نگه‌داری می‌شود (همراه شماره‌ی مرحله)؛ دکمه‌ی یک مرحله‌ی قدیمی که session
 // دیگر در آن مرحله نیست ⇒ «این دکمه منقضی شده، منو را باز کنید». پردازش callbackها در ui/pickerRouter.js است.
 // همه‌ی callback_dataها ≤ ۶۴ بایت (cb() در لحظه‌ی ساخت بررسی می‌کند).
@@ -229,7 +230,46 @@ function quickDates(offsets, today = todayDateString()) {
   return offsets.map((n) => ({ text: names[n] || `${faDigits(n)} روز بعد`, date: addDays(today, n) }));
 }
 
-async function askDate(bot, chatId, { text, label, min = null, max = null, quick = [], cancelData } = {}) {
+// ---------------------------------------------------------------------------------------------------------------------
+// تایپ با کیبورد سیستم (H4)
+// ---------------------------------------------------------------------------------------------------------------------
+// کیبورد ثابت پایین (is_persistent) جای کیبورد سیستم را می‌گیرد و کاربر باید خودش آیکون کیبورد را بزند. مرحله‌ای که typeHint بگیرد
+// پیش از پیام انتخابگر یک پیام کوتاه با force_reply (+ input_field_placeholder) می‌فرستد تا کیبورد سیستم خودکار باز شود
+// (یک پیام فقط یک reply_markup دارد؛ پس جدا از پیام انتخابگر است که inline_keyboard دارد). force_reply کیبورد ثابت را پنهان می‌کند؛
+// جریان باید در پایان/انصراف کیبورد منو را با menuKeyboardOpts(user) برگرداند (session.data.kbHidden نشان می‌دهد این اتفاق افتاده).
+// پیش‌فرض خاموش است تا جریان‌های دیگر دست نخورند: فقط مرحله‌ای که typeHint بدهد.
+
+function resolveTypeHint(kind, hint) {
+  if (!hint) return null;
+  const base = {
+    time: { text: '⌨️ یا ساعت را تایپ کنید، مثل 15:30', placeholder: '15:30' },
+    date: { text: `⌨️ یا تاریخ را تایپ کنید، مثل ${todayDateString()}`, placeholder: 'YYYY-MM-DD' },
+    text: { text: '⌨️ متن را همین‌جا تایپ کنید.', placeholder: 'تایپ کنید…' },
+  }[kind];
+  return typeof hint === 'object' ? { ...base, ...hint } : base;
+}
+
+async function sendTypeHint(bot, chatId, kind, hint) {
+  const h = resolveTypeHint(kind, hint);
+  if (!h) return;
+  const sess = session.get(chatId);
+  if (sess) session.update(chatId, { data: { ...sess.data, kbHidden: true } });
+  try {
+    await bot.sendMessage(chatId, h.text, { reply_markup: { force_reply: true, input_field_placeholder: String(h.placeholder || '').slice(0, 64) } });
+  } catch (err) {
+    console.error('[bot] خطا در ارسال راهنمای تایپ:', err.message); // راهنما اختیاری است؛ مرحله ادامه می‌یابد
+  }
+}
+
+/** { reply_markup: <کیبورد «📂 منو»> } برای پیام پایانِ جریانی که force_reply فرستاده؛ کاربر/چت نامناسب ⇒ {} */
+function menuKeyboardOpts(user, chatType = 'private') {
+  if (!user) return {};
+  const kb = require('../menu/menuRouter').buildMainKeyboard(user, { chatType });
+  return kb ? { reply_markup: kb } : {};
+}
+
+async function askDate(bot, chatId, { text, label, min = null, max = null, quick = [], cancelData, typeHint } = {}) {
+  await sendTypeHint(bot, chatId, 'date', typeHint);
   const today = todayDateString();
   let anchor = today;
   if (min && anchor < min) anchor = min;
@@ -239,7 +279,8 @@ async function askDate(bot, chatId, { text, label, min = null, max = null, quick
   return bot.sendMessage(chatId, text, { reply_markup: dateKeyboard(pick) });
 }
 
-async function askTime(bot, chatId, { text, label, after = null, cancelData } = {}) {
+async function askTime(bot, chatId, { text, label, after = null, cancelData, typeHint } = {}) {
+  await sendTypeHint(bot, chatId, 'time', typeHint);
   const base = { kind: 'time', label, after, page: defaultTimePage(after), cancelData };
   const pick = savePick(chatId, base) || base;
   return bot.sendMessage(chatId, text, { reply_markup: timeKeyboard(pick) });
@@ -252,7 +293,8 @@ async function askEmployee(bot, chatId, { text, label, filter = 'any', allowNone
 }
 
 /** مرحله‌ی متن آزاد. skip ⇒ دکمه‌ی «رد شدن» که همان «-» را به مرحله می‌دهد. extraRows: ردیف‌های inline اضافه بالای ناوبری. */
-async function askText(bot, chatId, text, { skip = false, skipText, cancelData, extraRows = [] } = {}) {
+async function askText(bot, chatId, text, { skip = false, skipText, cancelData, extraRows = [], typeHint } = {}) {
+  await sendTypeHint(bot, chatId, 'text', typeHint);
   savePick(chatId, { kind: 'text', skippable: !!skip, label: 'رد شد', cancelData });
   return bot.sendMessage(chatId, text, { reply_markup: withNav(extraRows, { cancelData, skip, skipText }) });
 }
@@ -284,5 +326,5 @@ module.exports = {
   cb, faDigits, isIsoDate, isTime, weekdayIndex, formatJalali, describeDate, shiftMonth, inRange,
   calendarRows, timeSlots, defaultTimePage, timeRows, candidateUsers, employeeRows, employeeLabel,
   navRows, withNav, dateKeyboard, timeKeyboard, employeeKeyboard,
-  quickDates, askDate, askTime, askEmployee, askText, retry, discardSession, expire,
+  quickDates, askDate, askTime, askEmployee, askText, retry, discardSession, expire, sendTypeHint, menuKeyboardOpts,
 };

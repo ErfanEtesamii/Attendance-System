@@ -18,8 +18,13 @@
 .jdp-foot { display: flex; justify-content: space-between; margin-top: 6px; }
 .jdp-input[aria-invalid="true"] { border-color: var(--red, #f0506e); }
 /* جفت «تاریخ شمسی + ساعت» جایگزین datetime-local (S3-11a) */
-.dt-pair { display: inline-flex; gap: 6px; align-items: center; max-width: 100%; }
+.dt-pair { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; max-width: 100%; }
 .dt-pair .dt-date { width: 118px; text-align: center; }
 .dt-pair .dt-time { width: 100px; text-align: center; }
 .dt-pair [aria-invalid="true"] { border-color: var(--red, #f0506e); }
 td .dt-pair .dt-date, td .dt-pair .dt-time { padding: 8px 6px; }
+/* ورودی ساعت قابل‌تایپ (H4) */
+.time-in { direction: ltr; text-align: center; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
+.time-in[aria-invalid="true"] { border-color: var(--red, #f0506e); }
+.time-err { display: block; flex-basis: 100%; margin-top: 4px; color: var(--red, #f0506e); font-size: 12px; line-height: 1.5; }
+.time-err[hidden] { display: none; }

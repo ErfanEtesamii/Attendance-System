@@ -86,7 +86,12 @@ async function goHome(bot, query) {
 
 async function cancelFlow(bot, query) {
   await bot.answerCallbackQuery(query.id);
-  ui.discardSession(query.message.chat.id);
+  const sess = ui.discardSession(query.message.chat.id);
+  // H4: اگر جریان با force_reply کیبورد منو را پنهان کرده بود، همراه پیام انصراف برمی‌گردد
+  if (sess && sess.data && sess.data.kbHidden) {
+    await bot.sendMessage(query.message.chat.id, 'انصراف داده شد.', ui.menuKeyboardOpts(getRegisteredUser(query.from.id), query.message.chat.type));
+    return;
+  }
   await bot.sendMessage(query.message.chat.id, 'انصراف داده شد.');
 }
 

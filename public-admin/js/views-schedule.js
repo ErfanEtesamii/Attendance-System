@@ -78,6 +78,7 @@
         <div class="modal-actions"><button class="btn primary" type="submit">ذخیره</button><button class="btn ghost" type="button" data-cancel>انصراف</button></div>
       </form>`,
       onMount(body, m) {
+        AP.dates.mount(body); // H4: ساعت شروع/پایان قابل‌تایپ (کیبورد عددی)؛ قبل از بستن listenerها
         const form = $('#sch-form', body);
         const sync = () => { $('#sch-times', body).hidden = form.kind.value !== 'work'; };
         sync();
