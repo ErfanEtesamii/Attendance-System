@@ -55,6 +55,7 @@ const PERMISSIONS = Object.freeze([
   'checkin_permissions.read', // D3: صف «اجازه‌ی ورود» (سقف تأخیر ماهانه)؛ admin/hr همه، سرپرست فقط تیم خودش (اسکوپ در route)
   'checkin_permissions.decide', // D3: تأیید/رد اجازه‌ی ورود (admin همه، سرپرست فقط کارمندان مستقیمش؛ hr ندارد)
   'tasks.assign_urgent', // E1: تعیین/حذف/فهرست «تسک فوری» (admin همه، سرپرست فقط کارمندان مستقیمش؛ اسکوپ در سرویس/route؛ hr و کارمند ندارند)
+  'team.week_view', // F1: نمای هفتگی کامل یک کارمند (admin/hr همه، سرپرست فقط کارمندان مستقیمش؛ فقط‌خواندنی؛ اسکوپ در route؛ کارمند ندارد)
 ]);
 
 // مجوزهای «خود کارمند»؛ هر چه خارج از اینجاست برای employee بسته است.
@@ -95,6 +96,7 @@ const MANAGER_PERMISSIONS = [
   'checkin_permissions.read', // D3: فقط تیم خودش
   'checkin_permissions.decide', // D3: فقط کارمندان مستقیمش
   'tasks.assign_urgent', // E1: فقط کارمندان مستقیمش
+  'team.week_view', // F1: فقط کارمندان مستقیمش
 ];
 
 // منابع انسانی (S4-4a): فقط‌خواندنی روی همه‌ی کاربران (بدون اسکوپ تیم؛ scopedUserIds برای hr مثل admin همه را برمی‌گرداند).
@@ -108,6 +110,7 @@ const HR_PERMISSIONS = [
   'analytics.read', // S5-6a: فقط‌خواندنی روی همه
   'leave.approve.hr', // تنها استثنای «فقط‌خواندنی» (S4-11a): فقط مرحله‌ای که تنظیمات به hr سپرده؛ سایر مراحل ⇒ ۴۰۳ از سرویس
   'checkin_permissions.read', // D3: فقط‌خواندنی روی همه (تصمیم ندارد)
+  'team.week_view', // F1: فقط‌خواندنی روی همه
 ];
 
 const ROLE_PERMISSIONS = Object.freeze({

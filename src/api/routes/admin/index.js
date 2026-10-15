@@ -45,6 +45,7 @@ router.use(require('./suspicious'));
 router.use(require('./planGate')); // D5: معافیت یک‌باره از گیت خروجِ برنامه‌ی هفتگی
 router.use(require('./teamReview')); // D9: مشاهده‌ی گزارش روزانه‌ی تیم (سرپرست/ادمین)
 router.use(require('./urgentTasks')); // E1: تسک فوری (تعیین/حذف/فهرست)
+router.use(require('./employeeWeek')); // F1: نمای هفتگی کامل کارمند (فقط‌خواندنی)
 router.use(require('./notifications'));
 router.use(require('./system'));
 
