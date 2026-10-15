@@ -144,8 +144,8 @@ async function sendSummary(bot, chatId, data) {
   if (!result.ok) {
     session.clear(chatId);
     if (data.attachment) await attachmentService.remove(data.attachment.id); // فایل یتیم نماند
-    // E4: به‌جای «دوباره /leave را بفرستید» ⇒ ارجاع به دکمه‌ی منوی پایین (بدون opts: دکمه‌ی اضافه نمی‌گذاریم)
-    await bot.sendMessage(chatId, ['❌ این درخواست قابل ثبت نیست:', ...result.errors.map((e) => `• ${e.error}`), '', 'برای شروع دوباره، «🏖 مرخصی / 🚗 ماموریت» را از منوی پایین بزنید.'].join('\n'));
+    // E4: به‌جای «دوباره /leave را بفرستید» ⇒ ارجاع به «📂 منو» (بدون opts: دکمه‌ی اضافه نمی‌گذاریم)
+    await bot.sendMessage(chatId, ['❌ این درخواست قابل ثبت نیست:', ...result.errors.map((e) => `• ${e.error}`), '', 'برای شروع دوباره، «🏖 مرخصی / 🚗 ماموریت» را از «📂 منو» بزنید.'].join('\n'));
     return;
   }
   const user = usersRepository.findById(data.userId);
@@ -318,7 +318,7 @@ async function handleLeaveCallback(bot, query, sess) {
     const type = /^\d+$/.test(value || '') ? leaveTypesRepository.findById(Number(value)) : null;
     if (/^\d+$/.test(value || '') && (!type || !type.isActive)) {
       session.clear(chatId);
-      await bot.sendMessage(chatId, 'این نوع درخواست دیگر در دسترس نیست. برای شروع دوباره، «🏖 مرخصی / 🚗 ماموریت» را از منوی پایین بزنید.'); // E4
+      await bot.sendMessage(chatId, 'این نوع درخواست دیگر در دسترس نیست. برای شروع دوباره، «🏖 مرخصی / 🚗 ماموریت» را از «📂 منو» بزنید.'); // E4
       return;
     }
     // مقدار قدیمی leave|mission (دکمه‌ی پیام‌های قدیمی): روزانه با leaveType قدیمی

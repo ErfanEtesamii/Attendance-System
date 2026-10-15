@@ -81,7 +81,7 @@ async function goHome(bot, query) {
     return;
   }
   const kb = require('../menu/menuRouter').buildMainKeyboard(user, { chatType: query.message.chat.type });
-  await bot.sendMessage(chatId, '🏠 منوی اصلی — یکی از گزینه‌های پایین صفحه را انتخاب کنید.', kb ? { reply_markup: kb } : {});
+  await bot.sendMessage(chatId, '🏠 منوی اصلی — برای دیدن گزینه‌ها دکمه‌ی «📂 منو» (پایین صفحه) را بزنید.', kb ? { reply_markup: kb } : {});
 }
 
 async function cancelFlow(bot, query) {

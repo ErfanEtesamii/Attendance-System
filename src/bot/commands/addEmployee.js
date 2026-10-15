@@ -168,7 +168,7 @@ async function finalizeAddEmployee(bot, chatId, data) {
     const kb = require('../menu/menuRouter').buildMainKeyboard(newUser, { chatType: 'private' });
     await bot.sendMessage(
       newUser.telegram_user_id,
-      `سلام ${newUser.full_name} 👋\nشما در سیستم حضور و غیاب فرازهنر ثبت شدید. از منوی پایین صفحه شروع کنید.`,
+      `سلام ${newUser.full_name} 👋\nشما در سیستم حضور و غیاب فرازهنر ثبت شدید. برای شروع، دکمه‌ی «📂 منو» (پایین صفحه) را بزنید.`,
       kb ? { reply_markup: kb } : {}
     );
   } catch (err) {

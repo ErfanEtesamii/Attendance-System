@@ -1,4 +1,4 @@
-// ارسال یک‌باره‌ی کیبورد «🖥 پنل / 🕒 ثبت تردد» به همه‌ی کاربران فعال که آیدی تلگرام دارند.
+// ارسال یک‌باره‌ی کیبورد «📂 منو» (جایگزین کیبورد قدیمی ۱۵ دکمه‌ای) به همه‌ی کاربران فعال که آیدی تلگرام دارند.
 // (کیبورد فقط وقتی زیر چت ظاهر می‌شود که بات یک پیام همراه آن بفرستد؛ این اسکریپت برای راه‌اندازی اولیه است.
 //  کاربر جدید آن را از /start می‌گیرد.)
 //
@@ -15,11 +15,6 @@ const apply = process.argv.includes('--apply');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
-  const keyboard = persistentKeyboard();
-  if (!keyboard) {
-    console.error('❌ MINI_APP_URL در .env تنظیم نشده یا https نیست؛ دکمه‌ی Web App ساخته نمی‌شود.');
-    process.exit(1);
-  }
   const users = usersRepository.listUsers({ onlyActive: true }).filter((u) => u.telegram_user_id);
   const skipped = usersRepository.listUsers({ onlyActive: true }).length - users.length;
 
@@ -41,10 +36,12 @@ async function main() {
   let failed = 0;
   for (const u of users) {
     try {
+      const keyboard = persistentKeyboard(u, { chatType: 'private' }); // کیبورد هر کاربر (نقش‌محور؛ فقط «📂 منو»)
+      if (!keyboard) continue;
       // eslint-disable-next-line no-await-in-loop
       await bot.sendMessage(
         u.telegram_user_id,
-        '🖥 دکمه‌ی «پنل» به ربات اضافه شد.\nاز پایین صفحه‌ی چت می‌توانید وارد پنل خودتان شوید (و با «🕒 ثبت تردد» ورود/خروج بزنید).',
+        'منوی ربات ساده‌تر شد 👇\nهمه‌ی گزینه‌ها (ثبت تردد، پنل، برنامه هفتگی و ...) حالا پشت دکمه‌ی «📂 منو» پایین صفحه هستند.',
         { reply_markup: keyboard }
       );
       sent += 1;

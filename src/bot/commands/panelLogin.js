@@ -48,9 +48,9 @@ async function handlePanelLogin(bot, msg) {
     reply_markup: { inline_keyboard: buttons },
   });
 
-  // کیبورد ثابتِ «پنل / ثبت تردد» را هم زیر چت فعال می‌کنیم تا دفعه‌ی بعد نیازی به تایپ چیزی نباشد
+  // کیبورد ثابتِ «📂 منو» را هم زیر چت فعال می‌کنیم تا دفعه‌ی بعد نیازی به تایپ چیزی نباشد
   const kb = persistentKeyboard(user, { chatType: msg.chat.type });
-  if (kb) await bot.sendMessage(chatId, 'دکمه‌ی «🖥 پنل» حالا پایین صفحه‌ی چت همیشه در دسترس است.', { reply_markup: kb });
+  if (kb) await bot.sendMessage(chatId, 'دکمه‌ی «📂 منو» پایین صفحه‌ی چت همیشه در دسترس است؛ «🖥 پنل» و بقیه‌ی گزینه‌ها داخل آن هستند.', { reply_markup: kb });
 }
 
 module.exports = { handlePanelLogin };

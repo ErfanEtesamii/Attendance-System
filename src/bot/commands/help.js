@@ -1,4 +1,4 @@
-// «❓ راهنما»: توضیح دکمه‌های منوی پایین صفحه بر اساس نقش (E4: بدون ارجاع به /دستور).
+// «❓ راهنما»: توضیح گزینه‌های «📂 منو» بر اساس نقش (E4: بدون ارجاع به /دستور؛ H2: پشت دکمه‌ی «📂 منو»).
 const { getRegisteredUser, notRegisteredMessage } = require('../auth');
 
 const EMPLOYEE_BUTTONS = [
@@ -35,13 +35,13 @@ async function handleHelp(bot, msg) {
     return;
   }
 
-  const lines = ['همه‌ی کارها با دکمه‌های پایین صفحه انجام می‌شود:', '', 'دکمه‌های کارمندی:', ...EMPLOYEE_BUTTONS];
+  const lines = ['برای دیدن همه‌ی کارها دکمه‌ی «📂 منو» (پایین صفحه) را بزنید؛ گزینه‌های آن:', '', 'گزینه‌های کارمندی:', ...EMPLOYEE_BUTTONS];
 
   if (user.role === 'manager' || user.role === 'admin') {
-    lines.push('', 'دکمه‌های تیم:', ...MANAGER_BUTTONS);
+    lines.push('', 'گزینه‌های تیم:', ...MANAGER_BUTTONS);
   }
   if (user.role === 'admin') {
-    lines.push('', 'دکمه‌های ادمین:', ...ADMIN_BUTTONS);
+    lines.push('', 'گزینه‌های ادمین:', ...ADMIN_BUTTONS);
   }
   lines.push('', 'در هر مرحله‌ی چندمرحله‌ای، «❌ انصراف» و «🏠 منوی اصلی» زیر پیام هست.');
 
