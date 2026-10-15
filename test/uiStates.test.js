@@ -108,6 +108,7 @@ const PAGES = {
   teamCalendar: ['views-calendar.js', 'helper'], dashboard: ['views-main.js', 'inline'], live: ['views-main.js', 'inline'], employees: ['views-main.js', 'inline'],
   profile: ['views-main.js', 'inline'], attendance: ['views-ops.js', 'inline'], leave: ['views-ops.js', 'inline'], leaveQueue: ['views-ops.js', 'inline'], checkin_permissions: ['views-ops.js', 'inline'],
   disputes: ['views-ops.js', 'inline'], suspicious: ['views-ops.js', 'inline'], nightly: ['views-ops.js', 'inline'], shifts: ['views-shifts.js', 'inline'], teamreports: ['views-teamreports.js', 'inline'],
+  weekly: ['views-weekly.js', 'n/a'], // صفحه‌ی جزئیات: شبکه‌ی ۷ روزه همیشه هست و خالی‌بودنِ هر روز پیام خودش را دارد
 };
 
 describe('پوشش صفحه‌ها', () => {
