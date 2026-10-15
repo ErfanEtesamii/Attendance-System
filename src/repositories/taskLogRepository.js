@@ -62,4 +62,28 @@ function remove(taskId, logDate) {
   return getDb().prepare('DELETE FROM task_daily_logs WHERE task_id = ? AND log_date = ?').run(taskId, logDate).changes;
 }
 
-module.exports = { findByTaskDate, upsert, listByUserDate, listByUserRange, listUserIdsWithLogsOnDate, listByTask, listRescheduledTo, listRecentEncouragements, remove, listRangeWithTasks, listAnsweredSince };
+// ---------- نمای هفتگی کارمند (F1-b): کوئری‌های دسته‌ای برای کل هفته (بدون N+1) ----------
+const TASK_COLS = `t.title AS task_title, t.description AS task_description, t.priority AS task_priority, t.is_urgent AS task_is_urgent,
+  t.urgent_note AS task_urgent_note, t.urgent_deadline_time AS task_urgent_deadline_time, t.is_system AS task_is_system, t.system_key AS task_system_key,
+  t.deleted_at AS task_deleted_at, t.planned_date AS task_planned_date, t.sort_order AS task_sort_order, t.carried_from_task_id AS task_carried_from, au.full_name AS task_assigned_by_name`;
+const TASK_JOIN = 'JOIN plan_tasks t ON t.id = l.task_id LEFT JOIN users au ON au.id = t.assigned_by_user_id';
+
+// پاسخ‌های یک کاربر در بازه‌ی [from, to] همراه مشخصات تسک (حتی تسک حذف‌شده‌ی بعدی؛ تاریخچه باید بماند)
+function listRangeDetailed(userId, fromDate, toDate) {
+  return getDb().prepare(`SELECT l.*, ${TASK_COLS} FROM task_daily_logs l ${TASK_JOIN}
+    WHERE l.user_id = ? AND l.log_date BETWEEN ? AND ? ORDER BY l.log_date, l.id`).all(userId, fromDate, toDate);
+}
+
+// پاسخ‌هایی که تسک را به روزی داخل [from, to] منتقل کرده‌اند (reschedule_to تاریخ است، نه 'drop')
+function listRescheduledIntoRange(userId, fromDate, toDate) {
+  return getDb().prepare(`SELECT l.*, ${TASK_COLS} FROM task_daily_logs l ${TASK_JOIN}
+    WHERE l.user_id = ? AND l.reschedule_to BETWEEN ? AND ? ORDER BY l.reschedule_to, l.id`).all(userId, fromDate, toDate);
+}
+
+// آخرین پاسخِ هر تسکِ کاربر پیش از beforeDate (برای تسک‌های «هرروزه»ای که تاریخ مشخص ندارند)
+function listLastLogsBefore(userId, beforeDate) {
+  return getDb().prepare(`SELECT l.* FROM task_daily_logs l WHERE l.user_id = ? AND l.log_date < ?
+    AND l.log_date = (SELECT MAX(x.log_date) FROM task_daily_logs x WHERE x.task_id = l.task_id AND x.log_date < ?)`).all(userId, beforeDate, beforeDate);
+}
+
+module.exports = { listRangeDetailed, listRescheduledIntoRange, listLastLogsBefore, findByTaskDate, upsert, listByUserDate, listByUserRange, listUserIdsWithLogsOnDate, listByTask, listRescheduledTo, listRecentEncouragements, remove, listRangeWithTasks, listAnsweredSince };
