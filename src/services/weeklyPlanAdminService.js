@@ -25,7 +25,8 @@ const plansRepo = require('../repositories/weeklyPlanRepository');
 const calendarService = require('../engine/calendarService');
 const weeklyPlan = require('./weeklyPlanService');
 const { hasPermission } = require('../middleware/permissions');
-const employeeWeek = require('./employeeWeekService'); // فقط canView (اسکوپ خواندن؛ منبع واحد با F1)
+const employeeWeek = require('./employeeWeekService'); // canView (اسکوپ خواندن؛ منبع واحد با F1)
+const { buildDays, summarizePlanWeek, planWarnings, MAX_TASKS_PER_DAY } = require('./planWeekDays'); // B1-a: مدل روزبه‌روز، B1-b: خلاصه، B1-c: هشدارها
 const { dayNumber, addDays } = require('../utils/shiftDay');
 const auditRepository = require('../repositories/auditRepository');
 const { getDb } = require('../db/connection');
@@ -271,8 +272,11 @@ const planVersion = (plan) => (plan ? plan.version : null);
  * وضعیت برنامه‌ی یک هفته‌ی کارمند برای پنل (هیچ نوشتنی در دیتابیس ندارد؛ برنامه‌ی ناموجود ساخته نمی‌شود).
  * اسکوپ خواندن همان F1: team.week_view + canView (admin/hr همه، manager فقط کارمندان مستقیمش).
  * @param {string} [startInput] هر تاریخ داخل هفته (YYYY-MM-DD)؛ به شروع هفته (weekStartDay) نرمال می‌شود؛ پیش‌فرض: هفته‌ی بعد.
- * @returns {{ok: true, employee, weekStart, weekEnd, isNextWeek, plan, tasks}|{ok: false, code, error, status}}
- *   plan = {id, status, version, updatedAt, submittedAt, supervisorComment, editable, lockReason, minTasks, maxTasks}
+ * @returns {{ok: true, employee, weekStart, weekEnd, isNextWeek, plan, tasks, days, anyDay, summary, warnings}|{ok: false, code, error, status}}
+ *   plan = {id, status, version, updatedAt, submittedAt, supervisorComment, editable, lockReason, minTasks, maxTasks, unnotifiedChanges, unnotified:{added,edited,removed}}
+ *   summary (B1-b) = {workingDays, plannedMinutes, plannedHours, tasks:{total,ordinary,urgent,system,undated}, days:{working,half,off,holiday,leave,mission}}
+ *   warnings (B1-c) = [{code, severity:'warning', message(فارسی), date?, jalali?, ...}] بدون مسدودسازی؛ کدها: PLAN_NOT_SUBMITTED, BELOW_MIN_TASKS, TASK_ON_OFF_DAY, TASK_ON_HOLIDAY, TASK_ON_LEAVE_DAY, WORKDAY_WITHOUT_TASK, TOO_MANY_TASKS_IN_DAY (آستانه: plan.maxTasksPerDay)
+ *   days = ۷ روز (planWeekDays.buildDays: تاریخ شمسی، نوع روز، ساعت مؤثر، tasks)؛ anyDay = تسک‌های «هر روز»؛ tasks همان فهرست تخت قبلی است (سازگاری).
  *   editable = «این actor الان می‌تواند برنامه را ویرایش کند» (مجوز plan.edit_team + اسکوپ + بدون قفل) — فقط راهنمای UI؛ گیت اصلی در عملیات نوشتن است.
  */
 function getPlanState(actor, employeeId, startInput, { now } = {}) {
@@ -298,6 +302,11 @@ function getPlanState(actor, employeeId, startInput, { now } = {}) {
   const tasks = (plan ? plansRepo.listTasks(plan.id) : []).map((t) => ({
     ...presentTask(t), canEdit: editable && !t.is_system && !t.is_urgent,
   }));
+  // B1-a: مدل روزبه‌روز (همان شیء‌های tasks؛ کپی نیست) + تغییرهای اطلاع‌داده‌نشده به کارمند
+  const { days, anyDay } = buildDays(target, weekStart, tasks, ctx.settings);
+  const pending = plan
+    ? summarizeEdits(auditRepository.listPlanEditEventsPending(plan.id, { editAction: AUDIT_EDIT_ACTION, notifyAction: AUDIT_NOTIFY_ACTION }))
+    : null;
   return {
     ok: true,
     employee: { id: target.id, fullName: target.full_name, managerId: target.manager_id || null },
@@ -308,9 +317,15 @@ function getPlanState(actor, employeeId, startInput, { now } = {}) {
       version: planVersion(plan), updatedAt: plan ? plan.updated_at : null, submittedAt: plan ? plan.submitted_at : null,
       supervisorComment: plan ? plan.supervisor_comment : null,
       editable, lockReason,
-      minTasks: ctx.settings.planMinTasks, maxTasks: weeklyPlan.MAX_TASKS,
+      minTasks: ctx.settings.planMinTasks, maxTasks: weeklyPlan.MAX_TASKS, maxTasksPerDay: MAX_TASKS_PER_DAY,
+      unnotifiedChanges: pending ? pending.total : 0,
+      unnotified: pending ? { added: pending.added, edited: pending.edited, removed: pending.removed } : { added: 0, edited: 0, removed: 0 },
     },
     tasks,
+    days,
+    anyDay,
+    summary: summarizePlanWeek(days, anyDay),
+    warnings: planWarnings(days, anyDay, { hasPlan: !!plan, status: plan ? plan.status : null, minTasks: ctx.settings.planMinTasks }),
   };
 }
 

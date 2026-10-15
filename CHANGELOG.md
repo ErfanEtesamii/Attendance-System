@@ -4,6 +4,18 @@
 
 ## [Unreleased] — بخش ۴ (ممیزی)
 
+### فاز ۱۳ — B1-a: مدل روزبه‌روز برنامه‌ی هفته‌ی بعد (بخش ۱ از ۳)
+- `GET /admin/users/:id/plan` حالا `days[7]` (تاریخ شمسی، نام روز، نوع روز، ساعت مؤثر با منبع `override|shift|global`، مرخصی/مأموریت، `monthClosed`، تسک‌های روز با `canEdit`) و `anyDay` («هر روز») برمی‌گرداند؛ `plan.unnotifiedChanges` و `plan.unnotified` از audit می‌آید. فهرست تخت `tasks` برای سازگاری مانده است.
+- کد: `src/services/planWeekDays.js` (جدید)؛ `employeeWeekService.resolveDay` از F1 استخراج شد (منبع واحد تقویم روز؛ رفتار F1 بدون تغییر).
+- تست: `test/planWeekDays.test.js` (اجرا نشده).
+
+### فاز ۱۳ — B1-b: خلاصه‌ی هفته‌ی برنامه‌ریزی (بخش ۲ از ۳)
+- `summary` در `GET /admin/users/:id/plan`: `workingDays` (کاری+نیم‌روز؛ مرخصی/مأموریتِ کامل شمرده نمی‌شود)، `plannedMinutes/plannedHours` (جمع ساعت مؤثر)، `tasks` (`total/ordinary/urgent/system/undated`؛ فوری اولویت دارد) و `days` (شمار هر نوع روز). تابع خالص `summarizePlanWeek` در `planWeekDays.js`.
+
+### فاز ۱۳ — B1-c: هشدارهای برنامه‌ریزی (بخش ۳ از ۳)
+- `warnings[]` در `GET /admin/users/:id/plan` (کد پایدار + پیام فارسی، بدون مسدودسازی): `PLAN_NOT_SUBMITTED` (ناموجود/پیش‌نویس)، `BELOW_MIN_TASKS`، `TASK_ON_OFF_DAY` / `TASK_ON_HOLIDAY` / `TASK_ON_LEAVE_DAY`، `WORKDAY_WITHOUT_TASK`، `TOO_MANY_TASKS_IN_DAY` (آستانه‌ی ثابت `MAX_TASKS_PER_DAY = 10`؛ در `plan.maxTasksPerDay` هم برمی‌گردد). تابع خالص `planWarnings` در `planWeekDays.js`.
+- تسک سیستمی در هشدارهای روز شمرده نمی‌شود؛ تسک «هر روز» روزهای کاری را پوشش می‌دهد؛ مأموریت هشدار نمی‌دهد.
+
 ### فاز ۱۳ — A3: سازگاری سمت کارمند با ویرایش مدیر
 - **سرور:** `saveDraft` کارمند تسک مدیر (`manager_locked`) و تسک فوری را فقط‌خواندنی می‌داند؛ اگر کلاینتِ کهنه آن‌ها را برگرداند یا نفرستد نه بازنویسی/حذف می‌شوند نه خطا می‌دهد. تسکِ soft-deleteشده‌ی مدیر هم نادیده گرفته می‌شود (`TASK_NOT_FOUND` فقط برای تسکِ برنامه‌ی دیگری). تسک مدیر در سقف ۳۰ حساب می‌شود، در حداقل نه.
 - **بنر «سرپرست برنامه را تغییر داده»:** migration ۰۳۵ (`weekly_plans.employee_seen_at`؛ تریگر نسخه‌ی ۰۳۴ با «دیده شد» نسخه را زیاد نمی‌کند تا مدیرِ در حال ویرایش `PLAN_CONFLICT` نگیرد)، `markSeen`، `managerChange` در `getPlan`، و `POST /miniapp/plan/seen`.

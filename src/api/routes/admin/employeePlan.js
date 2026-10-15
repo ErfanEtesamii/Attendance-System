@@ -3,6 +3,11 @@
 //   GET /admin/users/:id/plan?start=YYYY-MM-DD   team.week_view (admin/hr همه، سرپرست فقط کارمندان مستقیمش؛ کارمند ممنوع)
 //     start = هر تاریخ داخل هفته (پیش‌فرض: هفته‌ی بعد). فقط‌خواندنی؛ برنامه‌ی ناموجود ساخته نمی‌شود.
 //     ⇒ { ok, employee, weekStart, weekEnd, isNextWeek, plan: { id, status, version, updatedAt, submittedAt, supervisorComment, editable, lockReason, minTasks, maxTasks }, tasks: [...] }
+//     B1-a: + plan.unnotifiedChanges / plan.unnotified{added,edited,removed}، days[7] (date, jalali, weekday, kind, kindLabel, holidayTitle, monthClosed, override, leaves,
+//     schedule{isWorkingDay,start,end,plannedMinutes,source:override|shift|global,shift}, tasks[] با canEdit) و anyDay[] (تسک‌های «هر روز»). tasks (فهرست تخت) برای سازگاری می‌ماند.
+//     B1-b: summary { workingDays, plannedMinutes, plannedHours, tasks:{total,ordinary,urgent,system,undated}, days:{working,half,off,holiday,leave,mission} }.
+//     B1-c: warnings[] { code, severity:'warning', message (فارسی), date?, jalali?, weekday?, count?, ... } — فقط اطلاع‌رسانی، هیچ عملی مسدود نمی‌شود.
+//     کدها: PLAN_NOT_SUBMITTED, BELOW_MIN_TASKS, TASK_ON_OFF_DAY, TASK_ON_HOLIDAY, TASK_ON_LEAVE_DAY, WORKDAY_WITHOUT_TASK, TOO_MANY_TASKS_IN_DAY (plan.maxTasksPerDay = ۱۰).
 // بخش A2-۲ (نوشتن؛ همه با plan.edit_team؛ اسکوپ/قفل/اعتبارسنجی در سرویس):
 //   POST   /admin/users/:id/plan/tasks     { weekStart?, title, description?, plannedDate?, priority? } ⇒ ۲۰۱ وضعیت تازه + task
 //   PATCH  /admin/plan-tasks/:taskId       { title?, description?, plannedDate? (null = «هر روز»), priority? } ⇒ وضعیت تازه + task
