@@ -86,3 +86,14 @@ test('requirePermission با requireStaff / requireFullAdmin فعلی برای �
   assert.equal(run(requirePermission('records.edit', 'settings.edit'), 'manager'), 403);
   assert.equal(run(requirePermission('records.edit', 'settings.edit'), 'admin'), 'next');
 });
+
+test('A1: plan.edit_team فقط admin و سرپرست؛ hr و کارمند ندارند', () => {
+  assert.ok(PERMISSIONS.includes('plan.edit_team'));
+  assert.equal(hasPermission('admin', 'plan.edit_team'), true);
+  assert.equal(hasPermission('manager', 'plan.edit_team'), true);
+  assert.equal(hasPermission('hr', 'plan.edit_team'), false);
+  assert.equal(hasPermission('employee', 'plan.edit_team'), false);
+  assert.equal(hasPermission('ناشناخته', 'plan.edit_team'), false);
+  // خواندن همچنان با team.week_view است و hr آن را دارد؛ ویرایش جداست
+  assert.equal(hasPermission('hr', 'team.week_view'), true);
+});

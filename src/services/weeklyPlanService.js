@@ -132,26 +132,35 @@ function getPlan(user, which, { now } = {}) {
   };
 }
 
+// قواعد «یک تسک» (عنوان/توضیح/اولویت/تاریخ داخل هفته) — منبع واحد؛ هم saveDraft (کارمند) و هم weeklyPlanAdminService (A1، مدیر) از همین استفاده می‌کنند.
+// label در متن خطا می‌آید (مثلاً «تسک ۳»)؛ خروجی { task } یا { error }. id/carriedFromTaskId عمداً اینجا نیست (مخصوص saveDraft است).
+function validateTask(t, label, weekStart) {
+  t = t || {};
+  const title = clean(t.title, TITLE_MAX);
+  if (!title) return { error: fail('TITLE_REQUIRED', `عنوان ${label} الزامی است.`) };
+  if (title.length > TITLE_MAX) return { error: fail('TITLE_TOO_LONG', `عنوان ${label} حداکثر ${TITLE_MAX} نویسه است.`) };
+  const description = clean(t.description, DESC_MAX);
+  if (description.length > DESC_MAX) return { error: fail('DESCRIPTION_TOO_LONG', `توضیح ${label} حداکثر ${DESC_MAX} نویسه است.`) };
+  const priority = t.priority === undefined || t.priority === null || t.priority === '' ? 'normal' : t.priority;
+  if (!PRIORITIES.includes(priority)) return { error: fail('INVALID_PRIORITY', `اولویت ${label} نامعتبر است.`) };
+  const weekEnd = addDays(weekStart, 6);
+  const plannedDate = t.plannedDate === undefined || t.plannedDate === '' ? null : t.plannedDate;
+  if (plannedDate !== null) {
+    if (typeof plannedDate !== 'string' || dayNumber(plannedDate) === null) return { error: fail('INVALID_DATE', `تاریخ ${label} نامعتبر است.`) };
+    if (plannedDate < weekStart || plannedDate > weekEnd) return { error: fail('DATE_OUT_OF_WEEK', `تاریخ ${label} باید داخل همین هفته باشد.`) };
+  }
+  return { task: { title, description: description || null, plannedDate, priority } };
+}
+
 function validateTasks(input, weekStart, user) {
   if (!Array.isArray(input)) return { error: fail('INVALID_TASKS', 'tasks باید آرایه باشد.') };
   if (input.length > MAX_TASKS + 5) return { error: fail('TOO_MANY_TASKS', `حداکثر ${MAX_TASKS} تسک مجاز است.`) };
-  const weekEnd = addDays(weekStart, 6);
   const out = [];
   for (let i = 0; i < input.length; i += 1) {
     const t = input[i] || {};
     const n = i + 1;
-    const title = clean(t.title, TITLE_MAX);
-    if (!title) return { error: fail('TITLE_REQUIRED', `عنوان تسک ${n} الزامی است.`) };
-    if (title.length > TITLE_MAX) return { error: fail('TITLE_TOO_LONG', `عنوان تسک ${n} حداکثر ${TITLE_MAX} نویسه است.`) };
-    const description = clean(t.description, DESC_MAX);
-    if (description.length > DESC_MAX) return { error: fail('DESCRIPTION_TOO_LONG', `توضیح تسک ${n} حداکثر ${DESC_MAX} نویسه است.`) };
-    const priority = t.priority === undefined || t.priority === null || t.priority === '' ? 'normal' : t.priority;
-    if (!PRIORITIES.includes(priority)) return { error: fail('INVALID_PRIORITY', `اولویت تسک ${n} نامعتبر است.`) };
-    let plannedDate = t.plannedDate === undefined || t.plannedDate === '' ? null : t.plannedDate;
-    if (plannedDate !== null) {
-      if (typeof plannedDate !== 'string' || dayNumber(plannedDate) === null) return { error: fail('INVALID_DATE', `تاریخ تسک ${n} نامعتبر است.`) };
-      if (plannedDate < weekStart || plannedDate > weekEnd) return { error: fail('DATE_OUT_OF_WEEK', `تاریخ تسک ${n} باید داخل همین هفته باشد.`) };
-    }
+    const one = validateTask(t, `تسک ${n}`, weekStart);
+    if (one.error) return { error: one.error };
     let id = null;
     if (t.id !== undefined && t.id !== null) {
       id = Number(t.id);
@@ -164,7 +173,7 @@ function validateTasks(input, weekStart, user) {
       const srcPlan = src ? plansRepo.findById(src.plan_id) : null;
       if (!srcPlan || srcPlan.user_id !== user.id) return { error: fail('INVALID_CARRY', `منبع انتقال تسک ${n} معتبر نیست.`) };
     }
-    out.push({ id, title, description: description || null, plannedDate, priority, carriedFromTaskId: carried });
+    out.push({ id, ...one.task, carriedFromTaskId: carried });
   }
   return { tasks: out };
 }
@@ -249,4 +258,8 @@ function submit(user, which, { now } = {}) {
   return getPlan(user, which, { now });
 }
 
-module.exports = { getPlan, saveDraft, submit, targetWeek, context, MAX_TASKS, TITLE_MAX, DESC_MAX };
+// A1 (فاز ۱۳): lockFailure/lockReason/editMode/validateTask/fail/PRIORITIES/presentTask فقط برای weeklyPlanAdminService صادر شده‌اند تا منطق قفل و اعتبارسنجی کپی نشود.
+module.exports = {
+  getPlan, saveDraft, submit, targetWeek, context, MAX_TASKS, TITLE_MAX, DESC_MAX,
+  lockFailure, lockReason, editMode, validateTask, fail, PRIORITIES, presentTask,
+};

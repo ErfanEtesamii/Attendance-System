@@ -62,14 +62,17 @@ function listTasks(planId, { includeDeleted = false } = {}) {
   return getDb().prepare(`${TASK_SELECT} WHERE t.plan_id = ?${includeDeleted ? '' : ' AND t.deleted_at IS NULL'} ORDER BY t.sort_order, t.id`).all(planId);
 }
 
+// managerLocked/editedByUserId (A1-۲، migration ۰۳۳): فقط برای تسکی که ادمین/سرپرست از weeklyPlanAdminService
+// اضافه می‌کند پر می‌شود؛ مستقل از isUrgent (هرگز هم‌زمان هر دو). editedAt پیش‌فرض «الان» است وقتی managerLocked=true.
 function addTask(planId, { title, description = null, plannedDate = null, priority = 'normal', sortOrder = null, isSystem = false, systemKey = null, carriedFromTaskId = null,
-  isUrgent = false, assignedByUserId = null, urgentNote = null, urgentDeadlineTime = null }) {
+  isUrgent = false, assignedByUserId = null, urgentNote = null, urgentDeadlineTime = null, managerLocked = false, editedByUserId = null }) {
   const db = getDb();
   const order = sortOrder === null ? (db.prepare('SELECT COALESCE(MAX(sort_order), 0) + 1 AS n FROM plan_tasks WHERE plan_id = ?').get(planId).n) : sortOrder;
   const res = db.prepare(`INSERT INTO plan_tasks (plan_id, title, description, planned_date, priority, sort_order, is_system, system_key, carried_from_task_id,
-      is_urgent, assigned_by_user_id, urgent_note, urgent_deadline_time)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(planId, title, description, plannedDate, priority, order, isSystem ? 1 : 0, systemKey, carriedFromTaskId,
-    isUrgent ? 1 : 0, isUrgent ? assignedByUserId : null, isUrgent ? urgentNote : null, isUrgent ? urgentDeadlineTime : null);
+      is_urgent, assigned_by_user_id, urgent_note, urgent_deadline_time, manager_locked, edited_by_user_id, edited_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${managerLocked ? NOW : 'NULL'})`).run(planId, title, description, plannedDate, priority, order, isSystem ? 1 : 0, systemKey, carriedFromTaskId,
+    isUrgent ? 1 : 0, isUrgent ? assignedByUserId : null, isUrgent ? urgentNote : null, isUrgent ? urgentDeadlineTime : null,
+    managerLocked ? 1 : 0, managerLocked ? editedByUserId : null);
   return findTask(res.lastInsertRowid);
 }
 
@@ -85,9 +88,30 @@ function updateTask(id, fields) {
   return findTask(id);
 }
 
+// علامت‌گذاری «ویرایش‌شده توسط مدیر» (A1-۲): manager_locked=۱ + edited_by_user_id + edited_at = الان.
+// از updateTask جدا است چون موضوعاً فرق دارد (علامت‌گذاری، نه محتوای تسک) و addTask/updateTask هر دو مدیر
+// باید بعد از نوشتن فیلدهای خودشان این را هم صدا بزنند (A1-۳). روی تسک سیستمی/فوری عمداً اینجا گیت نمی‌شود؛
+// جلوگیری از آن وظیفه‌ی weeklyPlanAdminService (سرویس) است، نه repository.
+function markManagerEdited(id, managerUserId) {
+  getDb().prepare(`UPDATE plan_tasks SET manager_locked = 1, edited_by_user_id = ?, edited_at = ${NOW} WHERE id = ?`).run(managerUserId, id);
+  return findTask(id);
+}
+
 function softDeleteTask(id) {
   getDb().prepare(`UPDATE plan_tasks SET deleted_at = ${NOW} WHERE id = ? AND deleted_at IS NULL`).run(id);
   return findTask(id);
+}
+
+// جابه‌جایی گروهیِ ترتیب (برای reorderTasks در A1-۳): items = [{id, sortOrder}]؛ همه در یک تراکنش.
+function reorderTasks(items) {
+  const db = getDb();
+  const stmt = db.prepare('UPDATE plan_tasks SET sort_order = ? WHERE id = ?');
+  db.transaction(() => { for (const { id, sortOrder } of items) stmt.run(sortOrder, id); })();
+}
+
+// شمار تسک‌های «معمولی» (غیرسیستمی/غیرفوری) فعالِ یک برنامه — برای سقف ۳۰ تسک در A1-۳ بدون لود کل فهرست.
+function countOrdinaryTasks(planId) {
+  return getDb().prepare('SELECT COUNT(*) AS n FROM plan_tasks WHERE plan_id = ? AND deleted_at IS NULL AND is_system = 0 AND is_urgent = 0').get(planId).n;
 }
 
 function findSystemTask(planId, systemKey) {
@@ -124,5 +148,5 @@ function findUrgentWithOwner(taskId) {
 
 module.exports = {
   listUrgent, findUrgentWithOwner, topTitles, findById, findByUserWeek, getOrCreate, listByUserRange, listByWeek, markSubmitted, touch, setSupervisorFeedback,
-  findTask, listTasks, addTask, updateTask, softDeleteTask, findSystemTask, findSystemTaskOnDate,
+  findTask, listTasks, addTask, updateTask, markManagerEdited, softDeleteTask, reorderTasks, countOrdinaryTasks, findSystemTask, findSystemTaskOnDate,
 };
