@@ -1,5 +1,7 @@
 // E1/E2 (فاز ۱۰): منوی دکمه‌ایِ نقش‌محور بات.
-//   • buildMainKeyboard(user): کیبورد ثابت پایین چت (۲ ستونه، فقط چت خصوصی، web_app فقط روی https).
+//   • buildMainKeyboard(user): کیبورد ثابت پایین چت؛ H2: فقط یک دکمه‌ی «📂 منو» (فقط چت خصوصی).
+//   • buildMenuInline(user) / sendMenu: با لمس «📂 منو» یک پیام با inline_keyboard نقش‌محور (۲ ستونه، گروه‌بندی‌شده، «✖️ بستن منو»)
+//     فرستاده می‌شود؛ آیتم‌های handler با callback «mn:<id>» و آیتم‌های web_app با دکمه‌ی inline از نوع web_app (https).
 //   • routeMenuText(bot, msg): تشخیص متنِ دکمه با «تطبیق دقیق» (نرمال‌سازی ی/ک، حذف ایموجی و فاصله‌ی اضافه) و اتصال آن
 //     به handlerهای موجود — بدون کپی منطق. نقش هر بار از دیتابیس خوانده و سمت سرور دوباره چک می‌شود؛
 //     یعنی ارسال دستیِ متنِ یک دکمه‌ی ادمین توسط کارمند اجرا نمی‌شود.
@@ -11,6 +13,18 @@ const panelLinks = require('../panelLinks');
 
 const MANAGER_UP = ['manager', 'admin'];
 const ADMIN_ONLY = ['admin'];
+
+// H2: تنها دکمه‌ی کیبورد پایین چت و پیام منوی inline
+const MENU_LABEL = '📂 منو';
+const MENU_TEXT = '📂 منو — یکی از گزینه‌ها را انتخاب کنید:';
+const MENU_NOOP_ID = '_'; // دکمه‌ی سرتیتر گروه (بدون عمل)
+const MENU_CLOSE_ID = '_close'; // «✖️ بستن منو»
+const LEGACY_KEYBOARD_NOTE = 'منوی ربات ساده‌تر شد 👇 همه‌ی گزینه‌ها حالا پشت دکمه‌ی «📂 منو» هستند.';
+const MENU_GROUPS = [
+  { key: 'me', title: 'کارهای من' },
+  { key: 'team', title: 'تیم' },
+  { key: 'admin', title: 'مدیریت' },
+];
 
 // roles = null ⇒ هر کاربر ثبت‌شده. url = تابعِ آدرسِ web_app (دکمه‌ی web_app، نه متنی).
 // ترتیب آرایه همان ترتیب نمایش است: کارمند، سپس افزوده‌های سرپرست، سپس افزوده‌های ادمین (ادمین همه را دارد).
@@ -59,6 +73,9 @@ function hasEmoji(text) {
 }
 
 const ITEM_BY_LABEL = new Map(ITEMS.map((it) => [normalizeLabel(it.label), it]));
+// «📂 منو» آیتم واقعی نیست (handler/url ندارد)؛ فقط برای این‌که routeMenuText با همان قواعد (ثبت‌نام، چت خصوصی، قاعده‌ی session) تشخیصش دهد
+const MENU_ITEM = { id: 'menu_open', label: MENU_LABEL, roles: null };
+ITEM_BY_LABEL.set(normalizeLabel(MENU_LABEL), MENU_ITEM);
 
 function roleAllowed(item, user) {
   return !item.roles || hasRole(user, item.roles);
@@ -71,17 +88,77 @@ function itemsFor(user) {
 }
 
 /**
- * کیبورد ثابتِ منوی اصلی؛ ۲ ستونه. null برای کاربر ثبت‌نشده و برای چت غیرخصوصی (وقتی chatType داده شود).
- * کارمند: ثبت تردد، وضعیت من، گزارش من، مرخصی/ماموریت، برنامه هفتگی، پنل، راهنما — سرپرست: + ابزار تیم — ادمین: + مدیریت.
+ * کیبورد ثابتِ پایین چت (H2): فقط یک دکمه‌ی «📂 منو». null برای کاربر ثبت‌نشده و برای چت غیرخصوصی (وقتی chatType داده شود).
+ * بقیه‌ی دکمه‌ها (به‌تفکیک نقش) در پیام منوی inline می‌آیند (buildMenuInline).
  */
 function buildMainKeyboard(user, { chatType } = {}) {
   if (chatType && chatType !== 'private') return null;
+  if (itemsFor(user).length === 0) return null;
+  return { keyboard: [[{ text: MENU_LABEL }]], resize_keyboard: true, is_persistent: true };
+}
+
+function groupOf(item) {
+  if (!item.roles) return 'me';
+  return item.roles === MANAGER_UP ? 'team' : 'admin';
+}
+
+/**
+ * inline_keyboard پیام منو برای کاربر (۲ ستونه): کارمند ← افزوده‌های سرپرست ← افزوده‌های ادمین، با سرتیتر گروه
+ * (فقط وقتی بیش از یک گروه هست؛ سرتیتر یک دکمه‌ی بی‌عمل «mn:_» است) و در انتها «✖️ بستن منو».
+ * آیتم‌های web_app (فقط https) دکمه‌ی inline از نوع web_app می‌شوند (initData امضاشده فقط از این مسیر می‌آید).
+ * null برای کاربر ثبت‌نشده.
+ */
+function buildMenuInline(user) {
   const items = itemsFor(user);
   if (items.length === 0) return null;
-  const buttons = items.map((it) => (it.url ? { text: it.label, web_app: { url: it.url() } } : { text: it.label }));
+  const buckets = MENU_GROUPS.map((g) => ({ ...g, items: items.filter((it) => groupOf(it) === g.key) })).filter((b) => b.items.length > 0);
+  const withHeads = buckets.length > 1;
   const rows = [];
-  for (let i = 0; i < buttons.length; i += 2) rows.push(buttons.slice(i, i + 2));
-  return { keyboard: rows, resize_keyboard: true, is_persistent: true };
+  for (const b of buckets) {
+    if (withHeads) rows.push([{ text: `— ${b.title} —`, callback_data: `mn:${MENU_NOOP_ID}` }]);
+    const buttons = b.items.map((it) => (it.url ? { text: it.label, web_app: { url: it.url() } } : { text: it.label, callback_data: `mn:${it.id}` }));
+    for (let i = 0; i < buttons.length; i += 2) rows.push(buttons.slice(i, i + 2));
+  }
+  rows.push([{ text: '✖️ بستن منو', callback_data: `mn:${MENU_CLOSE_ID}` }]);
+  return { inline_keyboard: rows };
+}
+
+/** پیام منوی inline را برای کاربر می‌فرستد. */
+async function sendMenu(bot, chatId, user) {
+  const markup = buildMenuInline(user);
+  if (!markup) {
+    await bot.sendMessage(chatId, 'منویی برای شما در دسترس نیست.');
+    return;
+  }
+  await bot.sendMessage(chatId, MENU_TEXT, { reply_markup: markup });
+}
+
+/**
+ * H2: کاربری که هنوز کیبورد قدیمی (۱۵ دکمه‌ای) را دارد و روی یکی از دکمه‌هایش زده؛ دکمه‌ی قدیمی اجرا می‌شود و
+ * یک پیام کوتاه همراه کیبورد جدید (فقط «📂 منو») می‌رود تا کیبورد قدیمی جایش را بدهد. خطا هرگز اجرای دکمه را نمی‌شکند.
+ */
+async function replaceLegacyKeyboard(bot, chatId, user) {
+  const kb = buildMainKeyboard(user, { chatType: 'private' });
+  if (!kb) return;
+  try {
+    await bot.sendMessage(chatId, LEGACY_KEYBOARD_NOTE, { reply_markup: kb });
+  } catch (err) {
+    console.error('[bot] خطا در جایگزینی کیبورد قدیمی:', err.message);
+  }
+}
+
+// فقط پیام خودِ منو پاک می‌شود (نه اعلان‌هایی که دکمه‌ی mn:<id> زیرشان هست، مثل اعلان درخواست مرخصی)
+function isMenuMessage(message) {
+  return !!(message && typeof message.text === 'string' && message.text.startsWith('📂 منو'));
+}
+
+async function deleteMenuMessage(bot, message) {
+  if (!message || !message.chat || message.message_id === undefined) return;
+  try {
+    await bot.deleteMessage(message.chat.id, message.message_id);
+  } catch (_) {
+    /* پیام قدیمی‌تر از ۴۸ ساعت یا قبلاً پاک‌شده؛ مهم نیست */
+  }
 }
 
 // «📝 گزارش‌های دیروز تیم»: منطق گزارش تسک‌ها فقط در پنل است (صفحه‌ی «گزارش‌های تیم»)؛ بات همان صفحه را باز می‌کند.
@@ -150,7 +227,14 @@ async function routeMenuText(bot, msg, handlers) {
     return true;
   }
 
+  if (item === MENU_ITEM) {
+    // فقط باز کردن منو؛ مکالمه‌ی نیمه‌کاره با خودِ این لمس لغو نمی‌شود (با انتخاب یک آیتم یا handler لغو می‌شود)
+    await sendMenu(bot, chatId, user);
+    return true;
+  }
   session.clear(chatId); // دکمه‌ی منو = شروع تازه؛ مکالمه‌ی قبلی (مثلاً ثبت مرخصیِ نیمه‌کاره) لغو می‌شود
+  // متنِ دکمه‌ی عادی فقط از کیبورد قدیمی می‌آید (کیبورد جدید فقط «📂 منو» می‌فرستد)؛ کیبورد جدید را پیش از handler می‌فرستیم تا پیام خودِ handler آخرین پیام چت بماند
+  await replaceLegacyKeyboard(bot, chatId, user);
   if (item.url) {
     await sendWebAppLink(bot, chatId, item);
     return true;
@@ -166,6 +250,16 @@ async function routeMenuText(bot, msg, handlers) {
  */
 async function handleMenuCallback(bot, query, handlers) {
   const id = String(query.data || '').slice(3);
+  // H2: سرتیتر گروه (بی‌عمل) و «✖️ بستن منو» — بدون چک نقش
+  if (id === MENU_NOOP_ID) {
+    await bot.answerCallbackQuery(query.id);
+    return;
+  }
+  if (id === MENU_CLOSE_ID) {
+    await bot.answerCallbackQuery(query.id);
+    await deleteMenuMessage(bot, query.message);
+    return;
+  }
   const item = ITEMS.find((it) => it.id === id && !it.url);
   const chat = query.message && query.message.chat;
   if (!item || !chat || chat.type !== 'private' || !query.from) {
@@ -183,8 +277,9 @@ async function handleMenuCallback(bot, query, handlers) {
   }
   await bot.answerCallbackQuery(query.id);
   session.clear(chat.id);
+  if (isMenuMessage(query.message)) await deleteMenuMessage(bot, query.message); // H2: بعد از انتخاب، پیام منو پاک می‌شود
   const fn = (handlers || defaultHandlers())[item.handler];
   await fn(bot, { chat, from: query.from, text: item.label });
 }
 
-module.exports = { ITEMS, normalizeLabel, buildMainKeyboard, routeMenuText, handleMenuCallback, defaultHandlers };
+module.exports = { ITEMS, MENU_LABEL, normalizeLabel, buildMainKeyboard, buildMenuInline, sendMenu, routeMenuText, handleMenuCallback, defaultHandlers };
