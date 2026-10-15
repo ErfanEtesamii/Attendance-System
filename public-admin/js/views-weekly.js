@@ -96,7 +96,31 @@
     return `<div class="day-att"><span>${esc(times)}</span><span class="muted">${esc(planned)}</span></div>${eff ? `<div class="muted" style="font-size:11px">${esc(eff)}</div>` : ''}`;
   }
 
-  function taskRow(t) {
+  // H5-ب: تسک واجبِ سرپرست — «🔒 واجب» + فقط‌خواندنی + پیشرفت «x از y گزارش مشاهده شد»؛ دکمه‌ی «مشاهده‌ی گزارش‌ها» فقط برای خودِ سرپرست
+  // (صفحه‌ی teamreports با اسکوپ کاربرِ جاری کار می‌کند؛ برای ادمینی که برنامه‌ی دیگری را می‌بیند فقط وضعیت نمایش داده می‌شود).
+  const REVIEW_KEY = 'review_team_reports';
+  function reviewProgressText(r) {
+    if (!r) return '';
+    if (r.notYet) return `گزارش‌های ${fmt.date(r.reviewDate)} هنوز ثبت نشده‌اند.`;
+    if (!r.reportCount) return `گزارشی برای ${fmt.date(r.reviewDate)} ثبت نشده است.`;
+    if (r.complete) return `همه‌ی گزارش‌ها مشاهده شد (${fmt.num(r.reviewedCount)} از ${fmt.num(r.reportCount)})`;
+    return `${fmt.num(r.reviewedCount)} از ${fmt.num(r.reportCount)} گزارش مشاهده شد`;
+  }
+  function mandatoryTaskRow(t, isSelf) {
+    const [cls, label] = TASK_STATUS[t.status] || ['', t.status];
+    const r = t.review || null;
+    const pct = r && !r.notYet && r.reportCount > 0 ? Math.round((r.reviewedCount / r.reportCount) * 100) : null;
+    return `<li class="day-task is-mandatory">
+      <div class="title">${AP.badge('blue', '🔒 واجب', true)}${esc(t.title)}<span class="sr-only">تسک سیستمی؛ فقط‌خواندنی</span></div>
+      <div class="day-task-meta">${AP.badge(cls, label)}</div>
+      ${r ? `<div class="rv-progress-text" role="status">${esc(reviewProgressText(r))}</div>` : ''}
+      ${pct == null ? '' : `<div class="rv-progress" role="progressbar" aria-label="پیشرفت مشاهده‌ی گزارش‌ها" aria-valuemin="0" aria-valuemax="${r.reportCount}" aria-valuenow="${r.reviewedCount}"><div class="rv-progress-fill" style="width:${pct}%"></div></div>`}
+      ${r && !r.notYet && isSelf && AP.can('taskreports.read') ? `<button type="button" class="btn ghost small rv-open" data-act="open-reviews" data-date="${esc(r.reviewDate)}">مشاهده‌ی گزارش‌ها</button>` : ''}
+    </li>`;
+  }
+
+  function taskRow(t, isSelf) {
+    if (t.isSystem && t.systemKey === REVIEW_KEY) return mandatoryTaskRow(t, isSelf);
     const [cls, label] = TASK_STATUS[t.status] || ['', t.status];
     const reasonText = t.reasonText || (t.reasonCode ? REASONS[t.reasonCode] || t.reasonCode : '');
     const meta = [
@@ -128,7 +152,7 @@
   function dayCard(d, isSelf) {
     const tasks = d.tasks || [];
     const taskList = tasks.length
-      ? `<ul class="day-tasks">${tasks.map(taskRow).join('')}</ul>`
+      ? `<ul class="day-tasks">${tasks.map((t) => taskRow(t, isSelf)).join('')}</ul>`
       : `<div class="muted" style="font-size:11.5px">تسکی برای این روز ثبت نشده است.</div>`;
     const reviewNote = d.review && d.review.reviewed
       ? `<div class="muted day-reviewed">${icon('check', 14)} مشاهده‌شده توسط سرپرست${d.review.reviews[0] && d.review.reviews[0].comment ? `: «${esc(d.review.reviews[0].comment)}»` : ''}</div>` : '';
@@ -196,6 +220,8 @@
             AP.refresh();
           }));
           // اکشن‌های مدیریتی کارت هر روز؛ هر سه پس از موفقیت کل هفته را رفرش می‌کنند (AP.refresh)
+          // H5-ب: «مشاهده‌ی گزارش‌ها» ⇒ صفحه‌ی گزارش‌های تیم برای روزِ گزارش‌ها (پارامتر مسیر = تاریخ)
+          $$('[data-act="open-reviews"]', page).forEach((b) => b.addEventListener('click', () => AP.go('teamreports', b.dataset.date)));
           $$('[data-act="urgent"]', page).forEach((b) => b.addEventListener('click', () => {
             AP.openUrgentTaskForm(userId, r.user.fullName, () => AP.refresh(), b.dataset.date);
           }));

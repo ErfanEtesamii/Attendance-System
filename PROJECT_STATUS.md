@@ -285,6 +285,10 @@ scripts/                         فاز ۹ - install-service.ps1 (NSSM)، setup-
                                   _ssl-post-install.ps1 (win-acme/DNS-01)، createAdmin.js (bootstrap)
 ```
 
+### فاز ۱۲ — H5: تسک واجب سرپرست (بخش ۲ و ۳)
+- نمایش «🔒 واجب» با پیشرفت «x از y گزارش مشاهده شد» و دکمه‌ی «مشاهده‌ی گزارش‌ها» در Mini App/پنل/F1 (`src/services/teamReviewProgress.js`)؛ تست‌ها در `test/teamReviewH5.test.js` (اجرا نشده در زمان نگارش).
+- ⚠️ ثبت Jobِ زمان‌بندی‌شده‌ی ساخت تسک (بخش ۱ از H5) در `src/bot/scheduler/index.js` و در این فایل باید پس از اعمال پچ بخش ۱ انجام شود (در zip مبنای بخش ۲/۳ این Job وجود نداشت).
+
 ## ۵. کارهای باقی‌مانده (مرتب‌شده به ترتیب پیشنهادی)
 
 ### فاز ۵ — تکمیل موتور محاسبه ساعت کاری (اولویت بالا)

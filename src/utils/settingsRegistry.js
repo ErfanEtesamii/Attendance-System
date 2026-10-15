@@ -238,6 +238,7 @@ defCron('auditArchive', 'cronAuditArchive', 'cron_audit_archive', () => config.c
 defCron('dbMaintenance', 'cronDbMaintenance', 'cron_db_maintenance', () => config.cron.dbMaintenance, '0 4 2 * *', 'نگهداری ماهانه‌ی دیتابیس');
 defCron('leaveApprovalReminder', 'cronLeaveApprovalReminder', 'cron_leave_approval_reminder', () => config.cron.leaveApprovalReminder, '15 * * * *', 'یادآوری/ارجاع تأیید مرخصی');
 defCron('urgentTaskReminder', 'cronUrgentTaskReminder', 'cron_urgent_task_reminder', () => config.cron.urgentTaskReminder, '*/10 * * * *', 'یادآوری مهلت تسک فوری');
+defCron('teamReviewEnsure', 'cronTeamReviewEnsure', 'cron_team_review_ensure', () => config.cron.teamReviewEnsure, '10 0 * * *', 'ساخت خودکار تسک واجب بررسی گزارش تیم برای سرپرست‌ها');
 defCron('watchdog', 'cronWatchdog', 'cron_watchdog', () => config.monitor.watchdogCron, '*/5 * * * *', 'watchdog (سلامت سیستم؛ روشن/خاموش‌بودنش همچنان با WATCHDOG_ENABLED در .env است)');
 
 // ---------- توابع عمومی ----------

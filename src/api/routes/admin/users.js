@@ -22,6 +22,12 @@ const { sendTable, exportAuditFields } = require('../../../utils/xlsx'); // S5-1
 const { buildClearCookie } = require('../../../utils/sessionCookie');
 const { scopedUserIds, canAccessUser, parseRange, userBrief, enrichRecord, audit, auditChange, aggregateRecords, requireReason } = require('./common');
 const { userView } = require('../../../utils/auditViews');
+const teamReviewService = require('../../../services/teamReviewService');
+
+// H5: بعد از افزودن/جابه‌جایی زیردست یا تغییر نقش/فعال‌بودن، تسک واجبِ «بررسی گزارش تیم» سرپرست‌های مرتبط بلافاصله ساخته شود (ضدخطا)
+function refreshTeamReview(ids) {
+  try { teamReviewService.refreshReviewersOf(ids); } catch (err) { console.error('[users] بازسازی تسک واجب سرپرست ناموفق (نادیده گرفته شد):', err.message); }
+}
 
 // ---------- لیست کارمندان ----------
 
@@ -88,6 +94,7 @@ router.post('/admin/users', requirePermission('users.write'), (req, res) => {
     role: ROLES.includes(role) ? role : 'employee',
     managerId: managerId || null,
   });
+  refreshTeamReview([user.manager_id, user.id]);
 
   auditChange(req, {
     action: 'employee_added',
@@ -223,6 +230,9 @@ router.patch('/admin/users/:id', requirePermission('users.write'), (req, res) =>
       return res.status(409).json({ error: 'کد پرسنلی یا آیدی تلگرام تکراری است.' });
     }
     throw err;
+  }
+  if (fields.manager_id !== undefined || fields.role !== undefined || fields.is_active !== undefined) {
+    refreshTeamReview([updated.manager_id, updated.id, user.manager_id]);
   }
 
   auditChange(req, {

@@ -624,9 +624,10 @@
     AP.refreshCounts();
     if (AP.bell) AP.bell.init(); // زنگوله‌ی اعلان (S4-6a؛ js/bell.js) — بعد از loadPermissions تا default-deny درست کار کند
     // ?go=<صفحه> از دکمه‌های بات (مثلاً دکمه‌ی پیام شبانه → مرور شبانه)
-    const go = AP.launch && AP.launch.go;
-    if (go && AP.viewAllowed(AP.views[go])) {
-      history.replaceState(null, '', `#/${go}`);
+    // H5-ب: go می‌تواند «صفحه/پارامتر» باشد (مثلاً teamreports/2026-10-14)؛ پارامتر فقط حروف/عدد/خط‌تیره/زیرخط
+    const [goView, goParam] = String((AP.launch && AP.launch.go) || '').split('/');
+    if (goView && AP.viewAllowed(AP.views[goView])) {
+      history.replaceState(null, '', `#/${goView}${goParam && /^[A-Za-z0-9_-]{1,32}$/.test(goParam) ? `/${goParam}` : ''}`);
     }
     await route();
   }

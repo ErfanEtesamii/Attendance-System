@@ -16,6 +16,8 @@ const monthClosuresRepository = require('../repositories/monthClosuresRepository
 const calendarService = require('../engine/calendarService');
 const dayService = require('../engine/dayService');
 const weekTasks = require('./employeeWeekTasks');
+const teamReview = require('./teamReviewService');
+const teamReviewProgress = require('./teamReviewProgress');
 const { summarizeWeek } = require('./employeeWeekSummary');
 const { addDays, dayNumber } = require('../utils/shiftDay');
 const { isoDateToJalaliString } = require('../utils/jalali');
@@ -130,9 +132,20 @@ function getWeek(actor, userId, input = {}, { now = new Date() } = {}) {
     };
   });
 
+  // H5-ب: برای سرپرست (manager/admin دارای زیردست)، تسک واجبِ «بررسی گزارش روز قبل» با باز شدن نمای هفتگی برای روزهای امروز و بعد از آن ساخته می‌شود
+  // (idempotent؛ ماه بسته/روز غیرکاری/بدون زیردست ⇒ ساخته نمی‌شود؛ خطا فقط لاگ می‌شود). روزهای گذشته‌ی هفته را برگشتی نمی‌سازیم.
+  if (teamReview.isReviewer(user)) {
+    const cfg = settingsRepository.getAll();
+    for (const date of dates) {
+      if (date < today) continue;
+      try { teamReview.ensureTask(user, date, cfg); } catch (err) { console.error('[employeeWeek] ساخت تسک واجب ناموفق (نادیده گرفته شد):', err && err.message ? err.message : err); }
+    }
+  }
   const wk = weekTasks.collect(user, weekStart, dates, { dayInfo: (d) => calCache.get(d) || { working: false }, today });
   days.forEach((d) => {
     d.tasks = wk.tasksByDate.get(d.date) || [];
+    // H5-ب: وضعیت پیشرفتِ تسک واجب (x از y مشاهده شد) کنار وضعیت تسک (done/بدون پاسخ)
+    teamReviewProgress.decorate(user, d.tasks, today, { settings, dateOf: () => d.date });
     const reviews = wk.reviewsByDate.get(d.date) || [];
     d.review = { reviewed: reviews.length > 0, reviews };
   });

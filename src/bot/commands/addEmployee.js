@@ -151,6 +151,11 @@ async function finalizeAddEmployee(bot, chatId, data) {
     role: data.role,
     managerId: data.managerId,
   });
+  try { // H5: سرپرستِ این کارمند (یا خودِ کاربر اگر سرپرست است) بلافاصله تسک واجب «بررسی گزارش تیم» را ببیند
+    require('../../services/teamReviewService').refreshReviewersOf([newUser.manager_id, newUser.id]);
+  } catch (err) {
+    console.error('[bot] بازسازی تسک واجب سرپرست ناموفق (نادیده گرفته شد):', err.message);
+  }
 
   auditRepository.logEvent({
     userId: newUser.id,

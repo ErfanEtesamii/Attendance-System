@@ -140,7 +140,8 @@
     skeleton: 'table',
     perm: 'taskreports.read',
     nav: { icon: 'reports', label: 'گزارش‌های تیم', group: 'گزارش‌ها' },
-    async render() {
+    async render(param) {
+      if (param && /^\d{4}-\d{2}-\d{2}$/.test(param)) { ui.date = param; ui.tab = 'daily'; } // H5-ب: #/teamreports/<YYYY-MM-DD> ⇒ گزارش همان روز
       ui.empty = (msg) => `<div class="empty">${AP.icon('alert')}${esc(msg)}</div>`; // حالت خطا/خالی (S5-9c)
       const users = AP.selfOnly() ? [] : await AP.loadUsers().catch(() => []);
       const html = `

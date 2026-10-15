@@ -6,7 +6,7 @@
 //     saveDraft/submit با PLAN_LOCKED (۴۰۹) رد می‌شود. فقط هفته‌های آینده قابل ویرایش‌اند؛ مسیر استثنا برای ادمین وجود ندارد.
 //   • هر تغییرِ بعد از ثبت ⇒ audit (weekly_plan_changed) + اعلان به سرپرست.
 //   • ماه بسته ⇒ فقط‌خواندنی (MONTH_CLOSED). حداکثر ۳۰ تسک؛ عنوان ≤۱۲۰؛ توضیح ≤۵۰۰؛ planned_date داخل همان هفته یا خالی («هر روز»).
-//   • تسک سیستمی (is_system) هرگز حذف/ویرایش نمی‌شود و در شمارش حداقل/سقف نمی‌آید.
+//   • تسک سیستمی (is_system) هرگز حذف/ویرایش نمی‌شود و در شمارش حداقل/سقف نمی‌آید. (H5) getPlan برای سرپرست تسک واجب «بررسی گزارش تیم» را برای روزهای باقی‌مانده‌ی هفته می‌سازد.
 //   • تسک فوری (is_urgent، E1) را مدیر/سرپرست می‌گذارد (urgentTaskService): در این سرویس فقط‌خواندنی است، در شمارش حداقل/سقف نمی‌آید،
 //     و اگر کلاینت آن را در فهرست tasks برگرداند نادیده گرفته می‌شود (نه حذف می‌شود نه خطا می‌دهد).
 const settingsRepository = require('../repositories/settingsRepository');
@@ -16,6 +16,8 @@ const monthClosuresRepository = require('../repositories/monthClosuresRepository
 const auditRepository = require('../repositories/auditRepository');
 const calendarService = require('../engine/calendarService');
 const notificationEvents = require('./notificationEvents');
+const teamReview = require('./teamReviewService');
+const teamReviewProgress = require('./teamReviewProgress');
 const { sanitizeText } = require('../utils/sanitize');
 const { todayInZone } = require('../utils/time');
 const { addDays, dayNumber } = require('../utils/shiftDay');
@@ -96,6 +98,10 @@ function getPlan(user, which, { now } = {}) {
   const ctx = context(now);
   const weekStart = targetWeek(which, ctx);
   if (!weekStart) return fail('INVALID_WEEK', 'week باید next یا current باشد.');
+  // H5: تسک واجبِ «بررسی گزارش تیم» سرپرست حتی اگر هنوز برنامه‌ای ثبت نکرده در همین نما دیده شود (ساخت idempotent؛ ضدخطا)
+  if (teamReview.isReviewer(user)) {
+    try { teamReview.ensureWeek(user, weekStart, { today: ctx.today, settings: ctx.settings }); } catch (err) { console.error('[weeklyPlan] ساخت تسک واجب سرپرست ناموفق (نادیده گرفته شد):', err.message); }
+  }
   const plan = plansRepo.findByUserWeek(user.id, weekStart);
   const planDay = calendarService.getPlanDay(user, weekStart, { settings: ctx.settings });
   // C1: روزهای هفته با نوع روز (working|half|weekend|holiday) برای کارت‌های روزانه‌ی UI؛ از همان تقویمِ کاربر (شیفت/آخر هفته/نیم‌روز/تعطیلی) می‌آید
@@ -118,7 +124,8 @@ function getPlan(user, which, { now } = {}) {
     lockReason: lockReason(weekStart, ctx),
     minTasks: ctx.settings.planMinTasks,
     maxTasks: MAX_TASKS,
-    tasks: plan ? plansRepo.listTasks(plan.id).map(presentTask) : [],
+    // H5-ب: تسک واجبِ سرپرست با پیشرفت زنده‌ی «x از y گزارش مشاهده شد» (فقط برای تسک review_team_reports؛ بقیه بی‌تغییر)
+    tasks: plan ? teamReviewProgress.decorate(user, plansRepo.listTasks(plan.id).map(presentTask), ctx.today, { settings: ctx.settings }) : [],
     carryOver: carryOverCandidates(user.id, weekStart),
     previousWeekTasks: copyCandidates(user.id, weekStart),
     frequentTitles: plansRepo.topTitles(user.id, 5),

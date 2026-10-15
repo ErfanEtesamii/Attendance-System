@@ -1307,14 +1307,54 @@
       t.urgentNote ? planEl('div', { class: 'plan-meta', text: t.urgentNote }) : null);
   }
 
+  // H5-ب: تسک واجب/سیستمیِ سرپرست («بررسی گزارش روز قبلِ تیم») — برچسب «🔒 واجب»، فقط‌خواندنی (بدون ویرایش/حذف/جابه‌جایی)،
+  // پیشرفت زنده‌ی «۳ از ۴ گزارش مشاهده شد» (محاسبه‌ی سرور در هر بار دریافت برنامه) و دکمه‌ی «مشاهده‌ی گزارش‌ها» که صفحه‌ی teamreports پنل را برای همان روز باز می‌کند.
+  const MANDATORY_LABEL = '🔒 واجب';
+  const isReviewSysTask = (t) => !!t && t.isSystem && t.systemKey === ((window.DailyReport && window.DailyReport.REVIEW_KEY) || 'review_team_reports');
+  const faDigits = (n) => (J ? J.toFaDigits(String(n)) : Number(n).toLocaleString('fa-IR'));
+  function reviewProgressText(r) {
+    if (!r) return '';
+    if (r.notYet) return `گزارش‌های ${fmtDate(r.reviewDate)} هنوز ثبت نشده‌اند.`;
+    if (!r.reportCount) return `گزارشی برای ${fmtDate(r.reviewDate)} ثبت نشده است.`;
+    if (r.complete) return `✅ همه‌ی گزارش‌ها مشاهده شد (${faDigits(r.reviewedCount)} از ${faDigits(r.reportCount)})`;
+    return `${faDigits(r.reviewedCount)} از ${faDigits(r.reportCount)} گزارش مشاهده شد`;
+  }
+  // رفتن به صفحه‌ی «گزارش‌های تیم» پنل برای روزِ گزارش‌ها؛ ورود با همان initData (پنل از #tgWebAppData می‌خواند) — بدون دکمه‌ی آبی هم کار می‌کند
+  function openTeamReportsPanel(reviewDate) {
+    if (!initData) { showToast('برای باز کردن پنل از دکمه‌ی 📂 منو در بات استفاده کنید.'); return; }
+    const go = reviewDate ? `teamreports/${reviewDate}` : 'teamreports';
+    window.location.assign(`/admin/?go=${encodeURIComponent(go)}#tgWebAppData=${encodeURIComponent(initData)}`);
+  }
+  function mandatoryTaskRow(t) {
+    const r = t.review || null;
+    const kids = [
+      planEl('div', { class: 'day-task-main' }, planEl('span', { class: 'mandatory-badge', text: MANDATORY_LABEL }), planEl('span', { class: 'day-task-text', text: t.title }), planEl('span', { class: 'sr-only', text: 'تسک سیستمی؛ فقط‌خواندنی' })),
+    ];
+    if (r) {
+      kids.push(dEl('div', { class: 'plan-meta rv-progress-text', text: reviewProgressText(r), attrs: { role: 'status' } }));
+      if (!r.notYet && r.reportCount > 0) {
+        const bar = planEl('div', { class: 'rv-progress' }, planEl('div', { class: 'rv-progress-fill' }));
+        bar.firstChild.style.width = Math.round((r.reviewedCount / r.reportCount) * 100) + '%';
+        bar.setAttribute('role', 'progressbar');
+        bar.setAttribute('aria-valuemin', '0');
+        bar.setAttribute('aria-valuemax', String(r.reportCount));
+        bar.setAttribute('aria-valuenow', String(r.reviewedCount));
+        bar.setAttribute('aria-label', 'پیشرفت مشاهده‌ی گزارش‌ها');
+        kids.push(bar);
+      }
+      if (!r.notYet) kids.push(planEl('button', { type: 'button', class: 'btn secondary rv-open', text: 'مشاهده‌ی گزارش‌ها', on: { click: () => openTeamReportsPanel(r.reviewDate) } }));
+    }
+    return planEl('li', { class: 'day-task day-task-ro day-task-mandatory' }, kids);
+  }
+
   // C2: نمای فقط‌خواندنی برنامه (هفته‌ی ثبت‌شده/شروع‌شده/ماه بسته) با همان ظاهر کارت‌ها؛ هیچ کنترل فعالی ندارد
   function planReadonlyBoard(data) {
     const days = planDays(data);
     const dayDates = new Set(days.map((d) => d.date));
-    const rows = (list) => urgentFirst(list).map((t) => t.isUrgent ? urgentRow(t) : planEl('li', { class: 'day-task day-task-ro' },
+    const rows = (list) => urgentFirst(list).map((t) => t.isUrgent ? urgentRow(t) : (isReviewSysTask(t) ? mandatoryTaskRow(t) : planEl('li', { class: 'day-task day-task-ro' },
       t.isSystem ? planEl('span', { class: 'plan-sys', text: 'تسک خودکار: ' + t.title })
         : [planEl('div', { class: 'day-task-main' }, prioBadge(t.priority), planEl('span', { class: 'day-task-text', text: t.title })),
-          t.description ? planEl('div', { class: 'plan-meta', text: t.description }) : null]));
+          t.description ? planEl('div', { class: 'plan-meta', text: t.description }) : null])));
     let seq = 0;
     const card = (titleText, badge, list) => {
       seq += 1;
@@ -1484,12 +1524,16 @@
         return section;
       };
 
-      const sysRows = planUi.tasks.filter((t) => t.isSystem).map((t) => planEl('li', { class: 'day-task plan-sys', text: 'تسک خودکار: ' + t.title }));
+      // H5-ب: تسک سیستمی فقط‌خواندنی است؛ تسک واجب «🔒 واجب» با پیشرفت در کارت روز خودش می‌آید، بقیه‌ی سیستمی‌ها مثل قبل در «هر روز»
+      const sysRow = (t) => (isReviewSysTask(t) ? mandatoryTaskRow(t) : planEl('li', { class: 'day-task plan-sys', text: 'تسک خودکار: ' + t.title }));
+      const sysOnDay = (date) => planUi.tasks.filter((t) => t.isSystem && isReviewSysTask(t) && t.plannedDate === date).map(sysRow);
+      const sysRows = planUi.tasks.filter((t) => t.isSystem && !(isReviewSysTask(t) && t.plannedDate && dayDates.has(t.plannedDate))).map(sysRow);
       const cards = [dayCard('any', 'هر روز / بدون روز مشخص', '', null, (t) => !t.plannedDate || !dayDates.has(t.plannedDate), sysRows)];
       days.forEach((d) => {
         const has = planUi.tasks.some((t) => !t.isSystem && t.plannedDate === d.date);
-        if ((d.kind === 'weekend' || d.kind === 'holiday') && !has) return; // روز تعطیلِ بدون تسک کارت ندارد
-        cards.push(dayCard(d.date, fmtPlanDay(d.date), PLAN_DAY_BADGE[d.kind] || '', d.date, (t) => t.plannedDate === d.date));
+        const sysHere = sysOnDay(d.date);
+        if ((d.kind === 'weekend' || d.kind === 'holiday') && !has && !sysHere.length) return; // روز تعطیلِ بدون تسک کارت ندارد
+        cards.push(dayCard(d.date, fmtPlanDay(d.date), PLAN_DAY_BADGE[d.kind] || '', d.date, (t) => t.plannedDate === d.date, sysHere));
       });
       body.appendChild(planEl('div', { class: 'plan-board' }, planEl('div', { class: 'plan-days' }, cards)));
       body.appendChild(msg);
@@ -1533,6 +1577,19 @@
 
   const planBack = $('#plan-back');
   if (planBack && typeof planBack.addEventListener === 'function') planBack.addEventListener('click', () => switchView('today'));
+
+  // H5-ب: پیشرفتِ «x از y گزارش مشاهده شد» زنده بماند — وقتی کاربر از صفحه‌ی گزارش‌ها/پنل برمی‌گردد و برنامه‌ی فقط‌خواندنی باز است، دوباره از سرور گرفته می‌شود
+  // (برنامه‌ی قابل‌ویرایش هرگز خودکار بازنویسی نمی‌شود تا پیش‌نویس کاربر نپرد).
+  if (typeof document.addEventListener === 'function') {
+    document.addEventListener('visibilitychange', () => {
+      try {
+        const view = $('#view-plan');
+        if (document.visibilityState !== 'visible' || !view || view.classList.contains('hidden')) return;
+        const d = planUi.data;
+        if (d && d.editMode === 'readonly' && (d.tasks || []).some(isReviewSysTask)) openPlanWizard(planUi.week);
+      } catch (_) { /* نادیده */ }
+    });
+  }
 
   // ---------- گزارش روزانه‌ی تسک‌ها (D7-ب): ویزارد «یک‌سؤال‌یک‌صفحه» ----------
   // دو حالت: checkout (قبل از خروج؛ پاسخ‌ها همراه /check-out می‌روند) و late (بعد از خروج/backfill؛ /daily-report با date).
@@ -1701,7 +1758,8 @@
         if (info) {
           const un = info.unreviewed || [];
           const nr = info.noReport || [];
-          card.appendChild(dEl('div', { class: 'plan-meta', text: `گزارش‌های ${fmtDate(info.reviewDate)}` }));
+          card.appendChild(dEl('div', { class: 'plan-meta' }, dEl('span', { class: 'mandatory-badge', text: MANDATORY_LABEL }), ` گزارش‌های ${fmtDate(info.reviewDate)}`));
+          if (typeof info.reportCount === 'number' && info.reportCount > 0) card.appendChild(dEl('div', { class: 'plan-meta rv-progress-text', text: `${faNum(info.reviewedCount || 0)} از ${faNum(info.reportCount)} گزارش مشاهده شد`, attrs: { role: 'status' } }));
           card.appendChild(dEl('div', { class: 'rv-group', text: `مشاهده‌نشده (${un.length.toLocaleString('fa-IR')}): ${un.map((m) => m.fullName).join('، ') || '—'}` }));
           if (nr.length) card.appendChild(dEl('div', { class: 'plan-meta', text: `گزارش نداده‌اند (شرط تکمیل نیست): ${nr.map((m) => m.fullName).join('، ')}` }));
         }

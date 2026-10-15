@@ -23,6 +23,7 @@ const { runAuditArchive } = require('./auditArchive');
 const { runDbMaintenance } = require('./dbMaintenance');
 const { runLeaveApprovalReminder } = require('./leaveApprovalReminder');
 const { runUrgentTaskReminder } = require('./urgentTaskReminder');
+const { runTeamReviewEnsure } = require('./teamReviewEnsure');
 const { isFirstDayOfJalaliMonth } = require('../../utils/jalali');
 const { wrapJob, runAll } = require('../../utils/jobRunner');
 const jobRunsRepository = require('../../repositories/jobRunsRepository');
@@ -53,6 +54,8 @@ function buildJobs(bot) {
     { name: 'leaveApprovalReminder', run: () => runLeaveApprovalReminder() },
     // یادآوری مهلت ساعتیِ تسک فوری (E1): فقط تسک‌های فوریِ امروزِ بی‌پاسخ؛ بدون تسک فوری ⇒ بی‌اثر
     { name: 'urgentTaskReminder', run: () => runUrgentTaskReminder() },
+    // ساخت خودکار تسک واجب «بررسی گزارش روز قبل تیم» برای سرپرست‌ها (H5): هفته‌ی جاری و بعد؛ idempotent، بدون زیردست ⇒ بی‌اثر
+    { name: 'teamReviewEnsure', run: () => runTeamReviewEnsure() },
     // نگهداری ماهانه‌ی دیتابیس (S2-7b): cleanup جدول‌های فرعی ← ANALYZE/optimize ← VACUUM (فقط با فضای دیسک کافی)
     { name: 'dbMaintenance', run: () => runDbMaintenance() },
     // Watchdog: فقط شکست‌هایش در job_runs ثبت می‌شود (هر ۵ دقیقه، موفقیت‌ها ردیف‌های بی‌ارزش زیاد می‌ساختند)

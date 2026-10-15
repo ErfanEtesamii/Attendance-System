@@ -16,6 +16,10 @@
 //   • (D9-ب) gateInfo: فهرست «مشاهده‌نشده‌ها» و «گزارش‌نداده‌ها» (جدا از هم) برای پاسخ ۴۰۹ گیت خروج و daily-tasks؛ برای هر مشاهده‌نشده خلاصه‌ی گزارش هم می‌آید.
 //   • (D9-ب) کامنتِ تازه/تغییرکرده ⇒ اعلان درون‌پنلی + تلگرام به کارمند (notificationEvents.reportCommented؛ خطایش مشاهده را نمی‌شکند).
 //   • نوشتن‌های خودکارِ این ماژول (ساخت تسک/done) ساختاری و مشتق‌شده‌اند، نه «پاسخ کاربر»؛ خطایشان هرگز گزارش/خروج را نمی‌شکند.
+//   • (H5-الف) پوشش «بدون دخالت دستی»: ensureWeek/ensureUpcoming تسک را برای روزهای باقی‌مانده‌ی هفته‌ی جاری و هفته‌ی بعد می‌سازند
+//     (از امروز به بعد؛ برای روزهای گذشته چیزی «عقب‌گرد» ساخته نمی‌شود تا گیت/backfill ناگهان تسک تازه نبیند). فراخوان‌ها:
+//     job روزانه‌ی teamReviewEnsure (ensureAllReviewers)، باز شدن برنامه‌ی هفتگی (weeklyPlanService.getPlan) و تغییر زیردست/نقش/فعال‌بودن
+//     کاربر (refreshReviewersOf). روزِ آینده فقط ساخته می‌شود و هرگز done خودکار نمی‌گیرد (گزارشی برایش وجود ندارد).
 const settingsRepository = require('../repositories/settingsRepository');
 const usersRepository = require('../repositories/usersRepository');
 const plansRepo = require('../repositories/weeklyPlanRepository');
@@ -27,6 +31,7 @@ const auditRepository = require('../repositories/auditRepository');
 const calendarService = require('../engine/calendarService');
 const { sanitizeText } = require('../utils/sanitize');
 const { addDays, dayNumber } = require('../utils/shiftDay');
+const logErr = (label, err) => console.error(`[teamReview] ${label} (نادیده گرفته شد):`, sanitizeText(err && err.message ? err.message : String(err), 200));
 
 const REVIEW_KEY = 'review_team_reports';
 const TITLE = 'بررسی گزارش روز قبلِ تیم';
@@ -194,6 +199,85 @@ function prepareDay(user, date, settings = settingsRepository.getAll(), { late =
   }
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+// H5-الف: ساخت تسک واجب برای روزهای باقی‌مانده‌ی هفته (بدون دخالت سرپرست)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * تسک سیستمیِ روزهای weekStart..weekStart+6 را (فقط از «امروز» به بعد) می‌سازد؛ idempotent.
+ * امروز ⇒ ساخت + done خودکار (روز قبل مربوط به گذشته است)؛ روز آینده ⇒ فقط ساخت. خطای یک روز بقیه را نمی‌شکند.
+ * بدون زیردست/غیرسرپرست ⇒ هیچ. خروجی: { created, errors }
+ */
+function ensureWeek(user, weekStart, { today, settings = settingsRepository.getAll() } = {}) {
+  const out = { created: 0, errors: 0 };
+  if (!isReviewer(user) || dayNumber(weekStart) === null || dayNumber(today) === null) return out;
+  try {
+    if (!teamOf(user).length) return out;
+  } catch (err) { logErr('خواندن تیم ناموفق', err); out.errors += 1; return out; }
+  for (let i = 0; i < 7; i += 1) {
+    const date = addDays(weekStart, i);
+    if (date < today) continue; // روزهای گذشته عقب‌گرد نمی‌شوند
+    try {
+      const had = !!findTask(user, date, settings);
+      const row = ensureTask(user, date, settings);
+      if (row && !had) out.created += 1;
+      if (row && date === today) syncCompletion(user, date, settings);
+    } catch (err) {
+      out.errors += 1;
+      logErr(`ساخت تسک ${date} ناموفق`, err);
+    }
+  }
+  return out;
+}
+
+/** هفته‌ی جاری و هفته‌ی بعدِ یک سرپرست (برای برنامه‌ریزی جلوتر). خروجی: { created, errors } */
+function ensureUpcoming(user, { now = new Date(), settings = settingsRepository.getAll() } = {}) {
+  const out = { created: 0, errors: 0 };
+  if (!isReviewer(user) || !user.is_active) return out;
+  let today; let thisWeek;
+  try {
+    today = attendanceRepository.currentRecordDate(user.id, now);
+    thisWeek = calendarService.weekStartOf(today, settings.weekStartDay);
+  } catch (err) { logErr('محاسبه‌ی هفته ناموفق', err); out.errors += 1; return out; }
+  for (const weekStart of [thisWeek, addDays(thisWeek, 7)]) {
+    const r = ensureWeek(user, weekStart, { today, settings });
+    out.created += r.created;
+    out.errors += r.errors;
+  }
+  return out;
+}
+
+/** همه‌ی سرپرست‌های فعال (manager + admin دارای زیردست). خروجی: { reviewers, created, errors } */
+function ensureAllReviewers({ now = new Date() } = {}) {
+  const settings = settingsRepository.getAll();
+  const out = { reviewers: 0, created: 0, errors: 0 };
+  for (const u of usersRepository.listUsers({ onlyActive: true }).filter(isReviewer)) {
+    if (!teamOf(u).length) continue;
+    out.reviewers += 1;
+    const r = ensureUpcoming(u, { now, settings });
+    out.created += r.created;
+    out.errors += r.errors;
+  }
+  return out;
+}
+
+/**
+ * بعد از افزودن/جابه‌جایی زیردست، تغییر نقش یا فعال/غیرفعال‌شدن: برای سرپرست‌های مرتبط بلافاصله تسکِ روزهای باقی‌مانده ساخته شود.
+ * ids: شناسه‌ی کاربران (مدیر جدید، مدیر قبلی، خودِ کاربر)؛ تکراری/نامعتبر نادیده. ضدخطا: هرگز عملیات اصلی (ثبت کاربر) را نمی‌شکند.
+ */
+function refreshReviewersOf(ids, { now = new Date() } = {}) {
+  const seen = new Set();
+  for (const raw of ids || []) {
+    const id = Number(raw);
+    if (!Number.isInteger(id) || id <= 0 || seen.has(id)) continue;
+    seen.add(id);
+    try {
+      const u = usersRepository.findById(id);
+      if (u && u.is_active && isReviewer(u)) ensureUpcoming(u, { now });
+    } catch (err) { logErr('بازسازی پس از تغییر کاربر ناموفق', err); }
+  }
+}
+
 const presentReview = (r) => ({ reviewerId: r.reviewer_id, subjectUserId: r.subject_user_id, reportDate: r.report_date, reviewedAt: r.reviewed_at, comment: r.comment || null, reaction: r.reaction || null });
 
 function reportDateBounds(user, now) {
@@ -276,4 +360,4 @@ function markReviewed(reviewer, input, { now = new Date(), ip = null } = {}) {
   return { ok: true, review: presentReview(row), state: reviewState(reviewer, reportDate, settings) };
 }
 
-module.exports = { teamOf, reviewDateFor, reviewState, reportSummaryOf, gateInfo, statusOf, ERROR_STATUS, ensureTask, syncCompletion, prepareDay, getTeamReview, markReviewed, isReviewer, REVIEW_KEY, TITLE, REACTIONS, COMMENT_MAX, MAX_LOOKBACK_DAYS };
+module.exports = { ensureWeek, ensureUpcoming, ensureAllReviewers, refreshReviewersOf, teamOf, reviewDateFor, reviewState, reportSummaryOf, gateInfo, statusOf, ERROR_STATUS, ensureTask, syncCompletion, prepareDay, getTeamReview, markReviewed, isReviewer, REVIEW_KEY, TITLE, REACTIONS, COMMENT_MAX, MAX_LOOKBACK_DAYS };

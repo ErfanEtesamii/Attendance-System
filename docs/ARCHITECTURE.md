@@ -58,7 +58,7 @@
 | ریست برنامه | `resetRepository.js` (رجیستری گروه‌های پاک‌سازی)، `resetService.js` (پیش‌نمایش/اجرا)، `middleware/maintenanceGate.js` + `utils/maintenanceMode.js` (503 هنگام ریست)، routeهای `admin/system.js` |
 | ماموریت | `missionService.js`، `missionDecisionService.js`، `missionNowService.js`، `pendingMissionService.js`، اثر روی `engine/computeDay.js`، تأیید شبانه `bot/commands/missionApproval.js` |
 | برنامه‌ی هفتگی و گزارش روزانه | `weeklyPlanService.js`، `taskReportService.js`، `planGateService.js`، `content/encouragements.js`، repositoryهای `weeklyPlan`/`taskLog`/`reportReview`/`planGate` |
-| گزارش تیم | `teamReviewService.js`، `teamReportsService.js`، `nightlyTaskReportService.js`، `taskExportService.js`، Job صبحگاهی `bot/scheduler/morningDigest.js` |
+| گزارش تیم | `teamReviewService.js`، `teamReviewProgress.js`، `teamReportsService.js`، `nightlyTaskReportService.js`، `taskExportService.js`، Job صبحگاهی `bot/scheduler/morningDigest.js` |
 | گفت‌وگوی اعتراض (فاز ۱۱) | `disputeService.js` (قواعد کارمند و ادمین، `phase` مشتق)، `disputeRepository.js` (`dispute_messages`، `closed_by`)، اعلان‌ها در `notificationEvents.js`، بستن ماه در `monthCloseService.js` |
 | بات دکمه‌ای | `bot/menu/menuRouter.js` (منوی نقش‌محور، تطبیق متن دقیق)، `bot/ui/pickers.js` + `pickerRouter.js` (تقویم شمسی/ساعت/کارمند) |
 

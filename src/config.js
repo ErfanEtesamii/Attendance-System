@@ -182,6 +182,8 @@ const config = {
     leaveApprovalReminder: process.env.CRON_LEAVE_APPROVAL_REMINDER || '15 * * * *',
     // یادآوری مهلتِ ساعتیِ «تسک فوری» (E1): هر ۱۰ دقیقه؛ فقط برای تسک‌های فوریِ امروز که مهلت ساعتی دارند و هنوز پاسخ ندارند
     urgentTaskReminder: process.env.CRON_URGENT_TASK_REMINDER || '*/10 * * * *',
+    // ساخت خودکار تسک واجبِ «بررسی گزارش روز قبلِ تیم» برای سرپرست‌ها (H5): هر روز ۰۰:۱۰ (بعد از markNonWorkingDays ۰۰:۰۵)؛ هفته‌ی جاری و بعد، idempotent
+    teamReviewEnsure: process.env.CRON_TEAM_REVIEW_ENSURE || '10 0 * * *',
   },
 
   // آرشیو audit (S2-6c): تعداد رکورد در هر تراکنشِ انتقال. مقدار کوچک‌تر ⇒ قفل نوشتن کوتاه‌تر؛ مقدار خراب/خارج از بازه ⇒ ۱۰۰۰
