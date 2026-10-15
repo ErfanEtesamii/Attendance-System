@@ -53,10 +53,11 @@ test('hr: فقط‌خواندنی روی کاربران/گزارش/خروجی/م
   for (const p of ['users.read', 'users.details.read', 'attendance.read', 'reports.read', 'leave.read', 'disputes.read', 'dashboard.read']) {
     assert.equal(hasPermission('hr', p), true, `hr ${p}`);
   }
-  const forbidden = PERMISSIONS.filter((p) => !['me.read', 'dashboard.read', 'attendance.read', 'leave.read', 'disputes.read', 'reports.read', 'users.read', 'users.details.read', 'schedule.read', 'notifications.read', 'notifications.mark', 'leave.balance.read', 'leave.approve.hr', 'monthclose.read', 'analytics.read', 'taskreports.read', 'checkin_permissions.read'].includes(p));
+  const forbidden = PERMISSIONS.filter((p) => !['me.read', 'dashboard.read', 'attendance.read', 'leave.read', 'disputes.read', 'reports.read', 'users.read', 'users.details.read', 'schedule.read', 'notifications.read', 'notifications.mark', 'leave.balance.read', 'leave.approve.hr', 'monthclose.read', 'analytics.read', 'taskreports.read', 'checkin_permissions.read', 'team.week_view'].includes(p));
   for (const p of forbidden) assert.equal(hasPermission('hr', p), false, `hr ${p}`);
+  // team.week_view (F1): نمای هفتگیِ فقط‌خواندنی؛ نامش «.read» ندارد ولی هیچ نوشتنی انجام نمی‌دهد
   // تنها استثنا: notifications.mark (S4-5b) — علامت خوانده‌شدنِ اعلان‌های «خودِ» کاربر؛ روی هیچ داده‌ی دیگری اثر ندارد
-  assert.ok(permissionsFor('hr').every((p) => p.endsWith('.read') || p === 'notifications.mark' || p === 'leave.approve.hr'), 'همه‌ی مجوزهای hr باید .read باشند (به‌جز notifications.mark)');
+  assert.ok(permissionsFor('hr').every((p) => p.endsWith('.read') || p === 'notifications.mark' || p === 'leave.approve.hr' || p === 'team.week_view'), 'همه‌ی مجوزهای hr باید .read باشند (به‌جز notifications.mark)');
 });
 
 test('default-deny: نقش/مجوز ناشناخته یا ورودی نامعتبر همیشه رد است', () => {

@@ -57,8 +57,9 @@ describe('CSVها با ستون شمسی (S3-11c)', { skip: hasDeps ? false : 'e
     assert.equal(r.status, 200);
     const head = r.rows[0];
     assert.deepEqual(head.slice(0, 6), ['نام', 'کد پرسنلی', 'دپارتمان', 'تاریخ', 'تاریخ شمسی', 'ورود']);
-    assert.equal(head[head.length - 1], 'وضعیت');
-    assert.equal(head.length, 15);
+    // C1: دو ستون «استراحت با/بدون حقوق» در انتهای خروجی اضافه شده‌اند؛ «وضعیت» همچنان سر جای قبلی (ستون ۱۵م) است
+    assert.deepEqual(head.slice(-3), ['وضعیت', 'استراحت با حقوق (دقیقه)', 'استراحت بدون حقوق (دقیقه)']);
+    assert.equal(head.length, 17);
     const byDate = Object.fromEntries(r.rows.slice(1).map((c) => [c[3], c]));
     assert.equal(byDate['2025-03-20'][4], '1403/12/30');
     assert.equal(byDate['2025-03-21'][4], '1404/01/01');

@@ -15,14 +15,16 @@ after(() => {
   try { fs.rmSync(work, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); } catch (_) { /* ویندوز: فایل هنوز باز است */ }
 });
 
-// پوشه‌ای با migrationهای ۰۰۱ تا ۰۲۶ (یعنی دیتابیس «قبل از D1»)
-function dirBefore027() {
-  const dir = fs.mkdtempSync(path.join(work, 'before-'));
+// پوشه‌ای با migrationهای ۰۰۱ تا max (بقیه‌ی migrationهای بعدی عمداً کنار گذاشته می‌شوند تا تست فقط ۰۲۷ را بسنجد)
+function dirUpTo(max) {
+  const dir = fs.mkdtempSync(path.join(work, `upto${max}-`));
   for (const f of fs.readdirSync(MIGRATIONS_DIR)) {
-    if (/^\d{3}_.*\.js$/.test(f) && parseInt(f.slice(0, 3), 10) < 27) fs.copyFileSync(path.join(MIGRATIONS_DIR, f), path.join(dir, f));
+    if (/^\d{3}_.*\.js$/.test(f) && parseInt(f.slice(0, 3), 10) <= max) fs.copyFileSync(path.join(MIGRATIONS_DIR, f), path.join(dir, f));
   }
   return dir;
 }
+// دیتابیس «قبل از D1» = migrationهای ۰۰۱ تا ۰۲۶
+const dirBefore027 = () => dirUpTo(26);
 
 const columnNames = (db, table) => db.pragma(`table_info(${table})`).map((c) => c.name);
 
@@ -52,7 +54,7 @@ describe('migration ۰۲۷ — روی دیتابیس با اعتراض‌های 
 
   test('اعمال: پیام اولیه‌ی هر اعتراض اولین پیام thread می‌شود و ستون‌های قدیمی دست‌نخورده می‌مانند', () => {
     const before = db.prepare('SELECT id, user_id, attendance_record_id, message, status, created_at, updated_at FROM record_disputes ORDER BY id').all();
-    const res = migrate(db, { dir: MIGRATIONS_DIR });
+    const res = migrate(db, { dir: dirUpTo(27) });
     assert.deepEqual(res.applied, ['027_dispute_messages']);
     assert.deepEqual(
       db.prepare('SELECT id, user_id, attendance_record_id, message, status, created_at, updated_at FROM record_disputes ORDER BY id').all(),
