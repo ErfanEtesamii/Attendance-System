@@ -22,14 +22,50 @@
       const s = m.summary;
       const notDone = (m.notDone || []).map((t) => `<li>${esc(t.title)} — <span class="muted">${esc(TASK_STATUS[t.status] || t.status)}${t.reasonCode ? ` · ${esc(REASONS[t.reasonCode] || t.reasonCode)}` : ''}${t.reasonText ? `: ${esc(t.reasonText)}` : ''}</span></li>`).join('');
       const extras = (m.extras || []).length ? `<div class="muted">➕ خارج از برنامه: ${m.extras.map(esc).join('، ')}</div>` : '';
-      const act = canWrite && m.hasReport
+      const seenBtn = canWrite && m.hasReport
         ? `<button type="button" class="btn ghost small" data-act="seen" data-uid="${m.userId}">${m.status === 'reviewed' ? 'ویرایش کامنت' : 'مشاهده شد'}</button>`
         : '';
+      const act = `${seenBtn} ${urgentBtn(m.userId, m.fullName)}`.trim();
       const comment = m.comment ? `<div class="muted">💬 ${esc(m.comment)}</div>` : '';
       return `<tr><td>${esc(m.fullName)}<div class="muted">${esc(m.department || '')}</div></td><td>${AP.badge(cls, label, true)}</td>
         <td>${s ? `${fmt.num(s.done)} از ${fmt.num(s.total)} (${pct(s)})` : '—'}</td>
         <td>${notDone ? `<ul class="plain">${notDone}</ul>` : '—'}${extras}</td><td>${comment || '—'}</td><td>${act}</td></tr>`;
     }).join('');
+  }
+
+  // E3: «⚡ تسک فوری» — فقط با مجوز tasks.assign_urgent و نه روی ردیف خودِ کاربر؛ اسکوپ و همه‌ی اعتبارسنجی‌ها سمت سرور (urgentTaskService).
+  const urgentBtn = (userId, name) => (AP.can('tasks.assign_urgent') && userId !== (AP.state.me && AP.state.me.id)
+    ? `<button type="button" class="btn ghost small" data-act="urgent" data-uid="${userId}" data-name="${esc(name)}">⚡ تسک فوری</button>` : '');
+
+  function openUrgentForm(userId, name, onDone) {
+    AP.modal({
+      title: `⚡ تسک فوری برای ${name}`,
+      body: `<form class="form" id="urgent-form">
+        <div class="form-grid">
+          <label class="field"><span>عنوان</span><input name="title" required maxlength="120" placeholder="مثلاً: ارسال پیش‌فاکتور به مشتری" /></label>
+          <label class="field"><span>تاریخ انجام</span><input type="date" name="date" required value="${esc(fmt.today())}" /></label>
+          <label class="field"><span>ساعت مهلت (اختیاری)</span><input type="time" name="deadlineTime" dir="ltr" class="ltr-in" /></label>
+          <label class="field"><span>توضیح (اختیاری)</span><textarea name="description" rows="3" maxlength="500"></textarea></label>
+        </div>
+        <p class="muted">تسک در برنامه‌ی همان روزِ کارمند با برچسب «⚡ فوری» می‌آید و تا ثبت نتیجه، مانع خروج او می‌شود. کارمند نمی‌تواند آن را حذف کند.</p>
+        <div class="form-msg"></div>
+        <div class="modal-actions"><button class="btn primary" type="submit">ثبت تسک فوری</button><button class="btn ghost" type="button" data-cancel>انصراف</button></div>
+      </form>`,
+      onMount(body, m) {
+        AP.dates.mount(body);
+        const form = $('#urgent-form', body);
+        $('[data-cancel]', form).addEventListener('click', () => m.close());
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const f = AP.formData(form);
+          const payload = { title: f.title, date: f.date, ...(f.deadlineTime ? { deadlineTime: f.deadlineTime } : {}), ...(f.description ? { description: f.description } : {}) };
+          const r = await AP.attempt(() => AP.api(`/admin/users/${userId}/urgent-tasks`, { method: 'POST', body: payload }), 'تسک فوری ثبت شد و به کارمند اطلاع داده شد.', $('button[type=submit]', form));
+          if (!r) return;
+          m.close();
+          if (onDone) onDone();
+        });
+      },
+    });
   }
 
   function table(head, body) {
@@ -42,12 +78,12 @@
       const body = r.members.map((m) => {
         const [cls, label] = PLAN_STATUS[m.status] || PLAN_STATUS.none;
         const tasks = m.tasks.length ? `<ul class="plain">${m.tasks.map((t) => `<li>${esc(t.title)}${t.plannedDate ? ` <span class="muted">(${esc(fmt.date(t.plannedDate))})</span>` : ''}</li>`).join('')}</ul>` : '—';
-        return `<tr><td>${esc(m.fullName)}</td><td>${AP.badge(cls, label, true)}</td><td>${tasks}</td></tr>`;
-      }).join('') || '<tr><td colspan="3" class="muted">موردی برای نمایش نیست.</td></tr>';
-      return `<p class="sub">هفته‌ی شروع ${esc(fmt.date(r.weekStart))} — ${fmt.num(r.summary.submitted)} برنامه ثبت‌شده، ${fmt.num(r.summary.missing)} ثبت‌نشده</p>${table(['نام', 'وضعیت', 'تسک‌ها'], body)}`;
+        return `<tr><td>${esc(m.fullName)}</td><td>${AP.badge(cls, label, true)}</td><td>${tasks}</td><td>${urgentBtn(m.userId, m.fullName)}</td></tr>`;
+      }).join('') || '<tr><td colspan="4" class="muted">موردی برای نمایش نیست.</td></tr>';
+      return `<p class="sub">هفته‌ی شروع ${esc(fmt.date(r.weekStart))} — ${fmt.num(r.summary.submitted)} برنامه ثبت‌شده، ${fmt.num(r.summary.missing)} ثبت‌نشده</p>${table(['نام', 'وضعیت', 'تسک‌ها', ''], body)}`;
     }
     if (r.tab === 'stuck') {
-      const body = r.members.map((m) => `<tr><td>${esc(m.fullName)}</td><td><ul class="plain">${m.tasks.map((t) => `<li>🔴 ${esc(t.title)} — ${fmt.num(t.carriedCount)} بار منتقل‌شده${t.lastReason ? ` <span class="muted">(${esc(REASONS[t.lastReason] || t.lastReason)})</span>` : ''}</li>`).join('')}</ul></td></tr>`).join('') || '<tr><td colspan="2" class="muted">تسک معطل‌مانده‌ای نیست.</td></tr>';
+      const body = r.members.map((m) => `<tr><td>${esc(m.fullName)}<div>${urgentBtn(m.userId, m.fullName)}</div></td><td><ul class="plain">${m.tasks.map((t) => `<li>🔴 ${esc(t.title)} — ${fmt.num(t.carriedCount)} بار منتقل‌شده${t.lastReason ? ` <span class="muted">(${esc(REASONS[t.lastReason] || t.lastReason)})</span>` : ''}</li>`).join('')}</ul></td></tr>`).join('') || '<tr><td colspan="2" class="muted">تسک معطل‌مانده‌ای نیست.</td></tr>';
       return table(['نام', 'تسک‌های معطل‌مانده'], body);
     }
     const s = r.summary || {};
@@ -64,6 +100,7 @@
       const r = await AP.api(`/admin/team-reports?${q}`);
       box.innerHTML = renderResult(r);
       $$('[data-act="seen"]', box).forEach((b) => b.addEventListener('click', () => seen(page, r, Number(b.dataset.uid))));
+      $$('[data-act="urgent"]', box).forEach((b) => b.addEventListener('click', () => openUrgentForm(Number(b.dataset.uid), b.dataset.name, () => load(page))));
     } catch (err) {
       box.innerHTML = ui.empty(err.message);
     }

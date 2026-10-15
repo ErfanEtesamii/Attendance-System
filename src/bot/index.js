@@ -20,6 +20,7 @@ const {
 } = require('./commands/addEmployee');
 const { handleListEmployees } = require('./commands/listEmployees');
 const { handleTeamReport } = require('./commands/teamReport');
+const { handleUrgentTaskCommand, handleUrgentTaskText, handleUrgentTaskCallback } = require('./commands/urgentTask');
 const { handlePendingLeaves, handlePendingLeavesCallback } = require('./commands/pendingLeaves');
 const { startMissionReject, startMissionEdit, handleMissionRejectText, handleMissionEditText } = require('./commands/missionApproval');
 const { handleReportReviewCallback, handleReportCommentText } = require('./commands/reportReview');
@@ -56,6 +57,7 @@ function createBot() {
   bot.onText(/^\/pending_leaves/, (msg) => handlePendingLeaves(bot, msg));
   bot.onText(/^\/pending_disputes/, (msg) => handlePendingDisputes(bot, msg));
   bot.onText(/^\/fix_record/, (msg) => handleFixRecordCommand(bot, msg));
+  bot.onText(/^\/urgent_task/, (msg) => handleUrgentTaskCommand(bot, msg));
 
   // پیام‌های متنی معمولی: فقط وقتی مکالمه چندمرحله‌ای فعالی وجود دارد پردازش می‌شوند.
   bot.on('message', async (msg) => {
@@ -83,6 +85,7 @@ function createBot() {
     if (sess.flow === 'add_employee') return handleAddEmployeeText(bot, msg, sess);
     if (sess.flow === 'fix_record') return handleFixRecordText(bot, msg, sess);
     if (sess.flow === 'dispute_reply') return handleDisputeReplyText(bot, msg, sess);
+    if (sess.flow === 'urgent_task') return handleUrgentTaskText(bot, msg, sess);
     if (sess.flow === 'mission_reject') return handleMissionRejectText(bot, msg, sess);
     if (sess.flow === 'mission_edit') return handleMissionEditText(bot, msg, sess);
     if (sess.flow === 'report_comment') return handleReportCommentText(bot, msg, sess);
@@ -122,6 +125,10 @@ function createBot() {
       if (data.startsWith('fix_field:') || data === 'fix_cancel') {
         if (!sess || sess.flow !== 'fix_record') return await ui.expire(bot, query);
         return await handleFixRecordCallback(bot, query, sess);
+      }
+      if (data === 'ut_ok') {
+        if (!sess || sess.flow !== 'urgent_task') return await ui.expire(bot, query);
+        return await handleUrgentTaskCallback(bot, query, sess);
       }
       if (data.startsWith('fix_status:')) {
         if (!sess || sess.flow !== 'fix_record') return await ui.expire(bot, query);

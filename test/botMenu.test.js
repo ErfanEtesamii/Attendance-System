@@ -50,9 +50,9 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
       assert.equal(n(null), '');
     });
 
-    test('هر ۱۵ دکمه‌ی منو برچسب نرمال‌شده‌ی یکتا دارند', () => {
+    test('هر ۱۶ دکمه‌ی منو برچسب نرمال‌شده‌ی یکتا دارند', () => {
       const labels = menu.ITEMS.map((it) => menu.normalizeLabel(it.label));
-      assert.equal(menu.ITEMS.length, 15);
+      assert.equal(menu.ITEMS.length, 16);
       assert.equal(new Set(labels).size, labels.length);
       assert.ok(labels.every(Boolean));
     });
@@ -60,17 +60,17 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
 
   describe('buildMainKeyboard — ماتریس نقش × دکمه', () => {
     const EMP = ['🕒 ثبت تردد', '📊 وضعیت من', '📈 گزارش من', '🏖 مرخصی / 🚗 ماموریت', '📋 برنامه هفتگی', '🖥 پنل', '❓ راهنما'];
-    const MGR = ['👥 گزارش تیم', '📥 درخواست‌های منتظر', '💬 اعتراض‌ها', '📝 گزارش‌های دیروز تیم', '👤 لیست اعضا'];
+    const MGR = ['👥 گزارش تیم', '📥 درخواست‌های منتظر', '💬 اعتراض‌ها', '📝 گزارش‌های دیروز تیم', '👤 لیست اعضا', '⚡ تسک فوری'];
     const ADM = ['➕ افزودن کارمند', '🛠 اصلاح رکورد', '⚙️ پنل مدیریت'];
 
     test('کارمند: فقط ۷ دکمه‌ی پایه', () => assert.deepEqual(labelsOf(menu.buildMainKeyboard(emp)), EMP));
-    test('سرپرست: پایه + ۵ دکمه‌ی تیم (بدون دکمه‌ی ادمین)', () => assert.deepEqual(labelsOf(menu.buildMainKeyboard(mgr)), [...EMP, ...MGR]));
-    test('ادمین: همه‌ی ۱۵ دکمه', () => assert.deepEqual(labelsOf(menu.buildMainKeyboard(admin)), [...EMP, ...MGR, ...ADM]));
+    test('سرپرست: پایه + ۶ دکمه‌ی تیم (بدون دکمه‌ی ادمین)', () => assert.deepEqual(labelsOf(menu.buildMainKeyboard(mgr)), [...EMP, ...MGR]));
+    test('ادمین: همه‌ی ۱۶ دکمه', () => assert.deepEqual(labelsOf(menu.buildMainKeyboard(admin)), [...EMP, ...MGR, ...ADM]));
 
     test('چیدمان ۲ ستونه، resize و persistent', () => {
       const kb = menu.buildMainKeyboard(admin);
       assert.ok(kb.keyboard.every((row) => row.length <= 2));
-      assert.deepEqual(kb.keyboard.map((r) => r.length), [2, 2, 2, 2, 2, 2, 2, 1]);
+      assert.deepEqual(kb.keyboard.map((r) => r.length), [2, 2, 2, 2, 2, 2, 2, 2]);
       assert.equal(kb.resize_keyboard, true);
       assert.equal(kb.is_persistent, true);
     });
@@ -115,7 +115,7 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
       ['🖥 پنل', 'panel', null], ['❓ راهنما', 'help', null],
       ['👥 گزارش تیم', 'teamReport', 'manager'], ['📥 درخواست‌های منتظر', 'pendingLeaves', 'manager'],
       ['💬 اعتراض‌ها', 'pendingDisputes', 'manager'], ['📝 گزارش‌های دیروز تیم', 'yesterdayReports', 'manager'],
-      ['👤 لیست اعضا', 'listEmployees', 'manager'],
+      ['👤 لیست اعضا', 'listEmployees', 'manager'], ['⚡ تسک فوری', 'urgentTask', 'manager'],
       ['➕ افزودن کارمند', 'addEmployee', 'admin'], ['🛠 اصلاح رکورد', 'fixRecord', 'admin'],
     ];
 

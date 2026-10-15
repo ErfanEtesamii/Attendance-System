@@ -150,10 +150,16 @@ function timeRows(pick) {
 // کارمند
 // ---------------------------------------------------------------------------------------------------------------------
 
-/** filter: 'any' (همه‌ی کاربران؛ فعال‌ها اول) | 'managers' (کاربر فعالِ سرپرست یا ادمین) */
-function candidateUsers(filter) {
+/**
+ * filter: 'any' (همه‌ی کاربران؛ فعال‌ها اول) | 'managers' (کاربر فعالِ سرپرست یا ادمین)
+ *   | 'urgent_targets' (E3: کارمندان فعالِ قابل‌دریافتِ تسک فوری؛ actorId ادمین ⇒ همه به‌جز خودش، سرپرست ⇒ فقط زیردستان مستقیم)
+ */
+function candidateUsers(filter, pick = {}) {
   let list = usersRepository.listUsers({});
-  if (filter === 'managers') list = list.filter((u) => u.is_active && ['manager', 'admin'].includes(u.role));
+  if (filter === 'urgent_targets') {
+    const actor = pick && pick.actorId ? usersRepository.findById(pick.actorId) : null;
+    list = list.filter((u) => u.is_active && actor && u.id !== actor.id && (actor.role === 'admin' || (actor.role === 'manager' && u.manager_id === actor.id)));
+  } else if (filter === 'managers') list = list.filter((u) => u.is_active && ['manager', 'admin'].includes(u.role));
   return list.sort((a, b) => (Number(b.is_active) - Number(a.is_active)) || String(a.full_name).localeCompare(String(b.full_name), 'fa'));
 }
 
@@ -163,7 +169,7 @@ function employeeLabel(u) {
 }
 
 function employeeRows(pick) {
-  const all = candidateUsers(pick.filter || 'any');
+  const all = candidateUsers(pick.filter || 'any', pick);
   const pages = Math.max(1, Math.ceil(all.length / EMP_PAGE_SIZE));
   const page = Math.min(Math.max(Number(pick.page) || 0, 0), pages - 1);
   const rows = all.slice(page * EMP_PAGE_SIZE, (page + 1) * EMP_PAGE_SIZE).map((u) => [btn(employeeLabel(u), `ep:u:${u.id}`)]);
@@ -239,8 +245,8 @@ async function askTime(bot, chatId, { text, label, after = null, cancelData } = 
   return bot.sendMessage(chatId, text, { reply_markup: timeKeyboard(pick) });
 }
 
-async function askEmployee(bot, chatId, { text, label, filter = 'any', allowNone = false, noneText, cancelData } = {}) {
-  const base = { kind: 'emp', label, filter, allowNone, noneText, page: 0, cancelData };
+async function askEmployee(bot, chatId, { text, label, filter = 'any', allowNone = false, noneText, cancelData, actorId } = {}) {
+  const base = { kind: 'emp', label, filter, allowNone, noneText, page: 0, cancelData, actorId };
   const pick = savePick(chatId, base) || base;
   return bot.sendMessage(chatId, text, { reply_markup: employeeKeyboard(pick) });
 }

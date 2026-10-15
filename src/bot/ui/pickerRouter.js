@@ -23,6 +23,7 @@ function textHandlerOf(flow) {
     case 'add_employee': return require('../commands/addEmployee').handleAddEmployeeText;
     case 'fix_record': return require('../commands/fixRecord').handleFixRecordText;
     case 'dispute_reply': return require('../commands/pendingDisputes').handleDisputeReplyText;
+    case 'urgent_task': return require('../commands/urgentTask').handleUrgentTaskText;
     default: return null;
   }
 }
@@ -31,6 +32,7 @@ function employeeHandlerOf(flow) {
   switch (flow) {
     case 'add_employee': return require('../commands/addEmployee').handleManagerPick;
     case 'fix_record': return require('../commands/fixRecord').handleEmployeePick;
+    case 'urgent_task': return require('../commands/urgentTask').handleEmployeePick;
     default: return null;
   }
 }
@@ -162,7 +164,7 @@ async function handleEmployee(bot, query, sess, pick, parts) {
     if (!pick.allowNone) return ui.expire(bot, query);
   } else if (action === 'u') {
     const id = parseIntStrict(a);
-    chosen = ui.candidateUsers(pick.filter || 'any').find((u) => u.id === id) || null;
+    chosen = ui.candidateUsers(pick.filter || 'any', pick).find((u) => u.id === id) || null;
     if (!chosen) return bot.answerCallbackQuery(query.id, { text: 'این گزینه قابل انتخاب نیست.', show_alert: true });
   } else {
     return ui.expire(bot, query);

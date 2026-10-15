@@ -28,6 +28,7 @@ const ITEMS = [
   { id: 'pending_disputes', label: '💬 اعتراض‌ها', roles: MANAGER_UP, handler: 'pendingDisputes' },
   { id: 'yesterday_reports', label: '📝 گزارش‌های دیروز تیم', roles: MANAGER_UP, handler: 'yesterdayReports' },
   { id: 'list_members', label: '👤 لیست اعضا', roles: MANAGER_UP, handler: 'listEmployees' },
+  { id: 'urgent_task', label: '⚡ تسک فوری', roles: MANAGER_UP, handler: 'urgentTask' },
 
   { id: 'add_employee', label: '➕ افزودن کارمند', roles: ADMIN_ONLY, handler: 'addEmployee' },
   { id: 'fix_record', label: '🛠 اصلاح رکورد', roles: ADMIN_ONLY, handler: 'fixRecord' },
@@ -108,6 +109,7 @@ function defaultHandlers() {
     addEmployee: require('../commands/addEmployee').handleAddEmployeeCommand,
     fixRecord: require('../commands/fixRecord').handleFixRecordCommand,
     yesterdayReports: sendTeamReportsLink,
+    urgentTask: require('../commands/urgentTask').handleUrgentTaskCommand,
   };
 }
 
