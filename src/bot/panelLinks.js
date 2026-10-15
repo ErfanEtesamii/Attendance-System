@@ -35,6 +35,17 @@ function canUseWebApp(url) {
   return !!url && url.startsWith('https://');
 }
 
+/**
+ * H3: هشدار لاگ وقتی MINI_APP_URL تنظیم نشده یا https نیست (دکمه‌های Web App در تلگرام کار نمی‌کنند). true = مشکل دارد.
+ * کلید: به‌جای پنهان‌کردن بی‌صدای دکمه‌ها، هم لاگ می‌ماند و هم به کاربر/ادمین پیام راهنما نشان داده می‌شود.
+ */
+function warnInsecureMiniAppUrl(where) {
+  if (canUseWebApp(config.miniAppUrl)) return false;
+  const state = config.miniAppUrl ? `${config.miniAppUrl} https نیست` : 'تنظیم نشده است';
+  console.warn(`[bot] هشدار: MINI_APP_URL ${state}؛ دکمه‌های Web App (ثبت تردد، پنل، برنامه هفتگی) کار نمی‌کنند.${where ? ` (${where})` : ''}`);
+  return true;
+}
+
 /** دکمه‌ی اینلاینِ «ورود به پنل» (Web App: ورود خودکار با initData، بدون کد و رمز) */
 function panelWebAppButton(opts = {}) {
   const url = panelUrl(opts);
@@ -67,4 +78,4 @@ function persistentKeyboard(user, opts) {
   return require('./menu/menuRouter').buildMainKeyboard(user, opts); // lazy: menuRouter خودش panelLinks را می‌خواهد
 }
 
-module.exports = { ROLE_LABELS, ROLE_ACCESS, panelUrl, panelWebAppButton, persistentKeyboard, miniAppLink, canUseWebApp, disputeButton };
+module.exports = { ROLE_LABELS, ROLE_ACCESS, panelUrl, panelWebAppButton, persistentKeyboard, miniAppLink, canUseWebApp, disputeButton, warnInsecureMiniAppUrl };

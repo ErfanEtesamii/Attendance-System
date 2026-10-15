@@ -6,7 +6,7 @@
 const { getRegisteredUser, notRegisteredMessage } = require('../auth');
 const { issueCode, issueLinkToken } = require('../../utils/panelLoginCodes');
 const auditRepository = require('../../repositories/auditRepository');
-const { ROLE_LABELS, ROLE_ACCESS, panelUrl, panelWebAppButton, persistentKeyboard } = require('../panelLinks');
+const { ROLE_LABELS, ROLE_ACCESS, panelUrl, panelWebAppButton, persistentKeyboard, warnInsecureMiniAppUrl } = require('../panelLinks');
 
 async function handlePanelLogin(bot, msg) {
   const chatId = msg.chat.id;
@@ -31,6 +31,7 @@ async function handlePanelLogin(bot, msg) {
   const buttons = [];
   const webApp = panelWebAppButton();
   if (webApp) buttons.push([webApp]);
+  else warnInsecureMiniAppUrl('«🖥 پنل»'); // H3: بدون https دکمه‌ی ورود داخل تلگرام ساخته نمی‌شود؛ به‌جای سکوت، در متن هم می‌گوییم
   buttons.push([{ text: '🌐 باز کردن در مرورگر', url: panelUrl({ token }) }]);
 
   const text = [
@@ -38,6 +39,7 @@ async function handlePanelLogin(bot, msg) {
     ROLE_ACCESS[user.role] || '',
     '',
     'برای ورود یکی از دکمه‌های زیر را بزنید.',
+    ...(webApp ? [] : ['⚠️ ورود داخل تلگرام فعال نیست (آدرس برنامه باید https باشد؛ به ادمین اطلاع دهید). فعلاً از «باز کردن در مرورگر» یا کد ورود استفاده کنید.']),
     `لینک مرورگر ${linkTtl / 60} دقیقه اعتبار دارد و فقط یک‌بار کار می‌کند؛ آن را برای کسی نفرستید.`,
     '',
     `کد ورود دستی (برای صفحه‌ی ورود): \`${code}\` — ${codeTtl / 60} دقیقه اعتبار.`,

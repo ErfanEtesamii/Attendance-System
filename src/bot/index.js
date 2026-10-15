@@ -5,6 +5,7 @@ const { routeMenuText, handleMenuCallback } = require('./menu/menuRouter');
 const { isPickerCallback, handlePickerCallback } = require('./ui/pickerRouter');
 const ui = require('./ui/pickers');
 const { startSchedulers } = require('./scheduler');
+const panelLinks = require('./panelLinks');
 const { instrumentBot } = require('../utils/botHealth');
 
 const { handleStart } = require('./commands/start');
@@ -159,6 +160,7 @@ function missionRequestOf(data) {
 async function configureBotUi(bot) {
   // E5/H2: همه‌ی کارها از «📂 منو» (تنها دکمه‌ی کیبورد پایین) انجام می‌شود؛ منوی «/» تلگرام خالی می‌شود (/start همچنان کار می‌کند)
   await bot.setMyCommands([]);
+  panelLinks.warnInsecureMiniAppUrl('راه‌اندازی بات'); // H3: MINI_APP_URL بدون https ⇒ هشدار در لاگ
 
   // دکمه منو برای باز کردن Mini App - فقط اگر آدرس واقعی در .env تنظیم شده باشد.
   // Mini App واقعی در فاز ۴ ساخته می‌شود؛ تا آن زمان این دکمه عمداً تنظیم نمی‌شود.

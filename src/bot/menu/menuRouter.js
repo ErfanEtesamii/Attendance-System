@@ -81,10 +81,10 @@ function roleAllowed(item, user) {
   return !item.roles || hasRole(user, item.roles);
 }
 
-/** دکمه‌های قابل‌نمایش برای کاربر (web_app فقط وقتی آدرس https دارد). */
+/** آیتم‌های قابل‌نمایش برای کاربر (بر اساس نقش). H3: آیتم web_app بدون https پنهان نمی‌شود؛ لمس دکمه‌اش راهنمای ادمین را نشان می‌دهد. */
 function itemsFor(user) {
   if (!user) return [];
-  return ITEMS.filter((it) => roleAllowed(it, user) && (!it.url || panelLinks.canUseWebApp(it.url())));
+  return ITEMS.filter((it) => roleAllowed(it, user));
 }
 
 /**
@@ -106,6 +106,7 @@ function groupOf(item) {
  * inline_keyboard پیام منو برای کاربر (۲ ستونه): کارمند ← افزوده‌های سرپرست ← افزوده‌های ادمین، با سرتیتر گروه
  * (فقط وقتی بیش از یک گروه هست؛ سرتیتر یک دکمه‌ی بی‌عمل «mn:_» است) و در انتها «✖️ بستن منو».
  * آیتم‌های web_app (فقط https) دکمه‌ی inline از نوع web_app می‌شوند (initData امضاشده فقط از این مسیر می‌آید).
+ * H3: وقتی MINI_APP_URL https نیست دکمه‌ی web_app ساخته نمی‌شود؛ همان آیتم دکمه‌ی «mn:<id>» می‌گیرد که راهنمای ادمین را نشان می‌دهد.
  * null برای کاربر ثبت‌نشده.
  */
 function buildMenuInline(user) {
@@ -116,7 +117,7 @@ function buildMenuInline(user) {
   const rows = [];
   for (const b of buckets) {
     if (withHeads) rows.push([{ text: `— ${b.title} —`, callback_data: `mn:${MENU_NOOP_ID}` }]);
-    const buttons = b.items.map((it) => (it.url ? { text: it.label, web_app: { url: it.url() } } : { text: it.label, callback_data: `mn:${it.id}` }));
+    const buttons = b.items.map((it) => (it.url && panelLinks.canUseWebApp(it.url()) ? { text: it.label, web_app: { url: it.url() } } : { text: it.label, callback_data: `mn:${it.id}` }));
     for (let i = 0; i < buttons.length; i += 2) rows.push(buttons.slice(i, i + 2));
   }
   rows.push([{ text: '✖️ بستن منو', callback_data: `mn:${MENU_CLOSE_ID}` }]);
@@ -194,6 +195,7 @@ function defaultHandlers() {
 async function sendWebAppLink(bot, chatId, item) {
   const url = item.url();
   if (!panelLinks.canUseWebApp(url)) {
+    panelLinks.warnInsecureMiniAppUrl(`دکمه‌ی «${item.label}»`);
     await bot.sendMessage(chatId, 'این بخش فقط روی آدرس https کار می‌کند؛ به ادمین اطلاع دهید (MINI_APP_URL).');
     return;
   }
@@ -246,7 +248,7 @@ async function routeMenuText(bot, msg, handlers) {
 
 /**
  * دکمه‌ی inline «mn:<id>» (مثلاً «📥 درخواست‌های منتظر» زیر اعلان درخواست مرخصی) ⇒ همان handlerِ دکمه‌ی منو.
- * نقش هر بار از دیتابیس خوانده می‌شود؛ دکمه‌ی ناشناخته/web_app ⇒ «این دکمه منقضی شده». هر callback دقیقاً یک‌بار answer می‌شود.
+ * نقش هر بار از دیتابیس خوانده می‌شود؛ دکمه‌ی ناشناخته ⇒ «این دکمه منقضی شده»؛ آیتم web_app ⇒ لینک inline یا راهنمای https (H3). هر callback دقیقاً یک‌بار answer می‌شود.
  */
 async function handleMenuCallback(bot, query, handlers) {
   const id = String(query.data || '').slice(3);
@@ -260,7 +262,7 @@ async function handleMenuCallback(bot, query, handlers) {
     await deleteMenuMessage(bot, query.message);
     return;
   }
-  const item = ITEMS.find((it) => it.id === id && !it.url);
+  const item = ITEMS.find((it) => it.id === id);
   const chat = query.message && query.message.chat;
   if (!item || !chat || chat.type !== 'private' || !query.from) {
     await bot.answerCallbackQuery(query.id, { text: 'این دکمه منقضی شده، منو را باز کنید.', show_alert: true });
@@ -278,6 +280,11 @@ async function handleMenuCallback(bot, query, handlers) {
   await bot.answerCallbackQuery(query.id);
   session.clear(chat.id);
   if (isMenuMessage(query.message)) await deleteMenuMessage(bot, query.message); // H2: بعد از انتخاب، پیام منو پاک می‌شود
+  if (item.url) {
+    // H3: آیتم web_app که به‌جای دکمه‌ی web_app callback شده (MINI_APP_URL بدون https) یا دکمه‌ی قدیمی: https ⇒ دکمه‌ی inline web_app؛ وگرنه راهنمای ادمین
+    await sendWebAppLink(bot, chat.id, item);
+    return;
+  }
   const fn = (handlers || defaultHandlers())[item.handler];
   await fn(bot, { chat, from: query.from, text: item.label });
 }
