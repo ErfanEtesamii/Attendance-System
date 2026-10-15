@@ -4,6 +4,22 @@
 
 ## [Unreleased] — بخش ۴ (ممیزی)
 
+### فاز ۱۲ — G1: مستندسازی و استقرار
+- **مستندات جدید:** [`docs/PHASE12_DECISIONS.md`](docs/PHASE12_DECISIONS.md) (تعریف تأخیر و «بیش از ۳ بار»، رفتار ورود با اجازه، فرمول استراحت با حقوق و وضعیت ناهار، اولویت override/شیفت/سراسری، استثنای قفل برای تسک فوری، فرمول درصد عملکرد، نتیجه‌ی تشخیص H3 و H4، تسک واجب سرپرست، ریسک‌های باز) و [`docs/PHASE12_DEPLOY.md`](docs/PHASE12_DEPLOY.md) (دستورهای استقرار PowerShell با `deploy\nssm.exe`، فعال‌سازی تدریجی، چک‌لیست ۱۲ بندی تست دستی، rollback).
+- **به‌روزرسانی:** `README.md` (routeهای تازه، Jobها، استقرار، پوشش تست)، `PROJECT_STATUS.md`، `docs/UI_STATES.md`.
+- **بستن کار باز H5:** Jobِ `teamReviewEnsure` (هر روز ۰۰:۱۰؛ `CRON_TEAM_REVIEW_ENSURE`) در README/PROJECT_STATUS ثبت شد.
+- **migration:** آخرین migration `032_urgent_tasks`؛ فاز ۱۲ شامل ۰۲۸ تا ۰۳۲ است (همه افزایشی). `.env` تغییر اجباری ندارد؛ دو متغیر اختیاری `CRON_URGENT_TASK_REMINDER` و `CRON_TEAM_REVIEW_ENSURE` در `.env.example` هست. تنظیم‌های تازه (`paidBreakCount`، `paidBreakMinutes`، `lateMonthlyLimit`، `lateLimitGateMode`، `lateLimitPermissionTtlMinutes`) همه به‌صورت پیش‌فرض خاموش‌اند.
+- ⚠️ **H1 (ساعت دورکاری) پیاده‌سازی نشده** و مستندات آن را رفتار فعلی معرفی نمی‌کنند؛ بند ۸ چک‌لیست دستی تا اجرای H1 قابل انجام نیست.
+- **بررسی نشده:** `npm test`، `npm run smoke` و `npm run secret-scan` هنگام نگارش این مرحله اجرا نشده‌اند (محیط بدون `node_modules` و شبکه)، و هیچ‌کدام از UIها و جریان‌های فاز ۱۲ روی گوشی/تلگرام واقعی دیده نشده است.
+
+### فاز ۱۲ — خلاصه‌ی مراحل A تا F (پیش‌تر در این فایل ثبت نشده بود)
+- **A1 — پاسخ ادمین در گفت‌وگوی اعتراض:** مسیر «پاسخ و بستن» بات به `disputeService` وصل شد؛ پاسخ در thread کارمند می‌آید، `closed_by='admin'` و `last_message_at` ثبت می‌شود و اعلان تلگرام لینک مستقیم دارد.
+- **B1/B2 — شیفت و برنامه‌ی روز:** migration ۰۲۸ (انتساب شیفت با `effective_from`) و ۰۲۹ (`user_day_schedules`، `kind` برابر `work|off`)؛ اولویت override روز ← شیفت مؤثر ← سراسری؛ API و UI پنل (انتساب گروهی، شبکه‌ی ماهانه‌ی برنامه‌ی روز، ثبت گروهی تا ۳۱ روز و ۵۰ نفر)؛ مجوزهای `schedule.read` و `schedule.manage`؛ ساعت مؤثر امروز و فردا در Mini App (`/miniapp/schedule/upcoming`).
+- **C1 — استراحت با حقوق:** migration ۰۳۰، تنظیم‌های سراسری و فیلد روی شیفت؛ خروجی‌های `breakPaid`/`breakUnpaid` در `computeDay`؛ ستون‌های تازه در گزارش‌ها و خروجی‌ها؛ پیام «استراحت با حقوق» هم‌گام با تایمر و هشدار پایان سهمیه در Mini App.
+- **D1–D3 — سقف تأخیر و اجازه‌ی ورود:** migration ۰۳۱، `lateLimitService` (شمارش ماه شمسی، `wouldBeLate`، چرخه‌ی اجازه)؛ گیت `POST /miniapp/check-in` (`off|soft|enforce`، ۴۰۹ `LATE_LIMIT_REACHED`)؛ کارت «درخواست اجازه‌ی ورود» در Mini App؛ اعلان و دکمه‌های تأیید/رد در بات، صف پنل و شمار تأخیر ماه («۲ از ۳») در پروفایل.
+- **E1–E3 — تسک فوری:** migration ۰۳۲؛ `urgentTaskService` (استثنای `PLAN_LOCKED`، اولویت high، اسکوپ سرپرست، ماه بسته)؛ یادآوری مهلت ساعتی (cron)؛ نمایش «⚡ فوری» و بنر در Mini App؛ ثبت از پنل و از بات.
+- **F1/F2 — نمای هفتگی کارمند:** `GET /admin/users/:id/week` (مجوز `team.week_view`) با روزها، حضور، تسک‌ها، «مشاهده شد» و خلاصه‌ی عملکرد (فرمول در `docs/PHASE12_DECISIONS.md`)؛ صفحه‌ی `weekly` پنل با KPI، شبکه‌ی ۷ روزه، اقدامات مدیریتی (تسک فوری، ویرایش برنامه‌ی روز، مشاهده شد/نظر) و چاپ.
+
 ### فاز ۱۲ — H5 (بخش ۲ و ۳): نمایش و تست تسک واجب سرپرست
 - **نمایش (بخش ۲):** `src/services/teamReviewProgress.js` (جدید) فیلد `review` (`reviewDate`، `reportCount`، `reviewedCount`، `noReportCount`، `complete`، `notYet`) را برای تسک `review_team_reports` می‌سازد؛ در `getPlan` (Mini App) و نمای هفتگی F1 استفاده شد. Mini App و پنل: برچسب «🔒 واجب»، فقط‌خواندنی، «۳ از ۴ گزارش مشاهده شد» با نوار پیشرفت و دکمه‌ی «مشاهده‌ی گزارش‌ها» (`teamreports` برای همان روز؛ `?go=صفحه/پارامتر` در پنل). باز شدن نمای هفتگیِ F1 سرپرست، تسک را برای امروز و روزهای بعد می‌سازد (idempotent). `morningDigest` بدون تغییر: یک خط «مشاهده نشده» برای هر سرپرست.
 - **تست (بخش ۳):** `test/teamReviewH5.test.js` با `mock.timers` روی ۲۰۲۶-۱۰-۱۲: سرپرست جدید بدون برنامه، زیردست جدید وسط هفته، روز قبل تعطیل، ادمین/سرپرست بدون زیردست، اجرای دوباره، F1، پیشرفت زنده، رد ویرایش/حذف، ماه بسته، خط `morningDigest` و بررسی ایستای UI.

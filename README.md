@@ -7,6 +7,7 @@
 - تاریخچه‌ی تغییرات: [`CHANGELOG.md`](CHANGELOG.md)
 - فاز ۱۰ (استراحت، ریست برنامه، ماموریت، برنامه‌ی هفتگی/گزارش روزانه، بات دکمه‌ای): تصمیم‌ها [`docs/PHASE10_DECISIONS.md`](docs/PHASE10_DECISIONS.md) و استقرار/تست دستی [`docs/PHASE10_DEPLOY.md`](docs/PHASE10_DEPLOY.md)
 - فاز ۱۱ (گیت خروج بر اساس اولویت، قفل برنامه‌ی هفتگی با شروع هفته، UI کارت‌های روزانه، گفت‌وگوی دوطرفه روی اعتراض): تصمیم‌ها [`docs/PHASE11_DECISIONS.md`](docs/PHASE11_DECISIONS.md) و استقرار/تست دستی [`docs/PHASE11_DEPLOY.md`](docs/PHASE11_DEPLOY.md)
+- فاز ۱۲ (شیفت با تاریخ اعمال و برنامه‌ی روزبه‌روز، استراحت با حقوق، سقف تأخیر و اجازه‌ی ورود، تسک فوری، نمای هفتگی کارمند، منوی «📂 منو»، ورودی ساعت قابل‌تایپ، تسک واجب سرپرست): تصمیم‌ها [`docs/PHASE12_DECISIONS.md`](docs/PHASE12_DECISIONS.md) و استقرار/تست دستی [`docs/PHASE12_DEPLOY.md`](docs/PHASE12_DEPLOY.md). ⚠️ H1 (ساعت دورکاری) هنوز پیاده‌سازی نشده است.
 
 ## فناوری‌ها
 
@@ -92,7 +93,7 @@ public-admin/              پنل مدیریتی وب (بدون build)، زیر 
 scripts/                   install-service.ps1 (NSSM)، setup-ssl-renewal.ps1، run-tests.js، smoke-test.js،
                            package-release.js (zip بدون راز)، secret-scan.js، lib/ (zip، اسکنر، قوانین release)
 test/                      تست‌های خودکار (node:test)
-docs/                      ARCHITECTURE.md، PHASE10_DECISIONS.md، PHASE10_DEPLOY.md، PHASE11_DECISIONS.md، PHASE11_DEPLOY.md، UI_STATES.md، SECURITY.md (هدرها/CSP/کوکی/CSRF/ابطال نشست)، SECRETS.md (مدیریت رازها)
+docs/                      ARCHITECTURE.md، PHASE10_DECISIONS.md، PHASE10_DEPLOY.md، PHASE11_DECISIONS.md، PHASE11_DEPLOY.md، PHASE12_DECISIONS.md، PHASE12_DEPLOY.md، UI_STATES.md، SECURITY.md (هدرها/CSP/کوکی/CSRF/ابطال نشست)، SECRETS.md (مدیریت رازها)
 ```
 
 ## نقش‌ها
@@ -124,7 +125,8 @@ docs/                      ARCHITECTURE.md، PHASE10_DECISIONS.md، PHASE10_DEPL
 |---|---|
 | `GET /health` | سلامت سرویس (عمومی): فقط `status` (`ok`/`degraded`) و `time` |
 | `GET /miniapp/me`، `/today`، `/history`، `/report` | داده‌ی کارمند (پشت `telegramAuth`) |
-| `POST /miniapp/check-in`، `/check-out`، `/break/start`، `/break/end` | ثبت تردد (+ شبکه + rate limit) |
+| `POST /miniapp/check-in`، `/check-out`، `/break/start`، `/break/end` | ثبت تردد (+ شبکه + rate limit)؛ ورودِ دیر با سقف تأخیر در حالت `enforce` ⇒ ۴۰۹ `LATE_LIMIT_REACHED` |
+| `GET/POST /miniapp/checkin-permission`، `GET /miniapp/schedule/upcoming` | وضعیت گیت تأخیر و درخواست «اجازه‌ی ورود»؛ ساعت کاری مؤثر امروز و روزهای بعد |
 | `GET/POST /miniapp/leave` | مرخصی/مأموریت |
 | `GET/POST /miniapp/dispute`، `GET /miniapp/dispute/:id`، `POST /miniapp/dispute/:id/(messages\|reopen\|close)` | اعتراض کارمند و گفت‌وگو روی آن (پیام، ادامه تا سقف `disputeMaxReopens`، خاتمه) |
 | `POST /miniapp/mission`، `/mission/now`، `/mission/now/end`، `/missions/:id/cancel`؛ `GET /miniapp/missions`، `/mission/day` | ماموریت (ثبت، «همین حالا»، لغو، فهرست) |
@@ -144,6 +146,11 @@ docs/                      ARCHITECTURE.md، PHASE10_DECISIONS.md، PHASE10_DEPL
 | `POST /admin/broadcast`، `GET /admin/system`، `/system/status`، `/system/backup` | سیستم و وضعیت/مانیتورینگ (فقط ادمین) |
 | `GET /admin/system/reset/options`، `POST /admin/system/reset/preview`، `POST /admin/system/reset` | ریست برنامه (فقط ادمین؛ تأیید دوگانه، بک‌آپ، rate limit؛ قفل Go-Live) |
 | `GET /admin/team-review`، `/team-reports`، `/team-reports/export`، `/task-kpis`؛ `POST /admin/report-reviews`، `/plan-gate/exemptions` | گزارش‌های تیم، شاخص‌های تسک، مشاهده‌ی گزارش و معافیت یک‌باره‌ی گیت برنامه |
+| `GET /admin/users/:id/schedule`؛ `PUT/DELETE /admin/users/:id/schedule/:date`؛ `POST /admin/schedule/bulk` | برنامه‌ی کاری روزبه‌روز (override؛ `schedule.read`/`schedule.manage`؛ ماه بسته ⇒ ۴۰۹؛ گروهی تا ۳۱ روز و ۵۰ نفر) |
+| `GET/POST /admin/shifts…`، `PUT /admin/users/:id/shift`، `POST /admin/shifts/assign` | شیفت‌ها و انتساب (فردی/گروهی) با «تاریخ اعمال» |
+| `GET /admin/checkin-permissions`، `POST /admin/checkin-permissions/:id/decide` | صف «اجازه‌ی ورود» و تأیید/رد (سرپرست مستقیم یا ادمین؛ HR فقط‌خواندنی) |
+| `POST /admin/users/:id/urgent-tasks`، `GET /admin/urgent-tasks`، `DELETE /admin/urgent-tasks/:taskId` | تسک فوری (`tasks.assign_urgent`؛ ادمین همه، سرپرست زیردست مستقیم) |
+| `GET /admin/users/:id/week?start=` | نمای هفتگی کامل کارمند با خلاصه‌ی عملکرد (`team.week_view`؛ فقط‌خواندنی) |
 
 > مسیرهای قدیمی فاز ۱ (`/api/users*`، `/api/attendance/*`، `/api/audit-log`) در نسخه‌ی `1.0.0-rc.1` حذف شدند (بدون مصرف‌کننده و بدون احراز هویت درست). دلیل در `CHANGELOG.md`.
 
@@ -151,7 +158,7 @@ docs/                      ARCHITECTURE.md، PHASE10_DECISIONS.md، PHASE10_DEPL
 
 Polling (بدون webhook و بدون پورت ورودی). همه‌ی کارها از دکمه‌ی **«📂 منو»** انجام می‌شود که تنها دکمه‌ی کیبورد پایین چت است؛ با لمس آن پیام منوی inline نقش‌محور (۲ ستونه، گروه‌بندی «کارهای من / تیم / مدیریت»، با «✖️ بستن منو») باز می‌شود و بعد از انتخاب پاک می‌شود. «🕒 ثبت تردد»، «📋 برنامه هفتگی» و «⚙️ پنل مدیریت» دکمه‌ی inline از نوع `web_app` (فقط https) هستند. کاربری که هنوز کیبورد قدیمی ۱۵ دکمه‌ای را دارد با اولین لمس یکی از دکمه‌هایش کیبورد جدید را می‌گیرد؛ برای جایگزینی یک‌جا می‌توان `node src/scripts/pushPanelButton.js --apply` را اجرا کرد (منوی «/» تلگرام عمداً خالی است؛ فقط `/start` برای شروع کار می‌کند). گزینه‌های منو — کارمند: «🕒 ثبت تردد»، «📊 وضعیت من»، «📈 گزارش من»، «🏖 مرخصی / 🚗 ماموریت»، «📋 برنامه هفتگی»، «🖥 پنل»، «❓ راهنما»؛ سرپرست: + «👥 گزارش تیم»، «📥 درخواست‌های منتظر»، «💬 اعتراض‌ها»، «📝 گزارش‌های دیروز تیم»، «👤 لیست اعضا»؛ ادمین: + «➕ افزودن کارمند»، «🛠 اصلاح رکورد»، «⚙️ پنل مدیریت». نقش هر بار سمت سرور از دیتابیس چک می‌شود. در جریان‌های چندمرحله‌ای تاریخ با تقویم شمسی inline، ساعت با اسلات ۳۰ دقیقه‌ای و کارمند/سرپرست با فهرست دکمه‌ای انتخاب می‌شود (تایپ `YYYY-MM-DD` / `HH:MM` هم پذیرفته است)؛ زیر هر مرحله «❌ انصراف | 🏠 منوی اصلی» هست و دکمه‌ی پیام قدیمی/منقضی «این دکمه منقضی شده، منو را باز کنید.» می‌دهد. فقط متن آزاد (نام، توضیح، دلیل) تایپ می‌ماند. حالت گفتگوهای چندمرحله‌ای در حافظه است و با ری‌استارت پروسه از بین می‌رود.
 
-Jobهای `node-cron` (`src/bot/scheduler/`): یادآور تأخیر و خروج، علامت‌گذاری تعطیل/مرخصی، بستن رکوردهای ناقص، گزارش روزانه/هفتگی/ماهانه (ماه شمسی)، مرور شبانه، و **watchdog** (هشدار تلگرامی به ادمین‌ها؛ [`docs/MONITORING.md`](docs/MONITORING.md)). هر اجرای Job در جدول `job_runs` ثبت می‌شود و در پنل (ادمین ← «وضعیت سیستم») دیده می‌شود. عبارات `CRON_*` و ساعت‌ها در `.env` قابل تنظیم‌اند؛ **پیش‌فرض‌ها شنبه تا چهارشنبه را فرض می‌کنند — با روزهای کاری واقعی تطبیق دهید.**
+Jobهای `node-cron` (`src/bot/scheduler/`): یادآور تأخیر و خروج، علامت‌گذاری تعطیل/مرخصی، بستن رکوردهای ناقص، گزارش روزانه/هفتگی/ماهانه (ماه شمسی)، مرور شبانه، یادآوری مهلت تسک فوری (هر ۱۰ دقیقه، `CRON_URGENT_TASK_REMINDER`)، ساخت خودکار تسک واجب «بررسی گزارش روز قبل» برای سرپرست‌ها (هر روز ۰۰:۱۰، `CRON_TEAM_REVIEW_ENSURE`)، و **watchdog** (هشدار تلگرامی به ادمین‌ها؛ [`docs/MONITORING.md`](docs/MONITORING.md)). هر اجرای Job در جدول `job_runs` ثبت می‌شود و در پنل (ادمین ← «وضعیت سیستم») دیده می‌شود. عبارات `CRON_*` و ساعت‌ها در `.env` قابل تنظیم‌اند؛ **پیش‌فرض‌ها شنبه تا چهارشنبه را فرض می‌کنند — با روزهای کاری واقعی تطبیق دهید.**
 
 ## استقرار (ویندوز + NSSM)
 
@@ -160,6 +167,8 @@ Jobهای `node-cron` (`src/bot/scheduler/`): یادآور تأخیر و خرو�
 3. نصب سرویس: `scripts/install-service.ps1` (NSSM، شروع خودکار، چرخش لاگ، ری‌استارت در crash).
 4. در BotFather: `/setdomain` برای دامنه‌ی پنل (لازم برای Login Widget).
 5. هر ارتقا: `nssm stop` ← جایگزینی کد ← `npm install` ← `npm run migrate` ← `nssm start`.
+
+ارتقا به فاز ۱۲ (migration ۰۲۸ تا ۰۳۲، فقط افزایشی؛ `.env` تغییر اجباری ندارد؛ تنظیم‌های تازه‌ی استراحت با حقوق و سقف تأخیر به‌صورت پیش‌فرض خاموش‌اند): دستورها، فعال‌سازی تدریجی و چک‌لیست تست دستی در [`docs/PHASE12_DEPLOY.md`](docs/PHASE12_DEPLOY.md).
 
 ارتقا به فاز ۱۱ (فقط migration ۰۲۷، افزایشی؛ بدون متغیر `.env` جدید؛ تنظیم تازه‌ی `disputeMaxReopens`): دستورها و چک‌لیست تست دستی در [`docs/PHASE11_DEPLOY.md`](docs/PHASE11_DEPLOY.md).
 
@@ -177,4 +186,4 @@ npm run secret-scan  # جست‌وجوی توکن/کلید/راز در پروژ�
 npm run package      # zip تحویل بدون .env/.ssl/data/node_modules/.git → dist/
 ```
 
-تست‌ها hermetic هستند: دیتابیس موقت، توکن و راز ساختگی، و `.env` واقعی خوانده نمی‌شود. پوشش فعلی: migration، `initData` و Login Widget، سشن، `networkRestriction`، ماتریس دسترسی نقش × route، ساختار ترتیب routeها، و (بخش ۲-الف) هدرها/CSP، کوکی، CSRF و ابطال نشست، و (بخش ۲-ب۱) کنترل رازهای راه‌اندازی، اسکنر رازها و بسته‌ساز release، و (بخش ۲-ج۱) ثبت اجرای Jobها، نبض polling، سلامت سیستم، watchdog با بات ماک‌شده و `/api/health` + `/api/admin/system/status`. تست‌های موتور محاسبه با بخش ۳ می‌آید. فاز ۱۰: استراحت، ریست برنامه (rollback، قفل Go-Live، rate limit)، ماموریت (اعتبارسنجی، اثر روی ساعت کاری، تأیید شبانه، ورود با ماموریت pending)، برنامه‌ی هفتگی و گیت‌های خروج، گزارش روزانه/تشویقی، گزارش تیم، منوی نقش‌محور بات و انتخابگرهای دکمه‌ای. فاز ۱۱: گیت خروج بر اساس اولویت، قفل برنامه‌ی هفتگی (`PLAN_LOCKED`)، UI برنامه‌ی هفتگی، گفت‌وگوی اعتراض (migration ۰۲۷، API کارمند/ادمین، اعلان‌ها، بستن ماه، UI) و سناریوی یکپارچه‌ی اعتراض. فاز ۱۲ (H5): تسک واجب سرپرست «بررسی گزارش روز قبل» (`test/teamReviewH5.test.js`: ساخت خودکار، پیشرفت «x از y مشاهده شد»، F1، رد ویرایش/حذف، ماه بسته، `morningDigest`). Jobِ زمان‌بندی‌شده‌ی ساخت تسک (بخش ۱) را پس از اعمال پچ بخش ۱ اینجا و در `scheduler/index.js` ثبت کنید.
+تست‌ها hermetic هستند: دیتابیس موقت، توکن و راز ساختگی، و `.env` واقعی خوانده نمی‌شود. پوشش فعلی: migration، `initData` و Login Widget، سشن، `networkRestriction`، ماتریس دسترسی نقش × route، ساختار ترتیب routeها، و (بخش ۲-الف) هدرها/CSP، کوکی، CSRF و ابطال نشست، و (بخش ۲-ب۱) کنترل رازهای راه‌اندازی، اسکنر رازها و بسته‌ساز release، و (بخش ۲-ج۱) ثبت اجرای Jobها، نبض polling، سلامت سیستم، watchdog با بات ماک‌شده و `/api/health` + `/api/admin/system/status`. تست‌های موتور محاسبه با بخش ۳ می‌آید. فاز ۱۰: استراحت، ریست برنامه (rollback، قفل Go-Live، rate limit)، ماموریت (اعتبارسنجی، اثر روی ساعت کاری، تأیید شبانه، ورود با ماموریت pending)، برنامه‌ی هفتگی و گیت‌های خروج، گزارش روزانه/تشویقی، گزارش تیم، منوی نقش‌محور بات و انتخابگرهای دکمه‌ای. فاز ۱۱: گیت خروج بر اساس اولویت، قفل برنامه‌ی هفتگی (`PLAN_LOCKED`)، UI برنامه‌ی هفتگی، گفت‌وگوی اعتراض (migration ۰۲۷، API کارمند/ادمین، اعلان‌ها، بستن ماه، UI) و سناریوی یکپارچه‌ی اعتراض. فاز ۱۲: پاسخ ادمین از بات در thread اعتراض (`disputeBotReply`)، شیفت با تاریخ اعمال (`shiftEffectiveFrom`، `shifts`)، برنامه‌ی روزبه‌روز (`userSchedule`)، استراحت با حقوق (`paidBreaks`، `computeDay`)، سقف تأخیر و اجازه‌ی ورود (`lateLimit`، `lateLimitGate`، `checkinPermissionNotify`)، تسک فوری (`urgentTaskBot` و تست‌های مرتبط)، نمای هفتگی کارمند (`employeeWeek`)، منوی «📂 منو» (`botMenu`)، ورودی ساعت قابل‌تایپ (`timeInput`، `botTimeInput`) و تسک واجب سرپرست «بررسی گزارش روز قبل» (`teamReviewH5`: ساخت خودکار و Job، پیشرفت «x از y مشاهده شد»، F1، رد ویرایش/حذف، ماه بسته، `morningDigest`). تست‌های فاز ۱۲ هنگام نگارش مستندات G1 اجرا نشده‌اند؛ پیش از استقرار `npm test` را اجرا کنید.
