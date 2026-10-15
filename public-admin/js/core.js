@@ -623,7 +623,7 @@
     }
   };
 
-  // ---------- ورود با کد یک‌بارمصرف بات (/panel) ----------
+  // ---------- ورود با کد یک‌بارمصرف بات (منوی بات ← «🖥 پنل») ----------
   async function loginWithCode() {
     const errEl = $('#login-error');
     errEl.textContent = '';
@@ -698,6 +698,8 @@
       AP.state.me = { id: me.id, fullName: me.fullName, role: me.role, department: me.department };
       enterApp();
     } catch (_) {
+      // بدون initData، بدون توکن و بدون نشست معتبر: راهنمای روشن به‌جای صفحه‌ی خالی/خطای فنی
+      $('#login-error').textContent = 'برای ورود، از دکمه‌ی 📂 منو در بات باز کنید.';
       setupLoginWidget();
     }
   };

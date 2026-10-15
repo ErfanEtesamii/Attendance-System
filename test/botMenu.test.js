@@ -161,13 +161,20 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
       }
     });
 
-    test('بدون https: آیتم‌های web_app حذف می‌شوند و بقیه می‌مانند', () => {
+    test('بدون https (H3): آیتم‌های web_app می‌مانند ولی دکمه‌ی callback می‌شوند (نه web_app)', () => {
+      const httpsTexts = itemTexts(menu.buildMenuInline(admin));
       config.miniAppUrl = 'http://192.168.1.5:3000/app/';
       try {
-        const texts = itemTexts(menu.buildMenuInline(admin));
-        assert.ok(!texts.includes('🕒 ثبت تردد') && !texts.includes('📋 برنامه هفتگی') && !texts.includes('⚙️ پنل مدیریت'));
+        const kb = menu.buildMenuInline(admin);
+        const texts = itemTexts(kb);
+        assert.deepEqual(texts, httpsTexts, 'فهرست آیتم‌ها با http همان فهرست https است');
+        assert.ok(texts.includes('🕒 ثبت تردد') && texts.includes('📋 برنامه هفتگی') && texts.includes('⚙️ پنل مدیریت'));
         assert.ok(texts.includes('📊 وضعیت من') && texts.includes('🖥 پنل'));
-        assert.ok(!btns(menu.buildMenuInline(admin)).some((b) => b.web_app));
+        assert.ok(!btns(kb).some((b) => b.web_app));
+        const by = (t) => btns(kb).find((b) => b.text === t);
+        assert.equal(by('🕒 ثبت تردد').callback_data, 'mn:checkin');
+        assert.equal(by('📋 برنامه هفتگی').callback_data, 'mn:plan');
+        assert.equal(by('⚙️ پنل مدیریت').callback_data, 'mn:admin_panel');
       } finally { config.miniAppUrl = 'https://attendance.example.com/app/'; }
     });
 
@@ -471,8 +478,8 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
       assert.equal(bot.answers.length, 1);
     });
 
-    test('دکمه‌ی ناشناخته، آیتم web_app، چت غیرخصوصی و کاربر ثبت‌نشده: منقضی/رد و handler اجرا نمی‌شود', async () => {
-      for (const [user, data, o] of [[admin, 'mn:nope'], [emp, 'mn:checkin'], [mgr, 'mn:pending_leaves', { chatType: 'group' }]]) {
+    test('دکمه‌ی ناشناخته، چت غیرخصوصی و کاربر ثبت‌نشده: منقضی/رد و handler اجرا نمی‌شود (mn:checkin دیگر منقضی نیست؛ H3)', async () => {
+      for (const [user, data, o] of [[admin, 'mn:nope'], [mgr, 'mn:pending_leaves', { chatType: 'group' }]]) {
         const bot = mockBot(); const { calls, h } = spies();
         await menu.handleMenuCallback(bot, cbQuery(user, data, o), h);
         assert.deepEqual(calls, [], data);
@@ -485,6 +492,119 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
       await menu.handleMenuCallback(bot, q, h);
       assert.deepEqual(calls, []);
       assert.equal(bot.answers[0].show_alert, true);
+    });
+  });
+
+  describe('H3: بازکننده‌های Mini App/پنل فقط inline web_app (نه کیبورد پاسخ) و راهنمای ورود', () => {
+    const { mock } = require('node:test');
+    const HTTPS = 'https://attendance.example.com/app/';
+    const MENU_TEXT = '📂 منو — یکی از گزینه‌ها را انتخاب کنید:';
+    const cbQuery = (user, data) => ({
+      id: `h3q${seq += 1}`, data, from: { id: Number(user.telegram_user_id) },
+      message: { message_id: 88, text: MENU_TEXT, chat: { id: chat(), type: 'private' } },
+    });
+    const btns = (kb) => kb.inline_keyboard.flat();
+    const withUrl = async (url, fn) => {
+      config.miniAppUrl = url;
+      const warn = mock.method(console, 'warn', () => {});
+      try { await fn(warn); } finally { warn.mock.restore(); config.miniAppUrl = HTTPS; }
+    };
+    const readSrc = (...p) => fs.readFileSync(path.join(__dirname, '..', ...p), 'utf8');
+    const MSG = 'برای ورود، از دکمه‌ی 📂 منو در بات باز کنید';
+
+    test('buildMainKeyboard برای هر سه نقش و با هر MINI_APP_URL (https، http، خالی) هیچ web_app ندارد', () => {
+      for (const url of [HTTPS, 'http://192.168.1.5:3000/app/', '']) {
+        config.miniAppUrl = url;
+        try {
+          for (const user of [emp, mgr, admin]) {
+            const kb = menu.buildMainKeyboard(user);
+            assert.ok(!JSON.stringify(kb).includes('web_app'), `${user.role} @ ${url || '(خالی)'}`);
+            assert.deepEqual(kb.keyboard, [[{ text: '📂 منو' }]]);
+          }
+        } finally { config.miniAppUrl = HTTPS; }
+      }
+    });
+
+    test('https: پیام منو برای هر نقش دکمه‌ی inline web_app با view درست دارد', () => {
+      const find = (kb, t) => btns(kb).find((b) => b.text === t);
+      for (const user of [emp, mgr, admin]) {
+        const kb = menu.buildMenuInline(user);
+        assert.equal(find(kb, '🕒 ثبت تردد').web_app.url, HTTPS);
+        assert.equal(new URL(find(kb, '📋 برنامه هفتگی').web_app.url).searchParams.get('view'), 'plan');
+      }
+      assert.equal(find(menu.buildMenuInline(emp), '⚙️ پنل مدیریت'), undefined);
+      assert.equal(find(menu.buildMenuInline(mgr), '⚙️ پنل مدیریت'), undefined);
+      assert.equal(new URL(find(menu.buildMenuInline(admin), '⚙️ پنل مدیریت').web_app.url).pathname, '/admin/');
+    });
+
+    test('panelWebAppButton مقصد go را حفظ می‌کند؛ بدون https دکمه ساخته نمی‌شود', async () => {
+      const b = panelLinks.panelWebAppButton({ view: 'teamreports' });
+      assert.equal(new URL(b.web_app.url).searchParams.get('go'), 'teamreports');
+      await withUrl('http://192.168.1.5:3000/app/', async () => {
+        assert.equal(panelLinks.panelWebAppButton({ view: 'teamreports' }), null);
+        assert.equal(panelLinks.canUseWebApp(panelLinks.miniAppLink({ view: 'plan' })), false);
+      });
+    });
+
+    test('http: لمس «ثبت تردد» (mn:checkin) ⇒ یک‌بار answer، پیام منو پاک، پیام راهنمای ادمین (https/MINI_APP_URL)، بدون web_app، با هشدار لاگ', async () => {
+      await withUrl('http://192.168.1.5:3000/app/', async (warn) => {
+        for (const [user, id] of [[emp, 'mn:checkin'], [emp, 'mn:plan'], [admin, 'mn:admin_panel']]) {
+          const bot = mockBot(); const { calls, h } = spies();
+          const before = warn.mock.calls.length;
+          await menu.handleMenuCallback(bot, cbQuery(user, id), h);
+          assert.equal(bot.answers.length, 1, id);
+          assert.equal(bot.answers[0].show_alert, undefined, id);
+          assert.deepEqual(calls, [], id);
+          assert.equal(bot.deleted.length, 1, id);
+          assert.match(lastMsg(bot).text, /https/, id);
+          assert.match(lastMsg(bot).text, /MINI_APP_URL/, id);
+          assert.equal(lastMsg(bot).opts, undefined, id);
+          assert.ok(warn.mock.calls.length > before, `${id}: باید هشدار لاگ بیاید`);
+          assert.match(String(warn.mock.calls[warn.mock.calls.length - 1].arguments[0]), /MINI_APP_URL/);
+        }
+      });
+    });
+
+    test('https: لمس mn:checkin/mn:plan/mn:admin_panel ⇒ دکمه‌ی inline web_app با آدرس درست (دکمه‌ی قدیمی/اعلان هم منقضی نیست)', async () => {
+      const cases = [[emp, 'mn:checkin', (u) => u.href === HTTPS], [emp, 'mn:plan', (u) => u.searchParams.get('view') === 'plan'], [admin, 'mn:admin_panel', (u) => u.pathname === '/admin/']];
+      for (const [user, id, ok] of cases) {
+        const bot = mockBot(); const { calls, h } = spies();
+        await menu.handleMenuCallback(bot, cbQuery(user, id), h);
+        assert.equal(bot.answers.length, 1, id);
+        assert.deepEqual(calls, [], id);
+        assert.equal(bot.deleted.length, 1, id);
+        const btn = lastMsg(bot).opts.reply_markup.inline_keyboard[0][0];
+        assert.ok(ok(new URL(btn.web_app.url)), `${id}: ${btn.web_app.url}`);
+        assert.equal(lastMsg(bot).opts.reply_markup.keyboard, undefined, 'هیچ دکمه‌ی web_app در کیبورد پاسخ نیست');
+      }
+    });
+
+    test('نقش‌ها سمت سرور چک می‌شوند: کارمند با mn:admin_panel رد می‌شود و پیامی نمی‌رود', async () => {
+      const bot = mockBot(); const { calls, h } = spies();
+      await menu.handleMenuCallback(bot, cbQuery(emp, 'mn:admin_panel'), h);
+      assert.equal(bot.answers.length, 1);
+      assert.equal(bot.answers[0].show_alert, true);
+      assert.deepEqual(bot.sent, []);
+      assert.deepEqual(calls, []);
+    });
+
+    test('Mini App و پنل بدون initData پیام فارسی «از 📂 منو در بات باز کنید» نشان می‌دهند (بررسی ایستا)', () => {
+      const app = readSrc('public', 'js', 'app.js');
+      assert.ok(app.includes(MSG), 'Mini App');
+      assert.ok(!app.includes('از طریق دکمه منوی بات'));
+      const core = readSrc('public-admin', 'js', 'core.js');
+      assert.match(core, new RegExp(`catch \\(_\\) \\{[\\s\\S]*?${MSG}[\\s\\S]*?setupLoginWidget\\(\\)`), 'پنل: پیام پیش از ویجت ورود');
+    });
+
+    test('خطاهای ۴۰۱ ورود پنل دیگر به /panel ارجاع نمی‌دهند و به «📂 منو» ارجاع می‌دهند', () => {
+      const src = readSrc('src', 'api', 'routes', 'adminAuth.js');
+      const msgs = src.split(/\r?\n/).filter((l) => l.includes('error:'));
+      const loginMsgs = msgs.filter((x) => x.includes('لینک نامعتبر') || x.includes('کد نامعتبر'));
+      assert.equal(loginMsgs.length, 2);
+      for (const l of loginMsgs) {
+        assert.ok(!l.includes('/panel'), l);
+        assert.ok(l.includes('📂 منو'), l);
+      }
     });
   });
 

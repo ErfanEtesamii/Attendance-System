@@ -1,7 +1,7 @@
 // مسیرهای ورود/خروج پنل وب. چهار راه ورود، همه برای هر سه نقش (ادمین/سرپرست/کارمند):
 //   1) webapp  — دکمه‌ی «پنل» داخل بات (Telegram Web App؛ امضای initData تأیید می‌شود)
 //   2) token   — لینک یک‌بارمصرف «باز کردن در مرورگر» از بات
-//   3) code    — کد ۸ رقمی یک‌بارمصرف از بات (دستور /panel)
+//   3) code    — کد ۸ رقمی یک‌بارمصرف از بات (منو ← «🖥 پنل»؛ دستور /panel هنوز کار می‌کند)
 //   4) telegram — Telegram Login Widget (روی شبکه‌های فیلتر ممکن است لود نشود)
 
 const express = require('express');
@@ -71,17 +71,17 @@ router.post('/admin/auth/token', panelAutoLoginLimiter, (req, res) => {
   const userId = consumeLinkToken(req.body && req.body.token);
   const user = userId ? usersRepository.findById(userId) : null;
   if (!usableUser(user)) {
-    return res.status(401).json({ error: 'لینک نامعتبر یا منقضی شده است. در بات دوباره /panel بزنید.' });
+    return res.status(401).json({ error: 'لینک نامعتبر یا منقضی شده است. در بات از «📂 منو» پنل را دوباره باز کنید.' });
   }
   finishLogin(req, res, user, 'bot_one_time_link');
 });
 
-// ورود با کد ۸ رقمی (دستور /panel)
+// ورود با کد ۸ رقمی (منوی بات ← «🖥 پنل»)
 router.post('/admin/auth/code', adminLoginLimiter, (req, res) => {
   const userId = consumeCode(req.body && req.body.code);
   const user = userId ? usersRepository.findById(userId) : null;
   if (!usableUser(user)) {
-    return res.status(401).json({ error: 'کد نامعتبر یا منقضی شده است. در بات دوباره /panel بزنید.' });
+    return res.status(401).json({ error: 'کد نامعتبر یا منقضی شده است. در بات از «📂 منو» گزینه‌ی «🖥 پنل» را بزنید و کد تازه بگیرید.' });
   }
   finishLogin(req, res, user, 'bot_one_time_code');
 });
