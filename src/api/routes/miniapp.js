@@ -490,6 +490,13 @@ router.put('/miniapp/plan', (req, res) => {
   if (!r.ok) return planError(res, r);
   return res.json(r);
 });
+// A3-۲: «دیده شد» — خاموش‌کردن بنر «سرپرست برنامه را تغییر داده»
+router.post('/miniapp/plan/seen', (req, res) => {
+  const b = req.body || {};
+  const r = weeklyPlanService.markSeen(req.miniAppUser, b.week || 'next');
+  if (!r.ok) return planError(res, r);
+  return res.json(r);
+});
 router.post('/miniapp/plan/submit', (req, res) => {
   const b = req.body || {};
   const r = weeklyPlanService.submit(req.miniAppUser, b.week || 'next');

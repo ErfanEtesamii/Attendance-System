@@ -9,6 +9,9 @@
 //   • تسک سیستمی (is_system) هرگز حذف/ویرایش نمی‌شود و در شمارش حداقل/سقف نمی‌آید. (H5) getPlan برای سرپرست تسک واجب «بررسی گزارش تیم» را برای روزهای باقی‌مانده‌ی هفته می‌سازد.
 //   • تسک فوری (is_urgent، E1) را مدیر/سرپرست می‌گذارد (urgentTaskService): در این سرویس فقط‌خواندنی است، در شمارش حداقل/سقف نمی‌آید،
 //     و اگر کلاینت آن را در فهرست tasks برگرداند نادیده گرفته می‌شود (نه حذف می‌شود نه خطا می‌دهد).
+//   • (A3-۱، فاز ۱۳) تسکِ قفل‌شده‌ی مدیر (manager_locked: تسکی که ادمین/سرپرست اضافه یا ویرایش کرده) برای کارمند دقیقاً مثل تسک فوری رفتار می‌کند:
+//     فقط‌خواندنی، بیرون از شمارش حداقل، ولی داخل سقف ۳۰ (مجموعِ برنامه)، و اگر کلاینتِ کهنه آن را برگرداند یا نفرستد نه بازنویسی/حذف می‌شود نه خطا می‌دهد.
+//     تسکی که مدیر soft-delete کرده و هنوز در فهرست کهنه‌ی کلاینت هست نادیده گرفته می‌شود (خطای TASK_NOT_FOUND فقط برای تسک متعلق به برنامه‌ی دیگری/ناموجود است)؛ پاسخ همیشه برنامه‌ی تازه است.
 const settingsRepository = require('../repositories/settingsRepository');
 const plansRepo = require('../repositories/weeklyPlanRepository');
 const logsRepo = require('../repositories/taskLogRepository');
@@ -46,6 +49,8 @@ const presentTask = (t) => ({
   id: t.id, title: t.title, description: t.description || '', plannedDate: t.planned_date || null, priority: t.priority,
   isSystem: !!t.is_system, systemKey: t.system_key || null, carriedFromTaskId: t.carried_from_task_id || null,
   isUrgent: !!t.is_urgent, assignedByUserId: t.assigned_by_user_id || null, assignedByName: t.assigned_by_name || null, urgentNote: t.urgent_note || null, urgentDeadlineTime: t.urgent_deadline_time || null,
+  // A3-۱: علامت «قفل‌شده‌ی مدیر» (migration ۰۳۳) برای Mini App؛ مستقل از isUrgent
+  managerLocked: !!t.manager_locked, editedByUserId: t.edited_by_user_id || null, editedAt: t.edited_at || null,
 });
 
 // آخرین پاسخ هر تسک (برای «ناتمام»)
@@ -94,6 +99,27 @@ function lockFailure(weekStart, ctx) {
   return null;
 }
 
+// A3-۲: خلاصه‌ی تغییرهای مدیر بعد از آخرین مشاهده‌ی کارمند. برنامه‌ی ناموجود ⇒ بدون تغییر.
+function managerChangeOf(plan) {
+  if (!plan) return { changed: false, count: 0, lastEditedAt: null };
+  const { count, lastEditedAt } = plansRepo.managerChangesSince(plan.id, plan.employee_seen_at);
+  return { changed: count > 0, count, lastEditedAt };
+}
+
+/**
+ * A3-۲: «دیده شد» — کارمند تغییرهای مدیر را دیده است (بنر خاموش می‌شود). قفل هفته/ماه را رد نمی‌کند (دیدن همیشه مجاز است)،
+ * محتوای برنامه و version را تغییر نمی‌دهد (migration ۰۳۵). برنامه‌ی ناموجود ⇒ چیزی برای دیدن نیست؛ بدون خطا و بدون ساختن برنامه.
+ */
+function markSeen(user, which, { now } = {}) {
+  const ctx = context(now);
+  const weekStart = targetWeek(which, ctx);
+  if (!weekStart) return fail('INVALID_WEEK', 'week باید next یا current باشد.');
+  const plan = plansRepo.findByUserWeek(user.id, weekStart);
+  if (!plan) return { ok: true, employeeSeenAt: null, managerChange: managerChangeOf(null) };
+  const updated = plansRepo.markEmployeeSeen(plan.id);
+  return { ok: true, employeeSeenAt: updated.employee_seen_at, managerChange: managerChangeOf(updated) };
+}
+
 function getPlan(user, which, { now } = {}) {
   const ctx = context(now);
   const weekStart = targetWeek(which, ctx);
@@ -120,6 +146,9 @@ function getPlan(user, which, { now } = {}) {
     submittedAt: plan ? plan.submitted_at : null,
     supervisorSeenAt: plan ? plan.supervisor_seen_at : null,
     supervisorComment: plan ? plan.supervisor_comment : null,
+    // A3-۲: آیا مدیر/سرپرست بعد از آخرین «دیده شد»ِ کارمند چیزی را (افزودن/ویرایش/حذف تسک) عوض کرده؟ (بنر Mini App)
+    employeeSeenAt: plan ? plan.employee_seen_at || null : null,
+    managerChange: managerChangeOf(plan),
     editMode: editMode(weekStart, ctx),
     lockReason: lockReason(weekStart, ctx),
     minTasks: ctx.settings.planMinTasks,
@@ -199,16 +228,20 @@ function saveDraft(user, which, tasksInput, { now } = {}) {
   if (!weekStart) return fail('INVALID_WEEK', 'week باید next یا current باشد.');
   const locked = lockFailure(weekStart, ctx);
   if (locked) return locked;
-  // E1: تسک فوری فقط‌خواندنی است؛ اگر کلاینت آن را همراه فهرست برگرداند نادیده گرفته می‌شود
+  // E1 + A3-۱: تسک فوری و تسکِ قفل‌شده‌ی مدیر فقط‌خواندنی‌اند، و تسکی که قبلاً soft-delete شده (مثلاً مدیر حذفش کرده) دیگر وجود ندارد؛
+  // اگر کلاینت (کهنه) این‌ها را همراه فهرست برگرداند نادیده گرفته می‌شوند (نه خطا، نه بازنویسی). شناسه‌ی تسکِ برنامه‌ی دیگران همچنان TASK_NOT_FOUND می‌دهد.
   const existingPlan = plansRepo.findByUserWeek(user.id, weekStart);
-  const urgentIds = new Set(existingPlan ? plansRepo.listTasks(existingPlan.id).filter((t) => t.is_urgent).map((t) => t.id) : []);
-  const input = Array.isArray(tasksInput) ? tasksInput.filter((t) => !(t && t.id != null && urgentIds.has(Number(t.id)))) : tasksInput;
+  const ignoredIds = new Set(existingPlan
+    ? plansRepo.listTasks(existingPlan.id, { includeDeleted: true }).filter((t) => t.is_urgent || t.manager_locked || t.deleted_at).map((t) => t.id)
+    : []);
+  const input = Array.isArray(tasksInput) ? tasksInput.filter((t) => !(t && t.id != null && ignoredIds.has(Number(t.id)))) : tasksInput;
   const v = validateTasks(input, weekStart, user);
   if (v.error) return v.error;
 
   const plan = plansRepo.getOrCreate(user.id, weekStart);
   const existing = plansRepo.listTasks(plan.id);
-  const userTasks = existing.filter((t) => !t.is_system && !t.is_urgent);
+  const userTasks = existing.filter((t) => !t.is_system && !t.is_urgent && !t.manager_locked);
+  const lockedCount = existing.filter((t) => t.manager_locked && !t.is_system && !t.is_urgent).length; // در سقفِ مجموع می‌آید، قابل ویرایش/حذف توسط کارمند نیست
   const byId = new Map(userTasks.map((t) => [t.id, t]));
   const keepIds = new Set();
   for (const t of v.tasks) {
@@ -226,7 +259,7 @@ function saveDraft(user, which, tasksInput, { now } = {}) {
     const changedDate = (cur.planned_date || null) !== t.plannedDate;
     if (changedMeta || changedDate) edits.push({ cur, t });
   }
-  if (userTasks.length - removes.length + adds.length > MAX_TASKS) return fail('TOO_MANY_TASKS', `حداکثر ${MAX_TASKS} تسک مجاز است.`);
+  if (userTasks.length - removes.length + adds.length + lockedCount > MAX_TASKS) return fail('TOO_MANY_TASKS', `حداکثر ${MAX_TASKS} تسک مجاز است.`);
 
   const { getDb } = require('../db/connection');
   getDb().transaction(() => {
@@ -260,6 +293,6 @@ function submit(user, which, { now } = {}) {
 
 // A1 (فاز ۱۳): lockFailure/lockReason/editMode/validateTask/fail/PRIORITIES/presentTask فقط برای weeklyPlanAdminService صادر شده‌اند تا منطق قفل و اعتبارسنجی کپی نشود.
 module.exports = {
-  getPlan, saveDraft, submit, targetWeek, context, MAX_TASKS, TITLE_MAX, DESC_MAX,
+  getPlan, saveDraft, submit, markSeen, targetWeek, context, MAX_TASKS, TITLE_MAX, DESC_MAX,
   lockFailure, lockReason, editMode, validateTask, fail, PRIORITIES, presentTask,
 };

@@ -1236,7 +1236,7 @@
 
   // اعتبارسنجی سمت کاربر (سرور دوباره همه‌چیز را چک می‌کند)
   function planValidate(tasks, data) {
-    const mine = tasks.filter((t) => !t.isSystem && !t.isUrgent);
+    const mine = tasks.filter((t) => !t.isSystem && !t.isUrgent && !t.managerLocked);
     for (let i = 0; i < mine.length; i += 1) {
       const t = mine[i];
       const title = String(t.title || '').trim();
@@ -1244,7 +1244,7 @@
       if (title.length > 120) return `عنوان تسک ${i + 1} حداکثر ۱۲۰ نویسه است.`;
       if (String(t.description || '').length > 500) return `توضیح تسک ${i + 1} حداکثر ۵۰۰ نویسه است.`;
     }
-    if (mine.length > data.maxTasks) return `حداکثر ${data.maxTasks} تسک مجاز است.`;
+    if (mine.length + tasks.filter((t) => t.managerLocked && !t.isSystem && !t.isUrgent).length > data.maxTasks) return `حداکثر ${data.maxTasks} تسک مجاز است.`;
     return '';
   }
 
@@ -1297,6 +1297,30 @@
     const parts = [t.assignedByName ? `از طرف ${t.assignedByName}` : 'از طرف مدیر'];
     if (t.urgentDeadlineTime) parts.push(`مهلت: ساعت ${fa(t.urgentDeadlineTime)}`);
     return parts.join(' · ');
+  }
+  // A3-۲: تسکی که سرپرست/ادمین اضافه یا ویرایش کرده — «🔒 از طرف سرپرست» (متن + آیکون)، فقط‌خواندنی (بدون ویرایش/حذف/جابه‌جایی)
+  const MANAGER_LABEL = '🔒 از طرف سرپرست';
+  const MANAGER_CHANGED_MSG = 'سرپرست برنامه‌ی این هفته را تغییر داده است.';
+  const isManagerTask = (t) => !!t.managerLocked && !t.isUrgent && !t.isSystem;
+  function managerRow(t) {
+    return planEl('li', { class: 'day-task day-task-ro day-task-manager' },
+      planEl('div', { class: 'day-task-main' }, planEl('span', { class: 'manager-badge', text: MANAGER_LABEL }), prioBadge(t.priority), planEl('span', { class: 'day-task-text', text: t.title }), planEl('span', { class: 'sr-only', text: 'فقط‌خواندنی؛ توسط سرپرست ثبت شده' })),
+      t.description ? planEl('div', { class: 'plan-meta', text: t.description }) : null);
+  }
+  // بنر «سرپرست برنامه را تغییر داده»؛ «متوجه شدم» ⇒ POST /plan/seen و خاموش‌شدن بنر
+  function managerBanner(data) {
+    const mc = data.managerChange;
+    if (!mc || !mc.changed) return null;
+    const btn = planEl('button', { type: 'button', class: 'btn secondary', text: 'متوجه شدم' });
+    btn.addEventListener('click', async () => {
+      try {
+        await withBusy(btn, () => api('/plan/seen', { method: 'POST', body: { week: planUi.week } }));
+        data.managerChange = { changed: false, count: 0, lastEditedAt: mc.lastEditedAt };
+        renderPlan();
+      } catch (err) { planUi.msg = err.message; renderPlan(); }
+    });
+    return planEl('div', { class: 'card manager-banner', role: 'status' },
+      planEl('div', { class: 'manager-banner-text' }, planEl('strong', { text: '🔔 ' + MANAGER_CHANGED_MSG }), planEl('span', { text: ` (${(mc.count || 0).toLocaleString('fa-IR')} تغییر؛ تسک‌های سرپرست با برچسب «${MANAGER_LABEL}» مشخص شده‌اند)` })), btn);
   }
   const urgentFirst = (list) => [...list].sort((a, b) => Number(!!b.isUrgent) - Number(!!a.isUrgent)); // مرتب‌سازی پایدار؛ فوری بالا
   // ردیف فقط‌خواندنیِ تسک فوری (کارمند نمی‌تواند ویرایش/حذف کند)
@@ -1351,7 +1375,7 @@
   function planReadonlyBoard(data) {
     const days = planDays(data);
     const dayDates = new Set(days.map((d) => d.date));
-    const rows = (list) => urgentFirst(list).map((t) => t.isUrgent ? urgentRow(t) : (isReviewSysTask(t) ? mandatoryTaskRow(t) : planEl('li', { class: 'day-task day-task-ro' },
+    const rows = (list) => urgentFirst(list).map((t) => t.isUrgent ? urgentRow(t) : isManagerTask(t) ? managerRow(t) : (isReviewSysTask(t) ? mandatoryTaskRow(t) : planEl('li', { class: 'day-task day-task-ro' },
       t.isSystem ? planEl('span', { class: 'plan-sys', text: 'تسک خودکار: ' + t.title })
         : [planEl('div', { class: 'day-task-main' }, prioBadge(t.priority), planEl('span', { class: 'day-task-text', text: t.title })),
           t.description ? planEl('div', { class: 'plan-meta', text: t.description }) : null])));
@@ -1376,7 +1400,7 @@
   }
 
   function planPayload() {
-    return planUi.tasks.filter((t) => !t.isSystem && !t.isUrgent).map((t) => ({
+    return planUi.tasks.filter((t) => !t.isSystem && !t.isUrgent && !t.managerLocked).map((t) => ({
       id: t.id || undefined, title: String(t.title || '').trim(), description: String(t.description || '').trim(),
       plannedDate: t.plannedDate || null, priority: t.priority || 'normal', carriedFromTaskId: t.carriedFromTaskId || undefined,
     }));
@@ -1408,7 +1432,8 @@
     if (!body || !data) return;
     body.removeAttribute('aria-busy');
     body.innerHTML = '';
-    const mine = () => planUi.tasks.filter((t) => !t.isSystem && !t.isUrgent);
+    const mine = () => planUi.tasks.filter((t) => !t.isSystem && !t.isUrgent && !t.managerLocked);
+    const lockedCount = () => planUi.tasks.filter(isManagerTask).length; // در سقفِ مجموع می‌آید
     const steps = [['carry', 'انتقال'], ['tasks', 'تسک‌ها'], ['review', 'مرور']];
     const heading = $('#plan-title');
     heading.textContent = planUi.week === 'current' ? 'برنامه‌ی این هفته' : 'برنامه‌ی هفته‌ی بعد';
@@ -1416,6 +1441,8 @@
     if (planUi.focusTop) { planUi.focusTop = false; setTimeout(() => { if (typeof heading.focus === 'function') heading.focus(); }, 0); }
     body.appendChild(planEl('div', { class: 'plan-meta', text: `هفته‌ی ${fmtDate(data.weekStart)} تا ${fmtDate(data.weekEnd)}${data.planDay ? ' · روز ثبت برنامه: ' + fmtDate(data.planDay) : ''}` }));
     if (planUi.step !== 'done') body.appendChild(planEl('div', { class: 'plan-steps' }, steps.map(([k, l], i) => { const sp = planEl('span', { class: planUi.step === k ? 'on' : '', text: `${i + 1}. ${l}` }); if (planUi.step === k) sp.setAttribute('aria-current', 'step'); return sp; })));
+    const mBanner = managerBanner(data);
+    if (mBanner) body.appendChild(mBanner);
     const msg = planEl('div', { class: 'form-msg' + (planUi.msg ? ' err' : ''), role: planUi.msg ? 'alert' : 'status', text: planUi.msg }); // خطا ⇒ alert تا خوانشگر اعلام کند
     const go = (step) => { planUi.step = step; planUi.msg = ''; planUi.focusTop = true; renderPlan(); };
 
@@ -1463,6 +1490,7 @@
       (data.frequentTitles || []).forEach((title) => tools.appendChild(planEl('button', { type: 'button', class: 'plan-chip', text: '+ ' + title, on: { click: () => addTask({ title }) } })));
       body.appendChild(tools);
       if (!mine().length) body.appendChild(planEl('div', { class: 'empty plan-empty', role: 'status', text: `هنوز تسکی برای این هفته ننوشته‌اید. از کارت هر روز شروع کنید${data.minTasks ? ` (حداقل ${data.minTasks} تسک لازم است)` : ''}.` }));
+      if (lockedCount()) body.appendChild(planEl('div', { class: 'plan-note', role: 'note', text: `${MANAGER_LABEL}: تسک‌های سرپرست فقط‌خواندنی‌اند (ویرایش، حذف و جابه‌جایی‌شان با سرپرست است) و در سقف ${data.maxTasks} تسک حساب می‌شوند.` }));
       body.appendChild(planEl('div', { class: 'plan-note' }, planEl('strong', { text: 'اولویت تسک‌ها' }), planEl('div', { text: PLAN_PRIORITY_NOTE })));
 
       // افزودن از فیلد بالای هر کارت؛ متن نیمه‌نوشته‌ی کارت‌ها بین رندرها در planUi.drafts می‌ماند
@@ -1471,7 +1499,7 @@
         planUi.focus = key;
         if (!title) { planUi.msg = 'عنوان تسک را بنویسید.'; renderPlan(); return; }
         if (title.length > 120) { planUi.msg = 'عنوان تسک حداکثر ۱۲۰ نویسه است.'; renderPlan(); return; }
-        if (mine().length >= data.maxTasks) { planUi.msg = `حداکثر ${data.maxTasks} تسک مجاز است.`; renderPlan(); return; }
+        if (mine().length + lockedCount() >= data.maxTasks) { planUi.msg = `حداکثر ${data.maxTasks} تسک مجاز است.`; renderPlan(); return; }
         planUi.drafts[key] = '';
         planUi.msg = '';
         planUi.tasks.push({ title, description: '', plannedDate, priority: 'normal' });
@@ -1508,8 +1536,8 @@
       };
 
       const dayCard = (key, titleText, badge, plannedDate, matches, extra) => {
-        const items = planUi.tasks.map((t, idx) => [t, idx]).filter(([t]) => !t.isSystem && !t.isUrgent && matches(t));
-        const urgentRows = planUi.tasks.filter((t) => t.isUrgent && matches(t)).map(urgentRow); // E2: بالای کارت، فقط‌خواندنی
+        const items = planUi.tasks.map((t, idx) => [t, idx]).filter(([t]) => !t.isSystem && !t.isUrgent && !t.managerLocked && matches(t));
+        const urgentRows = [...planUi.tasks.filter((t) => t.isUrgent && matches(t)).map(urgentRow), ...planUi.tasks.filter((t) => isManagerTask(t) && matches(t)).map(managerRow)]; // E2 + A3-۲: بالای کارت، فقط‌خواندنی
         const list = planEl('ul', { class: 'day-list' }, urgentRows, (extra || []), items.map(([t, idx], pos) => taskRow(t, idx, key, pos + 1, titleText)));
         const add = label(planEl('input', {
           type: 'text', dir: 'auto', class: 'day-add-input', maxLength: 120, value: planUi.drafts[key] || '', placeholder: 'تسک جدید…',
@@ -1530,7 +1558,7 @@
       const sysRows = planUi.tasks.filter((t) => t.isSystem && !(isReviewSysTask(t) && t.plannedDate && dayDates.has(t.plannedDate))).map(sysRow);
       const cards = [dayCard('any', 'هر روز / بدون روز مشخص', '', null, (t) => !t.plannedDate || !dayDates.has(t.plannedDate), sysRows)];
       days.forEach((d) => {
-        const has = planUi.tasks.some((t) => !t.isSystem && t.plannedDate === d.date);
+        const has = planUi.tasks.some((t) => !t.isSystem && t.plannedDate === d.date); // شامل تسک سرپرست
         const sysHere = sysOnDay(d.date);
         if ((d.kind === 'weekend' || d.kind === 'holiday') && !has && !sysHere.length) return; // روز تعطیلِ بدون تسک کارت ندارد
         cards.push(dayCard(d.date, fmtPlanDay(d.date), PLAN_DAY_BADGE[d.kind] || '', d.date, (t) => t.plannedDate === d.date, sysHere));

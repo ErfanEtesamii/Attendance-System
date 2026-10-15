@@ -40,6 +40,19 @@ function touch(id) {
   getDb().prepare(`UPDATE weekly_plans SET updated_at = ${NOW} WHERE id = ?`).run(id);
 }
 
+// A3-۲: ثبت «دیده شد» توسط کارمند. نه updated_at را عوض می‌کند و نه (با تریگر migration ۰۳۵) version را.
+function markEmployeeSeen(id) {
+  getDb().prepare(`UPDATE weekly_plans SET employee_seen_at = ${NOW} WHERE id = ?`).run(id);
+  return findById(id);
+}
+
+// A3-۲: شمار و آخرین زمان تغییرهای مدیر (افزودن/ویرایش/حذف؛ حذف هم edited_at را می‌زند) بعد از seenAt (null ⇒ همه).
+function managerChangesSince(planId, seenAt) {
+  const row = getDb().prepare(`SELECT COUNT(*) AS n, MAX(edited_at) AS last FROM plan_tasks
+    WHERE plan_id = ? AND edited_at IS NOT NULL AND (? IS NULL OR edited_at > ?)`).get(planId, seenAt || null, seenAt || null);
+  return { count: row.n, lastEditedAt: row.last || null };
+}
+
 function setSupervisorFeedback(id, { seen = true, comment = undefined } = {}) {
   const sets = [];
   const params = [];
@@ -147,6 +160,6 @@ function findUrgentWithOwner(taskId) {
 }
 
 module.exports = {
-  listUrgent, findUrgentWithOwner, topTitles, findById, findByUserWeek, getOrCreate, listByUserRange, listByWeek, markSubmitted, touch, setSupervisorFeedback,
+  listUrgent, findUrgentWithOwner, topTitles, findById, markEmployeeSeen, managerChangesSince, findByUserWeek, getOrCreate, listByUserRange, listByWeek, markSubmitted, touch, setSupervisorFeedback,
   findTask, listTasks, addTask, updateTask, markManagerEdited, softDeleteTask, reorderTasks, countOrdinaryTasks, findSystemTask, findSystemTaskOnDate,
 };

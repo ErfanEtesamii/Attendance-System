@@ -210,6 +210,7 @@ function removeTask(actor, employeeId, taskId, { now, expectedVersion } = {}) {
   if (!gate.ok) return gate;
   const before = presentTask(gate.task);
   getDb().transaction(() => {
+    plansRepo.markManagerEdited(gate.task.id, actor.id); // A3-۲: زمانِ تغییر مدیر برای بنر کارمند (تسکِ حذف‌شده از دید کارمند پنهان است)
     plansRepo.softDeleteTask(gate.task.id);
     plansRepo.touch(gate.plan.id);
   })();
