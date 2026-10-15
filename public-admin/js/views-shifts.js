@@ -10,10 +10,15 @@
   // ۰=یکشنبه … ۶=شنبه (همان قرارداد API)؛ ترتیب نمایش از شنبه تا جمعه
   const DAY_ORDER = [6, 0, 1, 2, 3, 4, 5];
   const DAY_NAME = { 6: 'شنبه', 0: 'یکشنبه', 1: 'دوشنبه', 2: 'سه‌شنبه', 3: 'چهارشنبه', 4: 'پنجشنبه', 5: 'جمعه' };
-  const DEFAULT_SHIFT = { name: '', startTime: '08:00', endTime: '16:30', overnight: false, graceLateMinutes: 0, graceEarlyMinutes: 0, maxLunchMinutes: 0, fixedLunchDeductMinutes: 0, workDays: [6, 0, 1, 2, 3] };
+  const DEFAULT_SHIFT = { name: '', startTime: '08:00', endTime: '16:30', overnight: false, graceLateMinutes: 0, graceEarlyMinutes: 0, maxLunchMinutes: 0, fixedLunchDeductMinutes: 0, paidBreakCount: null, paidBreakMinutes: null, workDays: [6, 0, 1, 2, 3] };
 
   // «امروز» محلی مرورگر به‌صورت YYYY-MM-DD (پیش‌فرض «از تاریخ»؛ اعتبار نهایی با سرور است)
   const localIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+
+  // خلاصه‌ی «استراحت با حقوق» برای جدول (C1): مقدار اختصاصی شیفت، یا «سراسری» اگر خالی
+  const paidText = (s) => (s.paidBreakCount == null && s.paidBreakMinutes == null
+    ? ''
+    : `<div class="muted small">با حقوق: ${s.paidBreakCount == null ? 'سراسری' : fmt.num(s.paidBreakCount)} × ${s.paidBreakMinutes == null ? 'سراسری' : `${fmt.num(s.paidBreakMinutes)} دقیقه`}</div>`);
 
   const daysText = (days) => {
     const list = DAY_ORDER.filter((d) => (days || []).includes(d));
@@ -24,6 +29,7 @@
   function formToBody(form) {
     const f = AP.formData(form);
     const num = (v) => (v === '' || v == null ? 0 : Number(v));
+    const nullableNum = (v) => (v === '' || v == null ? null : Number(v));
     return {
       name: f.name,
       startTime: f.startTime,
@@ -33,12 +39,15 @@
       graceEarlyMinutes: num(f.graceEarlyMinutes),
       maxLunchMinutes: num(f.maxLunchMinutes),
       fixedLunchDeductMinutes: num(f.fixedLunchDeductMinutes),
+      paidBreakCount: nullableNum(f.paidBreakCount), // C1: خالی = از تنظیمات سراسری
+      paidBreakMinutes: nullableNum(f.paidBreakMinutes),
       workDays: $$('input[name="workDays"]', form).filter((el) => el.checked).map((el) => Number(el.value)),
     };
   }
 
   function formHtml(cur, isEdit) {
     const numField = (name, label, max) => `<label class="field"><span>${esc(label)}</span><input type="number" name="${name}" min="0" max="${max}" step="1" value="${esc(cur[name])}" /></label>`;
+    const optField = (name, label, max) => `<label class="field"><span>${esc(label)}</span><input type="number" name="${name}" min="0" max="${max}" step="1" value="${cur[name] == null ? '' : esc(cur[name])}" placeholder="از تنظیمات سراسری" /></label>`;
     return `<form class="form" id="shift-form">
       <div class="form-grid">
         <label class="field"><span>نام شیفت</span><input name="name" required maxlength="60" value="${esc(cur.name)}" placeholder="مثلاً: صبح" /></label>
@@ -49,6 +58,9 @@
         ${numField('graceEarlyMinutes', 'مهلت زودتر رفتن (دقیقه)', 720)}
         ${numField('maxLunchMinutes', 'حداکثر ناهار مجاز (دقیقه؛ ۰ = بدون سقف)', 480)}
         ${numField('fixedLunchDeductMinutes', 'کسر ثابت ناهار (دقیقه؛ ۰ = خاموش)', 480)}
+        ${optField('paidBreakCount', 'تعداد استراحت کوتاهِ با حقوق در روز (۰ تا ۱۰؛ خالی = تنظیمات سراسری)', 10)}
+        ${optField('paidBreakMinutes', 'سقف هر استراحت با حقوق (دقیقه، ۰ تا ۱۲۰؛ خالی = تنظیمات سراسری)', 120)}
+        <p class="muted small full" style="grid-column:1/-1;margin:0">استراحت‌های کوتاهِ با حقوق (تا سقف زمانیِ هرکدام) از ساعت کاری کم نمی‌شوند؛ مازاد هر استراحت، استراحت‌های بعد از تعداد مجاز و ناهار از ساعت کاری کم می‌شود. هر دو ۰ = خاموش.</p>
         <div class="field full" style="grid-column:1/-1"><span>روزهای کاری این شیفت</span>
           <div class="chk-row">${DAY_ORDER.map((d) => `<label class="check-row"><input type="checkbox" name="workDays" value="${d}"${(cur.workDays || []).includes(d) ? ' checked' : ''} /> ${DAY_NAME[d]}</label>`).join('')}</div></div>
       </div>
@@ -74,7 +86,7 @@
             <td><span class="ltr">${esc(s.startTime)} – ${esc(s.endTime)}</span>${s.overnight ? ` ${AP.badge('purple', 'شب')}` : ''}</td>
             <td>${esc(daysText(s.workDays))}</td>
             <td>${fmt.num(s.graceLateMinutes)} / ${fmt.num(s.graceEarlyMinutes)} دقیقه</td>
-            <td>${s.maxLunchMinutes ? `حداکثر ${fmt.num(s.maxLunchMinutes)}` : 'بدون سقف'}${s.fixedLunchDeductMinutes ? ` · کسر ثابت ${fmt.num(s.fixedLunchDeductMinutes)}` : ''}</td>
+            <td>${s.maxLunchMinutes ? `حداکثر ${fmt.num(s.maxLunchMinutes)}` : 'بدون سقف'}${s.fixedLunchDeductMinutes ? ` · کسر ثابت ${fmt.num(s.fixedLunchDeductMinutes)}` : ''}${paidText(s)}</td>
             <td>${s.userCount ? `<button class="btn ghost small" data-users="${s.id}">${fmt.num(s.userCount)} نفر</button>` : '<span class="muted">—</span>'}</td>
             <td><div class="row-actions"><button class="btn ghost small" data-assign="${s.id}">انتساب گروهی</button><button class="btn ghost small" data-edit="${s.id}" aria-label="ویرایش">${icon('edit')}</button>
               <button class="btn danger small" data-del="${s.id}" aria-label="حذف">${icon('trash')}</button></div></td></tr>`).join('')}

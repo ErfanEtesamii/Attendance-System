@@ -8,6 +8,7 @@ const { getDb } = require('../../../db/connection');
 const { requirePermission } = require('../../../middleware/permissions');
 const usersRepository = require('../../../repositories/usersRepository');
 const attendanceRepository = require('../../../repositories/attendanceRepository');
+const dayService = require('../../../engine/dayService');
 const breakRepository = require('../../../repositories/breakRepository');
 const disputeRepository = require('../../../repositories/disputeRepository');
 const auditRepository = require('../../../repositories/auditRepository');
@@ -116,6 +117,7 @@ router.get('/admin/attendance/export', requirePermission('attendance.read'), (re
       r.record_date, isoDateToJalaliString(r.record_date), fmt(r.check_in_time), r.check_in_ip || '', fmt(r.check_out_time),
       r.check_out_ip || '', e.breakMinutes, e.summary.effectiveMinutes ?? '', e.summary.lateMinutes,
       e.summary.earlyLeaveMinutes, e.summary.overtimeMinutes, r.status,
+      ...(() => { const s = e.summary.effectiveMinutes === null ? null : dayService.breakSplit(r); return [s ? s.paid : '', s ? s.unpaid : '']; })(), // C1
     ];
   });
   // S5-1c: audit درست قبل از ارسال بدنه و با قالب واقعاً تحویل‌شده (csv/xlsx/fallback/streamed)
@@ -124,7 +126,8 @@ router.get('/admin/attendance/export', requirePermission('attendance.read'), (re
     res,
     `attendance-records_${from}_${to}.csv`,
     ['نام', 'کد پرسنلی', 'دپارتمان', 'تاریخ', 'تاریخ شمسی', 'ورود', 'IP ورود', 'خروج', 'IP خروج',
-      'دقیقه استراحت', 'دقیقه مفید', 'دقیقه تأخیر', 'دقیقه خروج زودهنگام', 'دقیقه اضافه‌کاری', 'وضعیت'],
+      'دقیقه استراحت', 'دقیقه مفید', 'دقیقه تأخیر', 'دقیقه خروج زودهنگام', 'دقیقه اضافه‌کاری', 'وضعیت',
+      'استراحت با حقوق (دقیقه)', 'استراحت بدون حقوق (دقیقه)'],
     rows,
     { onExport: (info) => audit(req, 'attendance_exported', { from, to, count: rows.length, ...exportAuditFields(info) }) }
   );

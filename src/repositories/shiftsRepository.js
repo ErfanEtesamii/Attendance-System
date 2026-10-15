@@ -35,6 +35,8 @@ function toShift(row) {
     overnight: !!row.overnight,
     maxLunchMinutes: row.max_lunch_minutes,
     fixedLunchDeductMinutes: row.fixed_lunch_deduct_minutes,
+    paidBreakCount: row.paid_break_count === undefined ? null : row.paid_break_count, // C1: null = از تنظیمات سراسری
+    paidBreakMinutes: row.paid_break_minutes === undefined ? null : row.paid_break_minutes,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     ...(row.user_count !== undefined ? { userCount: row.user_count } : {}),
@@ -139,10 +141,11 @@ function createShift(v) {
   const db = getDb();
   const info = db
     .prepare(
-      `INSERT INTO work_shifts (name, start_time, end_time, grace_late_minutes, grace_early_minutes, work_days, overnight, max_lunch_minutes, fixed_lunch_deduct_minutes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO work_shifts (name, start_time, end_time, grace_late_minutes, grace_early_minutes, work_days, overnight, max_lunch_minutes, fixed_lunch_deduct_minutes, paid_break_count, paid_break_minutes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
-    .run(v.name, v.startTime, v.endTime, v.graceLateMinutes, v.graceEarlyMinutes, JSON.stringify(v.workDays), v.overnight ? 1 : 0, v.maxLunchMinutes, v.fixedLunchDeductMinutes);
+    .run(v.name, v.startTime, v.endTime, v.graceLateMinutes, v.graceEarlyMinutes, JSON.stringify(v.workDays), v.overnight ? 1 : 0, v.maxLunchMinutes, v.fixedLunchDeductMinutes,
+      v.paidBreakCount === undefined ? null : v.paidBreakCount, v.paidBreakMinutes === undefined ? null : v.paidBreakMinutes);
   return findById(info.lastInsertRowid);
 }
 
@@ -156,6 +159,8 @@ const COLUMN_OF = {
   overnight: 'overnight',
   maxLunchMinutes: 'max_lunch_minutes',
   fixedLunchDeductMinutes: 'fixed_lunch_deduct_minutes',
+  paidBreakCount: 'paid_break_count',
+  paidBreakMinutes: 'paid_break_minutes',
 };
 
 // فقط کلیدهای شناخته‌شده‌ی camelCase؛ مقدار ستون‌ها از placeholder می‌آید (نه الحاق رشته).

@@ -805,3 +805,14 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 #dispute-thread-msg:empty { min-height: 0; }
 /* B2: نشان «برنامه‌ی ویژه» کنار ساعت کاری امروز/فردا */
 .chip-special { display: inline-block; margin-inline-start: 6px; padding: 1px 8px; border-radius: 999px; font-size: 11px; background: var(--orange-soft, rgba(255,149,0,.15)); color: var(--orange, #c76b00); }
+/* C1: پیام «استراحت با حقوق ۲ از ۳» زیر تایمر؛ is-over = از سقف رد شده/سهمیه تمام */
+.break-note { margin-top: 8px; padding: 6px 10px; border-radius: 10px; font-size: 12.5px; text-align: center; background: var(--green-soft); color: var(--green); }
+.break-note.is-over { background: rgba(255, 149, 0, .16); color: var(--orange); }
+/* D2: کارت «اجازه‌ی ثبت ورود» (سقف تأخیر ماهانه) */
+.late-limit-card { border: 1px solid rgba(255, 149, 0, .55); }
+.late-limit-msg { margin: 6px 0 10px; font-size: 13.5px; line-height: 1.7; }
+.late-limit-status { margin: 6px 0 10px; padding: 6px 10px; border-radius: 10px; font-size: 13px; }
+.late-limit-status.is-pending { background: rgba(255, 149, 0, .16); color: var(--orange); }
+.late-limit-status.is-approved { background: var(--green-soft); color: var(--green); }
+.late-limit-status.is-rejected { background: rgba(255, 59, 48, .14); color: #d93025; }
+.late-limit-reason { width: 100%; box-sizing: border-box; margin-bottom: 8px; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(128,128,128,.4); background: transparent; color: inherit; font-family: inherit; font-size: 14px; resize: vertical; }

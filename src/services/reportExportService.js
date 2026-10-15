@@ -29,6 +29,13 @@ const hhmm = (m) => (m === null || m === undefined || Number.isNaN(m) ? '' : min
 const jalali = (iso) => { try { return iso ? isoDateToJalaliString(iso) : ''; } catch (_) { return ''; } };
 const timeOf = (iso, tz) => { try { return iso ? formatTime(iso, tz) : ''; } catch (_) { return ''; } };
 
+// C1: «استراحت با حقوق / بدون حقوق» یک رکورد (خالی اگر محاسبه ممکن نبود یا روز ناقص قدیمی است)
+const splitCells = (record, context) => {
+  const stale = record.check_in_time && !record.check_out_time && record.record_date < require('../utils/serverTime').todayDateString();
+  const s = stale ? null : dayService.breakSplit(record, { context });
+  return [s ? s.paid : '', s ? s.unpaid : ''];
+};
+
 const IDENT_HEADERS = ['نام کارمند', 'کد پرسنلی', 'دپارتمان'];
 const ident = (u) => [u.full_name || '', u.personnel_code || '', u.department || ''];
 
@@ -85,6 +92,7 @@ function buildEmployeeReportSheets({ users, from, to }) {
         num(s.effectiveMinutes), hhmm(s.effectiveMinutes),
         s.lateMinutes, s.earlyLeaveMinutes, s.overtimeMinutes,
         r.status,
+        ...splitCells(r, context), // C1: ستون‌های جدید در انتها
       ]);
     }
 
@@ -128,7 +136,8 @@ function buildEmployeeReportSheets({ users, from, to }) {
     {
       name: SHEET_NAMES.daily,
       headers: [...IDENT_HEADERS, 'تاریخ', 'تاریخ شمسی', 'ورود', 'خروج', 'دقیقه استراحت',
-        'دقیقه مفید', 'ساعت مفید (ساعت:دقیقه)', 'دقیقه تأخیر', 'دقیقه خروج زودهنگام', 'دقیقه اضافه‌کاری', 'وضعیت'],
+        'دقیقه مفید', 'ساعت مفید (ساعت:دقیقه)', 'دقیقه تأخیر', 'دقیقه خروج زودهنگام', 'دقیقه اضافه‌کاری', 'وضعیت',
+        'استراحت با حقوق (دقیقه)', 'استراحت بدون حقوق (دقیقه)'],
       rows: dailyRows,
     },
     {

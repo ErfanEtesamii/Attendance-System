@@ -262,6 +262,7 @@
       const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
       const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
       $('#timer').textContent = `${h}:${m}:${s}`;
+      if (state.breakNoteTick) state.breakNoteTick(diff); // C1: پیام «استراحت با حقوق» هم‌گام با تایمر
     }
     tick();
     state.timerInterval = setInterval(tick, 1000);
@@ -275,6 +276,96 @@
     plan: '<svg viewBox="0 0 24 24"><path d="M4 5h16v15H4zM4 9h16M8 3v4M16 3v4M8 13h3M8 16h6"/></svg>',
     mission: '<svg viewBox="0 0 24 24"><path d="M5 17h14M3 13l2-6h14l2 6v4H3v-4zM7 17v2M17 17v2M7 13h.01M17 13h.01"/></svg>',
   };
+
+  // ---------- اجازه‌ی ورود (D2) ----------
+  // وقتی POST /check-in با ۴۰۹ LATE_LIMIT_REACHED رد شد، کارت اجازه باز می‌شود؛ وضعیت درخواست (در انتظار/تأییدشده/ردشده) با polling سبک (۱۰ ثانیه)
+  // یا دکمه‌ی «بررسی وضعیت» به‌روز می‌شود. همه‌ی متن‌ها با textContent درج می‌شوند.
+  const lateLimitUi = { open: false, gate: null, timer: null, busy: false };
+
+  function hideLateLimitCard() {
+    const card = $('#late-limit-card');
+    if (card) { card.classList.add('hidden'); card.textContent = ''; }
+    if (lateLimitUi.timer) { clearInterval(lateLimitUi.timer); lateLimitUi.timer = null; }
+    lateLimitUi.open = false;
+  }
+
+  function lateLimitPermission() { return (lateLimitUi.gate && lateLimitUi.gate.permission) || null; }
+
+  async function pollLateGate(manual) {
+    try {
+      const { gate } = await api('/checkin-permission');
+      if (!lateLimitUi.open) return;
+      lateLimitUi.gate = gate;
+      renderLateLimitCard();
+      if (manual) showToast('وضعیت درخواست به‌روز شد.');
+    } catch (err) { if (manual) showToast(err.message, true); }
+  }
+
+  function renderLateLimitCard() {
+    const card = $('#late-limit-card');
+    if (!card) return;
+    const g = lateLimitUi.gate || {};
+    const p = lateLimitPermission();
+    const fa = (n) => (J ? J.toFaDigits(String(n)) : String(n));
+    const el = (tag, cls, text) => { const x = document.createElement(tag); if (cls) x.className = cls; if (text !== undefined) x.textContent = text; return x; };
+    card.textContent = '';
+    card.classList.remove('hidden');
+    card.appendChild(el('div', 'card-title', 'اجازه‌ی ثبت ورود'));
+    card.appendChild(el('p', 'late-limit-msg', `این ماه ${fa(g.limit || 0)} بار تأخیر داشته‌اید؛ برای ثبت ورود باید از سرپرست خود اجازه بگیرید.`));
+
+    const status = p && p.status;
+    if (status === 'pending') {
+      card.appendChild(el('p', 'late-limit-status is-pending', 'درخواست شما ارسال شد؛ در انتظار تأیید سرپرست…'));
+      const b = el('button', 'btn secondary', 'بررسی وضعیت');
+      b.addEventListener('click', () => pollLateGate(true));
+      card.appendChild(b);
+    } else if (status === 'approved') {
+      const until = p.expiresAt ? new Date(p.expiresAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }) : '';
+      card.appendChild(el('p', 'late-limit-status is-approved', `اجازه تأیید شد${until ? ` — تا ساعت ${until} معتبر است` : ''}.`));
+      const b = el('button', 'btn primary', 'ثبت ورود');
+      b.addEventListener('click', async () => { b.disabled = true; const ok = await doAction('/check-in', {}, 'ورود ثبت شد (با اجازه‌ی سرپرست).'); if (!ok) b.disabled = false; });
+      card.appendChild(b);
+    } else {
+      if (status === 'rejected') card.appendChild(el('p', 'late-limit-status is-rejected', `درخواست قبلی رد شد${p.decisionNote ? `: ${p.decisionNote}` : '.'}`));
+      if (status === 'expired') card.appendChild(el('p', 'late-limit-status is-rejected', 'مهلت اجازه‌ی قبلی تمام شد؛ دوباره درخواست دهید.'));
+      const ta = el('textarea', 'late-limit-reason');
+      ta.maxLength = 200;
+      ta.rows = 3;
+      ta.placeholder = 'علت تأخیر را بنویسید (حداکثر ۲۰۰ نویسه)';
+      const send = el('button', 'btn primary', 'ارسال درخواست اجازه');
+      send.addEventListener('click', async () => {
+        const reason = ta.value.trim();
+        if (!reason) { showToast('علت درخواست را بنویسید.', true); return; }
+        send.disabled = true;
+        try {
+          const { permission } = await api('/checkin-permission', { method: 'POST', body: { reason } });
+          lateLimitUi.gate = { ...g, permission };
+          showToast('درخواست برای سرپرست ارسال شد.');
+        } catch (err) {
+          showToast(err.message, true);
+          if (err.data && err.data.permission) lateLimitUi.gate = { ...g, permission: err.data.permission }; // درخواست فعال از قبل هست
+        }
+        renderLateLimitCard();
+      });
+      card.append(ta, send);
+    }
+    // polling سبک فقط وقتی منتظر تصمیم‌ایم
+    if (status === 'pending' && !lateLimitUi.timer) lateLimitUi.timer = setInterval(() => pollLateGate(false), 10000);
+    if (status !== 'pending' && lateLimitUi.timer) { clearInterval(lateLimitUi.timer); lateLimitUi.timer = null; }
+  }
+
+  // بعد از reload: اگر امروز درخواستِ فعال/ردشده‌ای هست کارت دوباره باز شود (وگرنه با اولین ورودِ مسدود از ۴۰۹ باز می‌شود)
+  async function syncLateGate() {
+    try {
+      const { gate } = await api('/checkin-permission');
+      const p = gate && gate.permission;
+      if (gate && gate.enabled && p && ['pending', 'approved', 'rejected', 'expired'].includes(p.status) && gate.overLimit) {
+        lateLimitUi.gate = gate;
+        lateLimitUi.open = true;
+        renderTodayActions();
+      }
+    } catch (_) { /* بی‌صدا: ورود عادی کار می‌کند */ }
+  }
 
   function renderTodayActions() {
     const box = $('#today-actions');
@@ -306,15 +397,21 @@
 
     if (!r) {
       box.classList.add('single');
-      addTile({
-        title: 'ثبت ورود', sub: 'شروع روز کاری', color: 'green', icon: 'in', wide: true,
-        handler: () => doAction('/check-in', {}, 'ورود ثبت شد.'),
-      });
+      // D2: سقف تأخیر ماهانه رد شده ⇒ به‌جای دکمه‌ی ورود، کارت «درخواست اجازه‌ی ورود» (با تأیید سرپرست، دکمه‌ی ورود داخل همان کارت فعال می‌شود)
+      if (lateLimitUi.open) renderLateLimitCard();
+      else {
+        hideLateLimitCard();
+        addTile({
+          title: 'ثبت ورود', sub: 'شروع روز کاری', color: 'green', icon: 'in', wide: true,
+          handler: () => doAction('/check-in', {}, 'ورود ثبت شد.'),
+        });
+      }
       addMissionTile();
       addPlanTile();
       return;
     }
 
+    hideLateLimitCard(); // رکورد امروز هست ⇒ کارت اجازه لازم نیست
     if (r.check_out_time) {
       box.classList.add('single');
       const done = document.createElement('div');
@@ -477,6 +574,15 @@
       return true;
     } catch (err) {
       const code = err && err.data && err.data.code;
+      // گیت D2: سقف تأخیر ماهانه رد شده ⇒ کارت «درخواست اجازه‌ی ورود» (سرور چیزی ثبت نکرده)
+      if (path === '/check-in' && code === 'LATE_LIMIT_REACHED') {
+        showToast(err.message, true);
+        unlock();
+        lateLimitUi.gate = { enabled: true, overLimit: true, blocked: true, limit: err.data.limit, lateCount: err.data.lateCount, permission: err.data.permission || null };
+        lateLimitUi.open = true;
+        renderTodayActions();
+        return false;
+      }
       // گیت D7: گزارش تسک‌های امروز لازم است ⇒ ویزارد؛ پاسخ‌های قبلیِ همین بدنه حفظ می‌شود
       if (path === '/check-out' && code === 'daily_report_required') {
         showToast(err.message);
@@ -524,6 +630,28 @@
     }
   }
 
+  // استراحت با حقوق (C1): فقط برای استراحت کوتاهِ بازِ جاری وقتی سیاست روشن است؛ متن‌ها با textContent و هماهنگ با تایمر سرور
+  function renderBreakNote(data) {
+    const el = $('#break-note');
+    if (!el) return;
+    const paid = data && data.openBreakPaid;
+    if (!paid || !data.openBreak || data.record?.check_out_time) { el.classList.add('hidden'); el.textContent = ''; el.classList.remove('is-over'); return; }
+    const fa = (n) => (J ? J.toFaDigits(String(n)) : String(n));
+    const from = new Date(data.openBreak.start_time).getTime();
+    const paint = (diffMs) => {
+      const over = paid.isPaid && diffMs > paid.minutes * 60000;
+      let text;
+      if (!paid.isPaid) text = `سهمیه‌ی استراحت با حقوقِ امروز (${fa(paid.count)} بار) تمام شده؛ این استراحت از ساعت کاری کم می‌شود.`;
+      else if (over) text = `استراحت با حقوق ${fa(paid.index)} از ${fa(paid.count)} — از این‌جا به بعد از ساعت کاری کم می‌شود.`;
+      else text = `استراحت با حقوق ${fa(paid.index)} از ${fa(paid.count)} — ${fa(paid.minutes)} دقیقه`;
+      if (el.textContent !== text) el.textContent = text;
+      el.classList.toggle('is-over', over || !paid.isPaid);
+    };
+    el.classList.remove('hidden');
+    paint(Math.max(0, Date.now() - from));
+    state.breakNoteTick = paid.isPaid ? paint : null; // سهمیه‌ی تمام‌شده ثابت است؛ تیک لازم ندارد
+  }
+
   async function loadToday() {
     const data = await api('/today');
     state.today = data;
@@ -541,6 +669,8 @@
     const TARGET_MIN = 8 * 60;
     const timerEl = $('#timer');
     let progressMin = 0;
+    state.breakNoteTick = null;
+    renderBreakNote(data); // C1: خاموش/بدون استراحت باز ⇒ پنهان
 
     if (!r) {
       setStatus('هنوز ورود ثبت نشده', '');
@@ -574,6 +704,7 @@
     $('#progress-text').textContent = pct.toLocaleString('fa-IR') + '٪ از ۸ ساعت';
 
     renderTodayActions();
+    if (!(data && data.record)) syncLateGate();
     loadWorkHours();
     loadPlanGateBanner();
     loadReportBanner();

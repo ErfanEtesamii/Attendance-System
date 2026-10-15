@@ -43,7 +43,7 @@ function snapshot(db) {
   // rate_limit_hits (migration ۰۰۳) و job_runs/monitor_alerts/monitor_state (migration ۰۰۴) جدول‌های جدیدِ عملیاتی‌اند (داده‌ی کاربری نیستند)
   // suspicious_events (migration ۰۰۶، S2-4a) و audit_log_archive (migration ۰۰۷، S2-6a) و overtime_approvals (migration ۰۰۸، S3-5c) و work_shifts (migration ۰۰۹، S3-6a) و notifications (migration ۰۱۲، S4-5a) هم جدول جدید و خالی‌اند؛ month_closures (migration ۰۲۰، S5-3a) جدول جدیدِ خالی است؛ leave_types (migration ۰۱۳، S4-7a) جدول جدیدِ تنظیماتی با دو ردیف پیش‌فرض است (داده‌ی کاربری نیست)
   // پس از مقایسه‌ی «بدون تغییر داده» کنار می‌مانند
-  const OPERATIONAL = ['rate_limit_hits', 'job_runs', 'monitor_alerts', 'monitor_state', 'suspicious_events', 'audit_log_archive', 'overtime_approvals', 'work_shifts', 'notifications', 'leave_types', 'leave_balances', 'leave_balance_adjustments', 'leave_approvals', 'month_closures', 'month_closure_adjustments', 'weekly_plans', 'plan_tasks', 'task_daily_logs', 'report_reviews', 'plan_gate_exemptions', 'dispute_messages', 'user_shift_assignments', 'user_day_schedules'];
+  const OPERATIONAL = ['rate_limit_hits', 'job_runs', 'monitor_alerts', 'monitor_state', 'suspicious_events', 'audit_log_archive', 'overtime_approvals', 'work_shifts', 'notifications', 'leave_types', 'leave_balances', 'leave_balance_adjustments', 'leave_approvals', 'month_closures', 'month_closure_adjustments', 'weekly_plans', 'plan_tasks', 'task_daily_logs', 'report_reviews', 'plan_gate_exemptions', 'dispute_messages', 'user_shift_assignments', 'user_day_schedules', 'checkin_permissions'];
   for (const t of userTables(db).filter((n) => !OPERATIONAL.includes(n))) {
     out[t] = db.prepare(`SELECT * FROM "${t}" ORDER BY rowid`).all().map((r) => {
       const row = { ...r };

@@ -46,12 +46,16 @@
 //   expected    : طول روز کاری رسمی = پایان − شروع (حداقل ۰)
 //   workedGross : مدت بین ورود و خروج (یا now برای رکورد باز)، گرد شده؛ بدون ورود ⇒ null
 //   break       : مجموع استراحت‌های بسته‌شده (همه‌ی نوع‌ها؛ جمع میلی‌ثانیه‌ها، سپس گرد) + breakAuto (کسر ثابت ناهار، پایین)
+//   breakPaid   : (C1) بخش «با حقوق» استراحت‌ها: i‌امین استراحت کوتاه (short_break) بسته‌شده به ترتیب شروع، اگر i ≤ paidBreakCount، min(مدت، paidBreakMinutes)
+//                 با حقوق است و مازادش بدون حقوق؛ استراحت‌های بعد از تعداد مجاز و همه‌ی ناهارها کاملاً بدون حقوق. paidBreakCount/paidBreakMinutes از شیفت
+//                 (null/نبودن ⇒ تنظیمات سراسری؛ پیش‌فرض هر دو ۰ = خاموش ⇒ breakPaid = ۰ و همه‌چیز مثل قبل)
+//   breakUnpaid : (C1) break − breakPaid (شامل کسر ثابت ناهار). همیشه break = breakPaid + breakUnpaid
 //   breakAuto   : (S3-4a) کسر ثابت ناهار برای روزی که «ناهار ثبت نشده». فقط وقتی fixedLunchDeductMinutes > ۰، رکورد خروج دارد
 //                 (رکورد باز هنوز به ناهار نرسیده فرض می‌شود) و هیچ ردیف استراحتی از نوع lunch (بسته یا باز) ندارد. مقدار =
 //                 min(کسر ثابت، workedGross) تا استراحت از مدت کار بیشتر نشود. استراحت کوتاه (short_break) «ناهار ثبت‌شده» نیست
 //   breakExcess : (S3-4a) مازاد ناهارِ ثبت‌شده بر maxLunchMinutes = max(0، جمع ناهارهای بسته‌شده − سقف)؛ سقف ۰ ⇒ ۰. فقط اطلاعاتی است:
 //                 مازاد همچنان از ساعت مفید کم می‌شود (زمان واقعاً بیرون بوده)؛ پرچم‌گذاری آن در S3-4b. استراحت کوتاه شامل سقف نیست
-//   effective   : max(0, round(workedGross خام − break))؛ بدون ورود ⇒ null
+//   effective   : max(0, round(workedGross خام − breakUnpaid))؛ استراحت با حقوق از ساعت کاری کم نمی‌شود (breakPaid = ۰ ⇒ دقیقاً مثل قبل)؛ بدون ورود ⇒ null
 //   late        : تأخیر ورود. ورود تا «شروع + مهلت» (شامل خودِ مرز) ⇒ ۰؛ بعد از آن: shift_start ⇒ ورود − شروع (کل تأخیر)،
 //                 after_grace ⇒ ورود − (شروع + مهلت). مهلت ۰ (پیش‌فرض) ⇒ هر دو حالت دقیقاً مثل قبل
 //   earlyLeave  : زودتر رفتن. خروج تا «پایان − مهلت» (شامل خودِ مرز) ⇒ ۰؛ زودتر از آن ⇒ پایان − خروج (کل دقیقه‌ها، نه فقط مازاد بر مهلت).
@@ -104,6 +108,18 @@ function hhmmToMinutes(value, name, prefix = 'settings.') {
   return Number(m[1]) * 60 + Number(m[2]);
 }
 
+// استراحت با حقوق (C1): مقدار شیفت (null/undefined ⇒ تنظیمات سراسری؛ آن هم نبود ⇒ ۰). عدد متناهی ≥ ۰ وگرنه RangeError.
+function paidBreakParams(settings, shift) {
+  const pick = (shiftValue, settingValue, name, prefix) => {
+    const v = shiftValue !== undefined && shiftValue !== null ? shiftValue : settingValue;
+    return graceMinutes(v === null ? undefined : v, name, shiftValue !== undefined && shiftValue !== null ? prefix : 'settings.');
+  };
+  return {
+    paidCount: pick(shift ? shift.paidBreakCount : undefined, settings.paidBreakCount, 'paidBreakCount', 'shift.'),
+    paidMinutes: pick(shift ? shift.paidBreakMinutes : undefined, settings.paidBreakMinutes, 'paidBreakMinutes', 'shift.'),
+  };
+}
+
 // پارامترهای مؤثرِ روز (S3-6b): shift خالی ⇒ تنظیمات سراسری (رفتار قبلی)؛ وگرنه شش مقدار از شیفت (در کامنت سرفایل).
 // خروجی: { workStart, workEnd, lateGrace, earlyGrace, maxLunch, fixedLunch, overnight } — برای شیفت شب workEnd = پایان + ۱۴۴۰.
 function resolveShiftParams(settings, shift) {
@@ -116,6 +132,7 @@ function resolveShiftParams(settings, shift) {
       maxLunch: graceMinutes(settings.maxLunchMinutes, 'maxLunchMinutes'),
       fixedLunch: graceMinutes(settings.fixedLunchDeductMinutes, 'fixedLunchDeductMinutes'),
       overnight: false,
+      ...paidBreakParams(settings, null),
     };
   }
   if (typeof shift !== 'object') throw new TypeError('shift باید شیء یا null باشد.');
@@ -132,6 +149,7 @@ function resolveShiftParams(settings, shift) {
     earlyGrace: graceMinutes(shift.graceEarlyMinutes, 'graceEarlyMinutes', 'shift.'),
     maxLunch: graceMinutes(shift.maxLunchMinutes, 'maxLunchMinutes', 'shift.'),
     fixedLunch: graceMinutes(shift.fixedLunchDeductMinutes, 'fixedLunchDeductMinutes', 'shift.'),
+    ...paidBreakParams(settings, shift),
     overnight,
   };
 }
@@ -224,10 +242,23 @@ function normalizeLeaveWindows(approvedLeaves, workStart, workEnd) {
   return merged;
 }
 
+// تقسیم استراحت‌های کوتاهِ بسته‌شده به «با حقوق/بدون حقوق» (C1، خالص). به ترتیب شروع؛ i‌امین (i < count) تا سقف minutes با حقوق است.
+// ناهار و استراحت باز هرگز با حقوق نیست. مدت منفی (پایان قبل از شروع) سهمی ندارد. خروجی: Map(آیتم ⇒ ms با حقوق) فقط برای آیتم‌های با سهم > ۰.
+function paidBreakSplit(items, count, minutes) {
+  const paid = new Map();
+  if (!(count > 0) || !(minutes > 0)) return paid;
+  const shorts = items.filter((b) => !b.lunch && b.endMs !== null).sort((a, b) => a.startMs - b.startMs);
+  shorts.slice(0, Math.floor(count)).forEach((b) => {
+    const ms = Math.max(0, Math.min(b.endMs - b.startMs, minutes * 60000));
+    if (ms > 0) paid.set(b, ms);
+  });
+  return paid;
+}
+
 function computeDay({ record, breaks, settings, now, timezone, shift, calendar, approvedLeaves } = {}) {
   if (!settings || typeof settings !== 'object') throw new TypeError('settings الزامی است.');
   const params = resolveShiftParams(settings, shift);
-  const { workStart, lateGrace, earlyGrace, maxLunch, fixedLunch, overnight } = params;
+  const { workStart, lateGrace, earlyGrace, maxLunch, fixedLunch, overnight, paidCount, paidMinutes } = params;
   let { workEnd } = params;
   // تقویم روز (S3-7c): روز غیرکاری یا پایانِ نیم‌روز. بدون calendar همه‌چیز مثل قبل
   let dayOff = false;
@@ -276,6 +307,8 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
     workedGross: null,
     break: 0,
     breakAuto: 0,
+    breakPaid: 0,
+    breakUnpaid: 0,
     breakExcess: 0,
     effective: null,
     late: 0,
@@ -295,6 +328,11 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
   const emit = () => { result.flags = FLAG_ORDER.filter((f) => flagSet.has(f)); return result; };
 
   result.break = sumItems(read.items);
+  const paidMsOf = paidBreakSplit(read.items, paidCount, paidMinutes); // C1: Map(آیتم ⇒ میلی‌ثانیه‌ی با حقوق)
+  let paidTotalMs = 0;
+  for (const ms of paidMsOf.values()) paidTotalMs += ms;
+  result.breakPaid = Math.round(paidTotalMs / 60000);
+  result.breakUnpaid = result.break - result.breakPaid; // بدون clamp: با استراحتِ «پایان قبل از شروع» (مدت منفی) باید دقیقاً همان رفتار قبلی بماند (parity با workHours)
   if (maxLunch > 0) result.breakExcess = Math.max(0, sumItems(read.items, { onlyLunch: true }) - maxLunch);
   // C3: ماموریتِ تأییدشده (پنجره‌های kind='mission' که به بازه‌ی کاری بریده شده‌اند). فقط در روز کاری؛ pending/rejected هرگز به اینجا نمی‌رسد
   const missionWins = dayOff ? [] : normalizeLeaveWindows((approvedLeaves || []).filter((w) => w && w.kind === 'mission'), workStart, workEnd);
@@ -343,16 +381,18 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
   if (fixedLunch > 0 && checkOut && !(breaks || []).some((b) => b && isLunch(b))) {
     result.breakAuto = Math.min(fixedLunch, result.workedGross);
     result.break += result.breakAuto;
+    result.breakUnpaid += result.breakAuto; // کسر ثابت ناهار همیشه بدون حقوق
   }
-  result.effective = Math.max(0, Math.round(gross - result.break));
+  result.effective = Math.max(0, Math.round(gross - result.breakUnpaid)); // C1: فقط بخش بدون حقوق از ساعت کاری کم می‌شود
   result.effectiveWithMission = result.effective;
   if (result.missionMinutes > 0) {
     // مفید = |P ∪ M'|: P = حضور منهای استراحت‌های واقعی؛ فقط بخشی از ماموریت که با P هم‌پوشان است دوبار شمرده نمی‌شود
     let pres = reversed ? [] : [[posOf(checkIn), posOf(end)]];
     for (const b of read.items) {
       if (b.endMs === null) continue;
-      const bs = posOf(new Date(b.startMs));
+      const bs = posOf(new Date(b.startMs)) + (paidMsOf.get(b) || 0) / 60000; // C1: بخش با حقوق از حضور کم نمی‌شود
       const be = posOf(new Date(b.endMs));
+      if (be <= bs) continue;
       const next = [];
       for (const [s, e] of pres) {
         if (be <= s || bs >= e) next.push([s, e]);

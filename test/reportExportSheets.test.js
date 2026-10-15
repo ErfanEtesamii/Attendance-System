@@ -34,6 +34,7 @@ describe('reportExportService: شکل شیت‌ها (با موتور/مخزن س
     });
     stub('src/engine/dayService.js', {
       loadContext: () => ({ settings: {}, timezone: 'Asia/Tehran' }),
+      breakSplit: (r) => (r.id === 12 ? { paid: 15, unpaid: 15 } : null), // C1: ستون‌های «استراحت با/بدون حقوق»
       computeMonthOvertime: (recs, o) => {
         calls.capCalls.push(o.capMinutes);
         if (!recs.length) return { days: [], totalEligible: 0 };
@@ -94,7 +95,10 @@ describe('reportExportService: شکل شیت‌ها (با موتور/مخزن س
     assert.equal(at('دقیقه مفید'), 450);
     assert.equal(at('ساعت مفید (ساعت:دقیقه)'), '07:30');
     assert.equal(at('دقیقه تأخیر'), 10);
+    assert.deepEqual([at('استراحت با حقوق (دقیقه)'), at('استراحت بدون حقوق (دقیقه)')], [15, 15], 'C1: ستون‌های جدید در انتها'); // ستون‌های قبلی سر جایشان
+    assert.deepEqual(daily.headers.slice(-2), ['استراحت با حقوق (دقیقه)', 'استراحت بدون حقوق (دقیقه)']);
     const leaveDay = daily.rows[0];
+    assert.deepEqual([leaveDay[h.indexOf('استراحت با حقوق (دقیقه)')], leaveDay[h.indexOf('استراحت بدون حقوق (دقیقه)')]], ['', ''], 'محاسبه‌ناپذیر ⇒ خالی');
     assert.equal(leaveDay[h.indexOf('ورود')], '');
     assert.equal(leaveDay[h.indexOf('دقیقه مفید')], '');
     assert.equal(leaveDay[h.indexOf('ساعت مفید (ساعت:دقیقه)')], '');

@@ -21,6 +21,8 @@ const { createRateLimiter } = require('../../middleware/rateLimiter');
 
 const attendanceRepository = require('../../repositories/attendanceRepository');
 const breakRepository = require('../../repositories/breakRepository');
+const breakPolicyService = require('../../services/breakPolicyService');
+const lateLimitService = require('../../services/lateLimitService');
 const leaveRepository = require('../../repositories/leaveRepository');
 const leaveTypesRepository = require('../../repositories/leaveTypesRepository');
 const leaveService = require('../../services/leaveService');
@@ -69,6 +71,7 @@ const miniAppActionLimiter = createRateLimiter({
   keyFn: miniAppRateLimitKey,
 });
 router.use('/miniapp/check-in', miniAppActionLimiter);
+router.use('/miniapp/checkin-permission', miniAppActionLimiter);
 router.use('/miniapp/check-out', miniAppActionLimiter);
 router.use('/miniapp/break/start', miniAppActionLimiter);
 router.use('/miniapp/break/end', miniAppActionLimiter);
@@ -102,7 +105,10 @@ router.get('/miniapp/today', (req, res) => {
   const openBreak = record ? breakRepository.findOpenBreak(record.id) : null;
   const breaks = record ? breakRepository.listByAttendanceRecord(record.id) : [];
   const summary = record ? dayService.summarizeRecord(record) : null;
-  res.json({ record: record || null, openBreak: openBreak || null, breaks, summary });
+  // C1: سیاست استراحت با حقوق (خاموش ⇒ enabled=false) + شماره‌ی استراحتِ بازِ جاری؛ فیلدهای قبلی بدون تغییر
+  const breakPolicy = breakPolicyService.policyFor(req.miniAppUser.id, record ? record.record_date : null);
+  const openBreakPaid = record && openBreak ? breakPolicyService.paidInfo(req.miniAppUser.id, record.record_date, breaks, openBreak) : null;
+  res.json({ record: record || null, openBreak: openBreak || null, breaks, summary, breakPolicy, openBreakPaid });
 });
 
 // بلوک اختیاری device مشترک (S2-4e-3؛ پیش‌فرض خاموش، فقط قاعده‌ی الف). اگر ثبت رد شود پاسخ 403 همین‌جا
@@ -136,6 +142,21 @@ router.post('/miniapp/check-in', (req, res) => {
     return res.status(400).json({ error: 'ورود امروز قبلاً ثبت شده است.' });
   }
   if (rejectIfSharedDeviceBlocked(req, res, 'check_in')) return;
+  // D2: گیت سقف تأخیر ماهانه — فقط برای ورودِ «دیر»؛ ورود با ماموریتِ در انتظار مستثنی است. هر خطای داخلی ⇒ fail-open (ثبت ورود نمی‌شکند).
+  let gate = null;
+  if (!req.viaPendingMission) {
+    try { gate = lateLimitService.evaluateCheckIn(req.miniAppUser); } catch (err) { console.error('[late-limit] خطا در گیت (نادیده گرفته شد):', err && err.message ? err.message : err); }
+  }
+  if (gate && gate.action === 'block') {
+    auditRepository.logEvent({ userId: req.miniAppUser.id, action: 'check_in_blocked', ipAddress: req.ip, details: { source: 'miniapp', reason: 'late_limit_reached', lateCount: gate.state.lateCount, limit: gate.state.limit, lateMinutes: gate.lateMinutes } });
+    return res.status(409).json({
+      code: 'LATE_LIMIT_REACHED',
+      error: `این ماه ${gate.state.limit} بار تأخیر داشته‌اید؛ برای ثبت ورود باید از سرپرست خود اجازه بگیرید.`,
+      lateCount: gate.state.lateCount,
+      limit: gate.state.limit,
+      permission: gate.state.permission,
+    });
+  }
   const record = attendanceRepository.recordCheckIn(req.miniAppUser.id, req.ip, extractDeviceInfo(req), { viaPendingMission: Boolean(req.viaPendingMission) });
   if (req.viaPendingMission) pendingMissionService.flagPendingMissionOutside({ userId: req.miniAppUser.id, record, requestId: req.viaPendingMission, action: 'check_in' });
   auditRepository.logEvent({
@@ -144,7 +165,16 @@ router.post('/miniapp/check-in', (req, res) => {
     ipAddress: req.ip,
     details: { source: 'miniapp' },
   });
-  res.status(201).json(record);
+  // D2: ورود با اجازه ⇒ اجازه «used» و در audit «با اجازه‌ی سرپرست» (ساعت ورود همان لحظه‌ی واقعی ثبت است)؛ soft ⇒ هشدار در audit و پاسخ
+  let lateLimitWarning = null;
+  if (gate && gate.viaPermission) {
+    const used = lateLimitService.consumeOnCheckIn(req.miniAppUser);
+    auditRepository.logEvent({ userId: req.miniAppUser.id, action: 'check_in_with_permission', ipAddress: req.ip, details: { source: 'miniapp', permissionId: used ? used.id : gate.state.permission.id, approvedBy: gate.state.permission.decidedBy, lateCount: gate.state.lateCount, limit: gate.state.limit, lateMinutes: gate.lateMinutes } });
+  } else if (gate && gate.action === 'warn') {
+    auditRepository.logEvent({ userId: req.miniAppUser.id, action: 'check_in_late_limit_warning', ipAddress: req.ip, details: { source: 'miniapp', mode: 'soft', lateCount: gate.state.lateCount, limit: gate.state.limit, lateMinutes: gate.lateMinutes } });
+    lateLimitWarning = { code: 'LATE_LIMIT_SOFT', lateCount: gate.state.lateCount, limit: gate.state.limit, message: `این ماه ${gate.state.lateCount} بار تأخیر داشته‌اید (سقف ${gate.state.limit}).` };
+  }
+  res.status(201).json(lateLimitWarning ? { ...record, lateLimitWarning } : record);
   // تشخیص مورد مشکوک (S2-4e): بعد از ارسال پاسخ و کاملاً ضدخطا؛ هرگز روی نتیجه‌ی ثبت اثر نمی‌گذارد
   fraudRunner.runFraudChecksSafe({ date: record.record_date });
 });
@@ -231,7 +261,9 @@ router.post('/miniapp/break/start', (req, res) => {
   }
   const breakType = req.body?.breakType === 'short_break' ? 'short_break' : 'lunch';
   const breakRecord = breakRepository.startBreak(record.id, breakType);
-  res.status(201).json(breakRecord);
+  // C1: «استراحت با حقوق ۲ از ۳» (فقط وقتی سیاست روشن و استراحت کوتاه است؛ وگرنه paid=null)
+  const paid = breakPolicyService.paidInfo(req.miniAppUser.id, record.record_date, breakRepository.listByAttendanceRecord(record.id), breakRecord);
+  res.status(201).json({ ...breakRecord, paid });
 });
 
 router.post('/miniapp/break/end', (req, res) => {
@@ -368,6 +400,19 @@ router.get('/miniapp/mission/day', (req, res) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'date باید YYYY-MM-DD باشد.' });
   const day = getCalendarDay(req.miniAppUser, date);
   res.json({ date, isWorkingDay: !!day.isWorkingDay, expectedStart: day.expectedStart || null, expectedEnd: day.expectedEnd || null });
+});
+
+// D2: وضعیت سقف تأخیر و اجازه‌ی ورودِ امروزِ خود کارمند (برای کارت Mini App؛ polling سبک). خاموش ⇒ enabled=false
+router.get('/miniapp/checkin-permission', (req, res) => {
+  res.json({ gate: lateLimitService.getGateState(req.miniAppUser) });
+});
+
+// D2: درخواست اجازه‌ی ورود { reason } ⇒ 201 { permission } | 400/409 { error, code }
+router.post('/miniapp/checkin-permission', (req, res) => {
+  const r = lateLimitService.requestPermission(req.miniAppUser, (req.body || {}).reason);
+  if (!r.ok) return res.status(r.status).json({ error: r.error, code: r.code, permission: r.permission || null });
+  auditRepository.logEvent({ userId: req.miniAppUser.id, action: 'checkin_permission_requested', ipAddress: req.ip, details: { source: 'miniapp', permissionId: r.permission.id, date: r.permission.date } });
+  return res.status(201).json({ permission: r.permission });
 });
 
 // B2: ساعت کاری «مؤثر» امروز و فردای خود کارمند (override روز ← شیفت ← سراسری)؛ special = برنامه‌ی ویژه‌ی همان روز ('work'|'off'|null)

@@ -247,4 +247,15 @@ function computeMonthOvertime(records, opts = {}) {
   };
 }
 
-module.exports = { loadContext, computeRecordDay, summarizeRecord, summarizeRange, toLegacySummary, capMonthlyOvertime, computeMonthOvertime, approvalStatusOf, eligiblePayable };
+// تقسیم استراحت‌های یک رکورد به «با حقوق/بدون حقوق» برای خروجی‌ها (C1)؛ خطا یا رکورد بدون ورود ⇒ null (ستون خالی؛ خروجی نمی‌شکند)
+function breakSplit(record, opts = {}) {
+  try {
+    const d = computeRecordDay(record, opts);
+    return { paid: d.breakPaid, unpaid: d.breakUnpaid };
+  } catch (err) {
+    if (!(err instanceof RangeError)) throw err;
+    return null;
+  }
+}
+
+module.exports = { loadContext, computeRecordDay, breakSplit, summarizeRecord, summarizeRange, toLegacySummary, capMonthlyOvertime, computeMonthOvertime, approvalStatusOf, eligiblePayable };

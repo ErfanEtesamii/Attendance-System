@@ -1,7 +1,7 @@
 // اعتبارسنجی خالص ورودی شیفت (S3-6a) — بدون دیتابیس. خروجی: { ok:true, value } یا { ok:false, error }.
 // value با نام‌های camelCase و مقادیر نرمال‌شده است (HH:MM دو رقمی، workDays مرتب و یکتا، overnight بولین).
 
-const FIELDS = ['name', 'startTime', 'endTime', 'graceLateMinutes', 'graceEarlyMinutes', 'workDays', 'overnight', 'maxLunchMinutes', 'fixedLunchDeductMinutes'];
+const FIELDS = ['name', 'startTime', 'endTime', 'graceLateMinutes', 'graceEarlyMinutes', 'workDays', 'overnight', 'maxLunchMinutes', 'fixedLunchDeductMinutes', 'paidBreakCount', 'paidBreakMinutes'];
 const REQUIRED = ['name', 'startTime', 'endTime'];
 const DEFAULTS = {
   graceLateMinutes: 0,
@@ -10,6 +10,13 @@ const DEFAULTS = {
   overnight: false,
   maxLunchMinutes: 0,
   fixedLunchDeductMinutes: 0,
+  paidBreakCount: null, // C1: null = از تنظیمات سراسری
+  paidBreakMinutes: null,
+};
+// C1: فیلدهای اختیاریِ «null = از تنظیمات سراسری» (عدد صحیح در بازه یا null)
+const NULLABLE_LIMITS = {
+  paidBreakCount: [0, 10, 'تعداد استراحت با حقوق'],
+  paidBreakMinutes: [0, 120, 'سقف هر استراحت با حقوق'],
 };
 const MINUTE_LIMITS = {
   graceLateMinutes: [0, 720, 'مهلت تأخیر'],
@@ -65,6 +72,13 @@ function validateShiftInput(body, { partial = false } = {}) {
     if (input[f] === undefined) continue;
     const n = toMinutes(input[f]);
     if (n === null || n < min || n > max) return bad(`${label} باید عدد صحیح بین ${min} و ${max} (دقیقه) باشد.`, f);
+    out[f] = n;
+  }
+  for (const [f, [min, max, label]] of Object.entries(NULLABLE_LIMITS)) {
+    if (input[f] === undefined) continue;
+    if (input[f] === null || input[f] === '') { out[f] = null; continue; }
+    const n = toMinutes(input[f]);
+    if (n === null || n < min || n > max) return bad(`${label} باید عدد صحیح بین ${min} و ${max} باشد (یا خالی = تنظیمات سراسری).`, f);
     out[f] = n;
   }
   if (input.overnight !== undefined) {

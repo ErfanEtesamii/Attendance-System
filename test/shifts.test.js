@@ -33,7 +33,7 @@ describe('شیفت‌های کاری — migration، اعتبارسنجی و rep
   test('اعتبارسنجی خالص: پیش‌فرض‌ها، نرمال‌سازی ساعت/روزها، و جدول موارد نامعتبر (شیفت شب، مرز، تکراری)', () => {
     const { validateShiftInput } = require('../src/utils/shiftValidation');
     const ok = validateShiftInput({ name: '  صبح ', startTime: '8:00', endTime: '16:30' });
-    assert.deepEqual(ok, { ok: true, value: { name: 'صبح', startTime: '08:00', endTime: '16:30', graceLateMinutes: 0, graceEarlyMinutes: 0, workDays: [0, 1, 2, 3, 6], overnight: false, maxLunchMinutes: 0, fixedLunchDeductMinutes: 0 } });
+    assert.deepEqual(ok, { ok: true, value: { name: 'صبح', startTime: '08:00', endTime: '16:30', graceLateMinutes: 0, graceEarlyMinutes: 0, workDays: [0, 1, 2, 3, 6], overnight: false, maxLunchMinutes: 0, fixedLunchDeductMinutes: 0, paidBreakCount: null, paidBreakMinutes: null } });
     const night = validateShiftInput({ name: 'شب', startTime: '22:00', endTime: '06:00', overnight: true, workDays: [3, 6, 0], graceLateMinutes: '10' });
     assert.equal(night.ok, true);
     assert.deepEqual([night.value.workDays, night.value.overnight, night.value.graceLateMinutes], [[0, 3, 6], true, 10]);

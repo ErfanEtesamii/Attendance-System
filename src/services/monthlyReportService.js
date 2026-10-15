@@ -70,7 +70,7 @@ function startDateOf(user, timezone) {
 }
 
 function emptyDayResult() {
-  return { expected: 0, workedGross: null, break: 0, effective: null, late: 0, earlyLeave: 0, overtime: 0, overtimePayable: 0, isOpen: false, missionMinutes: 0, effectiveWithMission: null, flags: [], status: null };
+  return { expected: 0, workedGross: null, break: 0, breakPaid: 0, breakUnpaid: 0, effective: null, late: 0, earlyLeave: 0, overtime: 0, overtimePayable: 0, isOpen: false, missionMinutes: 0, effectiveWithMission: null, flags: [], status: null };
 }
 
 // جمع «جمع‌پذیر»های خروجی کاربران (totals). جدا شده تا گزارش ماهِ بسته (S5-3b) بعد از فیلتر اسکوپ از snapshot هم همان جمع را بسازد.
@@ -144,6 +144,8 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
     };
     const leave = { leaveDays: 0, leaveMinutes: 0, missionDays: 0, missionMinutes: 0 };
     const time = { expectedMinutes: 0, effectiveMinutes: 0, effectiveWithMissionMinutes: 0, shortfallMinutes: 0, lateMinutes: 0, earlyLeaveMinutes: 0 };
+    // C1: استراحت با/بدون حقوق (جدا از time تا فهرست جمع‌پذیرِ snapshotهای ماه بسته‌شده‌ی قبلی دست نخورد؛ فقط گزارش/خروجی)
+    const breaks = { paidMinutes: 0, unpaidMinutes: 0 };
     const typeAcc = new Map(); // key: leaveTypeId|null ⇒ { leaveTypeId, title, kind, days, minutes }
     const bucket = (leaveTypeId, kind) => {
       const key = leaveTypeId === null ? 'manual' : String(leaveTypeId);
@@ -201,7 +203,11 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
       time.expectedMinutes += day.expected;
       // ورودِ بدون خروجِ روزِ گذشته (missing_checkout) ساعت مفیدِ بی‌معنا می‌دهد (موتور تا now می‌شمارد ⇒ ده‌ها ساعت)؛ در جمع نمی‌آید و در incompleteDays شمرده می‌شود.
       // رکورد بازِ «امروز» (هنوز در حال کار) تا همین لحظه حساب می‌شود.
-      if (day.effective !== null && !day.flags.includes('missing_checkout')) time.effectiveMinutes += day.effective;
+      if (day.effective !== null && !day.flags.includes('missing_checkout')) {
+        time.effectiveMinutes += day.effective;
+        breaks.paidMinutes += day.breakPaid || 0;
+        breaks.unpaidMinutes += day.breakUnpaid || 0;
+      }
       if (day.effectiveWithMission !== null && !day.flags.includes('missing_checkout')) time.effectiveWithMissionMinutes += day.effectiveWithMission; // C3
       if (day.late > 0) { att.lateDays += 1; time.lateMinutes += day.late; }
       if (day.earlyLeave > 0) { att.earlyLeaveDays += 1; time.earlyLeaveMinutes += day.earlyLeave; }
@@ -258,6 +264,7 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
         dayRows.push({
           date: dateStr, status, kind: cal.kind, holidayTitle: cal.holidayTitle,
           expected: day.expected, effective: day.effective, late: day.late, earlyLeave: day.earlyLeave,
+          breakPaid: day.breakPaid || 0, breakUnpaid: day.breakUnpaid || 0,
           overtime: day.overtime, overtimePayable: day.overtimePayable, flags: day.flags,
           leaveMinutes: sum(parts.map((p) => p.minutes)),
           missionMinutes: day.missionMinutes, effectiveWithMission: day.effectiveWithMission,
@@ -299,6 +306,7 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
       attendance: att,
       leave: { ...leave, byType: [...typeAcc.values()] },
       time,
+      breaks,
       overtime,
       balances,
     };
