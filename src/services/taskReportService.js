@@ -65,7 +65,8 @@ const isOptionalRow = (t) => !!t && t.priority === 'low' && !t.is_system;
 const present = (t, extra = {}) => ({
   id: t.id, title: t.title, description: t.description || '', priority: t.priority,
   plannedDate: t.planned_date || null, isSystem: !!t.is_system, systemKey: t.system_key || null,
-  outOfPlan: t.system_key === OUT_OF_PLAN_KEY, optional: isOptionalRow(t), ...extra,
+  outOfPlan: t.system_key === OUT_OF_PLAN_KEY, optional: isOptionalRow(t),
+  isUrgent: !!t.is_urgent, assignedByUserId: t.assigned_by_user_id || null, urgentNote: t.urgent_note || null, urgentDeadlineTime: t.urgent_deadline_time || null, ...extra,
 });
 
 function lastLog(taskId) {
@@ -98,7 +99,8 @@ function buildList(user, date, settings) {
     if (last && last.status === 'done') continue;
     add(t, 'rescheduled');
   }
-  return [...picked.values()].sort((a, b) => (PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]) || (a.id - b.id));
+  // تسک فوری (E1) بالای فهرست؛ سپس اولویت و شناسه. فوری همیشه priority=high است ⇒ مثل high مانع خروج است (گیت تغییری نکرده).
+  return [...picked.values()].sort((a, b) => (Number(b.isUrgent) - Number(a.isUrgent)) || (PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]) || (a.id - b.id));
 }
 
 function recordOn(user, date) {
@@ -192,6 +194,9 @@ function validateAnswer(a, n, user, date, settings, byId, base = date) {
     return { error: answered && answered.user_id === user.id ? fail('ALREADY_ANSWERED', `تسک پاسخ ${n} قبلاً پاسخ داده شده است.`) : fail('TASK_NOT_FOUND', `تسک پاسخ ${n} در فهرست امروز شما نیست.`) };
   }
   if (!STATUSES.includes(a.status)) return { error: fail('INVALID_STATUS', `وضعیت پاسخ ${n} نامعتبر است (done | partial | not_done).`) };
+  if (task.isUrgent && a.reschedule && typeof a.reschedule === 'object' && a.reschedule.type === DROP) { // E1: انتقال مجاز است، حذف (drop) نه
+    return { error: fail('URGENT_DROP_NOT_ALLOWED', `تسک فوری (پاسخ ${n}) را نمی‌توان حذف کرد؛ می‌توانید آن را به روز دیگری منتقل کنید.`) };
+  }
   if (task.systemKey === teamReview.REVIEW_KEY) { // D9: «انجام شد» فقط با مشاهده‌ی واقعیِ گزارش‌ها (خودکار ثبت می‌شود)؛ انتقال/حذفِ تسک سیستمی معنا ندارد
     if (a.status === 'done') return { error: fail('REVIEW_INCOMPLETE', `پاسخ ${n}: «انجام شد» برای این تسک فقط پس از مشاهده‌ی گزارش همه‌ی اعضای دارای گزارش ثبت می‌شود.`) };
     if (a.reschedule !== undefined && a.reschedule !== null) return { error: fail('RESCHEDULE_NOT_ALLOWED', `انتقال/حذفِ تسک سیستمی (پاسخ ${n}) مجاز نیست.`) };

@@ -18,7 +18,7 @@ const { addDays } = require('../utils/shiftDay');
 function planSatisfied(userId, weekStart, minTasks) {
   const plan = plansRepo.findByUserWeek(userId, weekStart);
   if (!plan || plan.status !== 'submitted') return false;
-  const count = plansRepo.listTasks(plan.id).filter((t) => !t.is_system).length;
+  const count = plansRepo.listTasks(plan.id).filter((t) => !t.is_system && !t.is_urgent).length;
   return count >= Math.max(0, minTasks);
 }
 

@@ -35,7 +35,7 @@ describe('زمان‌بندی از رجیستری و reload (S3-8c)', () => {
   test('رجیستری: ۱۴ کلید cron با پیش‌فرض .env/کد؛ ذخیره غالب است، reset به پیش‌فرض برمی‌گرداند، نامعتبر رد می‌شود، .env خراب ⇒ fallback', () => {
     assert.deepEqual(registry.selfCheck(), []);
     const jobs = registry.cronJobs();
-    assert.equal(jobs.length, 14);
+    assert.equal(jobs.length, 15);
     assert.deepEqual(jobs.map((j) => j.job).filter((n) => n !== 'watchdog'), Object.keys(config.cron), 'همه‌ی Jobهای config.cron، هم‌ترتیب');
     jobs.forEach(({ job, key }) => assert.equal(registry.defaultOf(key), job === 'watchdog' ? config.monitor.watchdogCron : config.cron[job], key));
     assert.equal(registry.getDef('cronDailyReport').group, 'schedule');
@@ -61,20 +61,20 @@ describe('زمان‌بندی از رجیستری و reload (S3-8c)', () => {
 
     scheduler.startSchedulers({ sendMessage: async () => {} });
     const names = scheduler.jobNames();
-    assert.equal(names.length, 14);
-    assert.equal(sched.mock.callCount(), 14);
+    assert.equal(names.length, 15);
+    assert.equal(sched.mock.callCount(), 15);
     assert.equal(scheduler.activeCrons().dailyReport, DEFAULT);
 
     assert.deepEqual(scheduler.reload(), { reloaded: true, changed: [], errors: [] });
-    assert.equal(sched.mock.callCount(), 14, 'بدون تغییر ⇒ ساخت مجدد ندارد');
+    assert.equal(sched.mock.callCount(), 15, 'بدون تغییر ⇒ ساخت مجدد ندارد');
     assert.equal(tasks.filter((t) => t.stopped).length, 0);
 
     settingsRepo.setValue('cronDailyReport', NEW_EXPR);
     const r = scheduler.reload();
     assert.deepEqual(r, { reloaded: true, changed: [{ job: 'dailyReport', from: DEFAULT, to: NEW_EXPR }], errors: [] });
-    assert.equal(sched.mock.callCount(), 15);
+    assert.equal(sched.mock.callCount(), 16);
     assert.deepEqual(tasks.filter((t) => t.stopped).map((t) => t.expr), [DEFAULT], 'فقط تسک قبلی همان Job متوقف شد');
-    assert.equal(tasks[14].expr, NEW_EXPR);
+    assert.equal(tasks[15].expr, NEW_EXPR);
     assert.equal(scheduler.activeCrons().dailyReport, NEW_EXPR);
 
     // callback ثبت‌شده همان Job است و با wrapJob در job_runs ثبت می‌شود

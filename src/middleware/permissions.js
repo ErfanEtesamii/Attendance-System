@@ -54,6 +54,7 @@ const PERMISSIONS = Object.freeze([
   'reviews.write', // D9: ثبت «مشاهده شد» + کامنت/واکنش روی گزارش عضو تیم (admin و سرپرست؛ اسکوپ تیم در سرویس)
   'checkin_permissions.read', // D3: صف «اجازه‌ی ورود» (سقف تأخیر ماهانه)؛ admin/hr همه، سرپرست فقط تیم خودش (اسکوپ در route)
   'checkin_permissions.decide', // D3: تأیید/رد اجازه‌ی ورود (admin همه، سرپرست فقط کارمندان مستقیمش؛ hr ندارد)
+  'tasks.assign_urgent', // E1: تعیین/حذف/فهرست «تسک فوری» (admin همه، سرپرست فقط کارمندان مستقیمش؛ اسکوپ در سرویس/route؛ hr و کارمند ندارند)
 ]);
 
 // مجوزهای «خود کارمند»؛ هر چه خارج از اینجاست برای employee بسته است.
@@ -93,6 +94,7 @@ const MANAGER_PERMISSIONS = [
   'reviews.write', // D9: فقط تیم خودش
   'checkin_permissions.read', // D3: فقط تیم خودش
   'checkin_permissions.decide', // D3: فقط کارمندان مستقیمش
+  'tasks.assign_urgent', // E1: فقط کارمندان مستقیمش
 ];
 
 // منابع انسانی (S4-4a): فقط‌خواندنی روی همه‌ی کاربران (بدون اسکوپ تیم؛ scopedUserIds برای hr مثل admin همه را برمی‌گرداند).

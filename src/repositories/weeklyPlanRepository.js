@@ -59,11 +59,14 @@ function listTasks(planId, { includeDeleted = false } = {}) {
   return getDb().prepare(`SELECT * FROM plan_tasks WHERE plan_id = ?${includeDeleted ? '' : ' AND deleted_at IS NULL'} ORDER BY sort_order, id`).all(planId);
 }
 
-function addTask(planId, { title, description = null, plannedDate = null, priority = 'normal', sortOrder = null, isSystem = false, systemKey = null, carriedFromTaskId = null }) {
+function addTask(planId, { title, description = null, plannedDate = null, priority = 'normal', sortOrder = null, isSystem = false, systemKey = null, carriedFromTaskId = null,
+  isUrgent = false, assignedByUserId = null, urgentNote = null, urgentDeadlineTime = null }) {
   const db = getDb();
   const order = sortOrder === null ? (db.prepare('SELECT COALESCE(MAX(sort_order), 0) + 1 AS n FROM plan_tasks WHERE plan_id = ?').get(planId).n) : sortOrder;
-  const res = db.prepare(`INSERT INTO plan_tasks (plan_id, title, description, planned_date, priority, sort_order, is_system, system_key, carried_from_task_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(planId, title, description, plannedDate, priority, order, isSystem ? 1 : 0, systemKey, carriedFromTaskId);
+  const res = db.prepare(`INSERT INTO plan_tasks (plan_id, title, description, planned_date, priority, sort_order, is_system, system_key, carried_from_task_id,
+      is_urgent, assigned_by_user_id, urgent_note, urgent_deadline_time)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(planId, title, description, plannedDate, priority, order, isSystem ? 1 : 0, systemKey, carriedFromTaskId,
+    isUrgent ? 1 : 0, isUrgent ? assignedByUserId : null, isUrgent ? urgentNote : null, isUrgent ? urgentDeadlineTime : null);
   return findTask(res.lastInsertRowid);
 }
 
@@ -96,10 +99,27 @@ function findSystemTaskOnDate(planId, systemKey, plannedDate) {
 // پرتکرارترین عنوان‌های تسک‌های غیرسیستمیِ کاربر (برای پیشنهاد در ویزارد)
 function topTitles(userId, limit = 5) {
   return getDb().prepare(`SELECT t.title AS title, COUNT(*) AS n FROM plan_tasks t JOIN weekly_plans p ON p.id = t.plan_id
-    WHERE p.user_id = ? AND t.is_system = 0 AND t.deleted_at IS NULL GROUP BY t.title ORDER BY n DESC, MAX(t.id) DESC LIMIT ?`).all(userId, limit).map((r) => r.title);
+    WHERE p.user_id = ? AND t.is_system = 0 AND t.is_urgent = 0 AND t.deleted_at IS NULL GROUP BY t.title ORDER BY n DESC, MAX(t.id) DESC LIMIT ?`).all(userId, limit).map((r) => r.title);
+}
+
+// ---------- تسک فوری (E1) ----------
+// تسک فوریِ حذف‌نشده‌ی کاربران (userIds = null ⇒ همه) با planned_date داخل [from, to]؛ هر ردیف user_id برنامه را هم دارد.
+function listUrgent({ userIds = null, from, to }) {
+  if (Array.isArray(userIds) && !userIds.length) return [];
+  const where = ['t.is_urgent = 1', 't.deleted_at IS NULL', 't.planned_date BETWEEN ? AND ?'];
+  const params = [from, to];
+  if (Array.isArray(userIds)) { where.push(`p.user_id IN (${userIds.map(() => '?').join(',')})`); params.push(...userIds); }
+  return getDb().prepare(`SELECT t.*, p.user_id AS user_id, p.week_start_date AS week_start_date FROM plan_tasks t JOIN weekly_plans p ON p.id = t.plan_id
+    WHERE ${where.join(' AND ')} ORDER BY t.planned_date, t.id`).all(...params);
+}
+
+// تسک فوری + کاربرِ مالک (برای حذف/اسکوپ)
+function findUrgentWithOwner(taskId) {
+  return getDb().prepare(`SELECT t.*, p.user_id AS user_id, p.week_start_date AS week_start_date FROM plan_tasks t JOIN weekly_plans p ON p.id = t.plan_id
+    WHERE t.id = ? AND t.is_urgent = 1`).get(taskId) || null;
 }
 
 module.exports = {
-  topTitles, findById, findByUserWeek, getOrCreate, listByUserRange, listByWeek, markSubmitted, touch, setSupervisorFeedback,
+  listUrgent, findUrgentWithOwner, topTitles, findById, findByUserWeek, getOrCreate, listByUserRange, listByWeek, markSubmitted, touch, setSupervisorFeedback,
   findTask, listTasks, addTask, updateTask, softDeleteTask, findSystemTask, findSystemTaskOnDate,
 };

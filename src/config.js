@@ -180,6 +180,8 @@ const config = {
     dbMaintenance: process.env.CRON_DB_MAINTENANCE || '0 4 2 * *',
     // یادآوری/ارجاع تأیید مرخصی (S4-11c): هر ساعت (دقیقه‌ی ۱۵)؛ تا وقتی تنظیمات leaveApprovalReminderHours/leaveEscalate* صفرند کاری نمی‌کند
     leaveApprovalReminder: process.env.CRON_LEAVE_APPROVAL_REMINDER || '15 * * * *',
+    // یادآوری مهلتِ ساعتیِ «تسک فوری» (E1): هر ۱۰ دقیقه؛ فقط برای تسک‌های فوریِ امروز که مهلت ساعتی دارند و هنوز پاسخ ندارند
+    urgentTaskReminder: process.env.CRON_URGENT_TASK_REMINDER || '*/10 * * * *',
   },
 
   // آرشیو audit (S2-6c): تعداد رکورد در هر تراکنشِ انتقال. مقدار کوچک‌تر ⇒ قفل نوشتن کوتاه‌تر؛ مقدار خراب/خارج از بازه ⇒ ۱۰۰۰

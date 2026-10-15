@@ -7,6 +7,8 @@
 //   • هر تغییرِ بعد از ثبت ⇒ audit (weekly_plan_changed) + اعلان به سرپرست.
 //   • ماه بسته ⇒ فقط‌خواندنی (MONTH_CLOSED). حداکثر ۳۰ تسک؛ عنوان ≤۱۲۰؛ توضیح ≤۵۰۰؛ planned_date داخل همان هفته یا خالی («هر روز»).
 //   • تسک سیستمی (is_system) هرگز حذف/ویرایش نمی‌شود و در شمارش حداقل/سقف نمی‌آید.
+//   • تسک فوری (is_urgent، E1) را مدیر/سرپرست می‌گذارد (urgentTaskService): در این سرویس فقط‌خواندنی است، در شمارش حداقل/سقف نمی‌آید،
+//     و اگر کلاینت آن را در فهرست tasks برگرداند نادیده گرفته می‌شود (نه حذف می‌شود نه خطا می‌دهد).
 const settingsRepository = require('../repositories/settingsRepository');
 const plansRepo = require('../repositories/weeklyPlanRepository');
 const logsRepo = require('../repositories/taskLogRepository');
@@ -41,6 +43,7 @@ function targetWeek(which, ctx) {
 const presentTask = (t) => ({
   id: t.id, title: t.title, description: t.description || '', plannedDate: t.planned_date || null, priority: t.priority,
   isSystem: !!t.is_system, systemKey: t.system_key || null, carriedFromTaskId: t.carried_from_task_id || null,
+  isUrgent: !!t.is_urgent, assignedByUserId: t.assigned_by_user_id || null, urgentNote: t.urgent_note || null, urgentDeadlineTime: t.urgent_deadline_time || null,
 });
 
 // آخرین پاسخ هر تسک (برای «ناتمام»)
@@ -57,13 +60,13 @@ function carryOverCandidates(userId, weekStart) {
   const cur = plansRepo.findByUserWeek(userId, weekStart);
   if (cur) plansRepo.listTasks(cur.id).forEach((t) => { if (t.carried_from_task_id) alreadyCarried.add(t.carried_from_task_id); });
   return plansRepo.listTasks(prev.id)
-    .filter((t) => !t.is_system && !alreadyCarried.has(t.id) && lastLogStatus(t.id) !== 'done')
+    .filter((t) => !t.is_system && !t.is_urgent && !alreadyCarried.has(t.id) && lastLogStatus(t.id) !== 'done')
     .map(presentTask);
 }
 
 function copyCandidates(userId, weekStart) {
   const prev = plansRepo.findByUserWeek(userId, addDays(weekStart, -7));
-  return prev ? plansRepo.listTasks(prev.id).filter((t) => !t.is_system).map(presentTask) : [];
+  return prev ? plansRepo.listTasks(prev.id).filter((t) => !t.is_system && !t.is_urgent).map(presentTask) : [];
 }
 
 function isMonthClosed(weekStart) {
@@ -180,12 +183,16 @@ function saveDraft(user, which, tasksInput, { now } = {}) {
   if (!weekStart) return fail('INVALID_WEEK', 'week باید next یا current باشد.');
   const locked = lockFailure(weekStart, ctx);
   if (locked) return locked;
-  const v = validateTasks(tasksInput, weekStart, user);
+  // E1: تسک فوری فقط‌خواندنی است؛ اگر کلاینت آن را همراه فهرست برگرداند نادیده گرفته می‌شود
+  const existingPlan = plansRepo.findByUserWeek(user.id, weekStart);
+  const urgentIds = new Set(existingPlan ? plansRepo.listTasks(existingPlan.id).filter((t) => t.is_urgent).map((t) => t.id) : []);
+  const input = Array.isArray(tasksInput) ? tasksInput.filter((t) => !(t && t.id != null && urgentIds.has(Number(t.id)))) : tasksInput;
+  const v = validateTasks(input, weekStart, user);
   if (v.error) return v.error;
 
   const plan = plansRepo.getOrCreate(user.id, weekStart);
   const existing = plansRepo.listTasks(plan.id);
-  const userTasks = existing.filter((t) => !t.is_system);
+  const userTasks = existing.filter((t) => !t.is_system && !t.is_urgent);
   const byId = new Map(userTasks.map((t) => [t.id, t]));
   const keepIds = new Set();
   for (const t of v.tasks) {
@@ -225,7 +232,7 @@ function submit(user, which, { now } = {}) {
   const locked = lockFailure(weekStart, ctx);
   if (locked) return locked;
   const plan = plansRepo.findByUserWeek(user.id, weekStart);
-  const count = plan ? plansRepo.listTasks(plan.id).filter((t) => !t.is_system).length : 0;
+  const count = plan ? plansRepo.listTasks(plan.id).filter((t) => !t.is_system && !t.is_urgent).length : 0;
   const min = Math.max(0, ctx.settings.planMinTasks);
   if (count < min) return fail('TOO_FEW_TASKS', `برای ثبت برنامه حداقل ${min} تسک لازم است.`, { count, min });
   if (count > MAX_TASKS) return fail('TOO_MANY_TASKS', `حداکثر ${MAX_TASKS} تسک مجاز است.`);

@@ -18,7 +18,7 @@ describe('رجیستری تنظیمات (S3-1a)', () => {
       'blockOnSharedDevice', 'auditRetentionMonths', 'auditArchiveEnabled',
       'jobRunsRetentionDays', 'monitorAlertsRetentionDays', 'rateLimitRetentionDays', 'notificationsRetentionDays',
       'patternConsecutiveLateDays', 'patternWeekdayLateMinCount', 'patternWeekdayLateMinSharePercent', 'patternWeekdayLateMarginPercent', 'patternWeekendAbsenceMinCount', 'patternWeekendAbsenceMinSharePercent', 'patternSuddenIncreaseFactor', 'patternSuddenIncreaseMinExtraLate', 'patternBaselineMonths', 'patternBaselineMinMonths', 'patternMinPresentDays', 'patternIdenticalTimeMinDays', 'patternIdenticalTimeMinSharePercent',
-      'cronLateCheckinCheck', 'cronCheckoutReminderCheck', 'cronDailyReport', 'cronWeeklyReport', 'cronMonthlyReport', 'cronNightlyReview', 'cronMorningDigest', 'cronAutoCloseIncomplete', 'cronMarkNonWorkingDays', 'cronDailyBackup', 'cronAuditArchive', 'cronDbMaintenance', 'cronLeaveApprovalReminder', 'cronWatchdog',
+      'cronLateCheckinCheck', 'cronCheckoutReminderCheck', 'cronDailyReport', 'cronWeeklyReport', 'cronMonthlyReport', 'cronNightlyReview', 'cronMorningDigest', 'cronAutoCloseIncomplete', 'cronMarkNonWorkingDays', 'cronDailyBackup', 'cronAuditArchive', 'cronDbMaintenance', 'cronLeaveApprovalReminder', 'cronUrgentTaskReminder', 'cronWatchdog',
     ]);
     assert.equal(registry.getDef('workDayStart').dbKey, 'work_day_start');
     assert.equal(registry.getDef('rateLimitRetentionDays').dbKey, 'rate_limit_retention_days');
@@ -28,7 +28,7 @@ describe('رجیستری تنظیمات (S3-1a)', () => {
       repeatedLatenessThreshold: 3, missionBackdateDays: 3, missionAdvanceDays: 30, allowCheckinWithPendingMission: true, weekStartDay: 6, planSubmissionWeekday: 'auto', planMinTasks: 1, planGateMode: 'off', planGateStartDate: '', dailyReportGateMode: 'off', reportBackfillDays: 2, encouragementsEnabled: true, disputeMaxReopens: 3, systemGoLive: false, blockOnSharedDevice: false, auditRetentionMonths: 24, auditArchiveEnabled: false,
       jobRunsRetentionDays: 180, monitorAlertsRetentionDays: 180, rateLimitRetentionDays: 7, notificationsRetentionDays: 90,
       patternConsecutiveLateDays: 3, patternWeekdayLateMinCount: 3, patternWeekdayLateMinSharePercent: 75, patternWeekdayLateMarginPercent: 25, patternWeekendAbsenceMinCount: 3, patternWeekendAbsenceMinSharePercent: 60, patternSuddenIncreaseFactor: 2, patternSuddenIncreaseMinExtraLate: 3, patternBaselineMonths: 3, patternBaselineMinMonths: 2, patternMinPresentDays: 5, patternIdenticalTimeMinDays: 5, patternIdenticalTimeMinSharePercent: 80,
-      cronLateCheckinCheck: '*/5 8-12 * * *', cronLeaveApprovalReminder: '15 * * * *', cronCheckoutReminderCheck: '*/5 9-18 * * *', cronDailyReport: '0 17 * * *', cronWeeklyReport: '0 8 * * 6', cronMonthlyReport: '0 8 * * *', cronNightlyReview: '0 20 * * *', cronMorningDigest: '0 8 * * *',
+      cronLateCheckinCheck: '*/5 8-12 * * *', cronLeaveApprovalReminder: '15 * * * *', cronUrgentTaskReminder: '*/10 * * * *', cronCheckoutReminderCheck: '*/5 9-18 * * *', cronDailyReport: '0 17 * * *', cronWeeklyReport: '0 8 * * 6', cronMonthlyReport: '0 8 * * *', cronNightlyReview: '0 20 * * *', cronMorningDigest: '0 8 * * *',
       cronAutoCloseIncomplete: '59 23 * * *', cronMarkNonWorkingDays: '5 0 * * *', cronDailyBackup: '30 2 * * *', cronAuditArchive: '0 3 1 * *', cronDbMaintenance: '0 4 2 * *', cronWatchdog: '*/5 * * * *',
     });
   });

@@ -11,6 +11,8 @@
 //   systemAlert({...})               هشدار سیستم (watchdog)        ⇒ همه‌ی ادمین‌های فعال
 //   suspiciousCreated(event)         «نشانه»ی مورد مشکوک جدید      ⇒ ادمین‌ها + سرپرستی که «همه‌ی» کاربران مورد در تیم اویند (اسکوپ S2-5a)
 //   reportCommented({...})           کامنتِ سرپرست روی گزارش روزانه  ⇒ خودِ کارمند (D9؛ تنها رویدادی که تلگرام هم می‌فرستد، چون مسیر تلگرامِ جدا ندارد)
+//   urgentTaskAssigned({...})        تسک فوریِ تازه (E1)             ⇒ خودِ کارمند (پنل + تلگرام، با دکمه‌ی باز کردن Mini App)
+//   urgentTaskReminder({...})        یادآوریِ نزدیک‌شدن مهلتِ تسک فوری (E1) ⇒ خودِ کارمند (پنل + تلگرام)
 //
 // قوانین:
 //   • هرگز استثنا نمی‌دهد و جریان اصلی را نمی‌شکند (ثبت تردد/مرخصی/اعتراض/watchdog)؛ خطا فقط لاگ می‌شود.
@@ -348,6 +350,54 @@ function reportCommented({ reviewer, subject, reportDate, comment, reaction = nu
   });
 }
 
+// ---------- تسک فوری (فاز ۱۲، E1) ----------
+const jalaliOf = (iso) => isoDateToJalaliString(iso) || iso;
+
+function urgentButton() {
+  const url = panelLinks.miniAppLink({ view: 'today' }); // لینک مستقیم به صفحه‌ی اصلیِ Mini App (لیست امروز)؛ view ناشناخته ⇒ صفحه‌ی اصلی
+  return url && panelLinks.canUseWebApp(url) ? { text: '📋 باز کردن لیست امروز', web_app: { url } } : undefined;
+}
+
+/**
+ * تسک فوریِ تازه ⇒ اعلان پنل + تلگرام به کارمند: «📌 تسک فوری از طرف …: …». dedupeKey = شناسه‌ی تسک.
+ * @param {{task: {id: number, title: string, planned_date: string, urgent_deadline_time?: string|null, urgent_note?: string|null}, employee: {id: number}, actor: {full_name?: string}}} p
+ */
+function urgentTaskAssigned({ task, employee, actor }) {
+  return guard('urgentTaskAssigned', () => {
+    if (!task || !employee || !actor) return [];
+    const lines = [`📌 تسک فوری از طرف ${actor.full_name || 'مدیر'}: ${sanitizeText(task.title, 120)}`, `تاریخ: ${jalaliOf(task.planned_date)}`];
+    if (task.urgent_deadline_time) lines.push(`مهلت: ساعت ${task.urgent_deadline_time}`);
+    if (task.urgent_note) lines.push(`توضیح: ${sanitizeText(task.urgent_note, 300)}`);
+    return [send('urgentTaskAssigned', employee.id, {
+      type: 'urgent_task_assigned',
+      title: '📌 تسک فوری',
+      body: lines.join('\n'),
+      link: '#/today',
+      data: { taskId: task.id, date: task.planned_date, assignedBy: actor.id || null },
+      dedupeKey: `urgent_task_assigned:${task.id}`,
+      telegram: true,
+      telegramButton: urgentButton(),
+    })];
+  });
+}
+
+/** یادآوری قبل از مهلتِ ساعتیِ تسک فوری (job: urgentTaskReminder). dedupeKey = تسک + روز ⇒ هر تسک فقط یک‌بار. */
+function urgentTaskReminder({ task, employeeId, minutesLeft }) {
+  return guard('urgentTaskReminder', () => {
+    if (!task || !employeeId) return [];
+    return [send('urgentTaskReminder', employeeId, {
+      type: 'urgent_task_reminder',
+      title: '⏰ مهلت تسک فوری نزدیک است',
+      body: `«${sanitizeText(task.title, 120)}» تا ساعت ${task.urgent_deadline_time}${minutesLeft > 0 ? ` (حدود ${minutesLeft} دقیقه‌ی دیگر)` : ''} باید انجام شود.`,
+      link: '#/today',
+      data: { taskId: task.id, date: task.planned_date },
+      dedupeKey: `urgent_task_reminder:${task.id}:${task.planned_date}`,
+      telegram: true,
+      telegramButton: urgentButton(),
+    })];
+  });
+}
+
 // ---------- اجازه‌ی ورود (فاز ۱۲، D3) ----------
 const CHECKIN_PERMISSION_LINK = '#/checkin_permissions';
 
@@ -427,4 +477,4 @@ function checkinPermissionDecided(permission, { actor = null, note = null } = {}
   });
 }
 
-module.exports = { checkinPermissionRequested, checkinPermissionDecided, reportCommented, weeklyPlanChanged, leaveRequested, leaveStepAdvanced, leaveDecided, disputeOpened, disputeResolved, disputeResolvedTelegram, disputeAdminMessage, disputeUserMessage, systemAlert, suspiciousCreated };
+module.exports = { urgentTaskAssigned, urgentTaskReminder, checkinPermissionRequested, checkinPermissionDecided, reportCommented, weeklyPlanChanged, leaveRequested, leaveStepAdvanced, leaveDecided, disputeOpened, disputeResolved, disputeResolvedTelegram, disputeAdminMessage, disputeUserMessage, systemAlert, suspiciousCreated };
