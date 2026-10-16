@@ -243,6 +243,15 @@
 .nb .nb-btn[disabled] { opacity: 0.55; cursor: not-allowed; }
 .nb .nb-btn:hover:not([disabled]) { filter: brightness(1.06); }
 
+/* ---------- C2: کارت روز / ردیف تسک ---------- */
+.nb .nb-day-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+.nb .nb-task { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 6px; max-width: 100%; }
+.nb .nb-task__title { overflow-wrap: anywhere; }
+.nb .nb-task__prio { font-weight: 800; }
+.nb .nb-task__prio--high { color: var(--nb-rose-strong); }
+.nb .nb-task__prio--low { color: var(--nb-ink-soft); }
+.nb .nb-note__text { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+
 /* ---------- ریسپانسیو: زیر ~۹۰۰px یک صفحه + دکمه‌های قبل/بعد؛ بدون اسکرول افقی تا ۳۲۰px ---------- */
 @media (max-width: 899px) {
   .nb .nb-spread { grid-template-columns: minmax(0, 1fr); border-radius: 16px; }

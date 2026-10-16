@@ -1,5 +1,6 @@
 // سیستم طراحی «دفترچه» (فاز ۱۳ — C1): فقط کمک‌تابع‌های ساخت DOM زیر AP.notebook. وابستگی خارجی ندارد.
 // امنیت: متن همیشه با textContent/createTextNode ساخته می‌شود؛ هیچ‌جا HTML خام از داده‌ی کاربر ساخته نمی‌شود.
+// C2: AP.notebook.renderWeek(model, opts) — دفترچه‌ی دوصفحه‌ای هفته از خروجی GET /admin/users/:id/plan (فقط‌خواندنی).
 // همه‌ی عناصر کلاس‌های .nb-* دارند و باید داخل یک ریشه‌ی .nb (AP.notebook.root) قرار بگیرند. استایل: css/notebook.css.
 (function () {
   'use strict';
@@ -92,5 +93,98 @@
     return h('div', { class: 'nb-spread-wrap' }, el, pager);
   }
 
-  AP.notebook = { h, root, tape, lines, chip, btn, card, page, spread, TAPE_TONES, CHIP_TONES };
+  // ───────────── C2: چیدمان «دو صفحه»ی برنامه‌ی هفته ─────────────
+  const WEEKDAY_NAMES = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه']; // ۰ = یکشنبه (همان weekday سرور)
+  const FA_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
+  const fa = (v) => String(v == null ? '' : v).replace(/\d/g, (d) => FA_DIGITS[d]).replace(/\./g, '٫');
+  // نوع روز ⇒ رنگ نوار چسب + آیکون + برچسب (هر نوع هم رنگ دارد هم آیکون و متن؛ فقط به رنگ متکی نیست)
+  const KIND = {
+    working: { tape: 'sage', icon: '✔', label: 'روز کاری', chip: 'work' },
+    half: { tape: 'sand', icon: '◐', label: 'نیم‌روز', chip: 'half' },
+    off: { tape: 'sand', icon: '☾', label: 'آف', chip: 'off' },
+    holiday: { tape: 'rose', icon: '🎉', label: 'تعطیل', chip: 'holiday' },
+    leave: { tape: 'sky', icon: '🌴', label: 'مرخصی', chip: 'leave' },
+    mission: { tape: 'lilac', icon: '🧳', label: 'مأموریت', chip: 'mission' },
+  };
+  const PRIORITY = { high: { icon: '▲', text: 'اولویت بالا' }, low: { icon: '▽', text: 'اولویت کم' } };
+  const FIRST_PAGE_DAYS = 4; // شنبه تا سه‌شنبه روی صفحه‌ی راست؛ بقیه روی صفحه‌ی چپ (برای هفته‌ی غیر ۷ روزه هم همین تقسیم)
+  const dayTitle = (d) => `${WEEKDAY_NAMES[d.weekday] || ''} ${fa(d.jalali)}`.trim();
+
+  function taskRow(t) {
+    const pr = PRIORITY[t.priority];
+    return h('span', { class: 'nb-task' },
+      pr ? h('span', { class: `nb-task__prio nb-task__prio--${t.priority}` }, h('span', { attrs: { 'aria-hidden': 'true' }, text: pr.icon }), h('span', { class: 'nb-sr-only', text: pr.text })) : null,
+      h('span', { class: 'nb-task__title', text: t.title }),
+      t.isUrgent ? chip('فوری', { tone: 'urgent', icon: '⚡' }) : null,
+      t.isSystem ? chip('سیستمی', { tone: 'locked', icon: '🔒' }) : (t.managerLocked ? chip('از طرف سرپرست', { tone: 'locked', icon: '🔒' }) : null));
+  }
+
+  function dayCard(d) {
+    const k = KIND[d.kind] || KIND.off;
+    const s = d.schedule || {};
+    const chips = [];
+    if ((d.kind === 'working' || d.kind === 'half') && s.start && s.end) chips.push(chip(`${fa(s.start)} تا ${fa(s.end)}`, { tone: k.chip, icon: '🕒' }));
+    if (s.source === 'override') chips.push(chip('برنامه‌ی ویژه‌ی این روز', { tone: 'half', icon: '✎' }));
+    if (d.holidayTitle) chips.push(chip(d.holidayTitle, { tone: 'holiday' }));
+    if (d.monthClosed) chips.push(chip('ماه بسته', { tone: 'locked', icon: '🔒' }));
+    const el = card({ title: dayTitle(d), tape: { tone: k.tape, label: `${k.icon} ${d.kindLabel || k.label}` }, className: `nb-day nb-day--${KIND[d.kind] ? d.kind : 'off'}` },
+      chips.length ? h('div', { class: 'nb-day-chips' }, ...chips) : null,
+      lines((d.tasks || []).map(taskRow), { emptyText: 'تسکی ثبت نشده' }));
+    el.setAttribute('data-date', d.date || '');
+    return el;
+  }
+
+  const textLine = (text, icon) => h('span', {}, icon ? h('span', { attrs: { 'aria-hidden': 'true' }, text: `${icon} ` }) : null, text);
+
+  function summaryCard(sm) {
+    const t = sm.tasks || {};
+    const rows = [
+      textLine(`${fa(sm.workingDays)} روز کاری`),
+      textLine(`${fa(sm.plannedHours)} ساعت برنامه‌ریزی‌شده`),
+      textLine(`${fa(t.total)} تسک (عادی ${fa(t.ordinary)}، فوری ${fa(t.urgent)}، سیستمی ${fa(t.system)})`),
+    ];
+    if (t.undated) rows.push(textLine(`${fa(t.undated)} تسک بدون تاریخ («هر روز»)`));
+    return card({ title: 'خلاصه‌ی هفته', tape: { tone: 'lilac', label: '📋 خلاصه' }, className: 'nb-summary' }, lines(rows));
+  }
+
+  function highlightsCard(days, anyDay) {
+    const items = [];
+    for (const d of days) {
+      if (d.kind === 'holiday') items.push(textLine(`${dayTitle(d)}: تعطیل${d.holidayTitle ? ` (${d.holidayTitle})` : ''}`, '🎉'));
+      else if (d.kind === 'leave') items.push(textLine(`${dayTitle(d)}: مرخصی`, '🌴'));
+      else if (d.kind === 'mission') items.push(textLine(`${dayTitle(d)}: مأموریت`, '🧳'));
+    }
+    for (const t of [...days.flatMap((d) => d.tasks || []), ...anyDay]) if (t.isUrgent) items.push(textLine(t.title, '⚡'));
+    return items.length ? card({ title: 'مهم‌های هفته', tape: { tone: 'rose', label: '★ مهم‌ها' }, className: 'nb-highlights' }, lines(items)) : null;
+  }
+
+  /**
+   * @param {object} model خروجی GET /admin/users/:id/plan: { days[], anyDay[], summary?, warnings?, plan?: { supervisorComment } }
+   * @param {object} [opts] { label, initialPage }
+   * @returns {HTMLElement} ریشه‌ی .nb؛ صفحه‌ی راست = اولین ۴ روز، صفحه‌ی چپ = بقیه‌ی روزها + کارت‌های جانبی (هرکدام فقط با وجود داده)
+   */
+  function renderWeek(model, opts = {}) {
+    const m = model || {};
+    const days = Array.isArray(m.days) ? m.days : [];
+    const anyDay = Array.isArray(m.anyDay) ? m.anyDay : [];
+    if (!days.length) return root(card({ title: 'برنامه‌ی هفته', tape: { tone: 'rose', label: '📓 دفترچه' } }, lines([], { emptyText: 'اطلاعات این هفته در دسترس نیست.' })));
+
+    const first = days.slice(0, FIRST_PAGE_DAYS);
+    const rest = days.slice(FIRST_PAGE_DAYS);
+    const comment = m.plan && m.plan.supervisorComment ? String(m.plan.supervisorComment) : '';
+    const warnings = Array.isArray(m.warnings) ? m.warnings : [];
+
+    const right = page({ title: `هفته‌ی ${fa(days[0].jalali)} تا ${fa(days[days.length - 1].jalali)}` }, ...first.map(dayCard));
+    const left = page({ title: rest.length ? 'ادامه‌ی هفته' : 'خلاصه و یادداشت‌ها' },
+      ...rest.map(dayCard),
+      m.summary ? summaryCard(m.summary) : null,
+      highlightsCard(days, anyDay),
+      comment ? card({ title: 'یادداشت سرپرست', tape: { tone: 'rose', label: '✎ یادداشت' }, className: 'nb-note' }, h('p', { class: 'nb-note__text', text: comment })) : null,
+      warnings.length ? card({ title: 'هشدارهای برنامه', tape: { tone: 'sand', label: '⚠ هشدارها' }, className: 'nb-warnings' },
+        lines(warnings.map((w) => textLine(w.message, '⚠')))) : null,
+      anyDay.length ? card({ title: 'هر روز', subtitle: 'تسک‌های بدون تاریخ', tape: { tone: 'sky', label: '🔁 هر روز' }, className: 'nb-anyday' }, lines(anyDay.map(taskRow))) : null);
+    return root(spread([right, left], { label: opts.label || 'دفترچه‌ی برنامه‌ی هفته', initialPage: opts.initialPage }));
+  }
+
+  AP.notebook = { h, root, tape, lines, chip, btn, card, page, spread, renderWeek, TAPE_TONES, CHIP_TONES };
 })();
