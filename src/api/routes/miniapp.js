@@ -321,6 +321,9 @@ router.post('/miniapp/break/end', (req, res) => {
 router.get('/miniapp/remote/today', (req, res) => {
   res.json(remoteWorkService.getToday(req.miniAppUser.id));
 });
+router.get('/miniapp/remote/history', (req, res) => {
+  res.json(remoteWorkService.getHistory(req.miniAppUser.id, { days: req.query.days }));
+});
 router.post('/miniapp/remote/start', (req, res) => {
   sendRemote(res, remoteWorkService.start(req.miniAppUser, { ip: req.ip }), 201, (r) => r.session);
 });

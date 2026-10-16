@@ -20,6 +20,13 @@ function listForUserDate(userId, workDate) {
     .all(userId, workDate);
 }
 
+// تاریخچه‌ی خود کارمند (R4): نشست‌های روز کاریِ بازه‌ی [from, to]، جدیدترین اول
+function listForUserRange(userId, from, to) {
+  return getDb()
+    .prepare(`SELECT ${SESSION_COLS} FROM remote_work_sessions WHERE user_id = ? AND work_date >= ? AND work_date <= ? ORDER BY work_date DESC, start_at DESC, id DESC`)
+    .all(userId, from, to);
+}
+
 function insertSession({ userId, workDate, startAt, ip }) {
   const r = getDb()
     .prepare('INSERT INTO remote_work_sessions (user_id, work_date, start_at, ip_address) VALUES (?, ?, ?, ?)')
@@ -56,6 +63,6 @@ function closeBreak(id, endAt) {
 }
 
 module.exports = {
-  findOpenSession, findSessionById, listForUserDate, insertSession, closeSession, listStaleOpenSessions,
+  findOpenSession, findSessionById, listForUserDate, listForUserRange, insertSession, closeSession, listStaleOpenSessions,
   listBreaks, findOpenBreak, insertBreak, closeBreak,
 };

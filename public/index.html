@@ -44,6 +44,14 @@
     </div>
   </div>
 
+  <!-- خارج از شبکه و بدون دورکاری (R4): بعد از «خروج» در دیالوگ دورکاری؛ در مرورگر معمولی که tg.close() ندارد هم همین دیده می‌شود -->
+  <div id="out-of-network" class="screen hidden" role="status">
+    <div class="card center-card">
+      <h2>خارج از شبکه شرکت</h2>
+      <p>برای ثبت تردد باید داخل شبکه شرکت باشید.</p>
+    </div>
+  </div>
+
   <div id="app" class="hidden">
     <header class="app-header">
       <div class="brand">
@@ -59,6 +67,11 @@
     </header>
 
     <main id="views">
+
+      <!-- بنر ثابت و غیرقابل‌بستن دورکاری (R4): فقط وقتی #app کلاس remote-mode دارد دیده می‌شود -->
+      <div class="card remote-banner" id="remote-banner" role="note">
+        <p>این ساعت‌ها تا زمانی که سرپرست بررسی و لحاظ نکند، تأیید نمی‌شوند و در گزارش و حقوق شما حساب نخواهند شد.</p>
+      </div>
 
       <!-- صفحه اصلی: وضعیت امروز -->
       <section id="view-today" class="view">
@@ -258,6 +271,24 @@
         <div id="dispute-thread" class="dispute-thread"></div>
       </section>
 
+      <!-- دورکاری (R4، فاز ۱۴): فقط وقتی سرور remoteAllowed بدهد و کاربر دیالوگ را «تأیید» کند باز می‌شود -->
+      <section id="view-remote" class="view hidden" aria-labelledby="remote-title">
+        <h3 class="view-title" id="remote-title" tabindex="-1">ثبت دورکاری</h3>
+        <div class="card status-card">
+          <div class="status-pill" id="remote-status-pill"><i class="dot"></i><span id="remote-status-label">در حال بارگذاری…</span></div>
+          <div class="timer" id="remote-timer">--:--:--</div>
+          <div class="today-summary" id="remote-summary"></div>
+        </div>
+        <div class="actions" id="remote-actions"></div>
+        <h3 class="view-title" id="remote-list-title">ثبت‌های امروز</h3>
+        <div id="remote-list" class="list" role="group" aria-labelledby="remote-list-title"></div>
+      </section>
+
+      <section id="view-remote-history" class="view hidden" aria-labelledby="remote-history-title">
+        <h3 class="view-title" id="remote-history-title" tabindex="-1">تاریخچه دورکاری (۳۰ روز اخیر)</h3>
+        <div id="remote-history-list" class="list"></div>
+      </section>
+
     </main>
 
     <nav class="bottom-nav">
@@ -280,6 +311,15 @@
       <button class="nav-btn" data-view="profile">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
         <span>پروفایل</span>
+      </button>
+      <!-- فقط در حالت دورکاری دیده می‌شوند (CSS: #app.remote-mode)؛ بقیه‌ی آیتم‌ها در آن حالت پنهان‌اند -->
+      <button class="nav-btn" data-view="remote" data-scope="remote">
+        <svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10M10 20v-6h4v6"/></svg>
+        <span>ثبت دورکاری</span>
+      </button>
+      <button class="nav-btn" data-view="remote-history" data-scope="remote">
+        <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>
+        <span>تاریخچه دورکاری</span>
       </button>
     </nav>
   </div>

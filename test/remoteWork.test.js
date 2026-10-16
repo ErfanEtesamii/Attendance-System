@@ -252,3 +252,23 @@ describe('API دورکاری — /api/miniapp/remote/* (R3)', { skip: hasDeps ? 
     } finally { stop(); }
   });
 });
+
+describe('تاریخچه‌ی دورکاری کارمند (R4)', () => {
+  test('getHistory: فقط نشست‌های خود کاربر با استراحت‌ها و بدون IP؛ days به ۹۰ محدود می‌شود', () => {
+    const u = makeUser();
+    const other = makeUser();
+    const now = new Date();
+    remoteWorkService.start(u, { ip: '5.6.7.8', now });
+    remoteWorkService.breakStart(u, { now });
+    remoteWorkService.end(u, { now });
+    remoteWorkService.start(other, { ip: '5.6.7.9', now });
+    const h = remoteWorkService.getHistory(u.id);
+    assert.equal(h.sessions.length, 1);
+    assert.equal(h.sessions[0].user_id, u.id);
+    assert.equal(h.sessions[0].breaks.length, 1);
+    assert.equal('ip_address' in h.sessions[0], false);
+    assert.ok(h.from < h.to);
+    assert.equal(remoteWorkService.getHistory(u.id, { days: 9999 }).from, remoteWorkService.getHistory(u.id, { days: 90 }).from);
+    assert.equal(remoteWorkService.getHistory(u.id, { days: 'abc' }).from, h.from);
+  });
+});

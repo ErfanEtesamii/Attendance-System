@@ -45,6 +45,15 @@ function getToday(userId, { now = new Date() } = {}) {
   return { workDate, openSession, openBreak, sessions, maxOpenHours: settingsRepository.getAll().remoteWorkMaxOpenHours };
 }
 
+// تاریخچه‌ی خود کارمند (R4): نشست‌های N روز اخیر (پیش‌فرض ۳۰، سقف ۹۰) با استراحت‌ها و وضعیت هر کدام؛ فقط ستون‌های عمومی (بدون IP)
+function getHistory(userId, { days = 30, now = new Date() } = {}) {
+  const n = Math.min(Math.max(parseInt(days, 10) || 30, 1), 90);
+  const to = attendanceRepository.currentRecordDate(userId, now);
+  const from = new Date(Date.parse(`${to}T00:00:00Z`) - n * 86400000).toISOString().slice(0, 10);
+  const sessions = repo.listForUserRange(userId, from, to).map((s) => publicSession(s, repo.listBreaks(s.id)));
+  return { from, to, sessions };
+}
+
 function start(user, { ip = null, now = new Date() } = {}) {
   const nowIso = now.toISOString();
   try {
@@ -127,4 +136,4 @@ function autoCloseStale({ now = new Date() } = {}) {
   return closed;
 }
 
-module.exports = { getToday, start, end, breakStart, breakEnd, autoCloseStale };
+module.exports = { getToday, getHistory, start, end, breakStart, breakEnd, autoCloseStale };

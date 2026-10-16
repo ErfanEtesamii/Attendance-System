@@ -30,6 +30,9 @@
     timerInterval: null,
   };
 
+  // حالت دورکاری (R4): active = نمای دورکاری باز است؛ accepted = کاربر در همین نشست دیالوگ را «تأیید» کرده
+  const remoteUi = { active: false, accepted: false, dialog: null, today: null, busy: false };
+
   // ---------- شناسه‌ی دستگاه (S2-3) ----------
   // یک شناسه‌ی تصادفی پایدار برای همین مرورگر/نصب تلگرام که فقط همراه ورود/خروج فرستاده می‌شود.
   // فقط یک «نشانه» برای بررسی‌های بعدی است (قابل جعل) و هرگز روی مجاز بودن ثبت تردد اثر ندارد؛
@@ -227,6 +230,9 @@
   // ---------- ناوبری ----------
 
   function switchView(name) {
+    // R4: در حالت دورکاری فقط نماهای بی‌خطر؛ بدون تأیید دیالوگ هم نمای دورکاری باز نمی‌شود
+    if (remoteUi.active && !REMOTE_VIEWS.includes(name)) name = 'remote';
+    else if (!remoteUi.active && REMOTE_VIEWS.includes(name)) return;
     $all('.view').forEach((v) => v.classList.add('hidden'));
     $('#view-' + name).classList.remove('hidden');
     const navName = name === 'dispute' ? 'profile' : name; // گفت‌وگوی اعتراض زیرمجموعه‌ی «پروفایل» است
@@ -240,6 +246,8 @@
     if (name === 'plan') openPlanWizard();
     if (name === 'profile') { loadProfile(); loadDisputeList(); }
     if (name === 'dispute') loadDisputeThread();
+    if (name === 'remote') loadRemoteToday();
+    if (name === 'remote-history') loadRemoteHistory();
   }
 
   $all('.nav-btn').forEach((btn) => {
@@ -253,7 +261,7 @@
     state.timerInterval = null;
   }
 
-  function startTimer(fromIso) {
+  function startTimer(fromIso, sel = '#timer') {
     stopTimer();
     const from = new Date(fromIso).getTime();
     function tick() {
@@ -261,8 +269,8 @@
       const h = String(Math.floor(diff / 3600000)).padStart(2, '0');
       const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
       const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
-      $('#timer').textContent = `${h}:${m}:${s}`;
-      if (state.breakNoteTick) state.breakNoteTick(diff); // C1: پیام «استراحت با حقوق» هم‌گام با تایمر
+      $(sel).textContent = `${h}:${m}:${s}`;
+      if (sel === '#timer' && state.breakNoteTick) state.breakNoteTick(diff); // C1: پیام «استراحت با حقوق» هم‌گام با تایمر
     }
     tick();
     state.timerInterval = setInterval(tick, 1000);
@@ -593,6 +601,12 @@
       return true;
     } catch (err) {
       const code = err && err.data && err.data.code;
+      // R4: بیرون از شبکه ⇒ دیالوگ دورکاری به‌جای توست خطا (اگر سرور دورکاری را مجاز نداند همان پیام قبلی توست می‌شود)
+      if (code === 'OUT_OF_NETWORK' && OUT_OF_NETWORK_PATHS.includes(path)) {
+        unlock();
+        await handleOutOfNetwork(err.message);
+        return false;
+      }
       // گیت D2: سقف تأخیر ماهانه رد شده ⇒ کارت «درخواست اجازه‌ی ورود» (سرور چیزی ثبت نکرده)
       if (path === '/check-in' && code === 'LATE_LIMIT_REACHED') {
         showToast(err.message, true);
@@ -2038,6 +2052,320 @@
   const dreportBack = $('#dreport-back');
   if (dreportBack && typeof dreportBack.addEventListener === 'function') dreportBack.addEventListener('click', () => switchView('today'));
 
+  // ---------- دورکاری (R4، فاز ۱۴) ----------
+  // «داخل/خارج شبکه» را فقط سرور از req.ip تعیین می‌کند (GET /network-state)؛ کلاینت هیچ پرچمی نمی‌فرستد و فقط نتیجه را نشان می‌دهد.
+  //  • inNetwork یا viaMission (یا هر خطا در گرفتن وضعیت) ⇒ رفتار فعلی بدون هیچ تغییر؛ ماموریت بر دورکاری اولویت دارد.
+  //  • remoteAllowed ⇒ دیالوگ پیام دورکاری با «تأیید» / «خروج»؛ «تأیید» ⇒ حالت دورکاری (نمای view-remote + نوار پایین مخصوص).
+  //  • اگر هنگام کار یکی از چهار مسیر تردد کد OUT_OF_NETWORK بدهد، همان دیالوگ به‌جای توست خطا نشان داده می‌شود.
+  // انتخاب کاربر (remoteUi.accepted) در حافظه‌ی همین نشست می‌ماند تا هر رندر دوباره دیالوگ نیاید.
+  // همه‌ی متن‌ها (از جمله یادداشت سرپرست) فقط با textContent درج می‌شوند.
+  const REMOTE_MSG = 'شما در فرازهنر حضور ندارید. می‌توانید ساعت خود را به‌عنوان دورکار ثبت کنید و پس از بررسی سرپرست مربوطه، در آخر هفته ساعتتان لحاظ می‌شود.';
+  const REMOTE_STATUS = { pending: 'در انتظار بررسی', approved: 'تأیید شده', rejected: 'رد شده' };
+  const REMOTE_VIEWS = ['remote', 'remote-history'];
+  const OUT_OF_NETWORK_PATHS = ['/check-in', '/check-out', '/break/start', '/break/end'];
+
+  function rEl(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  // خطا یا پاسخ نامعتبر ⇒ remoteAllowed=false (رفتار فعلی)؛ سرور خودش تردد بیرون از شبکه را رد می‌کند
+  async function fetchNetworkState() {
+    try {
+      const s = await api('/network-state');
+      return { inNetwork: s.inNetwork === true, viaMission: s.viaMission === true, remoteAllowed: s.remoteAllowed === true };
+    } catch (_) {
+      return { inNetwork: false, viaMission: false, remoteAllowed: false };
+    }
+  }
+
+  function closeRemoteDialog() {
+    const d = remoteUi.dialog;
+    if (!d) return;
+    document.removeEventListener('keydown', onRemoteDialogKey, true);
+    if (d.parentNode) d.parentNode.removeChild(d);
+    remoteUi.dialog = null;
+  }
+
+  // Esc برابر «خروج»؛ Tab داخل دیالوگ می‌چرخد (تله‌ی فوکوس)
+  function onRemoteDialogKey(ev) {
+    const root = remoteUi.dialog;
+    if (!root) return;
+    if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); exitRemoteFlow(); return; }
+    if (ev.key !== 'Tab') return;
+    const items = Array.from(root.querySelectorAll('button:not([disabled])'));
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    const active = document.activeElement;
+    if (!root.contains(active)) { ev.preventDefault(); first.focus(); }
+    else if (ev.shiftKey && active === first) { ev.preventDefault(); last.focus(); }
+    else if (!ev.shiftKey && active === last) { ev.preventDefault(); first.focus(); }
+  }
+
+  function showRemoteDialog() {
+    if (remoteUi.dialog) return;
+    const backdrop = rEl('div', 'remote-backdrop');
+    const box = rEl('div', 'remote-dialog');
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+    box.setAttribute('aria-labelledby', 'remote-dialog-title');
+    box.setAttribute('aria-describedby', 'remote-dialog-text');
+    box.setAttribute('tabindex', '-1');
+    const title = rEl('h2', 'remote-dialog-title', 'خارج از شبکه‌ی شرکت');
+    title.id = 'remote-dialog-title';
+    const text = rEl('p', 'remote-dialog-text', REMOTE_MSG);
+    text.id = 'remote-dialog-text';
+    const actions = rEl('div', 'remote-dialog-actions');
+    const confirmBtn = rEl('button', 'btn primary', 'تأیید');
+    confirmBtn.type = 'button';
+    confirmBtn.addEventListener('click', acceptRemote);
+    const exitBtn = rEl('button', 'btn secondary', 'خروج');
+    exitBtn.type = 'button';
+    exitBtn.addEventListener('click', exitRemoteFlow);
+    actions.appendChild(confirmBtn);
+    actions.appendChild(exitBtn);
+    box.appendChild(title);
+    box.appendChild(text);
+    box.appendChild(actions);
+    backdrop.appendChild(box);
+    document.body.appendChild(backdrop);
+    remoteUi.dialog = backdrop;
+    document.addEventListener('keydown', onRemoteDialogKey, true);
+    confirmBtn.focus();
+  }
+
+  function acceptRemote() {
+    closeRemoteDialog();
+    remoteUi.accepted = true;
+    enterRemoteMode();
+  }
+
+  // «خروج»: داخل تلگرام برنامه بسته می‌شود؛ جایی که tg.close() نیست (مرورگر معمولی) صفحه‌ی ساده‌ی «باید داخل شبکه باشید» می‌ماند
+  function exitRemoteFlow() {
+    closeRemoteDialog();
+    remoteUi.active = false;
+    stopTimer();
+    $('#app').classList.add('hidden');
+    $('#out-of-network').classList.remove('hidden');
+    try { if (tg && typeof tg.close === 'function') tg.close(); } catch (_) { /* نسخه‌های قدیمی تلگرام */ }
+  }
+
+  function enterRemoteMode() {
+    remoteUi.active = true;
+    stopTimer();
+    state.breakNoteTick = null;
+    $('#app').classList.remove('hidden');
+    $('#app').classList.add('remote-mode');
+    switchView('remote');
+    const t = $('#remote-title');
+    if (t && typeof t.focus === 'function') { try { t.focus(); } catch (_) { /* ignore */ } }
+  }
+
+  // سرور دیگر دورکاری را مجاز نمی‌داند (وارد شبکه شده، ماموریت گرفته یا تنظیم خاموش شده) ⇒ برگشت به رفتار عادی
+  async function leaveRemoteMode(message) {
+    remoteUi.active = false;
+    remoteUi.accepted = false;
+    remoteUi.today = null;
+    stopTimer();
+    $('#app').classList.remove('remote-mode');
+    if (message) showToast(message, true);
+    showTodaySkeleton(true);
+    try { await loadToday(); } catch (err) { showToast(err.message, true); } finally { showTodaySkeleton(false); }
+    switchView('today');
+  }
+
+  // خطای OUT_OF_NETWORK یکی از چهار مسیر تردد: اگر سرور دورکاری را مجاز می‌داند دیالوگ/حالت دورکاری، وگرنه همان پیام خطای قبلی
+  async function handleOutOfNetwork(fallbackMsg) {
+    const net = await fetchNetworkState();
+    if (!net.remoteAllowed) { showToast(fallbackMsg, true); return; }
+    if (remoteUi.accepted) enterRemoteMode();
+    else showRemoteDialog();
+  }
+
+  const minutesBetween = (a, b) => (Date.parse(b) - Date.parse(a)) / 60000;
+  function remoteBreakMinutes(s) {
+    return (s.breaks || []).reduce((sum, b) => (b.end_at ? sum + Math.max(0, minutesBetween(b.start_at, b.end_at)) : sum), 0);
+  }
+  function remoteEffectiveMinutes(s) {
+    if (!s.end_at) return null;
+    return Math.max(0, minutesBetween(s.start_at, s.end_at) - remoteBreakMinutes(s));
+  }
+
+  function setRemoteStatus(label, cls) {
+    $('#remote-status-label').textContent = label;
+    $('#remote-status-pill').className = 'status-pill ' + cls;
+  }
+
+  function remoteTile(box, { title, sub, color, icon, wide, handler }) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'action-tile t-' + color + (wide ? ' wide' : '');
+    b.innerHTML = `
+      <span class="tile-icon">${ICONS[icon]}</span>
+      <span class="tile-text">
+        <span class="tile-title">${title}</span>
+        <span class="tile-sub">${sub}</span>
+      </span>`;
+    b.addEventListener('click', handler);
+    box.appendChild(b);
+  }
+
+  // سه عمل: ثبت ورود، ثبت استراحت (شروع/پایان)، ثبت خروج؛ مثل نمای عادی با استراحت باز فقط «پایان استراحت» دیده می‌شود
+  function renderRemoteActions(open, openBreak) {
+    const box = $('#remote-actions');
+    box.innerHTML = '';
+    box.className = 'actions';
+    if (!open) {
+      box.classList.add('single');
+      remoteTile(box, {
+        title: 'ثبت ورود دورکاری', sub: 'شروع ساعت دورکاری (تأییدنشده)', color: 'green', icon: 'in', wide: true,
+        handler: () => remoteAction('/remote/start', 'ورود دورکاری ثبت شد؛ پس از بررسی سرپرست لحاظ می‌شود.'),
+      });
+      return;
+    }
+    if (openBreak) {
+      box.classList.add('single');
+      remoteTile(box, {
+        title: 'پایان استراحت', sub: 'بازگشت به کار', color: 'orange', icon: 'resume', wide: true,
+        handler: () => remoteAction('/remote/break/end', 'استراحت پایان یافت.'),
+      });
+      return;
+    }
+    remoteTile(box, {
+      title: 'ثبت استراحت', sub: 'شروع وقفه', color: 'orange', icon: 'lunch',
+      handler: () => remoteAction('/remote/break/start', 'استراحت شروع شد.'),
+    });
+    remoteTile(box, {
+      title: 'ثبت خروج دورکاری', sub: 'پایان ساعت دورکاری', color: 'red', icon: 'out',
+      handler: () => remoteAction('/remote/end', 'خروج دورکاری ثبت شد؛ پس از بررسی سرپرست لحاظ می‌شود.'),
+    });
+  }
+
+  // یک ثبت دورکاری با نشان وضعیت؛ withDate در تاریخچه (تاریخ روز کاری بالای ردیف)
+  function remoteSessionItem(s, withDate) {
+    const el = rEl('div', 'list-item');
+    const range = s.end_at ? `${fmtClock(s.start_at)} — ${fmtClock(s.end_at)}` : `از ${fmtClock(s.start_at)} — در حال انجام`;
+    const top = rEl('div', 'li-top');
+    top.appendChild(rEl('span', null, withDate ? fmtDate(s.work_date) : range));
+    const st = REMOTE_STATUS[s.status] ? s.status : 'pending';
+    top.appendChild(rEl('span', `badge ${st}`, REMOTE_STATUS[st]));
+    el.appendChild(top);
+
+    const bottom = rEl('div', 'li-bottom');
+    const brk = (s.breaks || []).length;
+    const brkMin = remoteBreakMinutes(s);
+    bottom.appendChild(rEl('span', null, withDate ? range : (brk ? `استراحت: ${faDigits(brk)} بار — ${fmtDuration(brkMin)}` : 'بدون استراحت')));
+    const eff = remoteEffectiveMinutes(s);
+    bottom.appendChild(rEl('span', null, eff == null ? 'در حال انجام' : fmtDuration(eff)));
+    el.appendChild(bottom);
+
+    if (s.auto_closed) {
+      const n = rEl('div', 'remote-note');
+      n.appendChild(rEl('span', 'badge remote-system', 'بسته‌شده توسط سیستم'));
+      n.appendChild(document.createTextNode(' سرپرست این ثبت را دقیق‌تر بررسی می‌کند.'));
+      el.appendChild(n);
+    }
+    if (s.status === 'approved' && s.approved_start_at && s.approved_end_at) {
+      el.appendChild(rEl('div', 'remote-note', `ساعت لحاظ‌شده: ${fmtClock(s.approved_start_at)} — ${fmtClock(s.approved_end_at)}`));
+    }
+    if (s.status === 'rejected' && s.review_note) el.appendChild(rEl('div', 'remote-note', `دلیل رد: ${s.review_note}`));
+    return el;
+  }
+
+  function renderRemote() {
+    const data = remoteUi.today;
+    if (!data) return;
+    const sessions = data.sessions || [];
+    const open = data.openSession || null;
+    const openBreak = data.openBreak || null;
+    const timerEl = $('#remote-timer');
+
+    if (!open) {
+      stopTimer();
+      if (sessions.length) {
+        const total = sessions.filter((s) => s.status !== 'rejected').reduce((sum, s) => sum + (remoteEffectiveMinutes(s) || 0), 0);
+        setRemoteStatus('خروج دورکاری ثبت شد', 'is-done');
+        timerEl.textContent = fmtDuration(total);
+        timerEl.classList.add('is-text');
+        $('#remote-summary').textContent = 'مجموع ساعت دورکاری امروز (تأییدنشده)';
+      } else {
+        setRemoteStatus('هنوز ورود دورکاری ثبت نشده', '');
+        timerEl.textContent = '--:--:--';
+        timerEl.classList.remove('is-text');
+        $('#remote-summary').textContent = 'برای شروع، ورود دورکاری را ثبت کنید';
+      }
+    } else if (openBreak) {
+      setRemoteStatus('در حال استراحت (دورکاری)', 'is-break');
+      timerEl.classList.remove('is-text');
+      startTimer(openBreak.start_at, '#remote-timer');
+      $('#remote-summary').textContent = 'مدت استراحت جاری';
+    } else {
+      setRemoteStatus('دورکار — در حال کار', 'is-active');
+      timerEl.classList.remove('is-text');
+      startTimer(open.start_at, '#remote-timer');
+      $('#remote-summary').textContent = 'مدت دورکاری از لحظه ورود';
+    }
+
+    renderRemoteActions(open, openBreak);
+    const list = $('#remote-list');
+    list.removeAttribute('aria-busy');
+    list.innerHTML = '';
+    if (!sessions.length) { renderEmpty(list, 'امروز هنوز ثبتی ندارید.'); return; }
+    sessions.forEach((s) => list.appendChild(remoteSessionItem(s, false)));
+  }
+
+  // سرور دورکاری را نمی‌پذیرد ⇒ از حالت دورکاری بیرون می‌آییم (کد خطا از گیت مشترک /remote/*)
+  const isRemoteRefused = (err) => !!(err && err.data && (err.data.code === 'REMOTE_NOT_ALLOWED' || err.data.code === 'OUT_OF_NETWORK'));
+
+  async function loadRemoteToday() {
+    const list = $('#remote-list');
+    if (!remoteUi.today) renderLoading(list, 'list');
+    try {
+      remoteUi.today = await api('/remote/today');
+      renderRemote();
+    } catch (err) {
+      if (isRemoteRefused(err)) { await leaveRemoteMode(err.message); return; }
+      renderError(list, err, loadRemoteToday, 'retry-remote');
+    }
+  }
+
+  async function loadRemoteHistory() {
+    const list = $('#remote-history-list');
+    renderLoading(list, 'list');
+    try {
+      const data = await api('/remote/history?days=30');
+      const items = (data && data.sessions) || [];
+      if (!items.length) { renderEmpty(list, 'ثبت دورکاری‌ای در ۳۰ روز اخیر نیست.'); return; }
+      list.removeAttribute('aria-busy');
+      list.innerHTML = '';
+      items.forEach((s) => list.appendChild(remoteSessionItem(s, true)));
+    } catch (err) {
+      if (isRemoteRefused(err)) { await leaveRemoteMode(err.message); return; }
+      renderError(list, err, loadRemoteHistory, 'retry-remote-history');
+    }
+  }
+
+  // خطای وضعیتی (ورود تکراری، خروج بی‌ورود و …) هم بعد از پیام، نما را با سرور هم‌گام می‌کند
+  async function remoteAction(path, okMsg) {
+    if (remoteUi.busy) return;
+    remoteUi.busy = true;
+    $all('#remote-actions button').forEach((b) => { b.disabled = true; });
+    try {
+      await api(path, { method: 'POST', body: {} });
+      showToast(okMsg);
+    } catch (err) {
+      if (isRemoteRefused(err)) { remoteUi.busy = false; await leaveRemoteMode(err.message); return; }
+      showToast(err.message, true);
+    } finally {
+      remoteUi.busy = false;
+    }
+    await loadRemoteToday();
+    $all('#remote-actions button').forEach((b) => { b.disabled = false; });
+  }
+
   // ---------- پروفایل و اعتراض ----------
 
   async function loadProfile() {
@@ -2417,6 +2745,13 @@
       try {
         $('#header-date').textContent = fmtTodayShort();
       } catch (_) { /* ignore */ }
+      // R4: اول وضعیت شبکه (قبل از رندر کارت ثبت تردد). بیرون از شبکه و بدون ماموریت ⇒ دیالوگ دورکاری؛ در غیر این صورت رفتار فعلی
+      const net = await fetchNetworkState();
+      if (net.remoteAllowed) {
+        if (remoteUi.accepted) enterRemoteMode();
+        else showRemoteDialog();
+        return;
+      }
       $('#app').classList.remove('hidden');
       showTodaySkeleton(true);
       try { await loadToday(); } finally { showTodaySkeleton(false); }

@@ -4,6 +4,14 @@
 
 ## [Unreleased] — بخش ۴ (ممیزی)
 
+### فاز ۱۴ — R4: رابط Mini App دورکاری
+- `public/js/app.js`: در بوت، بعد از `/me` و **قبل از** رندر کارت ثبت تردد، `GET /network-state` گرفته می‌شود. `inNetwork`/`viaMission` (یا هر خطا در گرفتن وضعیت) ⇒ رفتار فعلی بدون هیچ تغییر؛ `remoteAllowed` ⇒ دیالوگ «شما در فرازهنر حضور ندارید…» با دو دکمه‌ی «تأیید» و «خروج» (DOM ساخته‌شده با JS: `role="dialog"`، `aria-modal`، تله‌ی فوکوس، Esc برابر «خروج»؛ بدون `alert/confirm/prompt` و بدون inline style/handler).
+- «خروج» ⇒ `tg.close()` و صفحه‌ی ساده‌ی «برای ثبت تردد باید داخل شبکه شرکت باشید» (`#out-of-network`)؛ «تأیید» ⇒ حالت دورکاری (`#app.remote-mode`) و نمای `view-remote`. انتخاب کاربر در حافظه‌ی همان نشست می‌ماند (`remoteUi.accepted`) تا دیالوگ دوباره نیاید.
+- اگر یکی از چهار مسیر تردد `OUT_OF_NETWORK` بدهد، به‌جای توست خطا همان دیالوگ می‌آید (اگر سرور دورکاری را مجاز نداند، همان توست قبلی). اگر وسط دورکاری سرور دورکاری را رد کند (`REMOTE_NOT_ALLOWED`: وارد شبکه شده/ماموریت گرفته/تنظیم خاموش)، برنامه به رفتار عادی برمی‌گردد.
+- `view-remote`: سه عمل (ثبت ورود، ثبت استراحت ⇄ پایان استراحت، ثبت خروج)، تایمر مثل نمای عادی، لیست امروز با نشان «در انتظار بررسی / تأیید شده / رد شده»، برچسب «بسته‌شده توسط سیستم» و دلیل ردِ سرپرست؛ **بنر ثابت و غیرقابل‌بستن** با متن پرامپت بالای همه‌ی نماهای دورکاری. نوار پایین در این حالت فقط «ثبت دورکاری» و «تاریخچه دورکاری» را نشان می‌دهد (بقیه با CSS پنهان؛ `switchView` هم نماهای دیگر را در این حالت به `remote` برمی‌گرداند).
+- **سمت سرور (کوچک، برای تاریخچه‌ی نوار پایین):** `GET /api/miniapp/remote/history?days=` (پیش‌فرض ۳۰، سقف ۹۰) پشت همان گیت مشترک `/remote/*`؛ `remoteWorkRepository.listForUserRange` و `remoteWorkService.getHistory` (بدون IP).
+- تست: `test/remoteMiniappUi.test.js` (ساختاری + اجرای واقعی boot با DOM ساختگی) و یک تست `getHistory` در `test/remoteWork.test.js`.
+
 ### فاز ۱۴ — R3: سرویس و API دورکاری (کارمند)
 - `remoteWorkRepository` (فقط SQL) و `remoteWorkService`: ثبت ورود، خروج، شروع و پایان استراحت دورکاری با زمان و روز کاری سمت سرور (`currentRecordDate`)، وضعیت `pending` و IP در جدول. قواعد: ورودِ دوم بدون خروج رد می‌شود؛ خروج بدون ورود رد می‌شود؛ استراحت فقط داخل نشست باز و یکی در هر لحظه. **تصمیم:** خروج با استراحتِ باز خطا نمی‌دهد؛ استراحت در همان لحظه بسته و در audit با `autoClosedByEnd` ثبت می‌شود.
 - مسیرهای `GET /api/miniapp/remote/today` و `POST /api/miniapp/remote/{start,end,break/start,break/end}` پشت گیت مشترک: `maintenanceGate` ← `getRemoteAccess(req).remoteAllowed` (وگرنه ۴۰۳ `REMOTE_NOT_ALLOWED` با پیام فارسی و audit `remote_work_rejected`) ← rate limit مسیرهای تردد (فقط POST). هیچ زمان/تاریخ/کاربری از بدنه‌ی درخواست خوانده نمی‌شود.
