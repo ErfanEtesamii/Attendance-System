@@ -4,6 +4,12 @@
 
 ## [Unreleased] — بخش ۴ (ممیزی)
 
+### فاز ۱۴ — R2: تشخیص شبکه برای کلاینت
+- `networkRestriction.js`: منطق «داخل/خارج شبکه، ماموریت تأییدشده، ماموریتِ در انتظار» در یک تابع مشترک بدون اثر جانبی (`resolveNetworkAccess`) جمع شد و سه helper صادر می‌شود: `getNetworkState(req)` ⇒ `{ inNetwork, viaMission }`، `isRemoteAllowed(req)` و `getRemoteAccess(req)`. رفتار middleware (عبور، audit، پرچم `viaPendingMission`، ۴۰۳) بدون تغییر است.
+- پاسخ ۴۰۳ چهار مسیر تردد بیرون از شبکه حالا فیلد `code: 'OUT_OF_NETWORK'` هم دارد (متن فارسی و status مثل قبل).
+- endpoint جدید `GET /api/miniapp/network-state` (بعد از `telegramAuth`) فقط `{ inNetwork, viaMission, remoteAllowed }` می‌دهد. `remoteAllowed` فقط وقتی true است که کاربر بیرون از شبکه، بدون ماموریت (تأییدشده یا در انتظار)، فعال و با هویت امضاشده باشد و تنظیم `remoteWorkEnabled` روشن باشد. تصمیم فقط از `req.ip` گرفته می‌شود؛ هدر/query/body کلاینت اثری ندارد.
+- تنظیم جدید `remoteWorkEnabled` (گروه امنیت، boolean، پیش‌فرض روشن) ⇒ تعداد تنظیمات ۱۰۶ → ۱۰۷. هنوز هیچ مسیر یا UI دورکاری وجود ندارد (R3 و R4). تست: `test/networkState.test.js`.
+
 ### فاز ۱۴ — R1-الف: جدول نشست‌های دورکاری
 - migration ۰۳۶ (`remote_work_sessions`): ورود/خروج دورکاری با وضعیت `pending|approved|rejected`، ساعت اصلاح‌شده‌ی سرپرست و پیوند به رکورد رسمی؛ ایندکس یکتای «یک نشست باز برای هر کاربر». فقط جدول جدید است و تا مراحل بعدی هیچ کدی آن را نمی‌خواند یا نمی‌نویسد. تست: `test/remoteWorkSessions.test.js`.
 

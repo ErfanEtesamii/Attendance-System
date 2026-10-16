@@ -198,6 +198,7 @@ def('encouragementsEnabled', 'encouragements_enabled', 'boolean', { group: 'plan
 def('disputeMaxReopens', 'dispute_max_reopens', 'number', { group: 'disputes', min: 0, max: 20, default: 3, description: 'حداکثر دفعاتی که کارمند می‌تواند اعتراضِ حل‌شده را «ادامه» دهد (۰ = ادامه‌ی اعتراض خاموش)' });
 def('systemGoLive', 'system_go_live', 'boolean', { group: 'security', default: false, description: 'حالت Go-Live: وقتی روشن است ریست برنامه (حذف داده‌ی عملیاتی) ۴۰۳ می‌دهد، مگر ALLOW_DATA_RESET=true در .env باشد' });
 def('blockOnSharedDevice', 'block_on_shared_device', 'boolean', { group: 'security', default: false, description: 'مسدودکردن ثبت تردد وقتی دستگاه همان روز برای کاربر دیگری استفاده شده' });
+def('remoteWorkEnabled', 'remote_work_enabled', 'boolean', { group: 'security', default: true, description: 'دورکاری خارج از شبکه: کاربرِ بیرون از شبکه‌ی شرکت (بدون ماموریت) می‌تواند ساعتش را به‌عنوان دورکار ثبت کند؛ این ساعت‌ها تا تأیید سرپرست در هیچ گزارشی حساب نمی‌شوند (خاموش = مثل قبل فقط خطای «خارج از شبکه»)' });
 // نگهداری و آرشیو
 def('auditRetentionMonths', 'audit_retention_months', 'number', { group: 'retention', min: 1, max: 240, default: 24, description: 'مدت نگهداری رویدادهای audit در جدول اصلی (ماه)' });
 def('auditArchiveEnabled', 'audit_archive_enabled', 'boolean', { group: 'retention', default: false, description: 'انتقال ماهانه‌ی audit قدیمی به آرشیو (خاموش = فقط شمارش)' });

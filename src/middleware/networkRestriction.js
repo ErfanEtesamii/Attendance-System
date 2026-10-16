@@ -47,52 +47,84 @@ function isIpInCidr(ip, cidr) {
   return (ipInt & mask) === baseInt;
 }
 
-// middleware اصلی: اگر IP در رنج مجاز نبود و کاربر هم مأموریت تأییدشده برای امروز نداشت، رد می‌کند.
-function networkRestriction(req, res, next) {
-  const rawIp = req.ip;
-  const ip = normalizeIp(rawIp);
-  const allowed = isIpInCidr(ip, config.allowedNetworkCidr);
-
-  if (allowed) {
-    return next();
-  }
+// منطق مشترک و بدون اثر جانبی (R2، فاز ۱۴): وضعیتِ شبکه‌ی یک درخواست. هم middleware پایین و هم endpoint کلاینت
+// (network-state) فقط از همین استفاده می‌کنند تا «داخل/خارج شبکه» همیشه یک تعریف داشته باشد. تصمیم فقط از req.ip (و هویت
+// امضاشده‌ی req.miniAppUser) گرفته می‌شود؛ هیچ پرچمی از query/body/header کلاینت خوانده نمی‌شود.
+//   missionKind: 'approved' (ماموریتِ تأییدشده‌ی امروز) | 'pending' (ماموریتِ در انتظار با تنظیم روشن) | null
+function resolveNetworkAccess(req) {
+  const ip = normalizeIp(req.ip);
+  const userId = req.miniAppUser?.id;
+  if (isIpInCidr(ip, config.allowedNetworkCidr)) return { ip, userId, inNetwork: true, missionKind: null, pendingId: null };
 
   // استثنای فاز ۷: مأموریت تأییدشده برای همین کاربر و همین تاریخ.
   // فقط هویت امضاشده‌ی Mini App (req.miniAppUser از telegramAuth) پذیرفته می‌شود؛ userId خام body/query
   // دیگر خوانده نمی‌شود (بخش ۱-ب): مسیر قدیمی /api/attendance که بدون احراز هویت userId را از body می‌گرفت
   // حذف شد، و تا وقتی این middleware فقط بعد از telegramAuth قرار دارد، نیازی به آن نیست.
   // (اگر روزی جایی بدون telegramAuth استفاده شود، userId=null و فقط رد + ثبت audit رخ می‌دهد: fail-closed)
-  const userId = req.miniAppUser?.id;
-  if (userId) {
-    const onMission = leaveRepository.hasApprovedMissionOnDate(userId, todayDateString());
-    if (onMission) {
-      auditRepository.logEvent({
-        userId,
-        action: 'attendance_allowed_via_mission',
-        ipAddress: ip,
-        details: { path: req.originalUrl },
-      });
-      return next();
-    }
+  if (userId && leaveRepository.hasApprovedMissionOnDate(userId, todayDateString())) {
+    return { ip, userId, inNetwork: false, missionKind: 'approved', pendingId: null };
   }
 
   // C5: ماموریتِ در انتظارِ امروز (و تنظیم allowCheckinWithPendingMission) ⇒ عبور با پرچم؛ route رکورد و «نشانه» را ثبت می‌کند
   const pendingId = require('../services/pendingMissionService').pendingMissionPass(userId, todayDateString());
-  if (pendingId) {
-    req.viaPendingMission = pendingId;
+  if (pendingId) return { ip, userId, inNetwork: false, missionKind: 'pending', pendingId };
+
+  return { ip, userId, inNetwork: false, missionKind: null, pendingId: null };
+}
+
+// وضعیت شبکه برای کلاینت: { inNetwork, viaMission }. viaMission فقط بیرون از شبکه معنا دارد (داخل شبکه ماموریت بررسی نمی‌شود).
+function getNetworkState(req) {
+  const a = resolveNetworkAccess(req);
+  return { inNetwork: a.inNetwork, viaMission: !a.inNetwork && a.missionKind !== null };
+}
+
+// دورکاری فقط وقتی مجاز است که: بیرون از شبکه، بدون ماموریت (تأییدشده یا در انتظار)، کاربرِ فعالِ ثبت‌نام‌شده (هویت امضاشده)
+// و تنظیم remoteWorkEnabled روشن باشد. کاربر داخل شبکه هرگز دورکاری ندارد. fail-closed: هر ابهامی ⇒ false.
+function isRemoteAllowed(req, state = getNetworkState(req)) {
+  const u = req.miniAppUser;
+  if (!u || !u.id || !u.is_active) return false;
+  if (state.inNetwork || state.viaMission) return false;
+  return require('../repositories/settingsRepository').getAll().remoteWorkEnabled === true;
+}
+
+// پاسخ endpoint کلاینت و مبنای گیت مسیرهای دورکاری (R3)
+function getRemoteAccess(req) {
+  const state = getNetworkState(req);
+  return { ...state, remoteAllowed: isRemoteAllowed(req, state) };
+}
+
+// middleware اصلی: اگر IP در رنج مجاز نبود و کاربر هم مأموریت تأییدشده برای امروز نداشت، رد می‌کند.
+function networkRestriction(req, res, next) {
+  const access = resolveNetworkAccess(req);
+  if (access.inNetwork) return next();
+
+  if (access.missionKind === 'approved') {
+    auditRepository.logEvent({
+      userId: access.userId,
+      action: 'attendance_allowed_via_mission',
+      ipAddress: access.ip,
+      details: { path: req.originalUrl },
+    });
+    return next();
+  }
+
+  if (access.missionKind === 'pending') {
+    req.viaPendingMission = access.pendingId;
     return next();
   }
 
   auditRepository.logEvent({
-    userId: userId || null,
+    userId: access.userId || null,
     action: 'attendance_rejected_ip',
-    ipAddress: ip,
+    ipAddress: access.ip,
     details: { path: req.originalUrl, allowedCidr: config.allowedNetworkCidr },
   });
 
+  // code: برای اینکه کلاینت هنگام خطا هم بتواند دیالوگ دورکاری را نشان دهد (R2)؛ متن فارسی و status مثل قبل
   return res.status(403).json({
     error: 'این عملیات فقط از داخل شبکه شرکت قابل انجام است.',
+    code: 'OUT_OF_NETWORK',
   });
 }
 
-module.exports = { networkRestriction, isIpInCidr, ipv4ToInt, normalizeIp };
+module.exports = { networkRestriction, isIpInCidr, ipv4ToInt, normalizeIp, getNetworkState, isRemoteAllowed, getRemoteAccess };

@@ -9,7 +9,7 @@ const express = require('express');
 const router = express.Router();
 
 const { telegramAuth } = require('../../middleware/telegramAuth');
-const { networkRestriction } = require('../../middleware/networkRestriction');
+const { networkRestriction, getRemoteAccess } = require('../../middleware/networkRestriction');
 const missionNowService = require('../../services/missionNowService');
 const pendingMissionService = require('../../services/pendingMissionService');
 const planGateService = require('../../services/planGateService');
@@ -96,6 +96,14 @@ router.get('/miniapp/me', (req, res) => {
     // B3: با هر ریست برنامه زیاد می‌شود؛ کلاینت با تغییرش state محلی را پاک می‌کند
     reset_epoch: settingsRepository.getResetEpoch(),
   });
+});
+
+// ---------- وضعیت شبکه (R2، فاز ۱۴) ----------
+// فقط نتیجه‌ی تصمیم سرور از روی req.ip؛ کلاینت هیچ ورودی‌ای برای تشخیص نمی‌فرستد (query/body/header خوانده نمی‌شود).
+// فقط سه فیلد برمی‌گردد و چیزی از رنج شبکه یا ماموریت لو نمی‌رود. بدون audit (مثل /me در هر بار باز شدن برنامه صدا می‌خورد).
+router.get('/miniapp/network-state', (req, res) => {
+  const { inNetwork, viaMission, remoteAllowed } = getRemoteAccess(req);
+  res.json({ inNetwork, viaMission, remoteAllowed });
 });
 
 // ---------- وضعیت امروز ----------
