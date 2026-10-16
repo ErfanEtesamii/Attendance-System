@@ -204,7 +204,7 @@
       return d ? nb.weekdayName(d) : date;
     };
     // انتقال به روزِ آف/تعطیل/مرخصی/مأموریت مجاز است؛ فقط یادآوری نرم (هشدار رسمی B1 بعد از ذخیره در مدل تازه می‌آید)
-    const OFF_KINDS = ['off', 'holiday', 'leave', 'mission'];
+    const OFF_KINDS = nb.NON_WORK || ['off', 'holiday', 'leave', 'mission']; // منبع واحد: notebook.js
     function offNote(model, date) {
       const d = date && (model.days || []).find((x) => x.date === date);
       return d && OFF_KINDS.includes(d.kind) ? ` توجه: این روز ${d.kindLabel || 'کاری نیست'} است.` : '';

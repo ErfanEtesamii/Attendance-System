@@ -4,6 +4,16 @@
 
 ## [Unreleased] — بخش ۴ (ممیزی)
 
+### فاز ۱۳ — E3: ساعت کاری روز، تسک فوری و یادداشت سرپرست از صفحه‌ی «برنامه هفته بعد»
+- `public-admin/js/plan-manage.js` (`AP.planManage`) + `opts.manage` در `AP.notebook.renderWeek` (مستقل از `opts.edit`؛ در هفته‌ی شروع‌شده/فقط‌خواندنی هم کار می‌کند): روی هر کارت روز «🕒 ویرایش ساعت کاری این روز» (مودال B2 `AP.scheduleTab.editModal`، `schedule.manage`) و «⚡ تسک فوری» (فرم فاز ۱۲ `AP.openUrgentTaskForm` با تاریخ همان روز، `tasks.assign_urgent`)؛ روز ماه‌بسته‌شده و ردیف خودِ کاربر بدون دکمه. بعد از موفقیت مدل هفته دوباره خوانده می‌شود.
+- کارت «یادداشت سرپرست» با فرم درجا (≤ ۵۰۰ نویسه، خالی = پاک کردن، خطا کنار فرم) برای `reviews.write`؛ بدون مجوز همان نمای فقط‌خواندنی قبلی.
+- **سرور (قبلاً نبود):** `PUT /admin/users/:id/plan/supervisor-comment` ← `weeklyPlanAdminService.setSupervisorComment` (اسکوپ مثل ویرایش، بدون قفل هفته/ماه، بدون `expectedVersion`، برنامه‌ی ناموجود فقط برای متن غیرخالی draft ساخته می‌شود)؛ audit `weekly_plan_supervisor_comment`. شمارنده‌ی «تغییر اطلاع‌داده‌نشده» با این سه اقدام عوض نمی‌شود.
+- تست: `test/nextPlanManage.test.js` (DOM ساختگی)، `test/supervisorComment.test.js` (سرور؛ هنگام نگارش اجرا نشد). مرور دستی انجام نشده.
+
+### فاز ۱۳ — F1: بازبینی نهایی و مستندسازی
+- مستندات: `docs/PHASE13_DECISIONS.md` (تصمیم‌ها، migration ۰۳۳–۰۳۵، بازبینی، ریسک‌ها) و `docs/PHASE13_DEPLOY.md` (استقرار ویندوز/NSSM + چک‌لیست تست دستی)؛ به‌روزرسانی `README.md`، `PROJECT_STATUS.md`.
+- یک تکرار کوچک E2 حذف شد: فهرست «روز غیرکاری» یک‌جا (`AP.notebook.NON_WORK`). `npm test && npm run smoke && npm run secret-scan` هنگام نگارش اجرا نشد.
+
 ### فاز ۱۳ — E2: جابه‌جایی و مرتب‌سازی (منوی کیبوردی، drag & drop دسکتاپ، لمس)
 - **مسیر بدون drag (الزامی، a11y):** دکمه‌ی «انتقال…» (منوی روزها + «هر روز»؛ روزهای آف/تعطیل/مرخصی/مأموریت برچسب می‌خورند) و ▲/▼ برای ترتیب داخل کارت؛ `PATCH /admin/plan-tasks/:id` (تاریخ) و `POST /admin/users/:id/plan/reorder`؛ اعلان `aria-live` («تسک «الف» به چهارشنبه منتقل شد») و بازگرداندن فوکوس.
 - **دسکتاپ:** drag بومی (`dragstart/dragover/drop`)؛ هایلایت کارت/ردیف مقصد؛ رها کردن روی روز آف مجاز با یادآوری نرم (هشدار B1 بعد از ذخیره به‌روز می‌شود).

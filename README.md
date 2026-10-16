@@ -8,6 +8,7 @@
 - فاز ۱۰ (استراحت، ریست برنامه، ماموریت، برنامه‌ی هفتگی/گزارش روزانه، بات دکمه‌ای): تصمیم‌ها [`docs/PHASE10_DECISIONS.md`](docs/PHASE10_DECISIONS.md) و استقرار/تست دستی [`docs/PHASE10_DEPLOY.md`](docs/PHASE10_DEPLOY.md)
 - فاز ۱۱ (گیت خروج بر اساس اولویت، قفل برنامه‌ی هفتگی با شروع هفته، UI کارت‌های روزانه، گفت‌وگوی دوطرفه روی اعتراض): تصمیم‌ها [`docs/PHASE11_DECISIONS.md`](docs/PHASE11_DECISIONS.md) و استقرار/تست دستی [`docs/PHASE11_DEPLOY.md`](docs/PHASE11_DEPLOY.md)
 - فاز ۱۲ (شیفت با تاریخ اعمال و برنامه‌ی روزبه‌روز، استراحت با حقوق، سقف تأخیر و اجازه‌ی ورود، تسک فوری، نمای هفتگی کارمند، منوی «📂 منو»، ورودی ساعت قابل‌تایپ، تسک واجب سرپرست): تصمیم‌ها [`docs/PHASE12_DECISIONS.md`](docs/PHASE12_DECISIONS.md) و استقرار/تست دستی [`docs/PHASE12_DEPLOY.md`](docs/PHASE12_DEPLOY.md). ⚠️ H1 (ساعت دورکاری) هنوز پیاده‌سازی نشده است.
+- فاز ۱۳ (برنامه‌ی هفته‌ی بعد کارمندان با ظاهر دفترچه در پنل ادمین/سرپرست: مشاهده، ویرایش درجا، جابه‌جایی با کیبورد/drag/لمس، همزمانی با `PLAN_CONFLICT`، اعلان تجمیعی به کارمند، ساعت کاری روز/تسک فوری/یادداشت سرپرست از همان صفحه): تصمیم‌ها [`docs/PHASE13_DECISIONS.md`](docs/PHASE13_DECISIONS.md) و استقرار/تست دستی [`docs/PHASE13_DEPLOY.md`](docs/PHASE13_DEPLOY.md).
 
 ## فناوری‌ها
 
@@ -168,6 +169,8 @@ Jobهای `node-cron` (`src/bot/scheduler/`): یادآور تأخیر و خرو�
 3. نصب سرویس: `scripts/install-service.ps1` (NSSM، شروع خودکار، چرخش لاگ، ری‌استارت در crash).
 4. در BotFather: `/setdomain` برای دامنه‌ی پنل (لازم برای Login Widget).
 5. هر ارتقا: `nssm stop` ← جایگزینی کد ← `npm install` ← `npm run migrate` ← `nssm start`.
+
+ارتقا به فاز ۱۳ (migration ۰۳۳ تا ۰۳۵، فقط افزایشی؛ `.env` و وابستگی npm بدون تغییر): دستورها و چک‌لیست تست دستی در [`docs/PHASE13_DEPLOY.md`](docs/PHASE13_DEPLOY.md).
 
 ارتقا به فاز ۱۲ (migration ۰۲۸ تا ۰۳۲، فقط افزایشی؛ `.env` تغییر اجباری ندارد؛ تنظیم‌های تازه‌ی استراحت با حقوق و سقف تأخیر به‌صورت پیش‌فرض خاموش‌اند): دستورها، فعال‌سازی تدریجی و چک‌لیست تست دستی در [`docs/PHASE12_DEPLOY.md`](docs/PHASE12_DEPLOY.md).
 

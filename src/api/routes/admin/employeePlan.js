@@ -161,4 +161,28 @@ router.post('/admin/users/:id/plan/notify', requirePermission('plan.edit_team'),
   return res.json({ ...state, notified: results.some((r) => r && r.created), summary: { added, edited, removed } });
 });
 
+// E3: یادداشت سرپرست روی برنامه‌ی هفته (reviews.write؛ اسکوپ مثل ویرایش: سرپرست فقط کارمند مستقیمش و نه خودش، admin همه).
+//   PUT /admin/users/:id/plan/supervisor-comment  { weekStart?, comment }  (comment خالی ⇒ پاک شدن؛ ≤ ۵۰۰ نویسه)
+//   ⇒ ۲۰۰ وضعیت تازه‌ی برنامه (+ changed). قفل هفته/ماه ندارد (در هفته‌ی شروع‌شده هم مجاز است). audit: weekly_plan_supervisor_comment با قبل/بعد.
+function auditSupervisorComment(req, employeeId, r) {
+  if (!r || !r.ok || !r.changed || !r.plan.id) return;
+  try {
+    auditChange(req, {
+      action: 'weekly_plan_supervisor_comment', entityType: 'weekly_plan', entityId: r.plan.id,
+      before: { comment: r.before }, after: { comment: r.after },
+      meta: { op: 'supervisor_comment', targetUserId: Number(employeeId), planId: r.plan.id, weekStart: r.plan.weekStart },
+    });
+  } catch (err) {
+    console.error('[employeePlan] audit یادداشت ناموفق (نادیده گرفته شد):', err.message);
+  }
+}
+
+router.put('/admin/users/:id/plan/supervisor-comment', requirePermission('reviews.write'), (req, res) => {
+  if (!isId(req.params.id)) return badId(res);
+  const b = bodyOf(req);
+  const r = service.setSupervisorComment(req.adminUser, req.params.id, b.weekStart, b.comment);
+  auditSupervisorComment(req, req.params.id, r);
+  return send(res, service.withState(req.adminUser, req.params.id, r));
+});
+
 module.exports = router;

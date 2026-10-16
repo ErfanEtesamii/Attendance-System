@@ -12,6 +12,7 @@
 //   A2-۲ (انجام‌شده): endpointهای نوشتن (POST/PATCH/DELETE/reorder) روی توابع A1-۳؛ پاسخ = getPlanState تازه (withState/taskOwnerId).
 //   A2-۳ (انجام‌شده): همزمانی — version = شمارنده‌ی weekly_plans.version (migration ۰۳۴)؛ همه‌ی نوشتن‌ها expectedVersion می‌گیرند ⇒ PLAN_CONFLICT (۴۰۹).
 //   A2-۴ (انجام‌شده): audit weekly_plan_edited_by_manager — در route (employeePlan.js) با before/after همین توابع؛ سرویس هنوز audit نمی‌نویسد.
+//   E3 (انجام‌شده): setSupervisorComment — یادداشت سرپرست (reviews.write)؛ PUT /admin/users/:id/plan/supervisor-comment.
 //   A2-۵ (انجام‌شده): اعلان تجمیعی دستی (POST .../plan/notify + notificationEvents.weeklyPlanEditedByManager). این فایل فقط «خلاصه‌ی تغییرهای
 //        اطلاع‌داده‌نشده» را از audit می‌سازد (pendingNotify)؛ ارسال و ثبت رکورد «اعلان شد» در route است (مثل audit در A2-۴).
 // قواعد (همه سمت سرور):
@@ -31,6 +32,7 @@ const { dayNumber, addDays } = require('../utils/shiftDay');
 const { isoDateToJalaliString } = require('../utils/jalali');
 const auditRepository = require('../repositories/auditRepository');
 const { getDb } = require('../db/connection');
+const { sanitizeText } = require('../utils/sanitize');
 
 const ERROR_STATUS = {
   FORBIDDEN: 403, SELF_NOT_ALLOWED: 403, NOT_IN_SCOPE: 403,
@@ -68,8 +70,8 @@ function versionFailure(plan, expectedVersion) {
 }
 
 /** آیا actor مجاز است برنامه‌ی target را ویرایش کند؟ → null (مجاز) یا fail(...). ترتیب: مجوز، وجود کارمند، خود، اسکوپ تیم. */
-function scopeFailure(actor, target) {
-  if (!actor || !hasPermission(actor.role, 'plan.edit_team')) return fail('FORBIDDEN', 'برای ویرایش برنامه‌ی کارمندان مجوز لازم را ندارید.');
+function scopeFailure(actor, target, perm = 'plan.edit_team') {
+  if (!actor || !hasPermission(actor.role, perm)) return fail('FORBIDDEN', 'برای ویرایش برنامه‌ی کارمندان مجوز لازم را ندارید.');
   if (!target || !target.is_active) return fail('USER_NOT_FOUND', 'کارمند یافت نشد.');
   if (target.id === actor.id) return fail('SELF_NOT_ALLOWED', 'برنامه‌ی خودتان را از این مسیر نمی‌توانید ویرایش کنید؛ از Mini App استفاده کنید.');
   if (actor.role === 'manager' && target.manager_id !== actor.id) return fail('NOT_IN_SCOPE', 'این کارمند در تیم شما نیست.');
@@ -437,4 +439,34 @@ function pendingNotify(actor, employeeId, weekStartInput, { now } = {}) {
   return { ok: true, target, plan, summary };
 }
 
-module.exports = { scopeFailure, openWeek, statusOf, planVersion, getPlanState, listPlanOverview, taskOwnerId, withState, addTask, updateTask, removeTask, moveTask, reorderTasks, summarizeEdits, pendingNotify, AUDIT_NOTIFY_ACTION };
+// ---------- E3 (فاز ۱۳): یادداشت سرپرست روی برنامه‌ی هفته ----------
+// مجوز reviews.write (admin و سرپرست؛ hr ندارد) + همان اسکوپ ویرایش (سرپرست فقط کارمند مستقیمش و نه خودش؛ admin همه).
+// قفل هفته/ماه اعمال نمی‌شود (یادداشت محتوای برنامه نیست و در هفته‌ی شروع‌شده هم مجاز است) و expectedVersion بررسی نمی‌شود
+// (با ویرایش تسک‌ها تعارض ندارد)؛ پاسخ route وضعیت تازه با version جدید است. متن خالی ⇒ پاک‌شدن یادداشت.
+// برنامه‌ی ناموجود فقط وقتی یادداشتِ غیرخالی ثبت شود به‌صورت draft خالی ساخته می‌شود (مثل addTask). وضعیت draft/submitted عوض نمی‌شود.
+const SUPERVISOR_COMMENT_MAX = 500;
+const cleanComment = (v) => sanitizeText(String(v), SUPERVISOR_COMMENT_MAX + 1).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
+
+function setSupervisorComment(actor, employeeId, weekStartInput, commentInput, { now } = {}) {
+  const id = toId(employeeId);
+  const target = id ? usersRepository.findById(id) : null;
+  const denied = scopeFailure(actor, target, 'reviews.write');
+  if (denied) return denied;
+  if (commentInput !== undefined && commentInput !== null && typeof commentInput !== 'string') return fail('INVALID_COMMENT', 'یادداشت نامعتبر است.');
+  const comment = commentInput ? cleanComment(commentInput) : '';
+  if (comment.length > SUPERVISOR_COMMENT_MAX) return fail('COMMENT_TOO_LONG', `یادداشت حداکثر ${SUPERVISOR_COMMENT_MAX} نویسه است.`);
+
+  const wk = resolveWeekStart(weekStartInput, weeklyPlan.context(now));
+  if (!wk.ok) return wk;
+  let plan = plansRepo.findByUserWeek(target.id, wk.weekStart);
+  const before = plan && plan.supervisor_comment ? plan.supervisor_comment : null;
+  const after = comment || null;
+  if (before === after) return { ok: true, changed: false, plan: { weekStart: wk.weekStart, ...(plan ? presentPlan(plan) : {}) }, before, after };
+  getDb().transaction(() => {
+    if (!plan) plan = plansRepo.getOrCreate(target.id, wk.weekStart); // after !== null (before === null و بالا برگشتیم)
+    plan = plansRepo.setSupervisorFeedback(plan.id, { seen: false, comment: after });
+  })();
+  return { ok: true, changed: true, plan: presentPlan(plan), before, after };
+}
+
+module.exports = { setSupervisorComment, SUPERVISOR_COMMENT_MAX, scopeFailure, openWeek, statusOf, planVersion, getPlanState, listPlanOverview, taskOwnerId, withState, addTask, updateTask, removeTask, moveTask, reorderTasks, summarizeEdits, pendingNotify, AUDIT_NOTIFY_ACTION };

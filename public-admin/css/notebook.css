@@ -255,6 +255,9 @@
 .nb .nb-note__text { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
 
 /* ---------- E1: ابزار ویرایش درجا ---------- */
+.nb .nb-day-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+.nb .nb-note__body { display: grid; gap: 8px; }
+.nb .nb-note__text--empty { opacity: .7; }
 .nb .nb-task__actions { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-inline-start: auto; }
 .nb .nb-btn--small { min-height: 28px; padding: 1px 10px; font-size: 0.8rem; }
 .nb .nb-why { font-size: 0.75rem; color: var(--nb-ink-soft); }
@@ -342,7 +345,7 @@
   --nb-chip-locked-bg: #eadfd6; --nb-chip-locked-fg: #5b4636;
   }
   .nb .nb-spread { display: block; box-shadow: none; border-radius: 0; background: transparent; overflow: visible; }
-  .nb .nb-spring, .nb .nb-pager, .nb .nb-card__toggle, .nb .nb-task__actions, .nb .nb-task__handle, .nb .nb-edit-slot { display: none !important; }
+  .nb .nb-spring, .nb .nb-pager, .nb .nb-card__toggle, .nb .nb-task__actions, .nb .nb-task__handle, .nb .nb-edit-slot, .nb .nb-day-actions, .nb .nb-note__body .nb-btn, .nb .nb-note__body .nb-form { display: none !important; }
   .nb .nb-spread > .nb-page { display: flex !important; box-shadow: none; break-inside: auto; }
   .nb .nb-page::before { display: none; }
   .nb .nb-card { box-shadow: none; border: 1px solid var(--nb-line); break-inside: avoid; }

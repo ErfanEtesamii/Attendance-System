@@ -114,6 +114,7 @@
     const label = `دفترچه‌ی برنامه‌ی ${first.employee.fullName}`;
     let model = first;
     let editor = null;
+    let manage = null; // E3: ساعت روز / تسک فوری / یادداشت سرپرست (plan-manage.js؛ مستقل از قفل ویرایش تسک‌ها)
     const els = { status: $('#np-status', page), banner: $('#np-banner', page), undo: $('#np-undo', page), unnotified: $('#np-unnotified', page) };
     const emptyNote = $('#np-empty', page);
     const canEditUi = () => AP.can('plan.edit_team') && !!model.plan.editable;
@@ -130,7 +131,7 @@
 
     function draw() {
       if (editor) editor.reset();
-      host.replaceChildren(nb.renderWeek(model, { label, edit: editor && canEditUi() ? editor.options() : null }));
+      host.replaceChildren(nb.renderWeek(model, { label, edit: editor && canEditUi() ? editor.options() : null, manage: manage ? manage.options() : null }));
       if (emptyNote) emptyNote.hidden = !!model.plan.id;
       drawBar();
     }
@@ -160,6 +161,7 @@
         if (unnotified() > 0) AP.toast(`${nb.fa(unnotified())} تغییر هنوز به کارمند اطلاع داده نشده است.`, true);
       };
     }
+    if (AP.planManage) manage = AP.planManage.create({ userId, userName: first.employee.fullName, getModel: () => model, applyModel: (m) => { model = m; draw(); }, fetchModel });
     draw();
   }
 

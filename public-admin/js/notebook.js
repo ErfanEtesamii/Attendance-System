@@ -209,7 +209,7 @@
     if (edit.onZone) edit.onZone(date, el);
   }
 
-  function dayCard(d, collapsible, edit) {
+  function dayCard(d, collapsible, edit, manage) {
     const k = KIND[d.kind] || KIND.off;
     const s = d.schedule || {};
     const chips = [];
@@ -219,11 +219,60 @@
     if (d.monthClosed) chips.push(chip('ماه بسته', { tone: 'locked', icon: '🔒' }));
     const el = card({ title: dayTitle(d), tape: { tone: k.tape, label: `${k.icon} ${d.kindLabel || k.label}` }, className: `nb-day nb-day--${KIND[d.kind] ? d.kind : 'off'}`, collapsible },
       chips.length ? h('div', { class: 'nb-day-chips' }, ...chips) : null,
+      manageActions(d, manage),
       lines((d.tasks || []).map((t) => taskRow(t, edit, d.tasks, d.date)), { emptyText: 'تسکی ثبت نشده' }),
       edit ? addSlot(d.date, dayTitle(d), edit) : null);
     el.setAttribute('data-date', d.date || '');
     dropZone(el, d.date, edit);
     return el;
+  }
+
+  // E3: اقدام‌های مدیریتی هر روز، مستقل از قفل ویرایش دفترچه (تسک فوری و ساعت کاری در هفته‌ی شروع‌شده هم مجازند؛ گیت واقعی سمت سرور است).
+  // manage = { onHours(day)?, onUrgent(day)?, comment?: { onSave(text) } } — هر کلید فقط وقتی کاربر مجوز دارد ساخته می‌شود. روز در ماه بسته دکمه ندارد (سرور هم رد می‌کند).
+  function manageActions(d, manage) {
+    if (!manage || d.monthClosed || !(manage.onHours || manage.onUrgent)) return null;
+    const t = dayTitle(d);
+    return h('div', { class: 'nb-day-actions' },
+      manage.onHours ? btn('🕒 ویرایش ساعت کاری این روز', { variant: 'ghost', small: true, label: `ویرایش ساعت کاری ${t}`, onClick: () => manage.onHours(d) }) : null,
+      manage.onUrgent ? btn('⚡ تسک فوری', { variant: 'ghost', small: true, label: `ثبت تسک فوری برای ${t}`, onClick: () => manage.onUrgent(d) }) : null);
+  }
+
+  const NOTE_MAX = 500; // همان سقف سرور (setSupervisorComment)؛ فقط راهنمای UI
+
+  /** کارت «یادداشت سرپرست». بدون مجوز ویرایش (manage.comment) دقیقاً همان نمای فقط‌خواندنیِ C2؛ با مجوز: فرم درجا (ذخیره‌ی صریح، خطا کنار فرم). */
+  function noteCard(comment, collapsible, manage) {
+    const m = manage && manage.comment ? manage.comment : null;
+    const opts = { title: 'یادداشت سرپرست', tape: { tone: 'rose', label: '✎ یادداشت' }, className: 'nb-note', collapsible };
+    if (!m) return comment ? card(opts, h('p', { class: 'nb-note__text', text: comment })) : null;
+
+    const body = h('div', { class: 'nb-note__body' });
+    const view = () => {
+      const openBtn = btn(comment ? 'ویرایش یادداشت' : '＋ افزودن یادداشت', { variant: 'ghost', small: true, label: comment ? 'ویرایش یادداشت سرپرست' : 'افزودن یادداشت سرپرست', onClick: openForm });
+      body.replaceChildren(h('p', { class: `nb-note__text${comment ? '' : ' nb-note__text--empty'}`, text: comment || 'یادداشتی ثبت نشده است.' }), openBtn);
+      return openBtn;
+    };
+    function openForm() {
+      const id = `nb-note-${Math.random().toString(36).slice(2, 8)}`;
+      const ta = h('textarea', { class: 'nb-input', attrs: { id, rows: 4, maxlength: NOTE_MAX, 'aria-describedby': `${id}-err` } });
+      ta.value = comment || '';
+      const err = h('span', { class: 'nb-field-error', attrs: { id: `${id}-err`, role: 'alert' } });
+      const save = btn('ذخیره', { type: 'submit' });
+      const cancel = btn('انصراف', { variant: 'ghost', onClick: () => { const b = view(); if (b.focus) b.focus(); } });
+      const form = h('form', { class: 'nb-form', attrs: { novalidate: true, 'aria-label': 'یادداشت سرپرست' } },
+        h('label', { class: 'nb-field', attrs: { for: id } }, h('span', { class: 'nb-field-label', text: `یادداشت برای کارمند (حداکثر ${fa(NOTE_MAX)} نویسه؛ خالی = پاک کردن)` }), ta, err),
+        h('div', { class: 'nb-form-actions' }, save, cancel));
+      form.addEventListener('submit', async (e) => {
+        if (e && e.preventDefault) e.preventDefault();
+        err.textContent = ''; save.disabled = true; cancel.disabled = true;
+        try { await m.onSave(String(ta.value || '')); } catch (ex) { // موفقیت ⇒ والد دفترچه را دوباره می‌سازد؛ خطا ⇒ فرم باز می‌ماند
+          err.textContent = (ex && ex.message) || 'ذخیره نشد.'; save.disabled = false; cancel.disabled = false; if (ta.focus) ta.focus();
+        }
+      });
+      body.replaceChildren(form);
+      if (ta.focus) ta.focus();
+    }
+    view();
+    return card(opts, body);
   }
 
   const textLine = (text, icon) => h('span', {}, icon ? h('span', { attrs: { 'aria-hidden': 'true' }, text: `${icon} ` }) : null, text);
@@ -252,7 +301,7 @@
 
   /**
    * @param {object} model خروجی GET /admin/users/:id/plan: { days[], anyDay[], summary?, warnings?, plan?: { supervisorComment } }
-   * @param {object} [opts] { label, initialPage, collapsible (پیش‌فرض true؛ دکمه‌ی جمع‌شدن کارت‌ها در موبایل), edit (E1: { enabled, onAdd, onEdit, onDelete, onRow?, onSlot? }) }
+   * @param {object} [opts] { label, initialPage, collapsible (پیش‌فرض true؛ دکمه‌ی جمع‌شدن کارت‌ها در موبایل), manage (E3: { onHours?, onUrgent?, comment?: { onSave } }), edit (E1: { enabled, onAdd, onEdit, onDelete, onRow?, onSlot? }) }
    * @returns {HTMLElement} ریشه‌ی .nb؛ صفحه‌ی راست = اولین ۴ روز، صفحه‌ی چپ = بقیه‌ی روزها + کارت‌های جانبی (هرکدام فقط با وجود داده)
    */
   function renderWeek(model, opts = {}) {
@@ -266,14 +315,15 @@
     const comment = m.plan && m.plan.supervisorComment ? String(m.plan.supervisorComment) : '';
     const warnings = Array.isArray(m.warnings) ? m.warnings : [];
     const collapsible = opts.collapsible !== false;
+    const manage = opts.manage || null; // E3: ساعت روز / تسک فوری / یادداشت سرپرست (مستقل از opts.edit)
     const edit = opts.edit && opts.edit.enabled ? { ...opts.edit, days } : null; // E1: ابزار ویرایش فقط با opts.edit.enabled (days برای منوی انتقال E2)
 
-    const right = page({ title: `هفته‌ی ${fa(days[0].jalali)} تا ${fa(days[days.length - 1].jalali)}` }, ...first.map((d) => dayCard(d, collapsible, edit)));
+    const right = page({ title: `هفته‌ی ${fa(days[0].jalali)} تا ${fa(days[days.length - 1].jalali)}` }, ...first.map((d) => dayCard(d, collapsible, edit, manage)));
     const left = page({ title: rest.length ? 'ادامه‌ی هفته' : 'خلاصه و یادداشت‌ها' },
-      ...rest.map((d) => dayCard(d, collapsible, edit)),
+      ...rest.map((d) => dayCard(d, collapsible, edit, manage)),
       m.summary ? summaryCard(m.summary, collapsible) : null,
       highlightsCard(days, anyDay, collapsible),
-      comment ? card({ title: 'یادداشت سرپرست', tape: { tone: 'rose', label: '✎ یادداشت' }, className: 'nb-note', collapsible }, h('p', { class: 'nb-note__text', text: comment })) : null,
+      noteCard(comment, collapsible, manage),
       warnings.length ? card({ title: 'هشدارهای برنامه', tape: { tone: 'sand', label: '⚠ هشدارها' }, className: 'nb-warnings', collapsible },
         lines(warnings.map((w) => textLine(w.message, '⚠')))) : null,
       anyDay.length ? (() => {
@@ -284,5 +334,5 @@
     return root(spread([right, left], { label: opts.label || 'دفترچه‌ی برنامه‌ی هفته', initialPage: opts.initialPage }));
   }
 
-  AP.notebook = { h, root, tape, lines, chip, btn, card, page, spread, renderWeek, dayTitle, weekdayName, fa, TAPE_TONES, CHIP_TONES };
+  AP.notebook = { h, root, tape, lines, chip, btn, card, page, spread, renderWeek, dayTitle, weekdayName, fa, NON_WORK, TAPE_TONES, CHIP_TONES };
 })();
