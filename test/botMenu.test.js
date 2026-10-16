@@ -137,6 +137,15 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
       }
     });
 
+    test('رنگ هر بخش: کارهای من آبی، تیم سبز، مدیریت قرمز؛ «بستن منو» بدون رنگ', () => {
+      const kb = menu.buildMenuInline(admin);
+      const by = (t) => btns(kb).find((b) => b.text === t);
+      for (const t of ['— کارهای من —', '🕒 ثبت تردد', '📊 وضعیت من', '❓ راهنما']) assert.equal(by(t).style, 'primary', t);
+      for (const t of ['— تیم —', '👥 گزارش تیم', '⚡ تسک فوری']) assert.equal(by(t).style, 'success', t);
+      for (const t of ['— مدیریت —', '➕ افزودن کارمند', '⚙️ پنل مدیریت']) assert.equal(by(t).style, 'danger', t);
+      assert.equal(by('✖️ بستن منو').style, undefined);
+    });
+
     test('ثبت تردد/برنامه هفتگی/پنل مدیریت دکمه‌ی inline از نوع web_app‌اند؛ بقیه callback به شکل mn:<id>', () => {
       const kb = menu.buildMenuInline(admin);
       const by = (t) => btns(kb).find((b) => b.text === t);

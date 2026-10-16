@@ -20,10 +20,12 @@ const MENU_TEXT = '📂 منو — یکی از گزینه‌ها را انتخا
 const MENU_NOOP_ID = '_'; // دکمه‌ی سرتیتر گروه (بدون عمل)
 const MENU_CLOSE_ID = '_close'; // «✖️ بستن منو»
 const LEGACY_KEYBOARD_NOTE = 'منوی ربات ساده‌تر شد 👇 همه‌ی گزینه‌ها حالا پشت دکمه‌ی «📂 منو» هستند.';
+// style: رنگ دکمه‌های گروه (Bot API 9.4+؛ فقط همین سه مقدار مجاز است): primary آبی، success سبز، danger قرمز.
+// کلاینت‌های قدیمی فیلد را نادیده می‌گیرند و دکمه با رنگ پیش‌فرض نمایش داده می‌شود.
 const MENU_GROUPS = [
-  { key: 'me', title: 'کارهای من' },
-  { key: 'team', title: 'تیم' },
-  { key: 'admin', title: 'مدیریت' },
+  { key: 'me', title: 'کارهای من', style: 'primary' },
+  { key: 'team', title: 'تیم', style: 'success' },
+  { key: 'admin', title: 'مدیریت', style: 'danger' },
 ];
 
 // roles = null ⇒ هر کاربر ثبت‌شده. url = تابعِ آدرسِ web_app (دکمه‌ی web_app، نه متنی).
@@ -116,8 +118,8 @@ function buildMenuInline(user) {
   const withHeads = buckets.length > 1;
   const rows = [];
   for (const b of buckets) {
-    if (withHeads) rows.push([{ text: `— ${b.title} —`, callback_data: `mn:${MENU_NOOP_ID}` }]);
-    const buttons = b.items.map((it) => (it.url && panelLinks.canUseWebApp(it.url()) ? { text: it.label, web_app: { url: it.url() } } : { text: it.label, callback_data: `mn:${it.id}` }));
+    if (withHeads) rows.push([{ text: `— ${b.title} —`, callback_data: `mn:${MENU_NOOP_ID}`, style: b.style }]);
+    const buttons = b.items.map((it) => (it.url && panelLinks.canUseWebApp(it.url()) ? { text: it.label, web_app: { url: it.url() }, style: b.style } : { text: it.label, callback_data: `mn:${it.id}`, style: b.style }));
     for (let i = 0; i < buttons.length; i += 2) rows.push(buttons.slice(i, i + 2));
   }
   rows.push([{ text: '✖️ بستن منو', callback_data: `mn:${MENU_CLOSE_ID}` }]);
