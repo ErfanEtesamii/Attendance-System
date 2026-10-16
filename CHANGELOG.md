@@ -4,6 +4,15 @@
 
 ## [Unreleased] — بخش ۴ (ممیزی)
 
+### فاز ۱۴ — R1-الف: جدول نشست‌های دورکاری
+- migration ۰۳۶ (`remote_work_sessions`): ورود/خروج دورکاری با وضعیت `pending|approved|rejected`، ساعت اصلاح‌شده‌ی سرپرست و پیوند به رکورد رسمی؛ ایندکس یکتای «یک نشست باز برای هر کاربر». فقط جدول جدید است و تا مراحل بعدی هیچ کدی آن را نمی‌خواند یا نمی‌نویسد. تست: `test/remoteWorkSessions.test.js`.
+
+### فاز ۱۴ — R1-ب: جدول استراحت‌های دورکاری
+- migration ۰۳۷ (`remote_work_breaks`): استراحت‌های هر نشست دورکاری با CASCADE روی حذف نشست و ایندکس یکتای «یک استراحت باز در هر نشست». هنوز هیچ کدی آن را نمی‌خواند یا نمی‌نویسد. تست: `test/remoteWorkBreaks.test.js`.
+
+### فاز ۱۴ — R1-ج: یکپارچگی migrationهای دورکاری
+- جدول‌های `remote_work_sessions` و `remote_work_breaks` به فهرست جدول‌های «عملیاتیِ» `test/migrations.test.js` اضافه شدند تا مقایسه‌ی «هیچ داده‌ای تغییر نکرده» با جدول‌های تازه‌ی خالی نشکند. تست تازه `test/remoteWorkMigrations.test.js`: ارتقا از ۰۳۵ روی دیتابیس دارای داده (فقط ۰۳۶ و ۰۳۷ اعمال می‌شوند و داده‌ی رسمی دست نمی‌خورد)، idempotent بودن `up`، پیوستگی شماره‌ها، زنجیره‌ی CASCADE/SET NULL و نبودن ستون دورکاری در `attendance_records`/`break_records`. هنوز هیچ کد برنامه‌ای این جدول‌ها را نمی‌خواند یا نمی‌نویسد.
+
 ### برداشتن سقف ۳۰ تسک در هفته
 - سقف تعداد تسک برنامه‌ی هفتگی حذف شد: `MAX_TASKS = null` در `weeklyPlanService.js`؛ بررسی‌های `TOO_MANY_TASKS` در `saveDraft`، `submit`، `validateTasks` (کارمند) و `addTask`/`reorderTasks` (مدیر) برداشته شد. در API مقدار `maxTasks` حالا `null` (نامحدود) برمی‌گردد و Mini App فقط وقتی `maxTasks` عدد باشد سقف را اعمال می‌کند. هشدار غیرمسدودکننده‌ی `TOO_MANY_TASKS_IN_DAY` (۱۰ تسک در یک روز) سر جایش می‌ماند.
 
