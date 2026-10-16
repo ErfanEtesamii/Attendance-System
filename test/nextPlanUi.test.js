@@ -256,7 +256,7 @@ describe('اتصال‌ها (ایستا)', () => {
     const nb = read('public-admin/css/notebook.css');
     const printCss = nb.slice(nb.indexOf('@media print'));
     assert.match(printCss, /\.nb \.nb-spread > \.nb-page \{ display: flex !important;/);
-    assert.match(printCss, /\.nb-spring, \.nb \.nb-pager, \.nb \.nb-card__toggle, \.nb \.nb-task__actions, \.nb \.nb-edit-slot \{ display: none !important; \}/);
+    assert.match(printCss, /\.nb-spring, \.nb \.nb-pager, \.nb \.nb-card__toggle, \.nb \.nb-task__actions, \.nb \.nb-task__handle, \.nb \.nb-edit-slot \{ display: none !important; \}/);
     assert.match(printCss, /box-shadow: none/);
   });
 

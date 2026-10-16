@@ -1,6 +1,8 @@
 // E1 (فاز ۱۳): ویرایش درجای برنامه‌ی هفته‌ی کارمند توسط ادمین/سرپرست (افزودن، ویرایش، حذف با واگرد) روی دفترچه‌ی «برنامه هفته بعد».
 // هر عمل با یک API granular (A2) ذخیره می‌شود؛ پاسخ = وضعیت تازه‌ی برنامه (applyModel). بدون optimistic برای افزودن/ویرایش (فرم تا موفقیت باز می‌ماند)؛
 // حذف: ردیف پنهان می‌شود و در خطا برمی‌گردد. PLAN_CONFLICT ⇒ بنر «تازه‌سازی» + حفظ داده‌ی فرم و بازکردن دوباره‌ی آن بعد از تازه‌سازی.
+// E2-الف: انتقال تسک به روز دیگر (PATCH plannedDate) و جابه‌جایی بالا/پایین داخل کارت (POST reorder) با منوی کیبوردی؛ بدون optimistic (خطا ⇒ هیچ تغییری در UI نمی‌ماند)،
+// بعد از موفقیت اعلان aria-live (els.status) و بازگرداندن فوکوس به دکمه‌ی همان تسک.
 // وابستگی‌ها (AP.api، AP.toast، AP.confirmBox، AP.notebook) تزریق/خوانده می‌شوند تا با DOM ساختگی قابل‌تست باشد. گیت اصلی (مجوز/اسکوپ/قفل/اعتبارسنجی) سمت سرور است.
 (function () {
   'use strict';
@@ -26,6 +28,10 @@
     const h = nb.h;
     const slots = new Map(); // date('' = هر روز) ⇒ جای افزودن
     const rows = new Map(); // taskId ⇒ ردیف
+    const ctrls = new Map(); // taskId ⇒ { up, down, move } (E2-الف)
+    const zones = new Map(); // date('' = هر روز) ⇒ کارت (ناحیه‌ی رها کردن؛ E2-ب)
+    let drag = null; // { task, row } وقتی کشیدن در جریان است
+    let hl = null; // { el, c } هایلایت فعلی مقصد
     let busy = false;
     let draft = null; // داده‌ی فرمِ ذخیره‌نشده هنگام PLAN_CONFLICT
     let undoTimer = null;
@@ -187,6 +193,169 @@
       } finally { busy = false; setStatus(''); }
     }
 
+    // ---------- E2-الف: انتقال و ترتیب (مسیر بدون drag) ----------
+    const groupOf = (model, id) => {
+      for (const d of model.days || []) if ((d.tasks || []).some((t) => t.id === id)) return d.tasks;
+      return (model.anyDay || []).some((t) => t.id === id) ? model.anyDay : null;
+    };
+    const dayLabel = (model, date) => {
+      if (!date) return 'هر روز';
+      const d = (model.days || []).find((x) => x.date === date);
+      return d ? nb.weekdayName(d) : date;
+    };
+    // انتقال به روزِ آف/تعطیل/مرخصی/مأموریت مجاز است؛ فقط یادآوری نرم (هشدار رسمی B1 بعد از ذخیره در مدل تازه می‌آید)
+    const OFF_KINDS = ['off', 'holiday', 'leave', 'mission'];
+    function offNote(model, date) {
+      const d = date && (model.days || []).find((x) => x.date === date);
+      return d && OFF_KINDS.includes(d.kind) ? ` توجه: این روز ${d.kindLabel || 'کاری نیست'} است.` : '';
+    }
+    function focusAfter(id, prefer) {
+      const c = ctrls.get(id) || {};
+      const el = prefer.map((k) => c[k]).find((x) => x && !x.disabled) || rows.get(id);
+      if (el && el.focus) el.focus();
+    }
+    // یک عمل ذخیره‌ی منفرد: call() ⇒ مدل تازه؛ message(res) ⇒ متن اعلان aria-live؛ prefer = ترتیب دکمه‌های مناسب فوکوس
+    async function mutate(task, call, message, prefer) {
+      if (busy) return;
+      busy = true; setStatus('در حال ذخیره…');
+      try {
+        const res = await call();
+        applyModel(res); // دفترچه دوباره ساخته می‌شود (reset ⇒ ردیف‌ها/دکمه‌های تازه)
+        setStatus(message(res));
+        focusAfter(task.id, prefer);
+      } catch (err) {
+        setStatus('');
+        const code = err.data && err.data.code;
+        if (STALE_CODES.has(code)) showConflict(err.message); else AP.toast(err.message, true);
+      } finally { busy = false; }
+    }
+    /** date = 'YYYY-MM-DD' یا null («هر روز») */
+    function moveTo(task, date) {
+      const model = getModel();
+      const target = date || null;
+      if ((task.plannedDate || null) === target) return Promise.resolve();
+      return mutate(task,
+        () => AP.api(`/admin/plan-tasks/${task.id}`, { method: 'PATCH', body: { plannedDate: target, expectedVersion: model.plan.version } }),
+        () => `تسک «${task.title}» به ${dayLabel(model, target)} منتقل شد.${offNote(model, target)}`, ['move']);
+    }
+    /** dir = -1 (بالا) | +1 (پایین): جابه‌جایی با همسایه‌ی قابل‌جابه‌جایی در همان کارت (سیستمی/فوری شمرده نمی‌شوند؛ همان قاعده‌ی reorder سرور) */
+    function shift(task, dir) {
+      const model = getModel();
+      const group = groupOf(model, task.id);
+      if (!group) return Promise.resolve();
+      const movable = group.filter((x) => x.canEdit && !x.isSystem && !x.isUrgent);
+      const i = movable.findIndex((x) => x.id === task.id);
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= movable.length) return Promise.resolve();
+      const order = movable.map((x) => x.id);
+      [order[i], order[j]] = [order[j], order[i]];
+      return reorder(task, order, dir < 0 ? ['up', 'down'] : ['down', 'up']);
+    }
+    function reorder(task, order, prefer) {
+      const model = getModel();
+      return mutate(task,
+        () => AP.api(`/admin/users/${userId}/plan/reorder`, { method: 'POST', body: { weekStart: model.weekStart, order, expectedVersion: model.plan.version } }),
+        (res) => {
+          const g = groupOf(res, task.id) || [];
+          return `تسک «${task.title}» به جایگاه ${nb.fa(g.findIndex((x) => x.id === task.id) + 1)} از ${nb.fa(g.length)} منتقل شد.`;
+        }, prefer);
+    }
+
+    // ---------- E2-ب: drag & drop بومی (دسکتاپ) ----------
+    const cls = (el, c, on) => { if (el && el.classList) el.classList[on ? 'add' : 'remove'](c); };
+    function clearHl() { if (hl) { cls(hl.el, hl.c, false); hl = null; } }
+    function setHl(el, c) { if (hl && hl.el === el && hl.c === c) return; clearHl(); if (el) { cls(el, c, true); hl = { el, c }; } }
+    const sameZone = (task, zone) => (task.plannedDate || null) === (zone || null);
+    const movableOf = (id) => (groupOf(getModel(), id) || []).filter((x) => x.canEdit && !x.isSystem && !x.isUrgent);
+    function endDrag() { if (drag) cls(drag.row, 'is-dragging', false); drag = null; clearHl(); }
+
+    const dnd = {
+      start(task, row, e) {
+        if (busy) { if (e && e.preventDefault) e.preventDefault(); return; } // در حال ذخیره ⇒ کشیدن ممنوع
+        drag = { task, row };
+        if (e && e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; if (e.dataTransfer.setData) e.dataTransfer.setData('text/plain', String(task.id)); } // فایرفاکس بدون setData درگ را شروع نمی‌کند
+        cls(row, 'is-dragging', true);
+      },
+      /** روزِ دیگر ⇒ هایلایت کارت؛ همان روز + ردیفِ قابل‌جابه‌جایی ⇒ هایلایت ردیف (ترتیب)؛ غیر از این ⇒ رها کردن بی‌اثر (preventDefault نمی‌شود) */
+      over(zone, e, target) {
+        if (!drag) return; // کشیدن بیرونی (فایل/متن) نادیده گرفته می‌شود
+        const task = drag.task;
+        const allow = () => { if (e.preventDefault) e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'; };
+        if (!sameZone(task, zone)) { allow(); setHl(zones.get(zone || ''), 'is-drop-target'); return; }
+        if (target && target.id !== task.id && movableOf(task.id).some((x) => x.id === target.id)) { allow(); setHl(rows.get(target.id), 'is-drop-row'); } else clearHl();
+      },
+      drop(zone, e, target) {
+        if (!drag) return undefined;
+        if (e.preventDefault) e.preventDefault();
+        const task = drag.task;
+        endDrag();
+        if (busy) return undefined;
+        if (!sameZone(task, zone)) return moveTo(task, zone || null);
+        if (!target || target.id === task.id) return undefined;
+        const movable = movableOf(task.id);
+        const i = movable.findIndex((x) => x.id === task.id);
+        const j = movable.findIndex((x) => x.id === target.id);
+        if (i < 0 || j < 0) return undefined;
+        const order = movable.map((x) => x.id);
+        order.splice(i, 1); order.splice(j, 0, task.id); // تسک در جایگاهِ ردیف مقصد می‌نشیند
+        return reorder(task, order, ['up', 'down']);
+      },
+      end: endDrag,
+
+      // ---------- E2-ج: لمس/قلم (pointer events؛ HTML5 DnD روی موبایل کار نمی‌کند) ----------
+      // شروع فقط از دستگیره‌ی ⠿ (touch-action:none در CSS) تا اسکرول صفحه با کشیدن ردیف تداخل نکند. ماوس همان درگ بومی است.
+      pStart(task, row, e) {
+        if (!e || e.pointerType === 'mouse' || busy || drag || typeof document === 'undefined') return;
+        if (e.preventDefault) e.preventDefault();
+        drag = { task, row, pointerId: e.pointerId };
+        cls(row, 'is-dragging', true);
+        const last = { zone: undefined, target: null };
+        const cleanup = () => {
+          document.removeEventListener('pointermove', move);
+          document.removeEventListener('pointerup', up);
+          document.removeEventListener('pointercancel', cancel);
+        };
+        const owns = (ev) => drag && (ev.pointerId === undefined || drag.pointerId === undefined || ev.pointerId === drag.pointerId);
+        function move(ev) {
+          if (!owns(ev)) return;
+          if (ev.preventDefault) ev.preventDefault();
+          autoScroll(ev.clientY);
+          const hit = hitTest(ev.clientX, ev.clientY);
+          last.zone = hit ? hit.zone : undefined; last.target = hit ? hit.target : null;
+          if (hit) dnd.over(hit.zone, {}, hit.target); else clearHl();
+        }
+        function up(ev) {
+          if (!owns(ev)) return undefined;
+          cleanup();
+          if (last.zone === undefined) { endDrag(); return undefined; } // خارج از همه‌ی ناحیه‌ها ⇒ لغو
+          return dnd.drop(last.zone, {}, last.target);
+        }
+        function cancel(ev) { if (!owns(ev)) return; cleanup(); endDrag(); }
+        document.addEventListener('pointermove', move);
+        document.addEventListener('pointerup', up);
+        document.addEventListener('pointercancel', cancel);
+      },
+    };
+
+    // نقطه‌ی لمس ⇒ { zone (date|null), target (تسک زیر انگشت یا null) }؛ فقط ناحیه‌های همین دفترچه (data-zone)
+    function hitTest(x, y) {
+      if (typeof document === 'undefined' || !document.elementFromPoint) return null;
+      const el = document.elementFromPoint(x, y);
+      if (!el || !el.closest) return null;
+      const zoneEl = el.closest('[data-zone]');
+      if (!zoneEl) return null;
+      const rowEl = el.closest('[data-task-id]');
+      const id = rowEl ? Number(rowEl.getAttribute('data-task-id')) : null;
+      const m = getModel();
+      const target = id ? [...(m.days || []).flatMap((d) => d.tasks || []), ...(m.anyDay || [])].find((t) => t.id === id) || null : null;
+      return { zone: zoneEl.getAttribute('data-zone') || null, target };
+    }
+    // نزدیک لبه‌ی بالا/پایین نمایشگر صفحه را آرام اسکرول می‌کند تا بشود به کارت‌های دورتر رسید
+    function autoScroll(y) {
+      if (typeof window === 'undefined' || !window.scrollBy || !(window.innerHeight > 0)) return;
+      if (y < 70) window.scrollBy(0, -14); else if (y > window.innerHeight - 70) window.scrollBy(0, 14);
+    }
+
     return {
       /** opts.edit برای renderWeek */
       options: () => ({
@@ -194,12 +363,17 @@
         onAdd: (date, slot) => openForm({ mode: 'add', container: slot, date }),
         onEdit: (task, row) => openForm({ mode: 'edit', container: row, task }),
         onDelete: remove,
-        onRow: (id, el) => rows.set(id, el),
+        onMove: (task, date) => moveTo(task, date),
+        onShift: (task, dir) => shift(task, dir),
+        onRow: (id, el, c) => { rows.set(id, el); ctrls.set(id, c || {}); },
+        onZone: (date, el) => zones.set(date || '', el),
+        dnd,
         onSlot: (date, el) => slots.set(date || '', el),
       }),
       /** قبل از هر رسم دوباره‌ی دفترچه: ثبت‌های قبلی (DOM قدیمی) پاک می‌شود */
-      reset() { slots.clear(); rows.clear(); active = null; },
+      reset() { slots.clear(); rows.clear(); ctrls.clear(); zones.clear(); drag = null; hl = null; active = null; },
       dispose() { clearTimeout(undoTimer); },
+      moveTo, shift, // E2: هسته‌ی مشترک برای drag & drop (بخش‌های بعدی) و مسیر کیبوردی
     };
   }
 

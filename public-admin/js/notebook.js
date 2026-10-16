@@ -120,26 +120,74 @@
   const PRIORITY = { high: { icon: '▲', text: 'اولویت بالا' }, low: { icon: '▽', text: 'اولویت کم' } };
   const FIRST_PAGE_DAYS = 4; // شنبه تا سه‌شنبه روی صفحه‌ی راست؛ بقیه روی صفحه‌ی چپ (برای هفته‌ی غیر ۷ روزه هم همین تقسیم)
   const dayTitle = (d) => `${WEEKDAY_NAMES[d.weekday] || ''} ${fa(d.jalali)}`.trim();
+  const weekdayName = (d) => WEEKDAY_NAMES[d.weekday] || '';
 
-  // E1: edit = { enabled, onAdd(date, slotEl), onEdit(task, rowEl), onDelete(task, rowEl), onRow(id, el)?, onSlot(date, el)? } (فقط وقتی ویرایش مجاز است)
+  // E1: edit = { enabled, onAdd(date, slotEl), onEdit(task, rowEl), onDelete(task, rowEl), onRow(id, el, ctrls)?, onSlot(date, el)?, onZone(date, el)?, dnd? } (فقط وقتی ویرایش مجاز است)
+  // E2-الف: + onMove(task, date|null, rowEl) و onShift(task, dir(-1|+1), rowEl) (مسیر بدون drag)؛ days (برای منوی «انتقال…») را renderWeek اضافه می‌کند.
+  const NON_WORK = ['off', 'holiday', 'leave', 'mission']; // انتقال به این روزها مجاز است ولی در منو برچسب می‌خورد (هشدار نرم)
   const WHY = (t) => (t.isSystem ? 'سیستمی؛ قابل ویرایش نیست' : t.isUrgent ? 'فوری؛ فقط از مسیر تسک فوری' : 'فقط‌خواندنی');
 
-  function taskRow(t, edit) {
+  /** منوی «انتقال به روز…» (E2-الف): دکمه‌ی باز/بسته‌کننده + پنل دکمه‌های روز. کیبوردی (Tab/Enter؛ Escape می‌بندد و فوکوس را برمی‌گرداند). */
+  function moveMenu(t, edit, row) {
+    const panel = h('div', { class: 'nb-move', attrs: { role: 'group', 'aria-label': `انتقال «${t.title}» به روز…` } });
+    panel.hidden = true;
+    const toggle = btn('انتقال…', { variant: 'ghost', small: true, label: `انتقال «${t.title}» به روز دیگر`, onClick: () => setOpen(panel.hidden) });
+    toggle.setAttribute('aria-expanded', 'false');
+    function setOpen(on, refocus) {
+      panel.hidden = !on;
+      toggle.setAttribute('aria-expanded', String(on));
+      if (on) { const f = panel.children[0]; if (f && f.focus) f.focus(); } else if (refocus && toggle.focus) toggle.focus();
+    }
+    const cur = t.plannedDate || null;
+    const targets = [{ date: null, label: 'هر روز' }, ...(edit.days || []).map((d) => ({
+      date: d.date,
+      label: `${weekdayName(d)} ${fa(d.jalali)}${NON_WORK.includes(d.kind) ? ` — ${d.kindLabel || (KIND[d.kind] || {}).label || ''}` : ''}`,
+    }))].filter((x) => x.date !== cur);
+    for (const x of targets) panel.appendChild(btn(x.label, { variant: 'ghost', small: true, onClick: () => { setOpen(false); return edit.onMove(t, x.date, row); } }));
+    panel.addEventListener('keydown', (e) => { if (e && e.key === 'Escape') { if (e.stopPropagation) e.stopPropagation(); setOpen(false, true); } });
+    return { toggle, panel };
+  }
+
+  function taskRow(t, edit, group = [], zone = null) {
     const pr = PRIORITY[t.priority];
+    // E2-ج: دستگیره‌ی لمسی (فقط با لمس/قلم کار می‌کند؛ CSS فقط روی نشانگر درشت/عرض کم نشانش می‌دهد؛ aria-hidden چون جایگزین کیبوردی دارد)
+    const handle = edit && edit.dnd && edit.dnd.pStart && t.canEdit ? h('span', { class: 'nb-task__handle', attrs: { 'aria-hidden': 'true' }, text: '⠿' }) : null;
     const row = h('div', { class: 'nb-task', attrs: { 'data-task-id': t.id } },
+      handle,
       pr ? h('span', { class: `nb-task__prio nb-task__prio--${t.priority}` }, h('span', { attrs: { 'aria-hidden': 'true' }, text: pr.icon }), h('span', { class: 'nb-sr-only', text: pr.text })) : null,
       h('span', { class: 'nb-task__title', text: t.title }),
       t.isUrgent ? chip('فوری', { tone: 'urgent', icon: '⚡' }) : null,
       t.isSystem ? chip('سیستمی', { tone: 'locked', icon: '🔒' }) : (t.managerLocked ? chip('از طرف سرپرست', { tone: 'locked', icon: '🔒' }) : null));
     if (edit) {
+      if (edit.dnd && t.canEdit) { // E2-ب: drag & drop بومی (رویدادهای dragstart/dragover/drop)؛ فقط تسک قابل‌ویرایش؛ جایگزین کیبوردی همان منوی «انتقال…» و ▲▼ است
+        const dnd = edit.dnd;
+        row.setAttribute('draggable', 'true');
+        row.addEventListener('dragstart', (e) => dnd.start(t, row, e));
+        row.addEventListener('dragend', () => dnd.end());
+        row.addEventListener('dragover', (e) => { if (e.stopPropagation) e.stopPropagation(); dnd.over(zone, e, t); });
+        row.addEventListener('drop', (e) => { if (e.stopPropagation) e.stopPropagation(); return dnd.drop(zone, e, t); });
+        if (handle) handle.addEventListener('pointerdown', (e) => dnd.pStart(t, row, e));
+      }
+      const ctrls = {}; // E2-الف: دکمه‌های حرکت (برای بازگرداندن فوکوس بعد از رسم دوباره)
       if (t.canEdit) {
-        row.appendChild(h('span', { class: 'nb-task__actions' },
-          btn('ویرایش', { variant: 'ghost', small: true, label: `ویرایش تسک «${t.title}»`, onClick: () => edit.onEdit(t, row) }),
-          btn('حذف', { variant: 'ghost', small: true, label: `حذف تسک «${t.title}»`, onClick: () => edit.onDelete(t, row) })));
+        const acts = h('span', { class: 'nb-task__actions' });
+        const movable = group.filter((x) => x.canEdit && !x.isSystem && !x.isUrgent); // همان تسک‌هایی که reorder سرور می‌پذیرد
+        const idx = movable.findIndex((x) => x.id === t.id);
+        if (edit.onShift && movable.length > 1 && idx >= 0) {
+          ctrls.up = btn('▲', { variant: 'ghost', small: true, label: `بردن تسک «${t.title}» یک جایگاه بالاتر`, disabled: idx === 0, onClick: () => edit.onShift(t, -1, row) });
+          ctrls.down = btn('▼', { variant: 'ghost', small: true, label: `بردن تسک «${t.title}» یک جایگاه پایین‌تر`, disabled: idx === movable.length - 1, onClick: () => edit.onShift(t, 1, row) });
+          acts.appendChild(ctrls.up); acts.appendChild(ctrls.down);
+        }
+        let menu = null;
+        if (edit.onMove && edit.days && edit.days.length) { menu = moveMenu(t, edit, row); ctrls.move = menu.toggle; acts.appendChild(menu.toggle); }
+        acts.appendChild(btn('ویرایش', { variant: 'ghost', small: true, label: `ویرایش تسک «${t.title}»`, onClick: () => edit.onEdit(t, row) }));
+        acts.appendChild(btn('حذف', { variant: 'ghost', small: true, label: `حذف تسک «${t.title}»`, onClick: () => edit.onDelete(t, row) }));
+        row.appendChild(acts);
+        if (menu) row.appendChild(menu.panel);
       } else {
         row.appendChild(h('span', { class: 'nb-why', text: WHY(t) }));
       }
-      if (edit.onRow) edit.onRow(t.id, row);
+      if (edit.onRow) edit.onRow(t.id, row, ctrls);
     }
     return row;
   }
@@ -152,6 +200,15 @@
     return slot;
   }
 
+  // E2-ب: کارت = ناحیه‌ی رها کردن (date = null ⇒ «هر روز»)؛ رها کردن روی فضای خالی کارت ⇒ انتقال به آن روز
+  function dropZone(el, date, edit) {
+    if (!edit || !edit.dnd) return;
+    el.setAttribute('data-zone', date || ''); // E2-ج: تشخیص ناحیه از روی نقطه‌ی لمس (elementFromPoint)
+    el.addEventListener('dragover', (e) => edit.dnd.over(date, e, null));
+    el.addEventListener('drop', (e) => edit.dnd.drop(date, e, null));
+    if (edit.onZone) edit.onZone(date, el);
+  }
+
   function dayCard(d, collapsible, edit) {
     const k = KIND[d.kind] || KIND.off;
     const s = d.schedule || {};
@@ -162,9 +219,10 @@
     if (d.monthClosed) chips.push(chip('ماه بسته', { tone: 'locked', icon: '🔒' }));
     const el = card({ title: dayTitle(d), tape: { tone: k.tape, label: `${k.icon} ${d.kindLabel || k.label}` }, className: `nb-day nb-day--${KIND[d.kind] ? d.kind : 'off'}`, collapsible },
       chips.length ? h('div', { class: 'nb-day-chips' }, ...chips) : null,
-      lines((d.tasks || []).map((t) => taskRow(t, edit)), { emptyText: 'تسکی ثبت نشده' }),
+      lines((d.tasks || []).map((t) => taskRow(t, edit, d.tasks, d.date)), { emptyText: 'تسکی ثبت نشده' }),
       edit ? addSlot(d.date, dayTitle(d), edit) : null);
     el.setAttribute('data-date', d.date || '');
+    dropZone(el, d.date, edit);
     return el;
   }
 
@@ -208,7 +266,7 @@
     const comment = m.plan && m.plan.supervisorComment ? String(m.plan.supervisorComment) : '';
     const warnings = Array.isArray(m.warnings) ? m.warnings : [];
     const collapsible = opts.collapsible !== false;
-    const edit = opts.edit && opts.edit.enabled ? opts.edit : null; // E1: ابزار ویرایش فقط با opts.edit.enabled
+    const edit = opts.edit && opts.edit.enabled ? { ...opts.edit, days } : null; // E1: ابزار ویرایش فقط با opts.edit.enabled (days برای منوی انتقال E2)
 
     const right = page({ title: `هفته‌ی ${fa(days[0].jalali)} تا ${fa(days[days.length - 1].jalali)}` }, ...first.map((d) => dayCard(d, collapsible, edit)));
     const left = page({ title: rest.length ? 'ادامه‌ی هفته' : 'خلاصه و یادداشت‌ها' },
@@ -218,9 +276,13 @@
       comment ? card({ title: 'یادداشت سرپرست', tape: { tone: 'rose', label: '✎ یادداشت' }, className: 'nb-note', collapsible }, h('p', { class: 'nb-note__text', text: comment })) : null,
       warnings.length ? card({ title: 'هشدارهای برنامه', tape: { tone: 'sand', label: '⚠ هشدارها' }, className: 'nb-warnings', collapsible },
         lines(warnings.map((w) => textLine(w.message, '⚠')))) : null,
-      anyDay.length ? card({ title: 'هر روز', subtitle: 'تسک‌های بدون تاریخ', tape: { tone: 'sky', label: '🔁 هر روز' }, className: 'nb-anyday', collapsible }, lines(anyDay.map((t) => taskRow(t, edit))), edit ? addSlot(null, 'هر روز', edit) : null) : null);
+      anyDay.length ? (() => {
+        const c = card({ title: 'هر روز', subtitle: 'تسک‌های بدون تاریخ', tape: { tone: 'sky', label: '🔁 هر روز' }, className: 'nb-anyday', collapsible }, lines(anyDay.map((t) => taskRow(t, edit, anyDay, null))), edit ? addSlot(null, 'هر روز', edit) : null);
+        dropZone(c, null, edit);
+        return c;
+      })() : null);
     return root(spread([right, left], { label: opts.label || 'دفترچه‌ی برنامه‌ی هفته', initialPage: opts.initialPage }));
   }
 
-  AP.notebook = { h, root, tape, lines, chip, btn, card, page, spread, renderWeek, dayTitle, fa, TAPE_TONES, CHIP_TONES };
+  AP.notebook = { h, root, tape, lines, chip, btn, card, page, spread, renderWeek, dayTitle, weekdayName, fa, TAPE_TONES, CHIP_TONES };
 })();

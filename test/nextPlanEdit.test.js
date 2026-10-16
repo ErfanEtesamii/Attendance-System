@@ -87,7 +87,7 @@ describe('ابزار ویرایش روی دفترچه', () => {
   test('تسک قابل‌ویرایش: دکمه‌های «ویرایش/حذف» با برچسب ARIA؛ سیستمی/فوری: بدون ابزار + برچسب دلیل؛ هر کارت روز «＋ افزودن تسک» دارد', () => {
     const t = setup();
     const r1 = rowOf(t, 1);
-    assert.deepEqual(buttonsOf(r1).map((b) => b.textContent), ['ویرایش', 'حذف']);
+    assert.deepEqual(buttonsOf(byClass(r1, 'nb-task__actions')[0]).map((b) => b.textContent), ['انتقال…', 'ویرایش', 'حذف']); // E2-الف: «انتقال…» اضافه شد (▲▼ فقط وقتی بیش از یک تسک قابل‌جابه‌جایی در کارت هست)
     assert.equal(btnByText(r1, 'ویرایش').attrs['aria-label'], 'ویرایش تسک «گزارش»');
     assert.equal(btnByText(r1, 'حذف').attrs['aria-label'], 'حذف تسک «گزارش»');
     assert.equal(buttonsOf(rowOf(t, 2)).length, 0);

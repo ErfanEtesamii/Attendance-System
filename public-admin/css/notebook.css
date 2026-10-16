@@ -255,10 +255,21 @@
 .nb .nb-note__text { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
 
 /* ---------- E1: ابزار ویرایش درجا ---------- */
-.nb .nb-task__actions { display: inline-flex; gap: 4px; margin-inline-start: auto; }
+.nb .nb-task__actions { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-inline-start: auto; }
 .nb .nb-btn--small { min-height: 28px; padding: 1px 10px; font-size: 0.8rem; }
 .nb .nb-why { font-size: 0.75rem; color: var(--nb-ink-soft); }
 .nb .nb-edit-slot { margin-top: 10px; }
+/* E2-الف: منوی «انتقال به روز…» (زیر ردیف، تمام‌عرض) */
+.nb .nb-task > .nb-move { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 0 2px; }
+.nb .nb-move[hidden] { display: none; }
+/* E2-ب: drag & drop (دسکتاپ) */
+.nb .nb-task[draggable="true"] { cursor: grab; }
+.nb .nb-task.is-dragging { opacity: 0.45; }
+.nb .nb-card.is-drop-target { outline: 2px dashed var(--nb-rose-strong); outline-offset: 2px; }
+.nb .nb-task.is-drop-row { box-shadow: 0 -3px 0 0 var(--nb-rose-strong); }
+/* E2-ج: دستگیره‌ی لمسی — فقط روی نشانگر درشت (لمس) یا صفحه‌ی باریک؛ touch-action:none تا کشیدن با اسکرول صفحه تداخل نکند */
+.nb .nb-task__handle { display: none; touch-action: none; user-select: none; cursor: grab; color: var(--nb-ink-soft); font-size: 1.1rem; line-height: 1; min-width: 32px; min-height: 32px; align-items: center; justify-content: center; }
+@media (pointer: coarse), (max-width: 900px) { .nb .nb-task__handle { display: inline-flex; } }
 .nb .nb-form { display: flex; flex-direction: column; gap: 10px; padding: 8px 0; line-height: 1.6; }
 .nb .nb-field { display: flex; flex-direction: column; gap: 4px; }
 .nb .nb-field-label { font-size: 0.85rem; font-weight: 700; }
@@ -331,7 +342,7 @@
   --nb-chip-locked-bg: #eadfd6; --nb-chip-locked-fg: #5b4636;
   }
   .nb .nb-spread { display: block; box-shadow: none; border-radius: 0; background: transparent; overflow: visible; }
-  .nb .nb-spring, .nb .nb-pager, .nb .nb-card__toggle, .nb .nb-task__actions, .nb .nb-edit-slot { display: none !important; }
+  .nb .nb-spring, .nb .nb-pager, .nb .nb-card__toggle, .nb .nb-task__actions, .nb .nb-task__handle, .nb .nb-edit-slot { display: none !important; }
   .nb .nb-spread > .nb-page { display: flex !important; box-shadow: none; break-inside: auto; }
   .nb .nb-page::before { display: none; }
   .nb .nb-card { box-shadow: none; border: 1px solid var(--nb-line); break-inside: avoid; }
