@@ -31,6 +31,7 @@ async function autoCloseIncompleteRecords() {
   }
 
   try { require('../../services/missionNowService').autoCloseOpen(); } catch (err) { console.error('[autoClose] پایان خودکار ماموریت ناموفق:', err.message); } // C6
+  try { require('../../services/remoteWorkService').autoCloseStale(); } catch (err) { console.error('[autoClose] بستن نشست‌های باز دورکاری ناموفق:', err.message); } // R3 (فاز ۱۴)
 
   return openRecords.length;
 }

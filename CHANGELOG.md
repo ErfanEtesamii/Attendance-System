@@ -4,6 +4,13 @@
 
 ## [Unreleased] — بخش ۴ (ممیزی)
 
+### فاز ۱۴ — R3: سرویس و API دورکاری (کارمند)
+- `remoteWorkRepository` (فقط SQL) و `remoteWorkService`: ثبت ورود، خروج، شروع و پایان استراحت دورکاری با زمان و روز کاری سمت سرور (`currentRecordDate`)، وضعیت `pending` و IP در جدول. قواعد: ورودِ دوم بدون خروج رد می‌شود؛ خروج بدون ورود رد می‌شود؛ استراحت فقط داخل نشست باز و یکی در هر لحظه. **تصمیم:** خروج با استراحتِ باز خطا نمی‌دهد؛ استراحت در همان لحظه بسته و در audit با `autoClosedByEnd` ثبت می‌شود.
+- مسیرهای `GET /api/miniapp/remote/today` و `POST /api/miniapp/remote/{start,end,break/start,break/end}` پشت گیت مشترک: `maintenanceGate` ← `getRemoteAccess(req).remoteAllowed` (وگرنه ۴۰۳ `REMOTE_NOT_ALLOWED` با پیام فارسی و audit `remote_work_rejected`) ← rate limit مسیرهای تردد (فقط POST). هیچ زمان/تاریخ/کاربری از بدنه‌ی درخواست خوانده نمی‌شود.
+- audit: `remote_work_start`، `remote_work_end`، `remote_break_start`، `remote_break_end`، `remote_work_auto_closed` (همه با IP).
+- تنظیم جدید `remoteWorkMaxOpenHours` (گروه امنیت، پیش‌فرض ۱۶) ⇒ تعداد تنظیمات ۱۰۷ → ۱۰۸. job شبانه‌ی `autoCloseIncomplete` نشست‌های بازِ قدیمی‌تر از سقف را می‌بندد (پایان = شروع + سقف، `auto_closed = 1`، وضعیت همچنان `pending`)؛ خروجی قبلی job بدون تغییر است.
+- ثبت‌ها فقط در `remote_work_sessions`/`remote_work_breaks` می‌مانند؛ هنوز چیزی وارد `attendance_records`/`break_records` یا گزارش‌ها نمی‌شود (R5 و R7). تست: `test/remoteWork.test.js`.
+
 ### فاز ۱۴ — R2: تشخیص شبکه برای کلاینت
 - `networkRestriction.js`: منطق «داخل/خارج شبکه، ماموریت تأییدشده، ماموریتِ در انتظار» در یک تابع مشترک بدون اثر جانبی (`resolveNetworkAccess`) جمع شد و سه helper صادر می‌شود: `getNetworkState(req)` ⇒ `{ inNetwork, viaMission }`، `isRemoteAllowed(req)` و `getRemoteAccess(req)`. رفتار middleware (عبور، audit، پرچم `viaPendingMission`، ۴۰۳) بدون تغییر است.
 - پاسخ ۴۰۳ چهار مسیر تردد بیرون از شبکه حالا فیلد `code: 'OUT_OF_NETWORK'` هم دارد (متن فارسی و status مثل قبل).

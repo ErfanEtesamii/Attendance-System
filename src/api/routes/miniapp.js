@@ -20,6 +20,7 @@ const { maintenanceGate } = require('../../middleware/maintenanceGate');
 const { createRateLimiter } = require('../../middleware/rateLimiter');
 
 const attendanceRepository = require('../../repositories/attendanceRepository');
+const remoteWorkService = require('../../services/remoteWorkService');
 const breakRepository = require('../../repositories/breakRepository');
 const breakPolicyService = require('../../services/breakPolicyService');
 const lateLimitService = require('../../services/lateLimitService');
@@ -75,6 +76,25 @@ router.use('/miniapp/checkin-permission', miniAppActionLimiter);
 router.use('/miniapp/check-out', miniAppActionLimiter);
 router.use('/miniapp/break/start', miniAppActionLimiter);
 router.use('/miniapp/break/end', miniAppActionLimiter);
+
+// ---------- دورکاری (R3، فاز ۱۴) ----------
+// گیت مشترک همه‌ی مسیرهای /miniapp/remote/*: نگهداری ← remoteAllowed (بیرون از شبکه، بدون ماموریت، کاربر فعال، تنظیم روشن) ← rate limit.
+// کاربر داخل شبکه (یا دارای ماموریت) هرگز دورکاری نمی‌بیند؛ تصمیم فقط از req.ip سمت سرور است.
+router.use('/miniapp/remote', maintenanceGate);
+router.use('/miniapp/remote', (req, res, next) => {
+  if (getRemoteAccess(req).remoteAllowed) return next();
+  auditRepository.logEvent({ userId: req.miniAppUser?.id || null, action: 'remote_work_rejected', ipAddress: req.ip, details: { path: req.originalUrl } });
+  return res.status(403).json({
+    error: 'ثبت دورکاری برای شما فعال نیست؛ فقط کاربری که بیرون از شبکه‌ی شرکت است، ماموریت ندارد و دورکاری برایش روشن است می‌تواند ساعت دورکاری ثبت کند.',
+    code: 'REMOTE_NOT_ALLOWED',
+  });
+});
+router.use('/miniapp/remote', (req, res, next) => (req.method === 'POST' ? miniAppActionLimiter(req, res, next) : next()));
+
+function sendRemote(res, result, status, pick) {
+  if (!result.ok) return res.status(result.status).json({ error: result.error, code: result.code });
+  return res.status(status).json(pick(result));
+}
 
 function dateDaysAgo(days) {
   const d = new Date();
@@ -294,6 +314,24 @@ router.post('/miniapp/break/end', (req, res) => {
   }
   const ended = breakRepository.endBreak(openBreak.id);
   res.json(ended);
+});
+
+// ---------- دورکاری: مسیرها (R3) ----------
+// هیچ زمان/تاریخی از بدنه‌ی درخواست خوانده نمی‌شود؛ ساعت و روز کاری فقط سمت سرور.
+router.get('/miniapp/remote/today', (req, res) => {
+  res.json(remoteWorkService.getToday(req.miniAppUser.id));
+});
+router.post('/miniapp/remote/start', (req, res) => {
+  sendRemote(res, remoteWorkService.start(req.miniAppUser, { ip: req.ip }), 201, (r) => r.session);
+});
+router.post('/miniapp/remote/end', (req, res) => {
+  sendRemote(res, remoteWorkService.end(req.miniAppUser, { ip: req.ip }), 200, (r) => ({ ...r.session, autoClosedBreak: r.autoClosedBreak }));
+});
+router.post('/miniapp/remote/break/start', (req, res) => {
+  sendRemote(res, remoteWorkService.breakStart(req.miniAppUser, { ip: req.ip }), 201, (r) => r.break);
+});
+router.post('/miniapp/remote/break/end', (req, res) => {
+  sendRemote(res, remoteWorkService.breakEnd(req.miniAppUser, { ip: req.ip }), 200, (r) => r.break);
 });
 
 // ---------- تاریخچه شخصی ----------
