@@ -1005,3 +1005,33 @@ button.sch-cell { cursor: pointer; }
 .sch-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin-top: 10px; }
 .sch-key { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(128,128,128,.4); }
 @media (max-width: 520px) { .sch-cell { min-height: 46px; } .sch-t { font-size: 9px; } }
+
+/* D1 (فاز ۱۳): صفحه‌ی «برنامه هفته بعد» — ستون انتخاب کارمند + دفترچه (استایل دفترچه در notebook.css؛ اینجا فقط چیدمان صفحه) */
+.np-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 16px; align-items: start; }
+.np-side { display: flex; flex-direction: column; gap: 10px; position: sticky; top: 12px; min-width: 0; }
+.np-list { max-height: 70vh; overflow: auto; display: flex; flex-direction: column; gap: 6px; }
+.np-emp { width: 100%; text-align: start; display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--border); background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.np-emp:hover { background: var(--ov-06); }
+.np-emp.is-active { border-color: var(--green); background: var(--green-soft); }
+.np-emp-name { font-weight: 700; overflow-wrap: anywhere; }
+.np-emp-dep { font-size: 12px; }
+.np-emp-tags { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.np-warn { color: var(--orange); font-weight: 800; }
+.np-list-empty { padding: 10px; }
+.np-main { min-width: 0; }
+.np-head { margin-bottom: 14px; }
+.np-shift { margin-top: 10px; font-size: 12.5px; }
+.np-notebook { margin-top: 14px; }
+.np-status { min-height: 1.4em; margin: 6px 0; font-size: 12.5px; }
+.np-unnotified, #np-banner .notice, #np-undo .notice { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+@media (max-width: 899px) {
+  .np-layout { grid-template-columns: minmax(0, 1fr); }
+  .np-side { position: static; }
+  .np-list { max-height: 220px; }
+}
+@media print {
+  .np-side { display: none !important; }
+  .np-layout { display: block; }
+  .np-head { break-inside: avoid; }
+  #np-unnotified, #np-banner, #np-undo, .np-status { display: none !important; }
+}

@@ -127,6 +127,15 @@ function countOrdinaryTasks(planId) {
   return getDb().prepare('SELECT COUNT(*) AS n FROM plan_tasks WHERE plan_id = ? AND deleted_at IS NULL AND is_system = 0 AND is_urgent = 0').get(planId).n;
 }
 
+// D1: شمار تسک‌های «معمولی» چند برنامه با «یک» کوئری ⇒ Map(planId → شمار). (همان شمارش submit/planGate: غیرسیستمی و غیرفوری)
+function countOrdinaryByPlanIds(planIds) {
+  const out = new Map();
+  if (!Array.isArray(planIds) || !planIds.length) return out;
+  const rows = getDb().prepare(`SELECT plan_id, COUNT(*) AS n FROM plan_tasks WHERE plan_id IN (${planIds.map(() => '?').join(',')}) AND deleted_at IS NULL AND is_system = 0 AND is_urgent = 0 GROUP BY plan_id`).all(...planIds);
+  for (const r of rows) out.set(r.plan_id, r.n);
+  return out;
+}
+
 function findSystemTask(planId, systemKey) {
   return getDb().prepare('SELECT * FROM plan_tasks WHERE plan_id = ? AND system_key = ? AND deleted_at IS NULL').get(planId, systemKey) || null;
 }
@@ -161,5 +170,5 @@ function findUrgentWithOwner(taskId) {
 
 module.exports = {
   listUrgent, findUrgentWithOwner, topTitles, findById, markEmployeeSeen, managerChangesSince, findByUserWeek, getOrCreate, listByUserRange, listByWeek, markSubmitted, touch, setSupervisorFeedback,
-  findTask, listTasks, addTask, updateTask, markManagerEdited, softDeleteTask, reorderTasks, countOrdinaryTasks, findSystemTask, findSystemTaskOnDate,
+  findTask, listTasks, addTask, updateTask, markManagerEdited, softDeleteTask, reorderTasks, countOrdinaryTasks, countOrdinaryByPlanIds, findSystemTask, findSystemTaskOnDate,
 };

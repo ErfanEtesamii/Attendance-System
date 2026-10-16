@@ -204,7 +204,7 @@
       const html = `
         <div class="view-header">
           <button class="btn ghost small" data-go="profile" data-param="${userId}">→ بازگشت به پروفایل کارمند</button>
-          <div class="header-actions"><button type="button" class="btn ghost small" data-print>${icon('download', 14)} چاپ</button></div>
+          <div class="header-actions">${AP.can('team.week_view') ? `<button type="button" class="btn ghost small" data-go="nextplan" data-param="${userId}">📓 برنامه‌ی هفته بعد</button>` : ''}<button type="button" class="btn ghost small" data-print>${icon('download', 14)} چاپ</button></div>
         </div>
         ${weekHeader(r)}
         ${kpiRow(r)}

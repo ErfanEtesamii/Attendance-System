@@ -158,6 +158,7 @@
 }
 .nb .nb-card__title { margin: 0 0 6px; font-size: 1rem; font-weight: 800; color: var(--nb-ink); overflow-wrap: anywhere; }
 .nb .nb-card__sub { margin: 0 0 8px; font-size: 0.85rem; color: var(--nb-ink-soft); }
+.nb .nb-card__toggle { display: none; }
 .nb .nb-tape {
   position: absolute;
   top: -10px;
@@ -245,12 +246,26 @@
 
 /* ---------- C2: کارت روز / ردیف تسک ---------- */
 .nb .nb-day-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
-.nb .nb-task { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 6px; max-width: 100%; }
+.nb .nb-task { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; max-width: 100%; }
+.nb .nb-task > .nb-form { flex: 1 1 100%; }
 .nb .nb-task__title { overflow-wrap: anywhere; }
 .nb .nb-task__prio { font-weight: 800; }
 .nb .nb-task__prio--high { color: var(--nb-rose-strong); }
 .nb .nb-task__prio--low { color: var(--nb-ink-soft); }
 .nb .nb-note__text { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+
+/* ---------- E1: ابزار ویرایش درجا ---------- */
+.nb .nb-task__actions { display: inline-flex; gap: 4px; margin-inline-start: auto; }
+.nb .nb-btn--small { min-height: 28px; padding: 1px 10px; font-size: 0.8rem; }
+.nb .nb-why { font-size: 0.75rem; color: var(--nb-ink-soft); }
+.nb .nb-edit-slot { margin-top: 10px; }
+.nb .nb-form { display: flex; flex-direction: column; gap: 10px; padding: 8px 0; line-height: 1.6; }
+.nb .nb-field { display: flex; flex-direction: column; gap: 4px; }
+.nb .nb-field-label { font-size: 0.85rem; font-weight: 700; }
+.nb .nb-input { font: inherit; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--nb-ink-soft); background: var(--nb-paper); color: var(--nb-ink); width: 100%; max-width: 100%; }
+.nb .nb-input[aria-invalid="true"] { border: 2px solid var(--nb-chip-urgent-fg); }
+.nb .nb-field-error, .nb .nb-form-error { color: var(--nb-chip-urgent-fg); font-size: 0.85rem; margin: 0; }
+.nb .nb-form-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* ---------- ریسپانسیو: زیر ~۹۰۰px یک صفحه + دکمه‌های قبل/بعد؛ بدون اسکرول افقی تا ۳۲۰px ---------- */
 @media (max-width: 899px) {
@@ -262,10 +277,65 @@
   .nb .nb-pager { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 12px; background: var(--nb-paper-2); }
   .nb .nb-pager__label { font-size: 0.85rem; color: var(--nb-ink-soft); text-align: center; flex: 1; }
   .nb .nb-page { padding: 18px 12px 20px; }
+  .nb .nb-card__toggle {
+    display: inline-flex; align-items: center; justify-content: center;
+    position: absolute; inset-inline-end: 8px; top: 12px;
+    min-width: 32px; min-height: 32px; border-radius: 50%;
+    border: 1px solid var(--nb-rose-strong); background: transparent; color: var(--nb-rose-strong); cursor: pointer; font: inherit;
+  }
+  .nb .nb-card.is-collapsed > *:not(.nb-tape):not(.nb-card__title):not(.nb-card__toggle) { display: none; }
+  .nb .nb-card.is-collapsed .nb-card__toggle { transform: rotate(90deg); }
 }
 
 /* حرکت فقط وقتی کاربر کاهش حرکت نخواسته؛ هیچ انیمیشن اجباری‌ای نیست */
 @media (prefers-reduced-motion: no-preference) {
   .nb .nb-btn { transition: filter 0.15s ease, transform 0.15s ease; }
   .nb .nb-btn:active:not([disabled]) { transform: translateY(1px); }
+}
+
+/* ---------- چاپ (D1): همیشه روشن و کم‌جوهر (مستقل از تم)، هر دو صفحه خوانا، بدون فنر/سایه/دکمه‌ی صفحه‌گردان ---------- */
+@media print {
+  .nb,
+  :root[data-theme="dark"] .nb,
+  :root[data-theme="light"] .nb {
+  --nb-paper: #fdf6f1;
+  --nb-paper-2: #f7ebe3;
+  --nb-card: #fffaf8;
+  --nb-ink: #3b2a31;
+  --nb-ink-soft: #6a5360;
+  --nb-rose: #f2b8c8;
+  --nb-rose-strong: #a8325f;
+  --nb-on-strong: #ffffff;
+  --nb-focus: #a8325f;
+  --nb-line: rgba(168, 50, 95, 0.2);
+  --nb-spring: #b7a595;
+  --nb-spring-hole: #d9c9bb;
+  --nb-shadow: 0 10px 28px rgba(90, 50, 62, 0.18);
+  --nb-flower-opacity: 0.1;
+
+  --nb-tape-ink: #3b2a31;
+  --nb-tape-rose: #f2b8c8;
+  --nb-tape-sage: #c5e0c9;
+  --nb-tape-sand: #ecd9b8;
+  --nb-tape-lilac: #d9cdf3;
+  --nb-tape-sky: #c4dcf3;
+
+  --nb-chip-work-bg: #e3f1e6;   --nb-chip-work-fg: #1f5a33;
+  --nb-chip-half-bg: #fdf0d2;   --nb-chip-half-fg: #6b4a00;
+  --nb-chip-off-bg: #ece6ea;    --nb-chip-off-fg: #4f4350;
+  --nb-chip-holiday-bg: #f9d9de; --nb-chip-holiday-fg: #8a1f3c;
+  --nb-chip-leave-bg: #dce9f8;  --nb-chip-leave-fg: #1d4a86;
+  --nb-chip-mission-bg: #e6defa; --nb-chip-mission-fg: #4a3399;
+  --nb-chip-warn-bg: #ffe9c7;   --nb-chip-warn-fg: #7a4200;
+  --nb-chip-urgent-bg: #ffd9d6; --nb-chip-urgent-fg: #9a1f16;
+  --nb-chip-locked-bg: #eadfd6; --nb-chip-locked-fg: #5b4636;
+  }
+  .nb .nb-spread { display: block; box-shadow: none; border-radius: 0; background: transparent; overflow: visible; }
+  .nb .nb-spring, .nb .nb-pager, .nb .nb-card__toggle, .nb .nb-task__actions, .nb .nb-edit-slot { display: none !important; }
+  .nb .nb-spread > .nb-page { display: flex !important; box-shadow: none; break-inside: auto; }
+  .nb .nb-page::before { display: none; }
+  .nb .nb-card { box-shadow: none; border: 1px solid var(--nb-line); break-inside: avoid; }
+  .nb .nb-card.is-collapsed > * { display: revert !important; }
+  .nb .nb-tape { box-shadow: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .nb .nb-chip { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }

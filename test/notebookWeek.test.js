@@ -10,7 +10,7 @@ const src = fs.readFileSync(path.join(__dirname, '..', 'public-admin/js/notebook
 // ───── DOM ساختگیِ کمینه ─────
 class Txt { constructor(t) { this.nodeType = 3; this.data = String(t); } get textContent() { return this.data; } }
 class El {
-  constructor(tag) { this.nodeType = 1; this.tagName = tag.toUpperCase(); this.children = []; this.attrs = {}; this.listeners = {}; this.className = ''; this._t = ''; this.classList = { add: (c) => { this.className = `${this.className} ${c}`.trim(); } }; }
+  constructor(tag) { this.nodeType = 1; this.tagName = tag.toUpperCase(); this.children = []; this.attrs = {}; this.listeners = {}; this.className = ''; this._t = ''; this.classList = { add: (c) => { this.className = `${this.className} ${c}`.trim(); }, toggle: (c) => { const on = !this.hasClass(c); this.className = on ? `${this.className} ${c}`.trim() : this.className.split(/\s+/).filter((x) => x !== c).join(' '); return on; } }; }
   setAttribute(k, v) { this.attrs[k] = String(v); }
   getAttribute(k) { return this.attrs[k] === undefined ? null : this.attrs[k]; }
   appendChild(c) { this.children.push(c); return c; }
@@ -167,5 +167,22 @@ describe('renderWeek: هفته‌ی غیر استاندارد و امنیت', ()
     assert.equal(byClass(root, 'nb-pager__label')[0].textContent, 'صفحه‌ی دوم از ۲');
     prev.listeners.click[0]();
     assert.equal(spread.attrs['data-page'], '1');
+  });
+});
+
+describe('renderWeek: جمع‌شدن کارت‌ها (موبایل)', () => {
+  test('هر کارت دکمه‌ی جمع/باز با aria-expanded دارد؛ کلیک وضعیت را عوض می‌کند؛ collapsible=false آن را حذف می‌کند', () => {
+    const root = nb.renderWeek(week());
+    const card0 = byClass(root, 'nb-day')[0];
+    const toggle = byClass(card0, 'nb-card__toggle')[0];
+    assert.equal(toggle.attrs['aria-expanded'], 'true');
+    assert.match(toggle.attrs['aria-label'], /جمع\/باز کردن کارت شنبه/);
+    toggle.listeners.click[0]();
+    assert.ok(card0.hasClass('is-collapsed'));
+    assert.equal(toggle.attrs['aria-expanded'], 'false');
+    toggle.listeners.click[0]();
+    assert.ok(!card0.hasClass('is-collapsed'));
+    assert.equal(toggle.attrs['aria-expanded'], 'true');
+    assert.equal(byClass(nb.renderWeek(week(), { collapsible: false }), 'nb-card__toggle').length, 0);
   });
 });

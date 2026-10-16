@@ -53,6 +53,20 @@ function dayKindOf(cal, fullLeave) {
 
 const DAY_KIND_LABEL = { working: 'روز کاری', half: 'نیم‌روز', off: 'غیرکاری', holiday: 'تعطیل', leave: 'مرخصی', mission: 'مأموریت' };
 
+/**
+ * B1-a (فاز ۱۳): تقویمِ مؤثر «یک روز» (override ← شیفت ← سراسری، تعطیلی، مرخصی/مأموریتِ کامل) — منبع واحد برای F1 و نمای برنامه‌ی هفته‌ی بعد.
+ * overrides = userDayScheduleRepository.makeResolver(...)، leaves = leaveRepository.listApprovedInRange(...) (هر دو «دسته‌ای» و یک‌بار برای کل هفته).
+ */
+function resolveDay(user, date, { settings, overrides, leaves }) {
+  const override = overrides(user.id, date);
+  const shift = shiftsRepository.shiftOn(user.id, date);
+  const cal = calendarService.getCalendarDay(user, date, { settings, shift, holidays: holidaysRepository.listByDate(date), override });
+  const dayLeaves = leaves.filter((l) => l.start_date <= date && l.end_date >= date);
+  const covered = cal.isWorkingDay && dayLeaves.length && calendarService.fullyOnApprovedLeave(user, date, cal);
+  const fullLeave = covered ? { kind: dayLeaves.some((l) => l.kind !== 'mission') ? 'leave' : 'mission' } : null;
+  return { override, shift, cal, dayLeaves, fullLeave, kind: dayKindOf(cal, fullLeave) };
+}
+
 function attendanceView(record, ctx, now) {
   if (!record) return null;
   const base = { recordId: record.id, status: record.status || null, checkIn: record.check_in_time || null, checkOut: record.check_out_time || null };
@@ -97,13 +111,7 @@ function getWeek(actor, userId, input = {}, { now = new Date() } = {}) {
 
   const calCache = new Map(); // تقویم هر روز یک‌بار ساخته می‌شود و برای بخش تسک‌ها هم استفاده می‌شود
   const days = dates.map((date) => {
-    const override = overrides(user.id, date);
-    const shift = shiftsRepository.shiftOn(user.id, date);
-    const cal = calendarService.getCalendarDay(user, date, { settings, shift, holidays: holidaysRepository.listByDate(date), override });
-    const dayLeaves = leaves.filter((l) => l.start_date <= date && l.end_date >= date);
-    const covered = cal.isWorkingDay && dayLeaves.length && calendarService.fullyOnApprovedLeave(user, date, cal);
-    const fullLeave = covered ? { kind: dayLeaves.some((l) => l.kind !== 'mission') ? 'leave' : 'mission' } : null;
-    const kind = dayKindOf(cal, fullLeave);
+    const { override, shift, cal, dayLeaves, fullLeave, kind } = resolveDay(user, date, { settings, overrides, leaves });
     calCache.set(date, { working: kind === 'working' || kind === 'half' });
     const attendance = attendanceView(recordByDate.get(date), ctx, now);
     const isFuture = date > today;
@@ -164,4 +172,4 @@ function getWeek(actor, userId, input = {}, { now = new Date() } = {}) {
   };
 }
 
-module.exports = { getWeek, canView };
+module.exports = { getWeek, canView, resolveDay, plannedMinutes, DAY_KIND_LABEL };

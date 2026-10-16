@@ -44,6 +44,14 @@ router.get('/admin/users/:id/plan', requirePermission('team.week_view'), (req, r
   return res.json(r);
 });
 
+// D1: فهرست کارمندان قابل‌مشاهده با وضعیت برنامه‌ی هفته (ستون انتخاب کارمند). ثبت قبل از مسیرهای /admin/users/:id/... لازم نیست (URL جدا).
+//   GET /admin/plan-overview?start=YYYY-MM-DD  team.week_view ⇒ { ok, weekStart, weekEnd, jalaliStart, jalaliEnd, isNextWeek, minTasks, employees:[{id, fullName, department, role, planStatus: submitted|draft|none, taskCount, needsAttention}] }
+router.get('/admin/plan-overview', requirePermission('team.week_view'), (req, res) => {
+  const r = service.listPlanOverview(req.adminUser, req.query.start);
+  if (!r.ok) return res.status(r.status).json({ error: r.error, code: r.code });
+  return res.json(r);
+});
+
 const isId = (v) => /^\d+$/.test(String(v));
 const bodyOf = (req) => (req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {});
 const send = (res, r, okStatus = 200) => (r.ok ? res.status(okStatus).json(r) : res.status(r.status || 400).json({ error: r.error, code: r.code }));

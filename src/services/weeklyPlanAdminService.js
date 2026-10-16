@@ -28,6 +28,7 @@ const { hasPermission } = require('../middleware/permissions');
 const employeeWeek = require('./employeeWeekService'); // canView (اسکوپ خواندن؛ منبع واحد با F1)
 const { buildDays, summarizePlanWeek, planWarnings, MAX_TASKS_PER_DAY } = require('./planWeekDays'); // B1-a: مدل روزبه‌روز، B1-b: خلاصه، B1-c: هشدارها
 const { dayNumber, addDays } = require('../utils/shiftDay');
+const { isoDateToJalaliString } = require('../utils/jalali');
 const auditRepository = require('../repositories/auditRepository');
 const { getDb } = require('../db/connection');
 
@@ -268,6 +269,13 @@ function reorderTasks(actor, employeeId, weekStartInput, orderedIds, { now, expe
 // — از هر مسیری — یکی زیاد می‌شود). برنامه‌ی ناموجود ⇒ null. تنها نقطه‌ی تعریف version همین تابع است.
 const planVersion = (plan) => (plan ? plan.version : null);
 
+/** تاریخِ ورودی (هر روز داخل هفته؛ خالی = هفته‌ی بعد) ⇒ شروع هفته (weekStartDay). مشترک بین getPlanState و listPlanOverview. */
+function resolveWeekStart(startInput, ctx) {
+  if (startInput === undefined || startInput === null || startInput === '') return { ok: true, weekStart: weeklyPlan.targetWeek('next', ctx) };
+  if (typeof startInput !== 'string' || dayNumber(startInput) === null) return fail('INVALID_WEEK', 'تاریخ هفته نامعتبر است (YYYY-MM-DD).');
+  return { ok: true, weekStart: calendarService.weekStartOf(startInput, ctx.settings.weekStartDay) };
+}
+
 /**
  * وضعیت برنامه‌ی یک هفته‌ی کارمند برای پنل (هیچ نوشتنی در دیتابیس ندارد؛ برنامه‌ی ناموجود ساخته نمی‌شود).
  * اسکوپ خواندن همان F1: team.week_view + canView (admin/hr همه، manager فقط کارمندان مستقیمش).
@@ -288,13 +296,9 @@ function getPlanState(actor, employeeId, startInput, { now } = {}) {
   }
 
   const ctx = weeklyPlan.context(now);
-  let weekStart;
-  if (startInput === undefined || startInput === null || startInput === '') {
-    weekStart = weeklyPlan.targetWeek('next', ctx);
-  } else {
-    if (typeof startInput !== 'string' || dayNumber(startInput) === null) return fail('INVALID_WEEK', 'تاریخ هفته نامعتبر است (YYYY-MM-DD).');
-    weekStart = calendarService.weekStartOf(startInput, ctx.settings.weekStartDay);
-  }
+  const wk = resolveWeekStart(startInput, ctx);
+  if (!wk.ok) return wk;
+  const { weekStart } = wk;
 
   const lockReason = weeklyPlan.lockReason(weekStart, ctx);
   const plan = plansRepo.findByUserWeek(target.id, weekStart);
@@ -326,6 +330,42 @@ function getPlanState(actor, employeeId, startInput, { now } = {}) {
     anyDay,
     summary: summarizePlanWeek(days, anyDay),
     warnings: planWarnings(days, anyDay, { hasPlan: !!plan, status: plan ? plan.status : null, minTasks: ctx.settings.planMinTasks }),
+  };
+}
+
+/**
+ * D1 (فاز ۱۳): فهرست کارمندان قابل‌مشاهده با وضعیت برنامه‌ی یک هفته (برای ستون انتخاب کارمند در صفحه‌ی «برنامه هفته بعد»). فقط‌خواندنی.
+ * اسکوپ مثل getPlanState: team.week_view + canView (admin/hr همه‌ی کارمندان فعال، سرپرست فقط زیردست‌های مستقیم؛ کارمند ممنوع).
+ * بدون N+1: برنامه‌ها با یک کوئری (listByWeek) و شمار تسک‌ها با یک کوئری گروه‌بندی‌شده.
+ * planStatus = 'submitted' | 'draft' | 'none'؛ needsAttention = ثبت‌نشده (draft/none) یا تسک‌های معمولی کمتر از planMinTasks
+ * (نشانگر سبکِ «⚠»؛ هشدارهای کامل روزبه‌روز فقط در getPlanState برای کارمند انتخاب‌شده می‌آید).
+ * @returns {{ok:true, weekStart, weekEnd, jalaliStart, jalaliEnd, isNextWeek, minTasks, employees: Array}|{ok:false, code, error, status}}
+ */
+function listPlanOverview(actor, startInput, { now } = {}) {
+  if (!actor || !hasPermission(actor.role, 'team.week_view')) return fail('FORBIDDEN', 'دسترسی به این بخش ندارید.');
+  const ctx = weeklyPlan.context(now);
+  const wk = resolveWeekStart(startInput, ctx);
+  if (!wk.ok) return wk;
+  const { weekStart } = wk;
+
+  const users = usersRepository.listUsers({ onlyActive: true }).filter((u) => u.id !== actor.id && employeeWeek.canView(actor, u));
+  const plans = new Map(plansRepo.listByWeek(weekStart, users.map((u) => u.id)).map((p) => [p.user_id, p]));
+  const counts = plansRepo.countOrdinaryByPlanIds([...plans.values()].map((p) => p.id));
+  const min = Math.max(0, Number(ctx.settings.planMinTasks) || 0);
+
+  const employees = users.map((u) => {
+    const plan = plans.get(u.id) || null;
+    const planStatus = plan ? (plan.status === 'submitted' ? 'submitted' : 'draft') : 'none';
+    const taskCount = plan ? (counts.get(plan.id) || 0) : 0;
+    return {
+      id: u.id, fullName: u.full_name, department: u.department || null, role: u.role,
+      planStatus, taskCount, needsAttention: planStatus !== 'submitted' || (min > 0 && taskCount < min),
+    };
+  });
+  return {
+    ok: true, weekStart, weekEnd: addDays(weekStart, 6),
+    jalaliStart: isoDateToJalaliString(weekStart), jalaliEnd: isoDateToJalaliString(addDays(weekStart, 6)),
+    isNextWeek: weekStart === weeklyPlan.targetWeek('next', ctx), minTasks: min, employees,
   };
 }
 
@@ -397,4 +437,4 @@ function pendingNotify(actor, employeeId, weekStartInput, { now } = {}) {
   return { ok: true, target, plan, summary };
 }
 
-module.exports = { scopeFailure, openWeek, statusOf, planVersion, getPlanState, taskOwnerId, withState, addTask, updateTask, removeTask, moveTask, reorderTasks, summarizeEdits, pendingNotify, AUDIT_NOTIFY_ACTION };
+module.exports = { scopeFailure, openWeek, statusOf, planVersion, getPlanState, listPlanOverview, taskOwnerId, withState, addTask, updateTask, removeTask, moveTask, reorderTasks, summarizeEdits, pendingNotify, AUDIT_NOTIFY_ACTION };
