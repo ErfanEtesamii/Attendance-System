@@ -1,0 +1,262 @@
+/* سیستم طراحی «دفترچه‌ی برنامه‌ریزی» (فاز ۱۳ — C1).
+   همه‌ی قواعد زیر ریشه‌ی .nb اسکوپ شده‌اند تا بقیه‌ی پنل تغییر نکند. رنگ‌ها فقط با متغیر --nb-*؛ دو تم با همان مکانیزم تم پنل (data-theme روی <html>).
+   بدون تصویر/فونت خارجی؛ فونت = فونت پنل. CSP: فقط 'self' و data: برای تصویر. جفت‌رنگ‌های متن/زمینه کنتراست AA دارند (تست: test/notebookDesign.test.js). */
+
+/* ---------- توکن‌ها: تم تیره (پیش‌فرض پنل) = «کاغذ شب»؛ تم روشن زیر ---------- */
+.nb,
+:root[data-theme="dark"] .nb {
+  --nb-paper: #2a2127;
+  --nb-paper-2: #31262d;
+  --nb-card: #3a2e36;
+  --nb-ink: #f7edf0;
+  --nb-ink-soft: #d3bfc8;
+  --nb-rose: #7d3d57;
+  --nb-rose-strong: #f4a9c0;
+  --nb-on-strong: #2a1019;
+  --nb-focus: #f4a9c0;
+  --nb-line: rgba(244, 169, 192, 0.22);
+  --nb-spring: #a89098;
+  --nb-spring-hole: #1d1519;
+  --nb-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  --nb-flower-opacity: 0.07;
+
+  --nb-tape-ink: #ffffff;
+  --nb-tape-rose: #7d3d57;
+  --nb-tape-sage: #3f6a4b;
+  --nb-tape-sand: #7a6234;
+  --nb-tape-lilac: #5d4a8e;
+  --nb-tape-sky: #3f6590;
+
+  --nb-chip-work-bg: #234a30;   --nb-chip-work-fg: #b8e6c4;
+  --nb-chip-half-bg: #4d3b0b;   --nb-chip-half-fg: #f6d88a;
+  --nb-chip-off-bg: #4a3f49;    --nb-chip-off-fg: #e2d5df;
+  --nb-chip-holiday-bg: #5e2232; --nb-chip-holiday-fg: #ffc4cf;
+  --nb-chip-leave-bg: #1f3a5e;  --nb-chip-leave-fg: #bcd8fb;
+  --nb-chip-mission-bg: #3d2f6b; --nb-chip-mission-fg: #d6c9fb;
+  --nb-chip-warn-bg: #5a3606;   --nb-chip-warn-fg: #ffd59a;
+  --nb-chip-urgent-bg: #62201b; --nb-chip-urgent-fg: #ffc7c1;
+  --nb-chip-locked-bg: #4a3b30; --nb-chip-locked-fg: #e6d3c2;
+}
+:root[data-theme="light"] .nb {
+  --nb-paper: #fdf6f1;
+  --nb-paper-2: #f7ebe3;
+  --nb-card: #fffaf8;
+  --nb-ink: #3b2a31;
+  --nb-ink-soft: #6a5360;
+  --nb-rose: #f2b8c8;
+  --nb-rose-strong: #a8325f;
+  --nb-on-strong: #ffffff;
+  --nb-focus: #a8325f;
+  --nb-line: rgba(168, 50, 95, 0.2);
+  --nb-spring: #b7a595;
+  --nb-spring-hole: #d9c9bb;
+  --nb-shadow: 0 10px 28px rgba(90, 50, 62, 0.18);
+  --nb-flower-opacity: 0.1;
+
+  --nb-tape-ink: #3b2a31;
+  --nb-tape-rose: #f2b8c8;
+  --nb-tape-sage: #c5e0c9;
+  --nb-tape-sand: #ecd9b8;
+  --nb-tape-lilac: #d9cdf3;
+  --nb-tape-sky: #c4dcf3;
+
+  --nb-chip-work-bg: #e3f1e6;   --nb-chip-work-fg: #1f5a33;
+  --nb-chip-half-bg: #fdf0d2;   --nb-chip-half-fg: #6b4a00;
+  --nb-chip-off-bg: #ece6ea;    --nb-chip-off-fg: #4f4350;
+  --nb-chip-holiday-bg: #f9d9de; --nb-chip-holiday-fg: #8a1f3c;
+  --nb-chip-leave-bg: #dce9f8;  --nb-chip-leave-fg: #1d4a86;
+  --nb-chip-mission-bg: #e6defa; --nb-chip-mission-fg: #4a3399;
+  --nb-chip-warn-bg: #ffe9c7;   --nb-chip-warn-fg: #7a4200;
+  --nb-chip-urgent-bg: #ffd9d6; --nb-chip-urgent-fg: #9a1f16;
+  --nb-chip-locked-bg: #eadfd6; --nb-chip-locked-fg: #5b4636;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .nb {
+    --nb-paper: #fdf6f1; --nb-paper-2: #f7ebe3; --nb-card: #fffaf8; --nb-ink: #3b2a31; --nb-ink-soft: #6a5360;
+    --nb-rose: #f2b8c8; --nb-rose-strong: #a8325f; --nb-on-strong: #ffffff; --nb-focus: #a8325f;
+    --nb-line: rgba(168, 50, 95, 0.2); --nb-spring: #b7a595; --nb-spring-hole: #d9c9bb;
+    --nb-shadow: 0 10px 28px rgba(90, 50, 62, 0.18); --nb-flower-opacity: 0.1;
+    --nb-tape-ink: #3b2a31; --nb-tape-rose: #f2b8c8; --nb-tape-sage: #c5e0c9; --nb-tape-sand: #ecd9b8; --nb-tape-lilac: #d9cdf3; --nb-tape-sky: #c4dcf3;
+    --nb-chip-work-bg: #e3f1e6;   --nb-chip-work-fg: #1f5a33;
+    --nb-chip-half-bg: #fdf0d2;   --nb-chip-half-fg: #6b4a00;
+    --nb-chip-off-bg: #ece6ea;    --nb-chip-off-fg: #4f4350;
+    --nb-chip-holiday-bg: #f9d9de; --nb-chip-holiday-fg: #8a1f3c;
+    --nb-chip-leave-bg: #dce9f8;  --nb-chip-leave-fg: #1d4a86;
+    --nb-chip-mission-bg: #e6defa; --nb-chip-mission-fg: #4a3399;
+    --nb-chip-warn-bg: #ffe9c7;   --nb-chip-warn-fg: #7a4200;
+    --nb-chip-urgent-bg: #ffd9d6; --nb-chip-urgent-fg: #9a1f16;
+    --nb-chip-locked-bg: #eadfd6; --nb-chip-locked-fg: #5b4636;
+  }
+}
+
+/* ---------- ریشه ---------- */
+.nb {
+  --nb-row: 32px; /* ارتفاع ردیف خط‌دار */
+  color: var(--nb-ink);
+  direction: rtl;
+  font-family: inherit;
+  line-height: 1.6;
+  max-width: 100%;
+}
+.nb *, .nb *::before, .nb *::after { box-sizing: border-box; }
+.nb :focus-visible { outline: 3px solid var(--nb-focus); outline-offset: 2px; }
+.nb .nb-sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+/* ---------- دو صفحه + فنر مارپیچی ---------- */
+.nb .nb-spread {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr); /* در RTL ستون اول سمت راست است = صفحه‌ی اول */
+  background: var(--nb-paper-2);
+  border-radius: 22px;
+  box-shadow: var(--nb-shadow);
+  overflow: hidden;
+  position: relative;
+}
+.nb .nb-spring {
+  /* فنر: میله‌های افقی تکرارشونده + سوراخ‌های دو لبه */
+  background:
+    radial-gradient(circle at 5px 11px, var(--nb-spring-hole) 0 3px, transparent 3.5px) 0 0 / 100% 22px repeat-y,
+    radial-gradient(circle at calc(100% - 5px) 11px, var(--nb-spring-hole) 0 3px, transparent 3.5px) 0 0 / 100% 22px repeat-y,
+    repeating-linear-gradient(to bottom, transparent 0 7px, var(--nb-spring) 7px 12px, transparent 12px 22px),
+    linear-gradient(to left, transparent, rgba(0, 0, 0, 0.1) 45%, rgba(0, 0, 0, 0.1) 55%, transparent);
+  background-color: var(--nb-paper-2);
+}
+.nb .nb-page {
+  position: relative;
+  padding: 22px 20px 26px;
+  background: var(--nb-paper);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+/* گل بسیار کمرنگ پس‌زمینه‌ی کاغذ (SVG درون‌خطی؛ بدون تصویر خارجی) */
+.nb .nb-page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--nb-flower-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='%23d9708f'%3E%3Ccircle cx='60' cy='38' r='13'/%3E%3Ccircle cx='80.9' cy='53.2' r='13'/%3E%3Ccircle cx='73' cy='78.8' r='13'/%3E%3Ccircle cx='47' cy='78.8' r='13'/%3E%3Ccircle cx='39.1' cy='53.2' r='13'/%3E%3C/g%3E%3Ccircle cx='60' cy='60' r='7' fill='%23e0a93a'/%3E%3C/svg%3E");
+  background-size: 120px 120px;
+  background-position: 18px 10px;
+}
+.nb .nb-page > * { position: relative; } /* محتوا بالای گل */
+.nb .nb-page-title { margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--nb-ink); }
+
+/* ناوبری موبایل (صفحه‌ی قبل/بعد) — روی دسکتاپ پنهان */
+.nb .nb-pager { display: none; }
+
+/* ---------- کارت + نوار چسب ---------- */
+.nb .nb-card {
+  position: relative;
+  background: var(--nb-card);
+  border-radius: 16px;
+  padding: 26px 16px 14px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+  min-width: 0;
+}
+.nb .nb-card__title { margin: 0 0 6px; font-size: 1rem; font-weight: 800; color: var(--nb-ink); overflow-wrap: anywhere; }
+.nb .nb-card__sub { margin: 0 0 8px; font-size: 0.85rem; color: var(--nb-ink-soft); }
+.nb .nb-tape {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-2deg); /* مرکز + چرخش جزئی */
+  min-width: 96px;
+  max-width: 80%;
+  padding: 3px 12px;
+  border-radius: 3px;
+  background: var(--nb-tape-rose);
+  color: var(--nb-tape-ink);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  /* لبه‌ی دندانه‌دار نوار چسب */
+  -webkit-mask: linear-gradient(135deg, transparent 4px, black 0) top left, linear-gradient(-135deg, transparent 4px, black 0) top right;
+  -webkit-mask-size: 51% 100%;
+  -webkit-mask-repeat: no-repeat;
+          mask: linear-gradient(135deg, transparent 4px, black 0) top left, linear-gradient(-135deg, transparent 4px, black 0) top right;
+          mask-size: 51% 100%;
+          mask-repeat: no-repeat;
+}
+.nb .nb-card:nth-child(even) > .nb-tape { transform: translateX(-50%) rotate(1.5deg); }
+.nb .nb-tape--rose { background: var(--nb-tape-rose); }
+.nb .nb-tape--sage { background: var(--nb-tape-sage); }
+.nb .nb-tape--sand { background: var(--nb-tape-sand); }
+.nb .nb-tape--lilac { background: var(--nb-tape-lilac); }
+.nb .nb-tape--sky { background: var(--nb-tape-sky); }
+
+/* ---------- لیست خط‌دار ---------- */
+.nb .nb-lines {
+  background: repeating-linear-gradient(to bottom, transparent 0 calc(var(--nb-row) - 1px), var(--nb-line) calc(var(--nb-row) - 1px) var(--nb-row));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.nb .nb-lines > * { min-height: var(--nb-row); line-height: var(--nb-row); padding-block: 0; overflow-wrap: anywhere; }
+.nb .nb-lines--empty { color: var(--nb-ink-soft); font-size: 0.9rem; }
+
+/* ---------- چیپ وضعیت (متن/آیکون همراه رنگ است؛ فقط به رنگ متکی نیست) ---------- */
+.nb .nb-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.7;
+  background: var(--nb-chip-off-bg);
+  color: var(--nb-chip-off-fg);
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+.nb .nb-chip--work { background: var(--nb-chip-work-bg); color: var(--nb-chip-work-fg); }
+.nb .nb-chip--half { background: var(--nb-chip-half-bg); color: var(--nb-chip-half-fg); }
+.nb .nb-chip--off { background: var(--nb-chip-off-bg); color: var(--nb-chip-off-fg); }
+.nb .nb-chip--holiday { background: var(--nb-chip-holiday-bg); color: var(--nb-chip-holiday-fg); }
+.nb .nb-chip--leave { background: var(--nb-chip-leave-bg); color: var(--nb-chip-leave-fg); }
+.nb .nb-chip--mission { background: var(--nb-chip-mission-bg); color: var(--nb-chip-mission-fg); }
+.nb .nb-chip--warn { background: var(--nb-chip-warn-bg); color: var(--nb-chip-warn-fg); }
+.nb .nb-chip--urgent { background: var(--nb-chip-urgent-bg); color: var(--nb-chip-urgent-fg); }
+.nb .nb-chip--locked { background: var(--nb-chip-locked-bg); color: var(--nb-chip-locked-fg); }
+
+/* ---------- دکمه ---------- */
+.nb .nb-btn {
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.9rem;
+  min-height: 36px;
+  padding: 4px 16px;
+  border-radius: 999px;
+  border: 2px solid var(--nb-rose-strong);
+  background: var(--nb-rose-strong);
+  color: var(--nb-on-strong);
+  cursor: pointer;
+}
+.nb .nb-btn--ghost { background: transparent; color: var(--nb-rose-strong); }
+.nb .nb-btn[disabled] { opacity: 0.55; cursor: not-allowed; }
+.nb .nb-btn:hover:not([disabled]) { filter: brightness(1.06); }
+
+/* ---------- ریسپانسیو: زیر ~۹۰۰px یک صفحه + دکمه‌های قبل/بعد؛ بدون اسکرول افقی تا ۳۲۰px ---------- */
+@media (max-width: 899px) {
+  .nb .nb-spread { grid-template-columns: minmax(0, 1fr); border-radius: 16px; }
+  .nb .nb-spring { display: none; }
+  .nb .nb-spread > .nb-page { display: none; }
+  .nb .nb-spread[data-page="1"] > .nb-page[data-nb-page="1"],
+  .nb .nb-spread[data-page="2"] > .nb-page[data-nb-page="2"] { display: flex; }
+  .nb .nb-pager { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 12px; background: var(--nb-paper-2); }
+  .nb .nb-pager__label { font-size: 0.85rem; color: var(--nb-ink-soft); text-align: center; flex: 1; }
+  .nb .nb-page { padding: 18px 12px 20px; }
+}
+
+/* حرکت فقط وقتی کاربر کاهش حرکت نخواسته؛ هیچ انیمیشن اجباری‌ای نیست */
+@media (prefers-reduced-motion: no-preference) {
+  .nb .nb-btn { transition: filter 0.15s ease, transform 0.15s ease; }
+  .nb .nb-btn:active:not([disabled]) { transform: translateY(1px); }
+}

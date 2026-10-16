@@ -90,6 +90,7 @@ src/
   scripts/                 createAdmin، seedEmployees، pushPanelButton
 public/                    Mini App کارمند (بدون build)
 public-admin/              پنل مدیریتی وب (بدون build)، زیر /admin/
+                           (فاز ۱۳ — C1) سیستم طراحی «دفترچه»: css/notebook.css + js/notebook.js (اسکوپ .nb)؛ صفحه‌ی نمایشی توسعه: /admin/nb-demo.html (داده‌ی ثابت، بدون API؛ در استقرار همراه بقیه‌ی public-admin می‌آید، مشکلی برای secret-scan ندارد و می‌توان حذفش کرد)
 scripts/                   install-service.ps1 (NSSM)، setup-ssl-renewal.ps1، run-tests.js، smoke-test.js،
                            package-release.js (zip بدون راز)، secret-scan.js، lib/ (zip، اسکنر، قوانین release)
 test/                      تست‌های خودکار (node:test)

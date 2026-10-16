@@ -4,6 +4,11 @@
 
 ## [Unreleased] — بخش ۴ (ممیزی)
 
+### فاز ۱۳ — C1: سیستم طراحی «دفترچه» (پنل ادمین)
+- `public-admin/css/notebook.css`: همه‌ی قواعد زیر ریشه‌ی `.nb`؛ رنگ فقط با متغیر `--nb-*`؛ دو تم (روشن + «کاغذ شب» تیره‌ی گرم، با همان مکانیزم `data-theme` پنل و حالت خودکار)؛ کامپوننت‌ها: `nb-spread` (دو صفحه + فنر)، `nb-page`، `nb-card`، `nb-tape` (۵ رنگ)، `nb-lines`، `nb-chip` (۹ وضعیت)، `nb-btn`؛ گل کمرنگ با SVG درون‌خطی؛ زیر ۹۰۰px یک صفحه با «صفحه‌ی قبل/بعد»؛ `:focus-visible` و `prefers-reduced-motion`؛ کنتراست AA.
+- `public-admin/js/notebook.js`: کمک‌تابع‌های `AP.notebook.*` (`h`, `root`, `tape`, `lines`, `chip`, `btn`, `card`, `page`, `spread`) فقط با `textContent`.
+- `public-admin/nb-demo.html` + `js/nb-demo.js`: صفحه‌ی نمایشی توسعه با داده‌ی ثابت. تست: `test/notebookDesign.test.js` (ایستا؛ مرور دستی دو تم/۳۲۰px/کیبورد لازم است).
+
 ### فاز ۱۳ — B1-a: مدل روزبه‌روز برنامه‌ی هفته‌ی بعد (بخش ۱ از ۳)
 - `GET /admin/users/:id/plan` حالا `days[7]` (تاریخ شمسی، نام روز، نوع روز، ساعت مؤثر با منبع `override|shift|global`، مرخصی/مأموریت، `monthClosed`، تسک‌های روز با `canEdit`) و `anyDay` («هر روز») برمی‌گرداند؛ `plan.unnotifiedChanges` و `plan.unnotified` از audit می‌آید. فهرست تخت `tasks` برای سازگاری مانده است.
 - کد: `src/services/planWeekDays.js` (جدید)؛ `employeeWeekService.resolveDay` از F1 استخراج شد (منبع واحد تقویم روز؛ رفتار F1 بدون تغییر).
