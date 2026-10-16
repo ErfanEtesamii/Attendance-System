@@ -136,7 +136,7 @@ describe('سربرگ، حالت‌ها و دفترچه', () => {
     let t = setup();
     let { html } = await t.def.render('7');
     assert.match(html, /<h2>الف<\/h2>/);
-    assert.match(html, /شیفت مؤثر: عصر \(15:30–21:00\)/);
+    assert.match(html, /شیفت مؤثر: عصر \(<bdi dir="ltr">15:30–21:00<\/bdi>\)/);
     assert.match(html, /✎ قابل ویرایش/);
     assert.match(html, /هفته‌ی ۱۴۰۵\/۰۷\/۰۴ تا ۱۴۰۵\/۰۷\/۱۰ \(هفته‌ی بعد\)/);
     for (const [plan, text] of [

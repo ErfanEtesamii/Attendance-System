@@ -556,7 +556,7 @@
     return parts.length > 1 ? parts.join(' ') : fallback;
   }
 
-  // پرسش «آخرین مهلت ثبت برنامه» هنگام خروج: پاپ‌آپ تلگرام (دو دکمه) یا confirm مرورگر
+  // پرسش «آخرین مهلت ثبت برنامه» هنگام خروج: پاپ‌آپ تلگرام (دو دکمه)؛ بدون آن، پیام + ماندن در مسیر ثبت برنامه
   function askPlanDeadline(message, onPlan, onExit) {
     try {
       if (tg && typeof tg.showPopup === 'function') {
@@ -570,8 +570,9 @@
         }, (id) => { if (id === 'exit') onExit(); else if (id === 'plan') onPlan(); });
         return;
       }
-    } catch (_) { /* به confirm برمی‌گردیم */ }
-    if (window.confirm(message)) onExit(); else onPlan();
+    } catch (_) { /* به مسیر امن برمی‌گردیم */ }
+    showToast(message, true);
+    onPlan();
   }
 
   // خروجی: true در موفقیت. گیت‌های سرور (D5/D7) خطای 409 با code می‌دهند و UI کاربر را به ویزارد مربوط می‌برد.
