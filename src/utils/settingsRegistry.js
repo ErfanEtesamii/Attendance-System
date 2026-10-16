@@ -188,6 +188,7 @@ def('allowCheckinWithPendingMission', 'allow_checkin_with_pending_mission', 'boo
 // ---- D2: برنامه‌ی هفتگی و گزارش روزانه ----
 def('weekStartDay', 'week_start_day', 'number', { group: 'planning', min: 0, max: 6, default: 6, description: 'اولین روز هفته‌ی برنامه‌ریزی (۰=یکشنبه … ۶=شنبه)' });
 def('planSubmissionWeekday', 'plan_submission_weekday', 'enum', { group: 'planning', values: ['auto', '0', '1', '2', '3', '4', '5', '6'], default: 'auto', description: 'روز ثبت برنامه‌ی هفته‌ی بعد: auto = آخرین روز کاریِ هفته‌ی همان کاربر؛ یا شماره‌ی روز هفته (۰=یکشنبه … ۶=شنبه)' });
+def('planGateWarnWeekday', 'plan_gate_warn_weekday', 'enum', { group: 'planning', values: ['off', '0', '1', '2', '3', '4', '5', '6'], default: '3', description: 'روز «آخرین فرصتِ» ثبت برنامه‌ی هفته‌ی بعد: در این روز (اگر پیش از روز ثبت باشد) هنگام خروجِ بدون برنامه از کاربر تأیید گرفته می‌شود؛ شماره‌ی روز هفته (۰=یکشنبه … ۶=شنبه) یا off' });
 def('planMinTasks', 'plan_min_tasks', 'number', { group: 'planning', min: 0, max: 30, default: 1, description: 'حداقل تعداد تسک برای ثبت برنامه‌ی هفتگی' });
 def('planGateMode', 'plan_gate_mode', 'enum', { group: 'planning', values: ['enforce', 'soft', 'off'], default: 'off', description: 'الزام ثبت برنامه‌ی هفته‌ی بعد هنگام خروج: enforce = بدون برنامه خروج ثبت نمی‌شود، soft = فقط یادآوری، off = خاموش' });
 def('planGateStartDate', 'plan_gate_start_date', 'date', { group: 'planning', default: '', description: 'تاریخ شروع اعمال الزام برنامه‌ی هفتگی/گزارش روزانه (میلادی YYYY-MM-DD)؛ خالی = از همان لحظه‌ی روشن‌شدن' });

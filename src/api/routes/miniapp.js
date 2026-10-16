@@ -214,8 +214,17 @@ router.post('/miniapp/check-out', (req, res) => {
   if (planGate.action === 'block') {
     auditRepository.logEvent({ userId: req.miniAppUser.id, action: 'check_out_blocked', ipAddress: req.ip, details: { source: 'miniapp', reason: 'weekly_plan_required', weekStart: planGate.info.weekStart } });
     return res.status(409).json({
-      error: 'برای ثبت خروج، ابتدا برنامه‌ی هفته‌ی بعد را ثبت کنید.',
+      error: 'متأسفم، هنوز برنامه‌ی هفته‌ی بعد را ثبت نکرده‌اید؛ تا ثبت برنامه نمی‌توانید خروج بزنید.',
       code: 'weekly_plan_required',
+      weekStart: planGate.info.weekStart,
+      planDay: planGate.info.planDay,
+    });
+  }
+  // آخرین فرصت (چهارشنبه): بدون تأیید صریح کاربر چیزی ثبت نمی‌شود؛ UI با confirmPlanDeadline: true دوباره می‌فرستد
+  if (planGate.action === 'confirm' && !(req.body && req.body.confirmPlanDeadline === true)) {
+    return res.status(409).json({
+      error: 'برنامه‌ی هفته‌ی بعد را هنوز ثبت نکرده‌اید. اگر فردا نمی‌آیید، امروز آخرین مهلت شماست. مطمئنید می‌خواهید خروج بزنید؟',
+      code: 'weekly_plan_deadline_confirm',
       weekStart: planGate.info.weekStart,
       planDay: planGate.info.planDay,
     });
@@ -235,7 +244,7 @@ router.post('/miniapp/check-out', (req, res) => {
   }
   planGateService.consumeExemption(req.miniAppUser, planGate, updated, req.ip);
   const payload = { ...updated };
-  if (planGate.action === 'remind') payload.planReminder = { weekStart: planGate.info.weekStart };
+  if (planGate.action === 'remind' || planGate.action === 'confirm') payload.planReminder = { weekStart: planGate.info.weekStart };
   if (reportGate.report) payload.reportSaved = { date: reportGate.date, answers: reportGate.report.answers.length, extra: reportGate.report.extras.length };
   if (reportGate.report && reportGate.report.encouragements && reportGate.report.encouragements.length) payload.encouragements = reportGate.report.encouragements;
   if (reportGate.action === 'remind') payload.reportReminder = { date: reportGate.date, pendingTasks: reportGate.pendingTasks };

@@ -6,6 +6,7 @@
 //   • ماهِ بسته ⇒ ثبت برنامه ممکن نیست ⇒ گیت اعمال نمی‌شود. روز ثبت وجود ندارد (مرخصی/تعطیلیِ کل هفته) ⇒ اعمال نمی‌شود.
 //   • معافیت یک‌باره (ادمین/سرپرست با علت): خروج مجاز و معافیت مصرف می‌شود.
 //   • enforce ⇒ block، soft ⇒ remind (خروج ثبت می‌شود + یادآوری)، off ⇒ allow.
+//   • «آخرین فرصت» (planGateWarnWeekday، پیش‌فرض چهارشنبه): اگر آن روز قبل از روز ثبت باشد و برنامه ثبت نشده، خروج فقط با تأیید صریح کاربر (confirmPlanDeadline) ثبت می‌شود (action = confirm).
 const settingsRepository = require('../repositories/settingsRepository');
 const plansRepo = require('../repositories/weeklyPlanRepository');
 const exemptionsRepo = require('../repositories/planGateRepository');
@@ -26,15 +27,22 @@ function planSatisfied(userId, weekStart, minTasks) {
 function evaluate(user, recordDate, { settings } = {}) {
   const s = settings || settingsRepository.getAll();
   const mode = s.planGateMode;
-  const base = { applies: false, mode, satisfied: false, exemption: null, weekStart: null, planDay: null };
+  const base = { applies: false, warn: false, mode, satisfied: false, exemption: null, weekStart: null, planDay: null };
   if (mode !== 'enforce' && mode !== 'soft') return base;
   if (s.planGateStartDate && recordDate < s.planGateStartDate) return base;
   const thisWeek = calendarService.weekStartOf(recordDate, s.weekStartDay);
   const weekStart = addDays(thisWeek, 7);
   const planDay = calendarService.getPlanDay(user, thisWeek, { settings: s });
   const out = { ...base, weekStart, planDay };
-  if (!planDay || recordDate < planDay) return out;
+  if (!planDay) return out;
   if (monthClosuresRepository.findClosedOverlapping(weekStart, addDays(weekStart, 6)).length > 0) return out;
+  if (recordDate < planDay) {
+    // روز «آخرین فرصت» (پیش از روز ثبت): فقط هشدار/تأیید، نه مسدودسازی
+    const warnDay = s.planGateWarnWeekday;
+    if (warnDay && warnDay !== 'off' && calendarService.weekdayOf(recordDate) === Number(warnDay)
+      && !planSatisfied(user.id, weekStart, s.planMinTasks)) out.warn = true;
+    return out;
+  }
   out.applies = true;
   out.satisfied = planSatisfied(user.id, weekStart, s.planMinTasks);
   out.exemption = out.satisfied ? null : exemptionsRepo.findUnused(user.id, weekStart);
@@ -42,12 +50,13 @@ function evaluate(user, recordDate, { settings } = {}) {
 }
 
 /**
- * تصمیم برای خروج: { action: 'allow'|'block'|'remind', exemptionId?, info }
+ * تصمیم برای خروج: { action: 'allow'|'block'|'remind'|'confirm', exemptionId?, info }
  * خطای داخلی ⇒ allow (fail-open): خرابیِ گیت نباید ثبت تردد را بشکند.
  */
 function check(user, recordDate) {
   try {
     const info = evaluate(user, recordDate);
+    if (info.warn && !info.applies) return { action: 'confirm', info };
     if (!info.applies || info.satisfied) return { action: 'allow', info };
     if (info.exemption) return { action: 'allow', exemptionId: info.exemption.id, info };
     return { action: info.mode === 'enforce' ? 'block' : 'remind', info };
@@ -102,7 +111,7 @@ function status(user, today) {
     }
   } catch (err) { console.error('[planGate] بنر:', err.message); }
   return {
-    mode: info.mode, applies: info.applies, satisfied: info.satisfied, exempt: !!info.exemption,
+    mode: info.mode, applies: info.applies, warn: info.warn, satisfied: info.satisfied, exempt: !!info.exemption,
     weekStart: info.weekStart, planDay: info.planDay, banner,
     blocked: info.applies && !info.satisfied && !info.exemption && info.mode === 'enforce',
   };

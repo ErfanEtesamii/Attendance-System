@@ -556,6 +556,24 @@
     return parts.length > 1 ? parts.join(' ') : fallback;
   }
 
+  // پرسش «آخرین مهلت ثبت برنامه» هنگام خروج: پاپ‌آپ تلگرام (دو دکمه) یا confirm مرورگر
+  function askPlanDeadline(message, onPlan, onExit) {
+    try {
+      if (tg && typeof tg.showPopup === 'function') {
+        tg.showPopup({
+          title: 'آخرین مهلت ثبت برنامه',
+          message,
+          buttons: [
+            { id: 'plan', type: 'default', text: 'ثبت برنامه' },
+            { id: 'exit', type: 'destructive', text: 'بله، خروج می‌زنم' },
+          ],
+        }, (id) => { if (id === 'exit') onExit(); else if (id === 'plan') onPlan(); });
+        return;
+      }
+    } catch (_) { /* به confirm برمی‌گردیم */ }
+    if (window.confirm(message)) onExit(); else onPlan();
+  }
+
   // خروجی: true در موفقیت. گیت‌های سرور (D5/D7) خطای 409 با code می‌دهند و UI کاربر را به ویزارد مربوط می‌برد.
   async function doAction(path, body, successMsg) {
     const btns = $all('#today-actions button');
@@ -589,6 +607,22 @@
         unlock();
         // A1: pendingTasks فقط الزامی‌هاست؛ اختیاری‌ها (low) بعد از آن‌ها می‌آیند و مانع نیستند
         openReportWizard({ mode: 'checkout', date: err.data.date, today: err.data.date, tasks: [...(err.data.pendingTasks || []), ...(err.data.optionalTasks || [])], body, allowLater: false, teamReview: err.data.teamReview });
+        return false;
+      }
+      // آخرین فرصت (چهارشنبه): پرسش تأیید؛ سرور چیزی ثبت نکرده. «بله» ⇒ ارسال دوباره با confirmPlanDeadline، «ثبت برنامه» ⇒ ویزارد برنامه
+      if (path === '/check-out' && code === 'weekly_plan_deadline_confirm') {
+        unlock();
+        const resend = body || {};
+        const goPlan = () => {
+          planUi.week = 'next';
+          planUi.onSubmitted = () => {
+            if (hasReportBody(resend)) openReportConfirm(resend);
+            else { switchView('today'); doAction('/check-out', resend, 'خروج ثبت شد.'); }
+          };
+          switchView('plan');
+        };
+        const exitAnyway = () => doAction('/check-out', { ...resend, confirmPlanDeadline: true }, 'خروج ثبت شد.');
+        askPlanDeadline(err.message, goPlan, exitAnyway);
         return false;
       }
       showToast(err.message, true);
@@ -796,12 +830,15 @@
     try {
       const g = await api('/plan-gate');
       box.textContent = '';
-      const show = g && (g.banner || (g.blocked && !(state.today && state.today.record && state.today.record.check_out_time)));
+      const done = state.today && state.today.record && state.today.record.check_out_time;
+      const show = g && (g.banner || ((g.blocked || g.warn) && !done));
       if (!show) { box.classList.add('hidden'); return; }
       const msg = document.createElement('div');
       msg.textContent = g.banner
         ? 'خروج دیروز به‌صورت خودکار بسته شد و برنامه‌ی هفته‌ی بعد ثبت نشده بود. لطفاً همین حالا برنامه را ثبت کنید.'
-        : 'امروز روز ثبت برنامه‌ی هفته‌ی بعد است؛ بدون ثبت برنامه، خروج ثبت نمی‌شود.';
+        : (g.blocked
+          ? 'امروز روز ثبت برنامه‌ی هفته‌ی بعد است؛ بدون ثبت برنامه، خروج ثبت نمی‌شود.'
+          : 'برنامه‌ی هفته‌ی بعد را هنوز ثبت نکرده‌اید؛ اگر فردا نمی‌آیید، امروز آخرین مهلت شماست.');
       const btn = document.createElement('button');
       btn.type = 'button'; btn.className = 'btn primary'; btn.textContent = 'ثبت برنامه‌ی هفتگی';
       btn.addEventListener('click', () => { planUi.week = g.banner ? 'current' : 'next'; switchView('plan'); });

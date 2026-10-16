@@ -49,7 +49,8 @@ describe('گیت برنامه‌ی هفتگی — سرویس (D5)', () => {
 
   test('قبل از روز ثبت آزاد؛ بعد از آن (اولین خروجِ بعدی) در همان هفته گیت؛ هفته‌ی بعد دوباره آزاد', () => {
     reset();
-    assert.equal(gate.check(u, '2026-08-05').action, 'allow'); // چهارشنبه
+    assert.equal(gate.check(u, '2026-08-04').action, 'allow'); // سه‌شنبه
+    assert.equal(gate.check(u, '2026-08-05').action, 'confirm'); // چهارشنبه = آخرین فرصت: فقط تأیید (مسدود نیست)
     assert.equal(gate.check(u, '2026-08-07').action, 'block'); // جمعه، بعد از روز ثبت
     assert.equal(gate.check(u, '2026-08-08').action, 'allow'); // شنبه‌ی هفته‌ی بعد
   });
