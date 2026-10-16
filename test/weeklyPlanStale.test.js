@@ -1,4 +1,4 @@
-// A3-۳الف (فاز ۱۳): سازگاری saveDraft کارمند با ویرایش مدیر — فهرست کهنه‌ی کلاینت، تسک حذف‌شده‌ی مدیر، تسک مدیر غیرقابل‌حذف، سقف ۳۰.
+// A3-۳الف (فاز ۱۳): سازگاری saveDraft کارمند با ویرایش مدیر — فهرست کهنه‌ی کلاینت، تسک حذف‌شده‌ی مدیر، تسک مدیر غیرقابل‌حذف، بدون سقف تعداد.
 const { resetDb, cleanup } = require('./helpers/testEnv');
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
@@ -82,19 +82,18 @@ describe('saveDraft کارمند در برابر ویرایش مدیر (A3-۳ا�
     assert.equal(save([{ id: m.id, title: 'x' }]).code, 'TASK_NOT_FOUND');
   });
 
-  test('سقف ۳۰: تسک‌های مدیر در مجموع می‌آیند و کارمند نمی‌تواند از سقف رد شود', () => {
+  test('بدون سقف: تسک‌های مدیر و کارمند هر تعدادی می‌توانند باشند', () => {
     reset();
     for (let i = 0; i < 5; i++) mgrAdd(`مدیر ${i}`);
-    assert.equal(save(Array.from({ length: 26 }, (_, i) => t(`خود ${i}`))).code, 'TOO_MANY_TASKS'); // ۵ + ۲۶ = ۳۱
-    const ok = save(Array.from({ length: 25 }, (_, i) => t(`خود ${i}`)));
+    const ok = save(Array.from({ length: 40 }, (_, i) => t(`خود ${i}`)));
     assert.equal(ok.ok, true);
-    assert.equal(ok.tasks.length, 30);
+    assert.equal(ok.tasks.length, 45);
   });
 
-  test('سقف ۳۰ سمت مدیر: افزودن تسک سی‌ویکم رد می‌شود', () => {
+  test('بدون سقف سمت مدیر: افزودن تسک سی‌ویکم و بعد از آن مجاز است', () => {
     reset();
     assert.equal(save(Array.from({ length: 30 }, (_, i) => t(`خود ${i}`))).ok, true);
-    assert.equal(mgr.addTask(boss, u.id, NEXT, t('اضافه'), { now: SUN }).code, 'TOO_MANY_TASKS');
-    assert.equal(mgr.addTask(admin, u.id, NEXT, t('اضافه'), { now: SUN }).code, 'TOO_MANY_TASKS');
+    assert.equal(mgr.addTask(boss, u.id, NEXT, t('اضافه'), { now: SUN }).ok, true);
+    assert.equal(mgr.addTask(admin, u.id, NEXT, t('اضافه ۲'), { now: SUN }).ok, true);
   });
 });

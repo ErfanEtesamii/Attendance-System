@@ -25,7 +25,7 @@ const { sanitizeText } = require('../utils/sanitize');
 const { todayInZone } = require('../utils/time');
 const { addDays, dayNumber } = require('../utils/shiftDay');
 
-const MAX_TASKS = 30;
+const MAX_TASKS = null; // بدون سقف (قبلاً ۳۰)؛ null = نامحدود و در API هم maxTasks:null برمی‌گردد
 const TITLE_MAX = 120;
 const DESC_MAX = 500;
 const PRIORITIES = ['low', 'normal', 'high'];
@@ -183,7 +183,6 @@ function validateTask(t, label, weekStart) {
 
 function validateTasks(input, weekStart, user) {
   if (!Array.isArray(input)) return { error: fail('INVALID_TASKS', 'tasks باید آرایه باشد.') };
-  if (input.length > MAX_TASKS + 5) return { error: fail('TOO_MANY_TASKS', `حداکثر ${MAX_TASKS} تسک مجاز است.`) };
   const out = [];
   for (let i = 0; i < input.length; i += 1) {
     const t = input[i] || {};
@@ -259,7 +258,6 @@ function saveDraft(user, which, tasksInput, { now } = {}) {
     const changedDate = (cur.planned_date || null) !== t.plannedDate;
     if (changedMeta || changedDate) edits.push({ cur, t });
   }
-  if (userTasks.length - removes.length + adds.length + lockedCount > MAX_TASKS) return fail('TOO_MANY_TASKS', `حداکثر ${MAX_TASKS} تسک مجاز است.`);
 
   const { getDb } = require('../db/connection');
   getDb().transaction(() => {
@@ -284,7 +282,6 @@ function submit(user, which, { now } = {}) {
   const count = plan ? plansRepo.listTasks(plan.id).filter((t) => !t.is_system && !t.is_urgent).length : 0;
   const min = Math.max(0, ctx.settings.planMinTasks);
   if (count < min) return fail('TOO_FEW_TASKS', `برای ثبت برنامه حداقل ${min} تسک لازم است.`, { count, min });
-  if (count > MAX_TASKS) return fail('TOO_MANY_TASKS', `حداکثر ${MAX_TASKS} تسک مجاز است.`);
   if (plan.status === 'submitted') return getPlan(user, which, { now }); // idempotent
   plansRepo.markSubmitted(plan.id);
   auditRepository.logEvent({ userId: user.id, action: 'weekly_plan_submitted', details: { planId: plan.id, weekStart, tasks: count } });

@@ -41,7 +41,7 @@ describe('سرویس برنامه‌ی هفتگی (D3)', () => {
     assert.deepEqual([n.days[0].isWorkingDay, n.days[6].isWorkingDay], [true, false]);
   });
 
-  test('اعتبارسنجی: عنوان/توضیح/اولویت/تاریخ/سقف ۳۰', () => {
+  test('اعتبارسنجی: عنوان/توضیح/اولویت/تاریخ؛ بدون سقف تعداد', () => {
     reset();
     const save = (tasks) => svc.saveDraft(u, 'next', tasks, { now: SUN });
     assert.equal(save([t('  ')]).code, 'TITLE_REQUIRED');
@@ -52,8 +52,8 @@ describe('سرویس برنامه‌ی هفتگی (D3)', () => {
     assert.equal(save([t('ok', { plannedDate: 'abc' })]).code, 'INVALID_DATE');
     assert.equal(save([t('ok', { id: 'x' })]).code, 'INVALID_ID');
     assert.equal(save('nope').code, 'INVALID_TASKS');
-    assert.equal(save(Array.from({ length: 31 }, (_, i) => t(`تسک ${i}`))).code, 'TOO_MANY_TASKS');
-    assert.equal(save(Array.from({ length: 30 }, (_, i) => t(`تسک ${i}`))).ok, true);
+    assert.equal(save(Array.from({ length: 31 }, (_, i) => t(`تسک ${i}`))).ok, true);
+    assert.equal(save(Array.from({ length: 80 }, (_, i) => t(`تسک ${i}`))).ok, true);
     const r = save([t('<b>سلام</b>\u0000  دنیا')]);
     assert.equal(r.ok, true);
     assert.ok(!/\u0000/.test(r.tasks[0].title));

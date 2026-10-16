@@ -32,7 +32,7 @@ function makeEnv({ plan, search = '', startParam = '', fail = null, states = fal
   const document = { querySelector: $, querySelectorAll: () => [nav], createElement: (t) => new Node_(t), createTextNode: (t) => { const n = new Node_('#text'); n._text = t; return n; } };
   const calls = [];
   const data = {
-    ok: true, week: 'next', weekStart: '2027-05-01', weekEnd: '2027-05-07', planDay: '2027-05-06', status: 'draft', editMode: 'free', minTasks: 1, maxTasks: 30,
+    ok: true, week: 'next', weekStart: '2027-05-01', weekEnd: '2027-05-07', planDay: '2027-05-06', status: 'draft', editMode: 'free', minTasks: 1, maxTasks: null,
     tasks: [], carryOver: [], previousWeekTasks: [], frequentTitles: [], supervisorComment: null, ...(plan || {}),
   };
   const fetchStub = async (url, init = {}) => {

@@ -161,9 +161,6 @@ function addTask(actor, employeeId, weekStartInput, input, { now, expectedVersio
   if (v.error) return withStatus(v.error);
 
   const existing = plansRepo.findByUserWeek(gate.target.id, gate.weekStart);
-  if (existing && plansRepo.countOrdinaryTasks(existing.id) + 1 > weeklyPlan.MAX_TASKS) {
-    return fail('TOO_MANY_TASKS', `حداکثر ${weeklyPlan.MAX_TASKS} تسک مجاز است.`);
-  }
   let task; let plan;
   getDb().transaction(() => {
     plan = existing || plansRepo.getOrCreate(gate.target.id, gate.weekStart);
@@ -236,7 +233,7 @@ function reorderTasks(actor, employeeId, weekStartInput, orderedIds, { now, expe
   const gate = openWeek(actor, employeeId, weekStartInput, { now, expectedVersion });
   if (!gate.ok) return gate;
   const ids = Array.isArray(orderedIds) ? orderedIds.map(toId) : null;
-  if (!ids || !ids.length || ids.length > weeklyPlan.MAX_TASKS + 5 || ids.some((x) => x === null) || new Set(ids).size !== ids.length) {
+  if (!ids || !ids.length || ids.some((x) => x === null) || new Set(ids).size !== ids.length) {
     return fail('INVALID_ORDER', 'فهرست ترتیب باید آرایه‌ای ناتهی از شناسه‌های یکتای تسک باشد.');
   }
   const plan = plansRepo.findByUserWeek(gate.target.id, gate.weekStart);

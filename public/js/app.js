@@ -1281,7 +1281,7 @@
       if (title.length > 120) return `عنوان تسک ${i + 1} حداکثر ۱۲۰ نویسه است.`;
       if (String(t.description || '').length > 500) return `توضیح تسک ${i + 1} حداکثر ۵۰۰ نویسه است.`;
     }
-    if (mine.length + tasks.filter((t) => t.managerLocked && !t.isSystem && !t.isUrgent).length > data.maxTasks) return `حداکثر ${data.maxTasks} تسک مجاز است.`;
+    if (data.maxTasks != null && mine.length + tasks.filter((t) => t.managerLocked && !t.isSystem && !t.isUrgent).length > data.maxTasks) return `حداکثر ${data.maxTasks} تسک مجاز است.`;
     return '';
   }
 
@@ -1527,7 +1527,7 @@
       (data.frequentTitles || []).forEach((title) => tools.appendChild(planEl('button', { type: 'button', class: 'plan-chip', text: '+ ' + title, on: { click: () => addTask({ title }) } })));
       body.appendChild(tools);
       if (!mine().length) body.appendChild(planEl('div', { class: 'empty plan-empty', role: 'status', text: `هنوز تسکی برای این هفته ننوشته‌اید. از کارت هر روز شروع کنید${data.minTasks ? ` (حداقل ${data.minTasks} تسک لازم است)` : ''}.` }));
-      if (lockedCount()) body.appendChild(planEl('div', { class: 'plan-note', role: 'note', text: `${MANAGER_LABEL}: تسک‌های سرپرست فقط‌خواندنی‌اند (ویرایش، حذف و جابه‌جایی‌شان با سرپرست است) و در سقف ${data.maxTasks} تسک حساب می‌شوند.` }));
+      if (lockedCount()) body.appendChild(planEl('div', { class: 'plan-note', role: 'note', text: `${MANAGER_LABEL}: تسک‌های سرپرست فقط‌خواندنی‌اند (ویرایش، حذف و جابه‌جایی‌شان با سرپرست است)${data.maxTasks != null ? ` و در سقف ${data.maxTasks} تسک حساب می‌شوند` : ''}.` }));
       body.appendChild(planEl('div', { class: 'plan-note' }, planEl('strong', { text: 'اولویت تسک‌ها' }), planEl('div', { text: PLAN_PRIORITY_NOTE })));
 
       // افزودن از فیلد بالای هر کارت؛ متن نیمه‌نوشته‌ی کارت‌ها بین رندرها در planUi.drafts می‌ماند
@@ -1536,7 +1536,7 @@
         planUi.focus = key;
         if (!title) { planUi.msg = 'عنوان تسک را بنویسید.'; renderPlan(); return; }
         if (title.length > 120) { planUi.msg = 'عنوان تسک حداکثر ۱۲۰ نویسه است.'; renderPlan(); return; }
-        if (mine().length + lockedCount() >= data.maxTasks) { planUi.msg = `حداکثر ${data.maxTasks} تسک مجاز است.`; renderPlan(); return; }
+        if (data.maxTasks != null && mine().length + lockedCount() >= data.maxTasks) { planUi.msg = `حداکثر ${data.maxTasks} تسک مجاز است.`; renderPlan(); return; }
         planUi.drafts[key] = '';
         planUi.msg = '';
         planUi.tasks.push({ title, description: '', plannedDate, priority: 'normal' });

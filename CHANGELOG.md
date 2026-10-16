@@ -4,6 +4,9 @@
 
 ## [Unreleased] — بخش ۴ (ممیزی)
 
+### برداشتن سقف ۳۰ تسک در هفته
+- سقف تعداد تسک برنامه‌ی هفتگی حذف شد: `MAX_TASKS = null` در `weeklyPlanService.js`؛ بررسی‌های `TOO_MANY_TASKS` در `saveDraft`، `submit`، `validateTasks` (کارمند) و `addTask`/`reorderTasks` (مدیر) برداشته شد. در API مقدار `maxTasks` حالا `null` (نامحدود) برمی‌گردد و Mini App فقط وقتی `maxTasks` عدد باشد سقف را اعمال می‌کند. هشدار غیرمسدودکننده‌ی `TOO_MANY_TASKS_IN_DAY` (۱۰ تسک در یک روز) سر جایش می‌ماند.
+
 ### فاز ۱۳ — E3: ساعت کاری روز، تسک فوری و یادداشت سرپرست از صفحه‌ی «برنامه هفته بعد»
 - `public-admin/js/plan-manage.js` (`AP.planManage`) + `opts.manage` در `AP.notebook.renderWeek` (مستقل از `opts.edit`؛ در هفته‌ی شروع‌شده/فقط‌خواندنی هم کار می‌کند): روی هر کارت روز «🕒 ویرایش ساعت کاری این روز» (مودال B2 `AP.scheduleTab.editModal`، `schedule.manage`) و «⚡ تسک فوری» (فرم فاز ۱۲ `AP.openUrgentTaskForm` با تاریخ همان روز، `tasks.assign_urgent`)؛ روز ماه‌بسته‌شده و ردیف خودِ کاربر بدون دکمه. بعد از موفقیت مدل هفته دوباره خوانده می‌شود.
 - کارت «یادداشت سرپرست» با فرم درجا (≤ ۵۰۰ نویسه، خالی = پاک کردن، خطا کنار فرم) برای `reviews.write`؛ بدون مجوز همان نمای فقط‌خواندنی قبلی.
