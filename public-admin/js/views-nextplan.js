@@ -99,7 +99,7 @@
             ${AP.badge(cls, label, true)}
             ${editBadge(plan)}
           </div>
-          <div class="muted np-shift">شیفت مؤثر: ${esc(shiftText(r.days))}</div>
+          <div class="muted np-shift">شیفت مؤثر: ${esc(shiftText(r.days)).replace(/\((\d{1,2}:\d{2})–(\d{1,2}:\d{2})\)/, '(<bdi dir="ltr">$1–$2</bdi>)')}</div>
         </div>
         <div class="header-actions"><button type="button" class="btn ghost small" data-go-weekly="${esc(userId)}">📊 نمای هفتگی (عملکرد)</button></div>
       </div>
@@ -213,6 +213,11 @@
           const only = $('#np-only-none', page);
           if (only) only.addEventListener('change', () => { ui.onlyNone = !!only.checked; redraw(); });
           bindList();
+          const activeEmp = $('.np-emp.is-active', page); // موبایل: ریل افقی؛ کارمند انتخاب‌شده در دید بماند
+          if (activeEmp && list && list.scrollWidth > list.clientWidth) { // فقط scrollLeft خودِ ریل (scrollIntoView کل صفحه را جابه‌جا می‌کند)
+            const a = activeEmp.getBoundingClientRect(); const l = list.getBoundingClientRect();
+            list.scrollLeft += (a.left + a.width / 2) - (l.left + l.width / 2);
+          }
 
           const retry = $('#np-retry', page);
           if (retry) retry.addEventListener('click', () => AP.refresh());

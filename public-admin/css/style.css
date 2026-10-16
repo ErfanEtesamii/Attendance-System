@@ -1035,3 +1035,93 @@ button.sch-cell { cursor: pointer; }
   .np-head { break-inside: avoid; }
   #np-unnotified, #np-banner, #np-undo, .np-status { display: none !important; }
 }
+
+/* ---------- پرداخت موبایل پنل ----------
+   فقط ≤۶۰۰px؛ ظاهر دسکتاپ دست‌نخورده می‌ماند. هدف: کاشی‌های فشرده، جدول‌هایی که به کارت تبدیل می‌شوند بدون کارتِ تو‌در‌تو
+   و با فیلدها در دو ستون، فیلترها/چیپ‌های جمع‌وجور. */
+@media (max-width: 600px) {
+  .page { padding: 12px 12px 32px; }
+  .view-header { margin-bottom: 12px; gap: 8px; }
+  .view-header h2 { font-size: 18px; }
+  .view-header .sub { font-size: 12px; }
+  .header-actions { width: 100%; }
+  .header-actions > .btn { flex: 1 1 auto; justify-content: center; }
+  .header-actions input[type="search"], .header-actions input[type="text"] { width: 100% !important; }
+  .card { padding: 14px; border-radius: 16px; }
+  .grid-2, .grid-3, .stack { gap: 12px; }
+
+  /* کاشی آماری: آیکون کنار عدد و برچسب (به‌جای سه ردیفِ زیر هم) */
+  .stat-grid { gap: 8px; margin-bottom: 12px; }
+  .stat {
+    display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "icon value" "icon label" "icon hint";
+    column-gap: 10px; row-gap: 2px; align-items: center; padding: 12px;
+    border-radius: 14px; box-shadow: none;
+  }
+  .stat > .stat-icon { grid-area: icon; width: 36px; height: 36px; border-radius: 12px; box-shadow: none; }
+  .stat-icon svg { width: 19px; height: 19px; }
+  .stat > .stat-value { grid-area: value; font-size: 22px; }
+  .stat > .stat-label { grid-area: label; font-size: 11.5px; line-height: 1.5; }
+  .stat > .stat-hint { grid-area: hint; margin-top: 0; }
+  button.stat:hover { transform: none; }
+
+  /* فیلترها: دو ستون؛ جستجو تمام‌عرض */
+  .filters { gap: 8px; margin-bottom: 12px; }
+  .filters .field { flex: 1 1 calc(50% - 4px); min-width: 0; }
+  .filters .field.grow { flex-basis: 100%; }
+  .filters .field select, .filters .field input { width: 100%; min-width: 0; }
+
+  /* چیپ‌ها: یک ردیف قابل‌اسکرول افقی */
+  .chips { flex-wrap: nowrap; overflow-x: auto; gap: 6px; margin: 0 -12px 12px; padding: 2px 12px 6px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip { flex: none; padding: 6px 12px; font-size: 12.5px; min-height: 36px; }
+
+  /* جدول → کارت: بدون کارتِ بیرونی؛ هر ردیف یک کارت با فیلدها در دو ستون */
+  .card.flush:has(table[data-stack]) { background: transparent; border: 0; box-shadow: none; overflow: visible; }
+  table[data-stack] tr {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px;
+    margin: 0 0 10px; padding: 12px 14px; border-radius: 16px; box-shadow: var(--shadow);
+  }
+  table[data-stack] td { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 2px; padding: 0; text-align: start; min-width: 0; overflow-wrap: anywhere; }
+  table[data-stack] td::before { font-size: 11px; font-weight: 600; }
+  table[data-stack] td:first-child { grid-column: 1 / -1; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  table[data-stack] td:first-child::before { content: none; }
+  table[data-stack] td:last-child:not(:first-child) { grid-column: 1 / -1; padding-top: 8px; border-top: 1px solid var(--border); }
+  table[data-stack] td:last-child:not(:first-child)::before { content: none; }
+  table[data-stack] td[data-label="عملیات"]:not(:has(button, a, input, select)) { display: none; } /* ستون عملیاتِ خالی (بدون دسترسی) */
+  table[data-stack] td[colspan] { grid-column: 1 / -1; align-items: center; }
+}
+
+/* ---------- موبایل: صفحه‌ی «برنامه‌ی هفته» (نمای دفترچه) ----------
+   انتخاب کارمند = ریل افقی به‌جای فهرست بلند؛ سربرگ کارمند فشرده؛ کارت‌های دفترچه با حاشیه‌ی کمتر. */
+@media (max-width: 600px) {
+  .np-side { padding: 10px; gap: 8px; }
+  .np-side .np-only { min-height: 36px; font-size: 12.5px; }
+  .np-list { contain: paint; max-width: 100%; flex-direction: row; max-height: none; overflow-x: auto; overflow-y: hidden; gap: 8px; padding-bottom: 6px; scrollbar-width: thin; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+  .np-list > li { flex: none; width: 150px; scroll-snap-align: start; }
+  .np-list-empty { width: 100%; }
+  .np-emp { height: 100%; padding: 8px 10px; }
+  .np-emp-name { font-size: 13px; }
+  .np-emp-dep { font-size: 11px; }
+  .np-head.profile-head { gap: 10px 12px; padding: 12px; margin-bottom: 12px; }
+  .np-head .avatar.lg { width: 48px; height: 48px; font-size: 18px; box-shadow: none; }
+  .np-head.profile-head h2 { font-size: 17px; margin-bottom: 4px; }
+  .np-head.profile-head .grow { flex: 1 1 0; min-width: 0; }
+  .np-head .tags { gap: 6px; }
+  .np-head .header-actions { flex: 1 1 100%; }
+  .np-shift { margin-top: 6px; font-size: 12px; }
+  .week-nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; width: 100%; }
+  .week-nav .btn { padding-inline: 6px; font-size: 12px; }
+  .header-actions > .btn[data-print] { display: none; } /* چاپ روی گوشی کاربرد ندارد */
+
+  .nb .nb-page { padding: 14px 10px 16px; gap: 14px; }
+  .nb .nb-page-title { font-size: 1rem; }
+  .nb .nb-card { padding: 22px 12px 10px; border-radius: 14px; }
+  .nb .nb-card__title { font-size: 0.95rem; margin-bottom: 4px; }
+  .nb .nb-card__toggle { top: 8px; min-width: 28px; min-height: 28px; }
+  .nb .nb-tape { font-size: 0.72rem; padding: 2px 10px; min-width: 80px; }
+  .nb .nb-day-chips { margin-bottom: 4px; }
+  .nb { --nb-row: 30px; }
+  .nb .nb-pager { padding: 8px 10px; }
+  .nb .nb-pager .nb-btn { flex: none; padding-inline: 12px; }
+  .nb .nb-day-actions .nb-btn, .nb .nb-form-actions .nb-btn { flex: 1 1 auto; }
+}
