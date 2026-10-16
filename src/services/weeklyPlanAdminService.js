@@ -272,7 +272,7 @@ function reorderTasks(actor, employeeId, weekStartInput, orderedIds, { now, expe
 const planVersion = (plan) => (plan ? plan.version : null);
 
 /** تاریخِ ورودی (هر روز داخل هفته؛ خالی = هفته‌ی بعد) ⇒ شروع هفته (weekStartDay). مشترک بین getPlanState و listPlanOverview. */
-function resolveWeekStart(startInput, ctx) {
+function resolveViewWeek(startInput, ctx) {
   if (startInput === undefined || startInput === null || startInput === '') return { ok: true, weekStart: weeklyPlan.targetWeek('next', ctx) };
   if (typeof startInput !== 'string' || dayNumber(startInput) === null) return fail('INVALID_WEEK', 'تاریخ هفته نامعتبر است (YYYY-MM-DD).');
   return { ok: true, weekStart: calendarService.weekStartOf(startInput, ctx.settings.weekStartDay) };
@@ -298,7 +298,7 @@ function getPlanState(actor, employeeId, startInput, { now } = {}) {
   }
 
   const ctx = weeklyPlan.context(now);
-  const wk = resolveWeekStart(startInput, ctx);
+  const wk = resolveViewWeek(startInput, ctx);
   if (!wk.ok) return wk;
   const { weekStart } = wk;
 
@@ -346,7 +346,7 @@ function getPlanState(actor, employeeId, startInput, { now } = {}) {
 function listPlanOverview(actor, startInput, { now } = {}) {
   if (!actor || !hasPermission(actor.role, 'team.week_view')) return fail('FORBIDDEN', 'دسترسی به این بخش ندارید.');
   const ctx = weeklyPlan.context(now);
-  const wk = resolveWeekStart(startInput, ctx);
+  const wk = resolveViewWeek(startInput, ctx);
   if (!wk.ok) return wk;
   const { weekStart } = wk;
 
@@ -429,7 +429,7 @@ function pendingNotify(actor, employeeId, weekStartInput, { now } = {}) {
   const target = id ? usersRepository.findById(id) : null;
   const denied = scopeFailure(actor, target);
   if (denied) return denied;
-  const wk = resolveWeekStart(weekStartInput, weeklyPlan.context(now));
+  const wk = resolveViewWeek(weekStartInput, weeklyPlan.context(now));
   if (!wk.ok) return wk;
   const plan = plansRepo.findByUserWeek(target.id, wk.weekStart);
   const summary = plan
@@ -456,7 +456,7 @@ function setSupervisorComment(actor, employeeId, weekStartInput, commentInput, {
   const comment = commentInput ? cleanComment(commentInput) : '';
   if (comment.length > SUPERVISOR_COMMENT_MAX) return fail('COMMENT_TOO_LONG', `یادداشت حداکثر ${SUPERVISOR_COMMENT_MAX} نویسه است.`);
 
-  const wk = resolveWeekStart(weekStartInput, weeklyPlan.context(now));
+  const wk = resolveViewWeek(weekStartInput, weeklyPlan.context(now));
   if (!wk.ok) return wk;
   let plan = plansRepo.findByUserWeek(target.id, wk.weekStart);
   const before = plan && plan.supervisor_comment ? plan.supervisor_comment : null;

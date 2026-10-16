@@ -345,7 +345,8 @@
   --nb-chip-locked-bg: #eadfd6; --nb-chip-locked-fg: #5b4636;
   }
   .nb .nb-spread { display: block; box-shadow: none; border-radius: 0; background: transparent; overflow: visible; }
-  .nb .nb-spring, .nb .nb-pager, .nb .nb-card__toggle, .nb .nb-task__actions, .nb .nb-task__handle, .nb .nb-edit-slot, .nb .nb-day-actions, .nb .nb-note__body .nb-btn, .nb .nb-note__body .nb-form { display: none !important; }
+  .nb .nb-spring, .nb .nb-pager, .nb .nb-card__toggle, .nb .nb-task__actions, .nb .nb-task__handle, .nb .nb-edit-slot { display: none !important; }
+  .nb .nb-day-actions, .nb .nb-note__body .nb-btn, .nb .nb-note__body .nb-form { display: none !important; }
   .nb .nb-spread > .nb-page { display: flex !important; box-shadow: none; break-inside: auto; }
   .nb .nb-page::before { display: none; }
   .nb .nb-card { box-shadow: none; border: 1px solid var(--nb-line); break-inside: avoid; }
