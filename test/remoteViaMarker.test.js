@@ -61,7 +61,8 @@ describe('migration ۰۳۸ — نشانگر via_remote (R5-۲)', () => {
     assert.ok(!('via_remote' in before.att[0]));
 
     const backupDir = path.join(work, 'backups-marker');
-    const res = migrate(db, { dir: MIGRATIONS_DIR, backupDir });
+    const dir38 = migrationsUpTo(38); // فقط تا ۰۳۸ (migrationهای بعدی تست خودشان را دارند)
+    const res = migrate(db, { dir: dir38, backupDir });
     assert.deepEqual(res.applied, ['038_remote_via_marker']);
     assert.ok(res.backupPath && fs.existsSync(res.backupPath), 'قبل از migration بک‌آپ گرفته می‌شود');
 
@@ -75,7 +76,7 @@ describe('migration ۰۳۸ — نشانگر via_remote (R5-۲)', () => {
     assert.equal(db.pragma('foreign_key_check').length, 0);
     assert.equal(db.pragma('integrity_check', { simple: true }), 'ok');
 
-    assert.deepEqual(migrate(db, { dir: MIGRATIONS_DIR, backupDir }).applied, [], 'اجرای دوم کاری نمی‌کند');
+    assert.deepEqual(migrate(db, { dir: dir38, backupDir }).applied, [], 'اجرای دوم کاری نمی‌کند');
   });
 
   test('تعریف ستون: INTEGER، NOT NULL، پیش‌فرض ۰ روی هر دو جدول رسمی', () => {

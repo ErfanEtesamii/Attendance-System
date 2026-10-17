@@ -1805,6 +1805,8 @@
     $('#dreport-title').textContent = ui.mode === 'late' ? `تکمیل گزارش ${fmtDate(ui.date)}` : 'گزارش تسک‌های امروز';
     const focusHeading = () => { const h = $('#dr-heading'); if (h && h.focus) h.focus(); };
     const fail = (m) => { ui.msg = m; renderReport(); };
+    // R1: راهنمای صریح هنگام خروج (فقط در حالت checkout؛ در مرحله‌ی تأیید نهایی تکرار نمی‌شود)
+    if (ui.mode === 'checkout' && (ui.step === 'q' || ui.step === 'extra')) body.appendChild(dEl('div', { class: 'plan-meta', text: 'قبل از خروج، وضعیت تسک‌های امروزتان را مشخص کنید؛ اگر انجام نشده، علتش را بنویسید.' }));
     // soft: «بعداً پر می‌کنم» از هر مرحله؛ فقط پاسخ‌های معتبرِ تا اینجا همراه خروج می‌رود و بقیه تا ۲۴ ساعت قابل تکمیل است
     const laterBtn = () => {
       const b = dEl('button', { type: 'button', class: 'btn warning', text: 'بعداً پر می‌کنم' });

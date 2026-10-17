@@ -41,6 +41,7 @@ const REASON_CODES = ['no_time', 'needs_more_time', 'blocked_by_others', 'priori
 const STATUSES = ['done', 'partial', 'not_done'];
 const OUT_OF_PLAN_KEY = 'out_of_plan';
 const MAX_EXTRA = 10;
+const MAX_NOTE = 500;
 const MAX_RESCHEDULE_DAYS = 60;
 const DROP = 'drop';
 const LATE_SOFT_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -184,6 +185,15 @@ function nextWorkingDay(user, date, settings) {
   return addDays(date, 1);
 }
 
+/** توضیحِ انجام (A1): undefined/null/خالی ⇒ null؛ غیرمتن ⇒ INVALID_NOTE؛ بیش از ۵۰۰ نویسه (پس از پاک‌سازی) ⇒ NOTE_TOO_LONG. */
+function noteOf(raw) {
+  if (raw === undefined || raw === null) return { value: null };
+  if (typeof raw !== 'string') return { error: 'INVALID_NOTE' };
+  const text = clean(raw, MAX_NOTE);
+  if (text.length > MAX_NOTE) return { error: 'NOTE_TOO_LONG' };
+  return { value: text || null };
+}
+
 function validateAnswer(a, n, user, date, settings, byId, base = date) {
   if (!a || typeof a !== 'object') return { error: fail('INVALID_ANSWER', `پاسخ ${n} نامعتبر است.`) };
   const taskId = Number(a.taskId);
@@ -201,9 +211,13 @@ function validateAnswer(a, n, user, date, settings, byId, base = date) {
     if (a.status === 'done') return { error: fail('REVIEW_INCOMPLETE', `پاسخ ${n}: «انجام شد» برای این تسک فقط پس از مشاهده‌ی گزارش همه‌ی اعضای دارای گزارش ثبت می‌شود.`) };
     if (a.reschedule !== undefined && a.reschedule !== null) return { error: fail('RESCHEDULE_NOT_ALLOWED', `انتقال/حذفِ تسک سیستمی (پاسخ ${n}) مجاز نیست.`) };
   }
-  const out = { taskId, status: a.status, reasonCode: null, reasonText: null, rescheduleTo: null };
+  const out = { taskId, status: a.status, reasonCode: null, reasonText: null, rescheduleTo: null, note: null };
   if (a.status === 'done') {
     if (a.reschedule) return { error: fail('RESCHEDULE_NOT_ALLOWED', `برای تسکِ انجام‌شده (پاسخ ${n}) انتقال معنا ندارد.`) };
+    // A1 (فاز ۱۵): توضیحِ اختیاریِ انجام؛ برای partial/not_done نادیده گرفته می‌شود (آن‌ها reasonText دارند)
+    const note = noteOf(a.note);
+    if (note.error) return { error: fail(note.error, `توضیح انجام در پاسخ ${n} ${note.error === 'NOTE_TOO_LONG' ? `حداکثر ${MAX_NOTE} نویسه` : 'باید متن باشد'}.`) };
+    out.note = note.value;
     return { out };
   }
   const code = a.reasonCode;
@@ -333,7 +347,7 @@ function applyReport(user, date, settings, { answers, extras }, { late = false }
   }
   const out = [];
   answers.forEach((a, i) => {
-    logsRepo.upsert({ taskId: a.taskId, userId: user.id, logDate: date, status: a.status, reasonCode: a.reasonCode, reasonText: a.reasonText, rescheduleTo: a.rescheduleTo, encouragementText: texts[i], answeredLate: late });
+    logsRepo.upsert({ taskId: a.taskId, userId: user.id, logDate: date, status: a.status, reasonCode: a.reasonCode, reasonText: a.reasonText, rescheduleTo: a.rescheduleTo, encouragementText: texts[i], answeredLate: late, note: a.note || null });
     out.push({ taskId: a.taskId, status: a.status, text: texts[i] });
   });
   if (extras.length) {
@@ -366,6 +380,56 @@ function submitDailyReport(user, body, { now, date: forcedDate, requestedDate } 
   return { ...fresh, late, source: resolved.source, saved: { answers: prep.answers.length, extra: prep.extras.length }, encouragements: messages };
 }
 
+// ---------- برداشتن پاسخ و ویرایش توضیحِ انجام (A1، فاز ۱۵) ----------
+// تاریخ فقط با resolveReportDate تعیین می‌شود (همان پنجره‌ی تکمیلِ دیرهنگام/backfill و همان خطاهای MONTH_CLOSED/NO_RECORD/BACKFILL_EXPIRED/...).
+// مالکیت: ردیفِ پاسخ باید مالِ همین کاربر باشد؛ وگرنه TASK_NOT_FOUND (وجودِ پاسخِ دیگران لو نمی‌رود).
+function ownedLog(user, taskIdIn, date) {
+  const taskId = Number(taskIdIn);
+  if (!Number.isInteger(taskId) || taskId <= 0) return fail('INVALID_TASK', 'شناسه‌ی تسک نامعتبر است.');
+  if (monthClosuresRepository.findClosedOverlapping(date, date).length > 0) return fail('MONTH_CLOSED', 'این روز در ماهِ بسته‌شده است و گزارش آن فقط‌خواندنی است.');
+  const log = logsRepo.findByTaskDate(taskId, date);
+  if (!log || log.user_id !== user.id) return fail('TASK_NOT_FOUND', 'پاسخی برای این تسک در این روز پیدا نشد.');
+  return { ok: true, taskId, log, task: plansRepo.findTask(taskId) };
+}
+
+/**
+ * POST /miniapp/daily-report/undo  { taskId, date? } — برداشتنِ پاسخ (تیک).
+ *   • عادی/انتقال‌یافته: ردیفِ پاسخ حذف می‌شود ⇒ تسک خودکار به buildList برمی‌گردد (و اگر پاسخ انتقال بود، از روز مقصد هم برمی‌خیزد).
+ *   • «خارج از برنامه» (out_of_plan): خودِ تسک حذف نرم می‌شود (وگرنه با planned_date دوباره بی‌پاسخ ظاهر می‌شد)؛ ردیفِ پاسخ هم حذف می‌شود.
+ *   • تسک سیستمیِ «بررسی گزارش تیم»: قابل واگرد نیست (REVIEW_TASK_LOCKED).
+ */
+function undoAnswer(user, { taskId, date: requestedDate, now } = {}) {
+  const settings = settingsRepository.getAll();
+  const resolved = resolveReportDate(user, { now, requestedDate }, settings);
+  if (!resolved.ok) return resolved;
+  const { date } = resolved;
+  const own = ownedLog(user, taskId, date);
+  if (!own.ok) return own;
+  if (own.task && own.task.system_key === teamReview.REVIEW_KEY) return fail('REVIEW_TASK_LOCKED', 'پاسخ تسک «بررسی گزارش تیم» را نمی‌توان برداشت؛ وضعیتِ آن با مشاهده‌ی گزارش‌ها ثبت می‌شود.');
+  const outOfPlan = !!(own.task && own.task.system_key === OUT_OF_PLAN_KEY);
+  getDb().transaction(() => {
+    logsRepo.remove(own.taskId, date);
+    if (outOfPlan) plansRepo.softDeleteTask(own.taskId);
+  })();
+  const fresh = getDailyTasks(user, { now, date });
+  return { ...fresh, undone: { taskId: own.taskId, date, outOfPlan, previousStatus: own.log.status } };
+}
+
+/** PATCH /miniapp/daily-report/note  { taskId, date?, note } — ویرایش/پاک‌کردنِ توضیحِ انجام (فقط برای done؛ note خالی ⇒ پاک). */
+function updateNote(user, { taskId, date: requestedDate, note, now } = {}) {
+  const settings = settingsRepository.getAll();
+  const resolved = resolveReportDate(user, { now, requestedDate }, settings);
+  if (!resolved.ok) return resolved;
+  const { date } = resolved;
+  const own = ownedLog(user, taskId, date);
+  if (!own.ok) return own;
+  if (own.log.status !== 'done') return fail('NOTE_ONLY_FOR_DONE', 'توضیحِ انجام فقط برای تسکِ «انجام‌شده» ثبت می‌شود.');
+  const n = noteOf(note);
+  if (n.error) return fail(n.error, n.error === 'NOTE_TOO_LONG' ? `توضیح انجام حداکثر ${MAX_NOTE} نویسه است.` : 'توضیح باید متن باشد.');
+  const updated = logsRepo.setNote(own.taskId, date, n.value);
+  return { ok: true, taskId: own.taskId, date, note: updated.note || null, cleared: !updated.note };
+}
+
 // ---------- گیت خروج (D7) ----------
 // تصمیم برای /check-out بر پایه‌ی dailyReportGateMode:
 //   enforce ⇒ اگر بعد از اعمال پاسخ‌های همین درخواست هنوز تسکِ پاسخ‌نداده مانده باشد: block (چیزی ذخیره نمی‌شود)
@@ -386,6 +450,8 @@ function checkoutGate(user, recordDate, body) {
     out.mode = settings.dailyReportGateMode;
     const provided = hasReportInput(body);
     if (out.mode !== 'enforce' && out.mode !== 'soft' && !provided) return out;
+    // planGateStartDate (شروع اعمال الزام برنامه/گزارش): پیش از آن تاریخ، سؤالی پرسیده نمی‌شود (پاسخ‌های ارسالیِ کلاینت همچنان ذخیره می‌شوند)
+    if (!provided && settings.planGateStartDate && recordDate < settings.planGateStartDate) return out;
 
     const closed = monthClosuresRepository.findClosedOverlapping(recordDate, recordDate).length > 0;
     if (closed || fullDayOff(user, recordDate, settings)) {
@@ -412,12 +478,12 @@ const BLOCK_MSG_TITLE_LEN = 40;
 /** متن ۴۰۹ گیت خروج (A1): کدام تسک‌ها مانع‌اند و چه کاری لازم است (تکمیل یا نوشتن علت). pendingTasks فقط الزامی‌هاست. */
 function blockMessage(pendingTasks) {
   const list = Array.isArray(pendingTasks) ? pendingTasks : [];
-  if (!list.length) return 'برای ثبت خروج، ابتدا گزارش تسک‌های امروز را کامل کنید.';
+  if (!list.length) return 'قبل از خروج، وضعیت تسک‌های امروزتان را مشخص کنید؛ اگر انجام نشده، علتش را بنویسید.';
   const clip = (s) => (s.length > BLOCK_MSG_TITLE_LEN ? `${s.slice(0, BLOCK_MSG_TITLE_LEN - 1)}…` : s);
   const label = (t) => (t.systemKey === teamReview.REVIEW_KEY ? `«${clip(t.title)}» (مشاهده‌ی گزارش‌ها یا ثبت علت)` : `«${clip(t.title)}»`);
   const names = list.slice(0, BLOCK_MSG_MAX_TITLES).map(label).join('، ');
   const more = list.length > BLOCK_MSG_MAX_TITLES ? ` و ${list.length - BLOCK_MSG_MAX_TITLES} مورد دیگر` : '';
-  return `برای ثبت خروج، ${list.length} تسک با اولویت بالا یا عادی هنوز بدون پاسخ است: ${names}${more}. هرکدام را «انجام شد» بزنید یا اگر انجام نشده، وضعیت «انجام نشد/نیمه‌کاره» را همراه با علت ثبت کنید. تسک‌های اولویت کم مانع خروج نیستند.`;
+  return `برای ثبت خروج، ${list.length} تسک با اولویت بالا یا عادی هنوز بدون پاسخ است: ${names}${more}. قبل از خروج وضعیت تسک‌های امروزتان را مشخص کنید: هرکدام را «انجام شد» بزنید یا اگر انجام نشده، وضعیت «انجام نشد/نیمه‌کاره» را همراه با علتش ثبت کنید. تسک‌های اولویت کم مانع خروج نیستند.`;
 }
 
 /** fn (ثبت خروج) و ذخیره‌ی گزارش در «یک» تراکنش؛ خطا در هرکدام ⇒ هیچ‌کدام ثبت نمی‌شود. */
@@ -428,4 +494,4 @@ function commitAtomic(user, gate, fn) {
   })();
 }
 
-module.exports = { getDailyTasks, submitDailyReport, resolveReportDate, getBackfillStatus, checkoutGate, commitAtomic, blockMessage, buildList, reportDateFor, REASON_CODES, OUT_OF_PLAN_KEY, DROP };
+module.exports = { undoAnswer, updateNote, getDailyTasks, submitDailyReport, resolveReportDate, getBackfillStatus, checkoutGate, commitAtomic, blockMessage, buildList, reportDateFor, REASON_CODES, OUT_OF_PLAN_KEY, DROP };

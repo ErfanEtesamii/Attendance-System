@@ -5,12 +5,19 @@ function findByTaskDate(taskId, logDate) {
   return getDb().prepare('SELECT * FROM task_daily_logs WHERE task_id = ? AND log_date = ?').get(taskId, logDate) || null;
 }
 
-function upsert({ taskId, userId, logDate, status, reasonCode = null, reasonText = null, rescheduleTo = null, encouragementText = null, answeredLate = false }) {
-  getDb().prepare(`INSERT INTO task_daily_logs (task_id, user_id, log_date, status, reason_code, reason_text, reschedule_to, encouragement_text, answered_late)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+// note (A1، فاز ۱۵): توضیحِ انجام؛ فقط برای done معنا دارد و پیش‌فرضش null است (پاسخ دوباره = جایگزینیِ کاملِ ردیف، note هم).
+function upsert({ taskId, userId, logDate, status, reasonCode = null, reasonText = null, rescheduleTo = null, encouragementText = null, answeredLate = false, note = null }) {
+  getDb().prepare(`INSERT INTO task_daily_logs (task_id, user_id, log_date, status, reason_code, reason_text, reschedule_to, encouragement_text, answered_late, note)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT (task_id, log_date) DO UPDATE SET status = excluded.status, reason_code = excluded.reason_code, reason_text = excluded.reason_text,
-      reschedule_to = excluded.reschedule_to, encouragement_text = excluded.encouragement_text, answered_late = excluded.answered_late,
-      answered_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`).run(taskId, userId, logDate, status, reasonCode, reasonText, rescheduleTo, encouragementText, answeredLate ? 1 : 0);
+      reschedule_to = excluded.reschedule_to, encouragement_text = excluded.encouragement_text, answered_late = excluded.answered_late, note = excluded.note,
+      answered_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`).run(taskId, userId, logDate, status, reasonCode, reasonText, rescheduleTo, encouragementText, answeredLate ? 1 : 0, note);
+  return findByTaskDate(taskId, logDate);
+}
+
+// فقط ویرایش توضیحِ انجام (A1)؛ answered_at/وضعیت/پیام تشویقی دست نمی‌خورد. note = null ⇒ پاک‌کردن.
+function setNote(taskId, logDate, note) {
+  getDb().prepare('UPDATE task_daily_logs SET note = ? WHERE task_id = ? AND log_date = ?').run(note, taskId, logDate);
   return findByTaskDate(taskId, logDate);
 }
 
@@ -86,4 +93,4 @@ function listLastLogsBefore(userId, beforeDate) {
     AND l.log_date = (SELECT MAX(x.log_date) FROM task_daily_logs x WHERE x.task_id = l.task_id AND x.log_date < ?)`).all(userId, beforeDate, beforeDate);
 }
 
-module.exports = { listRangeDetailed, listRescheduledIntoRange, listLastLogsBefore, findByTaskDate, upsert, listByUserDate, listByUserRange, listUserIdsWithLogsOnDate, listByTask, listRescheduledTo, listRecentEncouragements, remove, listRangeWithTasks, listAnsweredSince };
+module.exports = { setNote, listRangeDetailed, listRescheduledIntoRange, listLastLogsBefore, findByTaskDate, upsert, listByUserDate, listByUserRange, listUserIdsWithLogsOnDate, listByTask, listRescheduledTo, listRecentEncouragements, remove, listRangeWithTasks, listAnsweredSince };
