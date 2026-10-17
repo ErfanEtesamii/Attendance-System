@@ -12,6 +12,7 @@
 //   suspiciousCreated(event)         «نشانه»ی مورد مشکوک جدید      ⇒ ادمین‌ها + سرپرستی که «همه‌ی» کاربران مورد در تیم اویند (اسکوپ S2-5a)
 //   reportCommented({...})           کامنتِ سرپرست روی گزارش روزانه  ⇒ خودِ کارمند (D9؛ تنها رویدادی که تلگرام هم می‌فرستد، چون مسیر تلگرامِ جدا ندارد)
 //   urgentTaskAssigned({...})        تسک فوریِ تازه (E1)             ⇒ خودِ کارمند (پنل + تلگرام، با دکمه‌ی باز کردن Mini App)
+//   selfUrgentTaskAdded(employee, task)  تسک فوریِ خودِ کارمند (A3، فاز ۱۵) ⇒ همان گیرنده‌های weeklyPlanChanged (سرپرست یا ادمین‌ها؛ فقط پنل)، نه خودِ کارمند
 //   urgentTaskReminder({...})        یادآوریِ نزدیک‌شدن مهلتِ تسک فوری (E1) ⇒ خودِ کارمند (پنل + تلگرام)
 //   remoteWorkRejected(session, {note, actor})  رد دورکاری توسط سرپرست/ادمین (R5-۵)  ⇒ خودِ کارمند (پنل + تلگرام)
 //   weeklyPlanEditedByManager(employee, actor, plan, summary)  اعلان «تجمیعی» ویرایش برنامه‌ی هفتگی توسط مدیر (A2-۵؛ فقط با دکمه‌ی «اطلاع به کارمند») ⇒ خودِ کارمند (پنل + تلگرام)
@@ -384,6 +385,21 @@ function urgentTaskAssigned({ task, employee, actor }) {
   });
 }
 
+/**
+ * کارمند برای خودش تسک فوری اضافه کرد (A3، فاز ۱۵) ⇒ اعلان به handlersOf(employee) (سرپرست یا ادمین‌ها). به خودِ کارمند و با متن «تعیین‌شده توسط مدیر» نمی‌رود.
+ * dedupeKey = کارمند + دقیقه ⇒ حداکثر یک اعلان در دقیقه برای هر کارمند.
+ */
+function selfUrgentTaskAdded(employee, task) {
+  return guard('selfUrgentTaskAdded', () => handlersOf(employee).map((h) => send('selfUrgentTaskAdded', h.id, {
+    type: 'self_urgent_task_added',
+    title: 'تسک فوریِ جدید (ثبت‌شده توسط خودِ کارمند)',
+    body: `${employee.full_name} برای ${jalaliOf(task.planned_date)} تسک فوری «${sanitizeText(task.title, 120)}» را برای خودش اضافه کرد.`,
+    link: '#/plans',
+    data: { taskId: task.id, employeeId: employee.id, date: task.planned_date },
+    dedupeKey: `self_urgent_task_added:${employee.id}:${new Date().toISOString().slice(0, 16)}`,
+  })));
+}
+
 /** یادآوری قبل از مهلتِ ساعتیِ تسک فوری (job: urgentTaskReminder). dedupeKey = تسک + روز ⇒ هر تسک فقط یک‌بار. */
 function urgentTaskReminder({ task, employeeId, minutesLeft }) {
   return guard('urgentTaskReminder', () => {
@@ -534,4 +550,4 @@ function remoteWorkRejected(session, { note = null, actor = null } = {}) {
   });
 }
 
-module.exports = { remoteWorkRejected, urgentTaskAssigned, urgentTaskReminder, weeklyPlanEditedByManager, checkinPermissionRequested, checkinPermissionDecided, reportCommented, weeklyPlanChanged, leaveRequested, leaveStepAdvanced, leaveDecided, disputeOpened, disputeResolved, disputeResolvedTelegram, disputeAdminMessage, disputeUserMessage, systemAlert, suspiciousCreated };
+module.exports = { remoteWorkRejected, urgentTaskAssigned, selfUrgentTaskAdded, urgentTaskReminder, weeklyPlanEditedByManager, checkinPermissionRequested, checkinPermissionDecided, reportCommented, weeklyPlanChanged, leaveRequested, leaveStepAdvanced, leaveDecided, disputeOpened, disputeResolved, disputeResolvedTelegram, disputeAdminMessage, disputeUserMessage, systemAlert, suspiciousCreated };

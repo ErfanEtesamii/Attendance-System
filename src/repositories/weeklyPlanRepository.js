@@ -168,7 +168,13 @@ function findUrgentWithOwner(taskId) {
     WHERE t.id = ? AND t.is_urgent = 1`).get(taskId) || null;
 }
 
+// A3 (فاز ۱۵): شمار تسک‌های فوریِ «خودِ کارمند» (assigned_by = صاحب برنامه) حذف‌نشده در یک روزِ برنامه‌ریزی‌شده — برای سقف selfUrgentMaxPerDay
+function countSelfUrgentOnDate(userId, date) {
+  return getDb().prepare(`SELECT COUNT(*) AS n FROM plan_tasks t JOIN weekly_plans p ON p.id = t.plan_id
+    WHERE p.user_id = ? AND t.is_urgent = 1 AND t.assigned_by_user_id = p.user_id AND t.deleted_at IS NULL AND t.planned_date = ?`).get(userId, date).n;
+}
+
 module.exports = {
-  listUrgent, findUrgentWithOwner, topTitles, findById, markEmployeeSeen, managerChangesSince, findByUserWeek, getOrCreate, listByUserRange, listByWeek, markSubmitted, touch, setSupervisorFeedback,
+  countSelfUrgentOnDate, listUrgent, findUrgentWithOwner, topTitles, findById, markEmployeeSeen, managerChangesSince, findByUserWeek, getOrCreate, listByUserRange, listByWeek, markSubmitted, touch, setSupervisorFeedback,
   findTask, listTasks, addTask, updateTask, markManagerEdited, softDeleteTask, reorderTasks, countOrdinaryTasks, countOrdinaryByPlanIds, findSystemTask, findSystemTaskOnDate,
 };

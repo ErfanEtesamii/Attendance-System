@@ -61,42 +61,63 @@ const presentTask = (t, extra = {}) => ({
 });
 
 /**
- * ثبت تسک فوری.
- * @param {object} actor ردیف کاربرِ تعیین‌کننده (admin|manager)
- * @param {object|null} target ردیف کاربرِ کارمند
- * @param {{title: string, description?: string, date: string, deadlineTime?: string, note?: string}} input
- * @param {{now?: Date, ip?: string, source?: string}} [opts]
- * @returns {{ok: true, task: object, createdPlan: boolean}|{ok: false, code: string, error: string, status: number}}
+ * اعتبارسنجیِ محتوا (عنوان/توضیح/یادداشت/مهلت‌ساعتی) — بخش مشترکِ تسک فوریِ مدیر و تسک فوریِ خودِ کارمند (A3، فاز ۱۵).
+ * @returns {{error: object}|{title: string, description: string, note: string, deadline: string|null}}
  */
-function assign(actor, target, input, { now = new Date(), ip = null, source = 'admin_panel' } = {}) {
-  const denied = scopeFailure(actor, target);
-  if (denied) return denied;
-  if (!target.is_active) return fail('USER_NOT_FOUND', 'کارمند یافت نشد.');
-
-  const b = input && typeof input === 'object' ? input : {};
+function validateContent(b) {
   const title = clean(b.title, TITLE_MAX);
-  if (!title) return fail('TITLE_REQUIRED', 'عنوان تسک فوری الزامی است.');
-  if (title.length > TITLE_MAX) return fail('TITLE_TOO_LONG', `عنوان حداکثر ${TITLE_MAX} نویسه است.`);
+  if (!title) return { error: fail('TITLE_REQUIRED', 'عنوان تسک فوری الزامی است.') };
+  if (title.length > TITLE_MAX) return { error: fail('TITLE_TOO_LONG', `عنوان حداکثر ${TITLE_MAX} نویسه است.`) };
   const description = clean(b.description, DESC_MAX);
-  if (description.length > DESC_MAX) return fail('DESCRIPTION_TOO_LONG', `توضیح حداکثر ${DESC_MAX} نویسه است.`);
+  if (description.length > DESC_MAX) return { error: fail('DESCRIPTION_TOO_LONG', `توضیح حداکثر ${DESC_MAX} نویسه است.`) };
   const note = clean(b.note, NOTE_MAX);
-  if (note.length > NOTE_MAX) return fail('NOTE_TOO_LONG', `یادداشت حداکثر ${NOTE_MAX} نویسه است.`);
+  if (note.length > NOTE_MAX) return { error: fail('NOTE_TOO_LONG', `یادداشت حداکثر ${NOTE_MAX} نویسه است.`) };
   const dt = normalizeHHMM(b.deadlineTime);
-  if (dt.error) return dt.error;
+  if (dt.error) return { error: dt.error };
+  return { title, description, note, deadline: dt.value };
+}
 
-  const settings = settingsRepository.getAll();
+/**
+ * اعتبارسنجیِ تاریخ برای کارمندِ target: قالب، نه گذشته، حداکثر ۶۰ روز، مهلتِ ساعتیِ امروز، ماهِ بسته، روز کاری/مرخصی/مأموریتِ تمام‌روز.
+ * @returns {object|null} fail(...) یا null (مجاز)
+ */
+function checkDate(target, date, { settings, now = new Date(), deadline = null } = {}) {
   const today = todayInZone(settings.timezone, now);
-  const date = b.date;
   if (typeof date !== 'string' || dayNumber(date) === null) return fail('INVALID_DATE', 'تاریخ تسک فوری نامعتبر است (YYYY-MM-DD).');
   if (date < today) return fail('DATE_IN_PAST', 'تاریخ تسک فوری نمی‌تواند گذشته باشد.');
   if (date > addDays(today, MAX_AHEAD_DAYS)) return fail('DATE_TOO_FAR', `تاریخ تسک فوری حداکثر ${MAX_AHEAD_DAYS} روز آینده می‌تواند باشد.`);
-  if (dt.value && date === today && minutesSinceMidnight(now, settings.timezone) >= Number(dt.value.slice(0, 2)) * 60 + Number(dt.value.slice(3))) {
+  if (deadline && date === today && minutesSinceMidnight(now, settings.timezone) >= Number(deadline.slice(0, 2)) * 60 + Number(deadline.slice(3))) {
     return fail('DEADLINE_PASSED', 'ساعت مهلت امروز گذشته است.');
   }
   if (monthClosuresRepository.findClosedOverlapping(date, date).length > 0) return fail('MONTH_CLOSED', 'این روز در ماهِ بسته‌شده است.');
   const cal = calendarService.getCalendarDay(target, date, { settings });
   if (!cal.isWorkingDay || calendarService.fullyOnApprovedLeave(target, date, cal)) {
     return fail('NOT_WORKING_DAY', 'آن روز برای این کارمند روز کاری نیست (تعطیل/مرخصی/مأموریت)؛ تاریخ دیگری انتخاب کنید.');
+  }
+  return null;
+}
+
+/**
+ * اعتبارسنجی + درجِ تسک فوری (مشترک بین assign و selfUrgentTaskService). مجوز/اسکوپ، audit و اعلان بیرون از اینجا است.
+ * @param {object} target ردیف کاربرِ صاحب برنامه
+ * @param {number} assignedByUserId تعیین‌کننده (برای فوریِ خودش = target.id)
+ * @param {object} input {title, description?, date, deadlineTime?, note?}
+ * @param {{now?: Date, guard?: function}} [opts] guard({date, title}) بعد از اعتبارسنجی و پیش از درج صدا زده می‌شود (fail یا null)
+ * @returns {{ok: true, task: object, createdPlan: boolean, date: string, title: string, deadline: string|null, weekStart: string}|object}
+ */
+function createUrgent(target, assignedByUserId, input, { now = new Date(), guard = null } = {}) {
+  const b = input && typeof input === 'object' ? input : {};
+  const content = validateContent(b);
+  if (content.error) return content.error;
+  const { title, description, note, deadline } = content;
+
+  const settings = settingsRepository.getAll();
+  const date = b.date;
+  const dateFail = checkDate(target, date, { settings, now, deadline });
+  if (dateFail) return dateFail;
+  if (guard) {
+    const g = guard({ date, title, settings });
+    if (g) return g;
   }
 
   const weekStart = calendarService.weekStartOf(date, settings.weekStartDay);
@@ -110,16 +131,35 @@ function assign(actor, target, input, { now = new Date(), ip = null, source = 'a
     }
     const t = plansRepo.addTask(plan.id, {
       title, description: description || null, plannedDate: date, priority: 'high',
-      isUrgent: true, assignedByUserId: actor.id, urgentNote: note || null, urgentDeadlineTime: dt.value,
+      isUrgent: true, assignedByUserId, urgentNote: note || null, urgentDeadlineTime: deadline,
     });
     plansRepo.touch(plan.id);
     return t;
   })();
+  return { ok: true, task, createdPlan, date, title, deadline, weekStart };
+}
+
+/**
+ * ثبت تسک فوری.
+ * @param {object} actor ردیف کاربرِ تعیین‌کننده (admin|manager)
+ * @param {object|null} target ردیف کاربرِ کارمند
+ * @param {{title: string, description?: string, date: string, deadlineTime?: string, note?: string}} input
+ * @param {{now?: Date, ip?: string, source?: string}} [opts]
+ * @returns {{ok: true, task: object, createdPlan: boolean}|{ok: false, code: string, error: string, status: number}}
+ */
+function assign(actor, target, input, { now = new Date(), ip = null, source = 'admin_panel' } = {}) {
+  const denied = scopeFailure(actor, target);
+  if (denied) return denied;
+  if (!target.is_active) return fail('USER_NOT_FOUND', 'کارمند یافت نشد.');
+
+  const made = createUrgent(target, actor.id, input, { now });
+  if (!made.ok) return made;
+  const { task, createdPlan, date, title, deadline, weekStart } = made;
 
   try {
     auditRepository.logEvent({
       userId: actor.id, action: 'urgent_task_assigned', ipAddress: ip,
-      details: { source, taskId: task.id, targetUserId: target.id, date, deadlineTime: dt.value, title, createdPlan },
+      details: { source, taskId: task.id, targetUserId: target.id, date, deadlineTime: deadline, title, createdPlan },
     });
   } catch (err) {
     console.error('[urgentTask] audit ناموفق (نادیده گرفته شد):', err.message);
@@ -176,4 +216,4 @@ function list({ userIds = null, userId = null, from = null, to = null, now = new
   });
 }
 
-module.exports = { assign, remove, list, statusOf, scopeFailure, TITLE_MAX, DESC_MAX, NOTE_MAX, MAX_AHEAD_DAYS };
+module.exports = { assign, remove, list, statusOf, scopeFailure, createUrgent, checkDate, validateContent, presentTask, fail, clean, ERROR_STATUS, TITLE_MAX, DESC_MAX, NOTE_MAX, MAX_AHEAD_DAYS };
