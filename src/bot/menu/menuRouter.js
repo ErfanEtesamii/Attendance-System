@@ -42,6 +42,8 @@ const ITEMS = [
   { id: 'team_report', label: '👥 گزارش تیم', roles: MANAGER_UP, handler: 'teamReport' },
   { id: 'pending_leaves', label: '📥 درخواست‌های منتظر', roles: MANAGER_UP, handler: 'pendingLeaves' },
   { id: 'pending_disputes', label: '💬 اعتراض‌ها', roles: MANAGER_UP, handler: 'pendingDisputes' },
+  // R6 (فاز ۱۴): badge = تعداد دورکاری منتظر بررسی؛ در متن دکمه‌ی منوی inline می‌آید («… (۳)»)، صفر ⇒ بدون عدد
+  { id: 'pending_remote', label: '🏠 دورکاری‌های منتظر', roles: MANAGER_UP, handler: 'pendingRemote', badge: (user) => require('../../services/remoteWorkAdminService').pendingSummary(user) },
   { id: 'yesterday_reports', label: '📝 گزارش‌های دیروز تیم', roles: MANAGER_UP, handler: 'yesterdayReports' },
   { id: 'list_members', label: '👤 لیست اعضا', roles: MANAGER_UP, handler: 'listEmployees' },
   { id: 'urgent_task', label: '⚡ تسک فوری', roles: MANAGER_UP, handler: 'urgentTask' },
@@ -104,6 +106,19 @@ function groupOf(item) {
   return item.roles === MANAGER_UP ? 'team' : 'admin';
 }
 
+// R6: آیتم دارای badge (تابع user ⇒ نتیجه‌ی pendingSummary) تعداد را در متن دکمه می‌آورد؛ هر خطا/صفر ⇒ همان متن ساده (منو هرگز نمی‌شکند)
+function labelWithBadge(item, user) {
+  if (typeof item.badge !== 'function') return item.label;
+  try {
+    const r = item.badge(user);
+    const n = r && r.ok ? r.total : 0;
+    return n > 0 ? `${item.label} (${n.toLocaleString('fa-IR')})` : item.label;
+  } catch (err) {
+    console.error('[menu] badge ناموفق (نادیده گرفته شد):', err && err.message);
+    return item.label;
+  }
+}
+
 /**
  * inline_keyboard پیام منو برای کاربر (۲ ستونه): کارمند ← افزوده‌های سرپرست ← افزوده‌های ادمین، با سرتیتر گروه
  * (فقط وقتی بیش از یک گروه هست؛ سرتیتر یک دکمه‌ی بی‌عمل «mn:_» است) و در انتها «✖️ بستن منو».
@@ -119,7 +134,7 @@ function buildMenuInline(user) {
   const rows = [];
   for (const b of buckets) {
     if (withHeads) rows.push([{ text: `— ${b.title} —`, callback_data: `mn:${MENU_NOOP_ID}`, style: b.style }]);
-    const buttons = b.items.map((it) => (it.url && panelLinks.canUseWebApp(it.url()) ? { text: it.label, web_app: { url: it.url() }, style: b.style } : { text: it.label, callback_data: `mn:${it.id}`, style: b.style }));
+    const buttons = b.items.map((it) => (it.url && panelLinks.canUseWebApp(it.url()) ? { text: it.label, web_app: { url: it.url() }, style: b.style } : { text: labelWithBadge(it, user), callback_data: `mn:${it.id}`, style: b.style }));
     for (let i = 0; i < buttons.length; i += 2) rows.push(buttons.slice(i, i + 2));
   }
   rows.push([{ text: '✖️ بستن منو', callback_data: `mn:${MENU_CLOSE_ID}` }]);
@@ -190,6 +205,7 @@ function defaultHandlers() {
     fixRecord: require('../commands/fixRecord').handleFixRecordCommand,
     yesterdayReports: sendTeamReportsLink,
     urgentTask: require('../commands/urgentTask').handleUrgentTaskCommand,
+    pendingRemote: require('../commands/pendingRemote').handlePendingRemote,
   };
 }
 

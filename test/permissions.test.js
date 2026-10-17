@@ -53,7 +53,7 @@ test('hr: فقط‌خواندنی روی کاربران/گزارش/خروجی/م
   for (const p of ['users.read', 'users.details.read', 'attendance.read', 'reports.read', 'leave.read', 'disputes.read', 'dashboard.read']) {
     assert.equal(hasPermission('hr', p), true, `hr ${p}`);
   }
-  const forbidden = PERMISSIONS.filter((p) => !['me.read', 'dashboard.read', 'attendance.read', 'leave.read', 'disputes.read', 'reports.read', 'users.read', 'users.details.read', 'schedule.read', 'notifications.read', 'notifications.mark', 'leave.balance.read', 'leave.approve.hr', 'monthclose.read', 'analytics.read', 'taskreports.read', 'checkin_permissions.read', 'team.week_view'].includes(p));
+  const forbidden = PERMISSIONS.filter((p) => !['me.read', 'dashboard.read', 'attendance.read', 'leave.read', 'disputes.read', 'reports.read', 'users.read', 'users.details.read', 'schedule.read', 'notifications.read', 'notifications.mark', 'leave.balance.read', 'leave.approve.hr', 'monthclose.read', 'analytics.read', 'taskreports.read', 'checkin_permissions.read', 'team.week_view', 'remote_work.read'].includes(p));
   for (const p of forbidden) assert.equal(hasPermission('hr', p), false, `hr ${p}`);
   // team.week_view (F1): نمای هفتگیِ فقط‌خواندنی؛ نامش «.read» ندارد ولی هیچ نوشتنی انجام نمی‌دهد
   // تنها استثنا: notifications.mark (S4-5b) — علامت خوانده‌شدنِ اعلان‌های «خودِ» کاربر؛ روی هیچ داده‌ی دیگری اثر ندارد
@@ -96,4 +96,23 @@ test('A1: plan.edit_team فقط admin و سرپرست؛ hr و کارمند ند�
   assert.equal(hasPermission('ناشناخته', 'plan.edit_team'), false);
   // خواندن همچنان با team.week_view است و hr آن را دارد؛ ویرایش جداست
   assert.equal(hasPermission('hr', 'team.week_view'), true);
+});
+
+test('R5-1: remote_work.read برای admin/manager/hr؛ remote_work.review فقط admin و سرپرست؛ کارمند هیچ‌کدام', () => {
+  for (const p of ['remote_work.read', 'remote_work.review']) assert.ok(PERMISSIONS.includes(p), p);
+  assert.equal(hasPermission('admin', 'remote_work.read'), true);
+  assert.equal(hasPermission('manager', 'remote_work.read'), true);
+  assert.equal(hasPermission('hr', 'remote_work.read'), true);
+  assert.equal(hasPermission('employee', 'remote_work.read'), false);
+  assert.equal(hasPermission('admin', 'remote_work.review'), true);
+  assert.equal(hasPermission('manager', 'remote_work.review'), true);
+  assert.equal(hasPermission('hr', 'remote_work.review'), false, 'hr فقط‌خواندنی است');
+  assert.equal(hasPermission('employee', 'remote_work.review'), false);
+  assert.equal(hasPermission('ناشناخته', 'remote_work.read'), false);
+  assert.equal(hasPermission(undefined, 'remote_work.review'), false);
+  // middleware: hr صف را می‌خواند ولی تصمیم‌گیری برایش ۴۰۳ است
+  assert.equal(run(requirePermission('remote_work.read'), 'hr'), 'next');
+  assert.equal(run(requirePermission('remote_work.review'), 'hr'), 403);
+  assert.equal(run(requirePermission('remote_work.read'), 'employee'), 403);
+  assert.equal(run(requirePermission('remote_work.review'), 'manager'), 'next');
 });

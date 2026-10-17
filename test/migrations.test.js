@@ -56,7 +56,8 @@ function snapshot(db) {
       // ستون‌های device/UA (migration ۰۰۵، S2-3) جدیدند و روی رکوردهای قدیمی NULL می‌مانند
       // ستون‌های closed_by/closed_at/reopen_count/last_message_at (migration ۰۲۷، D1): جدید و backfill‌شده؛ نگاشت و حفظ داده در test/disputeMessages.test.js بررسی می‌شود
       if (t === 'record_disputes') for (const c of ['closed_by', 'closed_at', 'reopen_count', 'last_message_at']) delete row[c];
-      if (t === 'attendance_records') for (const c of ['check_in_device', 'check_out_device', 'check_in_ua', 'check_out_ua', 'via_pending_mission']) delete row[c]; /* via_pending_mission: ۰۲۴ (C5) */
+      if (t === 'attendance_records') for (const c of ['check_in_device', 'check_out_device', 'check_in_ua', 'check_out_ua', 'via_pending_mission', 'via_remote']) delete row[c]; /* via_pending_mission: ۰۲۴ (C5)؛ via_remote: ۰۳۸ (R5-۲، پیش‌فرض ۰) */
+      if (t === 'break_records') delete row.via_remote; // ۰۳۸ (R5-۲): ستون جدید با پیش‌فرض ۰؛ حفظ داده در test/remoteViaMarker.test.js بررسی می‌شود
       return row;
     });
   }

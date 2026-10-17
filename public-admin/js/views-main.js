@@ -401,7 +401,7 @@
               <td class="num">${r.summary.effectiveMinutes != null ? fmt.min(r.summary.effectiveMinutes) : '—'}</td>
               <td class="num">${r.summary.lateMinutes ? fmt.min(r.summary.lateMinutes) : '—'}</td>
               <td><span class="ltr muted">${esc(r.check_in_ip || '—')} / ${esc(r.check_out_ip || '—')}</span></td>
-              <td>${AP.statusBadge(r.status)}</td></tr>`).join('')}
+              <td>${AP.statusBadge(r.status)}${r.via_remote ? ` ${AP.badge('purple', 'دورکاری')}` : ''}</td></tr>`).join('')}
             </tbody></table></div></div>`;
         },
         leave() {

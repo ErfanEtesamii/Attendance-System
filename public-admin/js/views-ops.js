@@ -67,7 +67,7 @@
         ${AP.avatar(u.fullName, '')}
         <div class="grow"><h2 style="font-size:17px;margin:0 0 4px"><a href="#/profile/${r.user_id}" style="color:inherit" data-close-link>${esc(u.fullName || '—')}</a></h2>
           <div class="muted">${esc(fmt.dateLong(r.record_date))} · ${esc(u.department || '')}</div></div>
-        ${AP.statusBadge(r.status)}
+        ${AP.statusBadge(r.status)}${r.via_remote ? ` ${AP.badge('purple', 'دورکاری')}` : ''}
       </div>
 
       <div class="grid-2" style="gap:12px;margin-bottom:6px">
@@ -251,7 +251,7 @@
             <td class="num">${r.breakMinutes ? fmt.min(r.breakMinutes) : '—'}</td>
             <td class="num">${r.summary.effectiveMinutes != null ? fmt.min(r.summary.effectiveMinutes) : '—'}</td>
             <td class="num">${r.summary.lateMinutes ? fmt.min(r.summary.lateMinutes) : '—'}</td>
-            <td><span class="ltr muted">${esc(r.check_in_ip || '—')}</span></td><td>${AP.statusBadge(r.status)}</td></tr>`).join('')
+            <td><span class="ltr muted">${esc(r.check_in_ip || '—')}</span></td><td>${AP.statusBadge(r.status)}${r.via_remote ? ` ${AP.badge('purple', 'دورکاری')}` : ''}</td></tr>`).join('')
             : `<tr><td colspan="9">${emptyBox('رکوردی با این فیلتر پیدا نشد.')}</td></tr>`}
           </tbody></table></div></div>`;
       return {

@@ -4,6 +4,37 @@
 
 ## [Unreleased] — بخش ۴ (ممیزی)
 
+### فاز ۱۴ — R8: تست امنیتی و UI نهایی
+- test/remoteSecurity.test.js: ماتریس مجوز، محافظت همه‌ی routeهای ادمین، نخواندن زمان/کاربر از بدنه در Mini App، FORBIDDEN/NOT_IN_SCOPE/SELF_NOT_ALLOWED بدون اثر روی رکورد رسمی و audit، escape محتوای کاربر در پنل، نبود alert/confirm/inline.
+- بستن فاز ۱۴: PROJECT_STATUS و PHASE14_DEPLOY (چک‌لیست دستی R7/R8).
+
+### فاز ۱۴ — R7: گزارش‌ها و دورکاری
+- گزارش ماهانه: شمارنده‌ی جدا `remote` ({approvedDays, approvedMinutes}) برای هر کارمند و در `totals`؛ فقط نشست‌های **approved** (مدت = بازه‌ی تأییدشده). `TOTAL_PATHS` دست نخورد ⇒ snapshot ماه‌های بسته بدون تغییر.
+- ریز روزانه: `viaRemote` و `remoteMinutes` هر روز.
+- خروجی xlsx/csv ماهانه: ستون‌های «روز/دقیقه/ساعت دورکاری تأییدشده» (انتهای شیت اصلی)، «دورکاری» و «دقیقه دورکاری تأییدشده» در ریز روزانه؛ راهنما خودکار؛ ماه بسته‌ی قدیمی ⇒ خالی.
+- نشان «دورکاری» برای رکوردهای رسمی `via_remote=1` در جدول حضور/جزئیات/پروفایل پنل و تاریخچه‌ی Mini App.
+- تست رگرسیون: pending/rejected هیچ اثری روی گزارش ندارند (test/remoteReports.test.js).
+
+### فاز ۱۴ — R6: پنل سرپرست/ادمین و بات دورکاری
+- **پنل:** صفحه‌ی «دورکاری» (`public-admin/js/views-remote.js`، `#/remote`، مجوز `remote_work.read`، گروه «درخواست‌ها» با شمارنده‌ی ناوبری): صف بررسی با فیلتر وضعیت/بازه (هفته‌ی جاری و قبل، همه، یک هفته‌ی مشخص)/کارمند و صفحه‌بندی؛ تأیید، «اصلاح ساعت و تأیید»، رد با دلیل الزامی، «⚖️ تصمیم هم‌پوشانی» (`merge`/`keep_onsite` با یادداشت الزامی) و «تأیید دسته‌ای» (کارمند و/یا هفته‌ی مشخص، با فهرست مواردِ تأییدنشده). دکمه‌ها از `canReview` هر ردیف می‌آیند (hr فقط‌خواندنی). همه‌ی قواعد سمت سرور است. فایل در `index.html` بعد از `views-nextplan.js` ثبت شد.
+- **شمارنده:** `GET /api/admin/remote-work/count` (`remote_work.read`) ⇒ `{ pending, employees[] }` — فقط نشست‌های بسته‌شده‌ی pending در اسکوپ کاربر و بدون دورکاریِ خودش؛ `AP.refreshCounts` آن را به نشان ناوبری می‌دهد.
+- **بات:** آیتم «🏠 دورکاری‌های منتظر» در گروه «تیم» (سبز، `MANAGER_UP`) با نشانگر تعداد در متن دکمه («… (۳)»؛ صفر ⇒ بدون عدد؛ خطا ⇒ متن ساده). handler `pendingRemote` خلاصه‌ی هر کارمند را می‌فرستد و با دکمه‌ی web_app به همان صف پنل می‌رود (تأیید/رد در پنل). تعداد آیتم‌های منو ۱۶ ⇒ ۱۷.
+- **یادآوری هفتگی:** `runRemoteWorkWeeklyReminder` با همان cron مؤثر job `weeklyReport` (بدون job/تنظیم جدید، با `runAll`)؛ هر سرپرستِ دارای صف (و ادمین‌ها فقط برای کارمندان بدون سرپرستِ فعال) هفته‌ای یک اعلان (پنل + تلگرام + دکمه‌ی «صف دورکاری») می‌گیرد؛ `dedupeKey` به شروع هفته بسته است؛ صف خالی ⇒ هیچ.
+- **سرویس/ریپازیتوری:** `remoteWorkAdminService.pendingSummary` و `reminderTargets`، `remoteWorkRepository.pendingClosedByUser`.
+- تست: `test/remoteReminderBot.test.js`، `test/remotePanelUi.test.js` (ساختاری)، به‌روزرسانی `test/botMenu.test.js` (۱۷ آیتم) و `test/uiStates.test.js` / `docs/UI_STATES.md` (صفحه‌ی `remote`).
+- ⚠️ UI فقط با تست ساختاری بررسی شده (بدون مرورگر)؛ گزارش‌ها هنوز `via_remote` را نمی‌خوانند (R7).
+
+### فاز ۱۴ — R5: بررسی و تأیید دورکاری توسط سرپرست/ادمین (R5-۱ تا R5-۷)
+- **R5-۱:** مجوزهای `remote_work.read` (admin/hr همه، سرپرست فقط تیم مستقیم) و `remote_work.review` (admin و سرپرست؛ hr فقط‌خواندنی؛ خود ممنوع).
+- **R5-۲:** migration ۰۳۸ — ستون `via_remote` (پیش‌فرض ۰) روی `attendance_records` و `break_records`.
+- **R5-۳:** `GET /api/admin/remote-work` صف بررسی با فیلتر هفته/وضعیت/کارمند و علامت «هم‌پوشانی با حضور حضوری».
+- **R5-۴:** `POST /api/admin/remote-work/:id/approve` — داخل یک تراکنش رکورد رسمی `via_remote=1` + انتقال استراحت‌ها + `reviewed_*` + audit (`remote_work_approve`)؛ idempotent، اصلاح ساعت (`approved_start_at/approved_end_at`)، `MONTH_CLOSED`، `SESSION_OPEN`، `TIME_CONFLICT`. چند نشست یک روز در یک رکورد ادغام می‌شوند و فاصله‌ی بینشان استراحت است.
+- **R5-۵:** `POST /api/admin/remote-work/:id/reject` با `review_note` اجباری؛ رکورد رسمی ساخته نمی‌شود؛ audit (`remote_work_reject`) و اعلان `remote_work_rejected` به کارمند (پنل + تلگرام، بعد از commit). idempotent.
+- **R5-۶:** هم‌پوشانی با حضور حضوری فقط با تصمیم صریح `overlap_decision` (`merge` یا `keep_onsite`) و یادداشت اجباری؛ بدون آن ۴۰۹ `ONSITE_OVERLAP`. audit اضافه: `remote_work_overlap_decision`.
+- **R5-۷:** `POST /api/admin/remote-work/approve-batch` (`user_id` و/یا `week`) — هر نشست تراکنش جدا، ردشده‌ها در `skipped`، سقف ۵۰۰، idempotent، audit خلاصه (`remote_work_batch_approve`). مستندات: `docs/PHASE14_DECISIONS.md`، `docs/PHASE14_DEPLOY.md`.
+- تست: `test/remoteWorkQueue.test.js`، `test/remoteWorkAdminScope.test.js`، `test/remoteViaMarker.test.js`، `test/remoteWorkApprove.test.js`، `test/remoteWorkReview.test.js`.
+- ⚠️ تا R7 هیچ گزارشی `via_remote` را نمی‌خواند؛ رکورد تأییدشده مثل رکورد عادی حساب می‌شود. UI پنل/بات (R6) هنوز نیامده است.
+
 ### فاز ۱۴ — R4: رابط Mini App دورکاری
 - `public/js/app.js`: در بوت، بعد از `/me` و **قبل از** رندر کارت ثبت تردد، `GET /network-state` گرفته می‌شود. `inNetwork`/`viaMission` (یا هر خطا در گرفتن وضعیت) ⇒ رفتار فعلی بدون هیچ تغییر؛ `remoteAllowed` ⇒ دیالوگ «شما در فرازهنر حضور ندارید…» با دو دکمه‌ی «تأیید» و «خروج» (DOM ساخته‌شده با JS: `role="dialog"`، `aria-modal`، تله‌ی فوکوس، Esc برابر «خروج»؛ بدون `alert/confirm/prompt` و بدون inline style/handler).
 - «خروج» ⇒ `tg.close()` و صفحه‌ی ساده‌ی «برای ثبت تردد باید داخل شبکه شرکت باشید» (`#out-of-network`)؛ «تأیید» ⇒ حالت دورکاری (`#app.remote-mode`) و نمای `view-remote`. انتخاب کاربر در حافظه‌ی همان نشست می‌ماند (`remoteUi.accepted`) تا دیالوگ دوباره نیاید.

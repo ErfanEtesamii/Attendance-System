@@ -544,8 +544,13 @@
       if (AP.can('checkin_permissions.read')) {
         try { checkinPerms = (await AP.api('/admin/checkin-permissions?status=pending')).items || []; } catch (_) { checkinPerms = []; }
       }
-      AP.state.counts = { leave: leave.length, disputes: disputes.length, nightly: leave.length + disputes.length, suspicious: suspicious.length, checkin_permissions: checkinPerms.length };
-      ['leave', 'disputes', 'nightly', 'suspicious', 'checkin_permissions'].forEach((k) => {
+      // R6 (فاز ۱۴): دورکاریِ منتظر بررسی (فقط با مجوز؛ شکست شمارنده‌های دیگر را خراب نمی‌کند)
+      let remotePending = 0;
+      if (AP.can('remote_work.read')) {
+        try { remotePending = (await AP.api('/admin/remote-work/count')).pending || 0; } catch (_) { remotePending = 0; }
+      }
+      AP.state.counts = { leave: leave.length, disputes: disputes.length, nightly: leave.length + disputes.length, suspicious: suspicious.length, checkin_permissions: checkinPerms.length, remote: remotePending };
+      ['leave', 'disputes', 'nightly', 'suspicious', 'checkin_permissions', 'remote'].forEach((k) => {
         const el = $(`.nav-item[data-view="${k}"] .nav-count`);
         if (!el) return;
         el.textContent = fmt.num(AP.state.counts[k]);

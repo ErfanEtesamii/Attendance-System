@@ -24,6 +24,7 @@ const { runDbMaintenance } = require('./dbMaintenance');
 const { runLeaveApprovalReminder } = require('./leaveApprovalReminder');
 const { runUrgentTaskReminder } = require('./urgentTaskReminder');
 const { runTeamReviewEnsure } = require('./teamReviewEnsure');
+const { runRemoteWorkWeeklyReminder } = require('./remoteWorkReminder');
 const { isFirstDayOfJalaliMonth } = require('../../utils/jalali');
 const { wrapJob, runAll } = require('../../utils/jobRunner');
 const jobRunsRepository = require('../../repositories/jobRunsRepository');
@@ -39,7 +40,8 @@ function buildJobs(bot) {
     { name: 'nightlyReview', run: () => sendNightlyReview(bot) },
     // D12: خلاصه‌ی صبحگاهیِ گزارش تسک‌ها (دیرهنگام‌ها + مشاهده‌نشده‌ها)؛ نتیجه‌اش در job_runs ثبت می‌شود
     { name: 'morningDigest', run: () => sendMorningDigest(bot) },
-    { name: 'weeklyReport', run: () => sendWeeklyReport(bot) },
+    // R6 (فاز ۱۴): یادآوری صف دورکاریِ منتظر بررسی به سرپرست‌ها هم با همین cron می‌رود (بدون تنظیم/job جدید؛ هر هفته یک بار با dedupe)
+    { name: 'weeklyReport', run: () => runAll(() => sendWeeklyReport(bot), () => runRemoteWorkWeeklyReminder()) },
     // گزارش ماهانه بر اساس تقویم شمسی: چون روز شروع ماه شمسی روی تقویم میلادی هر سال جابه‌جا می‌شود،
     // این Job هر روز اجرا می‌شود ولی فقط وقتی «امروز روز اول یک ماه شمسی است» گزارش ماه شمسی قبلی را ارسال می‌کند.
     // (روزهای دیگر هم در job_runs به‌صورت «موفق» ثبت می‌شود: یعنی Job اجرا شد و کاری لازم نبود.)

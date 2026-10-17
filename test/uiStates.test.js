@@ -109,6 +109,7 @@ const PAGES = {
   profile: ['views-main.js', 'inline'], attendance: ['views-ops.js', 'inline'], leave: ['views-ops.js', 'inline'], leaveQueue: ['views-ops.js', 'inline'], checkin_permissions: ['views-ops.js', 'inline'],
   disputes: ['views-ops.js', 'inline'], suspicious: ['views-ops.js', 'inline'], nightly: ['views-ops.js', 'inline'], shifts: ['views-shifts.js', 'inline'], teamreports: ['views-teamreports.js', 'inline'],
   nextplan: ['views-nextplan.js', 'helper'], // D1 (فاز ۱۳): «برنامه هفته بعد»؛ حالت خالی: «برنامه‌ای ثبت نشده» و «کارمندی انتخاب نشده»
+  remote: ['views-remote.js', 'helper'], // R6 (فاز ۱۴): صف بررسی دورکاری؛ حالت خالی: «ثبت دورکاری‌ای با این فیلتر پیدا نشد»
   weekly: ['views-weekly.js', 'n/a'], // صفحه‌ی جزئیات: شبکه‌ی ۷ روزه همیشه هست و خالی‌بودنِ هر روز پیام خودش را دارد
 };
 

@@ -56,16 +56,16 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
       assert.equal(n(null), '');
     });
 
-    test('هر ۱۶ دکمه‌ی منو برچسب نرمال‌شده‌ی یکتا دارند', () => {
+    test('هر ۱۷ دکمه‌ی منو برچسب نرمال‌شده‌ی یکتا دارند', () => {
       const labels = menu.ITEMS.map((it) => menu.normalizeLabel(it.label));
-      assert.equal(menu.ITEMS.length, 16);
+      assert.equal(menu.ITEMS.length, 17);
       assert.equal(new Set(labels).size, labels.length);
       assert.ok(labels.every(Boolean));
     });
   });
 
   const EMP = ['🕒 ثبت تردد', '📊 وضعیت من', '📈 گزارش من', '🏖 مرخصی / 🚗 ماموریت', '📋 برنامه هفتگی', '🖥 پنل', '❓ راهنما'];
-  const MGR = ['👥 گزارش تیم', '📥 درخواست‌های منتظر', '💬 اعتراض‌ها', '📝 گزارش‌های دیروز تیم', '👤 لیست اعضا', '⚡ تسک فوری'];
+  const MGR = ['👥 گزارش تیم', '📥 درخواست‌های منتظر', '💬 اعتراض‌ها', '🏠 دورکاری‌های منتظر', '📝 گزارش‌های دیروز تیم', '👤 لیست اعضا', '⚡ تسک فوری'];
   const ADM = ['➕ افزودن کارمند', '🛠 اصلاح رکورد', '⚙️ پنل مدیریت'];
 
   describe('buildMainKeyboard — فقط «📂 منو» (H2)', () => {
@@ -114,13 +114,13 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
       assert.deepEqual(headerTexts(kb), []);
     });
 
-    test('سرپرست: پایه + ۶ آیتم تیم (بدون آیتم ادمین) با دو سرتیتر', () => {
+    test('سرپرست: پایه + ۷ آیتم تیم (بدون آیتم ادمین) با دو سرتیتر', () => {
       const kb = menu.buildMenuInline(mgr);
       assert.deepEqual(itemTexts(kb), [...EMP, ...MGR]);
       assert.deepEqual(headerTexts(kb), ['— کارهای من —', '— تیم —']);
     });
 
-    test('ادمین: همه‌ی ۱۶ آیتم به ترتیب با سه سرتیتر', () => {
+    test('ادمین: همه‌ی ۱۷ آیتم به ترتیب با سه سرتیتر', () => {
       const kb = menu.buildMenuInline(admin);
       assert.deepEqual(itemTexts(kb), [...EMP, ...MGR, ...ADM]);
       assert.deepEqual(headerTexts(kb), ['— کارهای من —', '— تیم —', '— مدیریت —']);
@@ -338,7 +338,7 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
     const itemLabels = (kb) => kb.inline_keyboard.flat().filter((b) => b.callback_data !== 'mn:_' && b.callback_data !== 'mn:_close').map((b) => b.text);
 
     test('هر نقش پیام منوی inline همان نقش را می‌گیرد؛ handler اجرا نمی‌شود و پیام کیبورد قدیمی نمی‌رود', async () => {
-      for (const [user, n] of [[emp, 7], [mgr, 13], [admin, 16]]) {
+      for (const [user, n] of [[emp, 7], [mgr, 14], [admin, 17]]) {
         const bot = mockBot(); const { calls, h } = spies();
         assert.equal(await menu.routeMenuText(bot, msgFrom(user, '📂 منو'), h), true);
         assert.deepEqual(calls, []);

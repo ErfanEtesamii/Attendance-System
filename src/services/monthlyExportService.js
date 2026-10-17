@@ -56,6 +56,10 @@ const MAIN_COLUMNS = [
   // C1 (ستون‌های جدید در انتها؛ ماه‌های بسته‌شده‌ی قدیمی این مقدار را ندارند ⇒ خالی)
   ['استراحت با حقوق (دقیقه)', 'مجموع بخش «با حقوق» استراحت‌های کوتاه (از ساعت مفید کم نشده است).', (u) => num(u.breaks && u.breaks.paidMinutes)],
   ['استراحت بدون حقوق (دقیقه)', 'مجموع استراحت‌هایی که از ساعت مفید کم شده است (مازاد سقف، بعد از تعداد مجاز، ناهار و کسر ثابت).', (u) => num(u.breaks && u.breaks.unpaidMinutes)],
+  // R7 (انتهای ستون‌ها؛ ماه بسته‌ی قدیمی remote ندارد ⇒ خالی)
+  ['روز دورکاری تأییدشده', 'روزهایی که حداقل یک نشست دورکاری تأییدشده دارند (جدا از ستون‌های بالا نیست؛ در «روز حضور» هم شمرده شده‌اند). نشست‌های منتظر/ردشده شمرده نمی‌شوند.', (u) => num(u.remote && u.remote.approvedDays)],
+  ['دقیقه دورکاری تأییدشده', 'مجموع مدت نشست‌های دورکاری تأییدشده (دقیقه).', (u) => num(u.remote && u.remote.approvedMinutes)],
+  ['ساعت دورکاری تأییدشده (ساعت:دقیقه)', 'همان «دقیقه دورکاری تأییدشده» به‌صورت ساعت:دقیقه.', (u) => (u.remote ? hhmm(u.remote.approvedMinutes) : '')],
 ];
 
 const LEAVE_COLUMNS = [
@@ -99,6 +103,8 @@ const DAILY_COLUMNS = [
   ['اضافه‌کاری نهایی (دقیقه)', 'پس از تأیید و سقف ماهانه.', (r) => num(r.d.overtimePayableFinal)],
   ['پرچم‌ها', 'هشدارهای داده (بدون خروج، زمان نامعتبر، …).', (r) => (r.d.flags || []).map((f) => FLAG[f] || f).join('، ')],
   ['استراحت با حقوق (دقیقه)', 'بخش با حقوق استراحت‌های کوتاه آن روز (از ساعت مفید کم نشده).', (r) => (r.d.flags || []).includes('missing_checkout') ? '' : num(r.d.breakPaid)],
+  ['دورکاری', 'اگر آن روز نشست دورکاری تأییدشده داشته «دورکاری» می‌نویسد.', (r) => (r.d.viaRemote ? 'دورکاری' : '')],
+  ['دقیقه دورکاری تأییدشده', 'مدت نشست‌های دورکاری تأییدشده‌ی آن روز (دقیقه).', (r) => (r.d.viaRemote ? num(r.d.remoteMinutes) : '')],
   ['استراحت بدون حقوق (دقیقه)', 'بخش بدون حقوقِ استراحت‌های آن روز (از ساعت مفید کم شده).', (r) => (r.d.flags || []).includes('missing_checkout') ? '' : num(r.d.breakUnpaid)],
 ];
 
@@ -110,7 +116,7 @@ function totalRow(report) {
   const t = report.totals;
   const fake = {
     user: { fullName: 'جمع', personnelCode: '', department: '' },
-    calendar: t.calendar, attendance: t.attendance, leave: t.leave, time: t.time, overtime: t.overtime,
+    calendar: t.calendar, attendance: t.attendance, leave: t.leave, time: t.time, overtime: t.overtime, remote: t.remote,
   };
   return fake;
 }

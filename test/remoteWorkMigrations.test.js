@@ -1,4 +1,5 @@
 // R1-ج: migrationهای ۰۳۶ و ۰۳۷ در کنار هم — ارتقا از ۰۳۵ روی دیتابیسِ دارای داده، idempotent بودن، زنجیره‌ی کلیدهای خارجی و جدا بودن داده‌ی رسمی.
+// (R5-۲: migration ۰۳۸ فقط ستون via_remote را به جدول‌های رسمی اضافه می‌کند؛ تستش در test/remoteViaMarker.test.js است. ارتقای ۰۳۵ → ۰۳۷ این‌جا عمداً تا ۰۳۷ می‌ماند.)
 require('./helpers/testEnv');
 const { test, describe, after } = require('node:test');
 const assert = require('node:assert/strict');
@@ -60,7 +61,8 @@ describe('migration ۰۳۶/۰۳۷ — ارتقا و idempotent (R1-ج)', () => {
     const before = { users: dump(db, 'users'), att: dump(db, 'attendance_records'), brk: dump(db, 'break_records') };
 
     const backupDir = path.join(work, 'backups-remote');
-    const res = migrate(db, { dir: MIGRATIONS_DIR, backupDir });
+    const dir37 = migrationsUpTo(37);
+    const res = migrate(db, { dir: dir37, backupDir });
     assert.deepEqual(res.applied, ['036_remote_work_sessions', '037_remote_work_breaks']);
     assert.ok(res.backupPath && fs.existsSync(res.backupPath), 'قبل از migration بک‌آپ گرفته می‌شود');
 
@@ -72,7 +74,7 @@ describe('migration ۰۳۶/۰۳۷ — ارتقا و idempotent (R1-ج)', () => {
     assert.equal(db.pragma('foreign_key_check').length, 0);
     assert.equal(db.pragma('integrity_check', { simple: true }), 'ok');
 
-    assert.deepEqual(migrate(db, { dir: MIGRATIONS_DIR, backupDir }).applied, [], 'اجرای دوم کاری نمی‌کند');
+    assert.deepEqual(migrate(db, { dir: dir37, backupDir }).applied, [], 'اجرای دوم کاری نمی‌کند');
   });
 
   test('تابع up هر دو migration idempotent است: اجرای دوباره خطا نمی‌دهد و داده‌ی نشست/استراحت را نمی‌خورد', () => {
@@ -100,13 +102,15 @@ describe('migration ۰۳۶/۰۳۷ — ارتقا و idempotent (R1-ج)', () => {
     ]);
   });
 
-  test('شماره‌گذاری: migrationها پیوسته‌اند و ۰۳۶ و ۰۳۷ آخرین‌های فعلی‌اند، با کلید خارجی روشن', () => {
+  test('شماره‌گذاری: migrationها پیوسته‌اند و ۰۳۶، ۰۳۷ و ۰۳۸ پشت‌سرهم‌اند، با کلید خارجی روشن', () => {
     const list = loadMigrations(MIGRATIONS_DIR);
     assert.deepEqual(list.map((m) => m.id), list.map((_, i) => i + 1), 'شماره‌ها بدون جا افتادگی');
     const i36 = list.findIndex((m) => m.name === '036_remote_work_sessions');
     assert.ok(i36 >= 0 && list[i36 + 1] && list[i36 + 1].name === '037_remote_work_breaks');
     assert.equal(list[i36].foreignKeys, true);
     assert.equal(list[i36 + 1].foreignKeys, true);
+    assert.ok(list[i36 + 2] && list[i36 + 2].name === '038_remote_via_marker');
+    assert.equal(list[i36 + 2].foreignKeys, true);
   });
 });
 
@@ -115,10 +119,10 @@ describe('دورکاری — زنجیره‌ی کلیدهای خارجی و جد
   migrate(db, {});
   const mkUser = (code) => db.prepare("INSERT INTO users (telegram_user_id, full_name, personnel_code, department, role) VALUES (?, 'کارمند', ?, 'فنی', 'employee')").run(`3${code}`, `RC${code}`).lastInsertRowid;
 
-  test('جدول‌های رسمی حضور و استراحت هیچ ستونی برای دورکاری ندارند (تا تأیید R5 داده‌ی دورکاری وارد آن‌ها نمی‌شود)', () => {
+  test('جدول‌های رسمی حضور و استراحت فقط یک ستون «نشانگر» دورکاری (via_remote، migration ۰۳۸) دارند و داده‌ی دورکاری خودشان را نگه نمی‌دارند', () => {
     for (const t of ['attendance_records', 'break_records']) {
       const cols = db.pragma(`table_info(${t})`).map((c) => c.name);
-      assert.ok(!cols.some((c) => /remote/i.test(c)), `${t}: ${cols.join()}`);
+      assert.deepEqual(cols.filter((c) => /remote/i.test(c)), ['via_remote'], `${t}: ${cols.join()}`);
     }
   });
 

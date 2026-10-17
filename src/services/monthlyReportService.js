@@ -26,6 +26,7 @@
 
 const attendanceRepository = require('../repositories/attendanceRepository');
 const breakRepository = require('../repositories/breakRepository');
+const remoteWorkRepository = require('../repositories/remoteWorkRepository');
 const leaveRepository = require('../repositories/leaveRepository');
 const leaveTypesRepository = require('../repositories/leaveTypesRepository');
 const holidaysRepository = require('../repositories/holidaysRepository');
@@ -120,6 +121,16 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
     if (!holidaysByDate.has(h.holiday_date)) holidaysByDate.set(h.holiday_date, []);
     holidaysByDate.get(h.holiday_date).push(h);
   }
+  // R7: فقط نشست‌های تأییدشده؛ مدت = بازه‌ی تأییدشده (در صورت اصلاح) وگرنه بازه‌ی ثبت‌شده
+  const remoteByUser = new Map(); // userId -> Map(date -> دقیقه)
+  for (const s of remoteWorkRepository.listApprovedInRange(ids, range.from, range.to)) {
+    const a = Date.parse(s.approved_start_at || s.start_at);
+    const b = Date.parse(s.approved_end_at || s.end_at);
+    const mins = Number.isFinite(a) && Number.isFinite(b) && b > a ? Math.round((b - a) / 60000) : 0;
+    if (!remoteByUser.has(s.user_id)) remoteByUser.set(s.user_id, new Map());
+    const m = remoteByUser.get(s.user_id);
+    m.set(s.work_date, (m.get(s.work_date) || 0) + mins);
+  }
   const shiftOnDate = shiftsRepository.makeShiftResolver(ids); // B1: شیفتِ مؤثر هر کاربر در هر روز (یک‌بار خواندن)
   const overrideOnDate = userDayScheduleRepository.makeResolver(ids, range.from, range.to); // B2: برنامه‌ی ویژه‌ی روز
   const types = leaveTypesRepository.listLeaveTypes();
@@ -136,6 +147,7 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
     const recMap = recordsByUser.get(u.id) || new Map();
     const activeFrom = startDateOf(u, timezone);
     const userLeaves = leavesByUser.get(u.id) || [];
+    const remoteDays = remoteByUser.get(u.id) || new Map();
 
     const calendar = { daysInMonth: range.daysInMonth, expectedWorkDays: 0, holidayDays: 0, weekendDays: 0, halfDays: 0 };
     const att = {
@@ -268,6 +280,7 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
           overtime: day.overtime, overtimePayable: day.overtimePayable, flags: day.flags,
           leaveMinutes: sum(parts.map((p) => p.minutes)),
           missionMinutes: day.missionMinutes, effectiveWithMission: day.effectiveWithMission,
+          viaRemote: remoteDays.has(dateStr), remoteMinutes: remoteDays.get(dateStr) || 0,
         });
       }
     }
@@ -307,6 +320,8 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
       leave: { ...leave, byType: [...typeAcc.values()] },
       time,
       breaks,
+      // R7: شمارنده‌ی جدا (خارج از TOTAL_PATHS ⇒ snapshot ماه‌های بسته‌شده دست نمی‌خورد)
+      remote: { approvedDays: remoteDays.size, approvedMinutes: sum([...remoteDays.values()]) },
       overtime,
       balances,
     };
@@ -319,6 +334,7 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
   });
 
   const totals = computeTotals(out);
+  totals.remote = { approvedDays: sum(out.map((r) => r.remote.approvedDays)), approvedMinutes: sum(out.map((r) => r.remote.approvedMinutes)) };
 
   return {
     year, month, from: range.from, to: range.to, label: range.label, daysInMonth: range.daysInMonth, today,

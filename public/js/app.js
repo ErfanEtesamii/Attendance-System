@@ -878,7 +878,7 @@
         el.innerHTML = `
           <div class="li-top">
             <span>${fmtDate(r.record_date)}</span>
-            <span class="badge ${r.status}">${STATUS_LABELS[r.status] || r.status}</span>
+            <span class="badge ${r.status}">${STATUS_LABELS[r.status] || r.status}</span>${r.via_remote ? ' <span class="badge">دورکاری</span>' : ''}
           </div>
           <div class="li-bottom">
             <span>${fmtClock(r.check_in_time)} — ${fmtClock(r.check_out_time)}</span>

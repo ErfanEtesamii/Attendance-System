@@ -13,6 +13,7 @@
 //   reportCommented({...})           کامنتِ سرپرست روی گزارش روزانه  ⇒ خودِ کارمند (D9؛ تنها رویدادی که تلگرام هم می‌فرستد، چون مسیر تلگرامِ جدا ندارد)
 //   urgentTaskAssigned({...})        تسک فوریِ تازه (E1)             ⇒ خودِ کارمند (پنل + تلگرام، با دکمه‌ی باز کردن Mini App)
 //   urgentTaskReminder({...})        یادآوریِ نزدیک‌شدن مهلتِ تسک فوری (E1) ⇒ خودِ کارمند (پنل + تلگرام)
+//   remoteWorkRejected(session, {note, actor})  رد دورکاری توسط سرپرست/ادمین (R5-۵)  ⇒ خودِ کارمند (پنل + تلگرام)
 //   weeklyPlanEditedByManager(employee, actor, plan, summary)  اعلان «تجمیعی» ویرایش برنامه‌ی هفتگی توسط مدیر (A2-۵؛ فقط با دکمه‌ی «اطلاع به کارمند») ⇒ خودِ کارمند (پنل + تلگرام)
 //
 // قوانین:
@@ -513,4 +514,24 @@ function checkinPermissionDecided(permission, { actor = null, note = null } = {}
   });
 }
 
-module.exports = { urgentTaskAssigned, urgentTaskReminder, weeklyPlanEditedByManager, checkinPermissionRequested, checkinPermissionDecided, reportCommented, weeklyPlanChanged, leaveRequested, leaveStepAdvanced, leaveDecided, disputeOpened, disputeResolved, disputeResolvedTelegram, disputeAdminMessage, disputeUserMessage, systemAlert, suspiciousCreated };
+/** رد یک نشست دورکاری (R5-۵). session = ردیف remote_work_sessions «پس از رد». غیر rejected ⇒ بی‌اثر. */
+function remoteWorkRejected(session, { note = null, actor = null } = {}) {
+  return guard('remoteWorkRejected', () => {
+    if (!session || session.status !== 'rejected') return [];
+    const who = actor && actor.role === 'admin' ? 'ادمین' : 'سرپرست';
+    const lines = [`دورکاری روز ${isoDateToJalaliString(session.work_date)} رد شد و در حضور و غیاب و حقوق حساب نمی‌شود.`];
+    if (note) lines.push(`دلیل ${who}: ${sanitizeText(note, 300)}`);
+    return [
+      send('remoteWorkRejected', session.user_id, {
+        type: 'remote_work_rejected',
+        title: 'دورکاری شما رد شد',
+        body: lines.join('\n'),
+        data: { sessionId: session.id, workDate: session.work_date, status: 'rejected' },
+        dedupeKey: `remote_work_rejected:${session.id}`,
+        telegram: true,
+      }),
+    ];
+  });
+}
+
+module.exports = { remoteWorkRejected, urgentTaskAssigned, urgentTaskReminder, weeklyPlanEditedByManager, checkinPermissionRequested, checkinPermissionDecided, reportCommented, weeklyPlanChanged, leaveRequested, leaveStepAdvanced, leaveDecided, disputeOpened, disputeResolved, disputeResolvedTelegram, disputeAdminMessage, disputeUserMessage, systemAlert, suspiciousCreated };
