@@ -226,8 +226,11 @@ describe('سرویس سیاست (Mini App) و گزارش ماهانه (C1)', () 
     const { buildMonthlySheets } = require('../src/services/monthlyExportService');
     const sheets = buildMonthlySheets(rep);
     const main = sheets[0];
-    assert.deepEqual(main.headers.slice(-2), ['استراحت با حقوق (دقیقه)', 'استراحت بدون حقوق (دقیقه)']);
-    assert.deepEqual(main.rows[0].slice(-2), [25, 10]);
+    // ستون‌های دورکاری (فاز ۱۴) بعد از ستون‌های استراحت اضافه شده‌اند؛ پس موقعیت را از روی نام سرستون پیدا می‌کنیم نه از انتها.
+    const iPaid = main.headers.indexOf('استراحت با حقوق (دقیقه)');
+    assert.ok(iPaid >= 0);
+    assert.equal(main.headers[iPaid + 1], 'استراحت بدون حقوق (دقیقه)');
+    assert.deepEqual(main.rows[0].slice(iPaid, iPaid + 2), [25, 10]);
     settings.setValue('paidBreakCount', 0);
   });
 });
