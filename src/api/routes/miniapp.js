@@ -567,7 +567,7 @@ router.post('/miniapp/plan/submit', (req, res) => {
 const REPORT_ERROR_STATUS = {
   MONTH_CLOSED: 409, ALREADY_ANSWERED: 409, FULL_DAY_OFF: 409,
   BACKFILL_EXPIRED: 409, LATE_WINDOW_EXPIRED: 409, LATE_NOT_ALLOWED: 409, NO_RECORD: 404,
-  TASK_NOT_FOUND: 404, REVIEW_TASK_LOCKED: 409, NOTE_ONLY_FOR_DONE: 409, // A1 (فاز ۱۵): واگرد و ویرایش توضیحِ انجام
+  CARRY_LIMIT: 400, TASK_NOT_FOUND: 404, REVIEW_TASK_LOCKED: 409, NOTE_ONLY_FOR_DONE: 409, // A1 (فاز ۱۵): واگرد و ویرایش توضیحِ انجام
 };
 const sendReportError = (res, r) => res.status(REPORT_ERROR_STATUS[r.code] || 400).json({ error: r.error, code: r.code });
 
@@ -581,8 +581,9 @@ router.post('/miniapp/daily-report', (req, res) => {
   const body = req.body || {};
   const r = taskReportService.submitDailyReport(req.miniAppUser, body, { requestedDate: body.date });
   if (!r.ok) return sendReportError(res, r);
-  if (r.late) {
-    auditRepository.logEvent({ userId: req.miniAppUser.id, action: 'daily_report_submitted', ipAddress: req.ip, details: { source: 'miniapp_late', mode: r.source, date: r.date, late: true, answers: r.saved.answers, extra: r.saved.extra } });
+  // A2: انتقال/حذفِ تسک هم در همین رویداد ثبت می‌شود (reschedules: [{taskId, to}]؛ to تاریخ یا 'drop')
+  if (r.late || r.rescheduled.length) {
+    auditRepository.logEvent({ userId: req.miniAppUser.id, action: 'daily_report_submitted', ipAddress: req.ip, details: { source: r.late ? 'miniapp_late' : 'miniapp', mode: r.source, date: r.date, late: !!r.late, answers: r.saved.answers, extra: r.saved.extra, reschedules: r.rescheduled } });
   }
   return res.json(r);
 });

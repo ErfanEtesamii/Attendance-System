@@ -59,6 +59,14 @@ function lastLogStatus(taskId) {
   return logs.length ? logs[logs.length - 1].status : null;
 }
 
+// A2 (فاز ۱۵): تسکی که آخرین پاسخش «حذف» (drop) یا «انتقال به روزی از weekStart به بعد» است، خودش در روز مقصد می‌آید
+// (buildList) یا عمداً کنار گذاشته شده؛ پیشنهادِ «کپی» برای آن‌ها تسک تکراری می‌سازد.
+function handledByReschedule(taskId, weekStart) {
+  const logs = logsRepo.listByTask(taskId);
+  const last = logs.length ? logs[logs.length - 1] : null;
+  return !!(last && last.reschedule_to && (last.reschedule_to === 'drop' || last.reschedule_to >= weekStart));
+}
+
 // تسک‌های هفته‌ی قبل که تمام نشده‌اند (بدون پاسخ، نیمه‌کاره یا انجام‌نشده) و هنوز به هفته‌ی دیگری منتقل نشده‌اند
 function carryOverCandidates(userId, weekStart) {
   const prev = plansRepo.findByUserWeek(userId, addDays(weekStart, -7));
@@ -67,7 +75,7 @@ function carryOverCandidates(userId, weekStart) {
   const cur = plansRepo.findByUserWeek(userId, weekStart);
   if (cur) plansRepo.listTasks(cur.id).forEach((t) => { if (t.carried_from_task_id) alreadyCarried.add(t.carried_from_task_id); });
   return plansRepo.listTasks(prev.id)
-    .filter((t) => !t.is_system && !t.is_urgent && !alreadyCarried.has(t.id) && lastLogStatus(t.id) !== 'done')
+    .filter((t) => !t.is_system && !t.is_urgent && !alreadyCarried.has(t.id) && lastLogStatus(t.id) !== 'done' && !handledByReschedule(t.id, weekStart))
     .map(presentTask);
 }
 

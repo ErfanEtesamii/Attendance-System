@@ -169,8 +169,11 @@ function getDailyTasks(user, { now, date: forcedDate, requestedDate } = {}) {
   const off = fullDayOff(user, date, settings);
   if (!off) teamReview.prepareDay(user, date, settings, { late: resolved.late }); // D9: تسک سیستمیِ سرپرست (ساخت + done خودکار)
   const tasks = off ? [] : buildList(user, date, settings);
+  const carryBase = resolved.late && resolved.cur > date ? resolved.cur : date; // همان پایه‌ی اعتبارسنجی انتقال (validateAnswer)
   return {
     ok: true, date, today: resolved.cur, late: resolved.late, source: resolved.source, mode: settings.dailyReportGateMode, fullDayOff: off,
+    nextWorkingDay: nextWorkingDay(user, carryBase, settings), // A2: تاریخ «فردا» از سرور (روز کاریِ بعدی)، نه حدس کلاینت
+    taskCarryMaxTimes: Number(settings.taskCarryMaxTimes) || 0,
     tasks,
     teamReview: teamReview.gateInfo(user, date, tasks, settings), // D9-ب: مشاهده‌نشده‌ها / گزارش‌نداده‌ها (فقط وقتی تسک سیستمی در فهرست است)
     answered, reasonCodes: REASON_CODES,
@@ -238,6 +241,14 @@ function validateAnswer(a, n, user, date, settings, byId, base = date) {
       if (d <= base || d > addDays(base, MAX_RESCHEDULE_DAYS)) return { error: fail('DATE_OUT_OF_RANGE', `تاریخ انتقال پاسخ ${n} باید بعد از امروز و حداکثر ${MAX_RESCHEDULE_DAYS} روز آینده باشد.`) };
       out.rescheduleTo = d;
     } else return { error: fail('INVALID_RESCHEDULE', `نوع انتقال پاسخ ${n} نامعتبر است (tomorrow | date | drop).`) };
+    // A2 (فاز ۱۵): سقف دفعات انتقال (taskCarryMaxTimes؛ ۰ = بدون سقف). شمارش = پاسخ‌های قبلیِ همین تسک با reschedule_to تاریخی (نه drop)
+    const maxCarry = Number(settings.taskCarryMaxTimes) || 0;
+    if (maxCarry > 0 && out.rescheduleTo && out.rescheduleTo !== DROP) {
+      const carried = logsRepo.listByTask(taskId).filter((l) => l.reschedule_to && l.reschedule_to !== DROP).length;
+      if (carried >= maxCarry) {
+        return { error: fail('CARRY_LIMIT', `این تسک ${carried} بار منتقل شده (پاسخ ${n}); ${task.isUrgent ? 'انجامش بده یا با سرپرست هماهنگ کن.' : 'انجامش بده یا حذفش کن.'}`, { carried, max: maxCarry }) };
+      }
+    }
   }
   return { out };
 }
@@ -377,7 +388,9 @@ function submitDailyReport(user, body, { now, date: forcedDate, requestedDate } 
   if (!prep.answers.length && !prep.extras.length) return fail('EMPTY_REPORT', 'هیچ پاسخی ارسال نشده است.');
   const messages = getDb().transaction(() => applyReport(user, date, settings, prep, { late }))();
   const fresh = getDailyTasks(user, { now, date });
-  return { ...fresh, late, source: resolved.source, saved: { answers: prep.answers.length, extra: prep.extras.length }, encouragements: messages };
+  return { ...fresh, late, source: resolved.source, saved: { answers: prep.answers.length, extra: prep.extras.length },
+    rescheduled: prep.answers.filter((a) => a.rescheduleTo).map((a) => ({ taskId: a.taskId, to: a.rescheduleTo })), // A2: برای audit (to = تاریخ یا 'drop')
+    encouragements: messages };
 }
 
 // ---------- برداشتن پاسخ و ویرایش توضیحِ انجام (A1، فاز ۱۵) ----------
