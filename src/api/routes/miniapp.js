@@ -15,6 +15,7 @@ const pendingMissionService = require('../../services/pendingMissionService');
 const planGateService = require('../../services/planGateService');
 const disputeService = require('../../services/disputeService');
 const taskReportService = require('../../services/taskReportService');
+const selfUrgentTaskService = require('../../services/selfUrgentTaskService');
 const teamReviewService = require('../../services/teamReviewService');
 const { maintenanceGate } = require('../../middleware/maintenanceGate');
 const { createRateLimiter } = require('../../middleware/rateLimiter');
@@ -76,6 +77,26 @@ router.use('/miniapp/checkin-permission', miniAppActionLimiter);
 router.use('/miniapp/check-out', miniAppActionLimiter);
 router.use('/miniapp/break/start', miniAppActionLimiter);
 router.use('/miniapp/break/end', miniAppActionLimiter);
+
+// A4 (فاز ۱۵): limiter جداگانه برای تسک‌ها (تیک/واگرد/توضیح/خواندن فهرست) و سخت‌گیرانه‌تر برای افزودن/ویرایش/حذف تسک فوریِ شخصی.
+// کلید = شناسه‌ی کاربر (نه IP)؛ از miniAppActionLimiter (مخصوص ثبت تردد و پیامش) استفاده نمی‌شود.
+const miniAppTasksLimiter = createRateLimiter({
+  name: 'miniapp-tasks',
+  windowMs: 60 * 1000,
+  max: 60,
+  message: 'تعداد درخواست‌های تسک بیش از حد مجاز است. لطفاً کمی صبر کنید.',
+  keyFn: miniAppRateLimitKey,
+});
+const miniAppMyUrgentLimiter = createRateLimiter({
+  name: 'miniapp-my-urgent',
+  windowMs: 60 * 1000,
+  max: 10,
+  message: 'تعداد درخواست‌های تسک فوری بیش از حد مجاز است. لطفاً کمی صبر کنید.',
+  keyFn: miniAppRateLimitKey,
+});
+router.use('/miniapp/daily-tasks', miniAppTasksLimiter);
+router.use('/miniapp/daily-report', miniAppTasksLimiter);
+router.use('/miniapp/my-urgent', miniAppMyUrgentLimiter);
 
 // ---------- دورکاری (R3، فاز ۱۴) ----------
 // گیت مشترک همه‌ی مسیرهای /miniapp/remote/*: نگهداری ← remoteAllowed (بیرون از شبکه، بدون ماموریت، کاربر فعال، تنظیم روشن) ← rate limit.
@@ -568,6 +589,9 @@ const REPORT_ERROR_STATUS = {
   MONTH_CLOSED: 409, ALREADY_ANSWERED: 409, FULL_DAY_OFF: 409,
   BACKFILL_EXPIRED: 409, LATE_WINDOW_EXPIRED: 409, LATE_NOT_ALLOWED: 409, NO_RECORD: 404,
   CARRY_LIMIT: 400, TASK_NOT_FOUND: 404, REVIEW_TASK_LOCKED: 409, NOTE_ONLY_FOR_DONE: 409, // A1 (فاز ۱۵): واگرد و ویرایش توضیحِ انجام
+  NOTE_TOO_LONG: 400, // A4: نگاشت صریح (مقدار پیش‌فرض هم ۴۰۰ است)
+  // A4: تسک فوریِ شخصی (selfUrgentTaskService.statusOf منبع اصلی است؛ اینجا برای یکپارچگی نگاشت)
+  SELF_URGENT_DISABLED: 403, SELF_URGENT_LIMIT: 409, NOT_SELF_URGENT: 403, DATE_OUT_OF_WEEK: 400, HAS_ANSWERS: 409,
 };
 const sendReportError = (res, r) => res.status(REPORT_ERROR_STATUS[r.code] || 400).json({ error: r.error, code: r.code });
 
@@ -606,6 +630,33 @@ router.patch('/miniapp/daily-report/note', (req, res) => {
 // روزهایی که هنوز گزارشِ دیرهنگام می‌پذیرند (بنر Mini App)
 router.get('/miniapp/report-backfill', (req, res) => {
   res.json(taskReportService.getBackfillStatus(req.miniAppUser));
+});
+
+// ---------- تسک فوریِ خودِ کارمند (A4، فاز ۱۵؛ منطق در selfUrgentTaskService) ----------
+// مالکیت فقط از req.miniAppUser؛ بدنه فقط title/description/date. هر پاسخ موفق، فهرست تازه‌ی «امروز» را هم برمی‌گرداند (daily) تا UI حدس نزند.
+const sendSelfUrgentError = (res, r) => res.status(REPORT_ERROR_STATUS[r.code] || selfUrgentTaskService.statusOf(r.code)).json({ error: r.error, code: r.code });
+const freshToday = (user) => { const d = taskReportService.getDailyTasks(user); return d.ok ? d : null; };
+const taskIdParam = (req) => { const n = Number(req.params.id); return Number.isInteger(n) && n > 0 ? n : null; };
+const badTaskId = (res) => res.status(404).json({ error: 'تسک فوری یافت نشد.', code: 'TASK_NOT_FOUND' });
+
+router.post('/miniapp/my-urgent', (req, res) => {
+  const r = selfUrgentTaskService.add(req.miniAppUser, req.body || {}, { ip: req.ip });
+  if (!r.ok) return sendSelfUrgentError(res, r);
+  return res.status(201).json({ ...r, daily: freshToday(req.miniAppUser) });
+});
+router.patch('/miniapp/my-urgent/:id', (req, res) => {
+  const id = taskIdParam(req);
+  if (id === null) return badTaskId(res);
+  const r = selfUrgentTaskService.update(req.miniAppUser, id, req.body || {}, { ip: req.ip });
+  if (!r.ok) return sendSelfUrgentError(res, r);
+  return res.json({ ...r, daily: freshToday(req.miniAppUser) });
+});
+router.delete('/miniapp/my-urgent/:id', (req, res) => {
+  const id = taskIdParam(req);
+  if (id === null) return badTaskId(res);
+  const r = selfUrgentTaskService.remove(req.miniAppUser, id, { ip: req.ip });
+  if (!r.ok) return sendSelfUrgentError(res, r);
+  return res.json({ ...r, daily: freshToday(req.miniAppUser) });
 });
 
 // ---------- مشاهده‌ی گزارش تیم (D9؛ فقط سرپرست/ادمین — نقش و اسکوپ سمت سرور در teamReviewService) ----------

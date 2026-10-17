@@ -440,7 +440,8 @@ function updateNote(user, { taskId, date: requestedDate, note, now } = {}) {
   const n = noteOf(note);
   if (n.error) return fail(n.error, n.error === 'NOTE_TOO_LONG' ? `توضیح انجام حداکثر ${MAX_NOTE} نویسه است.` : 'توضیح باید متن باشد.');
   const updated = logsRepo.setNote(own.taskId, date, n.value);
-  return { ok: true, taskId: own.taskId, date, note: updated.note || null, cleared: !updated.note };
+  const fresh = getDailyTasks(user, { now, date });
+  return { ...(fresh.ok ? fresh : {}), ok: true, taskId: own.taskId, date, note: updated.note || null, cleared: !updated.note };
 }
 
 // ---------- گیت خروج (D7) ----------
