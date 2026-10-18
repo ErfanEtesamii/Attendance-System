@@ -386,7 +386,7 @@ scripts/                         فاز ۹ - install-service.ps1 (NSSM)، setup-
 | `NODE_ENV` | ۱ | development/production |
 | `TRUST_PROXY` | ۱ | باید `false` بماند چون تصمیم گرفتیم ریورس‌پراکسی نداشته باشیم |
 | `TELEGRAM_BOT_TOKEN` | ۳ | از BotFather |
-| `MINI_APP_URL` | ۴ | آدرس نهایی Mini App، مثلاً `https://attendance.farazhonar.com:3000/` |
+| `MINI_APP_URL` | ۴ | آدرس نهایی Mini App، مثلاً `https://attendance.farazhonar.com/` |
 | `TELEGRAM_BOT_USERNAME` | ۸ | بدون @، برای ویجت ورود پنل - ⚠️ در `.env` واقعی هنوز خالی است، باید دستی پر شود |
 | `ADMIN_SESSION_SECRET` | ۸ | **الزامی در production** - در `.env` واقعی این نشست پر شد (رندوم امن) |
 | `ADMIN_SESSION_MAX_AGE_DAYS` | ۸ | پیش‌فرض ۷ |
