@@ -36,6 +36,7 @@ const teamReview = require('./teamReviewService');
 const { sanitizeText } = require('../utils/sanitize');
 const { addDays, dayNumber, dayDiff } = require('../utils/shiftDay');
 const { getDb } = require('../db/connection');
+const weekTasks = require('./employeeWeekTasks');
 
 const REASON_CODES = ['no_time', 'needs_more_time', 'blocked_by_others', 'priority_changed', 'technical_issue', 'other'];
 const STATUSES = ['done', 'partial', 'not_done'];
@@ -81,7 +82,7 @@ function buildList(user, date, settings) {
   const plan = plansRepo.findByUserWeek(user.id, weekStart);
   const answeredIds = new Set(logsRepo.listByUserDate(user.id, date).map((l) => l.task_id));
   const picked = new Map();
-  const add = (t, source) => { if (t && !t.deleted_at && !answeredIds.has(t.id) && !picked.has(t.id)) picked.set(t.id, present(t, { source })); };
+  const add = (t, source, extra = {}) => { if (t && !t.deleted_at && !answeredIds.has(t.id) && !picked.has(t.id)) picked.set(t.id, present(t, { source, ...extra })); };
 
   if (plan) {
     for (const t of plansRepo.listTasks(plan.id)) {
@@ -98,7 +99,7 @@ function buildList(user, date, settings) {
     if (!t) continue;
     const last = lastLog(t.id);
     if (last && last.status === 'done') continue;
-    add(t, 'rescheduled');
+    add(t, 'rescheduled', { rescheduledFrom: l.log_date }); // B1: «↪ از <تاریخ>» در UI
   }
   // تسک فوری (E1) بالای فهرست؛ سپس اولویت و شناسه. فوری همیشه priority=high است ⇒ مثل high مانع خروج است (گیت تغییری نکرده).
   return [...picked.values()].sort((a, b) => (Number(b.isUrgent) - Number(a.isUrgent)) || (PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]) || (a.id - b.id));
@@ -162,21 +163,107 @@ function getDailyTasks(user, { now, date: forcedDate, requestedDate } = {}) {
   const resolved = resolveReportDate(user, { now, date: forcedDate, requestedDate }, settings);
   if (!resolved.ok) return resolved;
   const { date } = resolved;
-  const answered = logsRepo.listByUserDate(user.id, date).map((l) => {
-    const t = plansRepo.findTask(l.task_id);
-    return t ? { taskId: l.task_id, title: t.title, status: l.status, reasonCode: l.reason_code, reasonText: l.reason_text, rescheduleTo: l.reschedule_to, outOfPlan: t.system_key === OUT_OF_PLAN_KEY } : null;
-  }).filter(Boolean);
+  const dayLogs = logsRepo.listByUserDate(user.id, date);
+  const taskById = new Map(plansRepo.findTasksByIds(dayLogs.map((l) => l.task_id)).map((t) => [t.id, t]));
   const off = fullDayOff(user, date, settings);
   if (!off) teamReview.prepareDay(user, date, settings, { late: resolved.late }); // D9: تسک سیستمیِ سرپرست (ساخت + done خودکار)
-  const tasks = off ? [] : buildList(user, date, settings);
+  const carries = logsRepo.countCarriesByTask(dayLogs.map((l) => l.task_id));
+  const rawTasks = off ? [] : buildList(user, date, settings);
+  const pendingCarries = logsRepo.countCarriesByTask(rawTasks.map((t) => t.id));
+  const tasks = rawTasks.map((t) => ({ ...t, carryCount: pendingCarries.get(t.id) || 0, selfAssigned: !!t.isUrgent && t.assignedByUserId === user.id })); // B1: description/source از present؛ carryCount تازه
+  const answered = dayLogs.map((l) => {
+    const t = taskById.get(l.task_id);
+    if (!t) return null;
+    const systemKey = t.system_key || null;
+    return {
+      taskId: l.task_id, title: t.title, status: l.status, reasonCode: l.reason_code, reasonText: l.reason_text, rescheduleTo: l.reschedule_to, outOfPlan: systemKey === OUT_OF_PLAN_KEY,
+      // B1 (فاز ۱۵): فقط افزودن — برای دو لیستِ «امروزِ من»
+      priority: t.priority, description: t.description || '', note: l.note || null, answeredAt: l.answered_at || null, answeredLate: !!l.answered_late,
+      canUndo: systemKey !== teamReview.REVIEW_KEY, isUrgent: !!t.is_urgent, assignedByUserId: t.assigned_by_user_id || null, isSystem: !!t.is_system, systemKey,
+      carryCount: carries.get(l.task_id) || 0, dropped: l.reschedule_to === DROP, selfAssigned: !!t.is_urgent && t.assigned_by_user_id === user.id,
+    };
+  }).filter(Boolean);
+  const maxUrgent = Number(settings.selfUrgentMaxPerDay) || 0;
   const carryBase = resolved.late && resolved.cur > date ? resolved.cur : date; // همان پایه‌ی اعتبارسنجی انتقال (validateAnswer)
   return {
     ok: true, date, today: resolved.cur, late: resolved.late, source: resolved.source, mode: settings.dailyReportGateMode, fullDayOff: off,
     nextWorkingDay: nextWorkingDay(user, carryBase, settings), // A2: تاریخ «فردا» از سرور (روز کاریِ بعدی)، نه حدس کلاینت
     taskCarryMaxTimes: Number(settings.taskCarryMaxTimes) || 0,
+    progress: progressOf(tasks, answered), // B1
+    limits: { selfUrgentEnabled: !!settings.selfUrgentEnabled, selfUrgentRemaining: settings.selfUrgentEnabled ? Math.max(0, maxUrgent - plansRepo.countSelfUrgentOnDate(user.id, date)) : 0 }, // B1 (A3)
     tasks,
     teamReview: teamReview.gateInfo(user, date, tasks, settings), // D9-ب: مشاهده‌نشده‌ها / گزارش‌نداده‌ها (فقط وقتی تسک سیستمی در فهرست است)
     answered, reasonCodes: REASON_CODES,
+  };
+}
+
+// B1 (فاز ۱۵): پیشرفت روز — قاعده‌ی شمارش همان employeeWeekSummary.summarizeWeek: تسک سیستمی/«خارج از برنامه»/حذف‌شده (drop) در total نمی‌آید.
+// برخلاف خلاصه‌ی هفته، ردیف‌های بی‌پاسخِ «امروز» اینجا در total می‌آیند (کارمند می‌خواهد «۳ از ۷» را ببیند). percent = round((done + 0.5×partial)/total×100)؛ total=۰ ⇒ null.
+function progressOf(pending, answered) {
+  const counted = (t) => !t.isSystem && !t.outOfPlan && !t.dropped;
+  let done = 0; let partial = 0; let total = 0;
+  for (const t of pending) if (counted(t)) total += 1;
+  for (const a of answered) {
+    if (!counted(a)) continue;
+    total += 1;
+    if (a.status === 'done') done += 1; else if (a.status === 'partial') partial += 1;
+  }
+  return { done, total, percent: total ? Math.round(((done + partial * 0.5) / total) * 100) : null };
+}
+
+const BOARD_WEEKS = { current: 0, next: 7 };
+
+/**
+ * GET /miniapp/week-board?week=current|next (B1، فاز ۱۵) — فقط‌خواندنی؛ قفل/editMode همان weeklyPlanService.getPlan است.
+ * هفت روز با نوع روز و ساعت مؤثر؛ هر روز فهرست تسک‌ها با وضعیت pending|done|partial|not_done|rescheduled|dropped.
+ * محاسبه با employeeWeekTasks.collect (کوئری دسته‌ای: تعداد کوئری مستقل از تعداد تسک/روز). روزهای آینده فقط برنامه‌اند (بدون پاسخ).
+ */
+function getWeekBoard(user, { week = 'current', now = new Date() } = {}) {
+  if (!Object.prototype.hasOwnProperty.call(BOARD_WEEKS, week)) return fail('INVALID_WEEK', 'week باید next یا current باشد.');
+  const settings = settingsRepository.getAll();
+  const today = reportDateFor(user, now);
+  const weekStart = addDays(calendarService.weekStartOf(today, settings.weekStartDay), BOARD_WEEKS[week]);
+  const dates = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const cals = new Map(dates.map((d) => [d, calendarService.getCalendarDay(user, d, { settings })]));
+  const got = weekTasks.collect(user, weekStart, dates, { dayInfo: (d) => ({ working: !!cals.get(d).isWorkingDay }), today });
+
+  const all = [...got.tasksByDate.values()].flat();
+  const carries = logsRepo.countCarriesByTask(all.map((t) => t.taskId));
+  const statusOf = (t) => {
+    if (t.dropped) return 'dropped';
+    if (t.status === 'no_answer') return 'pending';
+    if (t.rescheduleTo) return 'rescheduled';
+    return t.status;
+  };
+  const counted = (t) => !t.isSystem && !t.outOfPlan && t.status !== 'dropped';
+  let wDone = 0; let wPartial = 0; let wTotal = 0;
+  const days = dates.map((date) => {
+    const cal = cals.get(date);
+    const tasks = (got.tasksByDate.get(date) || []).map((t) => ({
+      id: t.taskId, title: t.title, description: t.description || '', priority: t.priority, plannedDate: t.plannedDate, source: t.source,
+      isUrgent: t.isUrgent, assignedByUserId: t.assignedByUserId, assignedByName: t.assignedBy, managerLocked: t.managerLocked,
+      selfAssigned: !!t.isUrgent && t.assignedByUserId === user.id, urgentNote: t.urgentNote, urgentDeadlineTime: t.urgentDeadlineTime,
+      isSystem: t.isSystem, systemKey: t.systemKey, outOfPlan: t.outOfPlan,
+      status: statusOf(t), note: t.note, reasonCode: t.reasonCode, reasonText: t.reasonText, rescheduleTo: t.rescheduleTo,
+      answeredAt: t.answeredAt, answeredLate: t.answeredLate, carryCount: carries.get(t.taskId) || 0,
+      canUndo: t.status !== 'no_answer' && t.systemKey !== teamReview.REVIEW_KEY,
+    }));
+    const c = tasks.filter(counted);
+    const done = c.filter((t) => t.status === 'done').length;
+    const partial = c.filter((t) => t.status === 'partial').length;
+    wDone += done; wPartial += partial; wTotal += c.length;
+    return {
+      date, kind: cal.kind, isWorkingDay: !!cal.isWorkingDay, holidayTitle: cal.holidayTitle || null,
+      hours: cal.isWorkingDay ? { startTime: cal.expectedStart || null, endTime: cal.expectedEnd || null } : null,
+      isToday: date === today, isFuture: date > today,
+      done, total: c.length, tasks,
+    };
+  });
+  return {
+    ok: true, week, weekStart, weekEnd: addDays(weekStart, 6), today,
+    planStatus: got.plan ? got.plan.status : 'draft', hasPlan: !!got.plan,
+    progress: { done: wDone, total: wTotal, percent: wTotal ? Math.round(((wDone + wPartial * 0.5) / wTotal) * 100) : null },
+    days,
   };
 }
 
@@ -508,4 +595,4 @@ function commitAtomic(user, gate, fn) {
   })();
 }
 
-module.exports = { undoAnswer, updateNote, getDailyTasks, submitDailyReport, resolveReportDate, getBackfillStatus, checkoutGate, commitAtomic, blockMessage, buildList, reportDateFor, REASON_CODES, OUT_OF_PLAN_KEY, DROP };
+module.exports = { getWeekBoard, progressOf, undoAnswer, updateNote, getDailyTasks, submitDailyReport, resolveReportDate, getBackfillStatus, checkoutGate, commitAtomic, blockMessage, buildList, reportDateFor, REASON_CODES, OUT_OF_PLAN_KEY, DROP };

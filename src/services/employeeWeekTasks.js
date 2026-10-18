@@ -16,6 +16,7 @@ function fromTaskRow(t) {
     id: t.id, title: t.title, description: t.description || null, priority: t.priority, isUrgent: !!t.is_urgent, urgentNote: t.urgent_note || null,
     urgentDeadlineTime: t.urgent_deadline_time || null, assignedBy: t.assigned_by_name || null, isSystem: !!t.is_system, systemKey: t.system_key || null,
     plannedDate: t.planned_date || null, sortOrder: t.sort_order || 0, deleted: !!t.deleted_at, carriedFrom: t.carried_from_task_id || null,
+    assignedByUserId: t.assigned_by_user_id || null, managerLocked: !!t.manager_locked, // B1 (فاز ۱۵)
   };
 }
 function fromLogRow(l) {
@@ -23,6 +24,7 @@ function fromLogRow(l) {
     id: l.task_id, title: l.task_title, description: l.task_description || null, priority: l.task_priority, isUrgent: !!l.task_is_urgent, urgentNote: l.task_urgent_note || null,
     urgentDeadlineTime: l.task_urgent_deadline_time || null, assignedBy: l.task_assigned_by_name || null, isSystem: !!l.task_is_system, systemKey: l.task_system_key || null,
     plannedDate: l.task_planned_date || null, sortOrder: l.task_sort_order || 0, deleted: !!l.task_deleted_at, carriedFrom: l.task_carried_from || null,
+    assignedByUserId: l.task_assigned_by || null, managerLocked: !!l.task_manager_locked, // B1 (فاز ۱۵)
   };
 }
 
@@ -32,6 +34,7 @@ function view(task, source, log) {
     taskId: task.id, title: task.title, description: task.description, priority: task.priority,
     isUrgent: task.isUrgent, urgentNote: task.urgentNote, urgentDeadlineTime: task.urgentDeadlineTime, assignedBy: task.assignedBy,
     isSystem: task.isSystem, systemKey: task.systemKey, outOfPlan: task.systemKey === 'out_of_plan', carriedFrom: task.carriedFrom,
+    assignedByUserId: task.assignedByUserId, managerLocked: task.managerLocked, plannedDate: task.plannedDate, // B1 (فاز ۱۵)
     source, // planned | everyday | rescheduled | answered_only
     status: answered ? log.status : 'no_answer', // done | partial | not_done | no_answer
     reasonCode: answered ? log.reason_code || null : null,
@@ -40,6 +43,7 @@ function view(task, source, log) {
     dropped: answered && log.reschedule_to === DROP,
     answeredLate: answered ? !!log.answered_late : false,
     answeredAt: answered ? log.answered_at : null,
+    note: answered ? log.note || null : null, // B1 (فاز ۱۵): توضیحِ انجام (A1)
   };
 }
 

@@ -121,6 +121,23 @@ describe('APIهای تسک Mini App (A4)', { skip: hasDeps ? false : 'express ن
     assert.deepEqual([bad.status, bad.json.code], [409, 'NOTE_ONLY_FOR_DONE']);
   });
 
+  test('GET /week-board: ۷ روز با تسک‌ها (فقط‌خواندنی)، هفته‌ی بعد، week نامعتبر ⇒ ۴۰۰، بدون initData ⇒ ۴۰۱', async () => {
+    clear(); enable();
+    const u = fresh();
+    assert.equal((await mine(u, { title: 'امروزی' })).status, 201);
+    const cur = await S.call(u, 'GET', 'week-board');
+    assert.equal(cur.status, 200, JSON.stringify(cur.json));
+    assert.deepEqual([cur.json.week, cur.json.days.length, cur.json.today], ['current', 7, TODAY]);
+    const today = cur.json.days.find((d) => d.date === TODAY);
+    assert.deepEqual([today.isToday, today.tasks[0].title, today.tasks[0].status, today.tasks[0].selfAssigned], [true, 'امروزی', 'pending', true]);
+    const next = await S.call(u, 'GET', 'week-board?week=next');
+    assert.deepEqual([next.status, next.json.hasPlan], [200, false]);
+    const bad = await S.call(u, 'GET', 'week-board?week=prev');
+    assert.deepEqual([bad.status, bad.json.code], [400, 'INVALID_WEEK']);
+    const anon = await fetch(`${S.base}/api/miniapp/week-board`);
+    assert.equal(anon.status, 401);
+  });
+
   test('rate limit: my-urgent بعد از ۱۰ درخواست در دقیقه ⇒ ۴۲۹ (کلید = کاربر)؛ کاربر دیگر آزاد', async () => {
     clear(); enable();
     const u = fresh(); const v = fresh();

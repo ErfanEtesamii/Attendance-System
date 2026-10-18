@@ -95,6 +95,7 @@ const miniAppMyUrgentLimiter = createRateLimiter({
   keyFn: miniAppRateLimitKey,
 });
 router.use('/miniapp/daily-tasks', miniAppTasksLimiter);
+router.use('/miniapp/week-board', miniAppTasksLimiter);
 router.use('/miniapp/daily-report', miniAppTasksLimiter);
 router.use('/miniapp/my-urgent', miniAppMyUrgentLimiter);
 
@@ -589,7 +590,7 @@ const REPORT_ERROR_STATUS = {
   MONTH_CLOSED: 409, ALREADY_ANSWERED: 409, FULL_DAY_OFF: 409,
   BACKFILL_EXPIRED: 409, LATE_WINDOW_EXPIRED: 409, LATE_NOT_ALLOWED: 409, NO_RECORD: 404,
   CARRY_LIMIT: 400, TASK_NOT_FOUND: 404, REVIEW_TASK_LOCKED: 409, NOTE_ONLY_FOR_DONE: 409, // A1 (فاز ۱۵): واگرد و ویرایش توضیحِ انجام
-  NOTE_TOO_LONG: 400, // A4: نگاشت صریح (مقدار پیش‌فرض هم ۴۰۰ است)
+  INVALID_WEEK: 400, NOTE_TOO_LONG: 400, // A4: نگاشت صریح (مقدار پیش‌فرض هم ۴۰۰ است)
   // A4: تسک فوریِ شخصی (selfUrgentTaskService.statusOf منبع اصلی است؛ اینجا برای یکپارچگی نگاشت)
   SELF_URGENT_DISABLED: 403, SELF_URGENT_LIMIT: 409, NOT_SELF_URGENT: 403, DATE_OUT_OF_WEEK: 400, HAS_ANSWERS: 409,
 };
@@ -598,6 +599,12 @@ const sendReportError = (res, r) => res.status(REPORT_ERROR_STATUS[r.code] || 40
 // date (اختیاری، YYYY-MM-DD): گزارش دیرهنگام/backfill؛ اعتبارسنجی کامل سمت سرور (taskReportService.resolveReportDate)
 router.get('/miniapp/daily-tasks', (req, res) => {
   const r = taskReportService.getDailyTasks(req.miniAppUser, { requestedDate: req.query.date });
+  if (!r.ok) return sendReportError(res, r);
+  return res.json(r);
+});
+// B1 (فاز ۱۵): هفته‌ی کارمند با تسک‌ها و وضعیت هر روز (فقط‌خواندنی؛ week=current|next)
+router.get('/miniapp/week-board', (req, res) => {
+  const r = taskReportService.getWeekBoard(req.miniAppUser, { week: req.query.week || 'current' });
   if (!r.ok) return sendReportError(res, r);
   return res.json(r);
 });

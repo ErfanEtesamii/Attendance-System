@@ -72,8 +72,20 @@ function remove(taskId, logDate) {
 // ---------- نمای هفتگی کارمند (F1-b): کوئری‌های دسته‌ای برای کل هفته (بدون N+1) ----------
 const TASK_COLS = `t.title AS task_title, t.description AS task_description, t.priority AS task_priority, t.is_urgent AS task_is_urgent,
   t.urgent_note AS task_urgent_note, t.urgent_deadline_time AS task_urgent_deadline_time, t.is_system AS task_is_system, t.system_key AS task_system_key,
-  t.deleted_at AS task_deleted_at, t.planned_date AS task_planned_date, t.sort_order AS task_sort_order, t.carried_from_task_id AS task_carried_from, au.full_name AS task_assigned_by_name`;
+  t.deleted_at AS task_deleted_at, t.planned_date AS task_planned_date, t.sort_order AS task_sort_order, t.carried_from_task_id AS task_carried_from, au.full_name AS task_assigned_by_name,
+  t.assigned_by_user_id AS task_assigned_by, t.manager_locked AS task_manager_locked`;
 const TASK_JOIN = 'JOIN plan_tasks t ON t.id = l.task_id LEFT JOIN users au ON au.id = t.assigned_by_user_id';
+
+// B1 (فاز ۱۵): شمار «انتقال به تاریخ» (نه drop) برای هر تسک — یک کوئریِ دسته‌ای برای فهرست؛ Map(taskId → count)
+function countCarriesByTask(taskIds) {
+  const ids = [...new Set((taskIds || []).map(Number).filter((n) => Number.isInteger(n) && n > 0))];
+  const out = new Map();
+  if (!ids.length) return out;
+  const rows = getDb().prepare(`SELECT task_id, COUNT(*) AS n FROM task_daily_logs WHERE task_id IN (${ids.map(() => '?').join(',')})
+    AND reschedule_to IS NOT NULL AND reschedule_to != 'drop' GROUP BY task_id`).all(...ids);
+  rows.forEach((r) => out.set(r.task_id, r.n));
+  return out;
+}
 
 // پاسخ‌های یک کاربر در بازه‌ی [from, to] همراه مشخصات تسک (حتی تسک حذف‌شده‌ی بعدی؛ تاریخچه باید بماند)
 function listRangeDetailed(userId, fromDate, toDate) {
@@ -93,4 +105,4 @@ function listLastLogsBefore(userId, beforeDate) {
     AND l.log_date = (SELECT MAX(x.log_date) FROM task_daily_logs x WHERE x.task_id = l.task_id AND x.log_date < ?)`).all(userId, beforeDate, beforeDate);
 }
 
-module.exports = { setNote, listRangeDetailed, listRescheduledIntoRange, listLastLogsBefore, findByTaskDate, upsert, listByUserDate, listByUserRange, listUserIdsWithLogsOnDate, listByTask, listRescheduledTo, listRecentEncouragements, remove, listRangeWithTasks, listAnsweredSince };
+module.exports = { countCarriesByTask, setNote, listRangeDetailed, listRescheduledIntoRange, listLastLogsBefore, findByTaskDate, upsert, listByUserDate, listByUserRange, listUserIdsWithLogsOnDate, listByTask, listRescheduledTo, listRecentEncouragements, remove, listRangeWithTasks, listAnsweredSince };

@@ -1,0 +1,184 @@
+/* UI تازه‌ی برنامه‌ی هفتگی و «امروزِ من» (فاز ۱۵ — C1). همه‌ی کلاس‌ها با پیشوند pl- و رنگ‌ها فقط با متغیرهای --pl-*.
+   متغیرها در سه بلوک تم (dark پیش‌فرض، light، و prefers-color-scheme بدون data-theme) تعریف شده‌اند؛ کنتراست متن ≥ AA (تست). */
+:root,
+:root[data-theme="dark"] {
+  --pl-title: #ff8fc8;
+  --pl-cutout: #1b1c2c;
+  --pl-surface: #262740;
+  --pl-surface-2: #2e2f4a;
+  --pl-ink: #f2f3f8;
+  --pl-muted: #b4b6d0;
+  --pl-line: rgba(255, 255, 255, 0.16);
+  --pl-accent: #8b7cf6;
+  --pl-done: #1fcf95;
+  --pl-done-ink: #062b20;
+  --pl-warn: #f5b83d;
+  --pl-danger: #ff7f95;
+  --pl-chip-bg: rgba(255, 255, 255, 0.1);
+  --pl-chip-ink: #e6e7f2;
+  --pl-urgent-bg: rgba(255, 169, 77, 0.18);
+  --pl-urgent-ink: #ffc58a;
+  --pl-manager-bg: rgba(139, 124, 246, 0.2);
+  --pl-manager-ink: #cfc7ff;
+  --pl-day-1: #ffa94d;
+  --pl-day-2: #3ddbd0;
+  --pl-day-3: #5fd98a;
+  --pl-day-4: #d2b48c;
+  --pl-day-5: #ff7a90;
+  --pl-day-6: #ff8fc8;
+  --pl-day-7: #9aa5ff;
+}
+:root[data-theme="light"] {
+  --pl-title: #a8246f;
+  --pl-cutout: #f3f4f9;
+  --pl-surface: #ffffff;
+  --pl-surface-2: #eef0f7;
+  --pl-ink: #1b1c2c;
+  --pl-muted: #5b5e7a;
+  --pl-line: rgba(27, 28, 44, 0.22);
+  --pl-accent: #5a49d6;
+  --pl-done: #0a7452;
+  --pl-done-ink: #ffffff;
+  --pl-warn: #8a5f00;
+  --pl-danger: #c0263f;
+  --pl-chip-bg: rgba(27, 28, 44, 0.08);
+  --pl-chip-ink: #2a2c45;
+  --pl-urgent-bg: rgba(163, 84, 0, 0.14);
+  --pl-urgent-ink: #7a3f00;
+  --pl-manager-bg: rgba(90, 73, 214, 0.12);
+  --pl-manager-ink: #3f31a8;
+  --pl-day-1: #a35400;
+  --pl-day-2: #00696a;
+  --pl-day-3: #1b7a3c;
+  --pl-day-4: #7a5a3a;
+  --pl-day-5: #b0243f;
+  --pl-day-6: #a8246f;
+  --pl-day-7: #3f4fb8;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --pl-title: #a8246f;
+    --pl-cutout: #f3f4f9;
+    --pl-surface: #ffffff;
+    --pl-surface-2: #eef0f7;
+    --pl-ink: #1b1c2c;
+    --pl-muted: #5b5e7a;
+    --pl-line: rgba(27, 28, 44, 0.22);
+    --pl-accent: #5a49d6;
+    --pl-done: #0a7452;
+    --pl-done-ink: #ffffff;
+    --pl-warn: #8a5f00;
+    --pl-danger: #c0263f;
+    --pl-chip-bg: rgba(27, 28, 44, 0.08);
+    --pl-chip-ink: #2a2c45;
+    --pl-urgent-bg: rgba(163, 84, 0, 0.14);
+    --pl-urgent-ink: #7a3f00;
+    --pl-manager-bg: rgba(90, 73, 214, 0.12);
+    --pl-manager-ink: #3f31a8;
+    --pl-day-1: #a35400;
+    --pl-day-2: #00696a;
+    --pl-day-3: #1b7a3c;
+    --pl-day-4: #7a5a3a;
+    --pl-day-5: #b0243f;
+    --pl-day-6: #a8246f;
+    --pl-day-7: #3f4fb8;
+  }
+}
+
+.pl-board { display: grid; grid-template-columns: 1fr; gap: 26px 14px; margin: 18px 0; }
+@media (min-width: 768px) { .pl-board { grid-template-columns: repeat(3, 1fr); } }
+
+/* کادر روز: حاشیه‌ی رنگی گرد و عنوان روی خط بالا */
+.pl-day { --pl-c: var(--pl-day-1); position: relative; margin: 0; padding: 22px 10px 8px; border: 2px solid var(--pl-c); border-radius: 18px; background: var(--pl-surface); color: var(--pl-ink); min-width: 0; }
+.pl-day.pl-day-1 { --pl-c: var(--pl-day-1); }
+.pl-day.pl-day-2 { --pl-c: var(--pl-day-2); }
+.pl-day.pl-day-3 { --pl-c: var(--pl-day-3); }
+.pl-day.pl-day-4 { --pl-c: var(--pl-day-4); }
+.pl-day.pl-day-5 { --pl-c: var(--pl-day-5); }
+.pl-day.pl-day-6 { --pl-c: var(--pl-day-6); }
+.pl-day.pl-day-7 { --pl-c: var(--pl-day-7); }
+.pl-day.is-today { border-width: 4px; }
+.pl-day-title { position: absolute; top: -15px; inset-inline-start: 50%; transform: translateX(50%); margin: 0; padding: 2px 12px; max-width: 92%; background: var(--pl-cutout); color: var(--pl-c); font-size: 15px; font-weight: 800; border-radius: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-today-badge { display: inline-block; margin-inline-start: 6px; padding: 0 8px; border: 1px solid var(--pl-c); border-radius: 10px; font-size: 12px; font-weight: 700; }
+.pl-day-meta { margin: 0 0 4px; font-size: 12px; color: var(--pl-muted); unicode-bidi: isolate; }
+.pl-day-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 44px; padding: 0 4px; background: none; border: 0; color: var(--pl-ink); font: inherit; cursor: pointer; }
+.pl-day.is-collapsed .pl-list { display: none; }
+
+/* ردیف خط‌دار با چک‌باکس در انتها */
+.pl-list { list-style: none; margin: 0; padding: 0; }
+.pl-row { display: flex; align-items: stretch; gap: 4px; min-height: 44px; border-bottom: 1px solid var(--pl-line); }
+.pl-row:last-child { border-bottom: 0; }
+.pl-row-main { flex: 1; min-width: 0; display: block; min-height: 44px; padding: 8px 4px; background: none; border: 0; color: var(--pl-ink); font: inherit; text-align: start; cursor: pointer; }
+.pl-row-title { display: block; font-weight: 600; overflow-wrap: anywhere; }
+.pl-row.is-done .pl-row-title { text-decoration: line-through; color: var(--pl-muted); }
+.pl-row-status { display: inline-block; margin-top: 2px; font-size: 12px; color: var(--pl-muted); }
+.pl-row-note { display: block; margin-top: 2px; font-size: 12px; color: var(--pl-muted); overflow-wrap: anywhere; }
+.pl-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.pl-chip { display: inline-block; padding: 1px 8px; border-radius: 10px; background: var(--pl-chip-bg); color: var(--pl-chip-ink); font-size: 12px; line-height: 1.7; }
+.pl-chip-urgent { background: var(--pl-urgent-bg); color: var(--pl-urgent-ink); font-weight: 700; }
+.pl-chip-manager, .pl-chip-mandatory { background: var(--pl-manager-bg); color: var(--pl-manager-ink); }
+
+/* چک‌باکس: ظاهر مربعیِ کوچک، هدف لمسی ≥ ۴۴px */
+.pl-check { position: relative; flex: 0 0 44px; width: 44px; min-height: 44px; padding: 0; background: none; border: 0; color: var(--pl-ink); cursor: pointer; }
+.pl-check::before { content: ""; position: absolute; top: 50%; inset-inline-start: 50%; width: 22px; height: 22px; margin-top: -11px; margin-inline-start: -11px; border: 2px solid var(--pl-ink); border-radius: 5px; background: transparent; }
+.pl-check[aria-checked="true"]::before { background: var(--pl-done); border-color: var(--pl-done); }
+.pl-check[aria-checked="true"] .pl-tick { color: var(--pl-done-ink); }
+.pl-tick { position: absolute; top: 50%; inset-inline-start: 50%; transform: translate(50%, -50%); font-size: 15px; font-weight: 900; line-height: 1; }
+.pl-check[disabled], .pl-check[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; }
+.pl-move { flex: 0 0 44px; min-height: 44px; padding: 0; background: none; border: 0; color: var(--pl-accent); font-size: 18px; cursor: pointer; }
+
+/* کنترل‌ها و تمرکز */
+.pl-row-main:focus-visible, .pl-check:focus-visible, .pl-move:focus-visible, .pl-day-toggle:focus-visible, .pl-seg button:focus-visible, .pl-btn:focus-visible { outline: 3px solid var(--pl-accent); outline-offset: 2px; }
+
+/* پیشرفت */
+.pl-progress { display: flex; align-items: center; gap: 10px; margin: 8px 0; color: var(--pl-ink); }
+.pl-progress-bar { flex: 1; height: 10px; border: 0; border-radius: 6px; overflow: hidden; background: var(--pl-chip-bg); accent-color: var(--pl-done); }
+.pl-progress-bar::-webkit-progress-bar { background: var(--pl-chip-bg); }
+.pl-progress-bar::-webkit-progress-value { background: var(--pl-done); }
+.pl-progress-bar::-moz-progress-bar { background: var(--pl-done); }
+.pl-progress-text { font-size: 13px; font-weight: 700; unicode-bidi: isolate; }
+
+/* کنترل دوبخشی (موبایل: در انتظار / انجام‌شده) */
+.pl-seg { display: flex; gap: 0; margin: 8px 0; border: 1px solid var(--pl-line); border-radius: 12px; overflow: hidden; }
+.pl-seg button { flex: 1; min-height: 44px; padding: 0 8px; background: var(--pl-surface); border: 0; color: var(--pl-ink); font: inherit; cursor: pointer; }
+.pl-seg button[aria-selected="true"] { background: var(--pl-accent); color: var(--pl-done-ink); font-weight: 800; }
+.pl-seg-count { unicode-bidi: isolate; margin-inline-start: 4px; }
+
+/* شیت جزئیات: الگوی #break-sheet (sheet-backdrop / sheet) تعمیم‌یافته */
+.pl-sheet-backdrop { z-index: 60; }
+.pl-sheet { max-height: 86vh; overflow-y: auto; color: var(--pl-ink); background: var(--pl-surface); }
+.pl-sheet .pl-row-title { font-size: 17px; }
+.pl-sheet-rows { margin: 8px 0; }
+.pl-sheet-rows dt { margin-top: 8px; font-size: 12px; color: var(--pl-muted); }
+.pl-sheet-rows dd { margin: 0; overflow-wrap: anywhere; unicode-bidi: plaintext; }
+.pl-sheet-desc { white-space: pre-wrap; overflow-wrap: anywhere; }
+.pl-sheet-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.pl-btn { min-height: 44px; padding: 0 14px; border: 1px solid var(--pl-line); border-radius: 12px; background: var(--pl-surface-2); color: var(--pl-ink); font: inherit; cursor: pointer; }
+.pl-btn[disabled] { opacity: 0.55; cursor: not-allowed; }
+.pl-btn.pl-primary { background: var(--pl-accent); border-color: var(--pl-accent); color: var(--pl-done-ink); font-weight: 800; }
+.pl-btn.pl-danger { color: var(--pl-danger); }
+.pl-why { display: block; width: 100%; font-size: 12px; color: var(--pl-muted); }
+.pl-sheet-live { min-height: 20px; font-size: 13px; color: var(--pl-muted); }
+.pl-sheet-live.is-err { color: var(--pl-danger); }
+.pl-field { display: block; width: 100%; min-height: 44px; padding: 8px 10px; border: 1px solid var(--pl-line); border-radius: 12px; background: var(--pl-surface-2); color: var(--pl-ink); font: inherit; box-sizing: border-box; }
+.pl-move-choices { display: grid; gap: 8px; margin: 8px 0; }
+.pl-reasons { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.pl-reasons button { min-height: 44px; padding: 0 12px; border: 1px solid var(--pl-line); border-radius: 12px; background: var(--pl-surface-2); color: var(--pl-ink); font: inherit; cursor: pointer; }
+.pl-reasons button[aria-pressed="true"] { background: var(--pl-accent); color: var(--pl-done-ink); border-color: var(--pl-accent); }
+
+/* روز «امروزِ من»: دو لیست */
+.pl-myday { display: grid; grid-template-columns: 1fr; gap: 14px; }
+@media (min-width: 768px) { .pl-myday { grid-template-columns: 1fr 1fr; } }
+.pl-col-title { margin: 0 0 4px; font-size: 15px; font-weight: 800; }
+.pl-note-box { display: flex; gap: 6px; padding: 4px 0 8px; }
+.pl-note-box .pl-field { flex: 1; }
+.pl-quiet-chip { display: inline-block; margin: 6px 0; padding: 2px 12px; border: 1px dashed var(--pl-line); border-radius: 12px; background: none; color: var(--pl-muted); font: inherit; font-size: 13px; min-height: 44px; cursor: pointer; }
+.pl-undo-bar { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; }
+.pl-num { unicode-bidi: isolate; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .pl-day, .pl-check::before { transition: border-color 0.15s ease, background-color 0.15s ease; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pl-day, .pl-check::before, .pl-sheet { transition: none; animation: none; }
+}

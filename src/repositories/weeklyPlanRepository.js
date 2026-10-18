@@ -71,6 +71,13 @@ function findTask(id) {
   return getDb().prepare(`${TASK_SELECT} WHERE t.id = ?`).get(id) || null;
 }
 
+// B1 (فاز ۱۵): چند تسک با یک کوئری (جلوگیری از N+1 در فهرست «امروز»)
+function findTasksByIds(ids) {
+  const list = [...new Set((ids || []).map(Number).filter((n) => Number.isInteger(n) && n > 0))];
+  if (!list.length) return [];
+  return getDb().prepare(`${TASK_SELECT} WHERE t.id IN (${list.map(() => '?').join(',')})`).all(...list);
+}
+
 function listTasks(planId, { includeDeleted = false } = {}) {
   return getDb().prepare(`${TASK_SELECT} WHERE t.plan_id = ?${includeDeleted ? '' : ' AND t.deleted_at IS NULL'} ORDER BY t.sort_order, t.id`).all(planId);
 }
@@ -175,6 +182,6 @@ function countSelfUrgentOnDate(userId, date) {
 }
 
 module.exports = {
-  countSelfUrgentOnDate, listUrgent, findUrgentWithOwner, topTitles, findById, markEmployeeSeen, managerChangesSince, findByUserWeek, getOrCreate, listByUserRange, listByWeek, markSubmitted, touch, setSupervisorFeedback,
+  findTasksByIds, countSelfUrgentOnDate, listUrgent, findUrgentWithOwner, topTitles, findById, markEmployeeSeen, managerChangesSince, findByUserWeek, getOrCreate, listByUserRange, listByWeek, markSubmitted, touch, setSupervisorFeedback,
   findTask, listTasks, addTask, updateTask, markManagerEdited, softDeleteTask, reorderTasks, countOrdinaryTasks, countOrdinaryByPlanIds, findSystemTask, findSystemTaskOnDate,
 };
