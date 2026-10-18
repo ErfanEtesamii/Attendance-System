@@ -27,8 +27,8 @@ describe('ماژول حالت‌ها', () => {
   test('skeleton «plan» (C3): تخته با ۳ کارت روزانه، متن مخصوص خوانشگر، بدون style/on*', () => {
     const h = S.skeletonHtml('plan');
     SAFE(h);
-    assert.match(h, /<div class="plan-board sk-plan">/);
-    assert.equal((h.match(/class="day-card sk-day"/g) || []).length, 3);
+    assert.match(h, /<div class="pl-board sk-plan">/);
+    assert.equal((h.match(/class="pl-day sk-day"/g) || []).length, 3);
     assert.match(h, /<span class="sr-only">در حال بارگذاری…<\/span>/);
   });
   test('خالی: پیام escape‌شده با آیکن اختیاری', () => {

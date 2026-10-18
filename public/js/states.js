@@ -5,7 +5,7 @@
   const FALLBACK_ESC = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const bar = (cls) => `<span class="sk-line ${cls || ''}"></span>`;
 
-  // kind: 'notebook' (D1: اسکلت دفترچه‌ی دوصفحه‌ای برای «برنامه هفته بعد»؛ ستون کارمندان + دو صفحه) | 'page' (تیتر + کارت‌های آمار + جدول) | 'table' | 'cards' | 'list' | 'plan' (تخته‌ی سبز با کارت‌های روزانه‌ی برنامه‌ی هفتگی) | 'today' (نمای «امروز» Mini App: کارت وضعیت + دو دکمه + سه ردیف)
+  // kind: 'notebook' (D1: اسکلت دفترچه‌ی دوصفحه‌ای برای «برنامه هفته بعد»؛ ستون کارمندان + دو صفحه) | 'page' (تیتر + کارت‌های آمار + جدول) | 'table' | 'cards' | 'list' | 'plan' (کادرهای رنگیِ روزانه‌ی برنامه‌ی هفتگی) | 'today' (نمای «امروز» Mini App: کارت وضعیت + دو دکمه + سه ردیف)
   function skeletonHtml(kind, opts) {
     const o = opts || {};
     const rows = Math.max(1, Math.min(12, Number(o.rows) || 6));
@@ -21,7 +21,7 @@
           `<div class="sk-grid two"><div class="sk-card">${bar('w50')}${bar('w30')}</div><div class="sk-card">${bar('w50')}${bar('w30')}</div></div>` +
           `<div class="sk-box">${bar('w60')}${bar('w60')}${bar('w60')}</div>`;
         break;
-      case 'plan': body = `<div class="plan-board sk-plan">${Array.from({ length: 3 }, () => `<div class="day-card sk-day">${bar('w40 tall')}${bar('w100')}${bar('w60')}</div>`).join('')}</div>`; break;
+      case 'plan': body = `<div class="pl-board sk-plan">${Array.from({ length: 3 }, () => `<div class="pl-day sk-day">${bar('w40 tall')}${bar('w100')}${bar('w60')}</div>`).join('')}</div>`; break;
       case 'notebook':
         body = `<div class="np-layout"><div class="sk-box">${bar('w60')}${bar('w100')}${bar('w100')}${bar('w60')}${bar('w100')}</div>` +
           `<div class="nb"><div class="nb-spread"><div class="nb-page">${cards}</div><div class="nb-spring"></div><div class="nb-page">${cards}</div></div></div></div>`;
