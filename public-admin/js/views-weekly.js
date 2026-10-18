@@ -131,10 +131,11 @@
       t.outOfPlan ? AP.badge('', 'خارج از برنامه') : '',
     ].filter(Boolean).join('');
     return `<li class="day-task${t.isUrgent ? ' is-urgent' : ''}">
-      <div class="title">${t.isUrgent ? AP.badge('red', '⚡ فوری', true) : ''}${t.priority === 'high' && !t.isUrgent ? AP.badge('late', 'اولویت بالا') : ''}${esc(t.title)}</div>
-      ${t.isUrgent && t.assignedBy ? `<div class="muted" style="font-size:11px">از طرف: ${esc(t.assignedBy)}${t.urgentDeadlineTime ? ` · مهلت ${esc(t.urgentDeadlineTime)}` : ''}</div>` : ''}
+      <div class="title">${t.isUrgent ? AP.badge('red', t.selfAssigned ? '⚡ فوری (خودش)' : '⚡ فوری', true) : ''}${t.priority === 'high' && !t.isUrgent ? AP.badge('late', 'اولویت بالا') : ''}${esc(t.title)}</div>
+      ${t.isUrgent && !t.selfAssigned && t.assignedBy ? `<div class="muted" style="font-size:11px">از طرف: ${esc(t.assignedBy)}${t.urgentDeadlineTime ? ` · مهلت ${esc(t.urgentDeadlineTime)}` : ''}</div>` : ''}
       <div class="day-task-meta">${meta}</div>
       ${reasonText ? `<div class="reason">${esc(reasonText)}</div>` : ''}
+      ${t.note ? `<div class="reason">توضیح انجام: ${esc(t.note)}</div>` : ''}
     </li>`;
   }
 
@@ -184,7 +185,7 @@
         ${kpi('g-green', 'check', t.completionPercent == null ? '—' : `${fmt.num(t.completionPercent)}٪`, 'تکمیل تسک‌ها', `${fmt.num(t.total)} تسک سررسیدشده`)}
         ${kpi('g-blue', 'clock', fmt.min(a.usefulMinutes), 'ساعت مفید', a.expectedMinutes ? `از ${fmt.min(a.expectedMinutes)} مورد انتظار (${a.usefulPercent == null ? '—' : `${fmt.num(a.usefulPercent)}٪`})` : '')}
         ${kpi('g-orange', 'alert', fmt.num(a.lateDays), 'روز تأخیر')}
-        ${kpi('g-red', 'alert', fmt.num(t.urgent), 'تسک فوری')}
+        ${kpi('g-red', 'alert', fmt.num(t.urgent), 'تسک فوری', t.selfUrgent ? `${fmt.num(t.selfUrgent)} توسط خود کارمند` : '')}
         ${kpi('g-purple', 'clock', fmt.min(a.overtimeMinutes), 'اضافه‌کاری')}
         ${kpi('g-gray', 'alert', fmt.num(a.noReportDays), 'روز بدون گزارش')}
       </div>

@@ -28,13 +28,14 @@ function fromLogRow(l) {
   };
 }
 
-function view(task, source, log) {
+function view(task, source, log, ownerId) {
   const answered = !!log;
   return {
     taskId: task.id, title: task.title, description: task.description, priority: task.priority,
     isUrgent: task.isUrgent, urgentNote: task.urgentNote, urgentDeadlineTime: task.urgentDeadlineTime, assignedBy: task.assignedBy,
     isSystem: task.isSystem, systemKey: task.systemKey, outOfPlan: task.systemKey === 'out_of_plan', carriedFrom: task.carriedFrom,
     assignedByUserId: task.assignedByUserId, managerLocked: task.managerLocked, plannedDate: task.plannedDate, // B1 (فاز ۱۵)
+    selfAssigned: !!task.isUrgent && task.assignedByUserId != null && task.assignedByUserId === ownerId, // F1: «⚡ فوری (خودش)» در برابر «توسط X»
     source, // planned | everyday | rescheduled | answered_only
     status: answered ? log.status : 'no_answer', // done | partial | not_done | no_answer
     reasonCode: answered ? log.reason_code || null : null,
@@ -91,7 +92,7 @@ function collect(user, weekStart, dates, { dayInfo, today }) {
       add(t, 'rescheduled');
     }
     for (const l of weekLogs) if (l.log_date === date) add(info.get(l.task_id), 'answered_only'); // پاسخ‌دار ولی در سه قاعده‌ی بالا نبود (مثل «خارج از برنامه»)
-    tasksByDate.set(date, [...picked.values()].map(({ task, source }) => view(task, source, logOn(task.id, date))).sort(sortTasks));
+    tasksByDate.set(date, [...picked.values()].map(({ task, source }) => view(task, source, logOn(task.id, date), user.id)).sort(sortTasks));
   }
 
   const reviewsByDate = new Map();

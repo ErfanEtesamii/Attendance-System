@@ -12,7 +12,7 @@
 const isCounted = (t) => !t.isSystem && !t.outOfPlan && !t.dropped;
 
 function summarizeWeek(days, today) {
-  const tasks = { total: 0, normal: 0, urgent: 0, done: 0, partial: 0, notDone: 0, noAnswer: 0, rescheduled: 0, dropped: 0, extra: 0 };
+  const tasks = { total: 0, normal: 0, urgent: 0, selfUrgent: 0, done: 0, partial: 0, notDone: 0, noAnswer: 0, rescheduled: 0, dropped: 0, extra: 0 };
   let lateDays = 0; let absentDays = 0; let noReportDays = 0;
   let expectedMinutes = 0; let usefulMinutes = 0; let overtimeMinutes = 0; let breakPaidMinutes = 0; let breakUnpaidMinutes = 0;
   let closedDays = 0;
@@ -30,6 +30,7 @@ function summarizeWeek(days, today) {
       if (d.date > today || (d.date === today && t.status === 'no_answer')) continue;
       tasks.total += 1;
       tasks[t.isUrgent ? 'urgent' : 'normal'] += 1;
+      if (t.isUrgent && t.selfAssigned) tasks.selfUrgent += 1; // F1: فوریِ ثبت‌شده توسط خود کارمند (زیرمجموعه‌ی urgent)
       if (t.status === 'done') tasks.done += 1;
       else if (t.status === 'partial') tasks.partial += 1;
       else if (t.status === 'not_done') tasks.notDone += 1;

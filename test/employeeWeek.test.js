@@ -132,6 +132,27 @@ describe('نمای هفتگی کارمند (F1-a)', () => {
       assert.deepEqual([by('کار هرروزه').source, by('کار هرروزه').status], ['everyday', 'no_answer']);
     });
 
+    test('F1: note (توضیح انجام) برمی‌گردد؛ selfAssigned فقط برای فوریِ خودش؛ فوریِ مدیر false؛ یادداشت مخرب خام و escape با UI؛ شمار selfUrgent', () => {
+      const W = '2026-08-22'; // شنبه‌ی سه هفته‌ی قبل (هفته‌ی مستقل از بقیه‌ی تست‌ها)
+      const plan = plansRepo.getOrCreate(emp.id, W);
+      const mine = plansRepo.addTask(plan.id, { title: 'فوری خودم', plannedDate: W, priority: 'high', isUrgent: true, assignedByUserId: emp.id });
+      const boss = plansRepo.addTask(plan.id, { title: 'فوری مدیر', plannedDate: W, priority: 'high', isUrgent: true, assignedByUserId: mgr.id });
+      const normal = plansRepo.addTask(plan.id, { title: 'عادی', plannedDate: W });
+      logsRepo.upsert({ taskId: mine.id, userId: emp.id, logDate: W, status: 'done' });
+      logsRepo.setNote(mine.id, W, '<script>alert(1)</script> انجام شد');
+      logsRepo.upsert({ taskId: boss.id, userId: emp.id, logDate: W, status: 'done' });
+      logsRepo.upsert({ taskId: normal.id, userId: emp.id, logDate: W, status: 'done' });
+      const r = svc.getWeek(admin, emp.id, { start: W });
+      const by = (title) => r.days[0].tasks.find((t) => t.title === title);
+      assert.deepEqual([by('فوری خودم').selfAssigned, by('فوری مدیر').selfAssigned, by('عادی').selfAssigned], [true, false, false]);
+      assert.equal(by('فوری خودم').note, '<script>alert(1)</script> انجام شد'); // داده‌ی خام؛ escape سمت UI (AP.esc)
+      assert.equal(by('عادی').note, null);
+      assert.deepEqual([r.summary.tasks.urgent, r.summary.tasks.selfUrgent], [2, 1]);
+      // اسکوپ سرپرست بدون تغییر: سرپرستِ دیگر دسترسی ندارد، سرپرستِ مستقیم همان داده را می‌بیند
+      assert.equal(svc.getWeek(mgr, emp.id, { start: W }).days[0].tasks.length, 3);
+      assert.equal(svc.getWeek(other, emp.id, { start: W }).status, 403);
+    });
+
     test('انتقال به روز دیگر، «هرروزه» تا انجام‌شدن، و روز غیرکاری بدون تسک هرروزه', () => {
       const days = svc.getWeek(admin, emp.id, { start: SAT }).days;
       const moved = days[3].tasks.find((t) => t.title === 'تماس با مشتری'); // سه‌شنبه ۲۰۲۶-۰۹-۱۵
