@@ -1274,7 +1274,7 @@
   const PLAN_LOCKED_MSG = 'هفته شروع شده و برنامه‌اش قابل ویرایش نیست.';
   const PLAN_MONTH_CLOSED_MSG = 'این هفته در ماهِ بسته‌شده است و فقط قابل مشاهده است.';
   const planPrio = (p) => (PLAN_PRIORITY[p] ? p : 'normal');
-  const planUi = { data: null, tasks: [], carry: new Set(), step: 'tasks', week: 'next', msg: '', busy: false, drafts: {}, focus: null, focusTop: false, board: null, boardMsg: '', boardErr: false, boardBusy: new Set(), collapsed: new Map(), focusCheck: null };
+  const planUi = { data: null, tasks: [], carry: new Set(), step: 'tasks', week: 'next', msg: '', busy: false, drafts: {}, focus: null, focusTop: false, board: null, boardMsg: '', boardErr: false, boardBusy: new Set(), collapsed: new Map(), focusCheck: null, rowEls: new Map(), sheet: null };
 
   function planEl(tag, props, ...kids) {
     const e = document.createElement(tag);
@@ -1519,16 +1519,20 @@
 
     const statusText = task.rescheduleTo && task.rescheduleTo !== 'drop' ? `${meta.icon} ${meta.label} به ${fmtDate(task.rescheduleTo)}` : `${meta.icon} ${meta.label}`;
     const chips = PL.chipsFor(task, { today: board.today, fmtDate }).map((c) => planEl('span', { class: `pl-chip ${c.cls}`, text: c.label }));
-    const main = planEl('div', { class: 'pl-row-main is-static' },
+    const main = planEl('button', { type: 'button', class: 'pl-row-main' },
       planEl('span', { class: 'pl-row-title', text: task.title }),
       planEl('span', { class: `pl-row-status ${meta.cls}`, text: statusText }),
       isDone && task.note ? planEl('span', { class: 'pl-row-note', text: `توضیح: ${task.note}` }) : null,
-      chips.length ? planEl('div', { class: 'pl-chips' }, chips) : null);
+      chips.length ? planEl('span', { class: 'pl-chips' }, chips) : null);
     main.dataset.taskId = String(task.id);
+    main.setAttribute('aria-haspopup', 'dialog');
+    main.addEventListener('click', () => openTaskSheet(task.id, day.date));
+    planUi.rowEls.set(key, main);
     return planEl('li', { class: `pl-row${isDone ? ' is-done' : ''}` }, main, check);
   }
 
   function planBoard(board) {
+    planUi.rowEls = new Map();
     const faN = (n) => faDigits(n);
     const p = board.progress || { done: 0, total: 0, percent: null };
     const workDays = board.days.filter((d) => d.isWorkingDay).length;
@@ -1571,6 +1575,167 @@
     });
     return planEl('div', { class: 'pl-weekboard' }, summary, live, planEl('div', { class: 'pl-board' }, cards));
   }
+
+  // ---------- C3 (فاز ۱۵): شیت «جزئیات تسک» با کلیک روی ردیف (الگوی #break-sheet) ----------
+  // مدل از Planner.detailModel (فلگ‌های دکمه‌ها فقط راهنمای UI؛ سرور دوباره اعتبارسنجی می‌کند). عمل‌ها با همان APIهای A1/A3/A4.
+  const SHEET_ACTIONS = [['done', '✓ انجام شد'], ['move', '↪ انتقال'], ['undo', '↩ برداشتن پاسخ'], ['edit', '✎ ویرایش'], ['remove', '🗑 حذف']];
+  const SHEET_MOVE_WHY = 'انتقال در مرحله‌ی بعد فعال می‌شود.'; // D2
+
+  const sheetRoot = () => $('#pl-sheet');
+  function sheetTask() {
+    const sh = planUi.sheet;
+    if (!sh || !planUi.board) return null;
+    const day = planUi.board.days.find((d) => d.date === sh.date);
+    const task = day ? day.tasks.find((t) => t.id === sh.id) : null;
+    return task ? { task, day } : null;
+  }
+  const sheetDateParam = (day) => (day.date !== planUi.board.today ? day.date : undefined);
+
+  function openTaskSheet(id, date) {
+    const root = sheetRoot();
+    if (!root || !PL) return;
+    planUi.sheet = { id, date, editing: false, confirmRemove: false, msg: '', err: false, busy: false, returnKey: `${id}:${date}` };
+    renderSheet();
+    root.classList.remove('hidden');
+    if (typeof document.addEventListener === 'function') document.addEventListener('keydown', onSheetKey, true);
+    const box = $('#pl-sheet-box');
+    if (box && typeof box.focus === 'function') box.focus();
+  }
+
+  function closeTaskSheet() {
+    const root = sheetRoot();
+    const sh = planUi.sheet;
+    planUi.sheet = null;
+    if (root) root.classList.add('hidden');
+    if (typeof document.removeEventListener === 'function') document.removeEventListener('keydown', onSheetKey, true);
+    const back = sh ? planUi.rowEls.get(sh.returnKey) : null;
+    if (back && typeof back.focus === 'function') back.focus();
+  }
+
+  function onSheetKey(ev) {
+    const root = sheetRoot();
+    if (!planUi.sheet || !root) return;
+    if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); closeTaskSheet(); return; }
+    if (ev.key !== 'Tab' || typeof root.querySelectorAll !== 'function') return;
+    const items = Array.from(root.querySelectorAll('button:not([disabled]), textarea, input'));
+    if (!items.length) return;
+    const first = items[0]; const last = items[items.length - 1]; const active = document.activeElement;
+    if (!root.contains(active)) { ev.preventDefault(); first.focus(); }
+    else if (ev.shiftKey && active === first) { ev.preventDefault(); last.focus(); }
+    else if (!ev.shiftKey && active === last) { ev.preventDefault(); first.focus(); }
+  }
+
+  // اجرای یک عمل روی تسکِ شیت؛ موفق ⇒ تخته‌ی تازه + بازسازی شیت؛ ALREADY_ANSWERED ⇒ تازه‌سازی؛ خطا ⇒ پیام سرور و شیت باز می‌ماند
+  async function sheetRun(op, okMsg) {
+    const sh = planUi.sheet;
+    if (!sh || sh.busy) return;
+    sh.busy = true; sh.msg = 'در حال ذخیره…'; sh.err = false;
+    renderSheet();
+    try {
+      await op();
+      if (planUi.sheet !== sh) return;
+      sh.msg = okMsg; sh.err = false; sh.editing = false; sh.confirmRemove = false;
+      await refreshBoard();
+    } catch (err) {
+      if (planUi.sheet !== sh) return;
+      sh.err = true;
+      if (err.data && err.data.code === 'ALREADY_ANSWERED') {
+        sh.msg = 'این تسک قبلاً پاسخ داده شده بود؛ فهرست تازه شد.';
+        try { await refreshBoard(); } catch (_) { /* همان مدل قبلی */ }
+      } else sh.msg = err.message || 'ذخیره نشد.';
+    }
+    if (planUi.sheet !== sh) return;
+    sh.busy = false;
+    renderPlan();
+    if (!sheetTask()) { closeTaskSheet(); showToast(sh.err ? sh.msg : okMsg); return; } // تسک دیگر در این روز نیست (حذف شد)
+    renderSheet();
+  }
+
+  function sheetAction(kind) {
+    const cur = sheetTask(); const sh = planUi.sheet;
+    if (!cur || !sh) return;
+    const { task, day } = cur; const date = sheetDateParam(day);
+    if (kind === 'done') return sheetRun(async () => {
+      const r = await api('/daily-report', { method: 'POST', body: { answers: [{ taskId: task.id, status: 'done' }], date } });
+      const enc = Array.isArray(r.encouragements) ? r.encouragements.find(Boolean) : null;
+      if (enc) showToast(enc);
+    }, 'ثبت شد: انجام شد ✓');
+    if (kind === 'undo') return sheetRun(() => api('/daily-report/undo', { method: 'POST', body: { taskId: task.id, date } }), 'پاسخ برداشته شد.');
+    if (kind === 'move') { if (typeof planUi.onMove === 'function') planUi.onMove(task, day); return; } // D2 این قلاب را پر می‌کند
+    if (kind === 'edit') { sh.editing = true; sh.confirmRemove = false; sh.msg = ''; renderSheet(); return; }
+    if (kind === 'remove') {
+      if (!sh.confirmRemove) { sh.confirmRemove = true; sh.msg = 'برای حذف دوباره بزنید «تأیید حذف».'; sh.err = false; renderSheet(); return; }
+      return sheetRun(() => api('/my-urgent/' + task.id, { method: 'DELETE' }), 'تسک فوری حذف شد.');
+    }
+  }
+
+  function renderSheet() {
+    const body = $('#pl-sheet-body');
+    const sh = planUi.sheet; const cur = sheetTask();
+    if (!body || !sh || !cur) return;
+    const { task, day } = cur;
+    const model = PL.detailModel(task, { today: planUi.board.today, date: day.date, fmtDate, editable: true });
+    const keepNote = body.querySelector ? body.querySelector('#pl-note') : null;
+    const noteDraft = keepNote && typeof keepNote.value === 'string' ? keepNote.value : null; // متن تایپ‌شده با بازسازی (مثل ALREADY_ANSWERED) نپرد
+    body.innerHTML = '';
+    body.appendChild(planEl('h2', { class: 'sheet-title pl-row-title', id: 'pl-sheet-title', text: model.title }));
+    if (model.chips.length) body.appendChild(planEl('div', { class: 'pl-chips' }, model.chips.map((c) => planEl('span', { class: `pl-chip ${c.cls}`, text: c.label }))));
+    body.appendChild(planEl('p', { class: `pl-row-status ${model.statusMeta.cls}`, text: `${model.statusMeta.icon} ${model.statusMeta.label}` }));
+    body.appendChild(planEl('p', { class: 'pl-sheet-desc', text: model.description || 'توضیحی برای این تسک ثبت نشده است.' }));
+    const dl = planEl('dl', { class: 'pl-sheet-rows' });
+    model.rows.filter((r) => r.key !== 'status').forEach((r) => { dl.appendChild(planEl('dt', { text: r.label })); dl.appendChild(planEl('dd', { text: r.value })); });
+    body.appendChild(dl);
+
+    if (sh.editing && model.actions.edit && model.actions.edit.enabled) {
+      const title = planEl('input', { type: 'text', class: 'pl-field', dir: 'auto', maxLength: 120, value: task.title, id: 'pl-edit-title' });
+      title.setAttribute('aria-label', 'عنوان تسک فوری');
+      const desc = planEl('textarea', { class: 'pl-field', dir: 'auto', rows: 3, maxLength: 500, value: task.description || '', id: 'pl-edit-desc' });
+      desc.setAttribute('aria-label', 'توضیح تسک فوری');
+      const save = planEl('button', { type: 'button', class: 'pl-btn pl-primary', text: 'ذخیره', disabled: sh.busy });
+      save.addEventListener('click', () => sheetRun(() => api('/my-urgent/' + task.id, { method: 'PATCH', body: { title: title.value, description: desc.value } }), 'تسک فوری ویرایش شد.'));
+      const cancel = planEl('button', { type: 'button', class: 'pl-btn', text: 'انصراف از ویرایش', disabled: sh.busy });
+      cancel.addEventListener('click', () => { sh.editing = false; sh.msg = ''; renderSheet(); });
+      body.appendChild(planEl('div', { class: 'pl-move-choices' }, title, desc, planEl('div', { class: 'pl-sheet-actions' }, save, cancel)));
+    } else {
+      if (model.noteEditable) {
+        const ta = planEl('textarea', { class: 'pl-field', dir: 'auto', rows: 3, maxLength: 500, id: 'pl-note', value: noteDraft !== null ? noteDraft : (model.note || ''), placeholder: 'توضیح انجام (اختیاری)' });
+        ta.setAttribute('aria-label', 'توضیح انجام');
+        const saveNote = planEl('button', { type: 'button', class: 'pl-btn', text: 'ثبت توضیح', disabled: sh.busy });
+        saveNote.addEventListener('click', () => sheetRun(() => api('/daily-report/note', { method: 'PATCH', body: { taskId: task.id, date: sheetDateParam(day), note: ta.value } }), 'توضیح ذخیره شد.'));
+        body.appendChild(planEl('div', { class: 'pl-note-box' }, ta, saveNote));
+      } else if (model.note) {
+        body.appendChild(planEl('p', { class: 'pl-sheet-desc', text: `توضیح انجام: ${model.note}` }));
+      }
+      const bar = planEl('div', { class: 'pl-sheet-actions' });
+      SHEET_ACTIONS.forEach(([k, label]) => {
+        const a = model.actions[k];
+        if (!a) return;
+        let enabled = a.enabled; let reason = a.reason;
+        if (k === 'move' && enabled && typeof planUi.onMove !== 'function') { enabled = false; reason = SHEET_MOVE_WHY; }
+        const text = k === 'remove' && sh.confirmRemove ? 'تأیید حذف' : label;
+        const b = planEl('button', { type: 'button', class: `pl-btn${k === 'done' ? ' pl-primary' : ''}${k === 'remove' ? ' pl-danger' : ''}`, text, disabled: !enabled || sh.busy });
+        b.dataset.action = k;
+        if (!enabled) b.setAttribute('aria-describedby', `pl-why-${k}`);
+        b.addEventListener('click', () => sheetAction(k));
+        bar.appendChild(b);
+        if (!enabled && reason) bar.appendChild(planEl('span', { class: 'pl-why', id: `pl-why-${k}`, text: reason }));
+      });
+      body.appendChild(bar);
+    }
+    const live = planEl('div', { class: 'pl-sheet-live' + (sh.err ? ' is-err' : ''), text: sh.msg });
+    live.setAttribute('role', sh.err ? 'alert' : 'status');
+    live.setAttribute('aria-live', 'polite');
+    body.appendChild(live);
+    const close = planEl('button', { type: 'button', class: 'sheet-cancel', id: 'pl-sheet-close', text: 'بستن' });
+    close.addEventListener('click', closeTaskSheet);
+    body.appendChild(close);
+  }
+
+  // لمس پس‌زمینه‌ی بیرون از شیت ⇒ بستن
+  (function bindSheetBackdrop() {
+    const root = sheetRoot();
+    if (root && typeof root.addEventListener === 'function') root.addEventListener('click', (ev) => { if (ev.target === root) closeTaskSheet(); });
+  }());
 
   function planPayload() {
     return planUi.tasks.filter((t) => !t.isSystem && !t.isUrgent && !t.managerLocked).map((t) => ({

@@ -192,7 +192,7 @@
 .pl-day.day-card > * + * { margin-top: 8px; }
 .pl-weekboard .pl-summary { margin: 8px 0; }
 .pl-summary-title { font-weight: 800; margin-bottom: 2px; }
-.pl-row-main.is-static { cursor: default; }
+
 .pl-row-status.pl-st-done { color: var(--pl-done); font-weight: 700; }
 .pl-row-status.pl-st-notdone, .pl-row-status.pl-st-dropped { color: var(--pl-danger); }
 .pl-row-status.pl-st-partial, .pl-row-status.pl-st-moved { color: var(--pl-warn); }
@@ -206,3 +206,11 @@
 }
 .pl-board > .pl-day { scroll-margin-top: 12px; }
 .sk-plan.pl-board .pl-day { min-height: 96px; }
+
+/* ---- C3: شیت جزئیات ---- */
+.pl-row-main { display: block; width: 100%; }
+.pl-chips { display: flex; }
+.pl-sheet .pl-chips { margin: 6px 0; }
+.pl-sheet .sheet-title { text-align: start; }
+.pl-sheet .pl-row-status { margin: 4px 0; }
+.pl-sheet :focus-visible { outline: 3px solid var(--pl-accent); outline-offset: 2px; }

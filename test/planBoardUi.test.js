@@ -242,10 +242,10 @@ describe('هفته‌ی بعد (ویرایش) با ظاهر تازه (C2)', () =
 
 describe('ایستا (C2)', () => {
   const css = read('public/css/planner.css');
-  test('app.js: بدون innerHTML خام در تخته؛ رشته‌ی daily_report_required نیست', () => {
+  test('app.js: بدون innerHTML خام در تخته و شیت', () => {
     const slice = appSrc.slice(appSrc.indexOf('async function refreshBoard'), appSrc.indexOf('function planPayload'));
     assert.ok(slice.length > 500);
-    assert.doesNotMatch(slice, /innerHTML\s*=\s*[^'']/);
+    assert.doesNotMatch(slice, /innerHTML\s*=(?!\s*'')/);
     assert.doesNotMatch(slice, /\.style\.|style:|\son[a-z]+=/);
   });
   test('CSS: تکیه‌گاه کادر روزِ day-card، جمع‌شدن فقط موبایل، رنگ وضعیت‌ها', () => {
@@ -260,5 +260,151 @@ describe('ایستا (C2)', () => {
     assert.match(v, /id="plan-weeks"/);
     assert.ok(v.indexOf('id="plan-weeks"') < v.indexOf('id="plan-body"'));
     assert.doesNotMatch(v, /\sstyle=|\son[a-z]+=/i);
+  });
+});
+
+// ---------- C3: شیت «جزئیات تسک» ----------
+describe('شیت جزئیات تسک (C3)', () => {
+  const sheetBody = (env) => env.$('#pl-sheet-body');
+  const sbtn = (env, text) => walk(sheetBody(env)).find((n) => n.tag === 'button' && n.textContent === text);
+  const rowMain = (env, title) => walk(rowOf(env, title)).find((n) => /pl-row-main/.test(n.className));
+  const mk = () => {
+    const b = makeBoard();
+    day(b, TODAY).tasks = [
+      mkTask(10, 'تسک خودم', { description: 'خط اول\nخط دوم <i>x</i>', priority: 'high' }),
+      mkTask(11, 'تسک سرپرست', { managerLocked: true, priority: 'normal' }),
+      mkTask(12, 'فوری مدیر', { isUrgent: true, assignedByUserId: 99, urgentNote: 'تا ظهر', urgentDeadlineTime: '12:00', priority: 'high' }),
+      mkTask(13, 'فوری خودم', { isUrgent: true, selfAssigned: true, assignedByUserId: 7, priority: 'high' }),
+      mkTask(14, 'بررسی گزارش تیم', { isSystem: true, systemKey: 'review_team_reports' }),
+      mkTask(15, 'انجام‌شده', { status: 'done', note: 'قبلی', canUndo: true }),
+      mkTask(16, 'نیمه‌کاره', { status: 'partial', reasonCode: 'no_time', canUndo: true, carryCount: 2 }),
+    ];
+    day(b, '2027-05-08').tasks = [mkTask(17, 'آینده')];
+    return b;
+  };
+  const opened = async (title, env0) => { const env = env0 || makeEnv({ board: mk() }); await open(env); await rowMain(env, title).fire('click'); await flush(); return env; };
+
+  test('کلیک ردیف: عنوان، توضیح چندخطی (متن خام)، اولویت، منبع و روز', async () => {
+    const env = await opened('تسک خودم');
+    const t = sheetBody(env).textContent;
+    assert.match(t, /تسک خودم/);
+    assert.match(t, /خط اول\nخط دوم <i>x<\/i>/);
+    assert.match(t, /اولویت بالا/);
+    assert.match(t, /برنامه‌ی خودم/);
+    assert.match(t, /پنجشنبه/);
+  });
+
+  test('منبع و چیپ برای هر نوع: سرپرست، فوریِ مدیر (مهلت/یادداشت)، فوریِ خودم، سیستمی', async () => {
+    let env = await opened('تسک سرپرست');
+    assert.match(sheetBody(env).textContent, /🔒 از طرف سرپرست/);
+    env = await opened('فوری مدیر');
+    assert.match(sheetBody(env).textContent, /⚡ فوریِ سرپرست/);
+    assert.match(sheetBody(env).textContent, /ساعت ۱۲:۰۰/);
+    assert.match(sheetBody(env).textContent, /تا ظهر/);
+    env = await opened('فوری خودم');
+    assert.match(sheetBody(env).textContent, /⚡ فوریِ خودم/);
+    env = await opened('بررسی گزارش تیم');
+    assert.match(sheetBody(env).textContent, /🔒 تسک واجب/);
+  });
+
+  test('دکمه‌ها از روی فلگ‌ها: pending ⇒ انجام/انتقال؛ سیستمی ⇒ انجام غیرفعال با علت؛ بدون ویرایش/حذف برای تسک غیرِ فوریِ خودم', async () => {
+    let env = await opened('تسک خودم');
+    assert.equal(sbtn(env, '✓ انجام شد').disabled, false);
+    assert.ok(sbtn(env, '↪ انتقال').disabled); // D2 هنوز نیست
+    assert.match(sheetBody(env).textContent, /انتقال در مرحله‌ی بعد فعال می‌شود/);
+    assert.equal(sbtn(env, '✎ ویرایش'), undefined);
+    assert.equal(sbtn(env, '↩ برداشتن پاسخ'), undefined);
+    env = await opened('بررسی گزارش تیم');
+    assert.equal(sbtn(env, '✓ انجام شد').disabled, true);
+    assert.match(sheetBody(env).textContent, /با مشاهده‌ی گزارش‌ها انجام می‌شود/);
+    assert.equal(sbtn(env, '↪ انتقال'), undefined);
+  });
+
+  test('روز آینده: انجام/انتقال غیرفعال با علت', async () => {
+    const env = await opened('آینده');
+    assert.equal(sbtn(env, '✓ انجام شد').disabled, true);
+    assert.match(sheetBody(env).textContent, /روز آینده هنوز نرسیده است/);
+  });
+
+  test('تسک پاسخ‌داده: تاریخچه‌ی انتقال، برداشتن پاسخ، توضیح انجام قابل ویرایش و ذخیره با PATCH', async () => {
+    let env = await opened('نیمه‌کاره');
+    assert.match(sheetBody(env).textContent, /۲ بار منتقل شده/);
+    assert.match(sheetBody(env).textContent, /وقت نشد/);
+    assert.equal(sbtn(env, '↩ برداشتن پاسخ').disabled, false);
+    env = await opened('انجام‌شده');
+    const ta = walk(sheetBody(env)).find((n) => n.tag === 'textarea');
+    assert.equal(ta.value, 'قبلی');
+    ta.value = 'توضیح تازه';
+    await sbtn(env, 'ثبت توضیح').fire('click');
+    await flush();
+    const patch = env.calls.find((c) => c.init.method === 'PATCH');
+    assert.match(patch.url, /\/daily-report\/note$/);
+    assert.deepEqual(patch.body, { taskId: 15, note: 'توضیح تازه' });
+    assert.match(sheetBody(env).textContent, /توضیح ذخیره شد/);
+  });
+
+  test('عمل‌ها: انجام شد ⇒ POST با date روز؛ برداشتن پاسخ ⇒ undo؛ پس از موفقیت شیت باز و با داده‌ی تازه', async () => {
+    const env = await opened('تسک خودم');
+    env.state.board = (() => { const b = mk(); day(b, TODAY).tasks[0].status = 'done'; day(b, TODAY).tasks[0].canUndo = true; return b; })();
+    await sbtn(env, '✓ انجام شد').fire('click');
+    await flush();
+    const post = env.calls.find((c) => c.init.method === 'POST' && /\/daily-report$/.test(c.url));
+    assert.deepEqual(post.body.answers, [{ taskId: 10, status: 'done' }]);
+    assert.match(sheetBody(env).textContent, /ثبت شد: انجام شد/);
+    assert.ok(sbtn(env, '↩ برداشتن پاسخ'));
+    await sbtn(env, '↩ برداشتن پاسخ').fire('click');
+    await flush();
+    assert.ok(env.calls.find((c) => /\/daily-report\/undo$/.test(c.url)));
+  });
+
+  test('خطای سرور داخل شیت: پیام سرور (alert) و شیت باز می‌ماند', async () => {
+    const env = makeEnv({ board: mk(), post: { 'POST /daily-report': { ok: false, status: 409, json: { error: 'ماه بسته است.', code: 'MONTH_CLOSED' } } } });
+    await opened('تسک خودم', env);
+    await sbtn(env, '✓ انجام شد').fire('click');
+    await flush();
+    assert.match(sheetBody(env).textContent, /ماه بسته است/);
+    const live = walk(sheetBody(env)).find((n) => /pl-sheet-live/.test(n.className));
+    assert.equal(live.attrs.role, 'alert');
+  });
+
+  test('فوریِ خودم (بدون پاسخ): ویرایش با PATCH /my-urgent، حذف دومرحله‌ای با DELETE', async () => {
+    const env = await opened('فوری خودم');
+    await sbtn(env, '✎ ویرایش').fire('click');
+    const inputs = walk(sheetBody(env)).filter((n) => n.tag === 'input' || n.tag === 'textarea');
+    inputs[0].value = 'عنوان جدید'; inputs[1].value = 'شرح';
+    await sbtn(env, 'ذخیره').fire('click');
+    await flush();
+    const patch = env.calls.find((c) => c.init.method === 'PATCH' && /my-urgent\/13$/.test(c.url));
+    assert.deepEqual(patch.body, { title: 'عنوان جدید', description: 'شرح' });
+    await sbtn(env, '🗑 حذف').fire('click');
+    assert.equal(env.calls.filter((c) => c.init.method === 'DELETE').length, 0);
+    await sbtn(env, 'تأیید حذف').fire('click');
+    await flush();
+    assert.equal(env.calls.filter((c) => c.init.method === 'DELETE' && /my-urgent\/13$/.test(c.url)).length, 1);
+  });
+
+  test('فوریِ مدیر: بدون ویرایش/حذف', async () => {
+    const env = await opened('فوری مدیر');
+    assert.equal(sbtn(env, '✎ ویرایش'), undefined);
+    assert.equal(sbtn(env, '🗑 حذف'), undefined);
+  });
+
+  test('بستن: فوکوس به همان ردیف برمی‌گردد؛ کلیک چک‌باکس شیت را باز نمی‌کند', async () => {
+    const env = await opened('تسک خودم');
+    await sbtn(env, 'بستن').fire('click');
+    assert.equal(Node_.focused, rowMain(env, 'تسک خودم'));
+    const env2 = makeEnv({ board: mk() });
+    await open(env2);
+    assert.equal(sheetBody(env2).children.length, 0);
+    await checks(rowOf(env2, 'آینده'))[0].fire('click');
+    assert.equal(sheetBody(env2).children.length, 0);
+  });
+
+  test('ایستا: index.html شیت با role=dialog/aria-modal بدون inline؛ کلاس‌های pl-sheet در CSS', () => {
+    const html = read('public/index.html');
+    const v = html.slice(html.indexOf('id="pl-sheet"'), html.indexOf('id="toast"'));
+    assert.match(v, /role="dialog" aria-modal="true" aria-labelledby="pl-sheet-title"/);
+    assert.doesNotMatch(v, /\sstyle=|\son[a-z]+=/i);
+    assert.match(read('public/css/planner.css'), /\.pl-sheet \{/);
   });
 });
