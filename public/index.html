@@ -235,6 +235,12 @@
         <div id="plan-body" class="plan-body"></div>
       </section>
 
+      <!-- «امروزِ من» (فاز ۱۵ D1): دو لیست در انتظار / انجام‌شده با تیک مستقیم -->
+      <section id="view-myday" class="view hidden" aria-labelledby="myday-title">
+        <div class="view-head"><h3 class="view-title" id="myday-title" tabindex="-1">امروزِ من</h3><button type="button" class="btn secondary" id="myday-back">بازگشت</button></div>
+        <div id="myday-body" class="plan-body"></div>
+      </section>
+
       <!-- گزارش روزانه‌ی تسک‌ها (D7): ویزارد یک‌سؤال‌یک‌صفحه؛ از گیت خروج یا بنر «تکمیل گزارش» باز می‌شود -->
       <section id="view-dreport" class="view hidden" aria-labelledby="dreport-title">
         <div class="view-head"><h3 class="view-title" id="dreport-title">گزارش تسک‌های امروز</h3><button type="button" class="btn secondary" id="dreport-back">بازگشت</button></div>
@@ -356,6 +362,9 @@
       <div id="pl-sheet-body"></div>
     </div>
   </div>
+
+  <!-- نوار «واگرد» چند‌ثانیه‌ای بعد از انتقال تسک (D2) -->
+  <div id="pl-undo" class="pl-undo-bar pl-undo-float hidden" role="status" aria-live="polite"></div>
 
   <div id="toast" class="toast hidden" role="status" aria-live="polite" aria-atomic="true"></div>
 

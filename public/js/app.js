@@ -236,8 +236,10 @@
     $all('.view').forEach((v) => v.classList.add('hidden'));
     $('#view-' + name).classList.remove('hidden');
     const navName = name === 'dispute' ? 'profile' : name; // گفت‌وگوی اعتراض زیرمجموعه‌ی «پروفایل» است
-    $all('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.view === navName));
+    $all('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.view === (navName === 'myday' ? 'today' : navName))); // «امروزِ من» زیرمجموعه‌ی «امروز» است
 
+    hideUndoBar(); // نوار «واگرد» انتقال فقط روی همان صفحه معتبر است
+    if (name === 'myday') loadMyDay();
     if (name === 'history') loadHistory();
     if (name === 'report') loadReport($('.tab-btn.active')?.dataset.period || 'week');
     if (name === 'leave') { loadLeaveTypes(); loadLeaveList(); }
@@ -283,6 +285,7 @@
     resume: '<svg viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z"/></svg>',
     plan: '<svg viewBox="0 0 24 24"><path d="M4 5h16v15H4zM4 9h16M8 3v4M16 3v4M8 13h3M8 16h6"/></svg>',
     mission: '<svg viewBox="0 0 24 24"><path d="M5 17h14M3 13l2-6h14l2 6v4H3v-4zM7 17v2M17 17v2M7 13h.01M17 13h.01"/></svg>',
+    myday: '<svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg>',
   };
 
   // ---------- اجازه‌ی ورود (D2) ----------
@@ -401,6 +404,9 @@
       handler: () => openMissionView(), locked: !!openBreak,
     });
 
+    // D1 (فاز ۱۵): یک تایلِ «امروز من» (نوار پایین شلوغ نمی‌شود)؛ در حالت دورکاری این صفحه نیست
+    const addMyDayTile = () => addTile({ title: 'امروز من 📋', sub: 'تیک تسک‌ها و انتقال', color: 'blue', icon: 'myday', wide: true, handler: () => switchView('myday') });
+
     const addPlanTile = () => addTile({ title: 'برنامه‌ی هفتگی 📅', sub: 'ثبت یا ویرایش برنامه‌ی هفته', color: 'green', icon: 'plan', wide: true, handler: () => switchView('plan') });
 
     if (!r) {
@@ -415,6 +421,7 @@
         });
       }
       addMissionTile();
+      addMyDayTile();
       addPlanTile();
       return;
     }
@@ -427,6 +434,7 @@
       done.textContent = 'امروز به پایان رسید. تا فردا خوش باشید 🌤️';
       box.appendChild(done);
       addMissionTile();
+      addMyDayTile();
       addPlanTile();
       return;
     }
@@ -438,6 +446,7 @@
         handler: () => doAction('/break/end', {}, 'استراحت پایان یافت.'),
       });
       addMissionTile();
+      addMyDayTile();
       addPlanTile();
       return;
     }
@@ -451,6 +460,7 @@
       handler: () => startCheckout(),
     });
     addMissionTile();
+    addMyDayTile();
     addPlanTile();
   }
 
@@ -1478,8 +1488,7 @@
       if (wasDone) await api('/daily-report/undo', { method: 'POST', body: { taskId: task.id, date } });
       else {
         const r = await api('/daily-report', { method: 'POST', body: { answers: [{ taskId: task.id, status: 'done' }], date } });
-        const enc = Array.isArray(r.encouragements) ? r.encouragements.find(Boolean) : null;
-        if (enc) showToast(enc);
+        cheer(r);
       }
       planUi.boardMsg = wasDone ? 'تیک برداشته شد.' : 'ثبت شد: انجام شد ✓';
       planUi.boardErr = false;
@@ -1576,25 +1585,40 @@
     return planEl('div', { class: 'pl-weekboard' }, summary, live, planEl('div', { class: 'pl-board' }, cards));
   }
 
-  // ---------- C3 (فاز ۱۵): شیت «جزئیات تسک» با کلیک روی ردیف (الگوی #break-sheet) ----------
+  // ---------- C3/D2 (فاز ۱۵): شیت «جزئیات تسک» و انتقال (الگوی #break-sheet) ----------
   // مدل از Planner.detailModel (فلگ‌های دکمه‌ها فقط راهنمای UI؛ سرور دوباره اعتبارسنجی می‌کند). عمل‌ها با همان APIهای A1/A3/A4.
+  // شیت از دو جا باز می‌شود: تخته‌ی هفته‌ی جاری (src='board'؛ داده‌ی planUi.board) و «امروزِ من» (src='myday'؛ داده‌ی myDay.model).
   const SHEET_ACTIONS = [['done', '✓ انجام شد'], ['move', '↪ انتقال'], ['undo', '↩ برداشتن پاسخ'], ['edit', '✎ ویرایش'], ['remove', '🗑 حذف']];
-  const SHEET_MOVE_WHY = 'انتقال در مرحله‌ی بعد فعال می‌شود.'; // D2
+  const MOVE_MAX_DAYS = 60; // فقط راهنمای UI؛ سقف واقعی را سرور اعتبارسنجی می‌کند (MAX_RESCHEDULE_DAYS)
+  const UNDO_BAR_MS = 8000;
+  const moveCal = { map: new Map(), loading: null }; // تقویمِ شناخته‌شده برای هشدار نرمِ روز مقصد (روز ⇒ { isWorkingDay, kind, holidayTitle })
+  const cheer = (r) => { const t = DR ? DR.encouragementOf(r) : ''; if (t) showToast(t); }; // پیام تشویقیِ سرور (رشته‌ی متنی، نه شیء)
 
   const sheetRoot = () => $('#pl-sheet');
+  const sheetIsMyDay = () => !!planUi.sheet && planUi.sheet.src === 'myday';
   function sheetTask() {
     const sh = planUi.sheet;
-    if (!sh || !planUi.board) return null;
+    if (!sh) return null;
+    if (sh.src === 'myday') {
+      const t = PL && myDay.model ? PL.findInModel(myDay.model, sh.id) : null;
+      return t ? { task: t, day: { date: myDay.model.date, isToday: true, isFuture: false } } : null;
+    }
+    if (!planUi.board) return null;
     const day = planUi.board.days.find((d) => d.date === sh.date);
     const task = day ? day.tasks.find((t) => t.id === sh.id) : null;
     return task ? { task, day } : null;
   }
-  const sheetDateParam = (day) => (day.date !== planUi.board.today ? day.date : undefined);
+  const sheetToday = () => (sheetIsMyDay() ? (myDay.model && myDay.model.today) : (planUi.board && planUi.board.today));
+  const sheetDateParam = (day) => (sheetIsMyDay() || !planUi.board || day.date === planUi.board.today ? undefined : day.date); // امروز ⇒ بدون date
+  const sheetRefresh = () => (sheetIsMyDay() ? refreshMyDay() : refreshBoard());
+  const sheetRerender = () => (sheetIsMyDay() ? renderMyDay() : renderPlan());
 
-  function openTaskSheet(id, date) {
+  function openTaskSheet(id, date, opts = {}) {
     const root = sheetRoot();
     if (!root || !PL) return;
-    planUi.sheet = { id, date, editing: false, confirmRemove: false, msg: '', err: false, busy: false, returnKey: `${id}:${date}` };
+    const src = opts.src === 'myday' ? 'myday' : 'board';
+    planUi.sheet = { id, date, src, editing: false, confirmRemove: false, moving: false, move: null, next: null, nextTried: false, refs: {}, msg: '', err: false, busy: false, returnKey: src === 'myday' ? `d:${id}` : `${id}:${date}` };
+    if (opts.moving) beginMove();
     renderSheet();
     root.classList.remove('hidden');
     if (typeof document.addEventListener === 'function') document.addEventListener('keydown', onSheetKey, true);
@@ -1625,8 +1649,8 @@
     else if (!ev.shiftKey && active === last) { ev.preventDefault(); first.focus(); }
   }
 
-  // اجرای یک عمل روی تسکِ شیت؛ موفق ⇒ تخته‌ی تازه + بازسازی شیت؛ ALREADY_ANSWERED ⇒ تازه‌سازی؛ خطا ⇒ پیام سرور و شیت باز می‌ماند
-  async function sheetRun(op, okMsg) {
+  // اجرای یک عمل روی تسکِ شیت؛ موفق ⇒ داده‌ی تازه + بازسازی شیت (یا onOk)؛ ALREADY_ANSWERED ⇒ تازه‌سازی؛ خطا ⇒ پیام سرور و شیت باز می‌ماند
+  async function sheetRun(op, okMsg, onOk) {
     const sh = planUi.sheet;
     if (!sh || sh.busy) return;
     sh.busy = true; sh.msg = 'در حال ذخیره…'; sh.err = false;
@@ -1635,18 +1659,19 @@
       await op();
       if (planUi.sheet !== sh) return;
       sh.msg = okMsg; sh.err = false; sh.editing = false; sh.confirmRemove = false;
-      await refreshBoard();
+      await sheetRefresh();
     } catch (err) {
       if (planUi.sheet !== sh) return;
       sh.err = true;
       if (err.data && err.data.code === 'ALREADY_ANSWERED') {
         sh.msg = 'این تسک قبلاً پاسخ داده شده بود؛ فهرست تازه شد.';
-        try { await refreshBoard(); } catch (_) { /* همان مدل قبلی */ }
+        try { await sheetRefresh(); } catch (_) { /* همان مدل قبلی */ }
       } else sh.msg = err.message || 'ذخیره نشد.';
     }
     if (planUi.sheet !== sh) return;
     sh.busy = false;
-    renderPlan();
+    sheetRerender();
+    if (!sh.err && typeof onOk === 'function') { onOk(sh); return; }
     if (!sheetTask()) { closeTaskSheet(); showToast(sh.err ? sh.msg : okMsg); return; } // تسک دیگر در این روز نیست (حذف شد)
     renderSheet();
   }
@@ -1657,11 +1682,10 @@
     const { task, day } = cur; const date = sheetDateParam(day);
     if (kind === 'done') return sheetRun(async () => {
       const r = await api('/daily-report', { method: 'POST', body: { answers: [{ taskId: task.id, status: 'done' }], date } });
-      const enc = Array.isArray(r.encouragements) ? r.encouragements.find(Boolean) : null;
-      if (enc) showToast(enc);
+      cheer(r);
     }, 'ثبت شد: انجام شد ✓');
     if (kind === 'undo') return sheetRun(() => api('/daily-report/undo', { method: 'POST', body: { taskId: task.id, date } }), 'پاسخ برداشته شد.');
-    if (kind === 'move') { if (typeof planUi.onMove === 'function') planUi.onMove(task, day); return; } // D2 این قلاب را پر می‌کند
+    if (kind === 'move') { beginMove(); sh.msg = ''; sh.err = false; renderSheet(); ensureMoveNext(sh); return; }
     if (kind === 'edit') { sh.editing = true; sh.confirmRemove = false; sh.msg = ''; renderSheet(); return; }
     if (kind === 'remove') {
       if (!sh.confirmRemove) { sh.confirmRemove = true; sh.msg = 'برای حذف دوباره بزنید «تأیید حذف».'; sh.err = false; renderSheet(); return; }
@@ -1669,58 +1693,235 @@
     }
   }
 
+  // ---------- D2: انتقال (فردا / تاریخ مشخص) داخل شیت ----------
+  // قاعده‌ی سرور: انتقال = نیمه‌کاره/انجام‌نشده + علت الزامی (همان ویزارد گزارش). اعتبارسنجی با DailyReport.validateAnswer و بدنه با toApiAnswer (منبع واحد).
+  function detailCtx(task, day) {
+    return { today: sheetToday(), date: day.date, fmtDate, editable: true, carryMax: sheetIsMyDay() && myDay.model ? myDay.model.carryMax : 0 };
+  }
+
+  function beginMove() {
+    const sh = planUi.sheet; const cur = sheetTask();
+    if (!sh || !cur || !PL || !DR) return;
+    const a = PL.detailModel(cur.task, detailCtx(cur.task, cur.day)).actions.move;
+    if (!a || !a.enabled) return; // دکمه‌ی غیرفعال (علتش در شیت دیده می‌شود)
+    const draft = DR.emptyAnswer();
+    draft.status = 'not_done';
+    sh.moving = true; sh.move = draft; sh.refs = {};
+    if (!sheetIsMyDay() && planUi.board) seedMoveCal(planUi.board.days);
+  }
+
+  function seedMoveCal(list) {
+    (list || []).forEach((d) => { if (d && d.date) moveCal.map.set(d.date, { isWorkingDay: d.isWorkingDay, kind: d.kind, holidayTitle: d.holidayTitle || null }); });
+  }
+
+  // تقویمِ این هفته و هفته‌ی بعد (best-effort؛ فقط برای هشدار نرم). شکست ⇒ بی‌صدا بدون هشدار.
+  function ensureMoveCalendar(sh) {
+    if (!moveCal.loading) {
+      moveCal.loading = Promise.all(['current', 'next'].map((w) => api('/week-board?week=' + w).then((b) => seedMoveCal(b && b.days)).catch(() => {})));
+    }
+    moveCal.loading.then(() => { if (planUi.sheet === sh) updateMoveWarn(sh); });
+  }
+
+  // «فردا» = روز کاریِ بعدیِ سرور؛ در «امروزِ من» همراه /daily-tasks می‌آید، در تخته‌ی هفته با یک GET جدا (best-effort)
+  const moveNextOf = (sh) => (sh.src === 'myday' ? (myDay.model && myDay.model.nextWorkingDay) : sh.next);
+  async function ensureMoveNext(sh) {
+    if (sh.src === 'myday' || sh.next || sh.nextTried) return;
+    sh.nextTried = true;
+    try {
+      const cur = sheetTask();
+      const dp = cur ? sheetDateParam(cur.day) : undefined;
+      const d = await api('/daily-tasks' + (dp ? `?date=${encodeURIComponent(dp)}` : ''));
+      if (planUi.sheet !== sh) return;
+      sh.next = d && d.nextWorkingDay ? d.nextWorkingDay : null;
+      if (sh.refs && sh.refs.next && sh.next) sh.refs.next.textContent = PL.moveOptions(null, { nextWorkingDay: sh.next, fmtDate })[0].label;
+    } catch (_) { /* برچسب عمومی «فردا (روز کاریِ بعدی)» می‌ماند؛ سرور تاریخ را خودش می‌گذارد */ }
+  }
+
+  function updateMoveWarn(sh) {
+    const el = sh.refs && sh.refs.warn;
+    const mv = sh.move;
+    if (!el || !mv) return;
+    el.textContent = mv.resType === 'date' ? PL.moveWarning(mv.resDate, moveCal.map.get(mv.resDate), fmtDate) : '';
+  }
+
+  // انتخاب تاریخ: JalaliDatepicker (همان فرم مرخصی)؛ نبودش/خطایش ⇒ input بومی type=date. مقدار همیشه میلادی YYYY-MM-DD است.
+  function moveDateControl(sh, mv) {
+    const base = sheetToday();
+    const min = PL.shiftDate(base, 1); const max = PL.shiftDate(base, MOVE_MAX_DAYS);
+    const input = planEl('input', { type: DP ? 'text' : 'date', class: 'pl-field', id: 'pl-move-date', dir: 'ltr', placeholder: 'تاریخ انتقال' });
+    input.setAttribute('aria-label', 'تاریخ انتقال');
+    const pick = (iso) => { mv.resDate = iso || ''; updateMoveWarn(sh); };
+    let attached = false;
+    if (DP) {
+      try { DP.attach(input, { min, max, value: mv.resDate || '', onChange: pick }); attached = true; } catch (_) { input.type = 'date'; }
+    }
+    if (!attached) {
+      input.min = min; input.max = max; input.value = mv.resDate || '';
+      input.addEventListener('change', () => pick(input.value));
+    }
+    return input;
+  }
+
+  function toggleBtn(text, pressed, onClick, disabled) {
+    const b = planEl('button', { type: 'button', text, disabled: !!disabled });
+    b.setAttribute('aria-pressed', pressed ? 'true' : 'false');
+    b.addEventListener('click', onClick);
+    return b;
+  }
+
+  function renderMovePanel(body, task, sh) {
+    const mv = sh.move;
+    const redo = () => { sh.msg = ''; sh.err = false; renderSheet(); };
+    body.appendChild(planEl('h3', { class: 'pl-move-title', id: 'pl-move-title', text: 'انتقال تسک' }));
+    const wrap = planEl('div', { class: 'pl-move-choices' });
+    wrap.setAttribute('role', 'group');
+    wrap.setAttribute('aria-labelledby', 'pl-move-title');
+
+    // وضعیت (انتقالِ تسک یعنی کار تمام نشده)
+    const st = planEl('div', { class: 'pl-reasons' }, PL.MOVE_STATUSES.map((o) => toggleBtn(o.label, mv.status === o.value, () => { mv.status = o.value; redo(); }, sh.busy)));
+    st.setAttribute('role', 'group'); st.setAttribute('aria-label', 'وضعیت تسک');
+    wrap.appendChild(st);
+
+    // علت
+    const why = planEl('div', { class: 'pl-reasons' }, DR.REASONS.map((r) => toggleBtn(r.label, mv.reasonCode === r.value, () => { mv.reasonCode = r.value; redo(); }, sh.busy)));
+    why.setAttribute('role', 'group'); why.setAttribute('aria-label', 'علت انتقال');
+    wrap.appendChild(why);
+    const rt = planEl('textarea', { class: 'pl-field', dir: 'auto', rows: 2, maxLength: DR.LIMITS.reasonText, id: 'pl-move-reason', value: mv.reasonText, placeholder: 'توضیح علت (برای «سایر» حداقل ۵ نویسه)' });
+    rt.setAttribute('aria-label', 'توضیح علت');
+    rt.addEventListener('input', () => { mv.reasonText = rt.value; });
+    wrap.appendChild(rt);
+
+    // مقصد: دو گزینه‌ی بزرگ
+    const dest = planEl('div', { class: 'pl-sheet-actions pl-move-dest' });
+    dest.setAttribute('role', 'group'); dest.setAttribute('aria-label', 'مقصد انتقال');
+    const opts = PL.moveOptions(task, { nextWorkingDay: moveNextOf(sh), fmtDate });
+    opts.forEach((o) => {
+      const b = toggleBtn(o.label, mv.resType === o.value, () => { mv.resType = o.value; if (o.value === 'date') ensureMoveCalendar(sh); redo(); }, sh.busy);
+      b.className = 'pl-btn pl-dest';
+      b.dataset.dest = o.value;
+      if (o.value === 'tomorrow') sh.refs.next = b;
+      dest.appendChild(b);
+    });
+    wrap.appendChild(dest);
+    if (mv.resType === 'date') wrap.appendChild(moveDateControl(sh, mv));
+    const warn = planEl('p', { class: 'pl-why pl-move-warn' });
+    warn.setAttribute('role', 'status');
+    sh.refs.warn = warn;
+    wrap.appendChild(warn);
+    updateMoveWarn(sh);
+    body.appendChild(wrap);
+
+    const bar = planEl('div', { class: 'pl-sheet-actions' });
+    const go = planEl('button', { type: 'button', class: 'pl-btn pl-primary', text: 'ثبت انتقال', disabled: sh.busy });
+    go.addEventListener('click', submitMove);
+    const back = planEl('button', { type: 'button', class: 'pl-btn', text: 'بازگشت', disabled: sh.busy });
+    back.addEventListener('click', () => { sh.moving = false; sh.move = null; sh.msg = ''; sh.err = false; renderSheet(); });
+    bar.appendChild(go); bar.appendChild(back);
+    body.appendChild(bar);
+  }
+
+  function submitMove() {
+    const cur = sheetTask(); const sh = planUi.sheet;
+    if (!cur || !sh || !sh.move || sh.busy) return;
+    const { task, day } = cur;
+    const err = DR.validateAnswer(sh.move, DR.taskOpts(task, { today: sheetToday() }));
+    if (err) { sh.msg = err; sh.err = true; renderSheet(); return; }
+    const answer = DR.toApiAnswer(task.id, sh.move, { reviewTask: DR.isReviewTask(task) });
+    const date = sheetDateParam(day);
+    const info = { id: task.id, title: task.title, src: sh.src, date };
+    sheetRun(() => api('/daily-report', { method: 'POST', body: { answers: [answer], date } }), 'انتقال ثبت شد.', () => {
+      const now = sheetTask();
+      const to = now && now.task ? now.task.rescheduleTo : null;
+      closeTaskSheet();
+      offerUndo(info, PL.movedText(info.title, to && to !== 'drop' ? to : null, fmtDate));
+    });
+  }
+
+  // ---------- نوار «واگرد» چند‌ثانیه‌ای بعد از انتقال ----------
+  function hideUndoBar() {
+    if (state.undoTimer) { clearTimeout(state.undoTimer); state.undoTimer = null; }
+    const box = $('#pl-undo');
+    if (box) { box.classList.add('hidden'); box.textContent = ''; }
+  }
+  function offerUndo(info, text) {
+    const box = $('#pl-undo');
+    if (!box) { showToast(text); return; }
+    hideUndoBar();
+    const msg = planEl('span', { class: 'pl-undo-text', text });
+    const btn = planEl('button', { type: 'button', class: 'pl-btn', text: '↩ واگرد' });
+    btn.setAttribute('aria-label', `واگرد انتقال «${info.title}»`);
+    btn.addEventListener('click', () => undoMove(info));
+    box.appendChild(msg); box.appendChild(btn);
+    box.classList.remove('hidden');
+    state.undoTimer = setTimeout(hideUndoBar, UNDO_BAR_MS);
+    if (state.undoTimer && typeof state.undoTimer.unref === 'function') state.undoTimer.unref();
+  }
+  async function undoMove(info) {
+    hideUndoBar();
+    try {
+      await api('/daily-report/undo', { method: 'POST', body: { taskId: info.id, date: info.date } });
+      showToast('انتقال واگرد شد.');
+    } catch (err) { showToast(err.message || 'واگرد انجام نشد.', true); }
+    try {
+      if (info.src === 'myday') { await refreshMyDay(); renderMyDay(); } else if (planUi.board) { await refreshBoard(); renderPlan(); }
+    } catch (_) { /* با باز کردن دوباره‌ی صفحه تازه می‌شود */ }
+  }
+
   function renderSheet() {
     const body = $('#pl-sheet-body');
     const sh = planUi.sheet; const cur = sheetTask();
     if (!body || !sh || !cur) return;
     const { task, day } = cur;
-    const model = PL.detailModel(task, { today: planUi.board.today, date: day.date, fmtDate, editable: true });
+    const model = PL.detailModel(task, detailCtx(task, day));
     const keepNote = body.querySelector ? body.querySelector('#pl-note') : null;
     const noteDraft = keepNote && typeof keepNote.value === 'string' ? keepNote.value : null; // متن تایپ‌شده با بازسازی (مثل ALREADY_ANSWERED) نپرد
     body.innerHTML = '';
     body.appendChild(planEl('h2', { class: 'sheet-title pl-row-title', id: 'pl-sheet-title', text: model.title }));
     if (model.chips.length) body.appendChild(planEl('div', { class: 'pl-chips' }, model.chips.map((c) => planEl('span', { class: `pl-chip ${c.cls}`, text: c.label }))));
     body.appendChild(planEl('p', { class: `pl-row-status ${model.statusMeta.cls}`, text: `${model.statusMeta.icon} ${model.statusMeta.label}` }));
-    body.appendChild(planEl('p', { class: 'pl-sheet-desc', text: model.description || 'توضیحی برای این تسک ثبت نشده است.' }));
-    const dl = planEl('dl', { class: 'pl-sheet-rows' });
-    model.rows.filter((r) => r.key !== 'status').forEach((r) => { dl.appendChild(planEl('dt', { text: r.label })); dl.appendChild(planEl('dd', { text: r.value })); });
-    body.appendChild(dl);
-
-    if (sh.editing && model.actions.edit && model.actions.edit.enabled) {
-      const title = planEl('input', { type: 'text', class: 'pl-field', dir: 'auto', maxLength: 120, value: task.title, id: 'pl-edit-title' });
-      title.setAttribute('aria-label', 'عنوان تسک فوری');
-      const desc = planEl('textarea', { class: 'pl-field', dir: 'auto', rows: 3, maxLength: 500, value: task.description || '', id: 'pl-edit-desc' });
-      desc.setAttribute('aria-label', 'توضیح تسک فوری');
-      const save = planEl('button', { type: 'button', class: 'pl-btn pl-primary', text: 'ذخیره', disabled: sh.busy });
-      save.addEventListener('click', () => sheetRun(() => api('/my-urgent/' + task.id, { method: 'PATCH', body: { title: title.value, description: desc.value } }), 'تسک فوری ویرایش شد.'));
-      const cancel = planEl('button', { type: 'button', class: 'pl-btn', text: 'انصراف از ویرایش', disabled: sh.busy });
-      cancel.addEventListener('click', () => { sh.editing = false; sh.msg = ''; renderSheet(); });
-      body.appendChild(planEl('div', { class: 'pl-move-choices' }, title, desc, planEl('div', { class: 'pl-sheet-actions' }, save, cancel)));
+    if (sh.moving && sh.move && model.actions.move && model.actions.move.enabled) {
+      renderMovePanel(body, task, sh);
     } else {
-      if (model.noteEditable) {
-        const ta = planEl('textarea', { class: 'pl-field', dir: 'auto', rows: 3, maxLength: 500, id: 'pl-note', value: noteDraft !== null ? noteDraft : (model.note || ''), placeholder: 'توضیح انجام (اختیاری)' });
-        ta.setAttribute('aria-label', 'توضیح انجام');
-        const saveNote = planEl('button', { type: 'button', class: 'pl-btn', text: 'ثبت توضیح', disabled: sh.busy });
-        saveNote.addEventListener('click', () => sheetRun(() => api('/daily-report/note', { method: 'PATCH', body: { taskId: task.id, date: sheetDateParam(day), note: ta.value } }), 'توضیح ذخیره شد.'));
-        body.appendChild(planEl('div', { class: 'pl-note-box' }, ta, saveNote));
-      } else if (model.note) {
-        body.appendChild(planEl('p', { class: 'pl-sheet-desc', text: `توضیح انجام: ${model.note}` }));
+      sh.moving = false;
+      body.appendChild(planEl('p', { class: 'pl-sheet-desc', text: model.description || 'توضیحی برای این تسک ثبت نشده است.' }));
+      const dl = planEl('dl', { class: 'pl-sheet-rows' });
+      model.rows.filter((r) => r.key !== 'status').forEach((r) => { dl.appendChild(planEl('dt', { text: r.label })); dl.appendChild(planEl('dd', { text: r.value })); });
+      body.appendChild(dl);
+
+      if (sh.editing && model.actions.edit && model.actions.edit.enabled) {
+        const title = planEl('input', { type: 'text', class: 'pl-field', dir: 'auto', maxLength: 120, value: task.title, id: 'pl-edit-title' });
+        title.setAttribute('aria-label', 'عنوان تسک فوری');
+        const desc = planEl('textarea', { class: 'pl-field', dir: 'auto', rows: 3, maxLength: 500, value: task.description || '', id: 'pl-edit-desc' });
+        desc.setAttribute('aria-label', 'توضیح تسک فوری');
+        const save = planEl('button', { type: 'button', class: 'pl-btn pl-primary', text: 'ذخیره', disabled: sh.busy });
+        save.addEventListener('click', () => sheetRun(() => api('/my-urgent/' + task.id, { method: 'PATCH', body: { title: title.value, description: desc.value } }), 'تسک فوری ویرایش شد.'));
+        const cancel = planEl('button', { type: 'button', class: 'pl-btn', text: 'انصراف از ویرایش', disabled: sh.busy });
+        cancel.addEventListener('click', () => { sh.editing = false; sh.msg = ''; renderSheet(); });
+        body.appendChild(planEl('div', { class: 'pl-move-choices' }, title, desc, planEl('div', { class: 'pl-sheet-actions' }, save, cancel)));
+      } else {
+        if (model.noteEditable) {
+          const ta = planEl('textarea', { class: 'pl-field', dir: 'auto', rows: 3, maxLength: 500, id: 'pl-note', value: noteDraft !== null ? noteDraft : (model.note || ''), placeholder: 'توضیح انجام (اختیاری)' });
+          ta.setAttribute('aria-label', 'توضیح انجام');
+          const saveNote = planEl('button', { type: 'button', class: 'pl-btn', text: 'ثبت توضیح', disabled: sh.busy });
+          saveNote.addEventListener('click', () => sheetRun(() => api('/daily-report/note', { method: 'PATCH', body: { taskId: task.id, date: sheetDateParam(day), note: ta.value } }), 'توضیح ذخیره شد.'));
+          body.appendChild(planEl('div', { class: 'pl-note-box' }, ta, saveNote));
+        } else if (model.note) {
+          body.appendChild(planEl('p', { class: 'pl-sheet-desc', text: `توضیح انجام: ${model.note}` }));
+        }
+        const bar = planEl('div', { class: 'pl-sheet-actions' });
+        SHEET_ACTIONS.forEach(([k, label]) => {
+          const a = model.actions[k];
+          if (!a) return;
+          const text = k === 'remove' && sh.confirmRemove ? 'تأیید حذف' : label;
+          const b = planEl('button', { type: 'button', class: `pl-btn${k === 'done' ? ' pl-primary' : ''}${k === 'remove' ? ' pl-danger' : ''}`, text, disabled: !a.enabled || sh.busy });
+          b.dataset.action = k;
+          if (!a.enabled) b.setAttribute('aria-describedby', `pl-why-${k}`);
+          b.addEventListener('click', () => sheetAction(k));
+          bar.appendChild(b);
+          if (!a.enabled && a.reason) bar.appendChild(planEl('span', { class: 'pl-why', id: `pl-why-${k}`, text: a.reason }));
+        });
+        body.appendChild(bar);
       }
-      const bar = planEl('div', { class: 'pl-sheet-actions' });
-      SHEET_ACTIONS.forEach(([k, label]) => {
-        const a = model.actions[k];
-        if (!a) return;
-        let enabled = a.enabled; let reason = a.reason;
-        if (k === 'move' && enabled && typeof planUi.onMove !== 'function') { enabled = false; reason = SHEET_MOVE_WHY; }
-        const text = k === 'remove' && sh.confirmRemove ? 'تأیید حذف' : label;
-        const b = planEl('button', { type: 'button', class: `pl-btn${k === 'done' ? ' pl-primary' : ''}${k === 'remove' ? ' pl-danger' : ''}`, text, disabled: !enabled || sh.busy });
-        b.dataset.action = k;
-        if (!enabled) b.setAttribute('aria-describedby', `pl-why-${k}`);
-        b.addEventListener('click', () => sheetAction(k));
-        bar.appendChild(b);
-        if (!enabled && reason) bar.appendChild(planEl('span', { class: 'pl-why', id: `pl-why-${k}`, text: reason }));
-      });
-      body.appendChild(bar);
     }
     const live = planEl('div', { class: 'pl-sheet-live' + (sh.err ? ' is-err' : ''), text: sh.msg });
     live.setAttribute('role', sh.err ? 'alert' : 'status');
@@ -1736,6 +1937,269 @@
     const root = sheetRoot();
     if (root && typeof root.addEventListener === 'function') root.addEventListener('click', (ev) => { if (ev.target === root) closeTaskSheet(); });
   }());
+
+  // ---------- D1 (فاز ۱۵): «امروزِ من» — صفحه‌ی تیک‌محور با دو لیست ----------
+  // داده از GET /daily-tasks (Planner.myDayModel). تیک = POST /daily-report با فقط همان تسک؛ برداشتن تیک = POST /daily-report/undo؛
+  // توضیح انجام = PATCH /daily-report/note (بدون مسدودکردن). هیچ سؤال/بنر/۴۰۹ الزامی در کار نیست؛ همه‌چیز داوطلبانه است.
+  // در حالت دورکاری این نما عمداً در REMOTE_VIEWS نیست (تصمیم در docs/PHASE15_DECISIONS.md).
+  const myDay = {
+    model: null, seg: 'pending', otherOpen: false, lateOpen: false, backfill: [], hours: '', msg: '', err: false,
+    busy: new Set(), noteBusy: new Set(), noteOpen: new Set(), drafts: new Map(), checkEls: new Map(), noteEls: new Map(),
+    focusKey: null, focusNote: null, liveEl: null, rendering: false,
+  };
+
+  function applyMyDay(d) {
+    myDay.model = PL.myDayModel(d);
+    const doneIds = new Set(myDay.model.done.map((t) => t.id));
+    [...myDay.noteOpen].forEach((id) => { if (!doneIds.has(id)) myDay.noteOpen.delete(id); });
+    [...myDay.drafts.keys()].forEach((id) => { if (!doneIds.has(id)) myDay.drafts.delete(id); });
+  }
+  async function refreshMyDay() { applyMyDay(await api('/daily-tasks')); }
+  // پاسخِ POST/PATCH/undo خودش فهرست تازه را دارد؛ نبودش ⇒ یک GET
+  async function freshMyDay(r) { if (r && Array.isArray(r.tasks) && Array.isArray(r.answered)) applyMyDay(r); else await refreshMyDay(); }
+
+  function setMyMsg(text, isErr) {
+    myDay.msg = text; myDay.err = !!isErr;
+    const el = myDay.liveEl;
+    if (el) { el.textContent = text; el.className = 'pl-sheet-live' + (isErr ? ' is-err' : ''); el.setAttribute('role', isErr ? 'alert' : 'status'); }
+  }
+
+  async function loadMyDay() {
+    const body = $('#myday-body');
+    if (!body) return;
+    if (!PL || !DR) { renderEmpty(body, 'این صفحه در این نسخه در دسترس نیست.'); return; }
+    myDay.msg = ''; myDay.err = false; myDay.seg = 'pending'; myDay.lateOpen = false;
+    myDay.noteOpen = new Set(); myDay.drafts = new Map(); myDay.busy = new Set(); myDay.noteBusy = new Set();
+    renderLoading(body, 'list');
+    try { await refreshMyDay(); } catch (err) { renderError(body, err, loadMyDay, 'retry-myday'); return; }
+    renderMyDay();
+    loadMyDayExtras();
+  }
+
+  // چیپ ساعت مؤثر و «روزهای قبل»؛ خطایشان هرگز صفحه را نمی‌شکند
+  const faText = (t) => String(t == null ? '' : t).replace(/\d/g, (c) => '۰۱۲۳۴۵۶۷۸۹'[c]); // ساعت «08:00» (faDigits فقط برای عدد است)
+  async function loadMyDayExtras() {
+    try { const g = await api('/report-backfill'); myDay.backfill = (g && g.days) || []; } catch (_) { myDay.backfill = []; }
+    try {
+      const { days } = await api('/schedule/upcoming');
+      const d = days && days[0];
+      myDay.hours = !d ? '' : (d.isWorkingDay ? `ساعت کاری ${faText(d.expectedStart)}–${faText(d.expectedEnd)}` : (d.special === 'off' ? 'امروز آف' : (d.holidayTitle ? `تعطیل — ${d.holidayTitle}` : 'روز غیرکاری')));
+    } catch (_) { myDay.hours = ''; }
+    if (!myDay.noteOpen.size && !myDay.busy.size) renderMyDay(); // وسط تایپ توضیح بازسازی نشود
+  }
+
+  async function myDayToggle(task) {
+    if (myDay.busy.has(task.id)) return;
+    const wasDone = task.status === 'done';
+    myDay.busy.add(task.id); myDay.focusKey = task.id;
+    setMyMsg('در حال ذخیره…', false);
+    renderMyDay();
+    let ok = false;
+    try {
+      let r;
+      if (wasDone) r = await api('/daily-report/undo', { method: 'POST', body: { taskId: task.id } });
+      else { r = await api('/daily-report', { method: 'POST', body: { answers: [{ taskId: task.id, status: 'done' }] } }); cheer(r); }
+      await freshMyDay(r);
+      if (!wasDone) { myDay.noteOpen.add(task.id); myDay.focusNote = task.id; }
+      setMyMsg(wasDone ? 'تیک برداشته شد.' : 'ثبت شد: انجام شد ✓ (اگر خواستید توضیح انجام را بنویسید)', false);
+      ok = true;
+    } catch (err) {
+      if (err.data && err.data.code === 'ALREADY_ANSWERED') {
+        setMyMsg('این تسک قبلاً پاسخ داده شده بود؛ فهرست تازه شد.', true);
+        try { await refreshMyDay(); } catch (_) { /* همان مدل قبلی */ }
+      } else setMyMsg(err.message || 'ذخیره نشد.', true);
+    } finally { myDay.busy.delete(task.id); }
+    if (!ok) myDay.focusNote = null;
+    renderMyDay();
+  }
+
+  // ذخیره‌ی توضیح انجام؛ بدون تغییر ⇒ هیچ درخواستی نمی‌رود (blur و دکمه‌ی «ثبت» دوبار نفرستند)
+  async function myDaySaveNote(id, text, fromBlur) {
+    const cur = myDay.model ? PL.findInModel(myDay.model, id) : null;
+    if (!cur || cur.status !== 'done' || myDay.noteBusy.has(id)) return;
+    const next = String(text == null ? '' : text).trim();
+    if (next === String(cur.note || '')) {
+      if (!fromBlur) { myDay.noteOpen.delete(id); myDay.drafts.delete(id); renderMyDay(); }
+      return;
+    }
+    myDay.noteBusy.add(id);
+    setMyMsg('در حال ذخیره…', false);
+    let ok = false;
+    try {
+      const r = await api('/daily-report/note', { method: 'PATCH', body: { taskId: id, note: next } });
+      await freshMyDay(r);
+      myDay.noteOpen.delete(id); myDay.drafts.delete(id);
+      setMyMsg(next ? 'توضیح ذخیره شد.' : 'توضیح پاک شد.', false);
+      ok = true;
+    } catch (err) {
+      if (err.data && (err.data.code === 'ALREADY_ANSWERED' || err.data.code === 'TASK_NOT_FOUND')) { try { await refreshMyDay(); } catch (_) { /* همان مدل قبلی */ } }
+      setMyMsg(err.message || 'ذخیره نشد.', true); // ویرایشگر و متن تایپ‌شده می‌ماند
+    } finally { myDay.noteBusy.delete(id); }
+    if (!ok) myDay.focusNote = null;
+    renderMyDay();
+  }
+
+  function myDayNoteBox(task) {
+    const draft = myDay.drafts.has(task.id) ? myDay.drafts.get(task.id) : (task.note || '');
+    const ta = planEl('textarea', { class: 'pl-field', dir: 'auto', rows: 2, maxLength: 500, id: `pl-dnote-${task.id}`, value: draft, placeholder: 'توضیح انجام (اختیاری)' });
+    ta.setAttribute('aria-label', `توضیح انجام «${task.title}»`);
+    ta.addEventListener('input', () => { myDay.drafts.set(task.id, ta.value); });
+    ta.addEventListener('blur', () => { if (!myDay.rendering) myDaySaveNote(task.id, ta.value, true); });
+    myDay.noteEls.set(task.id, ta);
+    const save = planEl('button', { type: 'button', class: 'pl-btn', text: 'ثبت', disabled: myDay.noteBusy.has(task.id) });
+    save.addEventListener('click', () => myDaySaveNote(task.id, ta.value, false));
+    const close = planEl('button', { type: 'button', class: 'pl-btn', text: 'بستن' });
+    close.addEventListener('click', () => { myDay.noteOpen.delete(task.id); myDay.drafts.delete(task.id); renderMyDay(); });
+    return planEl('div', { class: 'pl-note-box pl-row-extra' }, ta, save, close);
+  }
+
+  function myDayRow(task) {
+    const m = myDay.model;
+    const meta = PL.statusMeta(task.status);
+    const isDone = task.status === 'done';
+    const review = PL.isReview(task);
+    const busy = myDay.busy.has(task.id);
+    let why = '';
+    if (isDone) { if (task.canUndo === false) why = 'پاسخ این تسک قابل برداشتن نیست.'; }
+    else if (review) why = BOARD_REVIEW_WHY;
+    else if (task.status !== 'pending') why = `پاسخ ثبت‌شده: ${meta.label}`;
+
+    const check = planEl('button', { type: 'button', class: 'pl-check', disabled: !!why || busy });
+    check.setAttribute('role', 'checkbox');
+    check.setAttribute('aria-checked', isDone ? 'true' : 'false');
+    check.setAttribute('aria-label', `${task.title}${why ? ` — ${why}` : (isDone ? ' — انجام شده؛ برای برداشتن تیک بزنید' : ' — انجام نشده؛ برای ثبت انجام بزنید')}`);
+    if (why) check.title = why;
+    check.appendChild(planEl('span', { class: 'pl-tick', text: isDone ? '✓' : '' }));
+    check.appendChild(planEl('span', { class: 'sr-only', text: isDone ? 'انجام شد' : 'انجام نشده' }));
+    check.addEventListener('click', () => myDayToggle(task));
+    myDay.checkEls.set(task.id, check);
+
+    const chips = PL.chipsFor(task, { today: m.today, fmtDate }).map((c) => planEl('span', { class: `pl-chip ${c.cls}`, text: c.label }));
+    const statusText = task.status === 'pending' ? '' : (task.rescheduleTo && task.rescheduleTo !== 'drop' ? `${meta.icon} ${meta.label} به ${fmtDate(task.rescheduleTo)}` : `${meta.icon} ${meta.label}`);
+    const main = planEl('button', { type: 'button', class: 'pl-row-main' },
+      planEl('span', { class: 'pl-row-title', text: task.title }),
+      statusText ? planEl('span', { class: `pl-row-status ${meta.cls}`, text: statusText }) : null,
+      isDone && task.note ? planEl('span', { class: 'pl-row-note', text: `توضیح: ${task.note}` }) : null,
+      chips.length ? planEl('span', { class: 'pl-chips' }, chips) : null);
+    main.dataset.taskId = String(task.id);
+    main.setAttribute('aria-haspopup', 'dialog');
+    main.addEventListener('click', () => openTaskSheet(task.id, m.date, { src: 'myday' }));
+    planUi.rowEls.set(`d:${task.id}`, main);
+
+    let moveBtn = null;
+    if (task.status === 'pending' && !review && !m.fullDayOff) {
+      moveBtn = planEl('button', { type: 'button', class: 'pl-move', text: '↪', disabled: busy });
+      moveBtn.setAttribute('aria-label', `انتقال «${task.title}»`);
+      moveBtn.title = 'انتقال به روز بعد یا تاریخ مشخص';
+      moveBtn.addEventListener('click', () => openTaskSheet(task.id, m.date, { src: 'myday', moving: true }));
+    }
+    const extra = isDone && myDay.noteOpen.has(task.id) ? myDayNoteBox(task) : null;
+    return planEl('li', { class: `pl-row${isDone ? ' is-done' : ''}${extra ? ' has-extra' : ''}` }, main, moveBtn, check, extra);
+  }
+
+  function renderMyDay() {
+    const body = $('#myday-body');
+    const m = myDay.model;
+    if (!body || !m || !PL) return;
+    myDay.rendering = true;
+    body.removeAttribute('aria-busy');
+    body.innerHTML = '';
+    planUi.rowEls = new Map(); myDay.checkEls = new Map(); myDay.noteEls = new Map();
+    const faN = faDigits;
+    const p = m.progress || { done: 0, total: 0, percent: null };
+
+    // بالا: روز و تاریخ شمسی، ساعت مؤثر، پیشرفت
+    const summary = planEl('div', { class: 'card pl-summary' },
+      planEl('div', { class: 'pl-summary-title', text: fmtPlanDay(m.date) }));
+    if (myDay.hours || m.late) {
+      summary.appendChild(planEl('div', { class: 'pl-chips' },
+        myDay.hours ? planEl('span', { class: 'pl-chip', text: myDay.hours }) : null,
+        m.late ? planEl('span', { class: 'pl-chip', text: 'پس از ثبت خروج' }) : null));
+    }
+    if (p.total) {
+      const bar = planEl('progress', { class: 'pl-progress-bar', max: p.total, value: p.done });
+      bar.setAttribute('aria-label', 'پیشرفت امروز');
+      summary.appendChild(planEl('div', { class: 'pl-progress' }, bar,
+        planEl('span', { class: 'pl-progress-text', text: `${PL.progressText(p)}${p.percent != null ? ` · ${faN(p.percent)}٪` : ''}` })));
+    } else summary.appendChild(planEl('div', { class: 'plan-meta', text: 'تسکی برای شمارش پیشرفت امروز نیست.' }));
+    body.appendChild(summary);
+
+    const live = planEl('div', { class: 'pl-sheet-live' + (myDay.err ? ' is-err' : ''), text: myDay.msg });
+    live.setAttribute('role', myDay.err ? 'alert' : 'status');
+    live.setAttribute('aria-live', 'polite');
+    myDay.liveEl = live;
+    body.appendChild(live);
+
+    if (m.fullDayOff) body.appendChild(planEl('p', { class: 'plan-meta', role: 'status', text: 'امروز مرخصی/ماموریتِ تمام‌روز دارید؛ برای تسک‌ها کاری لازم نیست.' }));
+
+    // چیپ ساکت «روزهای قبل (N)»؛ نه بنر، نه سؤال
+    if (myDay.backfill.length) {
+      const n = myDay.backfill.length;
+      const chip = planEl('button', { type: 'button', class: 'pl-quiet-chip', text: `روزهای قبل (${faN(n)})` });
+      if (n > 1) chip.setAttribute('aria-expanded', myDay.lateOpen ? 'true' : 'false');
+      chip.addEventListener('click', () => { if (n === 1) openLateReport(myDay.backfill[0].date); else { myDay.lateOpen = !myDay.lateOpen; renderMyDay(); } });
+      body.appendChild(chip);
+      if (n > 1 && myDay.lateOpen) {
+        body.appendChild(planEl('div', { class: 'pl-sheet-actions' }, myDay.backfill.map((d) => planEl('button', { type: 'button', class: 'pl-btn', text: `${fmtPlanDay(d.date)} — ${faN(d.pendingCount)} تسک`, on: { click: () => openLateReport(d.date) } }))));
+      }
+    }
+
+    // موبایل: دو بخش با شمارنده؛ عریض: دو ستون
+    const seg = planEl('div', { class: 'pl-seg pl-seg-mobile' });
+    seg.setAttribute('role', 'tablist');
+    seg.setAttribute('aria-label', 'بخش‌های امروز');
+    [['pending', 'در انتظار', m.pending.length], ['done', 'انجام‌شده', m.done.length]].forEach(([k, label, n]) => {
+      const b = planEl('button', { type: 'button' }, planEl('span', { text: label }), planEl('span', { class: 'pl-seg-count', text: `(${faN(n)})` }));
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', myDay.seg === k ? 'true' : 'false');
+      b.addEventListener('click', () => { if (myDay.seg !== k) { myDay.seg = k; renderMyDay(); } });
+      seg.appendChild(b);
+    });
+    body.appendChild(seg);
+
+    const col = (cls, hue, id, title, list, emptyText, key) => {
+      const sec = planEl('section', { class: `pl-day pl-col ${cls} ${dayHueCls(hue)}${myDay.seg === key ? '' : ' pl-col-off'}` });
+      sec.setAttribute('aria-labelledby', id);
+      sec.appendChild(planEl('h4', { class: 'pl-day-title', id, text: `${title} (${faN(list.length)})` }));
+      if (list.length) sec.appendChild(planEl('ul', { class: 'pl-list' }, list.map(myDayRow)));
+      else sec.appendChild(planEl('p', { class: 'day-empty pl-day-meta', role: 'status', text: emptyText }));
+      return sec;
+    };
+    const anyAnswered = m.done.length + m.other.length > 0;
+    body.appendChild(planEl('div', { class: 'pl-myday' },
+      col('pl-col-pending', 0, 'pl-col-pending-t', 'در انتظار', m.pending, anyAnswered ? 'همه‌ی تسک‌های امروز تعیین‌وضعیت شد 🎉' : 'تسکی برای امروز ثبت نشده است.', 'pending'),
+      col('pl-col-done', 2, 'pl-col-done-t', 'انجام‌شده', m.done, 'هنوز تسکی را تیک نزده‌اید.', 'done')));
+
+    // بخش جمع‌شونده: منتقل‌شده / نیمه‌کاره / انجام‌نشده / حذف‌شده
+    if (m.other.length) {
+      const open = myDay.otherOpen;
+      const sec = planEl('section', { class: `pl-day pl-day-4 pl-other${open ? '' : ' is-collapsed'}` });
+      sec.setAttribute('aria-labelledby', 'pl-other-t');
+      sec.appendChild(planEl('h4', { class: 'pl-day-title', id: 'pl-other-t', text: `منتقل‌شده / نیمه‌کاره / انجام‌نشده (${faN(m.other.length)})` }));
+      const toggle = planEl('button', { type: 'button', class: 'pl-day-toggle', text: `${open ? 'پنهان‌کردن' : 'نمایش'} (${faN(m.other.length)})` });
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggle.setAttribute('aria-controls', 'pl-other-list');
+      toggle.addEventListener('click', () => { myDay.otherOpen = !myDay.otherOpen; renderMyDay(); });
+      sec.appendChild(toggle);
+      sec.appendChild(planEl('ul', { class: 'pl-list', id: 'pl-other-list' }, m.other.map(myDayRow)));
+      body.appendChild(sec);
+    }
+
+    myDay.rendering = false;
+    if (myDay.focusNote != null) {
+      const ta = myDay.noteEls.get(myDay.focusNote);
+      myDay.focusNote = null; myDay.focusKey = null;
+      if (ta) setTimeout(() => { if (typeof ta.focus === 'function') ta.focus(); }, 0);
+    } else if (myDay.focusKey != null) {
+      const el = myDay.checkEls.get(myDay.focusKey);
+      myDay.focusKey = null;
+      if (el) setTimeout(() => { if (typeof el.focus === 'function') el.focus(); }, 0);
+    }
+  }
+
+  const myDayBack = $('#myday-back');
+  if (myDayBack && typeof myDayBack.addEventListener === 'function') myDayBack.addEventListener('click', () => switchView('today'));
+
 
   function planPayload() {
     return planUi.tasks.filter((t) => !t.isSystem && !t.isUrgent && !t.managerLocked).map((t) => ({

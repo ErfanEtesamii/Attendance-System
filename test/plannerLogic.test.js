@@ -154,3 +154,36 @@ describe('ایستا: planner.css و index.html (C1)', () => {
     assert.ok(a > -1 && a < b && b < c);
   });
 });
+
+describe('Planner: «امروزِ من» و انتقال (D1/D2)', () => {
+  const P = require('../public/js/planner.js');
+  test('myDayModel: pending/done/other، وضعیت rescheduled/dropped، canUndo، progress سرور', () => {
+    const m = P.myDayModel({ date: '2027-05-06', today: '2027-05-06', nextWorkingDay: '2027-05-08', taskCarryMaxTimes: 2, progress: { done: 1, total: 3, percent: 33 },
+      tasks: [{ id: 1, title: 'الف' }],
+      answered: [{ taskId: 2, title: 'ب', status: 'done', note: 'ن', canUndo: true }, { taskId: 3, title: 'ج', status: 'partial', rescheduleTo: '2027-05-08' }, { taskId: 4, title: 'د', status: 'not_done', rescheduleTo: 'drop', dropped: true }, { taskId: 5, title: 'ه', status: 'done', canUndo: false, systemKey: 'review_team_reports', isSystem: true }] });
+    assert.deepEqual(m.pending.map((t) => [t.id, t.status]), [[1, 'pending']]);
+    assert.deepEqual(m.done.map((t) => t.id), [2, 5]);
+    assert.deepEqual(m.other.map((t) => [t.id, t.status]), [[3, 'rescheduled'], [4, 'dropped']]);
+    assert.equal(m.done[1].canUndo, false);
+    assert.equal(m.carryMax, 2);
+    assert.deepEqual(m.progress, { done: 1, total: 3, percent: 33 });
+    assert.equal(P.findInModel(m, 3).id, 3);
+    assert.equal(P.findInModel(m, 99), null);
+    assert.equal(P.myDayModel(null).pending.length, 0);
+  });
+  test('moveOptions: فقط فردا و تاریخ مشخص (هرگز drop)؛ moveWarning فقط برای روز شناخته‌شده‌ی غیرکاری؛ movedText', () => {
+    assert.deepEqual(P.moveOptions({ isUrgent: true }, { nextWorkingDay: '2027-05-08', fmtDate: (d) => `[${d}]` }).map((o) => [o.value, o.label]), [['tomorrow', 'فردا (روز کاریِ بعدی: [2027-05-08])'], ['date', 'تاریخ مشخص…']]);
+    assert.equal(P.moveOptions({}).some((o) => o.value === 'drop'), false);
+    assert.equal(P.moveWarning('2027-05-07', { isWorkingDay: true }), '');
+    assert.equal(P.moveWarning('2027-05-07', null), '');
+    assert.match(P.moveWarning('2027-05-07', { isWorkingDay: false, kind: 'weekend' }), /آخر هفته/);
+    assert.match(P.movedText('الف', '2027-05-08'), /«الف» به شنبه 2027-05-08 منتقل شد/);
+  });
+  test('detailModel: سقف انتقال (ctx.carryMax) ⇒ move غیرفعال با علت؛ زیر سقف/بدون سقف ⇒ فعال', () => {
+    const t = { id: 1, title: 'x', status: 'pending', carryCount: 2 };
+    assert.equal(P.detailModel(t, { date: '2027-05-06', today: '2027-05-06', carryMax: 2 }).actions.move.enabled, false);
+    assert.match(P.detailModel(t, { carryMax: 2 }).actions.move.reason, /سقف انتقال/);
+    assert.equal(P.detailModel(t, { carryMax: 3 }).actions.move.enabled, true);
+    assert.equal(P.detailModel(t, {}).actions.move.enabled, true);
+  });
+});

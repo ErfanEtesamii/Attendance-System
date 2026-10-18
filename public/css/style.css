@@ -341,6 +341,7 @@ body {
 .action-tile.t-orange .tile-icon { background: linear-gradient(135deg, #ffd27a, #ff9f43); box-shadow: 0 8px 18px rgba(255,159,67,.28); }
 .action-tile.t-red    .tile-icon { background: linear-gradient(135deg, #ff9a9a, #f0506e); box-shadow: 0 8px 18px rgba(240,80,110,.28); }
 .action-tile.t-purple .tile-icon { background: linear-gradient(135deg, #a99bff, #6b5ce7); box-shadow: 0 8px 18px rgba(107,92,231,.3); }
+.action-tile.t-blue   .tile-icon { background: linear-gradient(135deg, #8fd0ff, #3a7be0); box-shadow: 0 8px 18px rgba(58,123,224,.3); }
 .action-tile.wide {
   flex-direction: row;
   justify-content: center;

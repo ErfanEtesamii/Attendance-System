@@ -57,6 +57,8 @@ describe('خروجی «امروز» و «هفته» (B1)', () => {
     const ans = r.answered.find((x) => x.taskId === b.id);
     assert.deepEqual([ans.priority, ans.description, ans.note, ans.canUndo, ans.answeredLate, typeof ans.answeredAt], ['normal', 'شرح ب', 'انجام شد با توضیح', true, false, 'string']);
     assert.equal(r.nextWorkingDay > SUN, true);
+    // D1: managerLocked برای چیپ «🔒 از طرف سرپرست» (هم در بی‌پاسخ‌ها هم در پاسخ‌داده‌شده‌ها)
+    assert.deepEqual([r.tasks.find((t) => t.title === 'از مدیر').managerLocked, r.tasks.find((t) => t.title === 'هرروزه').managerLocked, ans.managerLocked], [true, false, false]);
     assert.deepEqual(Object.keys(r.limits), ['selfUrgentEnabled', 'selfUrgentRemaining']);
     assert.equal(m.id > 0 && ev.id > 0, true);
   });

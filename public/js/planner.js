@@ -140,8 +140,10 @@
       else if (future) actions.done = { enabled: false, reason: 'روز آینده هنوز نرسیده است.' };
       else actions.done = { enabled: true, reason: '' };
       if (!review) {
+        const maxCarry = Number(ctx.carryMax) || 0;
         if (!editable) actions.move = { enabled: false, reason: 'این هفته فقط‌خواندنی است.' };
         else if (future) actions.move = { enabled: false, reason: 'انتقال فقط برای امروز و روزهای گذشته ممکن است.' };
+        else if (maxCarry > 0 && carry >= maxCarry) actions.move = { enabled: false, reason: `این تسک ${fa(carry)} بار منتقل شده و به سقف انتقال رسیده است؛ ${t.isUrgent ? 'انجامش بده یا با سرپرست هماهنگ کن.' : 'انجامش بده یا حذفش کن.'}` };
         else actions.move = { enabled: true, reason: '' };
       }
     } else {
@@ -179,9 +181,83 @@
     };
   }
 
+
+  // ---------- «امروزِ من» (D1) ----------
+  /** وضعیتِ نمایشیِ یک پاسخِ ثبت‌شده: حذف ⇒ dropped؛ دارای مقصد انتقال ⇒ rescheduled؛ وگرنه همان status. */
+  function answerStatus(a) {
+    if (a && (a.dropped || a.rescheduleTo === 'drop')) return 'dropped';
+    if (a && a.rescheduleTo) return 'rescheduled';
+    return (a && a.status) || 'pending';
+  }
+
+  /**
+   * خروجی GET /daily-tasks ⇒ مدلِ دو لیست. هر ردیف همان شکل ردیف‌های /week-board را دارد (تا chipsFor/detailModel/شیت مشترک باشند):
+   *   pending: تسک‌های بی‌پاسخ (status='pending')؛ done: پاسخ‌های «انجام شد»؛ other: نیمه‌کاره/انجام‌نشده/منتقل‌شده/حذف‌شده.
+   * progress همان محاسبه‌ی سرور است (در نبودش از ردیف‌ها).
+   */
+  function myDayModel(daily) {
+    const d = daily || {};
+    const pending = (d.tasks || []).map((t) => ({
+      ...t, status: 'pending', note: null, canUndo: false, answeredAt: null, answeredLate: false, reasonCode: null, reasonText: null, rescheduleTo: null,
+    }));
+    const answered = (d.answered || []).map((a) => ({
+      id: a.taskId, title: a.title || '', description: a.description || '', priority: a.priority || 'normal', plannedDate: null, source: 'answered',
+      isUrgent: !!a.isUrgent, assignedByUserId: a.assignedByUserId || null, selfAssigned: !!a.selfAssigned, managerLocked: !!a.managerLocked,
+      urgentNote: a.urgentNote || null, urgentDeadlineTime: a.urgentDeadlineTime || null,
+      isSystem: !!a.isSystem, systemKey: a.systemKey || null, outOfPlan: !!a.outOfPlan,
+      status: answerStatus(a), note: a.note || null, reasonCode: a.reasonCode || null, reasonText: a.reasonText || null, rescheduleTo: a.rescheduleTo || null,
+      answeredAt: a.answeredAt || null, answeredLate: !!a.answeredLate, carryCount: Number(a.carryCount) || 0, canUndo: a.canUndo !== false,
+    }));
+    const done = answered.filter((t) => t.status === 'done');
+    const other = answered.filter((t) => t.status !== 'done');
+    return {
+      date: d.date || null, today: d.today || d.date || null, fullDayOff: !!d.fullDayOff, late: !!d.late,
+      nextWorkingDay: d.nextWorkingDay || null, carryMax: Number(d.taskCarryMaxTimes) || 0,
+      limits: d.limits || { selfUrgentEnabled: false, selfUrgentRemaining: 0 },
+      pending, done, other,
+      progress: d.progress || progressOf([...pending, ...answered]),
+    };
+  }
+
+  /** یافتن ردیف در مدل (pending/done/other) با شناسه. */
+  function findInModel(model, id) {
+    if (!model) return null;
+    return model.pending.find((t) => t.id === id) || model.done.find((t) => t.id === id) || model.other.find((t) => t.id === id) || null;
+  }
+
+  // ---------- انتقال (D2) ----------
+  // سرور: «انتقال = نیمه‌کاره/انجام‌نشده + علت الزامی» (همان قاعده‌ی ویزارد گزارش). این‌جا فقط گزینه‌ها و پیام‌هاست؛
+  // اعتبارسنجی و ساخت بدنه با DailyReport.validateAnswer/toApiAnswer (منبع واحد) در app.js انجام می‌شود.
+  const MOVE_STATUSES = [
+    { value: 'not_done', label: '❌ انجام نشد' },
+    { value: 'partial', label: '🟡 نیمه‌کاره' },
+  ];
+  /** گزینه‌های مقصد: فقط «فردا» و «تاریخ مشخص» (حذف از برنامه در این کامپوننت نیست؛ برای فوری هم ممنوع است). */
+  function moveOptions(task, ctx = {}) {
+    const next = ctx.nextWorkingDay || '';
+    const fmt = typeof ctx.fmtDate === 'function' ? ctx.fmtDate : (x) => x;
+    return [
+      { value: 'tomorrow', label: next ? `فردا (روز کاریِ بعدی: ${fmt(next)})` : 'فردا (روز کاریِ بعدی)' },
+      { value: 'date', label: 'تاریخ مشخص…' },
+    ];
+  }
+  /** هشدار نرمِ روز مقصد: info = { isWorkingDay, kind, holidayTitle } (اگر روز شناخته‌شده نبود ⇒ بدون هشدار). */
+  function moveWarning(date, info, fmtDate) {
+    if (!date || !info || info.isWorkingDay !== false) return '';
+    const fmt = typeof fmtDate === 'function' ? fmtDate : (x) => x;
+    const why = info.holidayTitle ? `تعطیل — ${info.holidayTitle}` : (info.kind === 'weekend' ? 'آخر هفته' : 'غیرکاری/آف');
+    return `هشدار: ${dayName(date)} ${fmt(date)} روز کاری نیست (${why}). تسک همان روز در فهرستت می‌آید.`;
+  }
+  /** پیام موفقیتِ انتقال برای نوار «واگرد». */
+  function movedText(title, to, fmtDate) {
+    const fmt = typeof fmtDate === 'function' ? fmtDate : (x) => x;
+    return `«${title}» به ${to ? `${dayName(to)} ${fmt(to)}` : 'روز بعد'} منتقل شد.`;
+  }
+
   const api = {
     DAYS, DAY_NAMES, STATUS, PRIORITY, REASON_LABEL, REVIEW_KEY,
     shiftDate, dayName, dayHue, statusMeta, chipsFor, progressOf, progressText, detailModel, sourceOf, isSelfUrgent, isReview, isOptional,
+    answerStatus, myDayModel, findInModel, MOVE_STATUSES, moveOptions, moveWarning, movedText,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (root) root.Planner = api;

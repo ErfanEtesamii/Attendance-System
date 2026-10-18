@@ -310,8 +310,8 @@ describe('شیت جزئیات تسک (C3)', () => {
   test('دکمه‌ها از روی فلگ‌ها: pending ⇒ انجام/انتقال؛ سیستمی ⇒ انجام غیرفعال با علت؛ بدون ویرایش/حذف برای تسک غیرِ فوریِ خودم', async () => {
     let env = await opened('تسک خودم');
     assert.equal(sbtn(env, '✓ انجام شد').disabled, false);
-    assert.ok(sbtn(env, '↪ انتقال').disabled); // D2 هنوز نیست
-    assert.match(sheetBody(env).textContent, /انتقال در مرحله‌ی بعد فعال می‌شود/);
+    assert.equal(sbtn(env, '↪ انتقال').disabled, false); // D2: انتقال فعال است (جزئیاتش در test/myDayUi.test.js)
+    assert.doesNotMatch(sheetBody(env).textContent, /انتقال در مرحله‌ی بعد فعال می‌شود/);
     assert.equal(sbtn(env, '✎ ویرایش'), undefined);
     assert.equal(sbtn(env, '↩ برداشتن پاسخ'), undefined);
     env = await opened('بررسی گزارش تیم');

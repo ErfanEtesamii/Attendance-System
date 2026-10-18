@@ -167,7 +167,7 @@
 .pl-reasons button[aria-pressed="true"] { background: var(--pl-accent); color: var(--pl-done-ink); border-color: var(--pl-accent); }
 
 /* روز «امروزِ من»: دو لیست */
-.pl-myday { display: grid; grid-template-columns: 1fr; gap: 14px; }
+.pl-myday { display: grid; grid-template-columns: 1fr; gap: 26px 14px; margin: 18px 0; }
 @media (min-width: 768px) { .pl-myday { grid-template-columns: 1fr 1fr; } }
 .pl-col-title { margin: 0 0 4px; font-size: 15px; font-weight: 800; }
 .pl-note-box { display: flex; gap: 6px; padding: 4px 0 8px; }
@@ -214,3 +214,20 @@
 .pl-sheet .sheet-title { text-align: start; }
 .pl-sheet .pl-row-status { margin: 4px 0; }
 .pl-sheet :focus-visible { outline: 3px solid var(--pl-accent); outline-offset: 2px; }
+
+/* ---- D1/D2: «امروزِ من» و انتقال ---- */
+.pl-row.has-extra { flex-wrap: wrap; }
+.pl-row-extra { flex: 0 0 100%; }
+.pl-seg-mobile { margin-top: 12px; }
+.pl-other { margin: 22px 0 12px; }
+.pl-summary .pl-chips { margin: 4px 0; }
+@media (max-width: 767px) { .pl-col.pl-col-off { display: none; } }
+@media (min-width: 768px) { .pl-seg-mobile { display: none; } }
+.pl-move-title { margin: 8px 0 4px; font-size: 15px; font-weight: 800; }
+.pl-dest { flex: 1 1 100%; justify-content: center; text-align: center; padding: 8px 14px; }
+.pl-dest[aria-pressed="true"] { background: var(--pl-accent); border-color: var(--pl-accent); color: var(--pl-done-ink); font-weight: 800; }
+.pl-move-warn { color: var(--pl-warn); min-height: 18px; }
+.pl-move:focus-visible, .pl-quiet-chip:focus-visible, .pl-reasons button:focus-visible, .pl-field:focus-visible { outline: 3px solid var(--pl-accent); outline-offset: 2px; }
+.pl-undo-float { position: fixed; inset-inline: 12px; bottom: 76px; z-index: 70; padding: 8px 12px; border: 1px solid var(--pl-line); border-radius: 14px; background: var(--pl-surface); color: var(--pl-ink); box-shadow: 0 6px 20px var(--pl-line); }
+.pl-undo-float.hidden { display: none; }
+.pl-undo-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }

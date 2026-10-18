@@ -68,7 +68,9 @@ const present = (t, extra = {}) => ({
   id: t.id, title: t.title, description: t.description || '', priority: t.priority,
   plannedDate: t.planned_date || null, isSystem: !!t.is_system, systemKey: t.system_key || null,
   outOfPlan: t.system_key === OUT_OF_PLAN_KEY, optional: isOptionalRow(t),
-  isUrgent: !!t.is_urgent, assignedByUserId: t.assigned_by_user_id || null, assignedByName: t.assigned_by_name || null, urgentNote: t.urgent_note || null, urgentDeadlineTime: t.urgent_deadline_time || null, ...extra,
+  isUrgent: !!t.is_urgent, assignedByUserId: t.assigned_by_user_id || null, assignedByName: t.assigned_by_name || null, urgentNote: t.urgent_note || null, urgentDeadlineTime: t.urgent_deadline_time || null,
+  managerLocked: !!t.manager_locked, // D1 (فاز ۱۵): چیپ «🔒 از طرف سرپرست» در «امروزِ من»
+  ...extra,
 });
 
 function lastLog(taskId) {
@@ -181,6 +183,7 @@ function getDailyTasks(user, { now, date: forcedDate, requestedDate } = {}) {
       priority: t.priority, description: t.description || '', note: l.note || null, answeredAt: l.answered_at || null, answeredLate: !!l.answered_late,
       canUndo: systemKey !== teamReview.REVIEW_KEY, isUrgent: !!t.is_urgent, assignedByUserId: t.assigned_by_user_id || null, isSystem: !!t.is_system, systemKey,
       carryCount: carries.get(l.task_id) || 0, dropped: l.reschedule_to === DROP, selfAssigned: !!t.is_urgent && t.assigned_by_user_id === user.id,
+      managerLocked: !!t.manager_locked, urgentNote: t.urgent_note || null, urgentDeadlineTime: t.urgent_deadline_time || null, // D1: شیت جزئیات برای تسک پاسخ‌داده‌شده
     };
   }).filter(Boolean);
   const maxUrgent = Number(settings.selfUrgentMaxPerDay) || 0;
