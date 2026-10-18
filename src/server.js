@@ -38,11 +38,11 @@ function createApp() {
   next();
   });
   // فاز ۴: فایل‌های استاتیک Telegram Mini App (public/index.html و ...).
-  // این پوشه از ریشه‌ی همین دامنه/ساب‌دامنه سرو می‌شود، مثلاً https://attendance.farazhonar.com/
+  // این پوشه از ریشه‌ی همین دامنه/ساب‌دامنه سرو می‌شود، مثلاً https://attendance.farazhonar.com:3000/
   app.use(express.static(path.join(__dirname, '..', 'public')));
 
   // فاز ۸: پنل مدیریتی وب، زیر مسیر /admin/ از همان سرور سرو می‌شود
-  // (مثلاً https://attendance.farazhonar.com/admin/)
+  // (مثلاً https://attendance.farazhonar.com:3000/admin/)
   app.use('/admin', express.static(path.join(__dirname, '..', 'public-admin')));
 
   // مسیرهای API زیر /api قرار می‌گیرند تا از Mini App و بات صدا زده شوند

@@ -117,7 +117,7 @@ const config = {
   hstsMaxAgeSeconds: parseInt(process.env.HSTS_MAX_AGE_SECONDS || '15552000', 10),
   // SameSite کوکی نشست پنل. پیش‌فرض strict؛ اگر در کلاینتی ورود شکست خورد موقتاً lax بگذارید.
   adminCookieSameSite: enumEnv(process.env.ADMIN_COOKIE_SAMESITE, ['strict', 'lax'], 'strict'),
-  // Originهای اضافه‌ی مجاز برای درخواست‌های نوشتنی پنل (جدا با ویرگول؛ مثلاً https://attendance.farazhonar.com).
+  // Originهای اضافه‌ی مجاز برای درخواست‌های نوشتنی پنل (جدا با ویرگول؛ مثلاً https://attendance.farazhonar.com:3000).
   // به‌صورت پیش‌فرض فقط Origin هم‌میزبان (همان Host درخواست) مجاز است.
   csrfExtraOrigins: (process.env.CSRF_EXTRA_ORIGINS || '').split(',').map((x) => x.trim()).filter(Boolean),
 

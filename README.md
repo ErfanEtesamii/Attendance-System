@@ -40,7 +40,7 @@ npm start                   # API + بات در یک پروسه
 | `TELEGRAM_BOT_TOKEN` | توکن بات از BotFather |
 | `TELEGRAM_BOT_USERNAME` | یوزرنیم بات بدون `@` (برای ورود پنل) |
 | `ADMIN_SESSION_SECRET` | **الزامی در production**؛ رشته‌ی تصادفی طولانی (`openssl rand -hex 32`) |
-| `MINI_APP_URL` | آدرس نهایی Mini App، مثلاً `https://attendance.farazhonar.com/` |
+| `MINI_APP_URL` | آدرس نهایی Mini App، مثلاً `https://attendance.farazhonar.com:3000/` |
 | `SSL_CERT_PATH` / `SSL_KEY_PATH` | گواهی HTTPS؛ خالی = HTTP ساده (فقط توسعه) |
 | `ALLOWED_NETWORK_CIDR` | رنج شبکه‌ی مجاز ثبت تردد (پیش‌فرض `192.168.10.0/24`) |
 | `TRUST_PROXY` | باید `false` بماند (پراکسی نداریم) |
