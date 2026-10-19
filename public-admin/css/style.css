@@ -84,7 +84,7 @@
   --red-soft: rgba(192, 38, 63, 0.10);
   --yellow: #7a5300;
   --yellow-soft: rgba(138, 95, 0, 0.12);
-  --blue: #1f5fbf;
+  --blue: #1b57b0;
   --blue-soft: rgba(31, 95, 191, 0.12);
 
   --shadow: 0 8px 24px rgba(43, 37, 96, 0.12);
@@ -132,7 +132,7 @@
     --red-soft: rgba(192, 38, 63, 0.10);
     --yellow: #7a5300;
     --yellow-soft: rgba(138, 95, 0, 0.12);
-    --blue: #1f5fbf;
+    --blue: #1b57b0;
     --blue-soft: rgba(31, 95, 191, 0.12);
 
     --shadow: 0 8px 24px rgba(43, 37, 96, 0.12);
@@ -528,7 +528,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 .day-task.is-mandatory { outline: 1px solid rgba(22, 184, 134, .45); }
 .day-task .rv-progress-text { margin-top: 6px; font-size: 11.5px; font-weight: 700; }
 .day-task .rv-progress { height: 6px; border-radius: 999px; background: var(--ov-08); overflow: hidden; margin-top: 4px; }
-.day-task .rv-progress-fill { height: 100%; margin-left: auto; border-radius: 999px; background: linear-gradient(270deg, #7be495, #16b886); }
+.day-task .rv-progress-fill { height: 100%; margin-left: auto; border-radius: 999px; background: var(--accent); }
 .day-task .rv-open { margin-top: 8px; }
 .day-task .title { font-weight: 700; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .day-task-meta { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
@@ -561,25 +561,27 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
   display: flex; flex-direction: column; gap: 10px;
   padding: 16px;
   background: var(--card);
-  border: 1px solid var(--border);
+  border: 0;
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  box-shadow: none;
   text-align: right;
   color: var(--text);
   font-family: inherit;
   cursor: default;
 }
-button.stat { cursor: pointer; transition: transform .12s, background .15s; }
-button.stat:hover { background: var(--card-2); transform: translateY(-2px); }
+button.stat { cursor: pointer; transition: background .15s; }
+button.stat:hover { background: var(--card-2); }
+button.stat:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .stat-icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 14px; }
-.stat-icon svg { width: 22px; height: 22px; stroke: #fff; }
-.stat-icon.g-green  { background: linear-gradient(135deg, #7be495, #16b886); box-shadow: 0 8px 18px rgba(31,207,149,.3); }
-.stat-icon.g-orange { background: linear-gradient(135deg, #ffd27a, #ff9f43); box-shadow: 0 8px 18px rgba(255,159,67,.28); }
-.stat-icon.g-red    { background: linear-gradient(135deg, #ff9a9a, #f0506e); box-shadow: 0 8px 18px rgba(240,80,110,.28); }
-.stat-icon.g-purple { background: linear-gradient(135deg, #a99bff, #6b5ce7); box-shadow: 0 8px 18px rgba(107,92,231,.3); }
-.stat-icon.g-blue   { background: linear-gradient(135deg, #8cc8ff, #3a86e8); box-shadow: 0 8px 18px rgba(58,134,232,.3); }
-.stat-icon.g-gray   { background: linear-gradient(135deg, #8a8caa, #5c5e7e); }
-.stat-value { font-size: 28px; font-weight: 800; line-height: 1; }
+.stat-icon svg { width: 22px; height: 22px; stroke: currentColor; }
+/* T4: آیکن‌های آمار تخت‌اند؛ سرمه‌ای/نارنجی = برند، بقیه = رنگ وضعیتِ نرم با آیکن هم‌رنگ (AA) */
+.stat-icon.g-green  { background: var(--green-soft);  color: var(--green); }
+.stat-icon.g-orange { background: var(--accent);      color: var(--on-accent); }
+.stat-icon.g-red    { background: var(--red-soft);    color: var(--red); }
+.stat-icon.g-purple { background: var(--brand);       color: var(--on-brand); }
+.stat-icon.g-blue   { background: var(--blue-soft);   color: var(--blue); }
+.stat-icon.g-gray   { background: var(--card-2);      color: var(--hint); }
+.stat-value { font-size: 28px; font-weight: 800; line-height: 1; color: var(--brand); unicode-bidi: isolate; }
 .stat-label { font-size: 12.5px; color: var(--hint); }
 .stat-hint { font-size: 11.5px; color: var(--hint); margin-top: -4px; }
 
@@ -613,20 +615,20 @@ td.wrap { white-space: normal; min-width: 180px; }
 
 .badge {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 3px 11px;
+  padding: 3px 12px;
   border-radius: 999px;
-  font-size: 11.5px; font-weight: 700;
-  background: var(--ov-08); color: var(--hint);
+  font-size: 12px; font-weight: 700;
+  background: var(--ov-08); color: var(--text);
   white-space: nowrap;
 }
 .badge.dot::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .badge.green, .badge.present, .badge.normal, .badge.approved, .badge.resolved { background: var(--green-soft); color: var(--green); }
 .badge.orange, .badge.on_break, .badge.late, .badge.pending, .badge.open { background: var(--yellow-soft); color: var(--yellow); }
 .badge.on_break { background: var(--orange-soft); color: var(--orange); }
-.badge.red, .badge.incomplete, .badge.rejected, .badge.absent { background: var(--red-soft); color: var(--red); }
+.badge.red, .badge.incomplete, .badge.rejected, .badge.absent { background: var(--red-soft); color: var(--red-text); }
 .badge.purple, .badge.checked_out, .badge.leave { background: var(--purple-soft); color: var(--purple-text); }
 .badge.blue, .badge.mission { background: var(--blue-soft); color: var(--blue); }
-.badge.holiday { background: var(--ov-08); color: var(--hint); }
+.badge.holiday { background: var(--ov-08); color: var(--text); }
 
 /* ---------- دکمه‌ها ---------- */
 
@@ -634,48 +636,62 @@ td.wrap { white-space: normal; min-width: 180px; }
   display: inline-flex; align-items: center; justify-content: center; gap: 7px;
   padding: 10px 16px;
   border: 1px solid transparent;
-  border-radius: 12px;
+  border-radius: 10px;
   font-family: inherit; font-size: 13.5px; font-weight: 700;
   cursor: pointer;
-  transition: filter .15s, background .15s, transform .1s;
+  transition: background-color .15s, transform .1s;
   text-decoration: none;
   white-space: nowrap;
 }
 .btn:active { transform: scale(.97); }
 .btn svg { width: 16px; height: 16px; }
-.btn.primary { background: linear-gradient(135deg, #25d9a0, #14a878); color: var(--on-green); box-shadow: 0 6px 16px rgba(31,207,149,.25); }
-.btn.primary:hover { filter: brightness(1.08); }
-.btn.ghost { background: var(--card-2); color: var(--text); border-color: var(--border); }
-.btn.ghost:hover { background: #3b3c5c; }
-.btn.danger { background: var(--red-soft); color: var(--red); }
-.btn.danger:hover { background: rgba(240, 80, 110, .25); }
+.btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+/* T4: کنش اصلی = نارنجی تخت با متن سرمه‌ای (AA)؛ hover: ghost با لایه‌ی --ov-08؛ danger/success با حلقه‌ی درونی currentColor (بدون تغییر کنتراست متن) */
+.btn.primary { background: var(--accent); color: var(--on-accent); }
+.btn.primary:hover { background: var(--accent-dark); }
+.btn.ghost { background: var(--card-2); color: var(--text); }
+.btn.ghost:hover { background-image: linear-gradient(var(--ov-08), var(--ov-08)); }
+.btn.danger { background: var(--red-soft); color: var(--red-text); }
+.btn.danger:hover { box-shadow: inset 0 0 0 1px currentColor; }
 .btn.success { background: var(--green-soft); color: var(--green); }
-.btn.success:hover { background: rgba(31, 207, 149, .24); }
-.btn.small { padding: 6px 11px; font-size: 12px; border-radius: 10px; }
-.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.success:hover { box-shadow: inset 0 0 0 1px currentColor; }
+.btn.small { padding: 6px 11px; font-size: 12px; border-radius: 8px; }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
+.btn:disabled:hover, .btn[aria-disabled="true"]:hover { background-image: none; }
+.btn.primary:disabled:hover { background: var(--accent); }
+/* loading: JS فقط aria-busy می‌گذارد؛ نشانگر چرخان + مکان‌نمای انتظار (بدون تکیه بر رنگ) */
+.btn[aria-busy="true"] { cursor: progress; opacity: .8; }
+.btn[aria-busy="true"]::before { content: ""; width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-top-color: transparent; animation: spin .8s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .btn, .btn:active { transition: none; transform: none; } .btn[aria-busy="true"]::before { animation: none; border-top-color: currentColor; } }
 .row-actions { display: flex; gap: 6px; justify-content: flex-start; }
 
 /* ---------- فرم‌ها ---------- */
 
 .form { display: flex; flex-direction: column; gap: 14px; }
-.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-.field { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--hint); }
-.field > span { font-weight: 600; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; }
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--hint); }
+.field > span { font-weight: 500; }
 .field.full { grid-column: 1 / -1; }
-input, select, textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--bg-2);
+/* T5: فیلد پُرشده‌ی خاکستری بدون حاشیه‌ی دیدنی (حاشیه‌ی شفاف تا حالت خطا بتواند border-color بگیرد)، ارتفاع ≥ ۴۴px.
+   :where ⇒ ویژگی ۰؛ هر کلاس اختصاصی (.search-box input، .dt-pair …) بی‌دردسر روی آن می‌نشیند. روی کارت/مودال از --card-2. */
+:where(input:not([type="checkbox"], [type="radio"], [type="hidden"], [type="range"], [type="file"], [type="color"]), select, textarea) {
+  width: 100%; min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--field);
   color: var(--text);
   font-family: inherit; font-size: 14px;
   outline: none;
-  color-scheme: dark;
 }
-input:focus, select:focus, textarea:focus { border-color: var(--green); }
-textarea { resize: vertical; min-height: 70px; }
-input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--green); }
+.card :where(input:not([type="checkbox"], [type="radio"], [type="hidden"], [type="range"], [type="file"], [type="color"]), select, textarea),
+.modal :where(input:not([type="checkbox"], [type="radio"], [type="hidden"], [type="range"], [type="file"], [type="color"]), select, textarea),
+.bell-drawer :where(input:not([type="checkbox"], [type="radio"], [type="hidden"], [type="range"], [type="file"], [type="color"]), select, textarea) { background: var(--card-2); }
+textarea { resize: vertical; min-height: 88px; padding: 10px 12px; }
+::placeholder { color: var(--hint); opacity: 1; }
+input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--red); }
+input:disabled, select:disabled, textarea:disabled { opacity: .6; cursor: not-allowed; }
+input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--brand); }
 .check-row { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--text); cursor: pointer; }
 .form-msg { min-height: 18px; font-size: 12.5px; }
 .form-msg.ok { color: var(--green); }
@@ -684,37 +700,42 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--g
 .filters .field { min-width: 150px; }
 .filters .field.grow { flex: 1; min-width: 200px; }
 
-/* چیپ‌های فیلتر */
+/* چیپ‌های فیلتر — T4: قرص خاکستری؛ فعال = برند نرم با حاشیه‌ی برند؛ شمارنده = نشان عددی گرد */
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .chip {
+  display: inline-flex; align-items: center;
   padding: 7px 14px;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: 999px;
   background: var(--card);
   color: var(--hint);
   font-family: inherit; font-size: 12.5px; font-weight: 600;
   cursor: pointer;
 }
-.chip b { margin-right: 6px; color: var(--text); }
-.chip:hover { background: var(--card-2); }
-.chip.active { background: var(--green-soft); border-color: rgba(31,207,149,.4); color: var(--green); }
-.chip.active b { color: var(--green); }
+.chip b { display: inline-grid; place-items: center; min-width: 22px; height: 22px; margin-right: 6px; padding: 0 7px; border-radius: 999px; background: var(--bg); color: var(--text); font-size: 11.5px; font-weight: 700; unicode-bidi: isolate; }
+.chip:hover { background: var(--card-2); color: var(--text); }
+.chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.chip.active { background: var(--brand-soft); border-color: var(--brand); color: var(--brand); }
+.chip.active b { color: var(--brand); }
 
-/* تب‌ها */
+/* تب‌ها — T4: زیرخط‌دار؛ خط نازک زیر همه، فعال = متن فیروزه‌ای تیره + زیرخط نارنجی ۳px */
 .tabs {
-  display: flex; gap: 4px; padding: 4px; margin-bottom: 16px;
-  background: var(--bg-2); border: 1px solid var(--border); border-radius: 15px;
+  display: flex; gap: 4px; margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
   overflow-x: auto;
 }
 .tab {
-  flex: 1; min-width: max-content;
-  padding: 9px 16px;
-  border: none; border-radius: 11px;
+  flex: none; min-width: max-content; min-height: 44px;
+  padding: 9px 18px;
+  border: 0; border-bottom: 3px solid transparent; border-radius: 8px 8px 0 0;
   background: transparent; color: var(--hint);
-  font-family: inherit; font-size: 13px; font-weight: 700;
+  font-family: inherit; font-size: 13.5px; font-weight: 500;
   cursor: pointer;
 }
-.tab.active { background: linear-gradient(135deg, #25d9a0, #14a878); color: var(--on-green); }
+.tab:hover { color: var(--text); }
+.tab:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.tab.active { color: var(--teal-text); border-bottom-color: var(--accent); font-weight: 700; }
+@media (prefers-reduced-motion: no-preference) { .tab { transition: color .15s, border-color .15s; } }
 
 /* ---------- نمودارها ---------- */
 
@@ -730,7 +751,7 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--g
 .hbar-top { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
 .hbar-top span:last-child { color: var(--hint); }
 .hbar-track { height: 8px; border-radius: 999px; background: var(--ov-08); overflow: hidden; }
-.hbar-fill { height: 100%; margin-left: auto; border-radius: 999px; background: linear-gradient(270deg, #7be495, #16b886); transition: width .5s; }
+.hbar-fill { height: 100%; margin-left: auto; border-radius: 999px; background: var(--accent); transition: width .5s; }
 
 /* ---------- لیست‌های کارتی ---------- */
 
@@ -862,25 +883,26 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--g
 .st-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 16px; align-items: start; }
 .st-nav { position: sticky; top: calc(var(--st-sticky-top, 72px) + 12px); padding: 16px; }
 .st-nav-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-.st-nav-head h3 { margin: 0; }
-.st-nav-ico { display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; flex: none; border-radius: 50%; background: var(--green-soft); color: var(--green); }
+.st-nav-head h3 { margin: 0; color: var(--brand); }
+.st-nav-ico { display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; flex: none; border-radius: 50%; background: var(--brand-soft); color: var(--brand); }
 .st-nav-ico svg { width: 20px; height: 20px; }
 .st-nav nav { display: flex; flex-direction: column; gap: 4px; }
 .st-nav-item { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 40px; padding: 8px 12px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text); font: inherit; text-align: start; cursor: pointer; }
 .st-nav-item:hover { background: var(--ov-08); }
-.st-nav-item:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
-.st-nav-item[aria-current="true"] { background: var(--green-soft); color: var(--green); font-weight: 700; }
+.st-nav-item:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.st-nav-item[aria-current="true"] { background: var(--brand-soft); color: var(--brand); font-weight: 700; }
 .st-nav-name { flex: 1; min-width: 0; }
 .st-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--yellow); flex: none; }
 .st-dot[hidden] { display: none; }
-.st-count { flex: none; }
+/* نشان عددیِ گرد انتهای سطر (مثل «نشان‌های عددی» تصویر مرجع) */
+.st-count { flex: none; min-width: 24px; height: 24px; justify-content: center; padding: 0 7px; background: var(--bg); color: var(--text); unicode-bidi: isolate; }
 .st-panel { padding: 0; }
 .st-panel[hidden] { display: none; }
 .st-panel + .st-panel { margin-top: 14px; }
-.st-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 16px 18px 12px; border-bottom: 2px solid var(--green-soft); }
+.st-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 16px 18px 12px; border-bottom: 1px solid var(--border); }
 .st-panel-head h3 { margin: 0; }
 .st-panel-head h3:focus { outline: none; }
-.st-panel-head h3:focus-visible { outline: 2px solid var(--green); outline-offset: 4px; border-radius: 6px; }
+.st-panel-head h3:focus-visible { outline: 2px solid var(--brand); outline-offset: 4px; border-radius: 6px; }
 .st-body { padding: 6px 18px 16px; }
 .st-main { min-width: 0; }
 .st-search { margin: 0 0 12px; }
@@ -889,45 +911,45 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--g
 .st-stats { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
 .st-stats > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .st-stats dt { color: var(--hint); }
-.st-stats dd { margin: 0; font-weight: 700; }
+.st-stats dd { margin: 0; font-weight: 700; color: var(--brand); unicode-bidi: isolate; }
 .st-audit { margin-top: 12px; width: 100%; justify-content: center; }
 .st-actionbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 18px; padding: 12px 0 0; border-top: 1px solid var(--border); }
 .st-actionbar .st-pending { font-size: 12.5px; color: var(--hint); }
 .st-actionbar .form-msg { flex: 1; min-width: 160px; }
 .st-actionbar.dirty { position: sticky; bottom: 0; z-index: 5; margin-inline: -18px; padding: 12px 18px; background: var(--card); box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.18); border-top-color: var(--yellow); }
 .st-actionbar.dirty .st-pending { color: var(--yellow); font-weight: 700; }
-.st-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 20px; padding-top: 14px; }
+.st-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; padding-top: 14px; }
 .st-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding-inline-start: 10px; border-inline-start: 3px solid transparent; }
 .st-field.full { grid-column: 1 / -1; }
 .st-field.dirty { border-inline-start-color: var(--yellow); }
-.st-label { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13.5px; }
+.st-label { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; color: var(--hint); }
 .st-tag { font-size: 11.5px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--yellow-soft); color: var(--yellow); }
 .st-tag[hidden] { display: none; }
 .st-tag::before { content: "● "; }
-.st-ctl input:not([type="checkbox"]), .st-ctl select { width: 100%; min-height: 44px; padding: 8px 12px; border-radius: var(--radius-sm); background: var(--bg-2); border: 1px solid var(--border); color: var(--text); font: inherit; }
-.st-ctl input:focus-visible, .st-ctl select:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
+/* ظاهر فیلد از قاعده‌ی سراسری (--card-2 روی کارت، بدون حاشیه) می‌آید */
+.st-ctl input:not([type="checkbox"]), .st-ctl select { font: inherit; }
 .st-ctl .ltr-in { direction: ltr; text-align: left; }
 .st-desc { font-size: 12px; line-height: 1.8; color: var(--hint); display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .st-desc.open { display: block; overflow: visible; }
-.st-more { align-self: flex-start; padding: 0; border: 0; background: none; color: var(--green); font: inherit; font-size: 12px; cursor: pointer; }
-.st-more:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; border-radius: 4px; }
+.st-more { align-self: flex-start; padding: 0; border: 0; background: none; color: var(--brand); text-decoration: underline; font: inherit; font-size: 12px; cursor: pointer; }
+.st-more:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
 .st-meta { font-size: 11.5px; color: var(--hint); }
 .st-state { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .st-switch-wrap { position: relative; display: inline-flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
 .st-switch { position: absolute; inset-inline-start: 0; top: 50%; width: 1px; height: 1px; margin: 0; padding: 0; opacity: 0; }
-.st-track { position: relative; flex: none; width: 44px; height: 24px; border-radius: 999px; background: var(--ov-08); border: 1px solid var(--border); box-sizing: border-box; transition: background .15s, border-color .15s; }
-.st-track::after { content: ""; position: absolute; top: 2px; inset-inline-start: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--text); transition: inset-inline-start .15s, background .15s; }
-.st-switch:checked + .st-track { background: var(--green-soft); border-color: var(--green); }
-.st-switch:checked + .st-track::after { inset-inline-start: 22px; background: var(--green); }
-.st-switch:focus-visible + .st-track { outline: 2px solid var(--green); outline-offset: 2px; }
+.st-track { position: relative; flex: none; width: 44px; height: 24px; border-radius: 999px; background: var(--card-2); border: 1px solid var(--hint); box-sizing: border-box; transition: background .15s, border-color .15s; }
+.st-track::after { content: ""; position: absolute; top: 2px; inset-inline-start: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--hint); transition: inset-inline-start .15s, background .15s; }
+.st-switch:checked + .st-track { background: var(--brand); border-color: var(--brand); }
+.st-switch:checked + .st-track::after { inset-inline-start: 22px; background: var(--on-brand); }
+.st-switch:focus-visible + .st-track { outline: 2px solid var(--brand); outline-offset: 2px; }
 .st-sw-on { display: none; }
 .st-switch:checked ~ .st-sw-on { display: inline; }
 .st-switch:checked ~ .st-sw-off { display: none; }
 .st-pill { position: relative; }
-.st-pill input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.st-pill span { display: inline-flex; align-items: center; min-height: 36px; padding: 4px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg-2); cursor: pointer; }
-.st-pill input:checked + span { background: var(--green-soft); border-color: var(--green); color: var(--green); font-weight: 700; }
-.st-pill input:focus-visible + span { outline: 2px solid var(--green); outline-offset: 2px; }
+.st-pill input { position: absolute; opacity: 0; width: 1px; min-height: 0; height: 1px; }
+.st-pill span { display: inline-flex; align-items: center; min-height: 36px; padding: 4px 14px; border-radius: 999px; border: 1px solid transparent; background: var(--card-2); cursor: pointer; }
+.st-pill input:checked + span { background: var(--brand-soft); border-color: var(--brand); color: var(--brand); font-weight: 700; }
+.st-pill input:focus-visible + span { outline: 2px solid var(--brand); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .st-track, .st-track::after { transition: none; } }
 @media (max-width: 760px) { .st-fields { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 900px) {
@@ -937,7 +959,7 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--g
   .st-nav-head .muted { display: none; }
   .st-nav nav { flex-direction: row; gap: 2px; overflow-x: auto; scroll-snap-type: x proximity; border-bottom: 1px solid var(--border); padding-bottom: 0; }
   .st-nav-item { flex: none; width: auto; scroll-snap-align: center; border-radius: var(--radius-sm) var(--radius-sm) 0 0; border-bottom: 3px solid transparent; white-space: nowrap; }
-  .st-nav-item[aria-current="true"] { background: transparent; border-bottom-color: var(--green); }
+  .st-nav-item[aria-current="true"] { background: transparent; border-bottom-color: var(--accent); color: var(--brand); }
   .st-nav-name { flex: none; }
   .st-stats { flex-direction: row; flex-wrap: wrap; gap: 4px 16px; margin-top: 10px; padding-top: 10px; }
   .st-stats > div { gap: 6px; }
@@ -1082,7 +1104,7 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--g
 
 /* دسترس‌پذیری (S5-9a): حلقه‌ی فوکوس کیبورد روی همه‌ی کنترل‌ها (جایگزین outline:none ورودی‌ها)، لینک پرش، کاهش حرکت */
 :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
-input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
 th[data-kbd]:focus-visible, tr[data-kbd]:focus-visible { outline-offset: -2px; }
 th.sortable, tr.clickable { cursor: pointer; }
 .modal:focus { outline: none; }
@@ -1105,6 +1127,7 @@ button, a, summary, select, input, [role="button"], .clickable, th.sortable { to
   .btn, .icon-btn, .nav-item, .tab { min-height: 44px; }
   .icon-btn { width: 44px; height: 44px; }
   .btn.small { min-height: 40px; }
+  .chip { min-height: 44px; }
   input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), select { min-height: 44px; }
   .chk { min-height: 44px; }
   .chk input { width: 22px; height: 22px; }
@@ -1290,7 +1313,7 @@ button.sch-cell { cursor: pointer; }
   /* چیپ‌ها: یک ردیف قابل‌اسکرول افقی */
   .chips { flex-wrap: nowrap; overflow-x: auto; gap: 6px; margin: 0 -12px 12px; padding: 2px 12px 6px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
   .chips::-webkit-scrollbar { display: none; }
-  .chip { flex: none; padding: 6px 12px; font-size: 12.5px; min-height: 36px; }
+  .chip { flex: none; padding: 6px 12px; font-size: 12.5px; }
 
   /* جدول → کارت: بدون کارتِ بیرونی؛ هر ردیف یک کارت با فیلدها در دو ستون */
   .card.flush:has(table[data-stack]) { background: transparent; border: 0; box-shadow: none; overflow: visible; }
