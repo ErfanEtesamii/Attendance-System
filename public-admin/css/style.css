@@ -588,28 +588,36 @@ button.stat:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px
 /* ---------- جدول ---------- */
 
 .table-wrap { overflow-x: auto; }
+.table-wrap { border-radius: var(--radius-sm); }
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: 12px 14px; text-align: right; white-space: nowrap; }
+/* T6: سرستون تخت --card-2 با متن --hint (مات، چون sticky است)؛ بدون خط عمودی، فقط خط افقی نازک زیر ردیف‌ها */
 thead th {
-  background: linear-gradient(135deg, #25d9a0, #14a878);
-  color: var(--on-green);
+  background: var(--card-2);
+  color: var(--hint);
   font-size: 12.5px;
-  font-weight: 800;
+  font-weight: 700;
   position: sticky; top: 0;
 }
-thead th.sortable { cursor: pointer; user-select: none; }
-thead th.sortable:hover { background: linear-gradient(135deg, #2ee6ab, #17b583); }
+thead th.sortable { cursor: pointer; user-select: none; transition: color .12s, box-shadow .12s; }
+thead th.sortable:hover { color: var(--text); box-shadow: inset 0 -2px 0 var(--accent); }
+thead th[aria-sort="ascending"], thead th[aria-sort="descending"] { color: var(--text); }
 tbody td { border-bottom: 1px solid var(--border); font-size: 13.5px; }
 tbody tr:last-child td { border-bottom: none; }
-tbody tr.clickable { cursor: pointer; transition: background .12s; }
-tbody tr.clickable:hover { background: var(--ov-04); }
+tbody tr { transition: background .12s; }
+tbody tr:hover { background: var(--ov-04); }
+tbody tr.clickable { cursor: pointer; }
+.cal-table tbody tr:hover { background: none; }
 tbody tr.inactive { opacity: .55; }
 td.wrap { white-space: normal; min-width: 180px; }
 .cell-user { display: flex; align-items: center; gap: 10px; }
 .cell-user b { display: block; font-weight: 700; }
 .cell-user small { color: var(--hint); }
 .empty { padding: 36px 16px; text-align: center; color: var(--hint); }
-.empty svg { width: 40px; height: 40px; opacity: .5; display: block; margin: 0 auto 8px; }
+.empty svg { box-sizing: content-box; width: 32px; height: 32px; padding: 14px; border-radius: 50%; background: var(--brand-soft); color: var(--brand); display: block; margin: 0 auto 12px; }
+.empty[role="alert"] { color: var(--text); }
+.empty[role="alert"] svg { background: var(--red-soft); color: var(--red); }
+.empty .btn { margin-top: 4px; }
 
 /* ---------- نشان‌ها ---------- */
 
@@ -1045,7 +1053,7 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--b
 .cal-table th, .cal-table td { padding: 4px 2px; text-align: center; }
 .cal-table thead th { font-size: 11px; }
 .cal-table .cal-name { position: sticky; right: 0; z-index: 2; min-width: 190px; padding: 6px 12px; text-align: right; background: var(--card); border-left: 1px solid var(--border); }
-.cal-table thead th.cal-name { background: #14a878; z-index: 3; }
+.cal-table thead th.cal-name { background: var(--card-2); color: var(--hint); z-index: 3; }
 .cal-day .cal-d, .cal-day .cal-w { display: block; line-height: 1.5; }
 .cal-day .cal-w { font-weight: 600; opacity: .85; }
 .cal-day.cal-off { opacity: .6; }
@@ -1141,13 +1149,13 @@ button, a, summary, select, input, [role="button"], .clickable, th.sortable { to
 
 /* حالت‌های UI (S5-9c): skeleton (بدون انیمیشن با prefers-reduced-motion) */
 .skeleton { display: grid; gap: 14px; }
-.sk-line { display: block; height: 12px; border-radius: 8px; background: var(--ov-08); position: relative; overflow: hidden; }
+.sk-line { display: block; height: 12px; border-radius: 8px; background: var(--card-2); position: relative; overflow: hidden; }
 .sk-line.tall { height: 22px; }
 .sk-line.w15 { width: 15%; } .sk-line.w20 { width: 20%; } .sk-line.w25 { width: 25%; } .sk-line.w30 { width: 30%; } .sk-line.w40 { width: 40%; } .sk-line.w50 { width: 50%; } .sk-line.w60 { width: 60%; }
-.sk-line::after { content: ""; position: absolute; inset: 0; transform: translateX(100%); background: linear-gradient(90deg, transparent, var(--ov-12), transparent); animation: sk-shimmer 1.4s infinite; }
+.sk-line::after { content: ""; position: absolute; inset: 0; transform: translateX(100%); background: linear-gradient(90deg, var(--card-2), var(--card), var(--card-2)); animation: sk-shimmer 1.4s infinite; }
 @keyframes sk-shimmer { to { transform: translateX(-100%); } }
 .sk-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-.sk-card, .sk-box { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: grid; gap: 10px; }
+.sk-card, .sk-box { background: var(--card); border: 0; border-radius: var(--radius); padding: 20px; display: grid; gap: 10px; }
 .sk-row { display: flex; gap: 14px; align-items: center; padding: 6px 0; }
 @media (max-width: 900px) { .sk-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .sk-settings { align-items: start; }
@@ -1160,7 +1168,7 @@ button, a, summary, select, input, [role="button"], .clickable, th.sortable { to
 @media (max-width: 600px) {
   table[data-stack], table[data-stack] tbody, table[data-stack] tr, table[data-stack] td { display: block; }
   table[data-stack] thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
-  table[data-stack] tr { border: 1px solid var(--border); border-radius: var(--radius-sm); margin: 10px; padding: 6px 12px; background: var(--card); }
+  table[data-stack] tr { border: 0; border-radius: var(--radius-sm); margin: 10px; padding: 6px 12px; background: var(--card); }
   table[data-stack] td { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border: 0; text-align: end; }
   table[data-stack] td::before { content: attr(data-label); flex: none; font-weight: 700; color: var(--hint); text-align: start; }
   table[data-stack] td:not([data-label])::before { content: none; }
@@ -1319,7 +1327,7 @@ button.sch-cell { cursor: pointer; }
   .card.flush:has(table[data-stack]) { background: transparent; border: 0; box-shadow: none; overflow: visible; }
   table[data-stack] tr {
     display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px;
-    margin: 0 0 10px; padding: 12px 14px; border-radius: 16px; box-shadow: var(--shadow);
+    margin: 0 0 10px; padding: 12px 14px; border-radius: 16px; box-shadow: none;
   }
   table[data-stack] td { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 2px; padding: 0; text-align: start; min-width: 0; overflow-wrap: anywhere; }
   table[data-stack] td::before { font-size: 11px; font-weight: 600; }
