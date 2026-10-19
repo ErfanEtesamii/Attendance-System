@@ -7,7 +7,7 @@
 
   const TABS = [['daily', 'گزارش روزانه'], ['plan', 'برنامه‌ی هفتگی'], ['stuck', 'معطل‌مانده‌ها'], ['unreviewed', 'بررسی‌نشده‌ها']];
   const REASONS = { no_time: 'وقت نشد', needs_more_time: 'زمان بیشتری لازم دارد', blocked_by_others: 'منتظر دیگران', priority_changed: 'اولویت عوض شد', technical_issue: 'مشکل فنی', other: 'سایر' };
-  const STATUS = { reviewed: ['approved', 'مشاهده شد'], unreviewed: ['pending', 'مشاهده‌نشده'], no_report: ['rejected', 'گزارش نداده'], off: ['normal', 'تعطیل/مرخصی'] };
+  const STATUS = { reviewed: ['approved', 'مشاهده شد'], unreviewed: ['pending', 'مشاهده‌نشده'], no_report: ['rejected', 'بدون وضعیت'], off: ['normal', 'تعطیل/مرخصی'] };
   const TASK_STATUS = { done: 'انجام شد', partial: 'ناقص', not_done: 'انجام نشد' };
   const PLAN_STATUS = { submitted: ['approved', 'ثبت‌شده'], draft: ['pending', 'پیش‌نویس'], none: ['rejected', 'ثبت نشده'] };
 

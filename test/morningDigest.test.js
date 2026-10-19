@@ -84,4 +84,21 @@ describe('خلاصه‌ی صبحگاهی (D12)', () => {
     assert.ok(require('../src/bot/scheduler').jobNames().includes('morningDigest'));
     assert.equal(md.nightlyHHMM(), '20:00');
   });
+  test('H3: «وضعیت نهایی دیروز» برای دیرهنگام/بدون‌وضعیت؛ گیرنده‌ی ادمین ⇒ همه‌ی تیم‌ها', () => {
+    reset();
+    const admin = F.makeUser({ role: 'admin', name: 'ادمین' });
+    const other = F.makeUser({ name: 'جدا' }); // بدون سرپرست
+    answer(a, MON, at(MON, '22:30')); // دیرهنگام
+    const p = plans.getOrCreate(a.id, wk(MON));
+    plans.addTask(p.id, { title: 'بی‌وضعیت', plannedDate: MON, priority: 'high' });
+    answer(other, MON, at(MON, '23:10'));
+    const ds = md.buildMorningDigests({ now: at(TUE, '08:00') });
+    const t = ds.find((d) => d.reviewer.id === boss.id).text;
+    assert.match(t, /وضعیت نهایی دیروز/);
+    assert.match(t, /• علی — 1 از 2 \(50٪\) · 1 بدون وضعیت/);
+    assert.doesNotMatch(t, /جدا/);
+    const ta = ds.find((d) => d.reviewer.id === admin.id).text;
+    assert.match(ta, /علی — 1 از 2/); assert.match(ta, /جدا — 1 از 1 \(100٪\)/);
+    db.exec(`DELETE FROM users WHERE id IN (${admin.id}, ${other.id})`);
+  });
 });

@@ -8,6 +8,9 @@ const disputeRepository = require('../../repositories/disputeRepository');
 const { reviewDay, summarize } = require('../../utils/dayReview');
 const { formatMinutes } = require('../../utils/workHours');
 const { todayDateString } = require('../../utils/serverTime');
+const { todayInZone } = require('../../utils/time');
+const settingsRepository = require('../../repositories/settingsRepository');
+const auditRepository = require('../../repositories/auditRepository');
 const { panelWebAppButton } = require('../panelLinks');
 const { runFraudChecksSafe } = require('../../utils/fraudRunner');
 const suspiciousRepository = require('../../repositories/suspiciousRepository');
@@ -112,7 +115,10 @@ function buildNightlyMessage(supervisor, team, today, rows = reviewDay(team, tod
 
 // D11: گزارش تسک‌های امروز برای سرپرست‌ها (و خلاصه‌ی شرکت برای ادمین). هر گیرنده مستقل و ضدخطا؛ شکست آن مرور شبانه‌ی اصلی را نمی‌شکند.
 // دکمه‌ها: «👁 مشاهده شد» و «💬 کامنت» به‌ازای هر عضوِ دارای گزارش + «🖥 گزارش کامل در پنل» (callback_data ≤ ۶۴ بایت: rvs:<id>:<date> / rvc:<id>:<date>).
-async function sendNightlyTaskReports(bot, today = todayDateString()) {
+// H3: «امروز» = تاریخ به وقت منطقه‌ی شرکت (نه UTC سرور)؛ ارسال هر گیرنده مستقل و ممیزی task_report_sent با { recipientId, members, parts, date }.
+const companyToday = () => { try { return todayInZone(settingsRepository.getAll().timezone); } catch (_) { return todayDateString(); } };
+
+async function sendNightlyTaskReports(bot, today = companyToday()) {
   let reports = [];
   try {
     reports = nightlyTaskReportService.buildNightlyTaskReports(today);
@@ -139,6 +145,7 @@ async function sendNightlyTaskReports(bot, today = todayDateString()) {
         await bot.sendMessage(rep.reviewer.telegram_user_id, rep.messages[i], keyboard.length ? { reply_markup: { inline_keyboard: keyboard } } : {});
       }
       sent += 1;
+      try { auditRepository.logEvent({ userId: rep.reviewer.id, action: 'task_report_sent', details: { recipientId: rep.reviewer.id, members: (rep.memberIds || []).length, parts: rep.messages.length, date: rep.date } }); } catch (e) { console.error('[bot][scheduler] ممیزی task_report_sent ناموفق:', e.message); }
     } catch (err) {
       console.error('[bot][scheduler] خطا در ارسال گزارش تسک‌های شبانه:', err.message);
     }
@@ -149,7 +156,7 @@ async function sendNightlyTaskReports(bot, today = todayDateString()) {
 // S3-8b: Job هر روز اجرا می‌شود؛ برای هر سرپرست از تقویم کاری تیمش تصمیم می‌گیرد: اگر امروز برای کل تیم روز غیرکاری است
 // (و کسی ورود نزده) پیامی نمی‌فرستد؛ در غیر این صورت مثل قبل (تعطیلی دپارتمان/آخر هفته‌ی بقیه‌ی تیم فقط در شمارش «تعطیل» می‌آید).
 async function sendNightlyReview(bot) {
-  const today = todayDateString();
+  const today = companyToday();
   // جاروی شبانه‌ی تشخیص مورد مشکوک (S2-4e): ضدخطا؛ شکستش نباید ارسال مرور شبانه را مختل کند
   runFraudChecksSafe({ date: today });
 

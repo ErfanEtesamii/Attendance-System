@@ -1,10 +1,11 @@
 // خلاصه‌ی صبحگاهی سرپرست (D12): ۱) گزارش‌های تسکی که «بعد از ارسال شبانه‌ی دیروز» ثبت شده‌اند (دیرهنگام/backfill)
 // ۲) گزارش‌های روز کاریِ قبل که هنوز مشاهده نشده‌اند. با دکمه‌ی «🖥 گزارش‌های تیم» به صفحه‌ی D10. اجرای Job در job_runs ثبت می‌شود (wrapJob در scheduler).
-// فقط در روز کاریِ خودِ گیرنده می‌فرستد؛ گیرنده‌ها و اسکوپ همان nightlyTaskReportService.assignments است (سرپرست ⇒ تیم مستقیم، ادمین ⇒ بدون‌سرپرست‌ها و سرپرست‌ها).
+// فقط در روز کاریِ خودِ گیرنده می‌فرستد؛ گیرنده‌ها و اسکوپ همان nightlyTaskReportService.recipientsMap است (سرپرست ⇒ تیم مستقیم، ادمین ⇒ همه‌ی کاربران فعال).
 const settingsRepository = require('../../repositories/settingsRepository');
 const logsRepo = require('../../repositories/taskLogRepository');
 const reviewsRepo = require('../../repositories/reportReviewRepository');
 const calendarService = require('../../engine/calendarService');
+const { taskDayTally } = require('../../services/taskDayTally');
 const nightlyTaskReportService = require('../../services/nightlyTaskReportService');
 const { panelWebAppButton } = require('../panelLinks');
 const { todayInZone, zonedTimeToUtc } = require('../../utils/time');
@@ -31,7 +32,7 @@ function buildMorningDigests({ now = new Date() } = {}) {
   const since = zonedTimeToUtc(addDays(today, -1), nightlyHHMM(settings), settings.timezone).toISOString();
   const fromDate = addDays(today, -(Number(settings.reportBackfillDays) || 2) - 1);
   const out = [];
-  for (const { reviewer, members } of nightlyTaskReportService.assignments().values()) {
+  for (const { reviewer, members } of nightlyTaskReportService.recipientsMap().values()) {
     if (reviewer.role !== 'manager' && reviewer.role !== 'admin') continue;
     const cal = calendarService.getCalendarDay(reviewer, today, { settings });
     if (!cal.isWorkingDay) continue;
@@ -45,7 +46,19 @@ function buildMorningDigests({ now = new Date() } = {}) {
       const withReport = new Set(logsRepo.listUserIdsWithLogsOnDate(members.map((m) => m.id), reviewDate));
       members.forEach((m) => { if (withReport.has(m.id) && !reviewsRepo.find(reviewer.id, m.id, reviewDate)) unreviewed.push(m); });
     }
-    if (!late.size && !unreviewed.length) continue;
+    // H3: «وضعیت نهایی دیروز» برای کسانی که بعد از ارسال شبانه چیزی ثبت کرده‌اند یا هنوز تسکِ بدون وضعیت دارند (ضدخطا)
+    const finalRows = [];
+    if (reviewDate) {
+      for (const m of members) {
+        try {
+          const lateForDay = late.has(m.id) && late.get(m.id).has(reviewDate);
+          const t = taskDayTally(m, reviewDate, settings);
+          if (!t || !t.relevant || !t.total) continue;
+          if (lateForDay || t.pendingCount > 0) finalRows.push(`• ${m.full_name} — ${t.done} از ${t.total} (${t.percent}٪)${t.pendingCount ? ` · ${t.pendingCount} بدون وضعیت` : ''}`);
+        } catch (err) { console.error('[bot][scheduler] وضعیت نهایی دیروز ناموفق:', err.message); }
+      }
+    }
+    if (!late.size && !unreviewed.length && !finalRows.length) continue;
     const lines = [`☀️ خلاصه‌ی صبحگاهی گزارش تسک‌ها — ${jd(today)}`];
     if (late.size) {
       lines.push('', `🕘 گزارش‌های ثبت‌شده بعد از ارسال شبانه (${late.size} نفر):`);
@@ -53,8 +66,12 @@ function buildMorningDigests({ now = new Date() } = {}) {
       lines.push(...rows.slice(0, MAX_NAMES));
       if (rows.length > MAX_NAMES) lines.push(`… و ${rows.length - MAX_NAMES} نفر دیگر`);
     }
+    if (finalRows.length) {
+      lines.push('', `📌 وضعیت نهایی دیروز (${jd(reviewDate)}):`, ...finalRows.slice(0, MAX_NAMES));
+      if (finalRows.length > MAX_NAMES) lines.push(`… و ${finalRows.length - MAX_NAMES} نفر دیگر`);
+    }
     if (unreviewed.length) lines.push('', `🔎 گزارش ${jd(reviewDate)} هنوز مشاهده نشده (${unreviewed.length} نفر): ${list(unreviewed.map((m) => m.full_name))}`);
-    out.push({ reviewer, text: lines.join('\n'), reviewDate, late: [...late.keys()], unreviewed: unreviewed.map((m) => m.id) });
+    out.push({ reviewer, text: lines.join('\n'), reviewDate, late: [...late.keys()], finalStatus: finalRows.length, unreviewed: unreviewed.map((m) => m.id) });
   }
   return out;
 }

@@ -9,6 +9,7 @@ const reviewsRepo = require('../repositories/reportReviewRepository');
 const attendanceRepository = require('../repositories/attendanceRepository');
 const calendarService = require('../engine/calendarService');
 const teamReview = require('./teamReviewService');
+const { taskDayTally } = require('./taskDayTally');
 const { addDays, dayNumber } = require('../utils/shiftDay');
 
 const TABS = ['daily', 'plan', 'stuck', 'unreviewed'];
@@ -30,27 +31,28 @@ function scopeUsers(viewer) {
 
 const canWrite = (viewer) => teamReview.isReviewer(viewer);
 
-function notDoneItems(summary) {
-  return summary.items.filter((i) => !i.outOfPlan && i.status !== 'done');
-}
-
 function dailyRow(viewer, member, date, settings) {
   const logs = logsRepo.listByUserDate(member.id, date);
   const hasReport = logs.length > 0;
+  const tally = taskDayTally(member, date, settings); // H1: همان عددِ پیام تلگرام (null ⇒ روزِ غیرکاری/مرخصیِ تمام‌روز)
   let status;
   const reviews = reviewsRepo.listBySubjectDate(member.id, date);
   const mine = reviews.find((r) => r.reviewer_id === viewer.id) || null;
   const review = mine || reviews[0] || null;
+  // no_report = «بدون هیچ وضعیتی» (روز کاری بوده و گزارشی ثبت نشده)؛ در UI «بدون وضعیت» نمایش داده می‌شود
   if (hasReport) status = (canWrite(viewer) ? mine : review) ? 'reviewed' : 'unreviewed';
-  else {
-    const cal = calendarService.getCalendarDay(member, date, { settings });
-    status = cal.isWorkingDay && !calendarService.fullyOnApprovedLeave(member, date, cal) ? 'no_report' : 'off';
-  }
+  else status = tally ? 'no_report' : 'off';
   const row = { userId: member.id, fullName: member.full_name, department: member.department || null, status, hasReport, reviewedAt: review ? review.reviewed_at : null, comment: review ? review.comment || null : null, reaction: review ? review.reaction || null : null };
-  if (hasReport) {
+  if (tally && tally.relevant) {
+    row.summary = { total: tally.total, done: tally.done, partial: tally.partial, notDone: tally.notDoneCount - tally.partial, pending: tally.pendingCount, extra: tally.extra, percent: tally.percent, noteCount: tally.noteCount };
+    row.notDone = tally.notDone.map((i) => ({ title: i.title, status: i.status, reasonCode: i.reasonCode, reasonText: i.reasonText }));
+    row.pending = tally.pending;
+    row.extras = tally.extras;
+  } else if (hasReport) { // روز غیرکاری ولی گزارش ثبت شده (مثلاً تسک اختیاری) ⇒ همان خلاصه‌ی قبلی
     const s = teamReview.reportSummaryOf(member.id, date);
-    row.summary = { total: s.total, done: s.done, partial: s.partial, notDone: s.notDone, extra: s.extra, percent: s.percent };
-    row.notDone = notDoneItems(s).map((i) => ({ title: i.title, status: i.status, reasonCode: i.reasonCode, reasonText: i.reasonText }));
+    row.summary = { total: s.total, done: s.done, partial: s.partial, notDone: s.notDone, pending: 0, extra: s.extra, percent: s.percent };
+    row.notDone = s.items.filter((i) => !i.outOfPlan && i.status !== 'done').map((i) => ({ title: i.title, status: i.status, reasonCode: i.reasonCode, reasonText: i.reasonText }));
+    row.pending = [];
     row.extras = s.items.filter((i) => i.outOfPlan).map((i) => i.title);
   }
   return row;

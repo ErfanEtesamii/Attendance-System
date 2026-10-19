@@ -125,4 +125,14 @@ describe('گزارش‌های تیم (D10)', () => {
     assert.equal(get(boss, { date: '2026-13-40' }).code, 'INVALID_DATE');
     assert.equal(svc.getReports(null).code, 'FORBIDDEN');
   });
+  test('H1: پاسخ‌نداده‌ی الزامی در total می‌آید (status=no_report یعنی «بدون وضعیت»)؛ اختیاری نه', () => {
+    reset();
+    const plan = plans.getOrCreate(a.id, weekOf(D));
+    plans.addTask(plan.id, { title: 'الزامی', plannedDate: D });
+    plans.addTask(plan.id, { title: 'اختیاری', plannedDate: D, priority: 'low' });
+    const row = get(boss).members.find((m) => m.userId === a.id);
+    assert.deepEqual([row.status, row.summary.total, row.summary.done, row.summary.pending, row.summary.percent], ['no_report', 1, 0, 1, 0]);
+    assert.deepEqual(row.pending.map((p) => p.title), ['الزامی']);
+    assert.equal(get(boss).summary.percent, 0);
+  });
 });
