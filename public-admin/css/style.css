@@ -40,7 +40,7 @@
   --radius: 28px;
   --radius-sm: 12px;
   --shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
-  --sidebar-w: 256px;
+  --sidebar-w: 88px;
   --ov-04: rgba(255, 255, 255, 0.04);
   --ov-05: rgba(255, 255, 255, 0.05);
   --ov-06: rgba(255, 255, 255, 0.06);
@@ -223,21 +223,30 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 
 /* ---------- قاب اصلی ---------- */
 
-.app-shell { display: flex; min-height: 100vh; }
+.app-shell { display: flex; min-height: 100vh; --sidebar-w: 88px; }
+.app-shell.rail-expanded { --sidebar-w: 256px; }
 
+/* ---------- ریل ناوبری شناور (فاز ۱۶ · T3) ----------
+   دسکتاپ: ریل سرمه‌ای شناور سمت راست؛ پیش‌فرض فقط آیکن (۸۸px)، حالت «بازشده» ۲۵۶px با برچسب (localStorage adminRail).
+   آیتم فعال: قرص هم‌رنگ صفحه که تا لبه‌ی داخلی ریل (سمت چپ در RTL) کشیده می‌شود و با دو منحنی مقعر (نوچ) به صفحه وصل می‌شود.
+   موبایل/تبلت (≤۹۰۰px): کشوی بیرون‌آمده با برچسب و قرص ساده (بدون نوچ). */
 .sidebar {
   position: fixed;
-  top: 0; bottom: 0; right: 0;
+  top: 16px; bottom: 16px; right: 16px;
   width: var(--sidebar-w);
   display: flex;
   flex-direction: column;
-  padding: 18px 14px 14px;
-  background: var(--sidebar);
-  border-left: 1px solid var(--border);
+  padding: 14px 0 12px;
+  background: var(--rail);
+  color: var(--rail-text);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
   z-index: 40;
-  overflow-y: auto;
+  overflow: hidden;
+  transition: width .2s ease;
 }
 .brand { display: flex; align-items: center; gap: 12px; padding: 4px 8px 18px; }
+.sidebar .brand { padding: 4px 22px 14px; }
 .brand-mark {
   flex: none;
   width: 44px; height: 44px;
@@ -249,38 +258,47 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 .brand-mark svg { width: 24px; height: 24px; stroke: currentColor; stroke-width: 2.2; }
 .brand-name { font-size: 17px; font-weight: 800; color: var(--brand); }
 .brand-sub { font-size: 12px; color: var(--hint); margin-top: 1px; }
+.sidebar .brand-mark { background: var(--rail-text); color: var(--rail); }
+.sidebar .brand-name { color: var(--rail-text); }
+.sidebar .brand-sub { color: var(--rail-text); }
 
-.side-nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
-.nav-group { font-size: 11px; color: var(--hint); padding: 14px 12px 6px; letter-spacing: .3px; }
+.side-nav {
+  display: flex; flex-direction: column; gap: 4px;
+  flex: 1; min-height: 0;
+  padding: 20px 0;
+  padding-inline-start: 12px;
+  overflow-x: hidden; overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: var(--rail-text) transparent;
+}
+.nav-group { flex: none; font-size: 11px; color: var(--rail-text); padding: 14px 18px 6px; letter-spacing: .3px; }
 .nav-item {
   position: relative;
+  flex: none;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 11px 12px;
-  border: none;
-  border-radius: 14px;
+  gap: 14px;
+  min-height: 48px;
+  margin-inline-end: 12px;
+  padding-block: 0;
+  padding-inline: 21px 12px;
+  border: 0;
+  border-radius: 16px;
   background: none;
-  color: var(--hint);
+  color: var(--rail-text);
   font-family: inherit;
   font-size: 14px;
-  text-align: right;
+  text-align: start;
   cursor: pointer;
   transition: background .15s, color .15s;
 }
-.nav-item svg { width: 20px; height: 20px; flex: none; }
-.nav-item:hover { background: var(--ov-05); color: var(--text); }
-.nav-item.active { background: var(--green-soft); color: var(--green); font-weight: 700; }
-.nav-item.active::before {
-  content: "";
-  position: absolute;
-  right: -14px; top: 22%; bottom: 22%;
-  width: 4px;
-  border-radius: 4px 0 0 4px;
-  background: var(--green);
-}
+.nav-item svg { width: 22px; height: 22px; flex: none; }
+.nav-item:hover { background: color-mix(in srgb, var(--rail-text) 14%, transparent); }
+.nav-item:focus-visible { outline: 2px solid var(--rail-text); outline-offset: -2px; }
+.nav-item.active { z-index: 1; background: var(--bg); color: var(--rail-active-text); font-weight: 700; }
+.nav-item.active:focus-visible { outline-color: var(--brand); }
 .nav-item .nav-count {
-  margin-right: auto;
+  margin-inline-start: auto;
   min-width: 22px;
   padding: 1px 7px;
   border-radius: 999px;
@@ -292,19 +310,91 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 }
 
 .sidebar-footer {
+  flex: none;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin-top: 14px;
-  padding: 10px;
-  background: var(--bg-2);
-  border: 1px solid var(--border);
-  border-radius: 16px;
+  margin: 8px 16px 0;
+  padding: 12px 0 0;
+  border-top: 1px solid color-mix(in srgb, var(--rail-text) 22%, transparent);
 }
 .me-box { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
 .me-text { min-width: 0; }
 .me-name { font-weight: 700; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .me-role { font-size: 11.5px; color: var(--hint); }
+.sidebar .me-name, .sidebar .me-role { color: var(--rail-text); }
+.sidebar .avatar { background: var(--rail-text); color: var(--rail); }
+.sidebar .icon-btn { background: transparent; color: var(--rail-text); }
+.sidebar .icon-btn:hover { background: color-mix(in srgb, var(--rail-text) 14%, transparent); color: var(--rail-text); }
+.sidebar .icon-btn:focus-visible { outline: 2px solid var(--rail-text); outline-offset: -2px; }
+
+/* دکمه‌ی تغییر عرض ریل (فقط دسکتاپ) */
+.rail-toggle {
+  flex: 1 1 100%;
+  display: flex; align-items: center; justify-content: flex-start; gap: 12px;
+  min-height: 44px;
+  padding-block: 0; padding-inline: 12px;
+  border: 0; border-radius: 14px;
+  background: transparent; color: var(--rail-text);
+  font-family: inherit; font-size: 13px;
+  cursor: pointer;
+}
+.rail-toggle svg { width: 20px; height: 20px; flex: none; }
+.rail-toggle:hover { background: color-mix(in srgb, var(--rail-text) 14%, transparent); }
+.rail-toggle:focus-visible { outline: 2px solid var(--rail-text); outline-offset: -2px; }
+.rail-toggle .ico-collapse { display: none; }
+.app-shell.rail-expanded .rail-toggle .ico-expand { display: none; }
+.app-shell.rail-expanded .rail-toggle .ico-collapse { display: block; }
+
+/* تولتیپ فارسی ریل (js/core.js؛ fixed تا برش اسکرولِ لیست آن را نبُرد) */
+.rail-tip {
+  position: fixed; top: 0; left: 0; z-index: 60;
+  padding: 7px 12px;
+  border: 1px solid color-mix(in srgb, var(--rail-text) 25%, transparent);
+  border-radius: 10px;
+  background: var(--rail); color: var(--rail-text);
+  box-shadow: var(--shadow);
+  font-size: 13px; white-space: nowrap;
+  pointer-events: none;
+  opacity: 0; visibility: hidden;
+  transition: opacity .12s ease, visibility 0s linear .12s;
+}
+.rail-tip.show { opacity: 1; visibility: visible; transition: opacity .12s ease; }
+
+@media (min-width: 901px) {
+  /* قرص فعال تا لبه‌ی داخلی ریل + نوچ مقعر بالا و پایین (رادیال‌گرادیان؛ بدون SVG/تصویر) */
+  .nav-item.active { margin-inline-end: 0; border-radius: 0 24px 24px 0; }
+  .nav-item.active::before,
+  .nav-item.active::after { content: ""; position: absolute; left: 0; width: 20px; height: 20px; pointer-events: none; }
+  .nav-item.active::before { top: -20px; background: radial-gradient(circle at 100% 0, transparent 20px, var(--bg) 20.5px); }
+  .nav-item.active::after { bottom: -20px; background: radial-gradient(circle at 100% 100%, transparent 20px, var(--bg) 20.5px); }
+
+  /* حالت ریل (آیکنی) */
+  .app-shell:not(.rail-expanded) .sidebar .brand { justify-content: center; padding-inline: 0; }
+  .app-shell:not(.rail-expanded) .brand-text,
+  .app-shell:not(.rail-expanded) .me-text,
+  .app-shell:not(.rail-expanded) .nav-label,
+  .app-shell:not(.rail-expanded) .rail-toggle-label {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
+    clip: rect(0, 0, 0, 0); clip-path: inset(50%); white-space: nowrap; border: 0;
+  }
+  .app-shell:not(.rail-expanded) .nav-group {
+    height: 1px; margin-block: 8px; margin-inline: 16px 28px; padding: 0;
+    overflow: hidden; font-size: 0; line-height: 0; color: transparent;
+    background: color-mix(in srgb, var(--rail-text) 28%, transparent);
+  }
+  .app-shell:not(.rail-expanded) .nav-group:first-child { height: 0; margin: 0; background: none; }
+  .app-shell:not(.rail-expanded) .nav-item .nav-count {
+    position: absolute; top: 4px; inset-inline-start: 11px;
+    min-width: 18px; height: 18px; padding: 0 4px;
+    border: 2px solid var(--rail); box-sizing: content-box;
+    font-size: 10.5px; line-height: 18px;
+  }
+  .app-shell:not(.rail-expanded) .sidebar-footer { flex-direction: column; flex-wrap: nowrap; }
+  .app-shell:not(.rail-expanded) .rail-toggle { flex: none; width: 44px; justify-content: center; padding-inline: 0; }
+  .app-shell:not(.rail-expanded) .me-box { flex: none; }
+}
 
 .avatar {
   flex: none;
@@ -334,7 +424,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 .icon-btn:hover { color: var(--text); background: var(--card-2); }
 .icon-btn svg { width: 19px; height: 19px; }
 
-.content { flex: 1; min-width: 0; margin-right: var(--sidebar-w); }
+.content { flex: 1; min-width: 0; margin-right: calc(var(--sidebar-w) + 16px); transition: margin-right .2s ease; }
 
 .topbar {
   position: sticky;
@@ -754,6 +844,12 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--g
   .modal { padding: 18px; border-radius: 20px; }
 }
 
+/* T3: کشوی موبایل/تبلت — از لبه‌ی صفحه، همیشه با برچسب، گوشه‌های گرد سمت محتوا؛ تولتیپ و دکمه‌ی عرض فقط دسکتاپ */
+@media (max-width: 900px) {
+  .sidebar { top: 0; bottom: 0; right: 0; width: min(280px, 86vw); border-radius: var(--radius) 0 0 var(--radius); }
+  .rail-toggle, .rail-tip { display: none; }
+}
+
 /* ---------- صفحه‌ی تنظیمات و تعطیلات (S3-9a/9b) ---------- */
 .small { font-size: 12px; }
 .note { display: flex; gap: 10px; align-items: flex-start; margin: 12px 0 4px; padding: 10px 12px; border-radius: 12px; font-size: 12.5px; line-height: 1.9; background: var(--blue-soft); color: var(--text); }
@@ -872,7 +968,7 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--g
   position: fixed; top: 0; bottom: 0; left: 0; z-index: 45;
   width: min(400px, 100vw);
   display: flex; flex-direction: column;
-  background: var(--sidebar);
+  background: var(--card);
   border-right: 1px solid var(--border);
   box-shadow: none;
   transform: translateX(-100%);

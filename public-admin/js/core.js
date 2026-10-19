@@ -489,11 +489,7 @@
 
     // وضعیت فعال ناوبری
     const navKey = AP.selfOnly() && id === 'profile' ? 'profile' : (def.navId || id);
-    $$('.nav-item').forEach((b) => {
-      const on = b.dataset.view === navKey;
-      b.classList.toggle('active', on);
-      if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
-    });
+    AP.setActiveNav(navKey);
     closeSidebar();
 
     const page = $('#page');
@@ -553,8 +549,16 @@
       ['leave', 'disputes', 'nightly', 'suspicious', 'checkin_permissions', 'remote'].forEach((k) => {
         const el = $(`.nav-item[data-view="${k}"] .nav-count`);
         if (!el) return;
-        el.textContent = fmt.num(AP.state.counts[k]);
-        el.classList.toggle('hidden', !AP.state.counts[k]);
+        const n = AP.state.counts[k];
+        el.textContent = n > 9 ? `${fmt.num(9)}+` : fmt.num(n); // نشان کوتاه (۹+)؛ عدد کامل در aria-label
+        el.classList.toggle('hidden', !n);
+        const btn = el.closest ? el.closest('.nav-item') : null;
+        const lab = btn && btn.querySelector ? btn.querySelector('.nav-label') : null;
+        if (btn && lab) {
+          const full = n ? `${lab.textContent} (${fmt.num(n)} مورد)` : lab.textContent;
+          btn.setAttribute('aria-label', full);
+          btn.setAttribute('title', full);
+        }
       });
     } catch (_) { /* غیرحیاتی */ }
   };
@@ -568,12 +572,102 @@
     }
     items.forEach((n) => { (groups[n.group] = groups[n.group] || []).push(n); });
     $('#side-nav').innerHTML = Object.keys(groups)
-      .map((g) => `<div class="nav-group">${esc(g)}</div>${groups[g]
-        .map((n) => `<button class="nav-item" data-view="${n.id}"${n.param != null ? ` data-param="${n.param}"` : ''}>${AP.icon(n.icon)}<span>${esc(n.label)}</span>${n.counter ? '<span class="nav-count hidden"></span>' : ''}</button>`)
-        .join('')}`)
+      .map((g) => `<div class="nav-group">${esc(g)}</div>${groups[g].map(AP.navItemHtml).join('')}`)
       .join('');
     $$('.nav-item').forEach((b) => b.addEventListener('click', () => AP.go(b.dataset.view, b.dataset.param)));
   }
+
+  // T3: هر آیتم ریل aria-label و title (برچسب فارسی) دارد؛ در حالت آیکنی متنِ .nav-label فقط برای صفحه‌خوان است
+  AP.navItemHtml = function navItemHtml(n) {
+    const label = esc(n.label);
+    return `<button class="nav-item" type="button" data-view="${n.id}"${n.param != null ? ` data-param="${n.param}"` : ''} aria-label="${label}" title="${label}">${AP.icon(n.icon)}<span class="nav-label">${label}</span>${n.counter ? '<span class="nav-count hidden"></span>' : ''}</button>`;
+  };
+
+  // آیتم فعال: فقط یکی aria-current="page" دارد؛ در لیست اسکرول‌دار (۲۶ آیتم) دیده می‌شود
+  AP.setActiveNav = function setActiveNav(navKey) {
+    $$('.nav-item').forEach((b) => {
+      const on = b.dataset.view === navKey;
+      b.classList.toggle('active', on);
+      if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    });
+    const act = $('.nav-item.active');
+    if (act && typeof act.scrollIntoView === 'function') { try { act.scrollIntoView({ block: 'nearest' }); } catch (_) { /* غیرحیاتی */ } }
+  };
+
+  // ---------- ریل: حالت آیکنی/بازشده (T3) ----------
+  const RAIL_KEY = 'adminRail'; // 'rail' | 'expanded'؛ پیش‌فرض rail؛ localStorage مسدود/ناقص ⇒ بدون خطا
+  AP.rail = {
+    read() {
+      try { return window.localStorage.getItem(RAIL_KEY) === 'expanded' ? 'expanded' : 'rail'; } catch (_) { return 'rail'; }
+    },
+    apply(mode, persist) {
+      const expanded = mode === 'expanded';
+      const shell = $('#app-shell');
+      if (shell) shell.classList.toggle('rail-expanded', expanded);
+      const btn = $('#rail-toggle');
+      if (btn) {
+        const text = expanded ? 'جمع کردن منو به حالت آیکنی' : 'نمایش برچسب‌های منو';
+        btn.setAttribute('aria-expanded', String(expanded));
+        btn.setAttribute('aria-label', text);
+        btn.setAttribute('title', text);
+      }
+      if (persist) { try { window.localStorage.setItem(RAIL_KEY, expanded ? 'expanded' : 'rail'); } catch (_) { /* غیرحیاتی */ } }
+      return expanded ? 'expanded' : 'rail';
+    },
+    toggle() {
+      const shell = $('#app-shell');
+      const now = shell && shell.classList.contains('rail-expanded');
+      return AP.rail.apply(now ? 'rail' : 'expanded', true);
+    },
+  };
+
+  // تولتیپ فارسی (فقط دسکتاپِ حالت آیکنی): با hover و فوکوسِ کیبورد؛ title بومی در حین نمایش برداشته می‌شود تا دوبار دیده نشود
+  function setupRailTip() {
+    const sidebar = $('#sidebar');
+    const tip = $('#rail-tip');
+    if (!sidebar || !tip) return;
+    let cur = null;
+    const railOn = () => {
+      const shell = $('#app-shell');
+      if (!shell || shell.classList.contains('rail-expanded')) return false;
+      return !!(window.matchMedia && window.matchMedia('(min-width: 901px)').matches);
+    };
+    const targetOf = (e) => (e.target && e.target.closest ? e.target.closest('.nav-item, #rail-toggle, #logout-btn') : null);
+    const hide = () => {
+      if (cur && cur.dataset && cur.dataset.tipTitle != null) { cur.setAttribute('title', cur.dataset.tipTitle); delete cur.dataset.tipTitle; }
+      cur = null;
+      tip.classList.remove('show');
+      tip.setAttribute('aria-hidden', 'true');
+    };
+    const show = (el) => {
+      if (!railOn()) return;
+      const text = el.getAttribute('aria-label');
+      if (!text) return;
+      hide();
+      cur = el;
+      if (el.hasAttribute('title')) { el.dataset.tipTitle = el.getAttribute('title'); el.removeAttribute('title'); }
+      tip.textContent = text;
+      tip.classList.add('show');
+      tip.setAttribute('aria-hidden', 'true'); // نام قابل‌دسترس همان aria-label خودِ کنترل است
+      const r = el.getBoundingClientRect();
+      tip.style.left = `${Math.max(8, Math.round(r.left - 10 - tip.offsetWidth))}px`;
+      tip.style.top = `${Math.round(r.top + (r.height - tip.offsetHeight) / 2)}px`;
+    };
+    sidebar.addEventListener('mouseover', (e) => { const t = targetOf(e); if (t && t !== cur) show(t); });
+    sidebar.addEventListener('mouseout', (e) => { if (cur && !(e.relatedTarget && cur.contains && cur.contains(e.relatedTarget))) hide(); });
+    sidebar.addEventListener('focusin', (e) => {
+      const t = targetOf(e);
+      let kb = true;
+      try { kb = !!(t && t.matches(':focus-visible')); } catch (_) { kb = true; }
+      if (t && kb) show(t);
+    });
+    sidebar.addEventListener('focusout', hide);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && cur) hide(); });
+    const nav = $('#side-nav');
+    if (nav) nav.addEventListener('scroll', hide);
+    window.addEventListener('resize', hide);
+  }
+  AP.setupRailTip = setupRailTip; // برای تست
 
   function setupSearch() {
     const input = $('#global-search');
@@ -613,8 +707,12 @@
     $('#me-name').textContent = me.fullName;
     $('#me-role').textContent = AP.ROLE[me.role] || me.role;
     $('#topbar-date').textContent = fmt.dateFull(fmt.today());
+    $('.me-box').setAttribute('title', me.fullName);
+    AP.rail.apply(AP.rail.read(), false);
     buildNav();
     setupSearch();
+    setupRailTip();
+    $('#rail-toggle').addEventListener('click', () => { AP.rail.toggle(); const t = $('#rail-tip'); if (t) t.classList.remove('show'); });
     $('#menu-btn').addEventListener('click', () => {
       $('#sidebar').classList.add('open');
       $('#sidebar-backdrop').classList.add('open');
