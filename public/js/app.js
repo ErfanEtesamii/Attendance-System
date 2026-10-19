@@ -118,7 +118,7 @@
     el.setAttribute('role', isErr ? 'alert' : 'status'); // خطا فوراً اعلام شود (S5-9c)
     el.classList.remove('hidden');
     clearTimeout(showToast._t);
-    showToast._t = setTimeout(() => el.classList.add('hidden'), 2600);
+    showToast._t = setTimeout(() => el.classList.add('hidden'), Math.min(8000, Math.max(2600, String(msg || '').length * 60)));
   }
 
   // ---------- حالت‌های UI (S5-9c): skeleton، خالی، خطا با «تلاش دوباره»، دکمه‌ی در حال ارسال ----------
@@ -628,7 +628,7 @@
       }
       // گیت D7: گزارش تسک‌های امروز لازم است ⇒ ویزارد؛ پاسخ‌های قبلیِ همین بدنه حفظ می‌شود
       if (path === '/check-out' && code === 'daily_report_required') {
-        showToast(err.message);
+        showToast('قبل از خروج، وضعیت تسک‌های امروز را مشخص کنید.'); // پیام کامل سرور (لیست تسک‌ها) در خود ویزارد دیده می‌شود
         unlock();
         // A1: pendingTasks فقط الزامی‌هاست؛ اختیاری‌ها (low) بعد از آن‌ها می‌آیند و مانع نیستند
         openReportWizard({ mode: 'checkout', date: err.data.date, today: err.data.date, tasks: [...(err.data.pendingTasks || []), ...(err.data.optionalTasks || [])], body, allowLater: false, teamReview: err.data.teamReview });
