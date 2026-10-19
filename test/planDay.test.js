@@ -25,7 +25,7 @@ describe('روز ثبت برنامه (D2)', () => {
     const s = settingsRepo.getAll();
     assert.deepEqual(
       [s.weekStartDay, s.planSubmissionWeekday, s.planMinTasks, s.planGateMode, s.planGateStartDate, s.dailyReportGateMode, s.reportBackfillDays, s.encouragementsEnabled],
-      [6, 'auto', 1, 'off', '', 'off', 2, true],
+      [6, 'auto', 1, 'off', '', 'enforce', 2, true], // R1: گیت خروج پیش‌فرض روشن
     );
     const reg = require('../src/utils/settingsRegistry');
     assert.deepEqual(reg.selfCheck(), []);

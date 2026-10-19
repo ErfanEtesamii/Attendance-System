@@ -157,8 +157,8 @@ describe('A1 — گیت خروج بر اساس اولویت (سرویس)', () =>
     assert.doesNotMatch(msg, /تسک 6/);
     assert.match(svc.blockMessage([{ id: 1, title: 'ن'.repeat(100), systemKey: null }]), /ن{39}…»/);
     assert.match(svc.blockMessage([{ id: 1, title: 'بررسی گزارش روز قبلِ تیم', systemKey: 'review_team_reports' }]), /مشاهده‌ی گزارش‌ها یا ثبت علت/);
-    assert.match(svc.blockMessage([]), /گزارش تسک‌های امروز را کامل کنید/);
-    assert.match(svc.blockMessage(undefined), /گزارش تسک‌های امروز را کامل کنید/);
+    assert.match(svc.blockMessage([]), /علتش را بنویسید/);
+    assert.match(svc.blockMessage(undefined), /علتش را بنویسید/);
   });
 });
 
@@ -220,12 +220,12 @@ describe('A2 — گزارش شبانه با تسک low و normal', () => {
   });
   after(cleanup);
 
-  test('عضوی که فقط تسک low بی‌پاسخ دارد «گزارش نداده ⚠️» نمی‌خورد؛ با تسک normal بی‌پاسخ می‌خورد', () => {
+  test('عضوی که فقط تسک low بی‌پاسخ دارد در گزارش نمی‌آید؛ با تسک normal بی‌پاسخ «⏳ N بدون وضعیت» می‌خورد (H1)', () => {
     reset();
     task(a, 'کم', 'low', null);
     assert.equal(textFor(boss), '', 'گزارشی برای سرپرست ساخته نمی‌شود: تسک low معطل/هشدار نیست');
     task(a, 'عادی', 'normal', null);
-    assert.match(textFor(boss), /علی — گزارش نداده ⚠️/);
+    assert.match(textFor(boss), /علی — 0 از 1 انجام شد · ⏳ 1 بدون وضعیت/);
   });
 
   test('گزارش‌داده: low بی‌پاسخ در شمارش/درصد نمی‌آید؛ low پاسخ‌داده مثل قبل حساب می‌شود', () => {
@@ -262,10 +262,11 @@ describe('A2 — خلاصه‌ی صبحگاهی با تسک low و normal', () =
   });
   after(cleanup);
 
-  test('تسک‌های بی‌پاسخ (low یا normal) در خلاصه‌ی صبحگاهی چیزی نمی‌سازند: این خلاصه فقط پاسخ‌های دیرهنگام و مشاهده‌نشده‌ها را می‌گوید', () => {
+  test('تسک‌های بی‌پاسخ هشدارِ «دیرهنگام/مشاهده‌نشده» نمی‌سازند؛ فقط «وضعیت نهایی دیروز» (H3) در خلاصه می‌آید', () => {
     reset();
     add(a, 'کم', 'low'); add(a, 'عادی', 'normal'); add(b, 'مهم', 'high'); add(b, 'کمِ ب', 'low');
-    assert.deepEqual(md.buildMorningDigests({ now: at(TUE, '08:00') }), []);
+    const ds = md.buildMorningDigests({ now: at(TUE, '08:00') });
+    assert.ok(ds.every((d) => d.late.length === 0 && d.unreviewed.length === 0));
   });
 
   test('پاسخ low که بعد از ارسال شبانه ثبت شود مثل هر پاسخ دیگری «دیرهنگام» گزارش می‌شود (اطلاعاتی، نه هشدار)', () => {

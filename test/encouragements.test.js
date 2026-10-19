@@ -308,8 +308,8 @@ describe('نمایش پیام تشویقی در Mini App', () => {
     assert.equal(DR.encouragementOf({ encouragements: [{ status: 'done', text: '' }, null, { status: 'done' }] }), '');
   });
 
-  test('app.js پیام را هم در خروج و هم در گزارش دیرهنگام نشان می‌دهد', () => {
+  test('app.js پیام را در خروج، گزارش دیرهنگام و «امروز من» (D1) نشان می‌دهد', () => {
     const src = fs.readFileSync(path.join(__dirname, '..', 'public/js/app.js'), 'utf8');
-    assert.equal((src.match(/encouragementOf\(/g) || []).length, 2);
+    assert.equal((src.match(/encouragementOf\(/g) || []).length, 3);
   });
 });

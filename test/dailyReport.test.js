@@ -197,7 +197,7 @@ describe('گزارش روزانه — API (D6)', { skip: hasDeps ? false : 'expr
     assert.equal(ok.json.answered.length, 2);
     assert.equal((await S.call(u, 'POST', 'daily-report', { answers: [{ taskId: t.id, status: 'done' }] })).status, 409);
     const other = F.makeUser();
-    assert.equal((await S.call(other, 'POST', 'daily-report', { answers: [{ taskId: t.id, status: 'done' }] })).status, 400);
+    assert.equal((await S.call(other, 'POST', 'daily-report', { answers: [{ taskId: t.id, status: 'done' }] })).status, 404); // TASK_NOT_FOUND (A4)
     assert.equal(db.prepare('SELECT COUNT(*) n FROM task_daily_logs').get().n, 2);
   });
 });

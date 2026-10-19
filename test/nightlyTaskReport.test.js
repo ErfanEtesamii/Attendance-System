@@ -184,7 +184,9 @@ describe('گزارش شبانه‌ی تسک‌ها (D11)', () => {
     reset();
     task(a, D, 'x', 'done'); task(a, D, 'y', null, {}, { priority: 'high' }); task(a, D, 'z', 'not_done', { reasonCode: 'other' });
     const text = reportFor(boss).messages.join('\n');
-    const row = require('../src/services/teamReportsService').getReports(boss, { date: D }).members.find((m) => m.userId === a.id);
+    mock.timers.enable({ apis: ['Date'], now: Date.parse('2026-08-04T10:00:00Z') }); // getReports فقط ۶۰ روز اخیر را می‌دهد؛ ساعت را کنار D می‌بریم
+    let row;
+    try { row = require('../src/services/teamReportsService').getReports(boss, { date: D }).members.find((m) => m.userId === a.id); } finally { mock.timers.reset(); }
     assert.deepEqual([row.summary.total, row.summary.done, row.summary.pending, row.summary.percent], [3, 1, 1, 33]);
     assert.match(text, /علی — 1 از 3 انجام شد \(33٪\)/);
     assert.equal(svc.memberReport(a, '2026-08-07', require('../src/repositories/settingsRepository').getAll()), null, 'جمعه');
@@ -263,7 +265,7 @@ describe('گزارش شبانه‌ی تسک‌ها (D11)', () => {
     const rows = db.prepare("SELECT user_id, details FROM audit_log WHERE action = 'task_report_sent'").all();
     assert.ok(rows.some((x) => x.user_id === admin2.id && JSON.parse(x.details).date === D && JSON.parse(x.details).parts >= 1));
     assert.ok(!rows.some((x) => x.user_id === admin.id), 'ارسال ناموفق ممیزی ندارد');
-    db.exec(`DELETE FROM users WHERE id = ${admin2.id}`);
+    db.exec(`DELETE FROM audit_log WHERE user_id = ${admin2.id}; DELETE FROM users WHERE id = ${admin2.id}`); // audit_log به users وابسته است
   });
 
   // ───────── H3: زمان ─────────

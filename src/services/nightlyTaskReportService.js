@@ -65,7 +65,7 @@ function memberBlock(r, stuckTasks) {
   const t = r.tally || {};
   const partialAndNot = (t.notDoneCount !== undefined) ? t.notDoneCount : r.notDone.length;
   if (r.total > 0) {
-    const bits = [`${r.done} از ${r.total} انجام شد${r.percent !== null ? ` (${r.percent}٪)` : ''}`];
+    const bits = [`${r.done} از ${r.total} انجام شد${r.percent !== null && !r.noStatus ? ` (${r.percent}٪)` : ''}`];
     if (partialAndNot > 0) bits.push(`${partialAndNot} نیمه/انجام‌نشده`);
     if (r.pendingCount > 0) bits.push(r.noStatus ? `⏳ ${r.pendingCount} بدون وضعیت` : `${r.pendingCount} بدون وضعیت`);
     lines.push(`• ${name} — ${bits.join(' · ')}`);

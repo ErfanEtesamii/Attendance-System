@@ -127,12 +127,16 @@ describe('گزارش‌های تیم (D10)', () => {
   });
   test('H1: پاسخ‌نداده‌ی الزامی در total می‌آید (status=no_report یعنی «بدون وضعیت»)؛ اختیاری نه', () => {
     reset();
-    const plan = plans.getOrCreate(a.id, weekOf(D));
-    plans.addTask(plan.id, { title: 'الزامی', plannedDate: D });
-    plans.addTask(plan.id, { title: 'اختیاری', plannedDate: D, priority: 'low' });
-    const row = get(boss).members.find((m) => m.userId === a.id);
+    // D = امروز−۳ ممکن است روز غیرکاری (جمعه) باشد؛ این تست به یک روز کاری نیاز دارد
+    const settings = require('../src/repositories/settingsRepository').getAll();
+    let wd = addDays(TODAY, -1);
+    while (!cal.getCalendarDay(a, wd, { settings }).isWorkingDay) wd = addDays(wd, -1);
+    const plan = plans.getOrCreate(a.id, weekOf(wd));
+    plans.addTask(plan.id, { title: 'الزامی', plannedDate: wd });
+    plans.addTask(plan.id, { title: 'اختیاری', plannedDate: wd, priority: 'low' });
+    const row = get(boss, { date: wd }).members.find((m) => m.userId === a.id);
     assert.deepEqual([row.status, row.summary.total, row.summary.done, row.summary.pending, row.summary.percent], ['no_report', 1, 0, 1, 0]);
     assert.deepEqual(row.pending.map((p) => p.title), ['الزامی']);
-    assert.equal(get(boss).summary.percent, 0);
+    assert.equal(get(boss, { date: wd }).summary.percent, 0);
   });
 });
