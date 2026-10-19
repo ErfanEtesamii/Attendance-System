@@ -213,7 +213,7 @@
     const al = `aria-label="${esc(setShort(it))}"`; // برچسب دسترس‌پذیر کنترل (S5-9a)
     switch (it.type) {
       case 'boolean':
-        return `<label class="st-switch-wrap"><input type="checkbox" role="switch" class="st-switch" name="${k}" data-key="${k}" ${al}${setNorm(it, v) === 'true' ? ' checked' : ''} /><span class="st-sw-on">روشن</span><span class="st-sw-off">خاموش</span></label>`;
+        return `<label class="st-switch-wrap"><input type="checkbox" role="switch" class="st-switch" name="${k}" data-key="${k}" ${al}${setNorm(it, v) === 'true' ? ' checked' : ''} /><span class="st-track" aria-hidden="true"></span><span class="st-sw-on">روشن</span><span class="st-sw-off">خاموش</span></label>`;
       case 'number':
         return `<input type="number" step="any" name="${k}" data-key="${k}" ${al} value="${esc(v)}"${it.min !== undefined ? ` min="${it.min}"` : ''}${it.max !== undefined ? ` max="${it.max}"` : ''} class="ltr-in" />`;
       case 'time':

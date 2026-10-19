@@ -778,12 +778,13 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--g
 .st-more:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; border-radius: 4px; }
 .st-meta { font-size: 11.5px; color: var(--hint); }
 .st-state { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.st-switch-wrap { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
-input.st-switch { appearance: none; -webkit-appearance: none; box-sizing: border-box; flex: none; position: relative; width: 44px; height: 24px; padding: 0; margin: 0; border-radius: 999px; background: var(--ov-08); border: 1px solid var(--border); cursor: pointer; flex: none; }
-.st-switch::after { content: ""; position: absolute; top: 2px; inset-inline-start: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--text); transition: inset-inline-start .15s; }
-.st-switch:checked { background: var(--green-soft); border-color: var(--green); }
-.st-switch:checked::after { inset-inline-start: 22px; background: var(--green); }
-.st-switch:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.st-switch-wrap { position: relative; display: inline-flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
+.st-switch { position: absolute; inset-inline-start: 0; top: 50%; width: 1px; height: 1px; margin: 0; padding: 0; opacity: 0; }
+.st-track { position: relative; flex: none; width: 44px; height: 24px; border-radius: 999px; background: var(--ov-08); border: 1px solid var(--border); box-sizing: border-box; transition: background .15s, border-color .15s; }
+.st-track::after { content: ""; position: absolute; top: 2px; inset-inline-start: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--text); transition: inset-inline-start .15s, background .15s; }
+.st-switch:checked + .st-track { background: var(--green-soft); border-color: var(--green); }
+.st-switch:checked + .st-track::after { inset-inline-start: 22px; background: var(--green); }
+.st-switch:focus-visible + .st-track { outline: 2px solid var(--green); outline-offset: 2px; }
 .st-sw-on { display: none; }
 .st-switch:checked ~ .st-sw-on { display: inline; }
 .st-switch:checked ~ .st-sw-off { display: none; }
@@ -792,7 +793,7 @@ input.st-switch { appearance: none; -webkit-appearance: none; box-sizing: border
 .st-pill span { display: inline-flex; align-items: center; min-height: 36px; padding: 4px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg-2); cursor: pointer; }
 .st-pill input:checked + span { background: var(--green-soft); border-color: var(--green); color: var(--green); font-weight: 700; }
 .st-pill input:focus-visible + span { outline: 2px solid var(--green); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { .st-switch::after { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .st-track, .st-track::after { transition: none; } }
 @media (max-width: 760px) { .st-fields { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 900px) {
   .st-layout { grid-template-columns: minmax(0, 1fr); }
@@ -974,8 +975,8 @@ button, a, summary, select, input, [role="button"], .clickable, th.sortable { to
   .chk input { width: 22px; height: 22px; }
   .st-nav-item, .st-pill span, .st-switch-wrap { min-height: 44px; }
   .st-more { min-height: 44px; display: inline-flex; align-items: center; }
-  input.st-switch { width: 48px; height: 28px; }
-  .st-switch::after { width: 22px; height: 22px; }
+  .st-track { width: 48px; height: 28px; }
+  .st-track::after { width: 22px; height: 22px; }
   .jdp-day, .jdp-nav, .jdp-link { min-height: 40px; min-width: 40px; }
   .cal-cell { width: 34px; height: 34px; } /* تقویم متراکم است؛ حداقل ۲۴px (WCAG 2.5.8) رعایت می‌شود */
 }
