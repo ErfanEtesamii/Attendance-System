@@ -1,5 +1,6 @@
 // تم پنل و Mini App (S5-8a): روشن/تیره/خودکار با localStorage و هماهنگی با Telegram.WebApp.
-// ترتیب اولویت: انتخاب کاربر (light|dark) ⇒ رنگ‌طرح تلگرام (colorScheme، فقط داخل Mini App) ⇒ prefers-color-scheme ⇒ تیره (ظاهر فعلی).
+// ترتیب اولویت: انتخاب کاربر (light|dark) ⇒ رنگ‌طرح تلگرام (colorScheme، فقط داخل Mini App) ⇒ prefers-color-scheme ⇒ پیش‌فرض صفحه (T1: <meta name="default-theme">؛ نبودنش ⇒ تیره، یعنی ظاهر فعلی Mini App).
+// T1 (فاز ۱۶): هر صفحه می‌تواند رنگ نوار/تلگرام هر تم را با <meta name="theme-bg-dark|theme-bg-light"> بدهد (پنل مدیریتی)؛ نبودنشان ⇒ BG ثابت زیر (Mini App).
 // پالت صفحه از CSS (data-theme) می‌آید و با رنگ‌های دلخواه themeParams بازنویسی نمی‌شود (تا کنتراست AA تضمین بماند)؛
 // از themeParams/colorScheme فقط برای انتخاب روشن/تیره و رنگ نوار بالا/پایین خودِ تلگرام استفاده می‌شود.
 // این فایل باید در <head> و همگام (بدون defer) بیاید تا صفحه قبل از رنگ‌شدن تم درست را بگیرد (بدون «فلش»).
@@ -13,32 +14,40 @@
   function normalize(v) { return v === 'light' || v === 'dark' ? v : 'auto'; }
 
   // خالص: ورودی‌ها را می‌گیرد و «light|dark» برمی‌گرداند
-  function resolveTheme({ stored, prefersDark, tgScheme } = {}) {
+  function resolveTheme({ stored, prefersDark, tgScheme, fallback } = {}) {
     const pref = normalize(stored);
     if (pref !== 'auto') return pref;
     if (tgScheme === 'light' || tgScheme === 'dark') return tgScheme;
-    return prefersDark === false ? 'light' : 'dark';
+    if (prefersDark === true) return 'dark';
+    if (prefersDark === false) return 'light';
+    return fallback === 'light' ? 'light' : 'dark'; // سیستم نامعلوم ⇒ پیش‌فرض صفحه (بدون متا: تیره)
   }
 
   const api = { KEY, BG, LABEL, NEXT, normalize, resolveTheme };
+  // توجه: BG همیشه مقدار ثابت Mini App است؛ مقدار مؤثر صفحه (با متاها) فقط داخل apply محاسبه می‌شود.
 
   if (root && root.document) {
     const doc = root.document;
     const tg = root.Telegram && root.Telegram.WebApp ? root.Telegram.WebApp : null;
     const read = () => { try { return normalize(root.localStorage.getItem(KEY)); } catch (_) { return 'auto'; } };
+    const metaContent = (name) => { try { const m = doc.querySelector(`meta[name="${name}"]`); const v = m && m.getAttribute ? m.getAttribute('content') : null; return v || null; } catch (_) { return null; } };
+    const HEX = /^#[0-9a-f]{6}$/i;
+    const bgOf = (t) => { const v = metaContent(`theme-bg-${t}`); return v && HEX.test(v) ? v : BG[t]; };
+    const pageDefault = () => (metaContent('default-theme') === 'light' ? 'light' : 'dark');
     const mq = root.matchMedia ? root.matchMedia('(prefers-color-scheme: dark)') : null;
     let pref = read();
 
-    const effective = () => resolveTheme({ stored: pref, prefersDark: mq ? mq.matches : undefined, tgScheme: tg && tg.colorScheme });
+    const effective = () => resolveTheme({ stored: pref, prefersDark: mq ? mq.matches : undefined, tgScheme: tg && tg.colorScheme, fallback: pageDefault() });
 
     function apply() {
       const t = effective();
       doc.documentElement.setAttribute('data-theme', t);
       doc.documentElement.setAttribute('data-theme-pref', pref);
       const meta = doc.querySelector('meta[name="theme-color"]');
-      if (meta) meta.setAttribute('content', BG[t]);
+      const bg = bgOf(t);
+      if (meta) meta.setAttribute('content', bg);
       if (tg) {
-        try { tg.setHeaderColor(BG[t]); tg.setBackgroundColor(BG[t]); if (tg.setBottomBarColor) tg.setBottomBarColor(BG[t]); } catch (_) { /* نسخه‌های قدیمی تلگرام */ }
+        try { tg.setHeaderColor(bg); tg.setBackgroundColor(bg); if (tg.setBottomBarColor) tg.setBottomBarColor(bg); } catch (_) { /* نسخه‌های قدیمی تلگرام */ }
       }
       doc.querySelectorAll('[data-theme-toggle]').forEach((b) => {
         b.setAttribute('title', `تم: ${LABEL[pref]} (برای تغییر بزنید)`);

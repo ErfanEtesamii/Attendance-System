@@ -9,6 +9,9 @@ const Theme = require('../public/js/theme.js');
 const read = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8').replace(/\r\n/g, '\n');
 const PANEL = read('public-admin/css/style.css');
 const MINI = read('public/css/style.css');
+const PANEL_HTML = read('public-admin/index.html');
+const metaOf = (html, name) => { const m = html.match(new RegExp(`<meta name="${name}" content="([^"]*)"`)); return m ? m[1].toLowerCase() : null; };
+const PANEL_BG = { dark: metaOf(PANEL_HTML, 'theme-bg-dark'), light: metaOf(PANEL_HTML, 'theme-bg-light') };
 
 // ---- ابزار رنگ ----
 const parseColor = (v) => {
@@ -36,8 +39,11 @@ const THEMES = (css) => ({ dark: varsOf(block(css, ':root,\n:root[data-theme="da
 const PAIRS_PANEL = [
   ['text', 'bg'], ['text', 'card'], ['text', 'card-2'], ['hint', 'bg'], ['hint', 'card'], ['hint', 'card-2'], ['hint', 'sidebar'], ['text', 'sidebar'],
   ['green', 'card'], ['red', 'card'], ['orange', 'card'], ['yellow', 'card'], ['blue', 'card'], ['green', 'bg'],
+  // T1 (فاز ۱۶): پالت سرمه‌ای/نارنجی؛ کلیدهایی که Mini App ندارد خودکار رد می‌شوند
+  ['text', 'field'], ['hint', 'field'], ['rail-text', 'rail'], ['rail-active-text', 'bg'], ['on-accent', 'accent'], ['on-accent', 'accent-dark'],
+  ['on-brand', 'brand'], ['brand', 'bg'], ['brand', 'card'], ['teal-text', 'bg'], ['teal-text', 'card'],
 ];
-const SOFT = [['green', 'green-soft'], ['orange', 'orange-soft'], ['red', 'red-soft'], ['yellow', 'yellow-soft'], ['blue', 'blue-soft'], ['purple-text', 'purple-soft']];
+const SOFT = [['brand', 'brand-soft'], ['green', 'green-soft'], ['orange', 'orange-soft'], ['red', 'red-soft'], ['yellow', 'yellow-soft'], ['blue', 'blue-soft'], ['purple-text', 'purple-soft']];
 
 describe('کنتراست AA (۴٫۵:۱) از روی CSS واقعی', () => {
   for (const [name, css, cardKey] of [['پنل', PANEL, 'card'], ['Mini App', MINI, 'card-bg']]) {
@@ -55,9 +61,10 @@ describe('کنتراست AA (۴٫۵:۱) از روی CSS واقعی', () => {
         }
       });
       test(`${name} / ${mode}: متن روی دکمه/تب/آواتار سبز (--on-accent) و نشان‌های نرم`, () => {
+        const og = 'on-green' in v ? 'on-green' : 'on-accent'; // پنل: --on-green (سطوح سبز)؛ Mini App هنوز --on-accent
         for (const bg of ['#25d9a0', '#14a878', '#7be495', '#16b886']) {
-          const r = ratio(get('on-accent'), parseColor(bg));
-          assert.ok(r >= 4.5, `${name}/${mode} on-accent روی ${bg}: ${r.toFixed(2)}`);
+          const r = ratio(get(og), parseColor(bg));
+          assert.ok(r >= 4.5, `${name}/${mode} ${og} روی ${bg}: ${r.toFixed(2)}`);
         }
         const card = get(cardKey);
         for (const [fg, soft] of SOFT) {
@@ -80,8 +87,27 @@ describe('پالت‌ها و CSS', () => {
       const keys = (o) => Object.keys(o).filter((k) => !['radius', 'radius-sm', 'sidebar-w'].includes(k)).sort();
       for (const k of keys(T.light)) assert.ok(k in T.dark, `کلید ${k} فقط در روشن است`);
       for (const k of keys(T.dark)) if (!/^var\(/.test(T.dark[k])) assert.ok(k in T.light, `کلید ${k} فقط در تیره است`); // نام‌های مستعار var(--x) در :root مشترک می‌مانند
-      assert.equal(T.dark.bg.toLowerCase(), Theme.BG.dark);
-      assert.equal(T.light.bg.toLowerCase(), Theme.BG.light);
+      const bgs = css === PANEL ? PANEL_BG : Theme.BG; // پنل: متاهای index.html؛ Mini App: ثابت‌های theme.js
+      assert.equal(T.dark.bg.toLowerCase(), bgs.dark);
+      assert.equal(T.light.bg.toLowerCase(), bgs.light);
+    }
+  });
+  test('T1: توکن‌های برند پنل در هر دو تم و fallback هستند؛ نارنجی دست‌کم قابل‌تشخیص', () => {
+    const T = THEMES(PANEL);
+    for (const k of ['field', 'brand', 'brand-soft', 'on-brand', 'accent', 'accent-dark', 'on-accent', 'on-green', 'teal-text', 'rail', 'rail-text', 'rail-active-text']) {
+      assert.ok(k in T.dark && k in T.light, `توکن --${k} در یکی از دو تم نیست`);
+    }
+    for (const mode of ['dark', 'light']) {
+      const v = T[mode];
+      // accent/accent-dark فقط سطح پُرکننده‌اند (متن رویشان on-accent است)؛ هرگز به‌عنوان رنگ متن روی bg نیاید (روی سفید ≈ ۲–۳:۱)
+      assert.ok(ratio(parseColor(v.accent), parseColor(v.bg)) >= 1.8, `${mode}: accent روی bg دست‌کم قابل‌تشخیص`);
+    }
+  });
+  test('T1: پنل نارنجی را فقط با متن تیره می‌خواند (سفید روی accent رد می‌شود)', () => {
+    for (const mode of ['dark', 'light']) {
+      const v = THEMES(PANEL)[mode];
+      assert.ok(ratio(parseColor('#ffffff'), parseColor(v.accent)) < 4.5, 'اگر این شکست خورد، on-accent را دوباره بررسی کن');
+      assert.ok(ratio(parseColor(v['on-accent']), parseColor(v.accent)) >= 4.5);
     }
   });
   test('پشتیبان بدون JS: prefers-color-scheme: light ⇒ همان مقادیر بلاک روشن', () => {
@@ -123,8 +149,17 @@ describe('theme.js: منطق', () => {
     assert.equal(resolveTheme({}), 'dark');
     assert.equal(resolveTheme(), 'dark');
   });
+  test('T1: پیش‌فرض صفحه (fallback) فقط وقتی سیستم نامعلوم است؛ انتخاب کاربر/سیستم/تلگرام بر آن غلبه دارند', () => {
+    assert.equal(resolveTheme({ fallback: 'light' }), 'light');
+    assert.equal(resolveTheme({ fallback: 'dark' }), 'dark');
+    assert.equal(resolveTheme({ fallback: 'zzz' }), 'dark');
+    assert.equal(resolveTheme({ prefersDark: true, fallback: 'light' }), 'dark');
+    assert.equal(resolveTheme({ prefersDark: false, fallback: 'dark' }), 'light');
+    assert.equal(resolveTheme({ stored: 'dark', fallback: 'light' }), 'dark');
+    assert.equal(resolveTheme({ tgScheme: 'dark', fallback: 'light' }), 'dark');
+  });
 
-  function boot({ stored, prefersDark = true, tgScheme } = {}) {
+  function boot({ stored, prefersDark = true, tgScheme, metas = {}, noMatchMedia = false } = {}) {
     const store = stored ? { theme: stored } : {};
     const attrs = {}; const meta = { v: '#1b1c2c', setAttribute(k, v) { if (k === 'content') this.v = v; } };
     const btn = { a: {}, setAttribute(k, v) { this.a[k] = v; } };
@@ -133,12 +168,16 @@ describe('theme.js: منطق', () => {
     const win = {
       document: {
         documentElement: { setAttribute: (k, v) => { attrs[k] = v; } },
-        querySelector: (s) => (s.includes('theme-color') ? meta : null),
+        querySelector: (s) => {
+          if (s.includes('theme-color')) return meta;
+          const m = s.match(/meta\[name="([^"]+)"\]/);
+          return m && m[1] in metas ? { getAttribute: (a) => (a === 'content' ? metas[m[1]] : null) } : null;
+        },
         querySelectorAll: (s) => (s.includes('data-theme-toggle') ? [btn] : []),
         addEventListener: (e, f) => { listeners[e] = f; },
       },
       localStorage: { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; }, removeItem: (k) => { delete store[k]; } },
-      matchMedia: () => ({ get matches() { return prefersDark; }, addEventListener: (e, f) => { mqHandler = f; } }),
+      matchMedia: noMatchMedia ? undefined : () => ({ get matches() { return prefersDark; }, addEventListener: (e, f) => { mqHandler = f; } }),
       Telegram: tg ? { WebApp: tg } : undefined,
     };
     const ctx = vm.createContext({ window: win, module: { exports: {} } });
@@ -153,6 +192,31 @@ describe('theme.js: منطق', () => {
     e = boot({ prefersDark: true });
     assert.equal(e.attrs['data-theme'], 'dark');
     assert.equal(e.meta.v, Theme.BG.dark);
+  });
+  test('T1: متاهای پنل — theme-bg-* رنگ نوار را می‌دهند؛ مقدار خراب ⇒ BG ثابت؛ بدون متا ⇒ رفتار قبلی', () => {
+    const metas = { 'theme-bg-light': '#ffffff', 'theme-bg-dark': '#17143a' };
+    let e = boot({ prefersDark: false, metas });
+    assert.equal(e.attrs['data-theme'], 'light'); assert.equal(e.meta.v, '#ffffff');
+    e = boot({ prefersDark: true, metas });
+    assert.equal(e.meta.v, '#17143a');
+    e = boot({ prefersDark: true, metas: { 'theme-bg-dark': 'red' } });
+    assert.equal(e.meta.v, Theme.BG.dark);
+    e = boot({ prefersDark: true, tgScheme: 'dark', metas });
+    assert.deepEqual(e.tgCalls.slice(0, 3), [['h', '#17143a'], ['b', '#17143a'], ['n', '#17143a']]);
+  });
+  test('T1: default-theme=light فقط وقتی matchMedia/تلگرام نیست اثر دارد؛ بدون متا ⇒ تیره (Mini App)', () => {
+    assert.equal(boot({ noMatchMedia: true, metas: { 'default-theme': 'light' } }).attrs['data-theme'], 'light');
+    assert.equal(boot({ noMatchMedia: true }).attrs['data-theme'], 'dark');
+    assert.equal(boot({ noMatchMedia: true, metas: { 'default-theme': 'bogus' } }).attrs['data-theme'], 'dark');
+    assert.equal(boot({ prefersDark: true, metas: { 'default-theme': 'light' } }).attrs['data-theme'], 'dark'); // سیستم تیره ⇒ تیره
+    assert.equal(boot({ noMatchMedia: true, stored: 'dark', metas: { 'default-theme': 'light' } }).attrs['data-theme'], 'dark');
+  });
+  test('T1: index.html پنل: default-theme و theme-color هم‌خوان؛ Mini App این متاها را ندارد', () => {
+    assert.equal(metaOf(PANEL_HTML, 'default-theme'), 'light');
+    assert.equal(metaOf(PANEL_HTML, 'theme-color'), PANEL_BG.light);
+    assert.match(PANEL_BG.dark, /^#[0-9a-f]{6}$/); assert.match(PANEL_BG.light, /^#[0-9a-f]{6}$/);
+    const mini = read('public/index.html');
+    for (const n of ['default-theme', 'theme-bg-dark', 'theme-bg-light']) assert.equal(metaOf(mini, n), null, `Mini App نباید ${n} داشته باشد`);
   });
   test('چرخه‌ی دکمه: auto ⇒ light ⇒ dark ⇒ auto؛ ذخیره/پاک‌سازی در localStorage؛ برچسب دسترس‌پذیر', () => {
     const e = boot({ prefersDark: true });
