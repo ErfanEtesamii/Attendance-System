@@ -722,8 +722,6 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--g
 .note.warn { background: var(--yellow-soft); }
 .chk-row { display: flex; flex-wrap: wrap; gap: 6px 12px; }
 .chk { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; color: var(--text); }
-.set-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
-.set-foot .form-msg { flex: 1; min-width: 200px; }
 
 /* ---------- تنظیمات — طراحی تازه (st-) ---------- */
 .st-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 16px; align-items: start; }
@@ -751,6 +749,19 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--g
 .st-panel-head h3:focus-visible { outline: 2px solid var(--green); outline-offset: 4px; border-radius: 6px; }
 .st-body { padding: 6px 18px 16px; }
 .st-main { min-width: 0; }
+.st-search { margin: 0 0 12px; }
+.st-search input { width: 100%; min-height: 44px; }
+.st-nav-item.dim { opacity: .5; }
+.st-stats { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
+.st-stats > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.st-stats dt { color: var(--hint); }
+.st-stats dd { margin: 0; font-weight: 700; }
+.st-audit { margin-top: 12px; width: 100%; justify-content: center; }
+.st-actionbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 18px; padding: 12px 0 0; border-top: 1px solid var(--border); }
+.st-actionbar .st-pending { font-size: 12.5px; color: var(--hint); }
+.st-actionbar .form-msg { flex: 1; min-width: 160px; }
+.st-actionbar.dirty { position: sticky; bottom: 0; z-index: 5; margin-inline: -18px; padding: 12px 18px; background: var(--card); box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.18); border-top-color: var(--yellow); }
+.st-actionbar.dirty .st-pending { color: var(--yellow); font-weight: 700; }
 .st-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 20px; padding-top: 14px; }
 .st-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding-inline-start: 10px; border-inline-start: 3px solid transparent; }
 .st-field.full { grid-column: 1 / -1; }
@@ -786,8 +797,25 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--g
 @media (max-width: 760px) { .st-fields { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 900px) {
   .st-layout { grid-template-columns: minmax(0, 1fr); }
-  .st-nav { position: static; }
+  .st-nav { position: static; padding: 12px; }
+  .st-nav-head { margin-bottom: 10px; }
+  .st-nav-head .muted { display: none; }
+  .st-nav nav { flex-direction: row; gap: 2px; overflow-x: auto; scroll-snap-type: x proximity; border-bottom: 1px solid var(--border); padding-bottom: 0; }
+  .st-nav-item { flex: none; width: auto; scroll-snap-align: center; border-radius: var(--radius-sm) var(--radius-sm) 0 0; border-bottom: 3px solid transparent; white-space: nowrap; }
+  .st-nav-item[aria-current="true"] { background: transparent; border-bottom-color: var(--green); }
+  .st-nav-name { flex: none; }
+  .st-stats { flex-direction: row; flex-wrap: wrap; gap: 4px 16px; margin-top: 10px; padding-top: 10px; }
+  .st-stats > div { gap: 6px; }
+  .st-audit { width: auto; }
+  .st-actionbar.dirty { margin-inline: -18px; }
 }
+@media (max-width: 480px) {
+  .st-body { padding-inline: 14px; }
+  .st-actionbar .btn { flex: 1; justify-content: center; }
+  .st-actionbar .st-pending, .st-actionbar .form-msg { flex-basis: 100%; }
+  .st-actionbar.dirty { margin-inline: -14px; padding-inline: 14px; }
+}
+@media (prefers-reduced-motion: reduce) { .st-nav nav { scroll-behavior: auto; } }
 
 /* ---------- زنگوله‌ی اعلان (S4-6a) ---------- */
 .bell-btn { position: relative; }
@@ -945,6 +973,11 @@ button, a, summary, select, input, [role="button"], .clickable, th.sortable { to
   input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), select { min-height: 44px; }
   .chk { min-height: 44px; }
   .chk input { width: 22px; height: 22px; }
+  .st-nav-item, .st-pill span, .st-switch-wrap { min-height: 44px; }
+  .st-more { min-height: 44px; display: inline-flex; align-items: center; }
+  .st-switch { width: 48px; height: 28px; }
+  .st-switch::after { width: 22px; height: 22px; }
+  .st-switch:checked::after { inset-inline-start: 22px; }
   .jdp-day, .jdp-nav, .jdp-link { min-height: 40px; min-width: 40px; }
   .cal-cell { width: 34px; height: 34px; } /* تقویم متراکم است؛ حداقل ۲۴px (WCAG 2.5.8) رعایت می‌شود */
 }
@@ -960,6 +993,10 @@ button, a, summary, select, input, [role="button"], .clickable, th.sortable { to
 .sk-card, .sk-box { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: grid; gap: 10px; }
 .sk-row { display: flex; gap: 14px; align-items: center; padding: 6px 0; }
 @media (max-width: 900px) { .sk-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.sk-settings { align-items: start; }
+.sk-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 20px; }
+.sk-field { display: grid; gap: 8px; }
+@media (max-width: 900px) { .sk-fields { grid-template-columns: minmax(0, 1fr); } }
 @media (prefers-reduced-motion: reduce) { .sk-line::after { animation: none; } }
 
 /* جدول → کارت در موبایل (S5-9c): فقط جدول‌هایی که a11y.js علامت data-stack زده (بدون سرستون مرتب‌سازی) */
@@ -989,7 +1026,7 @@ button, a, summary, select, input, [role="button"], .clickable, th.sortable { to
   .badge { border: 1px solid #666; background: transparent !important; color: #000 !important; }
   a { color: #000; text-decoration: underline; }
   @page { size: A4 landscape; margin: 10mm; }
-  .skeleton, .sidebar, .topbar, .sidebar-backdrop, .bell-drawer, .filters, .header-actions, .toast-wrap, .btn, #bell-drawer { display: none !important; }
+  .skeleton, .sidebar, .topbar, .sidebar-backdrop, .bell-drawer, .filters, .header-actions, .toast-wrap, .btn, #bell-drawer, .st-nav, .st-actionbar { display: none !important; }
   .content { margin: 0 !important; }
   body, .app-shell, .page { background: #fff !important; color: #000 !important; }
   .card { box-shadow: none !important; border: 1px solid #999 !important; break-inside: avoid; }

@@ -24,6 +24,26 @@ describe('ماژول حالت‌ها', () => {
     assert.equal((S.skeletonHtml('table', { rows: 0 }).match(/class="sk-row"/g) || []).length, 6);
     assert.match(S.skeletonHtml('table', { label: '<b>x</b>' }), /&lt;b&gt;x&lt;\/b&gt;/);
   });
+  test('skeleton «settings» (U4): نقش status، aria-busy، متن خوانشگر، شبکه‌ی فیلد، بدون style/on*؛ سایر حالت‌ها بی‌تغییر', () => {
+    const h = S.skeletonHtml('settings');
+    SAFE(h);
+    assert.match(h, /role="status" aria-busy="true"/);
+    assert.match(h, /<span class="sr-only">در حال بارگذاری…<\/span>/);
+    assert.match(h, /class="st-layout sk-settings"/);
+    assert.equal((h.match(/class="sk-field"/g) || []).length, 6);
+    assert.match(S.skeletonHtml('list'), /class="sk-box"/);
+    assert.doesNotMatch(S.skeletonHtml('list'), /sk-settings/);
+    assert.match(read('public-admin/js/views-admin.js'), /AP\.view\('settings', \{\s*skeleton: 'settings'/);
+  });
+  test('تنظیمات (U4): CSS ریسپانسیو/لمسی/چاپ برای st-', () => {
+    const css = read('public-admin/css/style.css');
+    assert.match(css, /@media \(max-width: 900px\) \{[^@]*\.st-nav nav \{[^}]*overflow-x: auto/);
+    assert.match(css, /@media \(max-width: 480px\) \{[^@]*\.st-actionbar \.btn \{ flex: 1/);
+    const touch = css.split('@media (pointer: coarse), (max-width: 900px) {')[1].split('\n}\n')[0];
+    for (const k of ['.st-nav-item', '.st-pill span', '.st-switch-wrap', '.st-more']) assert.ok(touch.includes(k), k);
+    assert.match(css, /#bell-drawer, \.st-nav, \.st-actionbar \{ display: none !important/);
+    assert.doesNotMatch(css.split('طراحی تازه (st-)')[1].split('زنگوله‌ی اعلان')[0], /#[0-9a-fA-F]{3,6}\b|rgba?\((?!0, 0, 0)/);
+  });
   test('skeleton «plan» (C3): تخته با ۳ کارت روزانه، متن مخصوص خوانشگر، بدون style/on*', () => {
     const h = S.skeletonHtml('plan');
     SAFE(h);

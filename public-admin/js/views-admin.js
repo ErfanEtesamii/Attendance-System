@@ -245,7 +245,7 @@
   }
 
   AP.view('settings', {
-    skeleton: 'list', // شکل skeleton هنگام بارگذاری (S5-9c)
+    skeleton: 'settings', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'settings.edit',
     nav: { icon: 'settings', label: 'تنظیمات', group: 'مدیریت' },
     async render() {
@@ -280,26 +280,35 @@
         if (IMPACT_GROUPS.has(g)) notes.push(`<div class="note warn">${icon('alert')}<span>${esc(IMPACT_TEXT)}</span></div>`);
         if (g === 'schedule') notes.push(`<div class="note">${icon('clock')}<span>تغییر زمان‌بندی بدون ری‌استارت و بلافاصله اعمال می‌شود. مقدار پیش‌فرض از فایل <code class="ltr">.env</code> می‌آید.</span></div>`);
         return `${notes.join('')}<div class="st-fields">${list.map(rowHtml).join('')}</div>
-          <div class="set-foot"><div class="form-msg" data-msg></div>
-            <button type="button" class="btn primary" data-save="${esc(g)}" disabled>ذخیره‌ی تغییرات این بخش</button></div>`;
+          <div class="st-actionbar" data-bar="${esc(g)}">
+            <span class="st-pending" data-pending="${esc(g)}" aria-live="polite">بدون تغییر ذخیره‌نشده</span>
+            <div class="form-msg" data-msg></div>
+            <button type="button" class="btn ghost" data-discard="${esc(g)}" disabled>انصراف</button>
+            <button type="button" class="btn primary" data-save="${esc(g)}" disabled>ذخیره‌ی تغییرات این بخش</button>
+          </div>`;
       };
 
       const html = `
         <div class="view-header"><div><h2>تنظیمات</h2><div class="sub">هر تغییر با ذکر دلیل ذخیره و در «گزارش رویدادها» ثبت می‌شود · تعطیلات در صفحه‌ی «تعطیلات» است</div></div></div>
-        <div class="filters"><label class="field grow"><span>جستجو در تنظیمات</span><input type="search" id="set-q" placeholder="مثلاً: اضافه‌کاری، تأخیر، cron …" autocomplete="off" /></label></div>
         <div class="st-layout">
           <aside class="card st-nav">
             <div class="st-nav-head">
               <span class="st-nav-ico" aria-hidden="true">${icon('settings')}</span>
               <div><h3>تنظیمات سیستم</h3><div class="muted small">${fmt.num(items.length)} تنظیم در ${fmt.num(groupKeys.length)} بخش</div></div>
             </div>
+            <label class="field st-search"><span class="st-sr">جستجو در تنظیمات</span><input type="search" id="set-q" placeholder="جستجو: اضافه‌کاری، تأخیر، cron …" autocomplete="off" /></label>
             <nav aria-label="بخش‌های تنظیمات">${groupKeys.map((g, i) => `
               <button type="button" class="st-nav-item" data-go="${esc(g)}"${i === 0 ? ' aria-current="true"' : ''}>
                 <span class="st-nav-name">${esc(data.groups[g])}</span>
                 <span class="st-dot" data-dot="${esc(g)}" hidden></span>
-                <span class="badge st-count">${fmt.num(items.filter((x) => x.group === g).length)}</span>
+                <span class="badge st-count" data-count="${esc(g)}">${fmt.num(items.filter((x) => x.group === g).length)}</span>
               </button>`).join('')}
             </nav>
+            <dl class="st-stats">
+              <div><dt>تغییر‌یافته از پیش‌فرض</dt><dd data-stat="changed">${fmt.num(items.filter((x) => !x.isDefault).length)}</dd></div>
+              <div><dt>ذخیره‌نشده</dt><dd data-stat="dirty">0</dd></div>
+            </dl>
+            ${AP.viewAllowed && AP.viewAllowed(AP.views.audit) ? `<button type="button" class="btn ghost small st-audit" data-audit>${icon('audit')} گزارش رویدادها</button>` : ''}
           </aside>
           <div class="st-main">${groupKeys.map((g, i) => `
             <section class="card st-panel" data-group="${esc(g)}" aria-labelledby="st-h-${esc(g)}"${i === 0 ? '' : ' hidden'}>
@@ -323,6 +332,19 @@
             if (btn) btn.disabled = n === 0;
             const dot = $(`[data-dot="${CSS.escape(g)}"]`, page);
             if (dot) { dot.hidden = n === 0; dot.innerHTML = n ? `<span class="st-sr">${fmt.num(n)} تغییر ذخیره‌نشده</span>` : ''; }
+            const bar = $(`[data-bar="${CSS.escape(g)}"]`, page);
+            if (bar) bar.classList.toggle('dirty', n > 0);
+            const pend = $(`[data-pending="${CSS.escape(g)}"]`, page);
+            if (pend) pend.textContent = n ? `${fmt.num(n)} تغییر ذخیره‌نشده` : 'بدون تغییر ذخیره‌نشده';
+            const dis = $(`[data-discard="${CSS.escape(g)}"]`, page);
+            if (dis) dis.disabled = n === 0;
+            refreshStats();
+          };
+          const refreshStats = () => {
+            const ch = $('[data-stat="changed"]', page);
+            const dr = $('[data-stat="dirty"]', page);
+            if (ch) ch.textContent = fmt.num(items.filter((i) => !i.isDefault).length);
+            if (dr) dr.textContent = fmt.num(items.filter(isDirty).length);
           };
           const repaint = (g) => {
             const body = $(`.st-panel[data-group="${CSS.escape(g)}"] .st-body`, page);
@@ -373,6 +395,12 @@
               repaint(g);
             }));
             $(`[data-save="${CSS.escape(g)}"]`, card).addEventListener('click', () => saveGroup(g));
+            const discard = $(`[data-discard="${CSS.escape(g)}"]`, card);
+            if (discard) discard.addEventListener('click', () => {
+              items.filter((i) => i.group === g).forEach((i) => { delete drafts[i.key]; });
+              repaint(g);
+              applyReset(g);
+            });
           }
 
           function warnScheduler(r) {
@@ -420,6 +448,11 @@
                 if (hit) shown += 1;
               });
               card.hidden = q ? shown === 0 : card.dataset.group !== active;
+              const g = card.dataset.group;
+              const cnt = $(`[data-count="${CSS.escape(g)}"]`, page);
+              if (cnt) cnt.textContent = fmt.num(q ? shown : items.filter((i) => i.group === g).length);
+              const nb = $(`[data-go="${CSS.escape(g)}"]`, page);
+              if (nb) nb.classList.toggle('dim', !!q && shown === 0);
               if (shown) anyGroup = true;
             });
             $('#set-none', page).classList.toggle('hidden', anyGroup);
@@ -431,10 +464,17 @@
               if (b.dataset.go === g) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
             });
             applyFilter();
+            const tab = $(`[data-go="${CSS.escape(g)}"]`, page);
+            if (tab && typeof tab.scrollIntoView === 'function') { // نوار تب افقی موبایل: تب فعال دیده شود (با کاهش حرکت بدون انیمیشن)
+              const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+              tab.scrollIntoView({ inline: 'center', block: 'nearest', behavior: calm ? 'auto' : 'smooth' });
+            }
             const h = $(`#st-h-${CSS.escape(g)}`, page);
             if (h) h.focus();
           }
           $$('[data-go]', page).forEach((b) => b.addEventListener('click', () => showGroup(b.dataset.go)));
+          const auditBtn = $('[data-audit]', page);
+          if (auditBtn) auditBtn.addEventListener('click', () => AP.go('audit'));
 
           groupKeys.forEach(bind);
           $('#set-q', page).addEventListener('input', applyFilter);

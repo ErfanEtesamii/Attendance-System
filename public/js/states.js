@@ -5,7 +5,7 @@
   const FALLBACK_ESC = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const bar = (cls) => `<span class="sk-line ${cls || ''}"></span>`;
 
-  // kind: 'notebook' (D1: اسکلت دفترچه‌ی دوصفحه‌ای برای «برنامه هفته بعد»؛ ستون کارمندان + دو صفحه) | 'page' (تیتر + کارت‌های آمار + جدول) | 'table' | 'cards' | 'list' | 'plan' (کادرهای رنگیِ روزانه‌ی برنامه‌ی هفتگی) | 'today' (نمای «امروز» Mini App: کارت وضعیت + دو دکمه + سه ردیف)
+  // kind: 'notebook' (D1: اسکلت دفترچه‌ی دوصفحه‌ای برای «برنامه هفته بعد»؛ ستون کارمندان + دو صفحه) | 'page' (تیتر + کارت‌های آمار + جدول) | 'table' | 'cards' | 'list' | 'plan' (کادرهای رنگیِ روزانه‌ی برنامه‌ی هفتگی) | 'settings' (صفحه‌ی تنظیمات: کارت ناوبری + شبکه‌ی دو‌ستونه‌ی فیلد) | 'today' (نمای «امروز» Mini App: کارت وضعیت + دو دکمه + سه ردیف)
   function skeletonHtml(kind, opts) {
     const o = opts || {};
     const rows = Math.max(1, Math.min(12, Number(o.rows) || 6));
@@ -25,6 +25,10 @@
       case 'notebook':
         body = `<div class="np-layout"><div class="sk-box">${bar('w60')}${bar('w100')}${bar('w100')}${bar('w60')}${bar('w100')}</div>` +
           `<div class="nb"><div class="nb-spread"><div class="nb-page">${cards}</div><div class="nb-spring"></div><div class="nb-page">${cards}</div></div></div></div>`;
+        break;
+      case 'settings':
+        body = `<div class="st-layout sk-settings"><div class="sk-box">${bar('w50 tall')}${bar('w100')}${bar('w100')}${bar('w100')}${bar('w100')}${bar('w60')}</div>` +
+          `<div class="sk-box"><div class="sk-fields">${Array.from({ length: 6 }, () => `<div class="sk-field">${bar('w40')}${bar('w100 tall')}${bar('w60')}</div>`).join('')}</div></div></div>`;
         break;
       case 'list': body = Array.from({ length: Math.min(rows, 5) }, () => `<div class="sk-box">${bar('w60')}${bar('w40')}</div>`).join(''); break;
       default: body = `${bar('w25 tall')}<div class="sk-grid">${cards}</div><div class="sk-box">${tableRows}</div>`;

@@ -113,16 +113,18 @@ describe('صفحه‌های تنظیمات و تعطیلات پنل (S3-9a/9b)',
       el.focus = () => { dom.focused = el; };
       return el;
     };
-    const dom = { focused: null, panels: {}, navs: {}, dots: {}, saves: {}, rows: {}, inputs: {}, msgs: {} };
+    const dom = { focused: null, panels: {}, navs: {}, dots: {}, saves: {}, bars: {}, pend: {}, discards: {}, counts: {}, bodies: {}, stats: { changed: null, dirty: null }, rows: {}, inputs: {}, msgs: {} };
     dom.q = mk({ id: 'set-q' });
     dom.none = mk({ id: 'set-none' });
     dom.page = mk({ id: 'page' });
+    dom.stats.changed = mk(); dom.stats.dirty = mk();
     for (const g of groupKeys) {
       dom.panels[g] = mk({ dataset: { group: g }, hidden: g !== groupKeys[0] });
       dom.navs[g] = mk({ dataset: { go: g } });
       dom.dots[g] = mk({ dataset: { dot: g }, hidden: true });
       dom.saves[g] = mk({ dataset: { save: g }, disabled: true });
       dom.msgs[g] = mk();
+      dom.bars[g] = mk(); dom.pend[g] = mk(); dom.discards[g] = mk({ disabled: true }); dom.counts[g] = mk(); dom.bodies[g] = mk();
       dom.rows[g] = items.filter((i) => i.group === g).map((i) => {
         const input = mk({ value: String(i.value) });
         const row = mk({ dataset: { row: i.key } });
@@ -133,10 +135,18 @@ describe('صفحه‌های تنظیمات و تعطیلات پنل (S3-9a/9b)',
     }
     const unq = (sel, re) => (sel.match(re) || [])[1];
     dom.$ = (sel, root) => {
+      let g;
       if (sel === '#set-q') return dom.q;
       if (sel === '#set-none') return dom.none;
-      if (sel === '.topbar') return null;
-      let g = unq(sel, /^\[data-save="(.+)"\]$/); if (g) return dom.saves[g];
+      if (sel === '.topbar' || sel === '[data-audit]') return null;
+      let st = unq(sel, /^\[data-stat="(.+)"\]$/); if (st) return dom.stats[st];
+      g = unq(sel, /^\[data-bar="(.+)"\]$/); if (g) return dom.bars[g];
+      g = unq(sel, /^\[data-pending="(.+)"\]$/); if (g) return dom.pend[g];
+      g = unq(sel, /^\[data-discard="(.+)"\]$/); if (g) return dom.discards[g];
+      g = unq(sel, /^\[data-count="(.+)"\]$/); if (g) return dom.counts[g];
+      g = unq(sel, /^\[data-go="(.+)"\]$/); if (g) return dom.navs[g];
+      g = unq(sel, /^\.st-panel\[data-group="(.+)"\] \.st-body$/); if (g) return dom.bodies[g];
+      g = unq(sel, /^\[data-save="(.+)"\]$/); if (g) return dom.saves[g];
       g = unq(sel, /^\[data-dot="(.+)"\]$/); if (g) return dom.dots[g];
       g = unq(sel, /^\.st-panel\[data-group="(.+)"\] \[data-msg\]$/); if (g) return dom.msgs[g];
       g = unq(sel, /^\.st-panel\[data-group="(.+)"\]$/); if (g) return dom.panels[g];
@@ -188,6 +198,69 @@ describe('صفحه‌های تنظیمات و تعطیلات پنل (S3-9a/9b)',
     const f = html.split(`data-row="${boolItem.key}"`)[1].split('<div class="st-field')[0];
     assert.doesNotMatch(f, /class="st-switch"[^>]*checked/);
     assert.match(f, /data-reset=/);
+  });
+
+  test('تنظیمات (U3): جستجو در ناوبری، شمارنده‌ی نتیجه‌ی هر گروه، کم‌رنگ شدن گروه‌های بی‌نتیجه', async () => {
+    const gk = Object.keys(groups).filter((g) => items.some((i) => i.group === g));
+    const dom = fakeDom(gk, items);
+    const AP = loadViews(async () => ({ items, groups }), [], { $: dom.$, $$: dom.$$, dates: { mount() {} } });
+    const out = await AP.views.settings.render();
+    assert.match(out.html.split('<nav')[0], /id="set-q"/, 'جستجو داخل کارت ناوبری');
+    assert.doesNotMatch(out.html, /class="filters"/);
+    out.mount(dom.page);
+    const q = 'اضافه‌کار';
+    const expect = (g) => items.filter((i) => i.group === g && (i.description.toLowerCase().includes(q) || i.key.toLowerCase().includes(q))).length;
+    assert.ok(gk.some((g) => expect(g) > 0));
+    dom.q.value = q; dom.q.fire('input');
+    for (const g of gk) {
+      assert.equal(dom.counts[g].textContent, String(expect(g)), `شمارنده ${g}`);
+      assert.equal(dom.panels[g].hidden, expect(g) === 0, `پنل ${g}`);
+      assert.equal(dom.navs[g].classList.contains('dim'), expect(g) === 0, `dim ${g}`);
+    }
+    dom.q.value = ''; dom.q.fire('input');
+    for (const g of gk) {
+      assert.equal(dom.counts[g].textContent, String(items.filter((i) => i.group === g).length));
+      assert.equal(dom.navs[g].classList.contains('dim'), false);
+    }
+  });
+
+  test('تنظیمات (U3): نوار ذخیره، انصراف فقط draftهای همان گروه، آمار', async () => {
+    const gk = Object.keys(groups).filter((g) => items.some((i) => i.group === g));
+    const dom = fakeDom(gk, items);
+    const AP = loadViews(async () => ({ items, groups }), [], { $: dom.$, $$: dom.$$, dates: { mount() {} } });
+    const out = await AP.views.settings.render();
+    assert.match(out.html, /data-save="workHours" disabled/);
+    assert.match(out.html, /data-discard="workHours" disabled/);
+    assert.match(out.html, /class="st-actionbar" data-bar="workHours"/);
+    assert.match(out.html, /data-pending="workHours" aria-live="polite"/);
+    assert.match(out.html, /data-stat="changed"/);
+    assert.doesNotMatch(out.html, /data-audit/, 'بدون مجوز audit دکمه نیست');
+    out.mount(dom.page);
+    const changed0 = dom.stats.changed;
+    // دو گروه
+    const other = items.find((i) => i.group === 'overtime' && i.type === 'number');
+    dom.inputs.workDayStart.value = '05:11'; dom.inputs.workDayStart.fire('input');
+    dom.inputs[other.key].value = other.type === 'number' ? String(Number(other.value) + 1) : 'x'; dom.inputs[other.key].fire('input');
+    assert.equal(dom.bars.workHours.classList.contains('dirty'), true);
+    assert.equal(dom.bars.overtime.classList.contains('dirty'), true);
+    assert.equal(dom.pend.workHours.textContent, '1 تغییر ذخیره‌نشده');
+    assert.equal(dom.stats.dirty.textContent, '2');
+    assert.equal(dom.discards.workHours.disabled, false);
+    // انصراف گروه اول
+    dom.discards.workHours.fire('click');
+    assert.equal(dom.saves.workHours.disabled, true);
+    assert.equal(dom.bars.workHours.classList.contains('dirty'), false);
+    assert.equal(dom.pend.workHours.textContent, 'بدون تغییر ذخیره‌نشده');
+    assert.equal(dom.saves.overtime.disabled, false, 'گروه دیگر دست‌نخورده');
+    assert.equal(dom.stats.dirty.textContent, '1');
+    assert.equal(changed0.textContent, String(items.filter((i) => !i.isDefault).length));
+    assert.equal(typeof dom.bodies.workHours.innerHTML, 'string');
+  });
+
+  test('تنظیمات (U3): دکمه‌ی «گزارش رویدادها» فقط با مجوز مشاهده‌ی audit', async () => {
+    const AP = loadViews(async () => ({ items, groups }), [], { viewAllowed: (d) => !!d && d.perm === 'audit.read' });
+    const { html } = await AP.views.settings.render();
+    assert.match(html, /data-audit/);
   });
 
   test('تنظیمات (U1): تعویض گروه فقط hidden/aria-current را جابه‌جا می‌کند و draftها دست‌نخورده می‌مانند', async () => {
