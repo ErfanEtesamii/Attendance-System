@@ -18,7 +18,7 @@ describe('صفحه‌های تنظیمات و تعطیلات پنل (S3-9a/9b)',
   });
   after(() => cleanup());
 
-  function loadViews(apiImpl, users = []) {
+  function loadViews(apiImpl, users = [], extra = {}) {
     const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     const AP = {
       views: {}, nav: [], state: { perms: new Set(['settings.edit']) },
@@ -27,7 +27,9 @@ describe('صفحه‌های تنظیمات و تعطیلات پنل (S3-9a/9b)',
       icon: () => '', badge: (cls, text) => `<span class="badge ${cls}">${esc(text)}</span>`,
       view(id, def) { AP.views[id] = def; if (def.nav) AP.nav.push({ id, ...def.nav }); },
       api: apiImpl, loadUsers: async () => users,
+      ...extra,
     };
+    if (extra.$) AP.$ = extra.$;
     const src = fs.readFileSync(path.join(__dirname, '..', 'public-admin', 'js', 'views-admin.js'), 'utf8');
     vm.runInNewContext(src, { window: { AP }, document: {}, console, CSS: { escape: (s) => s } });
     return AP;
@@ -41,15 +43,27 @@ describe('صفحه‌های تنظیمات و تعطیلات پنل (S3-9a/9b)',
     const { html } = await def.render();
     assert.deepEqual(calls, ['/admin/settings/items'], 'فقط API متادیتا خوانده می‌شود (API قدیمی بدون تغییر)');
 
-    for (const g of Object.keys(groups)) assert.match(html, new RegExp(`<details class="card set-group" data-group="${g}"`), `گروه ${g}`);
+    // U1: برای هر گروه یک پنل (فقط اولی نمایان)؛ دکمه‌ی ناوبری هر گروه؛ بدون <details>
+    const groupKeys = Object.keys(groups);
+    assert.equal(groupKeys.length, 13);
+    for (const g of groupKeys) {
+      assert.match(html, new RegExp(`<section class="card st-panel" data-group="${g}"`), `گروه ${g}`);
+      assert.match(html, new RegExp(`class="st-nav-item" data-go="${g}"`), `ناوبری ${g}`);
+    }
+    assert.doesNotMatch(html, /<details|set-group/);
+    const panelTags = html.match(/<section class="card st-panel"[^>]*>/g);
+    assert.equal(panelTags.length, groupKeys.length);
+    assert.equal(panelTags.filter((t) => !/\shidden(\s|>|=)/.test(t)).length, 1, 'فقط یک پنل نمایان');
+    assert.doesNotMatch(panelTags[0], /hidden/, 'پنل اولیه = اولین گروه');
     for (const it of items) {
       assert.ok(html.includes(`data-row="${it.key}"`), `ردیف ${it.key}`);
       assert.ok(html.includes(`data-key="${it.key}"`), `ورودی ${it.key}`);
     }
     // هر گروه فقط ردیف‌های خودش را دارد
-    const section = (g) => html.split(`data-group="${g}"`)[1].split('</details>')[0];
+    const section = (g) => html.split(`data-group="${g}"`)[1].split('</section>')[0];
     assert.match(section('workHours'), /data-row="workDayStart"/);
     assert.doesNotMatch(section('workHours'), /data-row="overtimeEnabled"/);
+    for (const it of items) assert.equal(html.split(`data-row="${it.key}"`).length - 1, 1, `${it.key} فقط یک بار`);
     // هشدار اثر روی گذشته
     for (const g of ['workHours', 'calendar', 'overtime']) assert.match(section(g), /ماه‌های گذشته/, g);
     for (const g of ['reminders', 'security', 'retention', 'schedule']) assert.doesNotMatch(section(g), /ماه‌های گذشته/, g);
@@ -82,6 +96,116 @@ describe('صفحه‌های تنظیمات و تعطیلات پنل (S3-9a/9b)',
     const { html } = await AP.views.settings.render();
     assert.doesNotMatch(html, /<img src=x|<script>1/);
     assert.match(html, /&lt;img src=x/);
+  });
+
+  // DOM ساختگی کوچک برای اجرای mount() (منطق تعویض گروه و draftها)
+  function fakeDom(groupKeys, items) {
+    const mk = (o = {}) => {
+      const el = { dataset: {}, hidden: false, attrs: {}, cls: new Set(), listeners: {}, innerHTML: '', value: '', ...o };
+      el.classList = {
+        toggle: (c, f) => { const on = f === undefined ? !el.cls.has(c) : f; if (on) el.cls.add(c); else el.cls.delete(c); },
+        add: (c) => el.cls.add(c), remove: (c) => el.cls.delete(c), contains: (c) => el.cls.has(c),
+      };
+      el.setAttribute = (k, v) => { el.attrs[k] = String(v); };
+      el.removeAttribute = (k) => { delete el.attrs[k]; };
+      el.addEventListener = (t, f) => { (el.listeners[t] = el.listeners[t] || []).push(f); };
+      el.fire = (t) => (el.listeners[t] || []).forEach((f) => f());
+      el.focus = () => { dom.focused = el; };
+      return el;
+    };
+    const dom = { focused: null, panels: {}, navs: {}, dots: {}, saves: {}, rows: {}, inputs: {}, msgs: {} };
+    dom.q = mk({ id: 'set-q' });
+    dom.none = mk({ id: 'set-none' });
+    dom.page = mk({ id: 'page' });
+    for (const g of groupKeys) {
+      dom.panels[g] = mk({ dataset: { group: g }, hidden: g !== groupKeys[0] });
+      dom.navs[g] = mk({ dataset: { go: g } });
+      dom.dots[g] = mk({ dataset: { dot: g }, hidden: true });
+      dom.saves[g] = mk({ dataset: { save: g }, disabled: true });
+      dom.msgs[g] = mk();
+      dom.rows[g] = items.filter((i) => i.group === g).map((i) => {
+        const input = mk({ value: String(i.value) });
+        const row = mk({ dataset: { row: i.key } });
+        dom.inputs[i.key] = input; row.input = input;
+        return row;
+      });
+    }
+    const unq = (sel, re) => (sel.match(re) || [])[1];
+    dom.$ = (sel, root) => {
+      if (sel === '#set-q') return dom.q;
+      if (sel === '#set-none') return dom.none;
+      if (sel === '.topbar') return null;
+      let g = unq(sel, /^\[data-save="(.+)"\]$/); if (g) return dom.saves[g];
+      g = unq(sel, /^\[data-dot="(.+)"\]$/); if (g) return dom.dots[g];
+      g = unq(sel, /^\.st-panel\[data-group="(.+)"\] \[data-msg\]$/); if (g) return dom.msgs[g];
+      g = unq(sel, /^\.st-panel\[data-group="(.+)"\]$/); if (g) return dom.panels[g];
+      g = unq(sel, /^#st-h-(.+)$/); if (g) return dom.panels[g];
+      const k = unq(sel, /^\[data-key="(.+)"\]$/); if (k && root && root.input) return root.input;
+      return null;
+    };
+    dom.$$ = (sel, root) => {
+      if (sel === '.st-panel') return groupKeys.map((g) => dom.panels[g]);
+      if (sel === '[data-go]') return groupKeys.map((g) => dom.navs[g]);
+      if (sel === '.set-row') { const g = groupKeys.find((x) => dom.panels[x] === root); return g ? dom.rows[g] : []; }
+      if (sel === 'input, select') return root && root.input ? [root.input] : [];
+      return [];
+    };
+    return dom;
+  }
+
+  test('تنظیمات (U1): تعویض گروه فقط hidden/aria-current را جابه‌جا می‌کند و draftها دست‌نخورده می‌مانند', async () => {
+    const gk = Object.keys(groups).filter((g) => items.some((i) => i.group === g));
+    const dom = fakeDom(gk, items);
+    const AP = loadViews(async () => ({ items, groups }), [], { $: dom.$, $$: dom.$$, dates: { mount() {} } });
+    const out = await AP.views.settings.render();
+    out.mount(dom.page);
+    const [g1, g2] = ['workHours', 'overtime'];
+    assert.equal(dom.panels[g1].hidden, false);
+    assert.equal(dom.panels[g2].hidden, true);
+
+    // تغییر یک مقدار در گروه اول ⇒ draft، دکمه‌ی ذخیره فعال، نقطه‌ی «ذخیره‌نشده» در ناوبری
+    dom.inputs.workDayStart.value = '05:11';
+    dom.inputs.workDayStart.fire('input');
+    assert.equal(dom.saves[g1].disabled, false);
+    assert.equal(dom.dots[g1].hidden, false);
+    assert.match(dom.dots[g1].innerHTML, /تغییر ذخیره‌نشده/);
+
+    // رفتن به گروه دیگر
+    dom.navs[g2].fire('click');
+    assert.equal(dom.panels[g1].hidden, true);
+    assert.equal(dom.panels[g2].hidden, false);
+    assert.equal(dom.navs[g2].attrs['aria-current'], 'true');
+    assert.equal('aria-current' in dom.navs[g1].attrs, false);
+    assert.equal(dom.focused, dom.panels[g2], 'فوکوس به عنوان پنل گروه جدید');
+    // draft پاک نشده و برای گروه اول هنوز «ذخیره‌نشده» است
+    assert.equal(dom.saves[g1].disabled, false);
+    assert.equal(dom.dots[g1].hidden, false);
+    assert.equal(dom.saves[g2].disabled, true);
+
+    // برگشت: همان پنل، همان مقدار
+    dom.navs[g1].fire('click');
+    assert.equal(dom.panels[g1].hidden, false);
+    assert.equal(dom.panels[g2].hidden, true);
+    assert.equal(dom.inputs.workDayStart.value, '05:11');
+  });
+
+  test('تنظیمات (U1): جستجو همچنان کار می‌کند (پنل‌های دارای نتیجه نمایان، بی‌نتیجه ⇒ set-none)', async () => {
+    const gk = Object.keys(groups).filter((g) => items.some((i) => i.group === g));
+    const dom = fakeDom(gk, items);
+    const AP = loadViews(async () => ({ items, groups }), [], { $: dom.$, $$: dom.$$, dates: { mount() {} } });
+    (await AP.views.settings.render()).mount(dom.page);
+    dom.q.value = 'workDayStart';
+    dom.q.fire('input');
+    assert.equal(dom.panels.workHours.hidden, false);
+    assert.equal(dom.panels.overtime.hidden, true);
+    assert.equal(dom.none.classList.contains('hidden'), true);
+    dom.q.value = 'zzz-no-such-setting';
+    dom.q.fire('input');
+    assert.equal(dom.none.classList.contains('hidden'), false);
+    dom.q.value = '';
+    dom.q.fire('input');
+    assert.equal(dom.panels.workHours.hidden, false, 'برگشت به گروه فعال');
+    assert.equal(dom.panels.overtime.hidden, true);
   });
 
   test('تعطیلات: ناوبری مستقل، لیست با نوع/دامنه، فیلتر آینده/گذشته، escape، دکمه‌های ویرایش و حذف', async () => {

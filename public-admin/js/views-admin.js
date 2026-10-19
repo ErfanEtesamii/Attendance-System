@@ -187,7 +187,6 @@
   // گروه‌هایی که محاسبه‌ی روز را عوض می‌کنند ⇒ روی عدد روزها/ماه‌های گذشته هم اثر دارند (گزارش‌ها همیشه با تنظیمات فعلی محاسبه می‌شوند)
   const IMPACT_GROUPS = new Set(['workHours', 'calendar', 'overtime']);
   const IMPACT_TEXT = 'گزارش‌ها و خلاصه‌ها همیشه با مقدار «فعلی» تنظیمات محاسبه می‌شوند؛ پس با تغییر این بخش، عددهای روزها و ماه‌های گذشته (ساعت مفید، تأخیر، اضافه‌کاری، غیبت) هم عوض می‌شود. خودِ رکوردهای تردد تغییری نمی‌کنند.';
-  const COLLAPSED_GROUPS = new Set(['schedule', 'retention']);
 
   // عنوان کوتاه یک تنظیم (بخش اول توضیح تا اولین «؛» یا «(») برای پیام‌ها و دیالوگ‌ها
   const setShort = (it) => it.description.split(/[؛(]/)[0].trim();
@@ -280,23 +279,45 @@
       const html = `
         <div class="view-header"><div><h2>تنظیمات</h2><div class="sub">هر تغییر با ذکر دلیل ذخیره و در «گزارش رویدادها» ثبت می‌شود · تعطیلات در صفحه‌ی «تعطیلات» است</div></div></div>
         <div class="filters"><label class="field grow"><span>جستجو در تنظیمات</span><input type="search" id="set-q" placeholder="مثلاً: اضافه‌کاری، تأخیر، cron …" autocomplete="off" /></label></div>
-        <div id="set-groups">${groupKeys.map((g) => `
-          <details class="card set-group" data-group="${esc(g)}"${COLLAPSED_GROUPS.has(g) ? '' : ' open'}>
-            <summary><h3>${esc(data.groups[g])}</h3><span class="muted small">${fmt.num(items.filter((i) => i.group === g).length)} تنظیم</span></summary>
-            <div class="set-body">${groupBody(g)}</div>
-          </details>`).join('')}</div>
-        <div id="set-none" class="hidden">${emptyBox('تنظیمی با این عبارت پیدا نشد.')}</div>`;
+        <div class="st-layout">
+          <aside class="card st-nav">
+            <div class="st-nav-head">
+              <span class="st-nav-ico" aria-hidden="true">${icon('settings')}</span>
+              <div><h3>تنظیمات سیستم</h3><div class="muted small">${fmt.num(items.length)} تنظیم در ${fmt.num(groupKeys.length)} بخش</div></div>
+            </div>
+            <nav aria-label="بخش‌های تنظیمات">${groupKeys.map((g, i) => `
+              <button type="button" class="st-nav-item" data-go="${esc(g)}"${i === 0 ? ' aria-current="true"' : ''}>
+                <span class="st-nav-name">${esc(data.groups[g])}</span>
+                <span class="st-dot" data-dot="${esc(g)}" hidden></span>
+                <span class="badge st-count">${fmt.num(items.filter((x) => x.group === g).length)}</span>
+              </button>`).join('')}
+            </nav>
+          </aside>
+          <div class="st-main">${groupKeys.map((g, i) => `
+            <section class="card st-panel" data-group="${esc(g)}" aria-labelledby="st-h-${esc(g)}"${i === 0 ? '' : ' hidden'}>
+              <header class="st-panel-head"><h3 id="st-h-${esc(g)}" tabindex="-1">${esc(data.groups[g])}</h3><span class="muted small">${fmt.num(items.filter((x) => x.group === g).length)} تنظیم</span></header>
+              <div class="st-body">${groupBody(g)}</div>
+            </section>`).join('')}
+            <div id="set-none" class="hidden">${emptyBox('تنظیمی با این عبارت پیدا نشد.')}</div>
+          </div>
+        </div>`;
 
       return {
         html,
         mount(page) {
-          const msgOf = (g) => $(`.set-group[data-group="${CSS.escape(g)}"] [data-msg]`, page);
+          let active = groupKeys[0];
+          const stickyTop = $('.topbar');
+          if (stickyTop && page.style) page.style.setProperty('--st-sticky-top', `${stickyTop.offsetHeight}px`);
+          const msgOf = (g) => $(`.st-panel[data-group="${CSS.escape(g)}"] [data-msg]`, page);
           const refreshSave = (g) => {
             const btn = $(`[data-save="${CSS.escape(g)}"]`, page);
-            if (btn) btn.disabled = !items.some((i) => i.group === g && isDirty(i));
+            const n = items.filter((i) => i.group === g && isDirty(i)).length;
+            if (btn) btn.disabled = n === 0;
+            const dot = $(`[data-dot="${CSS.escape(g)}"]`, page);
+            if (dot) { dot.hidden = n === 0; dot.innerHTML = n ? `<span class="st-sr">${fmt.num(n)} تغییر ذخیره‌نشده</span>` : ''; }
           };
           const repaint = (g) => {
-            const body = $(`.set-group[data-group="${CSS.escape(g)}"] .set-body`, page);
+            const body = $(`.st-panel[data-group="${CSS.escape(g)}"] .st-body`, page);
             body.innerHTML = groupBody(g);
             bind(g);
             refreshSave(g);
@@ -305,7 +326,7 @@
           const applyReset = (g) => { const m = msgOf(g); if (m) { m.className = 'form-msg'; m.textContent = ''; } };
 
           function bind(g) {
-            const card = $(`.set-group[data-group="${CSS.escape(g)}"]`, page);
+            const card = $(`.st-panel[data-group="${CSS.escape(g)}"]`, page);
             AP.dates.mount(card); // H4: ساعت‌های تنظیمات (شروع/پایان کار و ...) قابل‌تایپ؛ بعد از هر repaint دوباره
             $$('.set-row', card).forEach((row) => {
               const it = byKey[row.dataset.row];
@@ -369,10 +390,11 @@
             else { m.className = 'form-msg ok'; m.textContent = `${fmt.num(saved)} تنظیم ذخیره شد.`; AP.toast('تنظیمات ذخیره شد.'); }
           }
 
+          // نمایش پنل‌ها: بدون عبارت جستجو فقط گروه فعال؛ با عبارت، هر گروهِ دارای نتیجه (draftها هیچ‌وقت پاک نمی‌شوند)
           function applyFilter() {
             const q = $('#set-q', page).value.trim().toLowerCase();
             let anyGroup = false;
-            $$('.set-group', page).forEach((card) => {
+            $$('.st-panel', page).forEach((card) => {
               let shown = 0;
               $$('.set-row', card).forEach((row) => {
                 const it = byKey[row.dataset.row];
@@ -380,12 +402,22 @@
                 row.classList.toggle('hidden', !hit);
                 if (hit) shown += 1;
               });
-              card.classList.toggle('hidden', shown === 0);
-              if (q && shown) card.open = true;
+              card.hidden = q ? shown === 0 : card.dataset.group !== active;
               if (shown) anyGroup = true;
             });
             $('#set-none', page).classList.toggle('hidden', anyGroup);
           }
+
+          function showGroup(g) {
+            active = g;
+            $$('[data-go]', page).forEach((b) => {
+              if (b.dataset.go === g) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
+            });
+            applyFilter();
+            const h = $(`#st-h-${CSS.escape(g)}`, page);
+            if (h) h.focus();
+          }
+          $$('[data-go]', page).forEach((b) => b.addEventListener('click', () => showGroup(b.dataset.go)));
 
           groupKeys.forEach(bind);
           $('#set-q', page).addEventListener('input', applyFilter);

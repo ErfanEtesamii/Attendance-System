@@ -717,12 +717,6 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--g
 
 /* ---------- صفحه‌ی تنظیمات و تعطیلات (S3-9a/9b) ---------- */
 .small { font-size: 12px; }
-.set-group { padding: 0; margin-bottom: 14px; }
-.set-group > summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 16px 18px; cursor: pointer; list-style: none; }
-.set-group > summary::-webkit-details-marker { display: none; }
-.set-group > summary h3 { margin: 0; }
-.set-group[open] > summary { border-bottom: 1px solid var(--border); }
-.set-body { padding: 6px 18px 16px; }
 .note { display: flex; gap: 10px; align-items: flex-start; margin: 12px 0 4px; padding: 10px 12px; border-radius: 12px; font-size: 12.5px; line-height: 1.9; background: var(--blue-soft); color: var(--text); }
 .note svg { width: 18px; height: 18px; flex: none; margin-top: 3px; }
 .note.warn { background: var(--yellow-soft); }
@@ -742,6 +736,37 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--g
 @media (max-width: 760px) {
   .set-row { grid-template-columns: 1fr; gap: 8px; }
   .set-side { justify-content: flex-start; }
+}
+
+/* ---------- تنظیمات — طراحی تازه (st-) ---------- */
+.st-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 16px; align-items: start; }
+.st-nav { position: sticky; top: calc(var(--st-sticky-top, 72px) + 12px); padding: 16px; }
+.st-nav-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.st-nav-head h3 { margin: 0; }
+.st-nav-ico { display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; flex: none; border-radius: 50%; background: var(--green-soft); color: var(--green); }
+.st-nav-ico svg { width: 20px; height: 20px; }
+.st-nav nav { display: flex; flex-direction: column; gap: 4px; }
+.st-nav-item { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 40px; padding: 8px 12px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text); font: inherit; text-align: start; cursor: pointer; }
+.st-nav-item:hover { background: var(--ov-08); }
+.st-nav-item:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.st-nav-item[aria-current="true"] { background: var(--green-soft); color: var(--green); font-weight: 700; }
+.st-nav-name { flex: 1; min-width: 0; }
+.st-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--yellow); flex: none; }
+.st-dot[hidden] { display: none; }
+.st-count { flex: none; }
+.st-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.st-panel { padding: 0; }
+.st-panel[hidden] { display: none; }
+.st-panel + .st-panel { margin-top: 14px; }
+.st-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 16px 18px 12px; border-bottom: 2px solid var(--green-soft); }
+.st-panel-head h3 { margin: 0; }
+.st-panel-head h3:focus { outline: none; }
+.st-panel-head h3:focus-visible { outline: 2px solid var(--green); outline-offset: 4px; border-radius: 6px; }
+.st-body { padding: 6px 18px 16px; }
+.st-main { min-width: 0; }
+@media (max-width: 900px) {
+  .st-layout { grid-template-columns: minmax(0, 1fr); }
+  .st-nav { position: static; }
 }
 
 /* ---------- زنگوله‌ی اعلان (S4-6a) ---------- */
