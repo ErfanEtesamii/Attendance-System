@@ -739,7 +739,6 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--g
 .st-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--yellow); flex: none; }
 .st-dot[hidden] { display: none; }
 .st-count { flex: none; }
-.st-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .st-panel { padding: 0; }
 .st-panel[hidden] { display: none; }
 .st-panel + .st-panel { margin-top: 14px; }
@@ -977,7 +976,6 @@ button, a, summary, select, input, [role="button"], .clickable, th.sortable { to
   .st-more { min-height: 44px; display: inline-flex; align-items: center; }
   .st-switch { width: 48px; height: 28px; }
   .st-switch::after { width: 22px; height: 22px; }
-  .st-switch:checked::after { inset-inline-start: 22px; }
   .jdp-day, .jdp-nav, .jdp-link { min-height: 40px; min-width: 40px; }
   .cal-cell { width: 34px; height: 34px; } /* تقویم متراکم است؛ حداقل ۲۴px (WCAG 2.5.8) رعایت می‌شود */
 }

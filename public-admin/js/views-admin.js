@@ -296,7 +296,7 @@
               <span class="st-nav-ico" aria-hidden="true">${icon('settings')}</span>
               <div><h3>تنظیمات سیستم</h3><div class="muted small">${fmt.num(items.length)} تنظیم در ${fmt.num(groupKeys.length)} بخش</div></div>
             </div>
-            <label class="field st-search"><span class="st-sr">جستجو در تنظیمات</span><input type="search" id="set-q" placeholder="جستجو: اضافه‌کاری، تأخیر، cron …" autocomplete="off" /></label>
+            <label class="field st-search"><span class="sr-only">جستجو در تنظیمات</span><input type="search" id="set-q" placeholder="جستجو: اضافه‌کاری، تأخیر، cron …" autocomplete="off" /></label>
             <nav aria-label="بخش‌های تنظیمات">${groupKeys.map((g, i) => `
               <button type="button" class="st-nav-item" data-go="${esc(g)}"${i === 0 ? ' aria-current="true"' : ''}>
                 <span class="st-nav-name">${esc(data.groups[g])}</span>
@@ -331,7 +331,7 @@
             const n = items.filter((i) => i.group === g && isDirty(i)).length;
             if (btn) btn.disabled = n === 0;
             const dot = $(`[data-dot="${CSS.escape(g)}"]`, page);
-            if (dot) { dot.hidden = n === 0; dot.innerHTML = n ? `<span class="st-sr">${fmt.num(n)} تغییر ذخیره‌نشده</span>` : ''; }
+            if (dot) { dot.hidden = n === 0; dot.innerHTML = n ? `<span class="sr-only">${fmt.num(n)} تغییر ذخیره‌نشده</span>` : ''; }
             const bar = $(`[data-bar="${CSS.escape(g)}"]`, page);
             if (bar) bar.classList.toggle('dirty', n > 0);
             const pend = $(`[data-pending="${CSS.escape(g)}"]`, page);
