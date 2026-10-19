@@ -779,7 +779,7 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--g
 .st-meta { font-size: 11.5px; color: var(--hint); }
 .st-state { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .st-switch-wrap { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
-.st-switch { appearance: none; -webkit-appearance: none; position: relative; width: 44px; height: 24px; margin: 0; border-radius: 999px; background: var(--ov-08); border: 1px solid var(--border); cursor: pointer; flex: none; }
+input.st-switch { appearance: none; -webkit-appearance: none; box-sizing: border-box; flex: none; position: relative; width: 44px; height: 24px; padding: 0; margin: 0; border-radius: 999px; background: var(--ov-08); border: 1px solid var(--border); cursor: pointer; flex: none; }
 .st-switch::after { content: ""; position: absolute; top: 2px; inset-inline-start: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--text); transition: inset-inline-start .15s; }
 .st-switch:checked { background: var(--green-soft); border-color: var(--green); }
 .st-switch:checked::after { inset-inline-start: 22px; background: var(--green); }
@@ -974,7 +974,7 @@ button, a, summary, select, input, [role="button"], .clickable, th.sortable { to
   .chk input { width: 22px; height: 22px; }
   .st-nav-item, .st-pill span, .st-switch-wrap { min-height: 44px; }
   .st-more { min-height: 44px; display: inline-flex; align-items: center; }
-  .st-switch { width: 48px; height: 28px; }
+  input.st-switch { width: 48px; height: 28px; }
   .st-switch::after { width: 22px; height: 22px; }
   .jdp-day, .jdp-nav, .jdp-link { min-height: 40px; min-width: 40px; }
   .cal-cell { width: 34px; height: 34px; } /* تقویم متراکم است؛ حداقل ۲۴px (WCAG 2.5.8) رعایت می‌شود */
