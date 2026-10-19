@@ -126,6 +126,7 @@ describe('صفحه‌های تنظیمات و تعطیلات پنل (S3-9a/9b)',
       dom.rows[g] = items.filter((i) => i.group === g).map((i) => {
         const input = mk({ value: String(i.value) });
         const row = mk({ dataset: { row: i.key } });
+        row.tag = mk({ hidden: true });
         dom.inputs[i.key] = input; row.input = input;
         return row;
       });
@@ -141,17 +142,53 @@ describe('صفحه‌های تنظیمات و تعطیلات پنل (S3-9a/9b)',
       g = unq(sel, /^\.st-panel\[data-group="(.+)"\]$/); if (g) return dom.panels[g];
       g = unq(sel, /^#st-h-(.+)$/); if (g) return dom.panels[g];
       const k = unq(sel, /^\[data-key="(.+)"\]$/); if (k && root && root.input) return root.input;
+      if (sel === '[data-dirty]') return root && root.tag ? root.tag : null;
       return null;
     };
     dom.$$ = (sel, root) => {
       if (sel === '.st-panel') return groupKeys.map((g) => dom.panels[g]);
       if (sel === '[data-go]') return groupKeys.map((g) => dom.navs[g]);
-      if (sel === '.set-row') { const g = groupKeys.find((x) => dom.panels[x] === root); return g ? dom.rows[g] : []; }
+      if (sel === '.st-field') { const g = groupKeys.find((x) => dom.panels[x] === root); return g ? dom.rows[g] : []; }
       if (sel === 'input, select') return root && root.input ? [root.input] : [];
       return [];
     };
     return dom;
   }
+
+  test('تنظیمات (U2): فیلدها — سوییچ، چیپ روز هفته، فیلد عریض، توضیح کامل در DOM، وضعیت تغییر‌یافته', async () => {
+    const AP = loadViews(async () => ({ items, groups }));
+    const { html } = await AP.views.settings.render();
+    const boolItem = items.find((i) => i.type === 'boolean');
+    const field = (k) => html.split(`data-row="${k}"`)[1].split('<div class="st-field')[0];
+    assert.match(field(boolItem.key), /type="checkbox" role="switch" class="st-switch"/);
+    assert.match(field(boolItem.key), /aria-label="[^"]+"/);
+    assert.doesNotMatch(field(boolItem.key), /<select/);
+    assert.match(html, /<div class="st-field full[^"]*" data-row="weekendDays"/);
+    assert.match(field('weekendDays'), /<label class="chk st-pill"><input type="checkbox" value="\d"[^>]*\/><span>/);
+    assert.match(field('cronDailyReport'), /ltr-in/);
+    assert.match(html, /<div class="st-fields">/);
+    // متن کامل توضیح (حتی اگر با CSS کوتاه شود) در DOM است و دکمه‌ی بیشتر فقط برای توضیح بلند
+    for (const it of items) {
+      const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      assert.ok(field(it.key).includes(esc(it.description)), `توضیح کامل ${it.key}`);
+      const short = it.description.split(/[؛(]/)[0].trim();
+      assert.equal(/data-more/.test(field(it.key)), it.description.trim() !== short, `بیشتر ${it.key}`);
+    }
+    assert.match(html, /aria-expanded="false" aria-controls="st-d-/);
+    // فیلد بدون تغییر: «پیش‌فرض» و بدون دکمه‌ی بازگشت
+    assert.doesNotMatch(field('workDayStart'), /data-reset/);
+    assert.match(field('workDayStart'), /پیش‌فرض/);
+  });
+
+  test('تنظیمات (U2): boolean تغییر‌یافته تیک‌خورده/نخورده درست رندر می‌شود (draft رشته‌ای)', async () => {
+    const boolItem = items.find((i) => i.type === 'boolean');
+    const off = items.map((i) => (i.key === boolItem.key ? { ...i, value: false, isDefault: false } : i));
+    const AP = loadViews(async () => ({ items: off, groups }));
+    const { html } = await AP.views.settings.render();
+    const f = html.split(`data-row="${boolItem.key}"`)[1].split('<div class="st-field')[0];
+    assert.doesNotMatch(f, /class="st-switch"[^>]*checked/);
+    assert.match(f, /data-reset=/);
+  });
 
   test('تنظیمات (U1): تعویض گروه فقط hidden/aria-current را جابه‌جا می‌کند و draftها دست‌نخورده می‌مانند', async () => {
     const gk = Object.keys(groups).filter((g) => items.some((i) => i.group === g));
@@ -168,6 +205,7 @@ describe('صفحه‌های تنظیمات و تعطیلات پنل (S3-9a/9b)',
     dom.inputs.workDayStart.fire('input');
     assert.equal(dom.saves[g1].disabled, false);
     assert.equal(dom.dots[g1].hidden, false);
+    assert.equal(dom.rows[g1].find((r) => r.input === dom.inputs.workDayStart).tag.hidden, false, 'نشان «ذخیره‌نشده» روی فیلد');
     assert.match(dom.dots[g1].innerHTML, /تغییر ذخیره‌نشده/);
 
     // رفتن به گروه دیگر

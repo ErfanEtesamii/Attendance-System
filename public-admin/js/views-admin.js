@@ -213,7 +213,7 @@
     const al = `aria-label="${esc(setShort(it))}"`; // برچسب دسترس‌پذیر کنترل (S5-9a)
     switch (it.type) {
       case 'boolean':
-        return `<select name="${k}" data-key="${k}" ${al}><option value="true"${v ? ' selected' : ''}>روشن</option><option value="false"${v ? '' : ' selected'}>خاموش</option></select>`;
+        return `<label class="st-switch-wrap"><input type="checkbox" role="switch" class="st-switch" name="${k}" data-key="${k}" ${al}${setNorm(it, v) === 'true' ? ' checked' : ''} /><span class="st-sw-on">روشن</span><span class="st-sw-off">خاموش</span></label>`;
       case 'number':
         return `<input type="number" step="any" name="${k}" data-key="${k}" ${al} value="${esc(v)}"${it.min !== undefined ? ` min="${it.min}"` : ''}${it.max !== undefined ? ` max="${it.max}"` : ''} class="ltr-in" />`;
       case 'time':
@@ -221,7 +221,7 @@
       case 'enum':
         return `<select name="${k}" data-key="${k}" ${al}>${it.values.map((o) => `<option value="${esc(o)}"${o === v ? ' selected' : ''}>${esc(setEnumLabel(it, o))}</option>`).join('')}</select>`;
       case 'weekdays':
-        return `<div class="chk-row" data-key="${k}" role="group" ${al}>${WEEKDAY_ORDER.map(([d, n]) => `<label class="chk"><input type="checkbox" value="${d}"${(v || []).includes(d) ? ' checked' : ''} /> ${n}</label>`).join('')}</div>`;
+        return `<div class="chk-row" data-key="${k}" role="group" ${al}>${WEEKDAY_ORDER.map(([d, n]) => `<label class="chk st-pill"><input type="checkbox" value="${d}"${(v || []).includes(d) ? ' checked' : ''} /><span>${n}</span></label>`).join('')}</div>`;
       default: // cron | string | timezone
         return `<input type="text" name="${k}" data-key="${k}" ${al} value="${esc(v)}" dir="ltr" class="ltr-in" autocomplete="off" spellcheck="false" />`;
     }
@@ -238,6 +238,7 @@
   function setRead(it, row) {
     const el = $(`[data-key="${CSS.escape(it.key)}"]`, row);
     if (!el) return undefined;
+    if (it.type === 'boolean') return el.checked ? 'true' : 'false';
     if (it.type === 'weekdays') return $$('input:checked', el).map((c) => Number(c.value));
     if (it.type === 'time' && window.TimeInput) { const t = window.TimeInput.parse(el.value); return t.ok ? t.value : el.value; } // H4: ساعت تایپی همیشه HH:MM
     return el.value;
@@ -256,22 +257,29 @@
       const draftOf = (it) => (it.key in drafts ? drafts[it.key] : it.value);
       const isDirty = (it) => it.key in drafts && setNorm(it, drafts[it.key]) !== setNorm(it, it.value);
 
-      const rowHtml = (it) => `
-        <div class="set-row" data-row="${esc(it.key)}">
-          <div class="set-info">
-            <div class="set-desc">${esc(it.description)}</div>
-            <div class="set-meta"><code class="ltr">${esc(it.key)}</code> · ${esc(setHint(it))}</div>
-          </div>
-          <div class="set-ctl">${setInput(it, draftOf(it))}</div>
-          <div class="set-side">${it.isDefault ? '<span class="muted small">پیش‌فرض</span>' : `${AP.badge('blue', 'تغییر‌یافته')} <button type="button" class="btn ghost small" data-reset="${esc(it.key)}">بازگشت به پیش‌فرض</button>`}</div>
+      // فیلد عریض: روز هفته، cron، رشته و enum با برچسب گزینه‌ی بلند
+      const isFull = (it) => ['weekdays', 'cron', 'string'].includes(it.type) || (it.type === 'enum' && it.values.some((o) => setEnumLabel(it, o).length > 24));
+      const rowHtml = (it) => {
+        const short = setShort(it);
+        const dirty = isDirty(it);
+        const did = `st-d-${esc(it.key)}`;
+        return `
+        <div class="st-field${isFull(it) ? ' full' : ''}${dirty ? ' dirty' : ''}" data-row="${esc(it.key)}">
+          <div class="st-label"><span>${esc(short)}</span><span class="st-tag" data-dirty${dirty ? '' : ' hidden'}>ذخیره‌نشده</span></div>
+          <div class="st-ctl">${setInput(it, draftOf(it))}</div>
+          <div class="st-desc" id="${did}">${esc(it.description)}</div>
+          ${it.description.trim() !== short ? `<button type="button" class="st-more" data-more aria-expanded="false" aria-controls="${did}">بیشتر</button>` : ''}
+          <div class="st-meta"><code class="ltr">${esc(it.key)}</code> · ${esc(setHint(it))}</div>
+          <div class="st-state">${it.isDefault ? '<span class="muted small">پیش‌فرض</span>' : `${AP.badge('blue', 'تغییر‌یافته')} <button type="button" class="btn ghost small" data-reset="${esc(it.key)}">بازگشت به پیش‌فرض</button>`}</div>
         </div>`;
+      };
 
       const groupBody = (g) => {
         const list = items.filter((i) => i.group === g);
         const notes = [];
         if (IMPACT_GROUPS.has(g)) notes.push(`<div class="note warn">${icon('alert')}<span>${esc(IMPACT_TEXT)}</span></div>`);
         if (g === 'schedule') notes.push(`<div class="note">${icon('clock')}<span>تغییر زمان‌بندی بدون ری‌استارت و بلافاصله اعمال می‌شود. مقدار پیش‌فرض از فایل <code class="ltr">.env</code> می‌آید.</span></div>`);
-        return `${notes.join('')}<div class="set-rows">${list.map(rowHtml).join('')}</div>
+        return `${notes.join('')}<div class="st-fields">${list.map(rowHtml).join('')}</div>
           <div class="set-foot"><div class="form-msg" data-msg></div>
             <button type="button" class="btn primary" data-save="${esc(g)}" disabled>ذخیره‌ی تغییرات این بخش</button></div>`;
       };
@@ -328,18 +336,27 @@
           function bind(g) {
             const card = $(`.st-panel[data-group="${CSS.escape(g)}"]`, page);
             AP.dates.mount(card); // H4: ساعت‌های تنظیمات (شروع/پایان کار و ...) قابل‌تایپ؛ بعد از هر repaint دوباره
-            $$('.set-row', card).forEach((row) => {
+            $$('.st-field', card).forEach((row) => {
               const it = byKey[row.dataset.row];
               const onChange = () => {
                 drafts[it.key] = setRead(it, row);
                 if (!isDirty(it)) delete drafts[it.key];
                 row.classList.toggle('dirty', it.key in drafts);
+                const tag = $('[data-dirty]', row);
+                if (tag) tag.hidden = !(it.key in drafts);
                 refreshSave(g);
                 applyReset(g);
               };
               $$('input, select', row).forEach((el) => { el.addEventListener('input', onChange); el.addEventListener('change', onChange); });
               if (it.key in drafts) row.classList.add('dirty');
             });
+            $$('[data-more]', card).forEach((b) => b.addEventListener('click', () => {
+              const d = $(`#${CSS.escape(b.getAttribute('aria-controls'))}`, card);
+              const open = b.getAttribute('aria-expanded') !== 'true';
+              b.setAttribute('aria-expanded', String(open));
+              b.textContent = open ? 'کمتر' : 'بیشتر';
+              if (d) d.classList.toggle('open', open);
+            }));
             $$('[data-reset]', card).forEach((b) => b.addEventListener('click', async () => {
               const it = byKey[b.dataset.reset];
               const reason = await AP.askReason({
@@ -396,7 +413,7 @@
             let anyGroup = false;
             $$('.st-panel', page).forEach((card) => {
               let shown = 0;
-              $$('.set-row', card).forEach((row) => {
+              $$('.st-field', card).forEach((row) => {
                 const it = byKey[row.dataset.row];
                 const hit = !q || it.description.toLowerCase().includes(q) || it.key.toLowerCase().includes(q);
                 row.classList.toggle('hidden', !hit);
