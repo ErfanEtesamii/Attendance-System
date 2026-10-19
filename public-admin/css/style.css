@@ -466,9 +466,8 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
   right: 0; left: 0;
   max-height: 340px;
   overflow-y: auto;
-  background: var(--card-2);
-  border: 1px solid var(--border);
-  border-radius: 14px;
+  background: var(--card);
+  border-radius: 16px;
   box-shadow: var(--shadow);
   padding: 6px;
   z-index: 50;
@@ -482,7 +481,9 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
   font-family: inherit; font-size: 13px; text-align: right;
   cursor: pointer;
 }
-.search-item:hover { background: var(--ov-06); }
+/* T6-2: hover/فوکوس = --brand-soft (متن --text/--hint روی آن AA)؛ فوکوس کیبورد حلقه‌ی --brand درونی */
+.search-item:hover { background: var(--brand-soft); }
+.search-item:focus-visible { background: var(--brand-soft); outline: 2px solid var(--brand); outline-offset: -2px; }
 .search-item small { color: var(--hint); margin-right: auto; }
 
 .page { padding: 12px 32px 40px; max-width: 1400px; }
@@ -806,7 +807,7 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--b
   position: fixed; inset: 0; z-index: 100;
   display: grid; place-items: center;
   padding: 16px;
-  background: rgba(10, 10, 20, 0.66);
+  background: rgba(23, 20, 58, 0.55);
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   overflow-y: auto;
@@ -819,14 +820,16 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--b
   max-height: calc(100vh - 32px - var(--kb, 0px));
   overflow-y: auto;
   background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 22px;
-  padding: 22px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow);
 }
 .modal.wide { max-width: 760px; }
 .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
-.modal-head h3 { margin: 0; font-size: 16px; font-weight: 800; }
+.modal-head h3 { margin: 0; font-size: 18px; font-weight: 700; color: var(--brand); }
+/* T6-2: دکمه‌ی بستنِ آیکنی روی سطح --card دیده شود (پس‌زمینه‌ی پیش‌فرض .icon-btn هم‌رنگ سطح است) */
+.modal .icon-btn, .bell-drawer .icon-btn { background: var(--card-2); }
+.modal .icon-btn:hover, .bell-drawer .icon-btn:hover { background-image: linear-gradient(var(--ov-08), var(--ov-08)); color: var(--text); }
 .modal-actions { display: flex; gap: 10px; justify-content: flex-start; margin-top: 6px; flex-wrap: wrap; }
 .section-title { font-size: 13px; font-weight: 800; margin: 18px 0 10px; color: var(--text); }
 
@@ -870,7 +873,7 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--b
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
   .form-grid { grid-template-columns: 1fr; }
   .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .modal { padding: 18px; border-radius: 20px; }
+  .modal { padding: 20px; border-radius: 24px; }
 }
 
 /* T3: کشوی موبایل/تبلت — از لبه‌ی صفحه، همیشه با برچسب، گوشه‌های گرد سمت محتوا؛ تولتیپ و دکمه‌ی عرض فقط دسکتاپ */
@@ -993,27 +996,27 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--b
   pointer-events: none;
 }
 .bell-backdrop { display: none; }
-.bell-backdrop.open { display: block; position: fixed; inset: 0; background: rgba(10, 10, 20, .45); z-index: 44; }
+.bell-backdrop.open { display: block; position: fixed; inset: 0; background: rgba(23, 20, 58, .45); z-index: 44; }
 .bell-drawer {
   position: fixed; top: 0; bottom: 0; left: 0; z-index: 45;
   width: min(400px, 100vw);
   display: flex; flex-direction: column;
   background: var(--card);
-  border-right: 1px solid var(--border);
+  border-radius: 0 var(--radius) var(--radius) 0; /* لبه‌ی چسبیده به صفحه (چپ) صاف؛ سمت محتوا گرد */
   box-shadow: none;
   transform: translateX(-100%);
   visibility: hidden; /* بسته ⇒ با Tab هم فوکوس نگیرد */
   transition: transform .25s ease, visibility 0s linear .25s;
 }
-.bell-drawer.open { transform: translateX(0); visibility: visible; box-shadow: 20px 0 60px rgba(0, 0, 0, .5); transition: transform .25s ease, visibility 0s; }
-.bell-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
-.bell-head h3 { flex: 1; margin: 0; font-size: 16px; font-weight: 800; }
+.bell-drawer.open { transform: translateX(0); visibility: visible; box-shadow: var(--shadow); transition: transform .25s ease, visibility 0s; }
+.bell-head { display: flex; align-items: center; gap: 10px; padding: 18px 20px 14px; border-bottom: 1px solid var(--border); }
+.bell-head h3 { flex: 1; margin: 0; font-size: 18px; font-weight: 700; color: var(--brand); }
 .bell-list { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
 .bell-foot { padding: 10px 16px; border-top: 1px solid var(--border); text-align: center; }
 .bell-foot:has(.hidden:only-child) { display: none; }
 .bell-items { list-style: none; margin: 0; padding: 0; }
 .bell-item { display: flex; align-items: flex-start; gap: 6px; border-bottom: 1px solid var(--border); }
-.bell-item.unread { background: var(--purple-soft); }
+.bell-item.unread { background: var(--brand-soft); }
 .bell-main {
   flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: 10px;
   padding: 12px 16px; border: 0; background: transparent; color: var(--text);
@@ -1021,8 +1024,11 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--b
 }
 .bell-item.has-link .bell-main { cursor: pointer; }
 .bell-item.has-link .bell-main:hover { background: var(--ov-04); }
+.bell-main:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+/* T6-2: روی اعلان خوانده‌نشده، hover (--ov-04) روی --brand-soft جمع می‌شود و --hint در تم تیره به ≈ ۴٫۳:۱ می‌افتد ⇒ هنگام hover متن فرعی به --text برود */
+.bell-item.has-link .bell-main:hover .bell-body, .bell-item.has-link .bell-main:hover .bell-time { color: var(--text); }
 .bell-dot { flex: none; width: 8px; height: 8px; margin-top: 7px; border-radius: 50%; background: transparent; }
-.bell-item.unread .bell-dot { background: var(--purple); }
+.bell-item.unread .bell-dot { background: var(--brand); }
 .bell-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .bell-title { font-size: 13.5px; font-weight: 700; line-height: 1.8; overflow-wrap: anywhere; }
 .bell-body {
@@ -1034,7 +1040,7 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--b
 .bell-read svg { width: 16px; height: 16px; }
 .bell-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 900px) {
-  .bell-drawer { width: 100vw; border-right: 0; }
+  .bell-drawer { width: 100vw; border-radius: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .bell-drawer, .bell-drawer.open { transition: none; }
