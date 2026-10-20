@@ -250,6 +250,7 @@
         try { data = await loadAll(); } catch (err) { AP.toast(err.message, true); return; }
         live.innerHTML = liveHtml(data);
         bindLive(live, page);
+        if (AP.refreshMyTasksCount) AP.refreshMyTasksCount(); // M4: نشان منو بعد از هر تیک/برداشتن تیک به‌روز شود (بدون انتظار)
         const target = (focusId != null && $(`[data-task="${focusId}"] button`, live)) || $('#ms-today-h', live);
         if (target && target.focus) target.focus({ preventScroll: true });
       }

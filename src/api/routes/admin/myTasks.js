@@ -2,6 +2,7 @@
 // از طریق panelTasksService. ⚠️ اسکوپ: همه‌چیز فقط با req.adminUser؛ هیچ پارامتر/فیلد userId پذیرفته نمی‌شود (مالکیت پاسخ‌ها در سرویس چک می‌شود).
 //   GET   /admin/me/tasks/today?date=      فهرست امروز (date اختیاری: گزارش دیرهنگام؛ اعتبارسنجی کامل در resolveReportDate)
 //   GET   /admin/me/tasks/backfill         روزهای قابل تکمیل دیرهنگام
+//   GET   /admin/me/tasks/pending-count    M4: تعداد تسک‌های بی‌پاسخ امروز (برای نشان منو)
 //   POST  /admin/me/tasks/answer           { taskId, status: done|partial|not_done, reasonCode?, reasonText?, note?, date? }
 //   POST  /admin/me/tasks/undo             { taskId, date? }
 //   PATCH /admin/me/tasks/note             { taskId, date?, note }
@@ -30,6 +31,8 @@ const queryDate = (req) => req.query.date; // نوع/قالب را resolveReport
 router.get('/admin/me/tasks/today', requirePermission('me.read'), (req, res) => send(res, service.getToday(req.adminUser, { date: queryDate(req) })));
 
 router.get('/admin/me/tasks/backfill', requirePermission('me.read'), (req, res) => res.json(service.getBackfill(req.adminUser)));
+
+router.get('/admin/me/tasks/pending-count', requirePermission('me.read'), (req, res) => res.json(service.pendingCount(req.adminUser)));
 
 router.post('/admin/me/tasks/answer', requirePermission('me.read'), (req, res) => {
   const r = service.answer(req.adminUser, req.body);

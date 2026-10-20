@@ -64,4 +64,15 @@ function note(user, body) {
   return guarded(user, b, (taskId) => taskReportService.updateNote(user, { taskId, date: b.date, note: b.note }));
 }
 
-module.exports = { getToday, getBackfill, answer, undo, note };
+/**
+ * GET /admin/me/tasks/pending-count — M4: نشان کنار «وضعیت من» در منو. فقط عدد (بدون عنوان تسک).
+ * مبنا همان قاعده‌ی گیت/بنر: تسک پاسخ‌نداده‌ی «امروز» که کاربر می‌تواند از پنل تیکش بزند؛ سیستمی/واجب (فقط‌خواندنی در پنل) و اختیاری (low) نمی‌آید.
+ * روز تعطیل/مرخصی تمام‌روز/ماه بسته/خطای تاریخ ⇒ pending: 0 (نشانی لازم نیست؛ خطا به UI نمی‌رسد).
+ */
+function pendingCount(user) {
+  const day = taskReportService.getDailyTasks(user, {});
+  if (!day || !day.ok) return { ok: true, pending: 0 };
+  return { ok: true, date: day.date, pending: day.tasks.filter((t) => !t.isSystem && !t.optional).length };
+}
+
+module.exports = { getToday, getBackfill, pendingCount, answer, undo, note };

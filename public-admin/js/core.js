@@ -524,7 +524,24 @@
     const mb = $('#menu-btn'); if (mb) mb.setAttribute('aria-expanded', 'false');
   }
 
+  // نشان عددیِ یک آیتم منو (data-view = k) از AP.state.counts[k]؛ عدد کامل در aria-label/title
+  function paintCount(k) {
+    const el = $(`.nav-item[data-view="${k}"] .nav-count`);
+    if (!el) return;
+    const n = (AP.state.counts && AP.state.counts[k]) || 0;
+    el.textContent = n > 9 ? `${fmt.num(9)}+` : fmt.num(n); // نشان کوتاه (۹+)؛ عدد کامل در aria-label
+    el.classList.toggle('hidden', !n);
+    const btn = el.closest ? el.closest('.nav-item') : null;
+    const lab = btn && btn.querySelector ? btn.querySelector('.nav-label') : null;
+    if (btn && lab) {
+      const full = n ? `${lab.textContent} (${fmt.num(n)} مورد)` : lab.textContent;
+      btn.setAttribute('aria-label', full);
+      btn.setAttribute('title', full);
+    }
+  }
+
   AP.refreshCounts = async function refreshCounts() {
+    AP.refreshMyTasksCount(); // مستقل از بقیه؛ شکستِ هرکدام دیگری را خراب نمی‌کند
     try {
       // فقط شمارنده‌هایی که مجوزشان را دارد؛ بقیه صفر (درخواستِ بی‌مجوز ۴۰۳ می‌گیرد)
       const [leave, disputes] = await Promise.all([
@@ -546,22 +563,20 @@
       if (AP.can('remote_work.read')) {
         try { remotePending = (await AP.api('/admin/remote-work/count')).pending || 0; } catch (_) { remotePending = 0; }
       }
-      AP.state.counts = { leave: leave.length, disputes: disputes.length, nightly: leave.length + disputes.length, suspicious: suspicious.length, checkin_permissions: checkinPerms.length, remote: remotePending };
-      ['leave', 'disputes', 'nightly', 'suspicious', 'checkin_permissions', 'remote'].forEach((k) => {
-        const el = $(`.nav-item[data-view="${k}"] .nav-count`);
-        if (!el) return;
-        const n = AP.state.counts[k];
-        el.textContent = n > 9 ? `${fmt.num(9)}+` : fmt.num(n); // نشان کوتاه (۹+)؛ عدد کامل در aria-label
-        el.classList.toggle('hidden', !n);
-        const btn = el.closest ? el.closest('.nav-item') : null;
-        const lab = btn && btn.querySelector ? btn.querySelector('.nav-label') : null;
-        if (btn && lab) {
-          const full = n ? `${lab.textContent} (${fmt.num(n)} مورد)` : lab.textContent;
-          btn.setAttribute('aria-label', full);
-          btn.setAttribute('title', full);
-        }
-      });
+      AP.state.counts = { ...AP.state.counts, leave: leave.length, disputes: disputes.length, nightly: leave.length + disputes.length, suspicious: suspicious.length, checkin_permissions: checkinPerms.length, remote: remotePending };
+      ['leave', 'disputes', 'nightly', 'suspicious', 'checkin_permissions', 'remote'].forEach(paintCount);
     } catch (_) { /* غیرحیاتی */ }
+  };
+
+  // M4: نشان «تسک‌های بی‌پاسخِ امروز» کنار «وضعیت من». فقط یک GET سبک (بدون بقیه‌ی شمارنده‌ها)؛
+  // بعد از هر تیک/برداشتن تیک در صفحه‌ی «وضعیت من» هم صدا زده می‌شود. شکست/نبودن مجوز ⇒ نشان پنهان (هرگز خطا به کاربر نمی‌رسد).
+  AP.refreshMyTasksCount = async function refreshMyTasksCount() {
+    let n = 0;
+    if (AP.can('me.read')) {
+      try { n = Number((await AP.api('/admin/me/tasks/pending-count')).pending) || 0; } catch (_) { n = 0; }
+    }
+    AP.state.counts = { ...AP.state.counts, mystatus: n };
+    paintCount('mystatus');
   };
 
   function buildNav() {
@@ -571,8 +586,12 @@
     if (AP.selfOnly() && AP.viewAllowed(AP.views.profile)) {
       items.unshift({ id: 'profile', icon: 'employees', label: 'پروفایل من', group: 'پنل من', param: AP.state.me.id });
     }
-    // M2: «وضعیت من» اولین آیتم «پنل من» (بالاتر از «پروفایل من»)؛ برای نقش‌های دیگر در M4 اضافه می‌شود
-    if (AP.selfOnly() && AP.viewAllowed(AP.views.mystatus)) items.unshift({ id: 'mystatus', icon: 'attendance', label: 'وضعیت من', group: 'پنل من' });
+    // M2/M4: «وضعیت من» با نشان تسک‌های بی‌پاسخِ امروز. کارمند: اولین آیتم «پنل من» (بالاتر از «پروفایل من»)؛
+    // سرپرست/منابع انسانی/ادمین: یک آیتم در گروه «پنل من» انتهای منو (ترتیب و جای بقیه‌ی گروه‌ها دست نمی‌خورد)
+    if (AP.viewAllowed(AP.views.mystatus)) {
+      const mine = { id: 'mystatus', icon: 'attendance', label: 'وضعیت من', group: 'پنل من', counter: true };
+      if (AP.selfOnly()) items.unshift(mine); else items.push(mine);
+    }
     items.forEach((n) => { (groups[n.group] = groups[n.group] || []).push(n); });
     $('#side-nav').innerHTML = Object.keys(groups)
       .map((g) => `<div class="nav-group">${esc(g)}</div>${groups[g].map(AP.navItemHtml).join('')}`)
