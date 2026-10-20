@@ -560,6 +560,19 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 .ms-task-title .ms-task-sub { display: block; }
 .ms-today .hbar { margin: 8px 0 4px; }
 @media (max-width: 480px) { .ms-task-actions .btn { flex: 1 1 auto; } }
+/* M5: پرداخت — فقط توکن‌ها (هر دو تم، بدون رنگ سخت‌کد)؛ دکمه/نشان/برچسب هیچ‌وقت از کارت بیرون نمی‌زند؛ چاپ بدون دکمه */
+.ms-today, .ms-next { min-width: 0; }
+.ms-row dt { min-width: 0; overflow-wrap: anywhere; }
+.ms-chips .badge { max-width: 100%; }
+.ms-task-actions .btn { max-width: 100%; white-space: normal; text-align: center; }
+.ms-section-title { color: var(--text); }
+@media (max-width: 360px) { .ms-row { font-size: 12.5px; } .ms-task-actions .btn { flex: 1 1 100%; } }
+@media print {
+  .ms-top { display: block; }
+  .ms-today, .ms-next { break-inside: avoid; margin-bottom: 10px; }
+  .ms-task { break-inside: avoid; border-top: 1px solid var(--border); }
+  .ms-task-actions, .ms-actions { display: none !important; }
+}
 
 /* ---------- کارت‌ها ---------- */
 

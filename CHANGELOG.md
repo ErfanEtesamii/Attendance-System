@@ -4,6 +4,17 @@
 
 ## [Unreleased] — بخش ۴ (ممیزی)
 
+### «وضعیت من» — M5 (پرداخت و مستندسازی)
+- CSS (`.ms-*` در `style.css`): فقط توکن‌های موجود (هر دو تم)؛ دکمه‌ی تسک و نشان‌ها در همه‌ی عرض‌ها قابل شکستن‌اند (`white-space: normal`، `max-width: 100%`)؛ زیر ۳۶۰px دکمه‌های تسک تمام‌عرض؛ چاپ: دکمه‌ها و نوار اقدام پنهان، کارت‌های «امروز/برنامه‌ی بعد» و هر تسک بدون شکستن بین صفحه‌ها. داخل کارت‌ها هنوز فقط خط جداکننده است (بدون کادر تو در تو).
+- مستندات: `docs/PHASE17_DECISIONS.md` (چرا `/admin/me/*` و نه دادن `team.week_view`، تصمیم‌های M1–M5، فهرست آنچه عمداً انجام نشد، ریسک‌های باز)، ردیف `mystatus` در `docs/UI_STATES.md` و بخش فاز ۱۷ در `PROJECT_STATUS.md`.
+- تست: `test/myStatusPolish.test.js` (ایستا: CSS بدون رنگ سخت‌کد/`nowrap`، قاعده‌ی چاپ، مستندات و ترتیب اسکریپت‌ها). بدون تغییر در API، migration یا تنظیمات.
+
+### «وضعیت من» — M4 (منو و مسیردهی)
+- «وضعیت من» برای **همه‌ی نقش‌ها** در منو است: کارمند اولین آیتم «پنل من» (بالاتر از «پروفایل من») و صفحه‌ی اول بعد از ورود؛ سرپرست/منابع انسانی/ادمین یک آیتم در گروه «پنل من» در انتهای منو (ترتیب بقیه‌ی گروه‌ها و صفحه‌ی اول داشبورد دست نخورد). بدون `me.read` آیتم ساخته نمی‌شود.
+- نشان تعداد تسک‌های بی‌پاسخِ امروز روی آیتم منو (همان `.nav-count`؛ بیشتر از ۹ ⇒ «۹+»، صفر ⇒ پنهان، تعداد کامل در `aria-label`/`title`). API: `GET /api/admin/me/tasks/pending-count` (`me.read`، فقط `req.adminUser`، به `EMPLOYEE_ALLOWED` اضافه شد) که فقط `{ ok, date, pending }` برمی‌گرداند؛ تسک سیستمی/واجب و اختیاری (low) شمرده نمی‌شود؛ روز تعطیل/ماه بسته/خطای تاریخ ⇒ `pending: 0`.
+- `AP.refreshMyTasksCount` هنگام ورود، با «تازه‌سازی»، و بعد از هر تیک/برداشتن تیک/توضیح در صفحه‌ی «وضعیت من» صدا زده می‌شود؛ منطق رنگ‌آمیزی شمارنده‌ها در `paintCount` مشترک شد (رفتار بقیه‌ی شمارنده‌ها عوض نشده).
+- تست: `test/myStatusNav.test.js`.
+
 ### «وضعیت من» — M3 (تیک‌زدن تسک‌های امروز از پنل)
 - API (همه‌ی نقش‌ها، گارد `me.read`، فقط `req.adminUser`؛ هیچ `userId` از کلاینت خوانده نمی‌شود): `GET /api/admin/me/tasks/today?date=`، `GET /api/admin/me/tasks/backfill`، `POST /api/admin/me/tasks/answer`، `POST /api/admin/me/tasks/undo`، `PATCH /api/admin/me/tasks/note`. هر پنج مسیر به `EMPLOYEE_ALLOWED` اضافه شد.
 - منطق کپی نشد: `services/panelTasksService.js` لایه‌ی نازک روی `taskReportService` است (`getDailyTasks`، `submitDailyReport` با یک پاسخ، `undoAnswer`، `updateNote`، `getBackfillStatus`)؛ پس تاریخ فقط با `resolveReportDate` (امروز/گزارش دیرهنگام/backfill/ماه بسته/روز آینده)، همان اعتبارسنجی علت‌ها و همان پیام تشویقی/ذخیره‌ی `answered_late` مثل Mini App است. نگاشت خطا → HTTP به `utils/reportErrors.js` رفت و Mini App هم از همان استفاده می‌کند (رفتار Mini App تغییر نکرده).

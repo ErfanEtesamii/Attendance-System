@@ -412,7 +412,8 @@ describe('اتصال به پنل (ایستا)', () => {
   test('core.js: برای selfOnly اولین آیتم «پنل من» و صفحه‌ی پیش‌فرض بعد از ورود', () => {
     const c = read('public-admin/js/core.js');
     assert.match(c, /AP\.selfOnly\(\) && AP\.viewAllowed\(AP\.views\.mystatus\)\) return \{ id: 'mystatus'/);
-    assert.match(c, /items\.unshift\(\{ id: 'mystatus', icon: 'attendance', label: 'وضعیت من', group: 'پنل من' \}\)/);
+    assert.match(c, /const mine = \{ id: 'mystatus', icon: 'attendance', label: 'وضعیت من', group: 'پنل من', counter: true \}/); // M4: نشان شمارنده
+    assert.match(c, /if \(AP\.selfOnly\(\)\) items\.unshift\(mine\); else items\.push\(mine\)/);
     assert.ok(c.indexOf("id: 'mystatus', icon") > c.indexOf("label: 'پروفایل من'")); // unshift دوم ⇒ بالاتر از «پروفایل من»
   });
   test('CSS: شبکه‌ی ریسپانسیو بدون اسکرول افقی و متن قابل شکستن؛ بدون رنگ سخت‌کد', () => {
