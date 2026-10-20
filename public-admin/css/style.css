@@ -1524,3 +1524,69 @@ td .badge, th .badge, .nowrap .badge { white-space: nowrap; }
 @media (max-width: 980px) { .week-grid { grid-auto-rows: auto; } } /* موبایل: تک‌ستون، هر کارت به اندازه‌ی خودش */
 .card.day-card[open]::details-content { display: flex; flex-direction: column; flex: 1 1 auto; content-visibility: visible; }
 .card.day-card[open] > .day-card-body { flex: 1 1 auto; }
+
+/* ---------- پرداخت نهاییِ چیدمان ----------
+   این قواعد عمداً در انتهای فایل هستند تا همه‌ی نماهای پنل، حتی نماهایی که
+   بعداً به آن اضافه می‌شوند، یک ریتم مشترک داشته باشند. */
+:root {
+  --space-1: 8px;
+  --space-2: 12px;
+  --space-3: 16px;
+  --space-4: 24px;
+}
+
+button, input, select, textarea { font: inherit; }
+button { touch-action: manipulation; }
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* هیچ فرزندِ flex/grid نباید به‌خاطر متن بلند، کارت یا صفحه را عریض کند. */
+.page, .page > *, .view-header > *, .header-actions > *, .filters > *,
+.grid-2 > *, .grid-3 > *, .stack > *, .item > *, .row > * { min-width: 0; }
+
+.page {
+  width: 100%;
+  margin-inline: auto;
+}
+
+.view-header {
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.view-header h2 { line-height: 1.45; }
+.view-header .sub { max-width: 72ch; line-height: 1.8; }
+
+.header-actions, .filters, .row-actions, .modal-actions {
+  gap: var(--space-1);
+}
+.header-actions > .btn, .row-actions > .btn, .modal-actions > .btn { min-height: 40px; }
+
+/* کارت درون کارت، یک سطح اطلاعاتی جدید نیست؛ فقط با جداکننده نمایش داده می‌شود. */
+.card .card:not(.day-card),
+.card .chart-fig {
+  box-shadow: none;
+}
+.card > .card + .card { margin-top: var(--space-2); }
+
+/* کنترل‌های گروهی و برچسب‌های بلند در عرض کم بدون بیرون‌زدگی می‌مانند. */
+.chip, .tab, .btn, .nav-item, .day-chips > *, .tags > * { min-width: 0; }
+.header-actions, .row-actions, .modal-actions { flex-wrap: wrap; }
+.header-actions .btn, .row-actions .btn, .modal-actions .btn { white-space: normal; }
+
+@media (max-width: 900px) {
+  .topbar { gap: var(--space-1); }
+  .search-box { min-width: 0; flex: 1 1 160px; }
+  .page { max-width: none; }
+}
+
+@media (max-width: 600px) {
+  .view-header h2 { font-size: clamp(20px, 6vw, 24px); }
+  .header-actions > .btn, .modal-actions > .btn { flex: 1 1 132px; }
+  .filters .field { min-width: min(100%, 132px); }
+  .row { align-items: flex-start; }
+  .row-actions { width: 100%; }
+  .row-actions .btn { flex: 1 1 120px; }
+}

@@ -467,6 +467,57 @@ body {
 .form-msg.ok { color: var(--green); }
 .form-msg.err { color: var(--red); }
 
+/* ---------- پرداخت نهاییِ رابط کارمند ----------
+   فرم‌ها، کارت‌ها و اکشن‌ها با یک ریتم ثابت نمایش داده می‌شوند تا در صفحه‌های
+   شلوغ هم لایه‌های تودرتو و فاصله‌های نامنظم ایجاد نشود. */
+:root {
+  --space-1: 8px;
+  --space-2: 12px;
+  --space-3: 16px;
+}
+
+button, input, select, textarea { font: inherit; }
+button { touch-action: manipulation; }
+:focus-visible { outline: 3px solid var(--green); outline-offset: 3px; }
+
+#views, #views > *, .card > *, .row > *, .li-top > *, .li-bottom > * { min-width: 0; }
+.card { overflow-wrap: anywhere; }
+
+/* محتوای ثانویه درون یک کارت، قاب و سایه‌ی دیگری نمی‌گیرد. */
+.card .card, .card .list-item {
+  box-shadow: none;
+  border-inline: 0;
+  border-radius: 0;
+}
+.card .card { padding-inline: 0; }
+.card .list-item { padding-inline: 0; }
+.card .card + .card, .card .list-item + .list-item { border-top: 1px solid var(--border); }
+
+.row, .li-top, .li-bottom { gap: var(--space-2); }
+.row-label, .row-value, .li-top > *, .li-bottom > * { overflow-wrap: anywhere; }
+.row-value { text-align: end; }
+
+.actions { gap: var(--space-2); }
+.action-tile { min-width: 0; box-shadow: 0 4px 14px rgba(0, 0, 0, .12); }
+.action-tile .tile-title, .action-tile .tile-sub { overflow-wrap: anywhere; text-align: center; }
+.action-tile.wide .tile-text { min-width: 0; }
+
+.list { gap: var(--space-2); }
+.list-item { min-width: 0; }
+.list-item .li-bottom { flex-wrap: wrap; }
+.btn { min-height: 44px; white-space: normal; line-height: 1.45; }
+
+@media (max-width: 380px) {
+  .app-header { align-items: flex-start; }
+  .brand-logo { width: 38px; height: 38px; border-radius: 12px; }
+  .app-title { font-size: 14px; }
+  .header-date { padding: 5px 7px; font-size: 10.5px; }
+  .actions { grid-template-columns: 1fr; }
+  .action-tile.wide { align-items: flex-start; justify-content: flex-start; }
+  .action-tile.wide .tile-text { align-items: flex-start; }
+  .row { align-items: flex-start; }
+}
+
 /* ---------- پروفایل ---------- */
 
 .profile-card { text-align: center; padding: 22px 16px; }
@@ -904,3 +955,14 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .remote-dialog-actions .btn { min-height: 48px; }
 .remote-note { margin-block-start: 6px; font-size: 12px; color: var(--hint); line-height: 1.8; overflow-wrap: anywhere; }
 .badge.remote-system { background: var(--ov-08); color: var(--hint); }
+
+/* هم‌راستاسازی اجزای اضافه‌شده در مراحل بعدی با زبان بصری اصلی. */
+.urgent-card, .manager-banner, .remote-banner { overflow-wrap: anywhere; }
+.urgent-list { gap: 0; }
+.urgent-item { padding-block: 10px; }
+.urgent-item:first-child { padding-block-start: 0; }
+.remote-dialog-actions .btn { min-width: 0; }
+@media (max-width: 380px) {
+  .remote-dialog-actions { grid-template-columns: 1fr; }
+  .urgent-badge, .mandatory-badge, .manager-badge { white-space: normal; }
+}
