@@ -1478,3 +1478,12 @@ td .badge, th .badge, .nowrap .badge { white-space: nowrap; }
 .item .grow { min-width: min(200px, 100%); }
 .kv-row span { min-width: 0; overflow-wrap: anywhere; }
 @media print { .day-task { border-top: 1px solid #999; } }
+
+/* کارت‌های روز هم‌اندازه: همه‌ی ردیف‌ها هم‌قد بلندترین کارت؛ دکمه‌ها همیشه ته کارت */
+.week-grid { align-items: stretch; grid-auto-rows: 1fr; }
+.card.day-card { display: flex; flex-direction: column; }
+.day-card > .day-card-body { flex: 1 1 auto; }
+.day-card-actions { margin-top: auto; }
+@media (max-width: 980px) { .week-grid { grid-auto-rows: auto; } } /* موبایل: تک‌ستون، هر کارت به اندازه‌ی خودش */
+.card.day-card[open]::details-content { display: flex; flex-direction: column; flex: 1 1 auto; content-visibility: visible; }
+.card.day-card[open] > .day-card-body { flex: 1 1 auto; }
