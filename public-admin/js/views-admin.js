@@ -867,6 +867,63 @@
     });
   }
 
+  // پاک‌سازی بازه‌ایِ داده‌های گذشته: دامنه ثابت است و برخلاف ریست کامل،
+  // هیچ گزینه‌ای برای افزودن جدول‌های دیگر ندارد.
+  function historyPurgeHtml() {
+    return `<div class="card danger-zone mt" id="history-purge-zone"><h3>پاک‌سازی داده‌های گذشته</h3>
+      <p class="muted">فقط رکوردهای رفت‌وآمد و برنامه‌های هفتگیِ شروع‌شده در بازهٔ انتخابی حذف می‌شوند. استراحت‌ها، اعتراض‌ها، تأییدهای اضافه‌کاری، تسک‌ها و گزارش‌های روزانهٔ وابسته نیز برای حفظ یکپارچگی حذف می‌شوند؛ کاربران، مرخصی‌ها، تنظیمات، اعلان‌ها و گزارش‌های دیگر دست‌نخورده می‌مانند. پیش از اجرا یک بک‌آپ خودکار ساخته می‌شود.</p>
+      <div class="form-grid two"><label class="field"><span>از تاریخ</span><input type="date" id="hp-from" aria-label="شروع بازهٔ پاک‌سازی"></label>
+      <label class="field"><span>تا تاریخ</span><input type="date" id="hp-to" aria-label="پایان بازهٔ پاک‌سازی"></label></div>
+      <div class="rz-actions"><button type="button" class="btn danger" id="hp-preview">بررسی داده‌های قابل حذف</button></div>
+      <div id="hp-result" aria-live="polite"></div></div>`;
+  }
+
+  function mountHistoryPurge(root) {
+    const zone = $('#history-purge-zone', root);
+    if (!zone) return;
+    const from = $('#hp-from', zone); const to = $('#hp-to', zone); const result = $('#hp-result', zone);
+    const body = () => ({ fromDate: from.value, toDate: to.value });
+    $('#hp-preview', zone).addEventListener('click', async () => {
+      if (!from.value || !to.value) { AP.toast('ابتدا و انتهای بازه را انتخاب کنید.', true); return; }
+      const button = $('#hp-preview', zone);
+      button.disabled = true; button.setAttribute('aria-busy', 'true');
+      result.innerHTML = '<div class="muted">در حال محاسبه…</div>';
+      let preview;
+      try { preview = await AP.api('/admin/system/history-purge/preview', { method: 'POST', body: body() }); } catch (err) {
+        result.innerHTML = `<div class="notice danger" role="alert">${esc(err.message)}</div>`;
+        return;
+      } finally { button.disabled = false; button.removeAttribute('aria-busy'); }
+      const rows = preview.tables.map((t) => `<tr><td>${esc(t.label)}</td><td class="ltr">${esc(t.table)}</td><td>${fmt.num(t.count)}</td></tr>`).join('');
+      result.innerHTML = `<h4>داده‌های قابل حذف در بازهٔ ${esc(preview.fromDate)} تا ${esc(preview.toDate)}</h4>
+        <div class="table-wrap"><table><thead><tr><th>داده</th><th>جدول</th><th>تعداد</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><th colspan="2">جمع</th><th>${fmt.num(preview.total)}</th></tr></tfoot></table></div>
+        <label class="field"><span>برای فعال‌شدن حذف، عبارت «حذف» را بنویسید</span><input type="text" id="hp-confirm" autocomplete="off" aria-label="عبارت تأیید حذف"></label>
+        <div class="rz-actions"><button type="button" class="btn danger" id="hp-run" disabled>حذف نهایی داده‌های این بازه</button></div><div id="hp-done" aria-live="polite"></div>`;
+      const confirm = $('#hp-confirm', result); const run = $('#hp-run', result);
+      const ready = () => { run.disabled = confirm.value.trim() !== 'حذف'; };
+      confirm.addEventListener('input', ready);
+      run.addEventListener('click', async () => {
+        const yes = await AP.confirmBox({
+          title: 'تأیید پاک‌سازی داده‌ها',
+          message: `مطمئنی می‌خواهید کل رکوردهای تردد و برنامه‌های هفتگیِ بازهٔ ${preview.fromDate} تا ${preview.toDate} حذف شوند؟ این عمل قابل بازگشت نیست.`,
+          confirmText: 'بله، حذف کن', danger: true,
+        });
+        if (!yes) return;
+        run.disabled = true; run.setAttribute('aria-busy', 'true');
+        const done = $('#hp-done', result); done.innerHTML = '<div class="muted">در حال ساخت بک‌آپ و پاک‌سازی…</div>';
+        try {
+          const response = await AP.api('/admin/system/history-purge', { method: 'POST', body: { ...body(), confirmText: confirm.value.trim() } });
+          const lines = Object.entries(response.deleted).map(([key, count]) => `<div class="kv-row"><span class="ltr">${esc(key)}</span><span>${fmt.num(count)}</span></div>`).join('');
+          done.innerHTML = `<div class="notice ok" role="status"><strong>پاک‌سازی انجام شد.</strong> ${fmt.num(response.total)} ردیف حذف شد. بک‌آپ: <span class="ltr">${esc(response.backupFile)}</span></div><div class="kv">${lines}</div>`;
+          AP.toast('داده‌های بازه پاک‌سازی شد.');
+          confirm.value = ''; confirm.disabled = true;
+        } catch (err) {
+          done.innerHTML = `<div class="notice danger" role="alert">${esc(err.message)}</div>`;
+          run.removeAttribute('aria-busy'); ready();
+        }
+      });
+    });
+  }
+
   AP.view('status', {
     skeleton: 'table', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'system.read',
@@ -916,13 +973,13 @@
         <div class="card flush mt"><div style="padding:18px 18px 0"><h3>Jobهای زمان‌بندی‌شده</h3></div><div class="table-wrap"><table>
           <thead><tr><th>نام</th><th>Cron</th><th>آخرین نتیجه</th><th>زمان آخرین نتیجه</th><th>آخرین موفقیت</th><th>مدت</th></tr></thead><tbody>${jobRows}</tbody></table></div></div>
         <div class="card flush mt"><div style="padding:18px 18px 0"><h3>آخرین خطاهای Job</h3></div><div class="table-wrap"><table>
-          <thead><tr><th>Job</th><th>زمان</th><th>خطا</th></tr></thead><tbody>${errRows}</tbody></table></div></div>${resetOpts ? resetZoneHtml(resetOpts) : ''}`;
+          <thead><tr><th>Job</th><th>زمان</th><th>خطا</th></tr></thead><tbody>${errRows}</tbody></table></div></div>${resetOpts ? `${historyPurgeHtml()}${resetZoneHtml(resetOpts)}` : ''}`;
       return {
         html,
         mount(root) {
           const btn = $('#st-refresh', root);
           if (btn) btn.addEventListener('click', () => AP.refresh());
-          if (resetOpts) mountResetZone(root, resetOpts);
+          if (resetOpts) { mountHistoryPurge(root); mountResetZone(root, resetOpts); }
         },
       };
     },

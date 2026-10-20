@@ -20,6 +20,7 @@ const systemHealth = require('../../../utils/systemHealth');
 const jobRunsRepository = require('../../../repositories/jobRunsRepository');
 const monitorRepository = require('../../../repositories/monitorRepository');
 const resetService = require('../../../services/resetService');
+const historyPurgeService = require('../../../services/historyPurgeService');
 const { createRateLimiter } = require('../../../middleware/rateLimiter');
 
 // ریست برنامه: ۳ تلاش در ساعت برای هر ادمین (شامل تلاش‌های ردشده)
@@ -206,6 +207,29 @@ router.post('/admin/system/reset', requirePermission('system.manage'), resetLimi
   } catch (err) {
     if (err instanceof resetService.ResetError) return res.status(err.code === 'BUSY' ? 409 : 500).json({ error: err.message, code: err.code });
     return res.status(500).json({ error: `ریست ناموفق بود و همه‌ی تغییرات برگردانده شد: ${err.message}`, code: 'reset_failed' });
+  }
+});
+
+// پاک‌سازی محدودِ بازه‌ای: فقط تردد و برنامه‌های هفتگی (و وابسته‌های مستقیم‌شان).
+router.post('/admin/system/history-purge/preview', requirePermission('system.manage'), (req, res) => {
+  if (!req.adminUser || req.adminUser.role !== 'admin') return res.status(403).json({ error: 'فقط ادمین کل.', code: 'forbidden' });
+  try {
+    res.json(historyPurgeService.preview(req.body || {}));
+  } catch (err) {
+    if (err instanceof historyPurgeService.HistoryPurgeError) return res.status(400).json({ error: err.message, code: err.code });
+    throw err;
+  }
+});
+
+router.post('/admin/system/history-purge', requirePermission('system.manage'), resetLimiter, async (req, res) => {
+  const check = historyPurgeService.checkRequest(req.body, req.adminUser);
+  if (!check.ok) return res.status(check.status).json({ error: check.error, code: check.code });
+  try {
+    const result = await historyPurgeService.execute(check.range, { actor: req.adminUser.id, ip: req.ip });
+    res.json({ ok: true, ...result, backupFile: result.backup.file });
+  } catch (err) {
+    if (err instanceof historyPurgeService.HistoryPurgeError) return res.status(err.code === 'BUSY' ? 409 : 500).json({ error: err.message, code: err.code });
+    return res.status(500).json({ error: `پاک‌سازی ناموفق بود و همه‌ی تغییرات برگردانده شد: ${err.message}`, code: 'history_purge_failed' });
   }
 });
 
