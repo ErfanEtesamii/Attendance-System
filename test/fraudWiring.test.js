@@ -118,8 +118,9 @@ describe('اتصال تشخیص مورد مشکوک (S2-4e-2)', { skip: hasDeps 
     db.exec('DELETE FROM break_records');
     db.exec('DELETE FROM attendance_records');
     const { sendNightlyReview } = require('../src/bot/scheduler/nightlyReview');
-    const { todayDateString } = require('../src/utils/serverTime');
-    const today = todayDateString();
+    const { todayInZone } = require('../src/utils/time');
+    const settingsRepository = require('../src/repositories/settingsRepository');
+    const today = todayInZone(settingsRepository.getAll().timezone);
     const manager = F.makeUser({ role: 'manager' });
     const e1 = F.makeUser({ managerId: manager.id }); const e2 = F.makeUser({ managerId: manager.id });
     const ins = db.prepare('INSERT INTO attendance_records (user_id, record_date, check_in_time, check_in_ip, check_in_device) VALUES (?, ?, ?, ?, ?)');

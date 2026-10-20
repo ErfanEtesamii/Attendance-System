@@ -17,7 +17,7 @@ const DEFAULTS = {
 // C1: فیلدهای اختیاریِ «null = از تنظیمات سراسری» (عدد صحیح در بازه یا null)
 const NULLABLE_LIMITS = {
   paidBreakCount: [0, 10, 'تعداد استراحت با حقوق'],
-  paidBreakMinutes: [0, 120, 'سقف هر استراحت با حقوق'],
+  paidBreakMinutes: [0, 120, 'استخر روزانه‌ی استراحت با حقوق'],
 };
 const MINUTE_LIMITS = {
   graceLateMinutes: [0, 720, 'مهلت تأخیر'],

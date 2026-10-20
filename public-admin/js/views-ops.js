@@ -62,6 +62,11 @@
         ${admin ? `<td><div class="row-actions"><button type="button" class="btn ghost small" data-save-break>ذخیره</button><button type="button" class="btn danger small" data-del-break>${icon('trash')}</button></div></td>` : ''}
       </tr>`;
 
+    const segmentRow = (s) => `<tr data-segment="${s.seq}">
+      <td>نوبت ${fmt.num(s.seq)}</td><td>${fmt.clock(s.check_in_time)}</td><td>${s.check_out_time ? fmt.clock(s.check_out_time) : AP.badge('present', 'باز')}</td>
+      <td class="ltr">${esc(s.check_in_ip || '—')} / ${esc(s.check_out_ip || '—')}</td>
+      ${admin ? `<td>${s.seq > 1 ? `<button type="button" class="btn danger small" data-del-segment>${icon('trash')} حذف نوبت</button>` : ''}</td>` : ''}</tr>`;
+
     const body = `
       <div class="profile-head" style="margin-bottom:14px">
         ${AP.avatar(u.fullName, '')}
@@ -82,6 +87,10 @@
           <div class="kv-row"><span>ساعت مفید</span><span>${r.summary.effectiveMinutes != null ? fmt.min(r.summary.effectiveMinutes) : '—'}</span></div>
         </div>
       </div>
+
+      <div class="section-title">نوبت‌های حضور (${fmt.num((r.segments || []).length)})</div>
+      <div class="table-wrap"><table><thead><tr><th>نوبت</th><th>ورود</th><th>خروج</th><th>IP ورود / خروج</th>${admin ? '<th></th>' : ''}</tr></thead>
+        <tbody>${(r.segments || []).map(segmentRow).join('')}</tbody></table></div>
 
       <div class="section-title">استراحت‌ها (${fmt.num(r.breaks.length)}) · مجموع ${fmt.min(r.breakMinutes)}</div>
       ${r.breaks.length ? `<div class="table-wrap"><table><thead><tr><th>نوع</th><th>شروع</th><th>پایان</th>${admin ? '<th></th>' : ''}</tr></thead><tbody>${r.breaks.map(breakRow).join('')}</tbody></table></div>` : `<div class="muted">استراحتی ثبت نشده است.</div>`}
@@ -142,6 +151,17 @@
           const ok = await AP.attempt(() => AP.api(`/admin/attendance-records/${id}/breaks`, { method: 'POST', body: {
             startTime: fmt.fromLocalInput(f.startTime), endTime: fmt.fromLocalInput(f.endTime), reason } }), 'استراحت اضافه شد.');
           if (ok) reopen();
+        });
+
+        $$('tr[data-segment]', b).forEach((tr) => {
+          const button = $('[data-del-segment]', tr);
+          if (!button) return;
+          button.addEventListener('click', async () => {
+            const reason = await AP.askReason({ title: 'حذف نوبت ورود مجدد', message: 'این نوبت از محاسبه ساعت مفید حذف می‌شود.', confirmText: 'حذف نوبت', danger: true });
+            if (reason === null) return;
+            const ok = await AP.attempt(() => AP.api(`/admin/attendance-records/${id}/segments/${tr.dataset.segment}`, { method: 'DELETE', body: { reason } }), 'نوبت ورود مجدد حذف شد.');
+            if (ok) reopen();
+          });
         });
 
         $$('tr[data-break]', b).forEach((tr) => {

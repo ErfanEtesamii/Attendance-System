@@ -50,7 +50,7 @@ describe('گزارش‌ها و دورکاری (R7)', () => {
     assert.deepEqual(r.users[0].remote, { approvedDays: 1, approvedMinutes: 240 });
     assert.equal(r.totals.remote.approvedMinutes, 240);
     assert.equal(r.users[0].attendance.presentDays + r.users[0].attendance.workedOnNonWorkingDays, 1);
-    assert.equal(r.users[0].time.effectiveMinutes, 240);
+    assert.equal(r.users[0].time.effectiveMinutes, 195);
     const day = r.users[0].days.find((d) => d.date === D);
     assert.equal(day.viaRemote, true);
     assert.equal(day.remoteMinutes, 240);

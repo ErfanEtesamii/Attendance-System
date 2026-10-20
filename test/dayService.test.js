@@ -58,7 +58,7 @@ describe('dayService (S3-2c)', () => {
     assert.deepEqual(s, { effectiveMinutes: 230 - 15, lateMinutes: 10, earlyLeaveMinutes: 0, overtimeMinutes: 0, isOpen: true });
 
     const range = dayService.summarizeRange([open, closed], { now: NOW });
-    assert.deepEqual(range, { totalEffective: 215 + 420, lateCount: 1, earlyLeaveCount: 1, incompleteCount: 1, dayCount: 2 });
+    assert.deepEqual(range, { totalEffective: 215 + 420 - 45, lateCount: 1, earlyLeaveCount: 1, incompleteCount: 1, dayCount: 2 });
 
     settingsRepo.update({ workDayStart: '09:00', workDayEnd: '15:00' });
     try {

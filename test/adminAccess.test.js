@@ -54,6 +54,14 @@ describe('لیست سفید کارمند (default-deny)', () => {
     const samples = {
       '/api/admin/me': 'GET',
       '/api/admin/me/permissions': 'GET', // S4-4b
+      '/api/admin/me/week': 'GET',
+      '/api/admin/me/tasks/today': 'GET',
+      '/api/admin/me/tasks/answer': 'POST',
+      '/api/admin/me/tasks/note': 'PATCH',
+      '/api/admin/me/urgent/config': 'GET',
+      '/api/admin/me/urgent': 'POST',
+      '/api/admin/me/urgent/7': 'PATCH',
+      '/api/admin/me/urgent/8': 'DELETE',
       '/api/admin/attendance?from=2026-01-01': 'GET',
       '/api/admin/attendance/export': 'GET',
       '/api/admin/attendance-records/12': 'GET',
@@ -77,7 +85,7 @@ describe('لیست سفید کارمند (default-deny)', () => {
       assert.equal(call(employee, method, url).nextCalled, true, `${method} ${url}`);
     }
     // هر الگوی لیست سفید حداقل در یکی از نمونه‌ها پوشش داده شده (اگر کسی ورودی جدید اضافه کند این تست یادآوری می‌کند)
-    assert.equal(EMPLOYEE_ALLOWED.length, 18, 'لیست سفید تغییر کرده؛ ماتریس تست را به‌روز کنید');
+    assert.equal(EMPLOYEE_ALLOWED.length, 26, 'لیست سفید تغییر کرده؛ ماتریس تست را به‌روز کنید');
   });
 
   test('هر چیزی خارج از لیست سفید برای کارمند ۴۰۳ است (از جمله route های آینده)', () => {

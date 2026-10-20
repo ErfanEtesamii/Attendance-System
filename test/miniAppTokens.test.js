@@ -70,9 +70,9 @@ describe('T9: Theme.BG و رنگ نوار تلگرام با --bg هم‌خوان
     assert.match(read('public-admin/index.html'), new RegExp(`name="theme-bg-dark" content="${Theme.BG.dark}"`, 'i'));
   });
   test('پشتیبان‌های ثابت (meta theme-color در public/index.html و app.js بدون theme.js) با BG تیره یکی‌اند', () => {
-    assert.match(read('public/index.html'), new RegExp(`<meta name="theme-color" content="${Theme.BG.dark}"`, 'i'));
+    assert.match(read('public/index.html'), new RegExp(`<meta name="theme-color" content="${Theme.BG.light}"`, 'i'));
     const app = read('public/js/app.js');
-    assert.equal((app.match(new RegExp(`'${Theme.BG.dark}'`, 'gi')) || []).length, 3);
+    assert.equal((app.match(new RegExp(`'${Theme.BG.light}'`, 'gi')) || []).length, 3);
     assert.doesNotMatch(app, /#1b1c2c/i);
     assert.match(app, /window\.Theme && window\.Theme\.apply/);
   });
@@ -119,7 +119,8 @@ describe('T9: دامنه — چیدمان و منطق دست‌نخورده', ()
     assert.deepEqual(Object.keys(Theme.BG), ['dark', 'light']);
   });
   test('گرادیان‌ها و دکمه‌ی اصلیِ سبزِ Mini App (کنش اصلی خودش) دست‌نخورده است', () => {
-    assert.match(MINI, /\.btn\.primary \{ background: linear-gradient\(135deg, #25d9a0, #14a878\); color: var\(--on-accent\);/);
-    assert.match(MINI, /--on-accent: #062b20;/);
+    assert.match(MINI, /\.btn\.primary, \.tab-btn\.active, \.report-head, \.nav-btn\.active \{\s*background: var\(--accent\);\s*color: var\(--on-accent\);/);
+    assert.match(MINI, /--on-accent: #17143a;/);
+    assert.match(MINI, /:root\[data-theme="light"\][\s\S]*--on-accent: #2b2560;/);
   });
 });

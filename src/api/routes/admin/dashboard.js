@@ -192,7 +192,7 @@ router.get('/admin/live', requirePermission('dashboard.read'), (req, res) => {
       user: userBrief(u),
       state,
       onMission,
-      record: record || null,
+      record: record ? { ...record, segmentCount: attendanceRepository.listSegments(record.id).length } : null,
       breaks,
       openBreak,
       breakMinutes: record ? breakRepository.totalBreakMinutes(record.id) : 0,

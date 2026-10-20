@@ -18,7 +18,7 @@
   // خلاصه‌ی «استراحت با حقوق» برای جدول (C1): مقدار اختصاصی شیفت، یا «سراسری» اگر خالی
   const paidText = (s) => (s.paidBreakCount == null && s.paidBreakMinutes == null
     ? ''
-    : `<div class="muted small">با حقوق: ${s.paidBreakCount == null ? 'سراسری' : fmt.num(s.paidBreakCount)} × ${s.paidBreakMinutes == null ? 'سراسری' : `${fmt.num(s.paidBreakMinutes)} دقیقه`}</div>`);
+    : `<div class="muted small">استراحت با حقوق: حداکثر ${s.paidBreakCount == null ? 'تعداد سراسری' : fmt.num(s.paidBreakCount)} نوبت، استخر ${s.paidBreakMinutes == null ? 'سراسری' : `${fmt.num(s.paidBreakMinutes)} دقیقه`} در روز</div>`);
 
   const daysText = (days) => {
     const list = DAY_ORDER.filter((d) => (days || []).includes(d));
@@ -61,8 +61,8 @@
         <div data-timed-field>${numField('maxLunchMinutes', 'حداکثر ناهار مجاز (دقیقه؛ ۰ = بدون سقف)', 480)}</div>
         <div data-timed-field>${numField('fixedLunchDeductMinutes', 'کسر ثابت ناهار (دقیقه؛ ۰ = خاموش)', 480)}</div>
         <div data-timed-field>${optField('paidBreakCount', 'تعداد استراحت کوتاهِ با حقوق در روز (۰ تا ۱۰؛ خالی = تنظیمات سراسری)', 10)}</div>
-        <div data-timed-field>${optField('paidBreakMinutes', 'سقف هر استراحت با حقوق (دقیقه، ۰ تا ۱۲۰؛ خالی = تنظیمات سراسری)', 120)}</div>
-        <p class="muted small full" data-timed-field style="grid-column:1/-1;margin:0">استراحت‌های کوتاهِ با حقوق (تا سقف زمانیِ هرکدام) از ساعت کاری کم نمی‌شوند؛ مازاد هر استراحت، استراحت‌های بعد از تعداد مجاز و ناهار از ساعت کاری کم می‌شود. هر دو ۰ = خاموش.</p>
+        <div data-timed-field>${optField('paidBreakMinutes', 'استخر مجموع روزانه‌ی استراحت با حقوق (دقیقه، ۰ تا ۱۲۰؛ خالی = تنظیمات سراسری)', 120)}</div>
+        <p class="muted small full" data-timed-field style="grid-column:1/-1;margin:0">استراحت‌های کوتاهِ با حقوق از یک استخر مشترک روزانه استفاده می‌کنند؛ مازاد استخر، استراحت‌های بعد از تعداد مجاز و ناهار از ساعت کاری کم می‌شود. هر دو ۰ = خاموش.</p>
         <div class="field full" style="grid-column:1/-1"><span>روزهای کاری این شیفت</span>
           <div class="chk-row">${DAY_ORDER.map((d) => `<label class="check-row"><input type="checkbox" name="workDays" value="${d}"${(cur.workDays || []).includes(d) ? ' checked' : ''} /> ${DAY_NAME[d]}</label>`).join('')}</div></div>
       </div>

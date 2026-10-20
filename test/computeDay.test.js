@@ -61,6 +61,59 @@ describe('computeDay (S3-2b)', () => {
     assert.equal(computeDay({ record: { check_in_time: at('2026-10-06', '08:30') }, settings: { workDayStart: '8:00', workDayEnd: '16:30' }, timezone: TEHRAN, now: at('2026-10-06', '09:00') }).late, 30);
   });
 
+  test('U1: کسر ناهار ثبت‌نشده فقط پس از آستانه‌ی حضور اعمال می‌شود', () => {
+    const lunchSettings = { ...SETTINGS, fixedLunchDeductMinutes: 45, fixedLunchMinPresenceMinutes: 240 };
+    const run = (from, to, breaks = [], extraSettings = {}) => computeDay({
+      record: { check_in_time: at('2026-10-06', from), check_out_time: at('2026-10-06', to), status: 'normal' },
+      breaks,
+      settings: { ...lunchSettings, ...extraSettings },
+      timezone: TEHRAN,
+    });
+
+    const shortDay = run('08:00', '08:37');
+    assert.deepEqual([shortDay.workedGross, shortDay.breakAuto, shortDay.effective], [37, 0, 37]);
+
+    const fullDay = run('08:00', '16:00');
+    assert.deepEqual([fullDay.workedGross, fullDay.breakAuto, fullDay.effective], [480, 45, 435]);
+
+    const lunch20 = run('08:00', '16:00', [{ break_type: 'lunch', start_time: at('2026-10-06', '12:00'), end_time: at('2026-10-06', '12:20') }]);
+    assert.deepEqual([lunch20.break, lunch20.breakAuto, lunch20.effective], [20, 0, 460]);
+
+    const lunch60 = run('08:00', '16:00', [{ break_type: 'lunch', start_time: at('2026-10-06', '12:00'), end_time: at('2026-10-06', '13:00') }]);
+    assert.deepEqual([lunch60.break, lunch60.breakAuto, lunch60.effective], [60, 0, 420]);
+
+    const onlyShortBreak = run('08:00', '16:00', [{ break_type: 'short_break', start_time: at('2026-10-06', '10:00'), end_time: at('2026-10-06', '10:10') }]);
+    assert.deepEqual([onlyShortBreak.break, onlyShortBreak.breakAuto, onlyShortBreak.effective], [55, 45, 425]);
+
+    const oldBehavior = run('08:00', '08:37', [], { fixedLunchMinPresenceMinutes: 0 });
+    assert.deepEqual([oldBehavior.breakAuto, oldBehavior.effective], [37, 0], 'آستانه‌ی صفر رفتار پیشین و min(کسر، حضور) را نگه می‌دارد');
+  });
+
+  test('U4: چند نوبت، فاصله را از حضور حذف و قواعد روزانه را یک‌بار اعمال می‌کند', () => {
+    const record = { record_date: '2026-10-06', check_in_time: at('2026-10-06', '08:00'), check_out_time: at('2026-10-06', '17:00'), status: 'normal' };
+    const segments = [
+      { in: at('2026-10-06', '08:00'), out: at('2026-10-06', '12:00') },
+      { in: at('2026-10-06', '13:00'), out: at('2026-10-06', '17:00') },
+    ];
+    const base = { record, segments, breaks: [], settings: { ...SETTINGS, fixedLunchDeductMinutes: 45, fixedLunchMinPresenceMinutes: 240 }, timezone: TEHRAN };
+    const day = computeDay(base);
+    assert.deepEqual([day.workedGross, day.breakAuto, day.effective, day.earlyLeave, day.overtime], [480, 45, 435, 0, 30]);
+    assert.ok(day.flags.includes('re_entry'));
+
+    const paid = computeDay({ ...base, settings: { ...SETTINGS, fixedLunchDeductMinutes: 0, paidBreakCount: 3, paidBreakMinutes: 45 }, breaks: [
+      { break_type: 'short_break', start_time: at('2026-10-06', '10:00'), end_time: at('2026-10-06', '10:20') },
+      { break_type: 'short_break', start_time: at('2026-10-06', '14:00'), end_time: at('2026-10-06', '14:20') },
+      { break_type: 'short_break', start_time: at('2026-10-06', '15:00'), end_time: at('2026-10-06', '15:20') },
+    ] });
+    assert.deepEqual([paid.breakPaid, paid.breakUnpaid, paid.effective], [45, 15, 465]);
+
+    const open = computeDay({ ...base, record: { ...record, check_out_time: null }, segments: [segments[0], { in: at('2026-10-06', '13:00'), out: null }], now: at('2026-10-06', '15:00') });
+    assert.deepEqual([open.workedGross, open.isOpen], [360, true]);
+
+    const mission = computeDay({ ...base, settings: { ...SETTINGS, fixedLunchDeductMinutes: 0 }, approvedLeaves: [{ start: 12 * 60 + 30, end: 13 * 60 + 30, kind: 'mission' }] });
+    assert.deepEqual([mission.missionMinutes, mission.effective, mission.effectiveWithMission], [60, 480, 510]);
+  });
+
   test('اعتبارسنجی ورودی، تغییر‌ندادن ورودی‌ها و خالص‌بودن (بدون بارگذاری repository/DB)', () => {
     const deepFreeze = (o) => { Object.values(o).forEach((v) => v && typeof v === 'object' && deepFreeze(v)); return Object.freeze(o); };
     const record = deepFreeze({ id: 1, check_in_time: at('2026-10-06', '08:00'), check_out_time: at('2026-10-06', '16:30'), status: 'normal' });
@@ -97,6 +150,9 @@ describe('computeDay (S3-2b)', () => {
     const settingsRepo = require('../src/repositories/settingsRepository');
     const breakRepo = require('../src/repositories/breakRepository');
     const workHours = require('./fixtures/legacyWorkHours'); // منطق قدیمی منجمد‌شده (workHours فعلی wrapper موتور جدید است)
+
+    // تطبیق با موتور قدیمی باید با سیاست قدیمیِ بدون کسر ثابت ناهار اجرا شود؛ پیش‌فرض عملیاتی U1 عمداً متفاوت است.
+    settingsRepo.update({ fixedLunchDeductMinutes: 0, fixedLunchMinPresenceMinutes: 0 });
 
     const originalTz = process.env.TZ;
     const RealDate = Date;

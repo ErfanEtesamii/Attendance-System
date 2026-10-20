@@ -104,7 +104,10 @@ function filteredAttendance(req) {
 
 router.get('/admin/attendance', requirePermission('attendance.read'), (req, res) => {
   const { from, to, records, userMap } = filteredAttendance(req);
-  res.json({ from, to, count: records.length, records: records.map((r) => enrichRecord(r, userMap)) });
+  res.json({ from, to, count: records.length, records: records.map((r) => {
+    const segments = attendanceRepository.listSegments(r.id);
+    return { ...enrichRecord(r, userMap), segments, segmentCount: segments.length };
+  }) });
 });
 
 router.get('/admin/attendance/export', requirePermission('attendance.read'), (req, res) => {
@@ -150,7 +153,29 @@ router.get('/admin/attendance-records/:id', requirePermission('attendance.read')
   const disputes = disputeRepository
     .listByUser(record.user_id)
     .filter((d) => d.attendance_record_id === record.id);
-  res.json({ ...enrichRecord(record), history, disputes });
+  const segments = attendanceRepository.listSegments(record.id);
+  res.json({ ...enrichRecord(record), history, disputes, segments, segmentCount: segments.length });
+});
+
+router.delete('/admin/attendance-records/:id/segments/:seq', requirePermission('records.edit'), (req, res) => {
+  const reason = requireReason(req, res);
+  if (!reason) return;
+  const record = attendanceRepository.findById(parseInt(req.params.id, 10));
+  const seq = parseInt(req.params.seq, 10);
+  if (!record) return res.status(404).json({ error: 'رکورد یافت نشد.' });
+  if (!canAccessUser(req.adminUser, record.user_id)) return res.status(403).json({ error: 'به این کارمند دسترسی ندارید.' });
+  if (!Number.isInteger(seq) || seq <= 1) return res.status(400).json({ error: 'فقط نوبت ورود مجدد قابل حذف است.' });
+  const lock = monthLock.guard(req, res, { from: record.record_date, reason });
+  if (lock === false) return undefined;
+  const removed = attendanceRepository.removeReEntrySegment(record.id, seq);
+  if (!removed) return res.status(404).json({ error: 'نوبت ورود مجدد یافت نشد.' });
+  monthLock.adjust(req, lock, { action: 'attendance_segment_deleted', entityType: 'attendance_segment', entityId: removed.id, userId: record.user_id, date: record.record_date });
+  auditChange(req, {
+    action: 'attendance_segment_deleted', entityType: 'attendance_segment', entityId: removed.id,
+    before: removed, after: null, reason,
+    meta: { recordId: record.id, segmentId: removed.id, segmentSeq: seq, targetUserId: record.user_id },
+  });
+  return res.json({ ok: true, segments: attendanceRepository.listSegments(record.id) });
 });
 
 router.post('/admin/attendance-records', requirePermission('records.edit'), (req, res) => {

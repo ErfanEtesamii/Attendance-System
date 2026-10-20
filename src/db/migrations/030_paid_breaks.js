@@ -1,6 +1,6 @@
 // migration شماره ۰۳۰ — استراحت با حقوق روی شیفت (فاز ۱۲، C1).
 //   work_shifts.paid_break_count   : تعداد استراحت کوتاهِ با حقوق در روز (NULL = از تنظیمات سراسری paidBreakCount)
-//   work_shifts.paid_break_minutes : سقف هر استراحت با حقوق به دقیقه (NULL = از تنظیمات سراسری paidBreakMinutes)
+//   work_shifts.paid_break_minutes : استخر مجموع روزانه‌ی استراحت با حقوق به دقیقه (NULL = از تنظیمات سراسری paidBreakMinutes)
 // هر دو NULL (پیش‌فرض) ⇒ رفتار فعلی؛ تنظیمات سراسری هم پیش‌فرض ۰ (خاموش) است. idempotent: ستونِ موجود دوباره اضافه نمی‌شود.
 
 module.exports = {

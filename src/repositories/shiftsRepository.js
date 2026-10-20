@@ -140,12 +140,21 @@ function findByName(name) {
 
 function createShift(v) {
   const db = getDb();
+  // Keep repository callers backward-compatible. API inputs are normalized by
+  // validateShiftInput, but jobs/tests and older internal callers may still
+  // omit optional fields. Passing undefined is bound as NULL by SQLite and
+  // bypasses column DEFAULTs, so normalize the NOT NULL fields here as well.
+  const graceLateMinutes = v.graceLateMinutes ?? 0;
+  const graceEarlyMinutes = v.graceEarlyMinutes ?? 0;
+  const workDays = v.workDays ?? [0, 1, 2, 3, 6];
+  const maxLunchMinutes = v.maxLunchMinutes ?? 0;
+  const fixedLunchDeductMinutes = v.fixedLunchDeductMinutes ?? 0;
   const info = db
     .prepare(
       `INSERT INTO work_shifts (name, start_time, end_time, grace_late_minutes, grace_early_minutes, work_days, overnight, max_lunch_minutes, fixed_lunch_deduct_minutes, paid_break_count, paid_break_minutes, is_untimed)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
-    .run(v.name, v.startTime, v.endTime, v.graceLateMinutes, v.graceEarlyMinutes, JSON.stringify(v.workDays), v.overnight ? 1 : 0, v.maxLunchMinutes, v.fixedLunchDeductMinutes,
+    .run(v.name, v.startTime, v.endTime, graceLateMinutes, graceEarlyMinutes, JSON.stringify(workDays), v.overnight ? 1 : 0, maxLunchMinutes, fixedLunchDeductMinutes,
       v.paidBreakCount === undefined ? null : v.paidBreakCount, v.paidBreakMinutes === undefined ? null : v.paidBreakMinutes, v.isUntimed ? 1 : 0);
   return findById(info.lastInsertRowid);
 }

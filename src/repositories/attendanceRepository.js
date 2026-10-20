@@ -68,6 +68,70 @@ function recordCheckOut(attendanceRecordId, ip, device = {}, { viaPendingMission
   return findById(attendanceRecordId);
 }
 
+// فاز ۱۸: نوبت دوم روی همان رکورد روزانه نگه‌داری می‌شود تا قرارداد مصرف‌کننده‌های قدیمی نشکند.
+function listSegments(attendanceRecordId) {
+  const record = findById(attendanceRecordId);
+  if (!record || !record.check_in_time) return [];
+  const rows = getDb().prepare('SELECT * FROM attendance_segments WHERE attendance_record_id = ? ORDER BY seq').all(attendanceRecordId);
+  return rows.length ? rows : [{ seq: 1, check_in_time: record.check_in_time, check_in_ip: record.check_in_ip, check_out_time: record.check_out_time, check_out_ip: record.check_out_ip }];
+}
+
+function startReEntry(attendanceRecordId, ip, maxReEntries = null) {
+  const db = getDb(); const record = findById(attendanceRecordId);
+  if (!record || !record.check_out_time) return null;
+  const tx = db.transaction(() => {
+    const state = db.prepare('SELECT COUNT(*) AS count, COALESCE(MAX(seq), 0) AS seq FROM attendance_segments WHERE attendance_record_id = ?').get(attendanceRecordId);
+    const used = state.count ? state.count - 1 : 0;
+    if (maxReEntries !== null && used >= maxReEntries) return false;
+    if (!state.count) {
+      db.prepare(`INSERT INTO attendance_segments
+        (attendance_record_id, seq, check_in_time, check_in_ip, check_out_time, check_out_ip)
+        VALUES (?, 1, ?, ?, ?, ?)`).run(attendanceRecordId, record.check_in_time, record.check_in_ip, record.check_out_time, record.check_out_ip);
+    }
+    const seq = state.count ? state.seq + 1 : 2;
+    db.prepare('INSERT INTO attendance_segments (attendance_record_id, seq, check_in_time, check_in_ip) VALUES (?, ?, ?, ?)').run(attendanceRecordId, seq, nowIso(), ip);
+    db.prepare('UPDATE attendance_records SET check_out_time = NULL, check_out_ip = NULL, check_out_device = NULL, check_out_ua = NULL, updated_at = datetime(\'now\') WHERE id = ?').run(attendanceRecordId);
+    return true;
+  });
+  return tx() ? findById(attendanceRecordId) : null;
+}
+
+function closeLastSegment(attendanceRecordId, ip, device = {}, { viaPendingMission = false } = {}) {
+  const db = getDb();
+  const row = db.prepare('SELECT * FROM attendance_segments WHERE attendance_record_id = ? AND check_out_time IS NULL ORDER BY seq DESC LIMIT 1').get(attendanceRecordId);
+  if (!row) return recordCheckOut(attendanceRecordId, ip, device, { viaPendingMission });
+  db.prepare('UPDATE attendance_segments SET check_out_time = ?, check_out_ip = ? WHERE id = ?').run(nowIso(), ip, row.id);
+  const updated = db.prepare('SELECT check_out_time, check_out_ip FROM attendance_segments WHERE id = ?').get(row.id);
+  db.prepare(`UPDATE attendance_records SET via_pending_mission = CASE WHEN ? = 1 THEN 1 ELSE via_pending_mission END,
+    check_out_time = ?, check_out_ip = ?, check_out_device = ?, check_out_ua = ?, updated_at = datetime('now') WHERE id = ?`)
+    .run(viaPendingMission ? 1 : 0, updated.check_out_time, updated.check_out_ip, device?.deviceId ?? null, device?.userAgent ?? null, attendanceRecordId);
+  return findById(attendanceRecordId);
+}
+
+function removeReEntrySegment(attendanceRecordId, seq) {
+  const db = getDb();
+  const tx = db.transaction(() => {
+    const rows = db.prepare('SELECT * FROM attendance_segments WHERE attendance_record_id = ? ORDER BY seq').all(attendanceRecordId);
+    const target = rows.find((row) => row.seq === seq);
+    if (!target || seq <= 1) return null;
+    db.prepare('DELETE FROM attendance_segments WHERE id = ?').run(target.id);
+    const left = rows.filter((row) => row.id !== target.id);
+    if (left.length === 1) {
+      db.prepare('DELETE FROM attendance_segments WHERE attendance_record_id = ?').run(attendanceRecordId);
+      db.prepare(`UPDATE attendance_records SET check_out_time = ?, check_out_ip = ?, updated_at = datetime('now') WHERE id = ?`)
+        .run(left[0].check_out_time, left[0].check_out_ip, attendanceRecordId);
+    } else {
+      left.forEach((row, index) => db.prepare('UPDATE attendance_segments SET seq = ? WHERE id = ?').run(1000 + index, row.id));
+      left.forEach((row, index) => db.prepare('UPDATE attendance_segments SET seq = ? WHERE id = ?').run(index + 1, row.id));
+      const last = left[left.length - 1];
+      db.prepare(`UPDATE attendance_records SET check_out_time = ?, check_out_ip = ?, updated_at = datetime('now') WHERE id = ?`)
+        .run(last.check_out_time, last.check_out_ip, attendanceRecordId);
+    }
+    return target;
+  });
+  return tx();
+}
+
 function updateStatus(attendanceRecordId, status) {
   const db = getDb();
   db.prepare(
@@ -87,9 +151,21 @@ function manualUpdate(attendanceRecordId, fields) {
 
   const setClause = keys.map((k) => `${k} = ?`).join(', ');
   const values = keys.map((k) => fields[k]);
-  db.prepare(
-    `UPDATE attendance_records SET ${setClause}, updated_at = datetime('now') WHERE id = ?`
-  ).run(...values, attendanceRecordId);
+  const tx = db.transaction(() => {
+    db.prepare(
+      `UPDATE attendance_records SET ${setClause}, updated_at = datetime('now') WHERE id = ?`
+    ).run(...values, attendanceRecordId);
+    const segmentCount = db.prepare('SELECT COUNT(*) AS count FROM attendance_segments WHERE attendance_record_id = ?').get(attendanceRecordId).count;
+    if (segmentCount && fields.check_in_time !== undefined) {
+      db.prepare('UPDATE attendance_segments SET check_in_time = ? WHERE attendance_record_id = ? AND seq = 1').run(fields.check_in_time, attendanceRecordId);
+    }
+    if (segmentCount && fields.check_out_time !== undefined) {
+      db.prepare(`UPDATE attendance_segments SET check_out_time = ?
+        WHERE attendance_record_id = ? AND seq = (SELECT MAX(seq) FROM attendance_segments WHERE attendance_record_id = ?)`)
+        .run(fields.check_out_time, attendanceRecordId, attendanceRecordId);
+    }
+  });
+  tx();
   return findById(attendanceRecordId);
 }
 
@@ -157,6 +233,7 @@ function removeWithBreaks(id) {
   const tx = db.transaction((recordId) => {
     db.prepare('DELETE FROM break_records WHERE attendance_record_id = ?').run(recordId);
     db.prepare('DELETE FROM record_disputes WHERE attendance_record_id = ?').run(recordId);
+    db.prepare('DELETE FROM attendance_segments WHERE attendance_record_id = ?').run(recordId);
     db.prepare('DELETE FROM attendance_records WHERE id = ?').run(recordId);
   });
   tx(id);
@@ -211,6 +288,10 @@ module.exports = {
   listByUserIdsAndRange,
   recordCheckIn,
   recordCheckOut,
+  listSegments,
+  startReEntry,
+  closeLastSegment,
+  removeReEntrySegment,
   updateStatus,
   manualUpdate,
   listAllToday,

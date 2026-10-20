@@ -24,7 +24,7 @@ const sb = (from, to) => ({ break_type: 'short_break', start_time: at(from), end
 const lunch = (from, to) => ({ break_type: 'lunch', start_time: at(from), end_time: at(to) });
 const run = (breaks, settings = {}, shift) => computeDay({ record, breaks, settings: { ...BASE, ...settings }, timezone: 'Asia/Tehran', shift });
 const pick = (d) => [d.break, d.breakPaid, d.breakUnpaid, d.effective];
-const PAID = { paidBreakCount: 3, paidBreakMinutes: 15 };
+const PAID = { paidBreakCount: 3, paidBreakMinutes: 45 };
 
 describe('استراحت با حقوق — موتور computeDay (C1)', () => {
   test('۳ استراحت ۱۵دقیقه‌ای ⇒ breakUnpaid=۰ و effective کم نمی‌شود (۴۸۰)', () => {
@@ -33,8 +33,18 @@ describe('استراحت با حقوق — موتور computeDay (C1)', () => {
   });
 
   test('استراحت ۲۵ دقیقه‌ای ⇒ ۱۰ دقیقه بدون حقوق', () => {
-    const d = run([sb('10:00', '10:25')], PAID);
+    const d = run([sb('10:00', '10:25')], { paidBreakCount: 3, paidBreakMinutes: 15 });
     assert.deepEqual(pick(d), [25, 15, 10, 470]);
+  });
+
+  test('daily pool is shared by the first three short breaks', () => {
+    const d = run([sb('10:00', '10:20'), sb('12:00', '12:20'), sb('14:00', '14:20')], PAID);
+    assert.deepEqual(pick(d), [60, 45, 15, 465]);
+  });
+
+  test('the fourth short break is unpaid even when the pool is not exhausted', () => {
+    const d = run([sb('09:00', '09:10'), sb('11:00', '11:10'), sb('13:00', '13:10'), sb('15:00', '15:10')], PAID);
+    assert.deepEqual(pick(d), [40, 30, 10, 470]);
   });
 
   test('استراحت چهارم کاملاً بدون حقوق؛ ترتیب شروع (نه ترتیب ورودی) تعیین‌کننده است', () => {
@@ -65,17 +75,17 @@ describe('استراحت با حقوق — موتور computeDay (C1)', () => {
     const breaks = [sb('10:00', '10:20'), sb('12:00', '12:20')];
     const shift = { startTime: '08:00', endTime: '16:00', graceLateMinutes: 0, graceEarlyMinutes: 0, overnight: false, maxLunchMinutes: 0, fixedLunchDeductMinutes: 0 };
     assert.deepEqual(pick(run(breaks, PAID, { ...shift, paidBreakCount: 1, paidBreakMinutes: 10 })), [40, 10, 30, 450]);
-    assert.deepEqual(pick(run(breaks, PAID, { ...shift, paidBreakCount: null, paidBreakMinutes: null })), [40, 30, 10, 470]);
-    assert.deepEqual(pick(run(breaks, PAID, shift)), [40, 30, 10, 470]);
+    assert.deepEqual(pick(run(breaks, PAID, { ...shift, paidBreakCount: null, paidBreakMinutes: null })), [40, 40, 0, 480]);
+    assert.deepEqual(pick(run(breaks, PAID, shift)), [40, 40, 0, 480]);
     assert.deepEqual(pick(run(breaks, PAID, { ...shift, paidBreakCount: 0 })), [40, 0, 40, 440]);
-    assert.deepEqual(pick(run(breaks, {}, { ...shift, paidBreakCount: 2, paidBreakMinutes: 20 })), [40, 40, 0, 480], 'شیفت می‌تواند بدون تنظیم سراسری هم روشن کند');
+    assert.deepEqual(pick(run(breaks, {}, { ...shift, paidBreakCount: 2, paidBreakMinutes: 20 })), [40, 20, 20, 460], 'شیفت می‌تواند بدون تنظیم سراسری هم روشن کند');
   });
 
   test('کسر ثابت ناهار همیشه بدون حقوق؛ effective نه دوبار کم می‌شود نه منفی', () => {
     const d = run([sb('10:00', '10:15')], { ...PAID, fixedLunchDeductMinutes: 30 });
     assert.deepEqual([d.break, d.breakAuto, d.breakPaid, d.breakUnpaid, d.effective], [45, 30, 15, 30, 450]);
     const huge = run([sb('08:30', '15:30')], PAID); // ۷ ساعت استراحت: فقط ۱۵ دقیقه با حقوق
-    assert.deepEqual([huge.breakPaid, huge.breakUnpaid, huge.effective], [15, 405, 75]);
+    assert.deepEqual([huge.breakPaid, huge.breakUnpaid, huge.effective], [45, 375, 105]);
     const tiny = computeDay({ record: { ...record, check_out_time: at('08:10') }, breaks: [sb('08:00', '08:10')], settings: { ...BASE, ...PAID }, timezone: 'Asia/Tehran' });
     assert.deepEqual([tiny.breakPaid, tiny.breakUnpaid, tiny.effective], [10, 0, 10]);
   });
@@ -114,7 +124,7 @@ describe('تنظیمات، شیفت و migration (C1)', () => {
 
   test('تنظیمات سراسری: پیش‌فرض ۰، حدود ۰..۱۰ و ۰..۱۲۰', () => {
     const all = settingsRepo.getAll();
-    assert.deepEqual([all.paidBreakCount, all.paidBreakMinutes], [0, 0]);
+    assert.deepEqual([all.paidBreakCount, all.paidBreakMinutes], [3, 45]);
     const reg = require('../src/utils/settingsRegistry');
     assert.equal(reg.validate('paidBreakCount', 3).ok, true);
     assert.equal(reg.validate('paidBreakCount', 11).ok, false);
@@ -157,7 +167,7 @@ describe('تنظیمات، شیفت و migration (C1)', () => {
     assert.deepEqual([d.breakPaid, d.breakUnpaid, d.effective], [15, 10, 470]);
     usersRepo.setUserShift(u.id, null);
     const g = dayService.computeRecordDay(rec);
-    assert.deepEqual([g.breakPaid, g.breakUnpaid, g.effective], [0, 25, 455], 'سراسری خاموش (۰) ⇒ رفتار قبلی');
+    assert.deepEqual([g.breakPaid, g.breakUnpaid, g.effective], [25, 45, 435]);
   });
 
   test('migration ۰۳۰ idempotent؛ ستون‌ها NULL پیش‌فرض (رفتار قبلی)', () => {
@@ -178,7 +188,7 @@ describe('سرویس سیاست (Mini App) و گزارش ماهانه (C1)', () 
   after(cleanup);
 
   test('policyFor: پیش‌فرض خاموش؛ تنظیم سراسری؛ شیفتِ مؤثر آن روز بر سراسری غالب است', () => {
-    assert.deepEqual(breakSvc.policyFor(u.id, '2026-09-14'), { enabled: false, count: 0, minutes: 0 });
+    assert.deepEqual(breakSvc.policyFor(u.id, '2026-09-14'), { enabled: true, count: 3, minutes: 45 });
     settings.setValue('paidBreakCount', 3);
     settings.setValue('paidBreakMinutes', 15);
     assert.deepEqual(breakSvc.policyFor(u.id, '2026-09-14'), { enabled: true, count: 3, minutes: 15 });
@@ -201,17 +211,17 @@ describe('سرویس سیاست (Mini App) و گزارش ماهانه (C1)', () 
       { id: 4, break_type: 'short_break', start_time: '2026-09-14T10:00:00.000Z' },
     ];
     const info = (row) => breakSvc.paidInfo(u.id, '2026-09-14', rows, row);
-    assert.deepEqual(info(rows[0]), { count: 2, minutes: 15, index: 1, isPaid: true });
+    assert.deepEqual(info(rows[0]), { count: 2, minutes: 15, index: 1, remainingMinutes: 15, isPaid: true });
     assert.equal(info(rows[1]), null);
-    assert.deepEqual(info(rows[2]), { count: 2, minutes: 15, index: 2, isPaid: true });
-    assert.deepEqual(info(rows[3]), { count: 2, minutes: 15, index: 3, isPaid: false });
+    assert.deepEqual(info(rows[2]), { count: 2, minutes: 15, index: 2, remainingMinutes: 15, isPaid: true });
+    assert.deepEqual(info(rows[3]), { count: 2, minutes: 15, index: 3, remainingMinutes: 15, isPaid: false });
     settings.setValue('paidBreakCount', 0);
     assert.equal(info(rows[0]), null, 'خاموش ⇒ UI چیزی نشان نمی‌دهد');
   });
 
   test('گزارش ماهانه: جمع استراحت با/بدون حقوق در breaks (جدا از time) و ریز روزانه', () => {
     settings.setValue('paidBreakCount', 3);
-    settings.setValue('paidBreakMinutes', 15);
+    settings.setValue('paidBreakMinutes', 45);
     const { computeMonthlyReport } = require('../src/services/monthlyReportService');
     const date = '2026-12-02'; // سه‌شنبه؛ ماه ۱۴۰۵/۹
     const rec = attendanceRepo.createManual({ userId: u.id, recordDate: date, checkInTime: zonedTimeToUtc(date, '08:00', 'Asia/Tehran').toISOString(), checkOutTime: zonedTimeToUtc(date, '16:00', 'Asia/Tehran').toISOString(), status: 'normal' });
@@ -219,10 +229,10 @@ describe('سرویس سیاست (Mini App) و گزارش ماهانه (C1)', () 
     mk('10:00', '10:25'); mk('12:00', '12:10');
     const rep = computeMonthlyReport({ users: [usersRepo.findById(u.id)], year: 1405, month: 9, now: '2026-12-31T12:00:00Z', includeDays: true, includeBalances: false });
     const r = rep.users[0];
-    assert.deepEqual(r.breaks, { paidMinutes: 25, unpaidMinutes: 10 });
+    assert.deepEqual(r.breaks, { paidMinutes: 35, unpaidMinutes: 0 });
     assert.ok(!('breakPaidMinutes' in r.time), 'time دست‌نخورده (snapshotهای ماه بسته‌ی قبلی)');
     const day = r.days.find((d) => d.date === date);
-    assert.deepEqual([day.breakPaid, day.breakUnpaid, day.effective], [25, 10, 470]);
+    assert.deepEqual([day.breakPaid, day.breakUnpaid, day.effective], [35, 0, 480]);
     const { buildMonthlySheets } = require('../src/services/monthlyExportService');
     const sheets = buildMonthlySheets(rep);
     const main = sheets[0];
@@ -230,7 +240,7 @@ describe('سرویس سیاست (Mini App) و گزارش ماهانه (C1)', () 
     const iPaid = main.headers.indexOf('استراحت با حقوق (دقیقه)');
     assert.ok(iPaid >= 0);
     assert.equal(main.headers[iPaid + 1], 'استراحت بدون حقوق (دقیقه)');
-    assert.deepEqual(main.rows[0].slice(iPaid, iPaid + 2), [25, 10]);
+    assert.deepEqual(main.rows[0].slice(iPaid, iPaid + 2), [35, 0]);
     settings.setValue('paidBreakCount', 0);
   });
 });

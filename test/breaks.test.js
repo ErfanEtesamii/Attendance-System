@@ -73,7 +73,7 @@ describe('استراحت‌ها (S3-4a)', () => {
   test('رجیستری + DB: اعتبارسنجی، پیش‌فرض‌ها و اثر روی dayService (شکل خلاصه‌ی قدیمی بدون تغییر)', () => {
     assert.deepEqual(registry.selfCheck(), []);
     for (const key of ['maxLunchMinutes', 'fixedLunchDeductMinutes']) {
-      assert.equal(registry.defaultOf(key), 0);
+      assert.equal(registry.defaultOf(key), key === 'fixedLunchDeductMinutes' ? 45 : 0);
       assert.equal(registry.getDef(key).group, 'workHours');
       assert.deepEqual(registry.validate(key, '45'), { ok: true, value: 45 });
       [-1, 481, 1.5, 'abc', ''].forEach((v) => assert.equal(registry.validate(key, v).ok, false, `${key} ${JSON.stringify(v)}`));
@@ -87,7 +87,7 @@ describe('استراحت‌ها (S3-4a)', () => {
     const record = db.prepare('SELECT * FROM attendance_records WHERE id = ?').get(id);
     const reset = () => db.exec("DELETE FROM settings WHERE key IN ('max_lunch_minutes', 'fixed_lunch_deduct_minutes')");
     try {
-      assert.equal(dayService.summarizeRecord(record).effectiveMinutes, 510, 'پیش‌فرض DB: بدون کسر');
+      assert.equal(dayService.summarizeRecord(record).effectiveMinutes, 465, 'پیش‌فرض فاز ۱۸: کسر ثابت ۴۵ دقیقه ناهار');
       settingsRepo.update({ fixedLunchDeductMinutes: 60 });
       assert.equal(dayService.summarizeRecord(record).effectiveMinutes, 450);
       assert.deepEqual(Object.keys(dayService.summarizeRecord(record)), ['effectiveMinutes', 'lateMinutes', 'earlyLeaveMinutes', 'overtimeMinutes', 'isOpen']);
@@ -96,6 +96,6 @@ describe('استراحت‌ها (S3-4a)', () => {
       settingsRepo.update({ maxLunchMinutes: 30 });
       assert.deepEqual(pick(dayService.computeRecordDay(record)), [45, 0, 15, 465], 'ناهار ثبت شد ⇒ کسر ثابت کنار می‌رود و مازاد گزارش می‌شود');
     } finally { reset(); db.prepare('DELETE FROM break_records WHERE attendance_record_id = ?').run(id); }
-    assert.equal(dayService.summarizeRecord(record).effectiveMinutes, 510);
+    assert.equal(dayService.summarizeRecord(record).effectiveMinutes, 465);
   });
 });

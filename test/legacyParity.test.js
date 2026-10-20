@@ -49,6 +49,8 @@ describe('تطبیق موتور جدید با workHours قدیمی (S3-2d)', () 
     originalTz = process.env.TZ;
     process.env.TZ = TEHRAN;
     db = resetDb();
+    // این suite برابری با رفتار منجمدِ پیش از U1 را می‌سنجد، پس سیاست جدید کسر ثابت را صریحاً خاموش می‌کند.
+    settingsRepo.update({ fixedLunchDeductMinutes: 0, fixedLunchMinPresenceMinutes: 0 });
     const user = makeUser();
     const insRec = db.prepare('INSERT INTO attendance_records (user_id, record_date, check_in_time, check_out_time, status) VALUES (?, ?, ?, ?, ?)');
     const insBrk = db.prepare('INSERT INTO break_records (attendance_record_id, break_type, start_time, end_time) VALUES (?, ?, ?, ?)');

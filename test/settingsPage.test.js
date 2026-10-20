@@ -45,7 +45,7 @@ describe('صفحه‌های تنظیمات و تعطیلات پنل (S3-9a/9b)',
 
     // U1: برای هر گروه یک پنل (فقط اولی نمایان)؛ دکمه‌ی ناوبری هر گروه؛ بدون <details>
     const groupKeys = Object.keys(groups);
-    assert.equal(groupKeys.length, 13);
+    assert.equal(groupKeys.length, 14);
     for (const g of groupKeys) {
       assert.match(html, new RegExp(`<section class="card st-panel" data-group="${g}"`), `گروه ${g}`);
       assert.match(html, new RegExp(`class="st-nav-item" data-go="${g}"`), `ناوبری ${g}`);

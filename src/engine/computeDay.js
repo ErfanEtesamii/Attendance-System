@@ -11,7 +11,8 @@
 //   settings : { workDayStart, workDayEnd } با قالب HH:MM؛ اختیاری (S3-3a): lateGraceMinutes (عدد ≥ ۰، پیش‌فرض ۰)،
 //              lateCountsFrom ('shift_start' | 'after_grace'، پیش‌فرض 'shift_start')؛ (S3-3b) earlyGraceMinutes (عدد ≥ ۰، پیش‌فرض ۰)؛
 //              (S3-4a) maxLunchMinutes (حداکثر ناهار مجاز؛ عدد ≥ ۰، پیش‌فرض ۰ = بدون سقف)،
-//              fixedLunchDeductMinutes (کسر ثابت ناهار وقتی ناهار ثبت نشده؛ عدد ≥ ۰، پیش‌فرض ۰ = خاموش)؛
+//              fixedLunchDeductMinutes (کسر ثابت ناهار وقتی ناهار ثبت نشده؛ عدد ≥ ۰، پیش‌فرض ۴۵، ۰ = خاموش)،
+//              fixedLunchMinPresenceMinutes (حداقل حضور ناخالص برای اعمال کسر ثابت؛ عدد ≥ ۰، پیش‌فرض ۲۴۰، ۰ = بدون آستانه)؛
 //              (S3-4b) longOpenBreakMinutes (آستانه‌ی استراحتِ بازِ طولانی؛ عدد > ۰، پیش‌فرض ۱۲۰)،
 //              outsideShiftMarginMinutes (حاشیه‌ی مجاز ورود/خروج دور از شیفت؛ عدد ≥ ۰، پیش‌فرض ۱۲۰)؛
 //              (S3-5a) اضافه‌کاری قابل‌پرداخت: overtimeEnabled (boolean، پیش‌فرض false)، overtimeMinMinutes (حداقل آستانه، ≥ ۰، پیش‌فرض ۰)،
@@ -46,12 +47,13 @@
 //   expected    : طول روز کاری رسمی = پایان − شروع (حداقل ۰)
 //   workedGross : مدت بین ورود و خروج (یا now برای رکورد باز)، گرد شده؛ بدون ورود ⇒ null
 //   break       : مجموع استراحت‌های بسته‌شده (همه‌ی نوع‌ها؛ جمع میلی‌ثانیه‌ها، سپس گرد) + breakAuto (کسر ثابت ناهار، پایین)
-//   breakPaid   : (C1) بخش «با حقوق» استراحت‌ها: i‌امین استراحت کوتاه (short_break) بسته‌شده به ترتیب شروع، اگر i ≤ paidBreakCount، min(مدت، paidBreakMinutes)
-//                 با حقوق است و مازادش بدون حقوق؛ استراحت‌های بعد از تعداد مجاز و همه‌ی ناهارها کاملاً بدون حقوق. paidBreakCount/paidBreakMinutes از شیفت
+//   breakPaid   : (U2) بخش «با حقوق» استراحت‌ها: حداکثر paidBreakCount استراحت کوتاه، به ترتیب شروع، از استخر روزانه‌ی paidBreakMinutes سهم می‌گیرند؛
+//                 مازاد استخر، استراحت‌های بعد از تعداد مجاز و همه‌ی ناهارها کاملاً بدون حقوق‌اند. paidBreakCount/paidBreakMinutes از شیفت
 //                 (null/نبودن ⇒ تنظیمات سراسری؛ پیش‌فرض هر دو ۰ = خاموش ⇒ breakPaid = ۰ و همه‌چیز مثل قبل)
 //   breakUnpaid : (C1) break − breakPaid (شامل کسر ثابت ناهار). همیشه break = breakPaid + breakUnpaid
-//   breakAuto   : (S3-4a) کسر ثابت ناهار برای روزی که «ناهار ثبت نشده». فقط وقتی fixedLunchDeductMinutes > ۰، رکورد خروج دارد
-//                 (رکورد باز هنوز به ناهار نرسیده فرض می‌شود) و هیچ ردیف استراحتی از نوع lunch (بسته یا باز) ندارد. مقدار =
+//   breakAuto   : (U1) کسر ثابت ناهار برای روزی که «ناهار ثبت نشده». فقط وقتی fixedLunchDeductMinutes > ۰، حضور ناخالص به
+//                 fixedLunchMinPresenceMinutes رسیده باشد (۰ = بدون آستانه)، رکورد خروج داشته باشد (رکورد باز هنوز به ناهار نرسیده
+//                 فرض می‌شود) و هیچ ردیف استراحتی از نوع lunch (بسته یا باز) نداشته باشد. مقدار =
 //                 min(کسر ثابت، workedGross) تا استراحت از مدت کار بیشتر نشود. استراحت کوتاه (short_break) «ناهار ثبت‌شده» نیست
 //   breakExcess : (S3-4a) مازاد ناهارِ ثبت‌شده بر maxLunchMinutes = max(0، جمع ناهارهای بسته‌شده − سقف)؛ سقف ۰ ⇒ ۰. فقط اطلاعاتی است:
 //                 مازاد همچنان از ساعت مفید کم می‌شود (زمان واقعاً بیرون بوده)؛ پرچم‌گذاری آن در S3-4b. استراحت کوتاه شامل سقف نیست
@@ -91,7 +93,7 @@ const { dayNumber, dayDiff } = require('../utils/shiftDay');
 
 const LATE_COUNTS_FROM = ['shift_start', 'after_grace'];
 const OVERTIME_ROUNDING = ['down', 'nearest', 'up'];
-const FLAG_ORDER = ['invalid_time', 'checkout_before_checkin', 'missing_checkout', 'long_open_break', 'break_outside_range', 'outside_shift'];
+const FLAG_ORDER = ['invalid_time', 'checkout_before_checkin', 'missing_checkout', 're_entry', 'long_open_break', 'break_outside_range', 'outside_shift'];
 const DEFAULT_LONG_OPEN_BREAK = 120;
 const DEFAULT_OUTSIDE_SHIFT_MARGIN = 120;
 
@@ -242,23 +244,28 @@ function normalizeLeaveWindows(approvedLeaves, workStart, workEnd) {
   return merged;
 }
 
-// تقسیم استراحت‌های کوتاهِ بسته‌شده به «با حقوق/بدون حقوق» (C1، خالص). به ترتیب شروع؛ i‌امین (i < count) تا سقف minutes با حقوق است.
+// تقسیم استراحت‌های کوتاهِ بسته‌شده به «با حقوق/بدون حقوق» (U2، خالص). به ترتیب شروع؛ حداکثر count نوبت از استخر روزانه‌ی minutes سهم می‌گیرند.
 // ناهار و استراحت باز هرگز با حقوق نیست. مدت منفی (پایان قبل از شروع) سهمی ندارد. خروجی: Map(آیتم ⇒ ms با حقوق) فقط برای آیتم‌های با سهم > ۰.
 function paidBreakSplit(items, count, minutes) {
   const paid = new Map();
   if (!(count > 0) || !(minutes > 0)) return paid;
   const shorts = items.filter((b) => !b.lunch && b.endMs !== null).sort((a, b) => a.startMs - b.startMs);
+  let remaining = minutes * 60000;
   shorts.slice(0, Math.floor(count)).forEach((b) => {
-    const ms = Math.max(0, Math.min(b.endMs - b.startMs, minutes * 60000));
+    const ms = Math.max(0, Math.min(b.endMs - b.startMs, remaining));
     if (ms > 0) paid.set(b, ms);
+    remaining -= ms;
   });
   return paid;
 }
 
-function computeDay({ record, breaks, settings, now, timezone, shift, calendar, approvedLeaves } = {}) {
+function computeDay({ record, breaks, settings, now, timezone, shift, calendar, approvedLeaves, segments } = {}) {
   if (!settings || typeof settings !== 'object') throw new TypeError('settings الزامی است.');
   const params = resolveShiftParams(settings, shift);
   const { workStart, lateGrace, earlyGrace, maxLunch, fixedLunch, overnight, paidCount, paidMinutes } = params;
+  // این آستانه عمداً سراسری است؛ شیفت فقط مقدار کسر ثابت را تعیین می‌کند.
+  // نبودن آن در فراخوانی مستقیم computeDay معادل ۰ است تا سازگاری فراخوانی‌های قدیمی حفظ شود.
+  const fixedLunchMinPresence = graceMinutes(settings.fixedLunchMinPresenceMinutes, 'fixedLunchMinPresenceMinutes');
   let { workEnd } = params;
   // تقویم روز (S3-7c): روز غیرکاری یا پایانِ نیم‌روز. بدون calendar همه‌چیز مثل قبل
   let dayOff = false;
@@ -343,9 +350,11 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
   if (!record || !record.check_in_time) return emit();
 
   // زمان خراب رکورد = داده‌ی خراب: پرچم، نه exception؛ هیچ عددی از رکورد حساب نمی‌شود
-  const checkIn = new Date(record.check_in_time);
-  const checkOut = record.check_out_time ? new Date(record.check_out_time) : null;
-  if (Number.isNaN(checkIn.getTime()) || (checkOut && Number.isNaN(checkOut.getTime()))) {
+  const rawSegments = Array.isArray(segments) && segments.length ? segments : [{ in: record.check_in_time, out: record.check_out_time }];
+  const normalizedSegments = rawSegments.map((s) => ({ in: new Date(s.in || s.check_in_time), out: (s.out || s.check_out_time) ? new Date(s.out || s.check_out_time) : null }));
+  const checkIn = normalizedSegments[0].in;
+  const checkOut = normalizedSegments[normalizedSegments.length - 1].out;
+  if (normalizedSegments.some((s) => Number.isNaN(s.in.getTime()) || (s.out && Number.isNaN(s.out.getTime())))) {
     flagSet.add('invalid_time');
     return emit();
   }
@@ -362,8 +371,9 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
 
   const end = checkOut || (now === undefined ? new Date() : toDate(now, 'now'));
   result.isOpen = !checkOut;
+  if (normalizedSegments.length > 1) flagSet.add('re_entry');
   // ---- پرچم‌ها (S3-4b): فقط گزارش؛ هیچ‌کدام عددی را عوض نمی‌کنند ----
-  const reversed = Boolean(checkOut) && checkOut.getTime() < checkIn.getTime();
+  const reversed = normalizedSegments.some((segment) => segment.out && segment.out.getTime() < segment.in.getTime());
   if (reversed) flagSet.add('checkout_before_checkin');
   const dayOver = overnight ? posOf(end) > workEnd + shiftMargin : formatDate(checkIn, tz) < formatDate(end, tz); // شیفت شب: «پایان + حاشیه» گذشته
   if (!checkOut && (record.status === 'incomplete' || dayOver)) flagSet.add('missing_checkout');
@@ -371,16 +381,25 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
     if (b.endMs === null && (end.getTime() - b.startMs) / 60000 > longOpenBreak) flagSet.add('long_open_break');
     if (reversed) continue; // بازه‌ی روز معتبر نیست؛ مقایسه‌ی استراحت بی‌معنی است
     const bEnd = b.endMs === null ? b.startMs : b.endMs;
-    if (b.startMs < checkIn.getTime() || bEnd < b.startMs || (checkOut && bEnd > checkOut.getTime())) flagSet.add('break_outside_range');
+    const insidePresence = normalizedSegments.some((segment, index) => {
+      const segmentEnd = segment.out || (index === normalizedSegments.length - 1 ? end : segment.in);
+      return b.startMs >= segment.in.getTime() && bEnd <= segmentEnd.getTime();
+    });
+    if (bEnd < b.startMs || !insidePresence) flagSet.add('break_outside_range');
   }
   const outsideMinutes = (d) => { const m = posOf(d); return m < workStart - shiftMargin || m > workEnd + shiftMargin; };
   const otherDay = !overnight && Boolean(checkOut) && formatDate(checkOut, tz) !== formatDate(checkIn, tz); // شیفت شب عمداً از نیمه‌شب رد می‌شود
   if (!dayOff && (outsideMinutes(checkIn) || (checkOut && (outsideMinutes(checkOut) || otherDay)))) flagSet.add('outside_shift');
 
-  const gross = Math.max(0, (end.getTime() - checkIn.getTime()) / 60000);
+  const gross = normalizedSegments.reduce((sum, segment, index) => {
+    const segmentEnd = segment.out || (index === normalizedSegments.length - 1 ? end : segment.in);
+    return sum + Math.max(0, (segmentEnd.getTime() - segment.in.getTime()) / 60000);
+  }, 0);
   result.workedGross = Math.round(gross);
-  // کسر ثابت ناهار: فقط روز بسته‌شده‌ای که هیچ ردیف ناهاری ندارد (استراحت کوتاه جای ناهار را نمی‌گیرد)
-  if (fixedLunch > 0 && checkOut && !(breaks || []).some((b) => b && isLunch(b))) {
+  // کسر ثابت ناهار: فقط روز بسته‌شده‌ای که به آستانه‌ی حضور رسیده و هیچ ردیف ناهاری ندارد.
+  // استراحت کوتاه جای ناهار را نمی‌گیرد.
+  const meetsFixedLunchThreshold = fixedLunchMinPresence === 0 || gross >= fixedLunchMinPresence;
+  if (fixedLunch > 0 && checkOut && meetsFixedLunchThreshold && !(breaks || []).some((b) => b && isLunch(b))) {
     result.breakAuto = Math.min(fixedLunch, result.workedGross);
     result.break += result.breakAuto;
     result.breakUnpaid += result.breakAuto; // کسر ثابت ناهار همیشه بدون حقوق
@@ -389,7 +408,10 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
   result.effectiveWithMission = result.effective;
   if (result.missionMinutes > 0) {
     // مفید = |P ∪ M'|: P = حضور منهای استراحت‌های واقعی؛ فقط بخشی از ماموریت که با P هم‌پوشان است دوبار شمرده نمی‌شود
-    let pres = reversed ? [] : [[posOf(checkIn), posOf(end)]];
+    let pres = reversed ? [] : normalizedSegments.map((segment, index) => [
+      posOf(segment.in),
+      posOf(segment.out || (index === normalizedSegments.length - 1 ? end : segment.in)),
+    ]).filter(([s, e]) => e >= s);
     for (const b of read.items) {
       if (b.endMs === null) continue;
       const bs = posOf(new Date(b.startMs)) + (paidMsOf.get(b) || 0) / 60000; // C1: بخش با حقوق از حضور کم نمی‌شود

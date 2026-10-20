@@ -3,6 +3,7 @@
 
 const usersRepository = require('../../../repositories/usersRepository');
 const breakRepository = require('../../../repositories/breakRepository');
+const attendanceRepository = require('../../../repositories/attendanceRepository');
 const auditRepository = require('../../../repositories/auditRepository');
 const dayService = require('../../../engine/dayService');
 const { minutesSinceMidnight } = require('../../../utils/time');
@@ -74,10 +75,13 @@ function safeSummary(record, opts) {
 
 function enrichRecord(record, userMap) {
   const breaks = breakRepository.listByAttendanceRecord(record.id);
+  const segments = attendanceRepository.listSegments(record.id);
   return {
     ...record,
     user: userBrief(userMap ? userMap.get(record.user_id) : usersRepository.findById(record.user_id)),
     breaks,
+    segments,
+    segmentCount: segments.length,
     breakMinutes: breakRepository.totalBreakMinutes(record.id),
     summary: safeSummary(record),
   };

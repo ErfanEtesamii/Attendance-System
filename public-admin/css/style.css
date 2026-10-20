@@ -1257,7 +1257,7 @@ body::after { right: -160px; bottom: -160px; background: radial-gradient(circle,
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
-.topbar { box-shadow: 0 14px 36px rgba(22, 18, 67, .09); }
+.topbar { box-shadow: 0 14px 36px color-mix(in srgb, var(--brand) 9%, transparent); }
 .view-header h2 { letter-spacing: -.35px; }
 .nav-item, .btn, .icon-btn, .tab, tbody tr {
   transition: transform .18s ease, background-color .18s ease, color .18s ease, box-shadow .18s ease, border-color .18s ease;

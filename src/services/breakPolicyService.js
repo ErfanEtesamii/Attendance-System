@@ -34,7 +34,10 @@ function paidInfo(userId, date, breaks, breakRow, settings = null) {
   if (!policy.enabled) return null;
   const index = shortOrdinal(breaks, breakRow);
   if (index === null) return null;
-  return { count: policy.count, minutes: policy.minutes, index, isPaid: index <= policy.count };
+  const prior = breaks.filter((b) => b.break_type === 'short_break' && b.id !== breakRow.id && b.end_time && b.start_time <= breakRow.start_time)
+    .reduce((sum, b) => sum + Math.max(0, (Date.parse(b.end_time) - Date.parse(b.start_time)) / 60000), 0);
+  const remainingMinutes = Math.max(0, policy.minutes - Math.round(prior));
+  return { count: policy.count, minutes: policy.minutes, index, remainingMinutes, isPaid: index <= policy.count && remainingMinutes > 0 };
 }
 
 module.exports = { policyFor, shortOrdinal, paidInfo };

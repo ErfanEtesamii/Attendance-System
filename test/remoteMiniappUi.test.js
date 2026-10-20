@@ -73,8 +73,8 @@ describe('کد app.js (R4)', () => {
     assert.match(mod, /REMOTE_NOT_ALLOWED/);
     assert.match(mod, /leaveRemoteMode\(err\.message\)/);
   });
-  test('doAction: OUT_OF_NETWORK چهار مسیر تردد دیالوگ را نشان می‌دهد (قبل از توست خطا)', () => {
-    assert.match(mod, /OUT_OF_NETWORK_PATHS = \['\/check-in', '\/check-out', '\/break\/start', '\/break\/end'\]/);
+  test('doAction: OUT_OF_NETWORK مسیرهای تردد دیالوگ را نشان می‌دهد (قبل از توست خطا)', () => {
+    assert.match(mod, /OUT_OF_NETWORK_PATHS = \['\/check-in', '\/check-out', '\/re-check-in', '\/break\/start', '\/break\/end'\]/);
     const i = app.indexOf('async function doAction(');
     const body = app.slice(i, app.indexOf('\n  function setStatus', i));
     assert.ok(body.indexOf("code === 'OUT_OF_NETWORK'") > -1);

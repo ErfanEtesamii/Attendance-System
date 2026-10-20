@@ -210,10 +210,13 @@ describe('T7: تقویم تیمی و برنامه‌ی روزبه‌روز', () 
 // ---------- ۶) دفترچه ----------
 describe('T7: دفترچه‌ی «برنامه هفته بعد»', () => {
   const NB = read('public-admin/css/notebook.css');
-  test('پالت اسکوپ‌شده‌ی --nb-* است و به توکن‌های سراسری پنل وابسته نیست', () => {
+  test('پالت دفترچه به توکن‌های مشترک پنل متصل است و فقط از توکن‌های طراحی شناخته‌شده استفاده می‌کند', () => {
     const used = [...NB.matchAll(/var\(--([a-z0-9-]+)/g)].map((m) => m[1]);
     assert.ok(used.length > 20, 'دفترچه از --nb-* استفاده می‌کند');
-    assert.deepEqual([...new Set(used.filter((n) => !n.startsWith('nb-')))], []);
+    const shared = [...new Set(used.filter((n) => !n.startsWith('nb-')))].sort();
+    const allowed = new Set([...Object.keys(THEMES.dark), 'radius']);
+    assert.deepEqual(shared.filter((name) => !allowed.has(name)), []);
+    for (const name of ['bg', 'card', 'text', 'hint', 'border', 'brand', 'brand-soft', 'on-brand']) assert.ok(shared.includes(name), name);
   });
   test('قاب بیرونی (سرتیتر صفحه) از همان view-header پنل است', () => {
     assert.match(read('public-admin/js/views-nextplan.js'), /class="view-header"/);

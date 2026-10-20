@@ -60,4 +60,15 @@ describe('Mini App ثبت استراحت (A2) — سرور', { skip: hasDeps ? f
     const other = F.makeUser();
     assert.equal((await S.call(other, 'POST', 'break/start', { breakType: 'lunch' })).status, 400);
   });
+
+  test('ورود مجدد: پس از خروج مجاز است، نوبت دوم را می‌بندد و سقف پیش‌فرض را رعایت می‌کند', async () => {
+    const { u } = await checkedIn();
+    assert.equal((await S.call(u, 'POST', 'check-out', {})).status, 200);
+    const again = await S.call(u, 'POST', 're-check-in', {});
+    assert.equal(again.status, 201, JSON.stringify(again.json));
+    assert.equal((await S.call(u, 'POST', 'check-out', {})).status, 200);
+    const today = await S.call(u, 'GET', 'today');
+    assert.equal(today.json.segments.length, 2);
+    assert.equal(today.json.canReEnter, false);
+  });
 });

@@ -36,6 +36,7 @@ const leaveBalanceService = require('../../services/leaveBalanceService');
 const { jalaliYearOfDateString } = require('../../utils/jalali');
 const auditRepository = require('../../repositories/auditRepository');
 const settingsRepository = require('../../repositories/settingsRepository');
+const monthClosuresRepository = require('../../repositories/monthClosuresRepository');
 const dayService = require('../../engine/dayService');
 const { extractDeviceInfo } = require('../../utils/deviceInfo');
 const fraudRunner = require('../../utils/fraudRunner');
@@ -49,12 +50,14 @@ router.use('/miniapp', telegramAuth);
 // ریست برنامه (B2): هنگام نگهداری، ثبت تردد 503 می‌گیرد (قبل از چک شبکه/rate limit)
 router.use('/miniapp/check-in', maintenanceGate);
 router.use('/miniapp/check-out', maintenanceGate);
+router.use('/miniapp/re-check-in', maintenanceGate);
 router.use('/miniapp/break/start', maintenanceGate);
 router.use('/miniapp/break/end', maintenanceGate);
 
 // عملیات‌های واقعی ثبت تردد علاوه‌بر آن باید از چک شبکه داخلی فاز ۲ هم عبور کنند
 router.use('/miniapp/check-in', networkRestriction);
 router.use('/miniapp/check-out', networkRestriction);
+router.use('/miniapp/re-check-in', networkRestriction);
 router.use('/miniapp/break/start', networkRestriction);
 router.use('/miniapp/break/end', networkRestriction);
 
@@ -75,6 +78,7 @@ const miniAppActionLimiter = createRateLimiter({
 router.use('/miniapp/check-in', miniAppActionLimiter);
 router.use('/miniapp/checkin-permission', miniAppActionLimiter);
 router.use('/miniapp/check-out', miniAppActionLimiter);
+router.use('/miniapp/re-check-in', miniAppActionLimiter);
 router.use('/miniapp/break/start', miniAppActionLimiter);
 router.use('/miniapp/break/end', miniAppActionLimiter);
 
@@ -158,7 +162,27 @@ router.get('/miniapp/today', (req, res) => {
   // C1: سیاست استراحت با حقوق (خاموش ⇒ enabled=false) + شماره‌ی استراحتِ بازِ جاری؛ فیلدهای قبلی بدون تغییر
   const breakPolicy = breakPolicyService.policyFor(req.miniAppUser.id, record ? record.record_date : null);
   const openBreakPaid = record && openBreak ? breakPolicyService.paidInfo(req.miniAppUser.id, record.record_date, breaks, openBreak) : null;
-  res.json({ record: record || null, openBreak: openBreak || null, breaks, summary, breakPolicy, openBreakPaid });
+  const settings = settingsRepository.getAll();
+  const segments = record ? attendanceRepository.listSegments(record.id) : [];
+  const reEntriesUsed = Math.max(0, segments.length - 1);
+  const canReEnter = Boolean(record && record.check_out_time && settings.maxReEntriesPerDay > reEntriesUsed);
+  res.json({ record: record || null, openBreak: openBreak || null, breaks, summary, breakPolicy, openBreakPaid, segments, reEntriesUsed, reEntriesMax: settings.maxReEntriesPerDay, canReEnter });
+});
+
+router.post('/miniapp/re-check-in', (req, res) => {
+  const record = attendanceRepository.findTodayRecord(req.miniAppUser.id);
+  const settings = settingsRepository.getAll();
+  const used = record ? Math.max(0, attendanceRepository.listSegments(record.id).length - 1) : 0;
+  if (record && getCalendarDay(req.miniAppUser, record.record_date).isTimed === false) return res.status(409).json({ code: 'UNTIMED_SHIFT', error: 'برای شیفت چرخشی بدون ساعت، ثبت ورود مجدد لازم نیست.' });
+  if (record && monthClosuresRepository.findClosedOverlapping(record.record_date, record.record_date).length) return res.status(409).json({ code: 'MONTH_CLOSED', error: 'این روز در ماه بسته‌شده است و قابل تغییر نیست.' });
+  if (!record || !record.check_out_time) return res.status(409).json({ code: 'REENTRY_NOT_AVAILABLE', error: 'ورود مجدد فقط پس از ثبت خروج ممکن است.' });
+  if (!settings.maxReEntriesPerDay || used >= settings.maxReEntriesPerDay) return res.status(409).json({ code: 'REENTRY_LIMIT', error: 'سقف ورود مجدد امروز تکمیل شده است.' });
+  if (rejectIfSharedDeviceBlocked(req, res, 're_check_in')) return;
+  const updated = attendanceRepository.startReEntry(record.id, req.ip, settings.maxReEntriesPerDay);
+  if (!updated) return res.status(409).json({ code: 'REENTRY_LIMIT', error: 'سقف ورود مجدد امروز تکمیل شده است.' });
+  auditRepository.logEvent({ userId: req.miniAppUser.id, action: 're_check_in', ipAddress: req.ip, details: { source: 'miniapp' } });
+  res.status(201).json({ ...updated, segments: attendanceRepository.listSegments(record.id) });
+  fraudRunner.runFraudChecksSafe({ date: record.record_date });
 });
 
 // بلوک اختیاری device مشترک (S2-4e-3؛ پیش‌فرض خاموش، فقط قاعده‌ی الف). اگر ثبت رد شود پاسخ 403 همین‌جا
@@ -247,7 +271,9 @@ router.post('/miniapp/check-out', (req, res) => {
   }
   // گیت D7: گزارش روزانه‌ی تسک‌ها. ترتیب گیت‌ها: گزارش امروز ← برنامه‌ی هفته‌ی بعد ← ثبت خروج.
   // (بعد از بررسی «خروج قبلاً ثبت شده»، تا دبل‌کلیکِ موفق 409 نگیرد؛ تا همه‌ی گیت‌ها رد نشوند چیزی نوشته نمی‌شود.)
-  const reportGate = taskReportService.checkoutGate(req.miniAppUser, record.record_date, req.body);
+  // خروج نوبت دوم همان تعهد روز را دوباره مطالبه نمی‌کند؛ گزارش و برنامه در خروج اول بررسی شده‌اند.
+  const isReEntryCheckout = attendanceRepository.listSegments(record.id).length > 1;
+  const reportGate = isReEntryCheckout ? { action: 'allow', report: null } : taskReportService.checkoutGate(req.miniAppUser, record.record_date, req.body);
   if (reportGate.action === 'invalid') {
     return res.status(['MONTH_CLOSED', 'FULL_DAY_OFF', 'ALREADY_ANSWERED'].includes(reportGate.code) ? 409 : 400).json({ error: reportGate.error, code: reportGate.code });
   }
@@ -264,7 +290,7 @@ router.post('/miniapp/check-out', (req, res) => {
     });
   }
   // گیت D5: برنامه‌ی هفته‌ی بعد
-  const planGate = planGateService.check(req.miniAppUser, record.record_date);
+  const planGate = isReEntryCheckout ? { action: 'allow', info: {} } : planGateService.check(req.miniAppUser, record.record_date);
   if (planGate.action === 'block') {
     auditRepository.logEvent({ userId: req.miniAppUser.id, action: 'check_out_blocked', ipAddress: req.ip, details: { source: 'miniapp', reason: 'weekly_plan_required', weekStart: planGate.info.weekStart } });
     return res.status(409).json({
@@ -285,7 +311,7 @@ router.post('/miniapp/check-out', (req, res) => {
   }
   if (rejectIfSharedDeviceBlocked(req, res, 'check_out')) return;
   // ذخیره‌ی گزارش (اگر در همین درخواست آمده) و ثبت خروج: اتمیک، در یک تراکنش
-  const updated = taskReportService.commitAtomic(req.miniAppUser, reportGate, () => attendanceRepository.recordCheckOut(record.id, req.ip, extractDeviceInfo(req), { viaPendingMission: Boolean(req.viaPendingMission) }));
+  const updated = taskReportService.commitAtomic(req.miniAppUser, reportGate, () => attendanceRepository.closeLastSegment(record.id, req.ip, extractDeviceInfo(req), { viaPendingMission: Boolean(req.viaPendingMission) }));
   if (req.viaPendingMission) pendingMissionService.flagPendingMissionOutside({ userId: req.miniAppUser.id, record: updated, requestId: req.viaPendingMission, action: 'check_out' });
   auditRepository.logEvent({
     userId: req.miniAppUser.id,
@@ -296,7 +322,7 @@ router.post('/miniapp/check-out', (req, res) => {
   if (reportGate.report) {
     auditRepository.logEvent({ userId: req.miniAppUser.id, action: 'daily_report_submitted', ipAddress: req.ip, details: { source: 'miniapp_check_out', date: reportGate.date, answers: reportGate.report.answers.length, extra: reportGate.report.extras.length } });
   }
-  planGateService.consumeExemption(req.miniAppUser, planGate, updated, req.ip);
+  if (!isReEntryCheckout) planGateService.consumeExemption(req.miniAppUser, planGate, updated, req.ip);
   const payload = { ...updated };
   if (planGate.action === 'remind' || planGate.action === 'confirm') payload.planReminder = { weekStart: planGate.info.weekStart };
   if (reportGate.report) payload.reportSaved = { date: reportGate.date, answers: reportGate.report.answers.length, extra: reportGate.report.extras.length };

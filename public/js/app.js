@@ -12,9 +12,9 @@
     if (window.Theme && window.Theme.apply) window.Theme.apply();
     else {
       try {
-        tg.setHeaderColor('#17143a');
-        tg.setBackgroundColor('#17143a');
-        if (tg.setBottomBarColor) tg.setBottomBarColor('#17143a');
+        tg.setHeaderColor('#ffffff');
+        tg.setBackgroundColor('#ffffff');
+        if (tg.setBottomBarColor) tg.setBottomBarColor('#ffffff');
       } catch (_) { /* نسخه‌های قدیمی تلگرام */ }
     }
   }
@@ -384,6 +384,14 @@
     box.className = 'actions';
     const r = state.today && state.today.record;
     const openBreak = state.today && state.today.openBreak;
+    const daySegments = state.today && Array.isArray(state.today.segments) ? state.today.segments : [];
+    const addSegmentsCard = () => {
+      if (daySegments.length <= 1) return;
+      const list = document.createElement('div');
+      list.className = 'card done-card';
+      list.textContent = daySegments.map((s, i) => `نوبت ${i + 1}: ${fmtClock(s.check_in_time)} — ${s.check_out_time ? fmtClock(s.check_out_time) : 'در حال انجام'}`).join(' | ');
+      box.appendChild(list);
+    };
 
     function addTile({ title, sub, color, icon, wide, handler, locked }) {
       const b = document.createElement('button');
@@ -423,16 +431,24 @@
       addMissionTile();
       addMyDayTile();
       addPlanTile();
+      addSegmentsCard();
       return;
     }
 
     hideLateLimitCard(); // رکورد امروز هست ⇒ کارت اجازه لازم نیست
     if (r.check_out_time) {
       box.classList.add('single');
+      if (state.today && state.today.canReEnter) {
+        addTile({
+          title: 'ورود مجدد', sub: `امروز هنوز ${(state.today.reEntriesMax - state.today.reEntriesUsed).toLocaleString('fa-IR')} بار می‌توانید برگردید`, color: 'green', icon: 'in', wide: true,
+          handler: async () => { if (await confirmReEntry()) doAction('/re-check-in', {}, 'ورود مجدد ثبت شد.'); },
+        });
+      }
       const done = document.createElement('div');
       done.className = 'card done-card';
       done.textContent = 'امروز به پایان رسید. تا فردا خوش باشید 🌤️';
       box.appendChild(done);
+      addSegmentsCard();
       addMissionTile();
       addMyDayTile();
       addPlanTile();
@@ -448,6 +464,7 @@
       addMissionTile();
       addMyDayTile();
       addPlanTile();
+      addSegmentsCard();
       return;
     }
 
@@ -459,9 +476,29 @@
       title: 'ثبت خروج', sub: 'پایان روز کاری', color: 'red', icon: 'out',
       handler: () => startCheckout(),
     });
+    addSegmentsCard();
     addMissionTile();
     addMyDayTile();
     addPlanTile();
+  }
+
+  function confirmReEntry() {
+    const message = 'از ورود مجدد برای ادامه‌ی کار مطمئن هستید؟';
+    if (tg && typeof tg.showConfirm === 'function') return new Promise((resolve) => tg.showConfirm(message, resolve));
+    return new Promise((resolve) => {
+      const backdrop = rEl('div', 'remote-backdrop');
+      const box = rEl('div', 'remote-dialog');
+      box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
+      const title = rEl('h2', 'remote-dialog-title', 'تأیید ورود مجدد');
+      const text = rEl('p', 'remote-dialog-text', message);
+      const actions = rEl('div', 'remote-dialog-actions');
+      const finish = (answer) => { if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop); resolve(answer); };
+      const yes = rEl('button', 'btn primary', 'ورود مجدد'); yes.type = 'button'; yes.addEventListener('click', () => finish(true));
+      const no = rEl('button', 'btn secondary', 'انصراف'); no.type = 'button'; no.addEventListener('click', () => finish(false));
+      actions.appendChild(yes); actions.appendChild(no); box.appendChild(title); box.appendChild(text); box.appendChild(actions); backdrop.appendChild(box);
+      backdrop.addEventListener('click', (event) => { if (event.target === backdrop) finish(false); });
+      document.body.appendChild(backdrop); yes.focus();
+    });
   }
 
   // ---------- bottom-sheet انتخاب نوع استراحت (A1) ----------
@@ -600,7 +637,7 @@
     const unlock = () => btns.forEach((b) => { if (b.isConnected && !(b.dataset && b.dataset.locked)) b.disabled = false; });
     try {
       // S2-3: device_id فقط همراه ورود/خروج؛ نبودنش مانع ثبت نیست
-      if (path === '/check-in' || path === '/check-out') {
+      if (path === '/check-in' || path === '/check-out' || path === '/re-check-in') {
         const deviceId = await getDeviceId();
         if (deviceId) body = { ...(body || {}), deviceId };
       }
@@ -698,11 +735,12 @@
     const fa = (n) => (J ? J.toFaDigits(String(n)) : String(n));
     const from = new Date(data.openBreak.start_time).getTime();
     const paint = (diffMs) => {
-      const over = paid.isPaid && diffMs > paid.minutes * 60000;
+      const remaining = paid.remainingMinutes == null ? paid.minutes : paid.remainingMinutes;
+      const over = paid.isPaid && diffMs > remaining * 60000;
       let text;
       if (!paid.isPaid) text = `سهمیه‌ی استراحت با حقوقِ امروز (${fa(paid.count)} بار) تمام شده؛ این استراحت از ساعت کاری کم می‌شود.`;
       else if (over) text = `استراحت با حقوق ${fa(paid.index)} از ${fa(paid.count)} — از این‌جا به بعد از ساعت کاری کم می‌شود.`;
-      else text = `استراحت با حقوق ${fa(paid.index)} از ${fa(paid.count)} — ${fa(paid.minutes)} دقیقه`;
+      else text = `استراحت با حقوق ${fa(paid.index)} از ${fa(paid.count)} — ${fa(remaining)} دقیقه از سهمیه روزانه باقی مانده`;
       if (el.textContent !== text) el.textContent = text;
       el.classList.toggle('is-over', over || !paid.isPaid);
     };
@@ -748,13 +786,14 @@
       setStatus('در حال استراحت', 'is-break');
       startTimer(data.openBreak.start_time);
       timerEl.classList.remove('is-text');
-      progressMin = (Date.now() - new Date(r.check_in_time).getTime()) / 60000 - totalBreak;
+      progressMin = data.summary?.effectiveMinutes || 0;
       $('#today-summary').textContent = 'مدت استراحت جاری';
     } else {
       setStatus('حاضر در شرکت', 'is-active');
-      startTimer(r.check_in_time);
+      const currentSegment = (data.segments || []).at(-1);
+      startTimer(currentSegment?.check_in_time || r.check_in_time);
       timerEl.classList.remove('is-text');
-      progressMin = (Date.now() - new Date(r.check_in_time).getTime()) / 60000 - totalBreak;
+      progressMin = data.summary?.effectiveMinutes || 0;
       $('#today-summary').textContent = 'مدت حضور از لحظه ورود';
     }
 
@@ -2836,7 +2875,7 @@
   const REMOTE_MSG = 'شما در فرازهنر حضور ندارید. می‌توانید ساعت خود را به‌عنوان دورکار ثبت کنید و پس از بررسی سرپرست مربوطه، در آخر هفته ساعتتان لحاظ می‌شود.';
   const REMOTE_STATUS = { pending: 'در انتظار بررسی', approved: 'تأیید شده', rejected: 'رد شده' };
   const REMOTE_VIEWS = ['remote', 'remote-history'];
-  const OUT_OF_NETWORK_PATHS = ['/check-in', '/check-out', '/break/start', '/break/end'];
+  const OUT_OF_NETWORK_PATHS = ['/check-in', '/check-out', '/re-check-in', '/break/start', '/break/end'];
 
   function rEl(tag, cls, text) {
     const e = document.createElement(tag);

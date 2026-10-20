@@ -11,6 +11,7 @@
 
 const settingsRepository = require('../repositories/settingsRepository');
 const breakRepository = require('../repositories/breakRepository');
+const attendanceRepository = require('../repositories/attendanceRepository');
 const shiftsRepository = require('../repositories/shiftsRepository');
 const overtimeApprovalRepository = require('../repositories/overtimeApprovalRepository');
 const usersRepository = require('../repositories/usersRepository');
@@ -26,7 +27,7 @@ const { getCalendarDay, virtualShiftFor } = require('./calendarService');
 // تا هر رکورد دوباره DB نخواند. context ساخته‌شده‌ی دستی (فقط { settings, timezone }) هم معتبر است؛ فقط کش نخواهد داشت.
 function loadContext() {
   const settings = settingsRepository.getAll();
-  return { settings, timezone: settings.timezone, shiftCache: new Map(), userCache: new Map(), holidayCache: new Map(), leaveCache: new Map(), overrideCache: new Map() };
+  return { settings, timezone: settings.timezone, shiftCache: new Map(), userCache: new Map(), holidayCache: new Map(), leaveCache: new Map(), overrideCache: new Map(), segmentCache: new Map() };
 }
 
 // شیفت کاربر رکورد (S3-6b): opts.shift صریح (null = «بدون شیفت») اولویت دارد؛ وگرنه از users.shift_id. بدون شیفت ⇒ null ⇒ تنظیمات سراسری.
@@ -109,7 +110,15 @@ function computeRecordDay(record, opts = {}) {
   const shift = record && record.check_in_time ? shiftForRecord(record, ctx, opts) : null;
   const calendar = record && record.check_in_time ? calendarForRecord(record, ctx, opts, shift) : null;
   const approvedLeaves = leavesForRecord(record, ctx, opts, calendar);
-  return computeDay({ record, breaks, settings: ctx.settings, now: opts.now, timezone: ctx.timezone, shift, calendar, approvedLeaves });
+  let segments = [];
+  if (record && record.check_in_time) {
+    if (ctx.segmentCache && ctx.segmentCache.has(record.id)) segments = ctx.segmentCache.get(record.id);
+    else {
+      segments = attendanceRepository.listSegments(record.id);
+      if (ctx.segmentCache) ctx.segmentCache.set(record.id, segments);
+    }
+  }
+  return computeDay({ record, breaks, settings: ctx.settings, now: opts.now, timezone: ctx.timezone, shift, calendar, approvedLeaves, segments });
 }
 
 // تبدیل خروجی computeDay به شکل قدیمی summarizeRecord (ترتیب کلیدها هم همان است ⇒ JSON یکسان)

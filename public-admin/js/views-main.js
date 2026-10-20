@@ -169,7 +169,7 @@
                 <td><a class="cell-user" href="#/profile/${r.user.id}" style="color:inherit;text-decoration:none">${AP.avatar(r.user.fullName, 'sm')}
                   <span><b>${esc(r.user.fullName)}</b><small>${esc(r.user.department || '—')}</small></span></a></td>
                 <td>${AP.stateBadge(r.state)} ${r.late ? AP.badge('late', `تأخیر ${fmt.min(r.summary.lateMinutes)}`) : ''} ${r.onMission ? AP.badge('mission', 'مأموریت') : ''}</td>
-                <td class="num">${rec && rec.check_in_time ? fmt.clock(rec.check_in_time) : '—'}</td>
+                <td class="num">${rec && rec.check_in_time ? fmt.clock(rec.check_in_time) : '—'} ${rec && rec.segmentCount > 1 ? AP.badge('purple', `${fmt.num(rec.segmentCount)} نوبت`) : ''}</td>
                 <td class="num">${rec && rec.check_out_time ? fmt.clock(rec.check_out_time) : '—'}</td>
                 <td class="num">${r.summary && r.summary.effectiveMinutes != null ? fmt.min(r.summary.effectiveMinutes) : '—'}</td>
                 <td class="num">${r.state === 'on_break' ? 'از ' + fmt.clock(r.openBreak.start_time) : r.breakMinutes ? fmt.min(r.breakMinutes) : '—'}</td>
@@ -396,7 +396,7 @@
             <thead><tr><th>تاریخ</th><th>ورود</th><th>خروج</th><th>استراحت‌ها</th><th>ساعت مفید</th><th>تأخیر</th><th>IP ورود / خروج</th><th>وضعیت</th></tr></thead><tbody>
             ${d.records.map((r) => `<tr class="clickable" data-rec="${r.id}">
               <td>${esc(fmt.date(r.record_date))}</td>
-              <td class="num">${fmt.clock(r.check_in_time)}</td><td class="num">${fmt.clock(r.check_out_time)}</td>
+              <td class="num">${fmt.clock(r.check_in_time)} ${r.segmentCount > 1 ? AP.badge('purple', `${fmt.num(r.segmentCount)} نوبت`) : ''}</td><td class="num">${fmt.clock(r.check_out_time)}</td>
               <td class="num">${r.breaks.length ? `${fmt.num(r.breaks.length)} بار · ${fmt.min(r.breakMinutes)}` : '—'}</td>
               <td class="num">${r.summary.effectiveMinutes != null ? fmt.min(r.summary.effectiveMinutes) : '—'}</td>
               <td class="num">${r.summary.lateMinutes ? fmt.min(r.summary.lateMinutes) : '—'}</td>

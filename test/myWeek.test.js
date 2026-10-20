@@ -30,7 +30,7 @@ describe('وضعیت من: سرویس getMyWeek', () => {
     const shift = shiftsRepo.createShift({ name: 'عصر', startTime: '15:30', endTime: '21:00', graceLateMinutes: 0, graceEarlyMinutes: 0, workDays: [6, 0, 1, 2, 3], overnight: false, maxLunchMinutes: 0 });
     db.prepare('UPDATE users SET shift_id = ? WHERE id = ?').run(shift.id, emp.id);
     attendanceRepo.createManual({ userId: emp.id, recordDate: SAT, checkInTime: iso(SAT, '15:40'), checkOutTime: iso(SAT, '20:30'), status: 'late' });
-    attendanceRepo.createManual({ userId: otherEmp.id, recordDate: SAT, checkInTime: iso(SAT, '15:30'), checkOutTime: iso(SAT, '21:00'), status: 'present' });
+    attendanceRepo.createManual({ userId: otherEmp.id, recordDate: SAT, checkInTime: iso(SAT, '15:30'), checkOutTime: iso(SAT, '21:00'), status: 'normal' });
   });
   after(() => { mock.timers.reset(); cleanup(); });
 

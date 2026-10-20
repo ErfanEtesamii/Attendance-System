@@ -34,7 +34,7 @@ const rules = parseRules(css);
 const vars = (body) => Object.fromEntries([...body.matchAll(/(--nb-[\w-]+)\s*:\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
 const findTheme = (re) => rules.find((r) => re.test(r.sel));
 
-const SCOPED = /^(:root(\[data-theme="(dark|light)"\]|:not\(\[data-theme\]\))? )?\.nb(\b|$)/;
+const SCOPED = /^(:root(\[data-theme="(dark|light)"\]|:not\(\[data-theme\]\)|:is\(\[data-theme\], :not\(\[data-theme\]\)\))? )?\.nb(\b|$)/;
 
 describe('اسکوپ و ساختار', () => {
   test('همه‌ی انتخابگرها زیر .nb اسکوپ شده‌اند (بقیه‌ی پنل تغییر نمی‌کند)', () => {

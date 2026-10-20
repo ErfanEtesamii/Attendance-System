@@ -119,10 +119,11 @@ describe('T6-3: datepicker.css مشترک با Mini App دست‌نخورده م
     assert.match(DP, /\.jdp-selected, \.jdp-selected:hover:not\(:disabled\) \{ background: var\(--green, #1fcf95\)/);
     assert.doesNotMatch(DP, /@import|url\(/);
   });
-  test('Mini App: datepicker.css پیش از style.css آن لینک شده و از توکن‌های پنل استفاده نمی‌کند', () => {
+  test('Mini App: datepicker.css پیش از style.css لینک شده و پالت برند مشترک را دارد', () => {
     const mini = read('public/index.html');
     assert.ok(mini.indexOf('/admin/css/datepicker.css') < mini.indexOf('/css/style.css'));
-    assert.doesNotMatch(read('public/css/style.css'), /--brand-soft|--on-brand/);
+    assert.match(read('public/css/style.css'), /--brand-soft/);
+    assert.match(read('public/css/style.css'), /--on-brand/);
   });
   test('پنل: datepicker.css پیش از style.css لینک شده تا override توکنی غلبه کند', () => {
     assert.ok(HTML.indexOf('/admin/css/datepicker.css') > 0);
