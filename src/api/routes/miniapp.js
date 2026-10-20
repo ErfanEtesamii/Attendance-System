@@ -187,6 +187,10 @@ function rejectIfSharedDeviceBlocked(req, res, action) {
 }
 
 router.post('/miniapp/check-in', (req, res) => {
+  const calendar = getCalendarDay(req.miniAppUser, todayDateString());
+  if (calendar.isTimed === false) {
+    return res.status(409).json({ code: 'UNTIMED_SHIFT', error: 'برای شیفت چرخشیِ بدون ساعت، ثبت ورود و خروج لازم نیست.' });
+  }
   const existing = attendanceRepository.findTodayRecord(req.miniAppUser.id);
   if (existing) {
     return res.status(400).json({ error: 'ورود امروز قبلاً ثبت شده است.' });

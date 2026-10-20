@@ -322,6 +322,8 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
     status: record && record.status !== undefined ? record.status : null,
   };
 
+  if (calendar && calendar.isTimed === false) return result;
+
   const read = readBreaks(breaks);
   const flagSet = new Set();
   if (read.invalid) flagSet.add('invalid_time');

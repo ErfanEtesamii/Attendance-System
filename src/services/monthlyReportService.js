@@ -236,7 +236,9 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
       const mainPart = parts.slice().sort((a, b) => b.minutes - a.minutes)[0] || null;
 
       let status;
-      if (hasCheckIn) {
+      if (cal.isTimed === false) {
+        status = 'untimed';
+      } else if (hasCheckIn) {
         if (cal.isWorkingDay) att.presentDays += 1; else att.workedOnNonWorkingDays += 1;
         if (record.status === 'incomplete' || day.flags.includes('missing_checkout')) { att.incompleteDays += 1; status = 'incomplete'; }
         else status = day.late > 0 ? 'late' : 'present';
@@ -274,7 +276,7 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
 
       if (includeDays) {
         dayRows.push({
-          date: dateStr, status, kind: cal.kind, holidayTitle: cal.holidayTitle,
+          date: dateStr, status, kind: cal.kind, holidayTitle: cal.holidayTitle, isTimed: cal.isTimed !== false,
           expected: day.expected, effective: day.effective, late: day.late, earlyLeave: day.earlyLeave,
           breakPaid: day.breakPaid || 0, breakUnpaid: day.breakUnpaid || 0,
           overtime: day.overtime, overtimePayable: day.overtimePayable, flags: day.flags,

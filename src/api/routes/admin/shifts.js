@@ -56,7 +56,7 @@ router.patch('/admin/shifts/:id', requirePermission('shifts.edit'), (req, res) =
   const checked = validateShiftInput(req.body, { partial: true });
   if (!checked.ok) return res.status(400).json({ error: checked.error, field: checked.field });
   const merged = { ...before, ...checked.value };
-  const consistent = checkConsistency(merged); // با مقدار ادغام‌شده: مثلاً فقط overnight عوض شده ولی ساعت‌ها نه
+  const consistent = merged.isUntimed ? { ok: true } : checkConsistency(merged);
   if (!consistent.ok) return res.status(400).json({ error: consistent.error, field: consistent.field });
 
   const changes = {};

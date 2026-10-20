@@ -1,7 +1,7 @@
 // اعتبارسنجی خالص ورودی شیفت (S3-6a) — بدون دیتابیس. خروجی: { ok:true, value } یا { ok:false, error }.
 // value با نام‌های camelCase و مقادیر نرمال‌شده است (HH:MM دو رقمی، workDays مرتب و یکتا، overnight بولین).
 
-const FIELDS = ['name', 'startTime', 'endTime', 'graceLateMinutes', 'graceEarlyMinutes', 'workDays', 'overnight', 'maxLunchMinutes', 'fixedLunchDeductMinutes', 'paidBreakCount', 'paidBreakMinutes'];
+const FIELDS = ['name', 'startTime', 'endTime', 'graceLateMinutes', 'graceEarlyMinutes', 'workDays', 'overnight', 'maxLunchMinutes', 'fixedLunchDeductMinutes', 'paidBreakCount', 'paidBreakMinutes', 'isUntimed'];
 const REQUIRED = ['name', 'startTime', 'endTime'];
 const DEFAULTS = {
   graceLateMinutes: 0,
@@ -12,6 +12,7 @@ const DEFAULTS = {
   fixedLunchDeductMinutes: 0,
   paidBreakCount: null, // C1: null = از تنظیمات سراسری
   paidBreakMinutes: null,
+  isUntimed: false,
 };
 // C1: فیلدهای اختیاریِ «null = از تنظیمات سراسری» (عدد صحیح در بازه یا null)
 const NULLABLE_LIMITS = {
@@ -52,9 +53,13 @@ function validateShiftInput(body, { partial = false } = {}) {
   const input = body && typeof body === 'object' ? body : {};
   const out = {};
 
-  for (const f of REQUIRED) {
+  const requestedUntimed = toBool(input.isUntimed);
+  if (input.isUntimed !== undefined && requestedUntimed === null) return bad('«isUntimed» باید true یا false باشد.', 'isUntimed');
+  const required = requestedUntimed ? ['name'] : REQUIRED;
+  for (const f of required) {
     if (!partial && (input[f] === undefined || input[f] === null || input[f] === '')) return bad(`فیلد «${f}» الزامی است.`, f);
   }
+  if (input.isUntimed !== undefined) out.isUntimed = requestedUntimed;
 
   if (input.name !== undefined) {
     const name = typeof input.name === 'string' ? input.name.trim() : '';
@@ -98,7 +103,12 @@ function validateShiftInput(body, { partial = false } = {}) {
   if (unknown.length) return bad(`فیلد ناشناخته: ${unknown.join('، ')}`, unknown[0]);
 
   const value = partial ? out : { ...DEFAULTS, ...out };
-  if (!partial) {
+  // ستون‌های قدیمیِ start/end در DB اجباری‌اند؛ برای شیفت بی‌زمان مقدار داخلیِ بی‌اثر نگه می‌داریم.
+  if (!partial && value.isUntimed) {
+    if (!value.startTime) value.startTime = '08:00';
+    if (!value.endTime) value.endTime = '16:30';
+  }
+  if (!partial && !value.isUntimed) {
     const c = checkConsistency(value);
     if (!c.ok) return c;
   }

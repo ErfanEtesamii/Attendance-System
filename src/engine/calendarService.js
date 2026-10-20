@@ -82,6 +82,10 @@ function resolveCalendarDay({ dateStr, shift = null, settings, holiday = null, o
     return { isWorkingDay: false, ...info, expectedStart: null, expectedEnd: null, kind: 'weekend' };
   }
 
+  if (shift && shift.isUntimed) {
+    return { isWorkingDay: true, isTimed: false, ...info, expectedStart: null, expectedEnd: null, kind: 'working' };
+  }
+
   let kind = 'working';
   let expectedEnd = end;
   if (!isOvernightShift(shift)) {

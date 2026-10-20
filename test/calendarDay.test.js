@@ -70,6 +70,12 @@ describe('getCalendarDay خالص (S3-7a)', () => {
     assert.equal(pure(WEEK.fri, { shift: { ...shift, workDays: [5] } }).isWorkingDay, true);
   });
 
+  test('شیفت چرخشی بدون ساعت روز کاری را نگه می‌دارد، اما زمان مورد انتظار ندارد', () => {
+    const shift = { isUntimed: true, startTime: '08:00', endTime: '16:00', workDays: [6, 0, 1, 2, 3], overnight: false };
+    const r = pure(WEEK.mon, { shift });
+    assert.deepEqual([r.isWorkingDay, r.isTimed, r.expectedStart, r.expectedEnd, r.kind], [true, false, null, null, 'working']);
+  });
+
   test('شیفت: نیم‌روز با ساعت بیرون از بازه‌ی شیفت (۱۲:۳۰ پیش از شروع ۱۴:۰۰) نادیده؛ شیفت شب نیم‌روز ندارد', () => {
     const evening = { startTime: '14:00', endTime: '22:00', workDays: [0, 1, 2, 3, 4, 6], overnight: false };
     assert.deepEqual([pure(WEEK.thu, { shift: evening }).kind, pure(WEEK.thu, { shift: evening }).expectedEnd], ['working', '22:00']);

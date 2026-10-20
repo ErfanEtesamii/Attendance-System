@@ -117,7 +117,7 @@ function getWeek(actor, userId, input = {}, { now = new Date(), self = false } =
     calCache.set(date, { working: kind === 'working' || kind === 'half' });
     const attendance = attendanceView(recordByDate.get(date), ctx, now);
     const isFuture = date > today;
-    const absent = kind === 'working' || kind === 'half' ? (!isFuture && date !== today && !(attendance && attendance.hasCheckIn)) : false;
+    const absent = cal.isTimed !== false && (kind === 'working' || kind === 'half') ? (!isFuture && date !== today && !(attendance && attendance.hasCheckIn)) : false;
     return {
       date,
       jalali: isoDateToJalaliString(date),
@@ -131,6 +131,7 @@ function getWeek(actor, userId, input = {}, { now = new Date(), self = false } =
       leaves: dayLeaves.map((l) => ({ id: l.id, kind: l.kind === 'mission' ? 'mission' : 'leave', startDate: l.start_date, endDate: l.end_date })),
       schedule: {
         isWorkingDay: cal.isWorkingDay,
+        isTimed: cal.isTimed !== false,
         start: cal.expectedStart || null,
         end: cal.expectedEnd || null,
         plannedMinutes: fullLeave ? 0 : plannedMinutes(cal),
@@ -164,7 +165,7 @@ function getWeek(actor, userId, input = {}, { now = new Date(), self = false } =
     ok: true,
     plan: wk.plan,
     summary: summarizeWeek(days, today, settings),
-    user: { id: user.id, fullName: user.full_name, department: user.department || null, role: user.role, managerId: user.manager_id || null, isActive: !!user.is_active, shift: (() => { const s = shiftsRepository.shiftOn(user.id, today); return s ? { id: s.id, name: s.name, startTime: s.startTime, endTime: s.endTime } : null; })() },
+    user: { id: user.id, fullName: user.full_name, department: user.department || null, role: user.role, managerId: user.manager_id || null, isActive: !!user.is_active, shift: (() => { const s = shiftsRepository.shiftOn(user.id, today); return s ? { id: s.id, name: s.name, startTime: s.startTime, endTime: s.endTime, isUntimed: s.isUntimed } : null; })() },
     week: {
       start: weekStart, end: weekEnd, jalaliStart: isoDateToJalaliString(weekStart), jalaliEnd: isoDateToJalaliString(weekEnd),
       prevWeekStart: addDays(weekStart, -7), nextWeekStart: addDays(weekStart, 7), isCurrentWeek: today >= weekStart && today <= weekEnd, today,

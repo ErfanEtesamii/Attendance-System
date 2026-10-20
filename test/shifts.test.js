@@ -33,7 +33,9 @@ describe('شیفت‌های کاری — migration، اعتبارسنجی و rep
   test('اعتبارسنجی خالص: پیش‌فرض‌ها، نرمال‌سازی ساعت/روزها، و جدول موارد نامعتبر (شیفت شب، مرز، تکراری)', () => {
     const { validateShiftInput } = require('../src/utils/shiftValidation');
     const ok = validateShiftInput({ name: '  صبح ', startTime: '8:00', endTime: '16:30' });
-    assert.deepEqual(ok, { ok: true, value: { name: 'صبح', startTime: '08:00', endTime: '16:30', graceLateMinutes: 0, graceEarlyMinutes: 0, workDays: [0, 1, 2, 3, 6], overnight: false, maxLunchMinutes: 0, fixedLunchDeductMinutes: 0, paidBreakCount: null, paidBreakMinutes: null } });
+    assert.deepEqual(ok, { ok: true, value: { name: 'صبح', startTime: '08:00', endTime: '16:30', graceLateMinutes: 0, graceEarlyMinutes: 0, workDays: [0, 1, 2, 3, 6], overnight: false, maxLunchMinutes: 0, fixedLunchDeductMinutes: 0, paidBreakCount: null, paidBreakMinutes: null, isUntimed: false } });
+    const untimed = validateShiftInput({ name: 'چرخشی', isUntimed: true, workDays: [6, 0] });
+    assert.deepEqual([untimed.ok, untimed.value.startTime, untimed.value.endTime, untimed.value.isUntimed], [true, '08:00', '16:30', true]);
     const night = validateShiftInput({ name: 'شب', startTime: '22:00', endTime: '06:00', overnight: true, workDays: [3, 6, 0], graceLateMinutes: '10' });
     assert.equal(night.ok, true);
     assert.deepEqual([night.value.workDays, night.value.overnight, night.value.graceLateMinutes], [[0, 3, 6], true, 10]);
@@ -63,8 +65,8 @@ describe('شیفت‌های کاری — migration، اعتبارسنجی و rep
     const shifts = require('../src/repositories/shiftsRepository');
     const users = require('../src/repositories/usersRepository');
     const { makeUser } = require('./helpers/factories');
-    const s = shifts.createShift({ name: 'ریپو', startTime: '07:00', endTime: '15:00', graceLateMinutes: 5, graceEarlyMinutes: 3, workDays: [6, 0], overnight: false, maxLunchMinutes: 45, fixedLunchDeductMinutes: 30 });
-    assert.deepEqual([s.name, s.startTime, s.graceLateMinutes, s.workDays, s.overnight, s.maxLunchMinutes, s.userCount], ['ریپو', '07:00', 5, [0, 6], false, 45, 0]);
+    const s = shifts.createShift({ name: 'ریپو', startTime: '07:00', endTime: '15:00', graceLateMinutes: 5, graceEarlyMinutes: 3, workDays: [6, 0], overnight: false, maxLunchMinutes: 45, fixedLunchDeductMinutes: 30, isUntimed: true });
+    assert.deepEqual([s.name, s.startTime, s.graceLateMinutes, s.workDays, s.overnight, s.maxLunchMinutes, s.isUntimed, s.userCount], ['ریپو', '07:00', 5, [0, 6], false, 45, true, 0]);
     assert.equal(shifts.updateShift(s.id, { endTime: '15:30', overnight: false, workDays: [1] }).endTime, '15:30');
     assert.deepEqual(shifts.findById(s.id).workDays, [1]);
 

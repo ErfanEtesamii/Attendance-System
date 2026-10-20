@@ -37,6 +37,7 @@ function toShift(row) {
     fixedLunchDeductMinutes: row.fixed_lunch_deduct_minutes,
     paidBreakCount: row.paid_break_count === undefined ? null : row.paid_break_count, // C1: null = از تنظیمات سراسری
     paidBreakMinutes: row.paid_break_minutes === undefined ? null : row.paid_break_minutes,
+    isUntimed: !!row.is_untimed,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     ...(row.user_count !== undefined ? { userCount: row.user_count } : {}),
@@ -141,11 +142,11 @@ function createShift(v) {
   const db = getDb();
   const info = db
     .prepare(
-      `INSERT INTO work_shifts (name, start_time, end_time, grace_late_minutes, grace_early_minutes, work_days, overnight, max_lunch_minutes, fixed_lunch_deduct_minutes, paid_break_count, paid_break_minutes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO work_shifts (name, start_time, end_time, grace_late_minutes, grace_early_minutes, work_days, overnight, max_lunch_minutes, fixed_lunch_deduct_minutes, paid_break_count, paid_break_minutes, is_untimed)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(v.name, v.startTime, v.endTime, v.graceLateMinutes, v.graceEarlyMinutes, JSON.stringify(v.workDays), v.overnight ? 1 : 0, v.maxLunchMinutes, v.fixedLunchDeductMinutes,
-      v.paidBreakCount === undefined ? null : v.paidBreakCount, v.paidBreakMinutes === undefined ? null : v.paidBreakMinutes);
+      v.paidBreakCount === undefined ? null : v.paidBreakCount, v.paidBreakMinutes === undefined ? null : v.paidBreakMinutes, v.isUntimed ? 1 : 0);
   return findById(info.lastInsertRowid);
 }
 
@@ -161,6 +162,7 @@ const COLUMN_OF = {
   fixedLunchDeductMinutes: 'fixed_lunch_deduct_minutes',
   paidBreakCount: 'paid_break_count',
   paidBreakMinutes: 'paid_break_minutes',
+  isUntimed: 'is_untimed',
 };
 
 // فقط کلیدهای شناخته‌شده‌ی camelCase؛ مقدار ستون‌ها از placeholder می‌آید (نه الحاق رشته).
@@ -171,6 +173,7 @@ function updateShift(id, fields) {
   const values = keys.map((k) => {
     if (k === 'workDays') return JSON.stringify(fields[k]);
     if (k === 'overnight') return fields[k] ? 1 : 0;
+    if (k === 'isUntimed') return fields[k] ? 1 : 0;
     return fields[k];
   });
   getDb().prepare(`UPDATE work_shifts SET ${setClause}, updated_at = datetime('now') WHERE id = ?`).run(...values, id);

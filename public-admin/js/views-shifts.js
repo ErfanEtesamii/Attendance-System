@@ -10,7 +10,7 @@
   // ۰=یکشنبه … ۶=شنبه (همان قرارداد API)؛ ترتیب نمایش از شنبه تا جمعه
   const DAY_ORDER = [6, 0, 1, 2, 3, 4, 5];
   const DAY_NAME = { 6: 'شنبه', 0: 'یکشنبه', 1: 'دوشنبه', 2: 'سه‌شنبه', 3: 'چهارشنبه', 4: 'پنجشنبه', 5: 'جمعه' };
-  const DEFAULT_SHIFT = { name: '', startTime: '08:00', endTime: '16:30', overnight: false, graceLateMinutes: 0, graceEarlyMinutes: 0, maxLunchMinutes: 0, fixedLunchDeductMinutes: 0, paidBreakCount: null, paidBreakMinutes: null, workDays: [6, 0, 1, 2, 3] };
+  const DEFAULT_SHIFT = { name: '', startTime: '08:00', endTime: '16:30', overnight: false, isUntimed: false, graceLateMinutes: 0, graceEarlyMinutes: 0, maxLunchMinutes: 0, fixedLunchDeductMinutes: 0, paidBreakCount: null, paidBreakMinutes: null, workDays: [6, 0, 1, 2, 3] };
 
   // «امروز» محلی مرورگر به‌صورت YYYY-MM-DD (پیش‌فرض «از تاریخ»؛ اعتبار نهایی با سرور است)
   const localIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -35,6 +35,7 @@
       startTime: f.startTime,
       endTime: f.endTime,
       overnight: !!f.overnight,
+      isUntimed: !!f.isUntimed,
       graceLateMinutes: num(f.graceLateMinutes),
       graceEarlyMinutes: num(f.graceEarlyMinutes),
       maxLunchMinutes: num(f.maxLunchMinutes),
@@ -51,16 +52,17 @@
     return `<form class="form" id="shift-form">
       <div class="form-grid">
         <label class="field"><span>نام شیفت</span><input name="name" required maxlength="60" value="${esc(cur.name)}" placeholder="مثلاً: صبح" /></label>
-        <label class="field"><span>ساعت شروع</span><input type="time" name="startTime" required value="${esc(cur.startTime)}" dir="ltr" class="ltr-in" /></label>
-        <label class="field"><span>ساعت پایان</span><input type="time" name="endTime" required value="${esc(cur.endTime)}" dir="ltr" class="ltr-in" /></label>
-        <label class="check-row full" style="grid-column:1/-1"><input type="checkbox" name="overnight"${cur.overnight ? ' checked' : ''} /> شیفت شب است (پایان بعد از نیمه‌شب، مثلاً ۲۲:۰۰ تا ۰۶:۰۰)</label>
-        ${numField('graceLateMinutes', 'مهلت تأخیر (دقیقه)', 720)}
-        ${numField('graceEarlyMinutes', 'مهلت زودتر رفتن (دقیقه)', 720)}
-        ${numField('maxLunchMinutes', 'حداکثر ناهار مجاز (دقیقه؛ ۰ = بدون سقف)', 480)}
-        ${numField('fixedLunchDeductMinutes', 'کسر ثابت ناهار (دقیقه؛ ۰ = خاموش)', 480)}
-        ${optField('paidBreakCount', 'تعداد استراحت کوتاهِ با حقوق در روز (۰ تا ۱۰؛ خالی = تنظیمات سراسری)', 10)}
-        ${optField('paidBreakMinutes', 'سقف هر استراحت با حقوق (دقیقه، ۰ تا ۱۲۰؛ خالی = تنظیمات سراسری)', 120)}
-        <p class="muted small full" style="grid-column:1/-1;margin:0">استراحت‌های کوتاهِ با حقوق (تا سقف زمانیِ هرکدام) از ساعت کاری کم نمی‌شوند؛ مازاد هر استراحت، استراحت‌های بعد از تعداد مجاز و ناهار از ساعت کاری کم می‌شود. هر دو ۰ = خاموش.</p>
+        <label class="check-row full" style="grid-column:1/-1"><input type="checkbox" name="isUntimed"${cur.isUntimed ? ' checked' : ''} /> شیفت چرخشی بدون ساعت (ثبت ورود/خروج و محاسبه‌ی تأخیر و کسری ندارد)</label>
+        <div data-timed-field><label class="field"><span>ساعت شروع</span><input type="time" name="startTime" required value="${esc(cur.startTime)}" dir="ltr" class="ltr-in" /></label></div>
+        <div data-timed-field><label class="field"><span>ساعت پایان</span><input type="time" name="endTime" required value="${esc(cur.endTime)}" dir="ltr" class="ltr-in" /></label></div>
+        <label class="check-row full" style="grid-column:1/-1" data-timed-field><input type="checkbox" name="overnight"${cur.overnight ? ' checked' : ''} /> شیفت شب است (پایان بعد از نیمه‌شب، مثلاً ۲۲:۰۰ تا ۰۶:۰۰)</label>
+        <div data-timed-field>${numField('graceLateMinutes', 'مهلت تأخیر (دقیقه)', 720)}</div>
+        <div data-timed-field>${numField('graceEarlyMinutes', 'مهلت زودتر رفتن (دقیقه)', 720)}</div>
+        <div data-timed-field>${numField('maxLunchMinutes', 'حداکثر ناهار مجاز (دقیقه؛ ۰ = بدون سقف)', 480)}</div>
+        <div data-timed-field>${numField('fixedLunchDeductMinutes', 'کسر ثابت ناهار (دقیقه؛ ۰ = خاموش)', 480)}</div>
+        <div data-timed-field>${optField('paidBreakCount', 'تعداد استراحت کوتاهِ با حقوق در روز (۰ تا ۱۰؛ خالی = تنظیمات سراسری)', 10)}</div>
+        <div data-timed-field>${optField('paidBreakMinutes', 'سقف هر استراحت با حقوق (دقیقه، ۰ تا ۱۲۰؛ خالی = تنظیمات سراسری)', 120)}</div>
+        <p class="muted small full" data-timed-field style="grid-column:1/-1;margin:0">استراحت‌های کوتاهِ با حقوق (تا سقف زمانیِ هرکدام) از ساعت کاری کم نمی‌شوند؛ مازاد هر استراحت، استراحت‌های بعد از تعداد مجاز و ناهار از ساعت کاری کم می‌شود. هر دو ۰ = خاموش.</p>
         <div class="field full" style="grid-column:1/-1"><span>روزهای کاری این شیفت</span>
           <div class="chk-row">${DAY_ORDER.map((d) => `<label class="check-row"><input type="checkbox" name="workDays" value="${d}"${(cur.workDays || []).includes(d) ? ' checked' : ''} /> ${DAY_NAME[d]}</label>`).join('')}</div></div>
       </div>
@@ -83,7 +85,7 @@
           <th>نام</th><th>ساعت کار</th><th>روزهای کاری</th><th>مهلت تأخیر / زودتر رفتن</th><th>ناهار</th><th>کارمندان</th><th></th></tr></thead><tbody>
           ${shifts.map((s) => `<tr data-id="${s.id}">
             <td><b>${esc(s.name)}</b></td>
-            <td><span class="ltr">${esc(s.startTime)} – ${esc(s.endTime)}</span>${s.overnight ? ` ${AP.badge('purple', 'شب')}` : ''}</td>
+            <td>${s.isUntimed ? AP.badge('blue', 'چرخشی بدون ساعت') : `<span class="ltr">${esc(s.startTime)} – ${esc(s.endTime)}</span>${s.overnight ? ` ${AP.badge('purple', 'شب')}` : ''}`}</td>
             <td>${esc(daysText(s.workDays))}</td>
             <td>${fmt.num(s.graceLateMinutes)} / ${fmt.num(s.graceEarlyMinutes)} دقیقه</td>
             <td>${s.maxLunchMinutes ? `حداکثر ${fmt.num(s.maxLunchMinutes)}` : 'بدون سقف'}${s.fixedLunchDeductMinutes ? ` · کسر ثابت ${fmt.num(s.fixedLunchDeductMinutes)}` : ''}${paidText(s)}</td>
@@ -102,6 +104,13 @@
           onMount(body, m) {
             AP.dates.mount(body); // H4: ساعت شروع/پایان شیفت قابل‌تایپ (کیبورد عددی)
             const form = $('#shift-form', body);
+            const untimed = $('input[name="isUntimed"]', form);
+            const syncTimedFields = () => {
+              $$('[data-timed-field]', form).forEach((el) => { el.hidden = untimed.checked; });
+              $$('input[name="startTime"], input[name="endTime"]', form).forEach((el) => { el.required = !untimed.checked; });
+            };
+            untimed.addEventListener('change', syncTimedFields);
+            syncTimedFields();
             $('[data-cancel]', form).addEventListener('click', () => m.close());
             form.addEventListener('submit', async (e) => {
               e.preventDefault();
