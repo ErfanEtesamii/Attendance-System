@@ -1437,3 +1437,44 @@ button.sch-cell { cursor: pointer; }
   .day-card.is-today > summary { box-shadow: none; }
   .rail-tip, #rail-tip { display: none !important; }
 }
+
+/* ---------- اصلاح چیدمان: کادرِ تو‌در‌تو و بیرون‌زدن متن ----------
+   ۱) .day-card (padding:0) پیش از .card تعریف شده بود و padding:20px کارت آن را بازنویسی می‌کرد ⇒ حاشیه‌ی دوبل و ستون‌های بسیار باریک.
+   ۲) نشان‌ها/دکمه‌ها white-space:nowrap داشتند و از کارت‌های باریک بیرون می‌زدند.
+   ۳) آیتم/کارت/تسک داخل کارت دوباره کادر و پس‌زمینه می‌گرفت ⇒ در کارت‌های تو‌در‌تو فقط خط جداکننده می‌ماند. */
+.card { min-width: 0; overflow-wrap: anywhere; }
+.card.day-card { padding: 0; border-radius: 22px; overflow: hidden; }
+.week-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); }
+.day-card > summary { padding: 12px 14px; }
+.day-card.is-today > summary { border-radius: 0; }
+.day-card-body { padding: 10px 14px 14px; gap: 8px; }
+.day-att { flex-wrap: wrap; }
+
+/* تسک‌های روز: بدون جعبه‌ی جدا؛ جداکننده‌ی نازک + نوار رنگی کنار برای فوری/واجب */
+.day-tasks { gap: 0; }
+.day-task { background: transparent; border-radius: 0; padding: 10px 0; border-top: 1px solid var(--border); border-inline-start: 3px solid transparent; padding-inline-start: 8px; }
+.day-task:first-child { border-top: 0; }
+.day-task.is-urgent { outline: 0; border-inline-start-color: var(--red); }
+.day-task.is-mandatory { outline: 0; border-inline-start-color: var(--green); }
+.day-task .title { overflow-wrap: anywhere; }
+.day-task .rv-open { white-space: normal; }
+.day-card-actions { flex-direction: column; align-items: stretch; }
+.day-card-actions .btn { width: 100%; white-space: normal; text-align: center; }
+
+/* نشان‌ها و دکمه‌ها اجازه‌ی شکستن خط دارند (جز در سلول جدول) */
+.badge { max-width: 100%; white-space: normal; overflow-wrap: anywhere; text-align: start; line-height: 1.6; }
+td .badge, th .badge, .nowrap .badge { white-space: nowrap; }
+.btn { max-width: 100%; }
+.day-chips, .day-task-meta { min-width: 0; max-width: 100%; }
+.stat { min-width: 0; }
+.stat-value, .stat-label, .stat-hint { overflow-wrap: anywhere; }
+
+/* کادر تو در تو: داخل .card فقط خط جداکننده */
+.card .item { background: transparent; border: 0; border-radius: 0; padding: 12px 0; border-top: 1px solid var(--border); }
+.card .list { gap: 0; }
+.card .list > .item:first-child, .card > .item:first-child { border-top: 0; }
+.card .card, .card .chart-fig { background: transparent; border: 0; border-radius: 0; padding: 0; }
+.item .grow, .item .title, .item .meta, .item .text { min-width: 0; overflow-wrap: anywhere; }
+.item .grow { min-width: min(200px, 100%); }
+.kv-row span { min-width: 0; overflow-wrap: anywhere; }
+@media print { .day-task { border-top: 1px solid #999; } }
