@@ -1229,6 +1229,58 @@ button, a, summary, select, input, [role="button"], .clickable, th.sortable { to
 @media (max-width: 900px) { .sk-fields { grid-template-columns: minmax(0, 1fr); } }
 @media (prefers-reduced-motion: reduce) { .sk-line::after { animation: none; } }
 
+/* ---------- پرداخت بصری یکپارچه‌ی پنل مدیریت ---------- */
+body::before, body::after {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  width: 380px; height: 380px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+body::before { top: -170px; left: 7%; background: radial-gradient(circle, var(--purple-soft), transparent 68%); }
+body::after { right: -160px; bottom: -160px; background: radial-gradient(circle, var(--green-soft), transparent 70%); }
+.sidebar {
+  background: linear-gradient(165deg, color-mix(in srgb, var(--rail) 94%, var(--brand)), var(--rail));
+  border: 1px solid color-mix(in srgb, var(--rail-text) 12%, transparent);
+}
+.sidebar .brand-mark { position: relative; overflow: visible; }
+.sidebar .brand-mark::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border: 1px solid color-mix(in srgb, var(--rail-text) 50%, transparent);
+  border-radius: 18px;
+  opacity: .52;
+}
+.topbar, .card, .modal, .search-results {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.topbar { box-shadow: 0 14px 36px rgba(22, 18, 67, .09); }
+.view-header h2 { letter-spacing: -.35px; }
+.nav-item, .btn, .icon-btn, .tab, tbody tr {
+  transition: transform .18s ease, background-color .18s ease, color .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+@media (hover: hover) {
+  .nav-item:hover { transform: translateX(-2px); }
+  .card:not(.day-card):hover { border-color: color-mix(in srgb, var(--brand) 25%, var(--border)); }
+  .btn:not(:disabled):hover, .icon-btn:hover { transform: translateY(-2px); }
+  .btn.primary:not(:disabled):hover { box-shadow: 0 12px 24px color-mix(in srgb, var(--brand) 30%, transparent); }
+  tbody tr:hover { transform: translateX(-2px); }
+}
+.btn:not(:disabled):active, .icon-btn:active, .nav-item:active { transform: scale(.98); }
+@media (prefers-reduced-motion: no-preference) {
+  .sidebar .brand-mark::after { animation: admin-orbit 3.8s ease-in-out infinite; }
+  .page > * { animation: admin-rise .28s ease both; }
+}
+@keyframes admin-orbit { 50% { transform: scale(1.12); opacity: .18; } }
+@keyframes admin-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .sidebar .brand-mark::after, .page > * { animation: none; }
+  .nav-item, .btn, .icon-btn, .tab, tbody tr { transition: none; }
+}
+
 /* جدول → کارت در موبایل (S5-9c): فقط جدول‌هایی که a11y.js علامت data-stack زده (بدون سرستون مرتب‌سازی) */
 @media (max-width: 600px) {
   table[data-stack], table[data-stack] tbody, table[data-stack] tr, table[data-stack] td { display: block; }

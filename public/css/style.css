@@ -695,6 +695,66 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .sk-row { display: flex; gap: 14px; align-items: center; padding: 6px 0; }
 @media (max-width: 900px) { .sk-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (prefers-reduced-motion: reduce) { .sk-line::after { animation: none; } }
+
+/* ---------- پرداخت بصری یکپارچه‌ی Mini App ---------- */
+body::before, body::after {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  width: 260px; height: 260px;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(2px);
+  opacity: .72;
+}
+body::before { inset: -120px auto auto -110px; background: radial-gradient(circle, var(--purple-soft) 0, transparent 68%); }
+body::after { inset: auto -120px 8% auto; background: radial-gradient(circle, var(--green-soft) 0, transparent 70%); }
+.app-header, .card, .list-item {
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.app-header { box-shadow: 0 12px 32px rgba(22, 18, 67, .10); }
+.brand-logo { position: relative; overflow: visible; }
+.brand-logo::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border: 1px solid color-mix(in srgb, var(--green) 55%, transparent);
+  border-radius: 17px;
+  opacity: .65;
+}
+.status-card { position: relative; overflow: hidden; }
+.status-card::after {
+  content: "";
+  position: absolute;
+  width: 180px; height: 180px;
+  top: -105px; left: -56px;
+  border: 1px solid var(--green-soft);
+  border-radius: 50%;
+  box-shadow: 0 0 0 22px rgba(31, 207, 149, .035), 0 0 0 44px rgba(31, 207, 149, .025);
+  pointer-events: none;
+}
+.btn, .theme-btn, .nav-btn, .action-tile {
+  transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease, border-color .18s ease;
+}
+@media (hover: hover) {
+  .card:not(.status-card):hover { border-color: color-mix(in srgb, var(--brand) 28%, var(--border)); }
+  .btn:not(:disabled):hover, .theme-btn:hover, .nav-btn:hover { transform: translateY(-2px); }
+  .btn.primary:not(:disabled):hover { box-shadow: 0 12px 24px rgba(31, 207, 149, .34); }
+  .btn.ghost:not(:disabled):hover { background: var(--brand-soft); border-color: color-mix(in srgb, var(--brand) 30%, var(--border)); }
+  .action-tile:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(22, 18, 67, .12); }
+}
+.btn:not(:disabled):active, .theme-btn:active, .nav-btn:active, .action-tile:active { transform: translateY(0) scale(.98); }
+@media (prefers-reduced-motion: no-preference) {
+  .brand-logo::after { animation: brand-orbit 3.6s ease-in-out infinite; }
+  .status-card { animation: surface-in .38s ease both; }
+}
+@keyframes brand-orbit { 50% { transform: scale(1.12); opacity: .22; } }
+@keyframes surface-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .brand-logo::after, .status-card { animation: none; }
+  .btn, .theme-btn, .nav-btn, .action-tile { transition: none; }
+}
 .sk-line.w100 { width: 100%; }
 .sk-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 /* نمای «امروز» حین اولین بارگذاری: فقط skeleton دیده می‌شود (S5-9c) */
