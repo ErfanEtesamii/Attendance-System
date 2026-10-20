@@ -16,7 +16,7 @@
     const bw = Math.min(16, step / 3);
     const y = (v) => padT + (H - padT - padB) * (1 - v / niceMax);
     let svg = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="روند حضور ۱۴ روز اخیر">
-      <defs><linearGradient id="bar-green" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7be495"/><stop offset="1" stop-color="#16b886"/></linearGradient></defs>`;
+      <defs><pattern id="bar-late" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect class="pat-bg" width="6" height="6"/><line class="pat-ln" x1="0" y1="0" x2="0" y2="6"/></pattern></defs>`;
     for (let i = 0; i <= 4; i += 1) {
       const v = (niceMax / 4) * i;
       svg += `<line class="grid" x1="${padX}" x2="${W - 36}" y1="${y(v)}" y2="${y(v)}"/>`;
@@ -76,7 +76,7 @@
 
         <div class="grid-2">
           <div class="card"><h3>روند حضور ۱۴ روز اخیر</h3>
-            <div class="legend"><span><i style="background:#16b886"></i>حاضر</span><span><i style="background:#ffa94d"></i>ورود با تأخیر</span></div>
+            <div class="legend"><span><i class="lg-a"></i>حاضر</span><span><i class="lg-b"></i>ورود با تأخیر</span></div>
             ${trendChart(d.trend)}</div>
 
           <div class="card"><h3>حضور امروز به تفکیک دپارتمان</h3>

@@ -60,9 +60,9 @@ describe('پنل: دکمه‌ی در حال ارسال و skeleton اختصاص�
     assert.match(core, /finally \{\s*if \(lock\) \{ b\.disabled = false; b\.removeAttribute\('aria-busy'\); \}/);
     assert.match(core, /lastBtn = null; \/\/ هر کلیک فقط یک‌بار مصرف/);
   });
-  test('هر ۲۳ صفحه skeleton اختصاصی (page/table/cards/list) دارد', () => {
+  test('هر ۲۳ صفحه skeleton اختصاصی (page/table/cards/list/settings) دارد', () => {
     const kinds = {};
-    for (const f of viewFiles) for (const m of read(f).matchAll(/AP\.view\('(\w+)', \{\n\s+skeleton: '(page|table|cards|list)'/g)) kinds[m[1]] = m[2];
+    for (const f of viewFiles) for (const m of read(f).matchAll(/AP\.view\('(\w+)', \{\n\s+skeleton: '(page|table|cards|list|settings)'/g)) kinds[m[1]] = m[2];
     assert.equal(Object.keys(kinds).length, 23); // +checkin_permissions (فاز ۱۲، D3)، +remote (فاز ۱۴، R6)
     assert.equal(kinds.analytics, 'cards'); assert.equal(kinds.attendance, 'table'); assert.equal(kinds.leaveQueue, 'list'); assert.equal(kinds.dashboard, 'page');
     const states = require('../public/js/states.js');

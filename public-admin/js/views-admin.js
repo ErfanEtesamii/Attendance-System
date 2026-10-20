@@ -13,7 +13,7 @@
     const n = daily.length;
     const slot = (W - 40) / n;
     const bw = Math.max(3, Math.min(18, slot * 0.6));
-    let svg = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="حضور روزانه"><defs><linearGradient id="bar-green" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7be495"/><stop offset="1" stop-color="#16b886"/></linearGradient></defs>`;
+    let svg = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="حضور روزانه">`;
     for (let i = 0; i <= 3; i += 1) {
       const y = padT + (H - padT - padB) * (i / 3);
       svg += `<line class="grid" x1="8" x2="${W - 8}" y1="${y}" y2="${y}"/>`;

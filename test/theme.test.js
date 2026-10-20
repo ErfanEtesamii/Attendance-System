@@ -37,7 +37,7 @@ const varsOf = (txt) => Object.fromEntries([...txt.matchAll(/--([a-z0-9-]+):\s*(
 const THEMES = (css) => ({ dark: varsOf(block(css, ':root,\n:root[data-theme="dark"]')), light: varsOf(block(css, ':root[data-theme="light"]')) });
 
 const PAIRS_PANEL = [
-  ['text', 'bg'], ['text', 'card'], ['text', 'card-2'], ['hint', 'bg'], ['hint', 'card'], ['hint', 'card-2'], ['hint', 'sidebar'], ['text', 'sidebar'],
+  ['text', 'bg'], ['text', 'card'], ['text', 'card-2'], ['hint', 'bg'], ['hint', 'card'], ['hint', 'card-2'],
   ['green', 'card'], ['red', 'card'], ['orange', 'card'], ['yellow', 'card'], ['blue', 'card'], ['green', 'bg'],
   // T1 (فاز ۱۶): پالت سرمه‌ای/نارنجی؛ کلیدهایی که Mini App ندارد خودکار رد می‌شوند
   ['text', 'field'], ['hint', 'field'], ['rail-text', 'rail'], ['rail-active-text', 'bg'], ['on-accent', 'accent'], ['on-accent', 'accent-dark'],

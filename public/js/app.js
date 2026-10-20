@@ -12,9 +12,9 @@
     if (window.Theme && window.Theme.apply) window.Theme.apply();
     else {
       try {
-        tg.setHeaderColor('#1b1c2c');
-        tg.setBackgroundColor('#1b1c2c');
-        if (tg.setBottomBarColor) tg.setBottomBarColor('#1b1c2c');
+        tg.setHeaderColor('#17143a');
+        tg.setBackgroundColor('#17143a');
+        if (tg.setBottomBarColor) tg.setBottomBarColor('#17143a');
       } catch (_) { /* نسخه‌های قدیمی تلگرام */ }
     }
   }

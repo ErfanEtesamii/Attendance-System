@@ -117,19 +117,20 @@ describe('اتصال و CSS', () => {
     assert.match(core, /aria-current/);
   });
   test('حلقه‌ی فوکوس و کاهش حرکت در هر دو CSS؛ لینک پرش فقط پنل', () => {
-    for (const f of ['public-admin/css/style.css', 'public/css/style.css']) {
+    // T8 (فاز ۱۶): حلقه‌ی پنل از سبز به --brand رفت (سبز دیگر رنگ برند نیست)؛ Mini App تا T9 سبز می‌ماند و همچنان --green است
+    for (const [f, ring] of [['public-admin/css/style.css', '--brand'], ['public/css/style.css', '--green']]) {
       const css = read(f);
-      assert.match(css, /:focus-visible \{ outline: 2px solid var\(--green\)/);
+      assert.match(css, new RegExp(`:focus-visible \\{ outline: 2px solid var\\(${ring}\\)`));
       assert.match(css, /prefers-reduced-motion: reduce/);
     }
     assert.match(read('public-admin/css/style.css'), /\.skip-link:focus \{ top: 8px; \}/);
   });
   test('حلقه‌ی فوکوس روی پس‌زمینه‌ی صفحه/کارت در هر دو تم ≥ ۳:۱ (WCAG 1.4.11)', () => {
-    for (const [f, cardKey] of [['public-admin/css/style.css', 'card'], ['public/css/style.css', 'card-bg']]) {
+    for (const [f, cardKey, ringKey] of [['public-admin/css/style.css', 'card', 'brand'], ['public/css/style.css', 'card-bg', 'green']]) {
       const css = read(f);
       for (const [sel, mode] of [[':root,\n:root[data-theme="dark"]', 'dark'], [':root[data-theme="light"]', 'light']]) {
         const v = themeVars(css, sel);
-        for (const bg of ['bg', cardKey]) assert.ok(ratio(hex(v.green), hex(v[bg])) >= 3, `${f} ${mode} green/${bg}`);
+        for (const bg of ['bg', cardKey]) assert.ok(ratio(hex(v[ringKey]), hex(v[bg])) >= 3, `${f} ${mode} ${ringKey}/${bg}`);
       }
     }
   });
@@ -163,5 +164,27 @@ describe('نمودار/جدول و عدم اتکای صرف به رنگ', () => 
   test('کارت هشدار الگوها ناحیه‌ی نام‌دار است (aria)', () => {
     // figure + figcaption به‌صورت معنایی نام می‌گیرد؛ برچسب «نشانه، نه اتهام» متنی است نه رنگی
     assert.match(read('public-admin/js/patterns.js'), /نشانه، نه اتهام/);
+  });
+});
+
+describe('T8 (فاز ۱۶): ریل، تب زیرخط‌دار و فیلد پرشده', () => {
+  const CSS = read('public-admin/css/style.css');
+  test('هر آیتم ریل آیکنی aria-label و title دارد و نامش متن فارسی است', () => {
+    const core = read('public-admin/js/core.js');
+    assert.match(core, /class="nav-item" type="button" data-view="\$\{n\.id\}"[\s\S]{0,120}aria-label="\$\{label\}" title="\$\{label\}"/);
+    assert.match(read('public-admin/index.html'), /id="rail-toggle"[^>]*aria-controls="sidebar"[^>]*aria-expanded="false"[^>]*aria-label="[^"]+"/);
+    assert.match(CSS, /\.nav-item\.active:focus-visible \{ outline-color: var\(--brand\); \}/); // روی قرص --bg حلقه‌ی برند دیده می‌شود
+  });
+  test('تب زیرخط‌دار: فعال با زیرخط + وزن بیشتر (نه فقط رنگ) و حلقه‌ی فوکوس دارد', () => {
+    assert.match(CSS, /\.tab\.active \{[^}]*border-bottom-color: var\(--accent\);[^}]*font-weight: 700;/);
+    assert.match(CSS, /\.tab:focus-visible \{ outline: 2px solid var\(--brand\);/);
+  });
+  test('فیلد پرشده: متن/hint روی --field ≥ ۴٫۵:۱ و فوکوس با حلقه‌ی برند در هر دو تم', () => {
+    for (const [sel, mode] of [[':root,\n:root[data-theme="dark"]', 'dark'], [':root[data-theme="light"]', 'light']]) {
+      const v = themeVars(CSS, sel);
+      for (const k of ['text', 'hint']) assert.ok(ratio(hex(v[k]), hex(v.field)) >= 4.5, `${mode} ${k}/field`);
+      assert.ok(ratio(hex(v.brand), hex(v.field)) >= 3, `${mode} brand/field`);
+    }
+    assert.match(CSS, /input:focus-visible, select:focus-visible, textarea:focus-visible \{ outline: 2px solid var\(--brand\)/);
   });
 });

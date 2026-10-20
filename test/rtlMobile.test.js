@@ -110,3 +110,19 @@ describe('موبایل', () => {
     assert.match(PANEL, /\.chart-slot \{ min-width: 0; \}/);
   });
 });
+
+describe('T8 (فاز ۱۶): ریل و تب‌ها در RTL/موبایل', () => {
+  test('ریل راست‌چین؛ قرص فعال به سمت محتوا (چپ) باز می‌شود؛ موبایل کشوی تمام‌ارتفاع از راست', () => {
+    assert.match(PANEL, /\.sidebar \{[^}]*right: 16px;/);
+    assert.match(PANEL, /\.nav-item\.active \{ margin-inline-end: 0; border-radius: 0 24px 24px 0; \}/);
+    assert.match(mediaBlock(PANEL, '@media (max-width: 900px)'), /\.sidebar \{[^}]*translateX\(100%\)/);
+  });
+  test('تب‌ها اسکرول افقیِ داخلی دارند و فیلد پرشده در موبایل تمام‌عرض است', () => {
+    assert.match(PANEL, /\.tabs \{[^}]*overflow-x: auto;/);
+    assert.match(PANEL, /\.form-grid \{ grid-template-columns: 1fr; \}/);
+  });
+  test('اندازه‌ی لمسی ریل/تب/چیپ در بلوک لمسی', () => {
+    const touch = mediaBlock(PANEL, '@media (pointer: coarse), (max-width: 900px)');
+    for (const sel of ['.chip', '.tab', '.nav-item']) assert.ok(touch.includes(sel), `${sel} در بلوک لمسی نیست`);
+  });
+});
