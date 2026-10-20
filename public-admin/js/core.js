@@ -460,6 +460,7 @@
   // صفحه‌ی اول: داشبورد (اگر مجوزش را دارد) ← پروفایل خودش ← اولین صفحه‌ی مجاز ← null (هیچ صفحه‌ای مجاز نیست)
   AP.homeRoute = function homeRoute() {
     if (AP.viewAllowed(AP.views.dashboard)) return { id: 'dashboard', param: null };
+    if (AP.selfOnly() && AP.viewAllowed(AP.views.mystatus)) return { id: 'mystatus', param: null }; // M2: کارمند بعد از ورود مستقیم به «وضعیت من»
     if (AP.viewAllowed(AP.views.profile)) return { id: 'profile', param: AP.state.me.id };
     const first = AP.nav.find((n) => AP.viewAllowed(AP.views[n.id]));
     return first ? { id: first.id, param: null } : null;
@@ -570,6 +571,8 @@
     if (AP.selfOnly() && AP.viewAllowed(AP.views.profile)) {
       items.unshift({ id: 'profile', icon: 'employees', label: 'پروفایل من', group: 'پنل من', param: AP.state.me.id });
     }
+    // M2: «وضعیت من» اولین آیتم «پنل من» (بالاتر از «پروفایل من»)؛ برای نقش‌های دیگر در M4 اضافه می‌شود
+    if (AP.selfOnly() && AP.viewAllowed(AP.views.mystatus)) items.unshift({ id: 'mystatus', icon: 'attendance', label: 'وضعیت من', group: 'پنل من' });
     items.forEach((n) => { (groups[n.group] = groups[n.group] || []).push(n); });
     $('#side-nav').innerHTML = Object.keys(groups)
       .map((g) => `<div class="nav-group">${esc(g)}</div>${groups[g].map(AP.navItemHtml).join('')}`)

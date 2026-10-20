@@ -140,7 +140,8 @@
   }
 
   // F2-c: اقدامات مدیریتی هر روز — فقط دکمه‌هایی که کاربر جاری مجوزشان را دارد ساخته می‌شوند (نمایش هم‌راستا با سرور؛ اجرای واقعی سمت سرور دوباره چک می‌شود)
-  function dayActions(d, isSelf) {
+  function dayActions(d, isSelf, readOnly) {
+    if (readOnly) return ''; // M2: «وضعیت من» فقط‌خواندنی است (بدون اقدام مدیریتی)
     const hasReport = (d.tasks || []).some((t) => t.status !== 'no_answer');
     const btns = [
       AP.can('tasks.assign_urgent') && !isSelf ? `<button type="button" class="btn ghost small" data-act="urgent" data-date="${esc(d.date)}">⚡ تسک فوری</button>` : '',
@@ -150,7 +151,7 @@
     return btns ? `<div class="day-card-actions">${btns}</div>` : '';
   }
 
-  function dayCard(d, isSelf) {
+  function dayCard(d, isSelf, opts) {
     const tasks = d.tasks || [];
     const taskList = tasks.length
       ? `<ul class="day-tasks">${tasks.map((t) => taskRow(t, isSelf)).join('')}</ul>`
@@ -166,7 +167,7 @@
         ${dayAttendanceLine(d)}
         ${taskList}
         ${reviewNote}
-        ${dayActions(d, isSelf)}
+        ${dayActions(d, isSelf, opts && opts.readOnly)}
       </div>
     </details>`;
   }
@@ -191,6 +192,9 @@
       </div>
       <div class="card">${completionBar(t)}</div>`;
   }
+
+  // M2 («وضعیت من»): استفاده‌ی مجدد از همین قطعه‌ها (بدون کپی)؛ dayCard با { readOnly: true } دکمه‌های مدیریتی را نمی‌سازد.
+  AP.weekUi = { kpi, dayCard, planBadge, TASK_STATUS };
 
   AP.view('weekly', {
     skeleton: 'plan',

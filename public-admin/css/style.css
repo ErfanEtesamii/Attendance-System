@@ -537,6 +537,23 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 .day-card-actions { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 4px; border-top: 1px dashed var(--border); }
 .day-card-actions .btn svg { width: 14px; height: 14px; }
 
+/* M2: صفحه‌ی «وضعیت من» — کارت‌های «امروز» و «برنامه‌ی هفته‌ی بعد»؛ داخل کارت فقط خط جداکننده (بدون کادر تو در تو)، متن قابل شکستن */
+.ms-top { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; margin-bottom: 18px; align-items: start; }
+.ms-rows { margin: 0; }
+.ms-row { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; padding: 9px 0; border-top: 1px solid var(--border); font-size: 13px; }
+.ms-row:first-child { border-top: 0; padding-top: 0; }
+.ms-row dt { color: var(--hint); }
+.ms-row dd { margin: 0; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.ms-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.ms-sub { margin: 14px 0 6px; font-size: 13px; font-weight: 800; }
+.ms-tasks { margin: 0; padding: 0; }
+.ms-task { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; padding: 9px 0; border-top: 1px solid var(--border); font-size: 12.5px; }
+.ms-task:first-child { border-top: 0; }
+.ms-task-title { min-width: 0; flex: 1 1 160px; overflow-wrap: anywhere; font-weight: 600; }
+.ms-note { font-size: 12.5px; line-height: 1.8; }
+.ms-actions { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
+.ms-section-title { margin: 4px 0 12px; font-size: 16px; font-weight: 800; }
+
 /* ---------- کارت‌ها ---------- */
 
 .card {
