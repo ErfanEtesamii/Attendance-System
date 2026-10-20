@@ -18,7 +18,7 @@ const H = 'hr';
 
 // hr (S4-4a): فقط‌خواندنی همه؛ همین routeها برای hr مجازند و بقیه (همه‌ی نوشتن‌ها، تنظیمات، ممیزی، سیستم، شیفت، مشکوک) ۴۰۳ گارد مجوز می‌دهند.
 const HR_ALLOWED = new Set([
-  'GET /api/admin/me', 'GET /api/admin/me/permissions', 'GET /api/admin/me/week', 'GET /api/admin/dashboard', 'GET /api/admin/overview', 'GET /api/admin/live', 'GET /api/admin/nightly-review', 'GET /api/admin/calendar?year=1405&month=1',
+  'GET /api/admin/me', 'GET /api/admin/me/permissions', 'GET /api/admin/me/week', 'GET /api/admin/me/tasks/today', 'GET /api/admin/me/tasks/backfill', 'POST /api/admin/me/tasks/answer', 'POST /api/admin/me/tasks/undo', 'PATCH /api/admin/me/tasks/note', 'GET /api/admin/dashboard', 'GET /api/admin/overview', 'GET /api/admin/live', 'GET /api/admin/nightly-review', 'GET /api/admin/calendar?year=1405&month=1',
   'GET /api/admin/users', 'GET /api/admin/users/export', 'GET /api/admin/users/999999', 'GET /api/admin/users/999999/details',
   'GET /api/admin/attendance', 'GET /api/admin/attendance/export', 'GET /api/admin/attendance-records/999999',
   'GET /api/admin/disputes', 'GET /api/admin/disputes/counts', 'GET /api/admin/disputes/999999', 'GET /api/admin/leave-requests', 'GET /api/admin/leave-types', 'GET /api/admin/leave-types/999999', 'GET /api/admin/leave-balances', 'GET /api/admin/leave-balances/999999/adjustments', 'GET /api/admin/reports/export', 'GET /api/admin/reports/monthly?year=1405&month=6', 'GET /api/admin/reports/monthly/export?year=1405&month=6', 'GET /api/admin/reports/summary',
@@ -63,6 +63,11 @@ const ROUTES_2 = [
   ['GET', '/api/admin/me', [E, M, A]],
   ['GET', '/api/admin/me/permissions', [E, M, A]], // S4-4b
   ['GET', '/api/admin/me/week', [E, M, A]], // M1: me.read (هفته‌ی خود کاربر؛ hr از HR_ALLOWED)
+  ['GET', '/api/admin/me/tasks/today', [E, M, A]], // M3: me.read (تسک‌های امروز خود کاربر؛ hr از HR_ALLOWED)
+  ['GET', '/api/admin/me/tasks/backfill', [E, M, A]], // M3
+  ['POST', '/api/admin/me/tasks/answer', [E, M, A]], // M3: بدنه‌ی خالی ⇒ ۴۰۰ INVALID_TASK (چیزی ثبت نمی‌شود)؛ hr از HR_ALLOWED (فقط تسک خودش)
+  ['POST', '/api/admin/me/tasks/undo', [E, M, A]], // M3
+  ['PATCH', '/api/admin/me/tasks/note', [E, M, A]], // M3
   ['GET', '/api/admin/dashboard', [M, A]],
   ['GET', '/api/admin/overview', [M, A]],
   ['GET', '/api/admin/live', [M, A]],

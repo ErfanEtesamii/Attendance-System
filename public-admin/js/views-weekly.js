@@ -193,8 +193,8 @@
       <div class="card">${completionBar(t)}</div>`;
   }
 
-  // M2 («وضعیت من»): استفاده‌ی مجدد از همین قطعه‌ها (بدون کپی)؛ dayCard با { readOnly: true } دکمه‌های مدیریتی را نمی‌سازد.
-  AP.weekUi = { kpi, dayCard, planBadge, TASK_STATUS };
+  // M2/M3 («وضعیت من»): استفاده‌ی مجدد از همین قطعه‌ها (بدون کپی؛ REASONS برای فهرست علت‌ها در M3)؛ dayCard با { readOnly: true } دکمه‌های مدیریتی را نمی‌سازد.
+  AP.weekUi = { kpi, dayCard, planBadge, TASK_STATUS, REASONS };
 
   AP.view('weekly', {
     skeleton: 'plan',

@@ -586,14 +586,8 @@ router.post('/miniapp/plan/submit', (req, res) => {
 
 // ---------- گزارش روزانه‌ی تسک‌ها (D6) ----------
 
-const REPORT_ERROR_STATUS = {
-  MONTH_CLOSED: 409, ALREADY_ANSWERED: 409, FULL_DAY_OFF: 409,
-  BACKFILL_EXPIRED: 409, LATE_WINDOW_EXPIRED: 409, LATE_NOT_ALLOWED: 409, NO_RECORD: 404,
-  CARRY_LIMIT: 400, TASK_NOT_FOUND: 404, REVIEW_TASK_LOCKED: 409, NOTE_ONLY_FOR_DONE: 409, // A1 (فاز ۱۵): واگرد و ویرایش توضیحِ انجام
-  INVALID_WEEK: 400, NOTE_TOO_LONG: 400, // A4: نگاشت صریح (مقدار پیش‌فرض هم ۴۰۰ است)
-  // A4: تسک فوریِ شخصی (selfUrgentTaskService.statusOf منبع اصلی است؛ اینجا برای یکپارچگی نگاشت)
-  SELF_URGENT_DISABLED: 403, SELF_URGENT_LIMIT: 409, NOT_SELF_URGENT: 403, DATE_OUT_OF_WEEK: 400, HAS_ANSWERS: 409,
-};
+// نگاشت خطا در src/utils/reportErrors.js (مشترک با پنل: /admin/me/tasks/*)
+const { REPORT_ERROR_STATUS } = require('../../utils/reportErrors');
 const sendReportError = (res, r) => res.status(REPORT_ERROR_STATUS[r.code] || 400).json({ error: r.error, code: r.code });
 
 // date (اختیاری، YYYY-MM-DD): گزارش دیرهنگام/backfill؛ اعتبارسنجی کامل سمت سرور (taskReportService.resolveReportDate)

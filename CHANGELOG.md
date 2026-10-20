@@ -4,6 +4,14 @@
 
 ## [Unreleased] — بخش ۴ (ممیزی)
 
+### «وضعیت من» — M3 (تیک‌زدن تسک‌های امروز از پنل)
+- API (همه‌ی نقش‌ها، گارد `me.read`، فقط `req.adminUser`؛ هیچ `userId` از کلاینت خوانده نمی‌شود): `GET /api/admin/me/tasks/today?date=`، `GET /api/admin/me/tasks/backfill`، `POST /api/admin/me/tasks/answer`، `POST /api/admin/me/tasks/undo`، `PATCH /api/admin/me/tasks/note`. هر پنج مسیر به `EMPLOYEE_ALLOWED` اضافه شد.
+- منطق کپی نشد: `services/panelTasksService.js` لایه‌ی نازک روی `taskReportService` است (`getDailyTasks`، `submitDailyReport` با یک پاسخ، `undoAnswer`، `updateNote`، `getBackfillStatus`)؛ پس تاریخ فقط با `resolveReportDate` (امروز/گزارش دیرهنگام/backfill/ماه بسته/روز آینده)، همان اعتبارسنجی علت‌ها و همان پیام تشویقی/ذخیره‌ی `answered_late` مثل Mini App است. نگاشت خطا → HTTP به `utils/reportErrors.js` رفت و Mini App هم از همان استفاده می‌کند (رفتار Mini App تغییر نکرده).
+- تسک سیستمی/واجب (`is_system`، مثل «بررسی گزارش تیم») از پنل فقط‌خواندنی است: پاسخ/واگرد/توضیح ⇒ ۴۰۳ `SYSTEM_TASK_READONLY` (در Mini App همچنان با علت قابل ثبت است؛ در پنل عمداً بسته ماند). پاسخ تکی؛ «انتقال/حذف» (reschedule) و «کار خارج از برنامه» (extra) در پنل نیست و فیلدهای اضافه‌ی بدنه نادیده گرفته می‌شود.
+- audit همان رویدادهای Mini App با `source: 'panel'` (`daily_report_submitted` فقط برای پاسخ دیرهنگام/انتقال‌دار مثل Mini App، `task_answer_undone`، `task_done_note_edited`؛ متن علت/توضیح ثبت نمی‌شود). rate limit: ۶۰ درخواست در دقیقه به‌ازای هر کاربر نشست (مثل Mini App).
+- UI (`views-mystatus.js`): کارت «امروز» برای هر تسک «انجام شد / ناقص / انجام نشد» (ناقص/انجام‌نشده ⇒ مودال علت + توضیح اختیاری؛ «سایر» حداقل ۵ نویسه)، «برداشتن تیک»، «افزودن/ویرایش توضیح» برای انجام‌شده‌ها، نوار پیشرفت، نشان «پاسخ دیرهنگام»، و بخش «گزارش دیرهنگام» (روزهای قبلی که هنوز پاسخ می‌پذیرند؛ فقط وقتی سرور اجازه می‌دهد). بعد از هر ثبت فقط `#ms-live` (KPI، امروز، شبکه‌ی هفته) از سرور بازسازی می‌شود و فوکوس روی همان تسک می‌ماند. اگر فهرست تعاملی نیاید، فهرست فقط‌خواندنی M2 + پیام نمایش داده می‌شود. `AP.weekUi` حالا `REASONS` را هم صادر می‌کند. CSS: `.ms-task-edit/-actions/-sub` (بدون کادر تو در تو).
+- تست: `test/myTasks.test.js` (سرویس، API، مالکیت، تسک سیستمی، تاریخ/ماه بسته، هماهنگی با Mini App، audit، لیست سفید)، افزوده‌های `myStatusUi.test.js` و ردیف‌های ماتریس `permissionRoutes.test.js`.
+
 ### «وضعیت من» — M2 (صفحه‌ی فقط‌نمایش)
 - `public-admin/js/views-mystatus.js` (`AP.view('mystatus')`، `perm: me.read`): KPI هفته (ساعت مفید از مورد انتظار + درصد، روز تأخیر، اضافه‌کاری، تکمیل تسک‌ها)، کارت «امروز» (وضعیت، برنامه‌ی روز، ورود/خروج، ساعت مفید تا الان، تسک‌ها)، کارت «برنامه‌ی هفته‌ی بعد» (نشان ثبت‌شده/پیش‌نویس/ثبت نشده) و شبکه‌ی ۷ روزه با ناوبری هفته‌ی قبل/جاری. فقط از `GET /admin/me/week` می‌خواند و هیچ شناسه‌ی کاربری نمی‌فرستد.
 - `views-weekly.js` فقط قطعه‌های مشترک را صادر می‌کند (`AP.weekUi`: `kpi`، `dayCard`، `planBadge`، `TASK_STATUS`) و `dayCard` گزینه‌ی `readOnly` گرفت (دکمه‌های مدیریتی ساخته نمی‌شوند)؛ رفتار صفحه‌ی `weekly` تغییر نکرده.

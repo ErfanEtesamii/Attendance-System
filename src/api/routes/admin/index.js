@@ -46,6 +46,7 @@ router.use(require('./planGate')); // D5: معافیت یک‌باره از گی
 router.use(require('./teamReview')); // D9: مشاهده‌ی گزارش روزانه‌ی تیم (سرپرست/ادمین)
 router.use(require('./urgentTasks')); // E1: تسک فوری (تعیین/حذف/فهرست)
 router.use(require('./employeeWeek')); // F1: نمای هفتگی کامل کارمند (فقط‌خواندنی)
+router.use(require('./myTasks')); // M3: تیک‌زدن تسک‌های خودِ کاربر از پنل («وضعیت من»)
 router.use(require('./employeePlan')); // A2 (فاز ۱۳): برنامه‌ی هفتگی کارمند برای ادمین/سرپرست (بخش ۱: خواندن)
 router.use(require('./remoteWork')); // R5-۳ (فاز ۱۴): صف بررسی دورکاری (فقط‌خواندنی)
 router.use(require('./notifications'));

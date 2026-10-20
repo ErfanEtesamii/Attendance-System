@@ -21,6 +21,9 @@ const EMPLOYEE_ALLOWED = [
   ['GET', /^\/admin\/me$/],
   ['GET', /^\/admin\/me\/permissions$/], // S4-4b: مجوزهای خود کاربر (برای ساخت منوی پنل)
   ['GET', /^\/admin\/me\/week$/], // M1 («وضعیت من»): هفته‌ی خود کاربر (هویت فقط از نشست؛ بدون پارامتر کاربر)
+  ['GET', /^\/admin\/me\/tasks\/(today|backfill)$/], // M3: تسک‌های امروز خود کاربر (بدون پارامتر کاربر)
+  ['POST', /^\/admin\/me\/tasks\/(answer|undo)$/], // M3: تیک/برداشتن تیک (مالکیت فقط از نشست؛ همان قوانین Mini App)
+  ['PATCH', /^\/admin\/me\/tasks\/note$/], // M3: توضیح انجام
   ['GET', /^\/admin\/attendance$/],
   ['GET', /^\/admin\/attendance\/export$/],
   ['GET', /^\/admin\/attendance-records\/\d+$/],
