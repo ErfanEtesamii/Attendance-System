@@ -23,6 +23,13 @@ const { fail, clean, TITLE_MAX, DESC_MAX } = urgent;
 const EXTRA_STATUS = { SELF_URGENT_DISABLED: 403, SELF_URGENT_LIMIT: 409, NOT_SELF_URGENT: 403, DATE_OUT_OF_WEEK: 400, NOTHING_TO_UPDATE: 400 };
 const statusOf = (code) => EXTRA_STATUS[code] || urgent.statusOf(code);
 const failS = (code, error) => ({ ok: false, code, error, status: statusOf(code) });
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+const timeRange = (input) => {
+  const start = String(input.startTime || '').trim(); const end = String(input.endTime || '').trim();
+  if (!start && !end) return { start: null, end: null };
+  if (!TIME_RE.test(start) || !TIME_RE.test(end) || start >= end) return { error: failS('INVALID_TIME_RANGE', 'ساعت شروع و پایان باید معتبر باشند و پایان بعد از شروع باشد.') };
+  return { start, end };
+};
 
 /** آیا این تسکِ فوری را خودِ صاحب برنامه گذاشته؟ (task = ردیف plan_tasks) */
 const isSelfAssigned = (task, ownerUserId) => !!task && !!task.is_urgent && task.assigned_by_user_id != null && Number(task.assigned_by_user_id) === Number(ownerUserId);
@@ -33,7 +40,7 @@ const safeAudit = (entry) => {
 
 const present = (t, weekStart) => ({
   id: t.id, title: t.title, description: t.description || '', date: t.planned_date, weekStart: weekStart || t.week_start_date || null,
-  priority: 'high', isUrgent: true, selfAssigned: true, createdAt: t.created_at,
+  priority: 'high', isUrgent: true, selfAssigned: true, startTime: t.scheduled_start_time || null, endTime: t.urgent_deadline_time || null, createdAt: t.created_at,
 });
 
 /** افزودن تسک فوریِ خودش. input = {title, description?, date}. */
@@ -42,19 +49,21 @@ function add(user, input, { now = new Date(), ip = null, source = 'miniapp' } = 
   const settings = settingsRepository.getAll();
   if (!settings.selfUrgentEnabled) return failS('SELF_URGENT_DISABLED', 'افزودن تسک فوری برای خودتان فعال نیست.');
   const b = input && typeof input === 'object' ? input : {};
+  const range = timeRange(b); if (range.error) return range.error;
   const max = Number(settings.selfUrgentMaxPerDay) || 5;
 
-  const made = urgent.createUrgent(user, user.id, { title: b.title, description: b.description, date: b.date }, {
+  const made = urgent.createUrgent(user, user.id, { title: b.title, description: b.description, date: b.date, deadlineTime: range.end }, {
     now,
     guard: ({ date }) => (plansRepo.countSelfUrgentOnDate(user.id, date) >= max
       ? failS('SELF_URGENT_LIMIT', `برای یک روز حداکثر ${max} تسک فوریِ شخصی می‌توانید اضافه کنید.`) : null),
   });
   if (!made.ok) return made;
   const { task, createdPlan, date, title, weekStart } = made;
+  if (range.start) plansRepo.updateTask(task.id, { scheduledStartTime: range.start });
 
   safeAudit({ userId: user.id, action: 'self_urgent_task_added', ipAddress: ip, details: { source, taskId: task.id, date, title, createdPlan } });
   notificationEvents.selfUrgentTaskAdded(user, task);
-  return { ok: true, createdPlan, task: present(task, weekStart) };
+  return { ok: true, createdPlan, task: present(plansRepo.findTask(task.id), weekStart) };
 }
 
 /** تسکِ فوریِ خودش + مالکیت و گیت‌های مشترکِ ویرایش/حذف. → { row } یا fail */
@@ -90,6 +99,14 @@ function update(user, taskId, input, { now = new Date(), ip = null, source = 'mi
     if (description.length > DESC_MAX) return failS('DESCRIPTION_TOO_LONG', `توضیح حداکثر ${DESC_MAX} نویسه است.`);
     if ((description || null) !== (row.description || null)) { fields.description = description || null; changed.push('description'); }
   }
+  if (b.startTime !== undefined || b.endTime !== undefined) {
+    const range = timeRange({ startTime: b.startTime === undefined ? row.scheduled_start_time : b.startTime, endTime: b.endTime === undefined ? row.urgent_deadline_time : b.endTime });
+    if (range.error) return range.error;
+    const dateFail = urgent.checkDate(user, row.planned_date, { settings: settingsRepository.getAll(), now, deadline: range.end });
+    if (dateFail) return dateFail;
+    if (range.start !== (row.scheduled_start_time || null)) { fields.scheduledStartTime = range.start; changed.push('startTime'); }
+    if (range.end !== (row.urgent_deadline_time || null)) { fields.urgentDeadlineTime = range.end; changed.push('endTime'); }
+  }
   if (b.date !== undefined && b.date !== row.planned_date) {
     const settings = settingsRepository.getAll();
     const dateFail = urgent.checkDate(user, b.date, { settings, now });
@@ -99,7 +116,7 @@ function update(user, taskId, input, { now = new Date(), ip = null, source = 'mi
     }
     fields.plannedDate = b.date; changed.push('date');
   }
-  if (b.title === undefined && b.description === undefined && b.date === undefined) return failS('NOTHING_TO_UPDATE', 'چیزی برای ویرایش ارسال نشده است.');
+  if (b.title === undefined && b.description === undefined && b.date === undefined && b.startTime === undefined && b.endTime === undefined) return failS('NOTHING_TO_UPDATE', 'چیزی برای ویرایش ارسال نشده است.');
 
   const task = changed.length ? plansRepo.updateTask(row.id, fields) : plansRepo.findTask(row.id);
   if (changed.length) {

@@ -27,6 +27,7 @@ const GROUP_LABELS = {
   reportDelivery: 'ارسال خودکار گزارش',
   patterns: 'الگوهای رفتاری (هشدار الگو)',
   planning: 'برنامه‌ی هفتگی و گزارش روزانه',
+  performance: 'تشویق و تنبیه (امتیاز عملکرد)',
   disputes: 'اعتراض‌ها',
 };
 
@@ -199,6 +200,12 @@ def('selfUrgentEnabled', 'self_urgent_enabled', 'boolean', { group: 'planning', 
 def('selfUrgentMaxPerDay', 'self_urgent_max_per_day', 'number', { group: 'planning', min: 1, max: 50, default: 5, description: 'حداکثر تسک فوریِ خودِ کارمند برای یک روز از برنامه (روزِ برنامه‌ریزی‌شده، نه روز ثبت)' });
 def('taskReportAdminMaxParts', 'task_report_admin_max_parts', 'number', { group: 'planning', min: 1, max: 10, default: 6, description: 'حداکثر تعداد پیام تلگرام در «گزارش تسک‌های امروز» برای ادمین (گزارش همه‌ی تیم‌ها؛ سرپرست‌ها همیشه حداکثر ۳ پیام می‌گیرند)' });
 def('encouragementsEnabled', 'encouragements_enabled', 'boolean', { group: 'planning', default: true, description: 'نمایش پیام تشویقی کوتاه پس از ثبت گزارش روزانه' });
+// این‌ها «امتیاز ساعت مفید» را می‌سازند، نه حقوق و مزایای پرداختی. کسر حقوق نیازمند آیین‌نامه و قرارداد مصوب شرکت است.
+def('latePerformancePenaltyEnabled', 'late_performance_penalty_enabled', 'boolean', { group: 'performance', default: false, description: 'فعال‌سازی کسر از امتیاز ساعت مفید به‌علت تأخیر؛ روی ساعت خام تردد یا حقوق اعمال نمی‌شود' });
+def('latePerformanceThresholdMinutes', 'late_performance_threshold_minutes', 'number', { group: 'performance', min: 0, max: 480, default: 15, description: 'تأخیرِ بیشتر از این تعداد دقیقه مشمول کسر امتیاز می‌شود' });
+def('latePerformancePenaltyFactor', 'late_performance_penalty_factor', 'number', { group: 'performance', integer: false, min: 0, max: 5, default: 1, description: 'ضریب کسر امتیاز: برای هر دقیقه تأخیرِ مشمول، این تعداد دقیقه از امتیاز مفید کم می‌شود' });
+def('performanceRewardEnabled', 'performance_reward_enabled', 'boolean', { group: 'performance', default: false, description: 'فعال‌سازی چارچوب تشویق؛ تا وقتی فهرست اعمال پاداش توسط شرکت تعریف نشود هیچ امتیازی خودکار اضافه نمی‌شود' });
+def('performanceRewardFactor', 'performance_reward_factor', 'number', { group: 'performance', integer: false, min: 0, max: 5, default: 1, description: 'ضریب پاداش برای اعمالی که بعداً توسط شرکت تعریف و تأیید می‌شوند؛ پیش‌فرض ۱ = بدون تغییر' });
 def('disputeMaxReopens', 'dispute_max_reopens', 'number', { group: 'disputes', min: 0, max: 20, default: 3, description: 'حداکثر دفعاتی که کارمند می‌تواند اعتراضِ حل‌شده را «ادامه» دهد (۰ = ادامه‌ی اعتراض خاموش)' });
 def('systemGoLive', 'system_go_live', 'boolean', { group: 'security', default: false, description: 'حالت Go-Live: وقتی روشن است ریست برنامه (حذف داده‌ی عملیاتی) ۴۰۳ می‌دهد، مگر ALLOW_DATA_RESET=true در .env باشد' });
 def('blockOnSharedDevice', 'block_on_shared_device', 'boolean', { group: 'security', default: false, description: 'مسدودکردن ثبت تردد وقتی دستگاه همان روز برای کاربر دیگری استفاده شده' });

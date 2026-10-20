@@ -66,7 +66,7 @@
   function kpiRow(r) {
     const s = r.summary; const t = s.tasks; const a = s.attendance; const W = AP.weekUi;
     return `<div class="stat-grid">
-      ${W.kpi('g-blue', 'clock', fmt.min(a.usefulMinutes), 'ساعت مفید', a.expectedMinutes ? `از ${fmt.min(a.expectedMinutes)} مورد انتظار (${a.usefulPercent == null ? '—' : `${fmt.num(a.usefulPercent)}٪`})` : '')}
+      ${W.kpi('g-blue', 'clock', fmt.min(a.usefulMinutes), 'ساعت مفید', `${a.workedGrossMinutes ? `${a.usefulOfWorkedPercent == null ? '—' : `${fmt.num(a.usefulOfWorkedPercent)}٪`} از کل حضور ثبت‌شده (${fmt.min(a.workedGrossMinutes)})` : (a.expectedMinutes ? `از ${fmt.min(a.expectedMinutes)} مورد انتظار (${a.usefulPercent == null ? '—' : `${fmt.num(a.usefulPercent)}٪`})` : '')}${a.latePenaltyMinutes ? ` · امتیاز پس از تأخیر: ${fmt.min(a.performanceUsefulMinutes)}` : ''}`)}
       ${W.kpi('g-orange', 'alert', fmt.num(a.lateDays), 'روز تأخیر')}
       ${W.kpi('g-purple', 'clock', fmt.min(a.overtimeMinutes), 'اضافه‌کاری')}
       ${W.kpi('g-green', 'check', t.completionPercent == null ? '—' : `${fmt.num(t.completionPercent)}٪`, 'تکمیل تسک‌ها', `${fmt.num(t.total)} تسک سررسیدشده`)}
@@ -320,6 +320,8 @@
             <div class="form-grid">
               <label class="field"><span>عنوان</span><input name="title" required maxlength="120" value="${esc(edit ? task.title : '')}" placeholder="مثلاً: ارسال پیش‌فاکتور به مشتری" /></label>
               <label class="field"><span>تاریخ انجام</span><input type="date" name="date" required value="${esc(date || fmt.today())}" /></label>
+              <label class="field"><span>شروع (اختیاری)</span><input type="time" name="startTime" value="${esc(edit ? task.scheduledStartTime || task.startTime || '' : '')}" /></label>
+              <label class="field"><span>پایان (اختیاری)</span><input type="time" name="endTime" value="${esc(edit ? task.urgentDeadlineTime || task.endTime || '' : '')}" /></label>
               <label class="field"><span>توضیح (اختیاری)</span><textarea name="description" rows="3" maxlength="500">${esc(edit ? task.description || '' : '')}</textarea></label>
             </div>
             <p class="muted">${edit ? 'تاریخ را فقط داخل همین هفته می‌توانید تغییر دهید؛ بعد از ثبت پاسخ، تسک دیگر قابل ویرایش یا حذف نیست.' : 'تسک با برچسب «⚡ فوری» به برنامه‌ی همان روزتان اضافه می‌شود و سرپرست‌تان باخبر می‌شود. تا قبل از ثبت پاسخ می‌توانید آن را ویرایش یا حذف کنید.'}</p>
@@ -334,7 +336,7 @@
               e.preventDefault();
               const f = AP.formData(form);
               if (!String(f.title || '').trim()) { $('.form-msg', form).textContent = 'عنوان تسک فوری الزامی است.'; return; }
-              const payload = { title: f.title, date: f.date, description: f.description || '' };
+              const payload = { title: f.title, date: f.date, description: f.description || '', startTime: f.startTime || '', endTime: f.endTime || '' };
               const ok = await act(page, () => AP.api(edit ? `/admin/me/urgent/${task.taskId}` : '/admin/me/urgent', { method: edit ? 'PATCH' : 'POST', body: payload }),
                 edit ? 'تسک فوری ویرایش شد.' : 'تسک فوری اضافه شد.', $('button[type=submit]', form), edit ? task.taskId : null);
               if (ok) m.close();

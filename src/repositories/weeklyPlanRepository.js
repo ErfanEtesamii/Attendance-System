@@ -85,18 +85,18 @@ function listTasks(planId, { includeDeleted = false } = {}) {
 // managerLocked/editedByUserId (A1-۲، migration ۰۳۳): فقط برای تسکی که ادمین/سرپرست از weeklyPlanAdminService
 // اضافه می‌کند پر می‌شود؛ مستقل از isUrgent (هرگز هم‌زمان هر دو). editedAt پیش‌فرض «الان» است وقتی managerLocked=true.
 function addTask(planId, { title, description = null, plannedDate = null, priority = 'normal', sortOrder = null, isSystem = false, systemKey = null, carriedFromTaskId = null,
-  isUrgent = false, assignedByUserId = null, urgentNote = null, urgentDeadlineTime = null, managerLocked = false, editedByUserId = null }) {
+  isUrgent = false, assignedByUserId = null, urgentNote = null, urgentDeadlineTime = null, scheduledStartTime = null, managerLocked = false, editedByUserId = null }) {
   const db = getDb();
   const order = sortOrder === null ? (db.prepare('SELECT COALESCE(MAX(sort_order), 0) + 1 AS n FROM plan_tasks WHERE plan_id = ?').get(planId).n) : sortOrder;
   const res = db.prepare(`INSERT INTO plan_tasks (plan_id, title, description, planned_date, priority, sort_order, is_system, system_key, carried_from_task_id,
-      is_urgent, assigned_by_user_id, urgent_note, urgent_deadline_time, manager_locked, edited_by_user_id, edited_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${managerLocked ? NOW : 'NULL'})`).run(planId, title, description, plannedDate, priority, order, isSystem ? 1 : 0, systemKey, carriedFromTaskId,
-    isUrgent ? 1 : 0, isUrgent ? assignedByUserId : null, isUrgent ? urgentNote : null, isUrgent ? urgentDeadlineTime : null,
+      is_urgent, assigned_by_user_id, urgent_note, urgent_deadline_time, scheduled_start_time, manager_locked, edited_by_user_id, edited_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${managerLocked ? NOW : 'NULL'})`).run(planId, title, description, plannedDate, priority, order, isSystem ? 1 : 0, systemKey, carriedFromTaskId,
+    isUrgent ? 1 : 0, isUrgent ? assignedByUserId : null, isUrgent ? urgentNote : null, isUrgent ? urgentDeadlineTime : null, isUrgent ? scheduledStartTime : null,
     managerLocked ? 1 : 0, managerLocked ? editedByUserId : null);
   return findTask(res.lastInsertRowid);
 }
 
-const TASK_FIELDS = { title: 'title', description: 'description', plannedDate: 'planned_date', priority: 'priority', sortOrder: 'sort_order' };
+const TASK_FIELDS = { title: 'title', description: 'description', plannedDate: 'planned_date', priority: 'priority', sortOrder: 'sort_order', scheduledStartTime: 'scheduled_start_time', urgentDeadlineTime: 'urgent_deadline_time' };
 function updateTask(id, fields) {
   const sets = [];
   const params = [];

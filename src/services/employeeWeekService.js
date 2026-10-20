@@ -76,7 +76,7 @@ function attendanceView(record, ctx, now) {
   return {
     ...base, hasCheckIn: true, isOpen: d.isOpen,
     lateMinutes: d.late, earlyLeaveMinutes: d.earlyLeave, overtimeMinutes: d.overtime,
-    effectiveMinutes: d.effective, breakMinutes: d.break, breakPaidMinutes: d.breakPaid, breakUnpaidMinutes: d.breakUnpaid,
+    workedGrossMinutes: d.workedGross, effectiveMinutes: d.effective, breakMinutes: d.break, breakPaidMinutes: d.breakPaid, breakUnpaidMinutes: d.breakUnpaid,
     missionMinutes: d.missionMinutes, flags: d.flags,
   };
 }
@@ -163,7 +163,7 @@ function getWeek(actor, userId, input = {}, { now = new Date(), self = false } =
   return {
     ok: true,
     plan: wk.plan,
-    summary: summarizeWeek(days, today),
+    summary: summarizeWeek(days, today, settings),
     user: { id: user.id, fullName: user.full_name, department: user.department || null, role: user.role, managerId: user.manager_id || null, isActive: !!user.is_active, shift: (() => { const s = shiftsRepository.shiftOn(user.id, today); return s ? { id: s.id, name: s.name, startTime: s.startTime, endTime: s.endTime } : null; })() },
     week: {
       start: weekStart, end: weekEnd, jalaliStart: isoDateToJalaliString(weekStart), jalaliEnd: isoDateToJalaliString(weekEnd),

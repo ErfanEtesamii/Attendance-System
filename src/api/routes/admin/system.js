@@ -60,12 +60,12 @@ router.post('/admin/broadcast', requirePermission('system.manage'), async (req, 
   let delivered = 0;
   for (const u of targets) {
     // eslint-disable-next-line no-await-in-loop
-    const ok = await sendMessage(u.telegram_user_id, `📢 اطلاعیه:\n\n${message}`);
+    const ok = await sendMessage(u.telegram_user_id, `📢 اطلاعیه از طرف «${req.adminUser.full_name}»:\n\n${message}`);
     if (ok) delivered += 1;
     // eslint-disable-next-line no-await-in-loop
     await new Promise((r) => setTimeout(r, 50)); // احترام به rate limit تلگرام
   }
-  audit(req, 'broadcast_sent', { scope, department: department || null, recipients: targets.length, delivered });
+  audit(req, 'broadcast_sent', { scope, department: department || null, sender: req.adminUser.full_name, recipients: targets.length, delivered });
   res.json({ recipients: targets.length, delivered, failed: targets.length - delivered });
 });
 

@@ -71,7 +71,7 @@ function remove(taskId, logDate) {
 
 // ---------- نمای هفتگی کارمند (F1-b): کوئری‌های دسته‌ای برای کل هفته (بدون N+1) ----------
 const TASK_COLS = `t.title AS task_title, t.description AS task_description, t.priority AS task_priority, t.is_urgent AS task_is_urgent,
-  t.urgent_note AS task_urgent_note, t.urgent_deadline_time AS task_urgent_deadline_time, t.is_system AS task_is_system, t.system_key AS task_system_key,
+  t.urgent_note AS task_urgent_note, t.scheduled_start_time AS task_scheduled_start_time, t.urgent_deadline_time AS task_urgent_deadline_time, t.is_system AS task_is_system, t.system_key AS task_system_key,
   t.deleted_at AS task_deleted_at, t.planned_date AS task_planned_date, t.sort_order AS task_sort_order, t.carried_from_task_id AS task_carried_from, au.full_name AS task_assigned_by_name,
   t.assigned_by_user_id AS task_assigned_by, t.manager_locked AS task_manager_locked`;
 const TASK_JOIN = 'JOIN plan_tasks t ON t.id = l.task_id LEFT JOIN users au ON au.id = t.assigned_by_user_id';

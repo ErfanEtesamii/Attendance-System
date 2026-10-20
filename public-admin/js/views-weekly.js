@@ -132,7 +132,7 @@
     ].filter(Boolean).join('');
     return `<li class="day-task${t.isUrgent ? ' is-urgent' : ''}">
       <div class="title">${t.isUrgent ? AP.badge('red', t.selfAssigned ? '⚡ فوری (خودش)' : '⚡ فوری', true) : ''}${t.priority === 'high' && !t.isUrgent ? AP.badge('late', 'اولویت بالا') : ''}${esc(t.title)}</div>
-      ${t.isUrgent && !t.selfAssigned && t.assignedBy ? `<div class="muted" style="font-size:11px">از طرف: ${esc(t.assignedBy)}${t.urgentDeadlineTime ? ` · مهلت ${esc(t.urgentDeadlineTime)}` : ''}</div>` : ''}
+      ${t.isUrgent && ((t.selfAssigned && t.scheduledStartTime && t.urgentDeadlineTime) || (!t.selfAssigned && t.assignedBy)) ? `<div class="muted" style="font-size:11px">${t.selfAssigned ? `زمان: ${esc(t.scheduledStartTime)} تا ${esc(t.urgentDeadlineTime)}` : `از طرف: ${esc(t.assignedBy)}${t.urgentDeadlineTime ? ` · مهلت ${esc(t.urgentDeadlineTime)}` : ''}`}</div>` : ''}
       <div class="day-task-meta">${meta}</div>
       ${reasonText ? `<div class="reason">${esc(reasonText)}</div>` : ''}
       ${t.note ? `<div class="reason">توضیح انجام: ${esc(t.note)}</div>` : ''}

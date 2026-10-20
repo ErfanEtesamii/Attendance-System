@@ -11,11 +11,11 @@
 
 const isCounted = (t) => !t.isSystem && !t.outOfPlan && !t.dropped;
 
-function summarizeWeek(days, today) {
+function summarizeWeek(days, today, performance = {}) {
   const tasks = { total: 0, normal: 0, urgent: 0, selfUrgent: 0, done: 0, partial: 0, notDone: 0, noAnswer: 0, rescheduled: 0, dropped: 0, extra: 0 };
   let lateDays = 0; let absentDays = 0; let noReportDays = 0;
-  let expectedMinutes = 0; let usefulMinutes = 0; let overtimeMinutes = 0; let breakPaidMinutes = 0; let breakUnpaidMinutes = 0;
-  let closedDays = 0;
+  let expectedMinutes = 0; let usefulMinutes = 0; let workedGrossMinutes = 0; let overtimeMinutes = 0; let breakPaidMinutes = 0; let breakUnpaidMinutes = 0;
+  let closedDays = 0; let latePenaltyMinutes = 0;
 
   for (const d of days) {
     if (d.monthClosed) closedDays += 1;
@@ -39,12 +39,16 @@ function summarizeWeek(days, today) {
     }
 
     if (att && att.lateMinutes > 0) lateDays += 1;
+    if (att && performance.latePerformancePenaltyEnabled && att.lateMinutes > Number(performance.latePerformanceThresholdMinutes || 0)) {
+      latePenaltyMinutes += Math.round(att.lateMinutes * Number(performance.latePerformancePenaltyFactor || 0));
+    }
     if (past && d.absent) absentDays += 1;
     if (past && working && att && !(d.tasks || []).some((t) => t.status !== 'no_answer')) noReportDays += 1;
     if (past || (d.date === today && att)) {
       expectedMinutes += (d.schedule && d.schedule.plannedMinutes) || 0;
       if (att) {
         usefulMinutes += att.effectiveMinutes || 0;
+        workedGrossMinutes += att.workedGrossMinutes || 0;
         overtimeMinutes += att.overtimeMinutes || 0;
         breakPaidMinutes += att.breakPaidMinutes || 0;
         breakUnpaidMinutes += att.breakUnpaidMinutes || 0;
@@ -56,8 +60,10 @@ function summarizeWeek(days, today) {
   return {
     tasks: { ...tasks, completionPercent: tasks.total ? Math.round((weighted / tasks.total) * 100) : null },
     attendance: {
-      lateDays, absentDays, noReportDays, expectedMinutes, usefulMinutes, overtimeMinutes, breakPaidMinutes, breakUnpaidMinutes,
+      lateDays, absentDays, noReportDays, expectedMinutes, usefulMinutes, workedGrossMinutes, overtimeMinutes, breakPaidMinutes, breakUnpaidMinutes,
       usefulPercent: expectedMinutes ? Math.round((usefulMinutes / expectedMinutes) * 100) : null,
+      usefulOfWorkedPercent: workedGrossMinutes ? Math.round((usefulMinutes / workedGrossMinutes) * 100) : null,
+      performanceUsefulMinutes: Math.max(0, usefulMinutes - latePenaltyMinutes), latePenaltyMinutes,
     },
     closed: { days: closedDays, allClosed: closedDays === days.length && days.length > 0, partlyClosed: closedDays > 0 && closedDays < days.length },
     formula: 'completionPercent = round((done + 0.5 × partial) / total × 100)',
