@@ -85,11 +85,13 @@ function attendanceView(record, ctx, now) {
  * actor: کاربر پنل. userId: کارمند هدف. input: { start? } هر تاریخ داخل هفته (YYYY-MM-DD)؛ پیش‌فرض هفته‌ی جاری.
  * ⇒ { ok:true, user, week, days[7] } یا { ok:false, status, code, error }.
  */
-function getWeek(actor, userId, input = {}, { now = new Date() } = {}) {
+function getWeek(actor, userId, input = {}, { now = new Date(), self = false } = {}) {
   const id = Number(userId);
   const user = Number.isInteger(id) && id > 0 ? usersRepository.findById(id) : null;
   if (!user) return fail(404, 'USER_NOT_FOUND', 'کارمند یافت نشد.');
-  if (!canView(actor, user)) return fail(403, 'FORBIDDEN', 'این کارمند خارج از دامنه‌ی دسترسی شماست.');
+  // self=true فقط از getMyWeek می‌آید (هدف همیشه خودِ actor)؛ هیچ route ای نباید آن را از ورودی کلاینت بگیرد.
+  const selfView = self === true && actor && actor.id === user.id;
+  if (!selfView && !canView(actor, user)) return fail(403, 'FORBIDDEN', 'این کارمند خارج از دامنه‌ی دسترسی شماست.');
 
   const ctx = dayService.loadContext();
   const settings = ctx.settings;
@@ -172,4 +174,20 @@ function getWeek(actor, userId, input = {}, { now = new Date() } = {}) {
   };
 }
 
-module.exports = { getWeek, canView, resolveDay, plannedMinutes, DAY_KIND_LABEL };
+/**
+ * M1 («وضعیت من»): هفته‌ی «خودِ» کاربر برای هر نقش (کارمند/سرپرست/hr/ادمین). هویت فقط از actor می‌آید؛ هیچ userId ای از ورودی پذیرفته نمی‌شود.
+ * همان خروجی getWeek است (فقط‌خواندنی) با این تفاوت: شناسه‌ی داخلی بازبین در کامنت‌های «مشاهده شد» حذف می‌شود.
+ * input: { start? } هر تاریخ داخل هفته (YYYY-MM-DD)؛ پیش‌فرض هفته‌ی جاری.
+ */
+function getMyWeek(actor, input = {}, opts = {}) {
+  if (!actor || !Number.isInteger(actor.id)) return fail(401, 'UNAUTHENTICATED', 'نشست معتبر نیست.');
+  const r = getWeek(actor, actor.id, { start: input && input.start }, { ...opts, self: true });
+  if (!r.ok) return r;
+  r.days.forEach((d) => {
+    if (d.review && Array.isArray(d.review.reviews)) d.review.reviews = d.review.reviews.map(({ reviewerId, ...rest }) => rest); // eslint-disable-line no-unused-vars
+  });
+  r.self = true;
+  return r;
+}
+
+module.exports = { getWeek, getMyWeek, canView, resolveDay, plannedMinutes, DAY_KIND_LABEL };

@@ -20,6 +20,7 @@ const { ROLES } = require('./permissions');
 const EMPLOYEE_ALLOWED = [
   ['GET', /^\/admin\/me$/],
   ['GET', /^\/admin\/me\/permissions$/], // S4-4b: مجوزهای خود کاربر (برای ساخت منوی پنل)
+  ['GET', /^\/admin\/me\/week$/], // M1 («وضعیت من»): هفته‌ی خود کاربر (هویت فقط از نشست؛ بدون پارامتر کاربر)
   ['GET', /^\/admin\/attendance$/],
   ['GET', /^\/admin\/attendance\/export$/],
   ['GET', /^\/admin\/attendance-records\/\d+$/],

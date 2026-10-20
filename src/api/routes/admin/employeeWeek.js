@@ -13,4 +13,11 @@ router.get('/admin/users/:id/week', requirePermission('team.week_view'), (req, r
   return res.json(r);
 });
 
+// M1 («وضعیت من»): هفته‌ی خودِ کاربر برای همه‌ی نقش‌ها. پارامتر کاربر ندارد؛ هویت فقط از نشست (req.adminUser).
+router.get('/admin/me/week', requirePermission('me.read'), (req, res) => {
+  const r = service.getMyWeek(req.adminUser, { start: req.query.start });
+  if (!r.ok) return res.status(r.status).json({ error: r.error, code: r.code });
+  return res.json(r);
+});
+
 module.exports = router;
