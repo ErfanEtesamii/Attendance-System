@@ -211,12 +211,24 @@ describe('theme.js: منطق', () => {
     assert.equal(boot({ prefersDark: true, metas: { 'default-theme': 'light' } }).attrs['data-theme'], 'dark'); // سیستم تیره ⇒ تیره
     assert.equal(boot({ noMatchMedia: true, stored: 'dark', metas: { 'default-theme': 'light' } }).attrs['data-theme'], 'dark');
   });
-  test('T1: index.html پنل: default-theme و theme-color هم‌خوان؛ Mini App این متاها را ندارد', () => {
+  test('Mini App: پیش‌فرض ثابت روشن، تم تلگرام/سیستم را نادیده می‌گیرد و کاربر می‌تواند تیره را انتخاب کند', () => {
+    const metas = { 'default-theme': 'light', 'theme-default-mode': 'fixed' };
+    const e = boot({ prefersDark: true, tgScheme: 'dark', metas });
+    assert.equal(e.attrs['data-theme'], 'light');
+    assert.equal(e.T.cycle(), 'dark');
+    assert.equal(e.store.theme, 'dark');
+    assert.equal(e.T.cycle(), 'light');
+    assert.equal('theme' in e.store, false);
+  });
+  test('T1: index.html پنل و Mini App: پیش‌فرض روشن و رنگ نوار هم‌خوان است', () => {
     assert.equal(metaOf(PANEL_HTML, 'default-theme'), 'light');
     assert.equal(metaOf(PANEL_HTML, 'theme-color'), PANEL_BG.light);
     assert.match(PANEL_BG.dark, /^#[0-9a-f]{6}$/); assert.match(PANEL_BG.light, /^#[0-9a-f]{6}$/);
     const mini = read('public/index.html');
-    for (const n of ['default-theme', 'theme-bg-dark', 'theme-bg-light']) assert.equal(metaOf(mini, n), null, `Mini App نباید ${n} داشته باشد`);
+    assert.equal(metaOf(mini, 'default-theme'), 'light');
+    assert.match(mini, /<meta name="theme-default-mode" content="fixed"/);
+    assert.equal(metaOf(mini, 'theme-color'), Theme.BG.light);
+    assert.match(mini, /<button class="theme-btn"[^>]*data-theme-toggle[^>]*aria-label=/);
   });
   test('چرخه‌ی دکمه: auto ⇒ light ⇒ dark ⇒ auto؛ ذخیره/پاک‌سازی در localStorage؛ برچسب دسترس‌پذیر', () => {
     const e = boot({ prefersDark: true });

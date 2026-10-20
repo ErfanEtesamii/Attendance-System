@@ -34,10 +34,13 @@
     const HEX = /^#[0-9a-f]{6}$/i;
     const bgOf = (t) => { const v = metaContent(`theme-bg-${t}`); return v && HEX.test(v) ? v : BG[t]; };
     const pageDefault = () => (metaContent('default-theme') === 'light' ? 'light' : 'dark');
+    const fixedDefault = () => metaContent('theme-default-mode') === 'fixed';
     const mq = root.matchMedia ? root.matchMedia('(prefers-color-scheme: dark)') : null;
     let pref = read();
 
-    const effective = () => resolveTheme({ stored: pref, prefersDark: mq ? mq.matches : undefined, tgScheme: tg && tg.colorScheme, fallback: pageDefault() });
+    const effective = () => (pref === 'auto' && fixedDefault()
+      ? pageDefault()
+      : resolveTheme({ stored: pref, prefersDark: mq ? mq.matches : undefined, tgScheme: tg && tg.colorScheme, fallback: pageDefault() }));
 
     function apply() {
       const t = effective();
@@ -67,7 +70,7 @@
     api.effective = effective;
     api.apply = apply;
     api.set = set;
-    api.cycle = () => set(NEXT[pref]);
+    api.cycle = () => set(pref === 'auto' && fixedDefault() ? 'dark' : NEXT[pref]);
 
     apply();
     if (mq && mq.addEventListener) mq.addEventListener('change', () => { if (pref === 'auto') apply(); });
