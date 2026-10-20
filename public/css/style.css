@@ -26,9 +26,15 @@
   --green-dark: #14a878;
   --green-soft: rgba(31, 207, 149, 0.14);
   --purple: #8b7cf6;
+  --purple-soft: rgba(139, 124, 246, 0.16);
   --orange: #ffa94d;
+  --orange-soft: rgba(255, 169, 77, 0.15);
   --red: #ff7f95;
+  --red-soft: rgba(240, 80, 110, 0.15);
   --yellow: #f5b83d;
+  --yellow-soft: rgba(245, 184, 61, 0.15);
+  --blue: #6cb3ff;
+  --blue-soft: rgba(77, 163, 255, 0.15);
 
   --success: var(--green);
   --danger: var(--red);
@@ -37,61 +43,94 @@
   --radius: 18px;
   --shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
   --ov-08: rgba(255, 255, 255, 0.08);
-  --on-accent: #062b20;
+  --ov-12: rgba(255, 255, 255, 0.12);
+  --on-accent: #17143a;
+  --on-green: #062b20;
   --red-solid: #d12f4d;
   --purple-text: #b3a8ff;
-  --purple-soft: rgba(139, 124, 246, 0.16);
+  --brand: #b7b2f5;
+  --brand-soft: rgba(183, 178, 245, 0.14);
+  --on-brand: #17143a;
+  --accent: #f7a01d;
+  --accent-dark: #ffb13d;
+  --rail: #100e2b;
   color-scheme: dark;
 }
 :root[data-theme="light"] {
-  --bg: #f3f4f9;
-  --bg-2: #e9ebf4;
-  --card-bg: #ffffff;
-  --card-bg-2: #eef0f7;
+  --bg: #ffffff;
+  --bg-2: #f6f6fa;
+  --card-bg: #f2f2f5;
+  --card-bg-2: #e8e8ee;
   --text: #2b2560;
   --hint: #5f5b7f;
   --border: rgba(43, 37, 96, 0.14);
 
-  --green: #0a7452;
+  --green: #086a4b;
   --green-dark: #0a6b4b;
   --green-soft: rgba(11, 125, 88, 0.12);
   --purple: #5a49d6;
-  --orange: #a35400;
-  --red: #c0263f;
-  --yellow: #8a5f00;
+  --purple-soft: rgba(90, 73, 214, 0.12);
+  --orange: #8f4a00;
+  --orange-soft: rgba(163, 84, 0, 0.12);
+  --red: #b8223a;
+  --red-soft: rgba(192, 38, 63, 0.10);
+  --yellow: #7a5300;
+  --yellow-soft: rgba(138, 95, 0, 0.12);
+  --blue: #1b57b0;
+  --blue-soft: rgba(31, 95, 191, 0.12);
 
   --shadow: 0 8px 24px rgba(43, 37, 96, 0.12);
   --ov-08: rgba(43, 37, 96, 0.08);
-  --on-accent: #062b20;
+  --ov-12: rgba(43, 37, 96, 0.12);
+  --on-accent: #2b2560;
+  --on-green: #062b20;
   --red-solid: #c0263f;
   --purple-text: #4a39c4;
-  --purple-soft: rgba(90, 73, 214, 0.12);
+  --brand: #322c79;
+  --brand-soft: rgba(50, 44, 121, 0.08);
+  --on-brand: #ffffff;
+  --accent: #f7a01d;
+  --accent-dark: #d9820a;
+  --rail: #322c79;
   color-scheme: light;
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
-    --bg: #f3f4f9;
-    --bg-2: #e9ebf4;
-    --card-bg: #ffffff;
-    --card-bg-2: #eef0f7;
+    --bg: #ffffff;
+    --bg-2: #f6f6fa;
+    --card-bg: #f2f2f5;
+    --card-bg-2: #e8e8ee;
     --text: #2b2560;
     --hint: #5f5b7f;
     --border: rgba(43, 37, 96, 0.14);
 
-    --green: #0a7452;
+    --green: #086a4b;
     --green-dark: #0a6b4b;
     --green-soft: rgba(11, 125, 88, 0.12);
     --purple: #5a49d6;
-    --orange: #a35400;
-    --red: #c0263f;
-    --yellow: #8a5f00;
+    --purple-soft: rgba(90, 73, 214, 0.12);
+    --orange: #8f4a00;
+    --orange-soft: rgba(163, 84, 0, 0.12);
+    --red: #b8223a;
+    --red-soft: rgba(192, 38, 63, 0.10);
+    --yellow: #7a5300;
+    --yellow-soft: rgba(138, 95, 0, 0.12);
+    --blue: #1b57b0;
+    --blue-soft: rgba(31, 95, 191, 0.12);
 
     --shadow: 0 8px 24px rgba(43, 37, 96, 0.12);
     --ov-08: rgba(43, 37, 96, 0.08);
-    --on-accent: #062b20;
+    --ov-12: rgba(43, 37, 96, 0.12);
+    --on-accent: #2b2560;
+    --on-green: #062b20;
     --red-solid: #c0263f;
     --purple-text: #4a39c4;
-    --purple-soft: rgba(90, 73, 214, 0.12);
+    --brand: #322c79;
+    --brand-soft: rgba(50, 44, 121, 0.08);
+    --on-brand: #ffffff;
+    --accent: #f7a01d;
+    --accent-dark: #d9820a;
+    --rail: #322c79;
     color-scheme: light;
   }
 }
@@ -955,6 +994,38 @@ body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .remote-dialog-actions .btn { min-height: 48px; }
 .remote-note { margin-block-start: 6px; font-size: 12px; color: var(--hint); line-height: 1.8; overflow-wrap: anywhere; }
 .badge.remote-system { background: var(--ov-08); color: var(--hint); }
+
+/* ---------- هم‌راستاسازی بصری با پنل مدیریت ----------
+   رنگ‌های وضعیت (موفق/هشدار/خطا) معنای خود را حفظ می‌کنند؛ رنگ هویت و
+   کنش اصلی، همان سرمه/بنفش/نارنجی پنل مدیریت است. */
+body {
+  background:
+    radial-gradient(600px 300px at 100% -80px, var(--brand-soft), transparent 70%),
+    radial-gradient(500px 300px at 0% 40%, var(--purple-soft), transparent 70%),
+    var(--bg);
+}
+.brand-logo, .avatar {
+  background: var(--brand);
+  color: var(--on-brand);
+  box-shadow: 0 6px 16px var(--brand-soft);
+}
+.app-title { color: var(--brand); }
+.view-title::before { background: var(--accent); }
+.status-card {
+  background: radial-gradient(260px 120px at 50% -20px, var(--brand-soft), transparent 70%), var(--card-bg);
+}
+.progress-bar { background: var(--accent); }
+.btn.primary, .tab-btn.active, .report-head, .nav-btn.active {
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: none;
+}
+.btn.primary:hover { background: var(--accent-dark); }
+.form input:focus, .form select:focus, .form textarea:focus { border-color: var(--accent); }
+:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline-color: var(--accent); }
+.bottom-nav { background: var(--rail); }
+.action-tile.t-purple .tile-icon { background: var(--brand); box-shadow: 0 8px 18px var(--brand-soft); }
+.done-card { background: linear-gradient(135deg, var(--brand-soft), var(--purple-soft)), var(--card-bg); }
 
 /* هم‌راستاسازی اجزای اضافه‌شده در مراحل بعدی با زبان بصری اصلی. */
 .urgent-card, .manager-banner, .remote-banner { overflow-wrap: anywhere; }
