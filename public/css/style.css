@@ -1096,7 +1096,10 @@ body {
 .btn.primary:hover { background: var(--accent-dark); }
 .form input:focus, .form select:focus, .form textarea:focus { border-color: var(--accent); }
 :focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline-color: var(--accent); }
-.bottom-nav { background: var(--rail); }
+.bottom-nav {
+  /* یک پله روشن‌تر از ریل اصلی؛ در عین حال همان خانواده‌ی بنفش برند باقی می‌ماند. */
+  background: color-mix(in srgb, var(--rail) 86%, var(--card-bg));
+}
 .action-tile.t-purple .tile-icon { background: var(--brand); box-shadow: 0 8px 18px var(--brand-soft); }
 .done-card { background: linear-gradient(135deg, var(--brand-soft), var(--purple-soft)), var(--card-bg); }
 
