@@ -103,7 +103,7 @@ describe('render', () => {
   test('هفته‌ی جاری + هفته‌ی بعد از /admin/me/week؛ KPI، امروز، نشان برنامه‌ی بعد و ۷ کارت روز', async () => {
     const { def, urls } = setup();
     const { html } = await def.render();
-    assert.deepEqual(urls, ['/admin/me/week', '/admin/me/week?start=2026-10-24', '/admin/me/tasks/today', '/admin/me/tasks/backfill']);
+    assert.deepEqual(urls, ['/admin/me/week', '/admin/me/week?start=2026-10-24', '/admin/me/tasks/today', '/admin/me/tasks/backfill', '/admin/me/urgent/config']);
     assert.match(html, /وضعیت من/);
     assert.match(html, /1200د/); assert.match(html, /از 2280د مورد انتظار \(53٪\)/);
     assert.match(html, /روز تأخیر/); assert.match(html, /اضافه‌کاری/); assert.match(html, /تکمیل تسک‌ها/);

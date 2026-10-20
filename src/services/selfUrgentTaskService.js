@@ -3,7 +3,7 @@
 // مدل داده: بدون ستون و migration جدید. تسک فوریِ خودش = plan_tasks با is_urgent=1، priority='high' و assigned_by_user_id = شناسه‌ی صاحب برنامه.
 //   تشخیص «فوریِ خودش» در همه‌جا = isSelfAssigned(task, ownerUserId). manager_locked/edited_by_user_id صفر/NULL می‌ماند (بنر «سرپرست تغییر داده» روشن نمی‌شود).
 // قواعد (همه سمت سرور):
-//   • تنظیم selfUrgentEnabled (پیش‌فرض خاموش) ⇒ SELF_URGENT_DISABLED؛ سقف selfUrgentMaxPerDay برای هر «روزِ برنامه‌ریزی‌شده» ⇒ SELF_URGENT_LIMIT.
+//   • تنظیم selfUrgentEnabled (پیش‌فرض روشن) ⇒ SELF_URGENT_DISABLED؛ سقف selfUrgentMaxPerDay برای هر «روزِ برنامه‌ریزی‌شده» ⇒ SELF_URGENT_LIMIT.
 //   • اعتبارسنجی/ساخت دقیقاً همان urgentTaskService.createUrgent است (عنوان ≤ ۱۲۰، توضیح ≤ ۵۰۰، امروز تا ۶۰ روز آینده، روز کاریِ خودِ او،
 //     ماهِ بسته، استثنای قفل هفته‌ی شروع‌شده، ساخت برنامه‌ی submittedِ خالی). مهلت ساعتی و یادداشت برای فوریِ خودش پشتیبانی نمی‌شود (نادیده گرفته می‌شود).
 //   • ویرایش/حذف (soft): فقط فوریِ خودش و فقط تا وقتی هیچ پاسخی (task_daily_logs) ندارد؛ فوریِ سرپرست هرگز (NOT_SELF_URGENT). تاریخ فقط داخل همان هفته.

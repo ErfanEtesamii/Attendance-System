@@ -45,7 +45,7 @@ describe('تسک فوریِ خودِ کارمند (A3)', () => {
   });
   after(cleanup);
 
-  test('پیش‌فرض خاموش: SELF_URGENT_DISABLED و هیچ ردیفی ساخته نمی‌شود', () => {
+  test('وقتی تنظیم خاموش باشد: SELF_URGENT_DISABLED و هیچ ردیفی ساخته نمی‌شود', () => {
     reset();
     const r = add(emp);
     assert.deepEqual([r.ok, r.code, r.status], [false, 'SELF_URGENT_DISABLED', 403]);

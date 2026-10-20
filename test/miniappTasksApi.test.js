@@ -39,7 +39,7 @@ describe('APIهای تسک Mini App (A4)', { skip: hasDeps ? false : 'express ن
     }
   });
 
-  test('my-urgent: پیش‌فرض خاموش ⇒ ۴۰۳؛ روشن ⇒ ۲۰۱ با فوریِ خودش و فهرست تازه‌ی امروز', async () => {
+  test('my-urgent: وقتی تنظیم خاموش باشد ⇒ ۴۰۳؛ روشن ⇒ ۲۰۱ با فوریِ خودش و فهرست تازه‌ی امروز', async () => {
     clear(); settings.setValue('selfUrgentEnabled', false);
     const u = fresh();
     const off = await mine(u);
