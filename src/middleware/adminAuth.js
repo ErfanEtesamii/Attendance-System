@@ -24,6 +24,10 @@ const EMPLOYEE_ALLOWED = [
   ['GET', /^\/admin\/me\/tasks\/(today|backfill|pending-count)$/], // M3/M4: تسک‌های امروز و تعداد بی‌پاسخ‌های خود کاربر (بدون پارامتر کاربر)
   ['POST', /^\/admin\/me\/tasks\/(answer|undo)$/], // M3: تیک/برداشتن تیک (مالکیت فقط از نشست؛ همان قوانین Mini App)
   ['PATCH', /^\/admin\/me\/tasks\/note$/], // M3: توضیح انجام
+  ['GET', /^\/admin\/me\/urgent\/config$/], // تسک فوریِ شخصی: فعال‌بودن/سقف (برای نمایش دکمه)
+  ['POST', /^\/admin\/me\/urgent$/], // تسک فوریِ شخصی: افزودن (مالکیت فقط از نشست؛ همان قوانین Mini App)
+  ['PATCH', /^\/admin\/me\/urgent\/\d+$/], // ویرایش (فقط فوریِ خودش و بدون پاسخ)
+  ['DELETE', /^\/admin\/me\/urgent\/\d+$/], // حذف (فقط فوریِ خودش و بدون پاسخ)
   ['GET', /^\/admin\/attendance$/],
   ['GET', /^\/admin\/attendance\/export$/],
   ['GET', /^\/admin\/attendance-records\/\d+$/],

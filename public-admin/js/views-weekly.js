@@ -119,7 +119,7 @@
     </li>`;
   }
 
-  function taskRow(t, isSelf) {
+  function taskRow(t, isSelf, opts) {
     if (t.isSystem && t.systemKey === REVIEW_KEY) return mandatoryTaskRow(t, isSelf);
     const [cls, label] = TASK_STATUS[t.status] || ['', t.status];
     const reasonText = t.reasonText || (t.reasonCode ? REASONS[t.reasonCode] || t.reasonCode : '');
@@ -136,12 +136,24 @@
       <div class="day-task-meta">${meta}</div>
       ${reasonText ? `<div class="reason">${esc(reasonText)}</div>` : ''}
       ${t.note ? `<div class="reason">توضیح انجام: ${esc(t.note)}</div>` : ''}
+      ${selfUrgentTaskActions(t, opts)}
     </li>`;
   }
 
+  // تسک فوریِ خودِ کاربر در «وضعیت من»: ویرایش/حذف فقط برای فوریِ خودش و تا وقتی پاسخی ندارد (سرور دوباره چک می‌کند: NOT_SELF_URGENT / HAS_ANSWERS)
+  function selfUrgentTaskActions(t, opts) {
+    if (!(opts && opts.selfUrgent && t.isUrgent && t.selfAssigned && t.status === 'no_answer' && t.taskId)) return '';
+    return `<div class="ms-task-actions" role="group" aria-label="${esc(`تسک فوری «${t.title}»`)}">
+      <button type="button" class="btn ghost small" data-act="su-edit" data-task="${esc(t.taskId)}">ویرایش</button>
+      <button type="button" class="btn ghost small" data-act="su-del" data-task="${esc(t.taskId)}">حذف</button></div>`;
+  }
+
   // F2-c: اقدامات مدیریتی هر روز — فقط دکمه‌هایی که کاربر جاری مجوزشان را دارد ساخته می‌شوند (نمایش هم‌راستا با سرور؛ اجرای واقعی سمت سرور دوباره چک می‌شود)
-  function dayActions(d, isSelf, readOnly) {
-    if (readOnly) return ''; // M2: «وضعیت من» فقط‌خواندنی است (بدون اقدام مدیریتی)
+  function dayActions(d, isSelf, opts) {
+    if (opts && opts.readOnly) { // M2: «وضعیت من» فقط‌خواندنی است (بدون اقدام مدیریتی)؛ تنها اقدام: «⚡ تسک فوری» برای خودِ کاربر (روز کاریِ امروز/آینده) وقتی تنظیم فعال است
+      const canAdd = !!(opts.selfUrgent && d.schedule && d.schedule.isWorkingDay && (d.isToday || d.isFuture));
+      return canAdd ? `<div class="day-card-actions"><button type="button" class="btn ghost small" data-act="su-add" data-date="${esc(d.date)}">⚡ تسک فوری</button></div>` : '';
+    }
     const hasReport = (d.tasks || []).some((t) => t.status !== 'no_answer');
     const btns = [
       AP.can('tasks.assign_urgent') && !isSelf ? `<button type="button" class="btn ghost small" data-act="urgent" data-date="${esc(d.date)}">⚡ تسک فوری</button>` : '',
@@ -154,7 +166,7 @@
   function dayCard(d, isSelf, opts) {
     const tasks = d.tasks || [];
     const taskList = tasks.length
-      ? `<ul class="day-tasks">${tasks.map((t) => taskRow(t, isSelf)).join('')}</ul>`
+      ? `<ul class="day-tasks">${tasks.map((t) => taskRow(t, isSelf, opts)).join('')}</ul>`
       : `<div class="muted" style="font-size:11.5px">تسکی برای این روز ثبت نشده است.</div>`;
     const reviewNote = d.review && d.review.reviewed
       ? `<div class="muted day-reviewed">${icon('check', 14)} مشاهده‌شده توسط سرپرست${d.review.reviews[0] && d.review.reviews[0].comment ? `: «${esc(d.review.reviews[0].comment)}»` : ''}</div>` : '';
@@ -167,7 +179,7 @@
         ${dayAttendanceLine(d)}
         ${taskList}
         ${reviewNote}
-        ${dayActions(d, isSelf, opts && opts.readOnly)}
+        ${dayActions(d, isSelf, opts)}
       </div>
     </details>`;
   }

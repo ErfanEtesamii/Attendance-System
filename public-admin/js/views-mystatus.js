@@ -1,6 +1,8 @@
 // M2 («وضعیت من»): صفحه‌ی وضعیت «خودِ» کاربر برای همه‌ی نقش‌ها — از API فقط‌خواندنیِ M1 (`GET /admin/me/week`).
 // M3: تیک‌زدن تسک‌های امروز از داخل همین صفحه (انجام شد / ناقص / انجام نشد + علت، برداشتن تیک، توضیح انجام، گزارش دیرهنگام) از
 //   `/admin/me/tasks/*` که همان منطق Mini App (taskReportService) را صدا می‌زند. تسک سیستمی/واجب فقط‌خواندنی است.
+// تسک فوریِ خودِ کاربر: وقتی تنظیم selfUrgentEnabled روشن است (GET /admin/me/urgent/config)، روی کارت «امروز» و کارت هر روزِ کاریِ امروز/آینده دکمه‌ی «⚡ تسک فوری» هست
+//   و دکمه‌ی سربرگ برای هر تاریخ تا ۶۰ روز بعد؛ ویرایش/حذف فقط برای فوریِ خودش و بدون پاسخ (`/admin/me/urgent/*`؛ همه‌ی قوانین سمت سرور).
 // هویت فقط از نشست است؛ این صفحه هیچ شناسه‌ی کاربری به API نمی‌فرستد.
 // قطعه‌های مشترک (KPI، کارت روز، نشان برنامه) از views-weekly.js می‌آیند (AP.weekUi) تا ظاهر هر دو صفحه یکی بماند.
 //   بالا: KPI هفته ← «امروز» + «برنامه‌ی هفته‌ی بعد» ← شبکه‌ی ۷ روزه‌ی هفته (جاری یا قبل با ناوبری).
@@ -150,7 +152,7 @@
       ${empty}`;
   }
 
-  function todayCard(cur, daily, backfill) {
+  function todayCard(cur, daily, backfill, urgentCfg) {
     const d = cur.days.find((x) => x.isToday);
     if (!d) return emptyBox('اطلاعات امروز در دسترس نیست.');
     const [cls, label] = todayStatus(d);
@@ -173,6 +175,7 @@
     return `<section class="card ms-today" aria-labelledby="ms-today-h">
       <h3 id="ms-today-h" tabindex="-1">امروز · ${esc(fmt.date(d.date))}</h3>
       <dl class="ms-rows">${rows.join('')}</dl>
+      ${urgentCfg && urgentCfg.enabled && d.schedule.isWorkingDay ? `<div class="ms-actions"><button type="button" class="btn ghost small" data-act="su-add" data-date="${esc(d.date)}">⚡ تسک فوری برای امروز</button></div>` : ''}
       ${tasksBlock(cur, d, daily, backfill)}
       ${backfillBlock(daily, backfill)}
     </section>`;
@@ -206,22 +209,23 @@
     const enc = encodeURIComponent;
     const cur = await AP.api('/admin/me/week');
     const loadDaily = (date) => AP.api(tasksUrl('today', date ? `date=${enc(date)}` : '')).catch((err) => ({ ok: false, error: err.message }));
-    const [sel, next, daily0, backfill] = await Promise.all([
+    const [sel, next, daily0, backfill, urgentCfg] = await Promise.all([
       ui.start && ui.start !== cur.week.start ? AP.api(`/admin/me/week?start=${enc(ui.start)}`) : Promise.resolve(cur),
       AP.api(`/admin/me/week?start=${enc(cur.week.nextWeekStart)}`).catch(() => null), // غیرحیاتی: فقط نشان وضعیت برنامه
       loadDaily(ui.taskDate),
       AP.api(tasksUrl('backfill')).catch(() => null), // غیرحیاتی: بنر گزارش دیرهنگام
+      AP.api('/admin/me/urgent/config').catch(() => null), // غیرحیاتی: نبودنش فقط دکمه‌های «تسک فوری» را مخفی می‌کند
     ]);
     let daily = daily0;
     if (ui.taskDate && !(daily && daily.ok)) { ui.taskDate = ''; daily = await loadDaily(''); } // مهلت روزِ گذشته تمام شده ⇒ برگرد به امروز
-    return { cur, sel, next, daily, backfill };
+    return { cur, sel, next, daily, backfill, urgentCfg };
   }
 
   function liveHtml(d) {
     const W = AP.weekUi;
-    const grid = `<div class="week-grid">${d.sel.days.map((x) => W.dayCard(x, true, { readOnly: true })).join('')}</div>`;
+    const grid = `<div class="week-grid">${d.sel.days.map((x) => W.dayCard(x, true, { readOnly: true, selfUrgent: !!(d.urgentCfg && d.urgentCfg.enabled) })).join('')}</div>`;
     return `${kpiRow(d.sel)}
-        <div class="ms-top">${todayCard(d.cur, d.daily, d.backfill)}${nextPlanCard(d.cur, d.next)}</div>
+        <div class="ms-top">${todayCard(d.cur, d.daily, d.backfill, d.urgentCfg)}${nextPlanCard(d.cur, d.next)}</div>
         <h3 class="ms-section-title">روزهای ${esc(weekTitle(d.sel, d.cur))}</h3>
         ${grid}`;
   }
@@ -236,7 +240,7 @@
       const html = `
         <div class="view-header">
           <div><h2>وضعیت من</h2><div class="sub">${esc(weekTitle(sel, cur))} · ${esc(sel.week.jalaliStart)} تا ${esc(sel.week.jalaliEnd)}</div></div>
-          <div class="header-actions">${weekNav(sel, cur)}<button type="button" class="btn ghost small" data-print>${icon('download', 14)} چاپ</button></div>
+          <div class="header-actions">${weekNav(sel, cur)}${data.urgentCfg && data.urgentCfg.enabled ? '<button type="button" class="btn ghost small" data-act="su-add-any">⚡ تسک فوری</button>' : ''}<button type="button" class="btn ghost small" data-print>${icon('download', 14)} چاپ</button></div>
         </div>
         <div id="ms-live">${liveHtml(data)}</div>`;
 
@@ -306,6 +310,39 @@
         });
       }
 
+      // تسک فوریِ خودِ کاربر: افزودن (task=null) یا ویرایش؛ اعتبارسنجی/قوانین واقعی سمت سرور (selfUrgentTaskService)
+      const urgentTaskOf = (id) => data.sel.days.flatMap((d) => d.tasks || []).find((t) => Number(t.taskId) === Number(id));
+      function openUrgentForm(page, task, date) {
+        const edit = !!task;
+        AP.modal({
+          title: edit ? `ویرایش تسک فوری: ${task.title}` : '⚡ تسک فوری برای خودم',
+          body: `<form class="form" id="ms-urgent-form">
+            <div class="form-grid">
+              <label class="field"><span>عنوان</span><input name="title" required maxlength="120" value="${esc(edit ? task.title : '')}" placeholder="مثلاً: ارسال پیش‌فاکتور به مشتری" /></label>
+              <label class="field"><span>تاریخ انجام</span><input type="date" name="date" required value="${esc(date || fmt.today())}" /></label>
+              <label class="field"><span>توضیح (اختیاری)</span><textarea name="description" rows="3" maxlength="500">${esc(edit ? task.description || '' : '')}</textarea></label>
+            </div>
+            <p class="muted">${edit ? 'تاریخ را فقط داخل همین هفته می‌توانید تغییر دهید؛ بعد از ثبت پاسخ، تسک دیگر قابل ویرایش یا حذف نیست.' : 'تسک با برچسب «⚡ فوری» به برنامه‌ی همان روزتان اضافه می‌شود و سرپرست‌تان باخبر می‌شود. تا قبل از ثبت پاسخ می‌توانید آن را ویرایش یا حذف کنید.'}</p>
+            <div class="form-msg" role="alert"></div>
+            <div class="modal-actions"><button class="btn primary" type="submit">${edit ? 'ذخیره' : 'ثبت تسک فوری'}</button><button class="btn ghost" type="button" data-cancel>انصراف</button></div>
+          </form>`,
+          onMount(body, m) {
+            AP.dates.mount(body);
+            const form = $('#ms-urgent-form', body);
+            $('[data-cancel]', form).addEventListener('click', () => m.close());
+            form.addEventListener('submit', async (e) => {
+              e.preventDefault();
+              const f = AP.formData(form);
+              if (!String(f.title || '').trim()) { $('.form-msg', form).textContent = 'عنوان تسک فوری الزامی است.'; return; }
+              const payload = { title: f.title, date: f.date, description: f.description || '' };
+              const ok = await act(page, () => AP.api(edit ? `/admin/me/urgent/${task.taskId}` : '/admin/me/urgent', { method: edit ? 'PATCH' : 'POST', body: payload }),
+                edit ? 'تسک فوری ویرایش شد.' : 'تسک فوری اضافه شد.', $('button[type=submit]', form), edit ? task.taskId : null);
+              if (ok) m.close();
+            });
+          },
+        });
+      }
+
       // اتصال کنترل‌های «ناحیه‌ی زنده» (بعد از هر بازسازی دوباره صدا زده می‌شود)
       function bindLive(root, page) {
         $$('[data-go]', root).forEach((b) => b.addEventListener('click', () => AP.go(b.dataset.go, b.dataset.param)));
@@ -325,6 +362,16 @@
           const t = taskOf(b.dataset.task);
           if (t && data.daily && data.daily.ok) openNoteForm(page, t);
         }));
+        $$('[data-act="su-add"]', root).forEach((b) => b.addEventListener('click', () => openUrgentForm(page, null, b.dataset.date)));
+        $$('[data-act="su-edit"]', root).forEach((b) => b.addEventListener('click', () => {
+          const t = urgentTaskOf(b.dataset.task);
+          if (t) openUrgentForm(page, t, t.plannedDate);
+        }));
+        $$('[data-act="su-del"]', root).forEach((b) => b.addEventListener('click', async () => {
+          const t = urgentTaskOf(b.dataset.task);
+          const yes = await AP.confirmBox({ title: 'حذف تسک فوری', message: `تسک فوری «${t ? t.title : ''}» حذف شود؟`, confirmText: 'حذف', danger: true });
+          if (yes) act(page, () => AP.api(`/admin/me/urgent/${Number(b.dataset.task)}`, { method: 'DELETE' }), 'تسک فوری حذف شد.', b);
+        }));
         $$('[data-act="late-day"]', root).forEach((b) => b.addEventListener('click', () => { ui.taskDate = b.dataset.date; reload(page); }));
         $$('[data-act="late-back"]', root).forEach((b) => b.addEventListener('click', () => { ui.taskDate = ''; reload(page); }));
       }
@@ -337,6 +384,7 @@
             ui.start = b.dataset.weekNav;
             AP.refresh();
           }));
+          $$('[data-act="su-add-any"]', page).forEach((b) => b.addEventListener('click', () => openUrgentForm(page, null, '')));
           bindLive($('#ms-live', page) || page, page);
         },
       };
