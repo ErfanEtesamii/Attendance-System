@@ -354,3 +354,69 @@
   .nb .nb-tape { box-shadow: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .nb .nb-chip { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* ---------- هماهنگ‌سازی با ظاهر پنل (فقط صفحه‌ی نمایش؛ چاپ دست‌نخورده) ----------
+   رنگ‌های دفترچه به توکن‌های پنل وصل شدند (تم روشن/تیره خودکار)، گل پس‌زمینه و فنر حذف شد،
+   کاغذ = سطح کارت پنل، کارت روز = سطح صفحه با گوشه‌ی گرد، نوار چسب = برچسب تخت. */
+@media screen {
+  :root:is([data-theme], :not([data-theme])) .nb {
+    --nb-paper: var(--card);
+    --nb-paper-2: var(--card);
+    --nb-card: var(--bg);
+    --nb-ink: var(--text);
+    --nb-ink-soft: var(--hint);
+    --nb-rose: var(--brand-soft);
+    --nb-rose-strong: var(--brand);
+    --nb-on-strong: var(--on-brand);
+    --nb-focus: var(--brand);
+    --nb-line: var(--border);
+    --nb-shadow: none;
+    --nb-flower-opacity: 0;
+
+    --nb-tape-ink: var(--text);
+    --nb-tape-rose: var(--brand-soft);
+    --nb-tape-sage: var(--green-soft);
+    --nb-tape-sand: var(--yellow-soft);
+    --nb-tape-lilac: var(--purple-soft);
+    --nb-tape-sky: var(--blue-soft);
+
+    --nb-chip-work-bg: var(--green-soft);   --nb-chip-work-fg: var(--green);
+    --nb-chip-half-bg: var(--yellow-soft);  --nb-chip-half-fg: var(--yellow);
+    --nb-chip-off-bg: var(--ov-08);         --nb-chip-off-fg: var(--text);
+    --nb-chip-holiday-bg: var(--red-soft);  --nb-chip-holiday-fg: var(--red-text);
+    --nb-chip-leave-bg: var(--purple-soft); --nb-chip-leave-fg: var(--purple-text);
+    --nb-chip-mission-bg: var(--blue-soft); --nb-chip-mission-fg: var(--blue);
+    --nb-chip-warn-bg: var(--orange-soft);  --nb-chip-warn-fg: var(--orange);
+    --nb-chip-urgent-bg: var(--red-soft);   --nb-chip-urgent-fg: var(--red-text);
+    --nb-chip-locked-bg: var(--ov-08);      --nb-chip-locked-fg: var(--text);
+  }
+  .nb .nb-page::before, .nb .nb-spring { display: none; }
+  .nb .nb-spread { border-radius: var(--radius); background: var(--card); }
+  .nb .nb-page { background: transparent; padding: 20px; }
+  .nb .nb-card { border-radius: 20px; box-shadow: none; padding: 14px 16px; }
+  .nb .nb-page-title { color: var(--brand); font-weight: 700; }
+  .nb .nb-card__title { font-weight: 700; }
+
+  /* نوار چسب ⇒ برچسب تخت بالای کارت */
+  .nb .nb-tape, .nb .nb-card:nth-child(even) > .nb-tape {
+    position: static; display: inline-flex; width: fit-content; max-width: 100%;
+    margin: 0 0 8px; transform: none; border-radius: 999px; box-shadow: none;
+    -webkit-mask: none; mask: none; min-width: 0; padding: 2px 12px; font-size: 0.78rem;
+  }
+  .nb .nb-tape--sage { color: var(--green); }
+  .nb .nb-tape--sand { color: var(--yellow); }
+  .nb .nb-tape--lilac { color: var(--purple-text); }
+  .nb .nb-tape--sky { color: var(--blue); }
+  .nb .nb-tape--rose { color: var(--brand); }
+
+  /* دکمه‌ها مثل .btn پنل: گوشه‌ی ۱۰px، پر = سرمه‌ای، ghost = خاکستری */
+  .nb .nb-btn { border-radius: 10px; border-width: 1px; font-size: 0.82rem; }
+  .nb .nb-btn--ghost { background: var(--card-2); border-color: transparent; color: var(--text); }
+  .nb .nb-btn--small { border-radius: 8px; }
+  .nb .nb-input { background: var(--field); border-color: transparent; border-radius: 8px; color: var(--text); }
+  .nb .nb-day-actions, .nb .nb-task__actions { gap: 6px; }
+
+  @media (min-width: 900px) {
+    .nb .nb-spread { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px; }
+  }
+}
