@@ -198,21 +198,20 @@ describe('API شیفت‌ها (S3-6a)', { skip: hasDeps ? false : 'express نص�
     assert.equal(auditRows('user_shift_assigned')[2].details.changes.shiftId.after, null);
   });
 
-  test('حذف: شیفت دارای کاربر ۴۰۹ HAS_USERS (بدون تغییر)؛ پس از برداشتن انتساب با دلیل حذف و audit می‌شود (دلیل از query هم پذیرفته است)', async () => {
+  test('حذف: شیفت دارای کاربر هم حذف می‌شود؛ کاربر بدون شیفت می‌شود؛ دلیل اجباری است و audit با detachedUsers ثبت می‌شود (دلیل از query هم پذیرفته است)', async () => {
     const shiftId = (await hit('admin', 'GET', '/api/admin/shifts')).json.find((s) => s.name === 'صبح').id; // mgrEmp هنوز منتسب است
     assert.equal((await hit('admin', 'DELETE', `/api/admin/shifts/${shiftId}`)).status, 400, 'بدون دلیل');
-    const blocked = await hit('admin', 'DELETE', `/api/admin/shifts/${shiftId}`, { reason: 'پاک‌سازی' });
-    assert.deepEqual([blocked.status, blocked.json.code, blocked.json.userCount], [409, 'HAS_USERS', 1]);
     assert.equal(db.prepare('SELECT COUNT(*) n FROM work_shifts WHERE id = ?').get(shiftId).n, 1);
     assert.equal(auditRows('shift_deleted').length, 0);
 
-    await hit('admin', 'PUT', `/api/admin/users/${mgrEmp.id}/shift`, { shiftId: null, reason: 'آزادسازی' });
     const del = await hit('admin', 'DELETE', `/api/admin/shifts/${shiftId}?reason=${encodeURIComponent('شیفت منسوخ')}`);
-    assert.deepEqual([del.status, del.json.ok], [200, true]);
+    assert.deepEqual([del.status, del.json.ok, del.json.detachedUsers], [200, true, 1]);
     assert.equal(db.prepare('SELECT COUNT(*) n FROM work_shifts WHERE id = ?').get(shiftId).n, 0);
+    assert.equal(db.prepare('SELECT COUNT(*) n FROM users WHERE shift_id = ?').get(shiftId).n, 0);
+    assert.equal(db.prepare('SELECT COUNT(*) n FROM user_shift_assignments WHERE shift_id = ?').get(shiftId).n, 0);
     const aud = auditRows('shift_deleted');
     assert.equal(aud.length, 1);
-    assert.deepEqual([aud[0].details.shiftId, aud[0].details.shift.name, aud[0].details.reason], [shiftId, 'صبح', 'شیفت منسوخ']);
+    assert.deepEqual([aud[0].details.shiftId, aud[0].details.shift.name, aud[0].details.reason, aud[0].details.detachedUsers], [shiftId, 'صبح', 'شیفت منسوخ', 1]);
     assert.equal((await hit('admin', 'DELETE', `/api/admin/shifts/${shiftId}`, { reason: 'دوباره' })).status, 404);
   });
 });

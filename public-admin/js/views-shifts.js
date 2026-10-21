@@ -205,7 +205,7 @@
             const s = byId.get(Number(b.dataset.del));
             const reason = await AP.askReason({
               title: `حذف شیفت «${s.name}»`, danger: true, confirmText: 'حذف شیفت',
-              message: s.userCount ? `این شیفت به ${fmt.num(s.userCount)} کارمند منتسب است و حذف نمی‌شود؛ ابتدا انتساب‌ها را بردارید.` : 'شیفت برای همیشه حذف می‌شود (در گزارش رویدادها ثبت می‌شود).',
+              message: s.userCount ? `این شیفت به ${fmt.num(s.userCount)} کارمند منتسب است؛ با حذف، آن‌ها «بدون شیفت» می‌شوند (ساعات پیش‌فرض تنظیمات).` : 'شیفت برای همیشه حذف می‌شود (در گزارش رویدادها ثبت می‌شود).',
             });
             if (reason === null) return;
             const ok = await AP.attempt(() => AP.api(`/admin/shifts/${s.id}`, { method: 'DELETE', body: { reason } }), 'شیفت حذف شد.');

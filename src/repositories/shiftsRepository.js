@@ -209,7 +209,20 @@ function deleteShiftIfUnused(id) {
   })(id);
 }
 
+// حذف بی‌قیدوشرط: انتساب‌ها (جدول تاریخچه و users.shift_id) به «بدون شیفت» (NULL ⇒ ساعات پیش‌فرض تنظیمات) برمی‌گردند و خودِ شیفت پاک می‌شود.
+// تاریخ‌های effective_from دست نمی‌خورند؛ فقط آن بازه‌ها بدون شیفت می‌شوند. خروجی: { deleted, detachedUsers } (تعداد کاربرانِ منتسب در لحظه‌ی حذف).
+function deleteShift(id) {
+  const db = getDb();
+  return db.transaction((shiftId) => {
+    const detachedUsers = countUsers(shiftId);
+    db.prepare('UPDATE user_shift_assignments SET shift_id = NULL WHERE shift_id = ?').run(shiftId);
+    db.prepare('UPDATE users SET shift_id = NULL WHERE shift_id = ?').run(shiftId);
+    const deleted = db.prepare('DELETE FROM work_shifts WHERE id = ?').run(shiftId).changes > 0;
+    return { deleted, detachedUsers };
+  })(id);
+}
+
 module.exports = {
   EARLIEST, listShifts, findById, findByUserId, shiftOn, makeShiftResolver, listAssignments, assignShift, setForAllDates, findByName, createShift, updateShift,
-  countUsers, listUsersOfShift, deleteShiftIfUnused,
+  countUsers, listUsersOfShift, deleteShiftIfUnused, deleteShift,
 };

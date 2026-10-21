@@ -173,7 +173,6 @@ router.post('/miniapp/re-check-in', (req, res) => {
   const record = attendanceRepository.findTodayRecord(req.miniAppUser.id);
   const settings = settingsRepository.getAll();
   const used = record ? Math.max(0, attendanceRepository.listSegments(record.id).length - 1) : 0;
-  if (record && getCalendarDay(req.miniAppUser, record.record_date).isTimed === false) return res.status(409).json({ code: 'UNTIMED_SHIFT', error: 'برای شیفت چرخشی بدون ساعت، ثبت ورود مجدد لازم نیست.' });
   if (record && monthClosuresRepository.findClosedOverlapping(record.record_date, record.record_date).length) return res.status(409).json({ code: 'MONTH_CLOSED', error: 'این روز در ماه بسته‌شده است و قابل تغییر نیست.' });
   if (!record || !record.check_out_time) return res.status(409).json({ code: 'REENTRY_NOT_AVAILABLE', error: 'ورود مجدد فقط پس از ثبت خروج ممکن است.' });
   if (!settings.maxReEntriesPerDay || used >= settings.maxReEntriesPerDay) return res.status(409).json({ code: 'REENTRY_LIMIT', error: 'سقف ورود مجدد امروز تکمیل شده است.' });
@@ -211,10 +210,6 @@ function rejectIfSharedDeviceBlocked(req, res, action) {
 }
 
 router.post('/miniapp/check-in', (req, res) => {
-  const calendar = getCalendarDay(req.miniAppUser, todayDateString());
-  if (calendar.isTimed === false) {
-    return res.status(409).json({ code: 'UNTIMED_SHIFT', error: 'برای شیفت چرخشیِ بدون ساعت، ثبت ورود و خروج لازم نیست.' });
-  }
   const existing = attendanceRepository.findTodayRecord(req.miniAppUser.id);
   if (existing) {
     return res.status(400).json({ error: 'ورود امروز قبلاً ثبت شده است.' });

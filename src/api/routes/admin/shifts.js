@@ -76,7 +76,7 @@ router.patch('/admin/shifts/:id', requirePermission('shifts.edit'), (req, res) =
   return res.json({ changed: true, shift });
 });
 
-// DELETE /admin/shifts/:id  { reason } (یا ?reason=) → ۴۰۹ HAS_USERS اگر کسی منتسب است (ابتدا انتساب‌ها را بردارید)
+// DELETE /admin/shifts/:id  { reason } (یا ?reason=) → حذف می‌شود و کاربرانِ منتسب بدون شیفت می‌شوند (detachedUsers در پاسخ)
 router.delete('/admin/shifts/:id', requirePermission('shifts.edit'), (req, res) => {
   const id = parseId(req.params.id);
   const shift = shiftsRepository.findById(id);
@@ -84,11 +84,11 @@ router.delete('/admin/shifts/:id', requirePermission('shifts.edit'), (req, res) 
   const reason = requireReason(req, res);
   if (reason === null) return undefined;
 
-  if (!shiftsRepository.deleteShiftIfUnused(id)) {
-    return res.status(409).json({ code: 'HAS_USERS', userCount: shiftsRepository.countUsers(id), error: 'این شیفت به کاربر منتسب است؛ ابتدا انتساب‌ها را بردارید یا تغییر دهید.' });
-  }
-  audit(req, 'shift_deleted', { shiftId: id, shift: { ...shift, userCount: undefined }, reason });
-  return res.json({ ok: true });
+  // حذف همیشه مجاز است؛ کاربرانِ منتسب «بدون شیفت» می‌شوند (ساعات پیش‌فرض تنظیمات).
+  const { deleted, detachedUsers } = shiftsRepository.deleteShift(id);
+  if (!deleted) return res.status(404).json(NOT_FOUND);
+  audit(req, 'shift_deleted', { shiftId: id, shift: { ...shift, userCount: undefined }, detachedUsers, reason });
+  return res.json({ ok: true, detachedUsers });
 });
 
 // ---------- انتساب شیفت با تاریخ اعمال (فاز ۱۲، B1) ----------

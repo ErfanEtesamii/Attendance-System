@@ -269,6 +269,7 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
   let { workEnd } = params;
   // تقویم روز (S3-7c): روز غیرکاری یا پایانِ نیم‌روز. بدون calendar همه‌چیز مثل قبل
   let dayOff = false;
+  const untimed = Boolean(calendar) && calendar.isTimed === false;
   if (calendar !== undefined && calendar !== null) {
     if (typeof calendar !== 'object') throw new TypeError('calendar باید شیء یا null باشد.');
     if (typeof calendar.isWorkingDay !== 'boolean') throw new RangeError('calendar.isWorkingDay باید boolean باشد.');
@@ -310,7 +311,7 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
   if (!tz) throw new RangeError('timezone نامعتبر است.');
 
   const result = {
-    expected: dayOff ? 0 : Math.max(0, workEnd - workStart - leaveTotal),
+    expected: dayOff || untimed ? 0 : Math.max(0, workEnd - workStart - leaveTotal), // شیفت چرخشیِ بدون ساعت: انتظار ساعتی ندارد، ولی ساعت مفیدِ ثبت‌شده حساب می‌شود
     workedGross: null,
     break: 0,
     breakAuto: 0,
@@ -328,8 +329,6 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
     flags: [],
     status: record && record.status !== undefined ? record.status : null,
   };
-
-  if (calendar && calendar.isTimed === false) return result;
 
   const read = readBreaks(breaks);
   const flagSet = new Set();
@@ -364,7 +363,7 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
   const posOf = overnight ? (d) => dayDiff(formatDate(d, tz), refDate) * 1440 + minutesSinceMidnight(d, tz) : (d) => minutesSinceMidnight(d, tz);
   const checkInMinutes = posOf(checkIn);
   const lateLine = effStart + lateGrace; // تا خودِ این لحظه تأخیر نیست (بدون مرخصی effStart = workStart)
-  if (!dayOff && !fullyOnLeave && checkInMinutes > lateLine) {
+  if (!dayOff && !untimed && !fullyOnLeave && checkInMinutes > lateLine) {
     const lateFrom = lateCountsFrom === 'after_grace' ? lateLine : effStart;
     result.late = Math.max(0, checkInMinutes - lateFrom - leaveOverlap(lateFrom, checkInMinutes)); // دقیقه‌های داخل پنجره‌ی مرخصی تأخیر نیست (S4-8b-1)
   }
@@ -389,7 +388,7 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
   }
   const outsideMinutes = (d) => { const m = posOf(d); return m < workStart - shiftMargin || m > workEnd + shiftMargin; };
   const otherDay = !overnight && Boolean(checkOut) && formatDate(checkOut, tz) !== formatDate(checkIn, tz); // شیفت شب عمداً از نیمه‌شب رد می‌شود
-  if (!dayOff && (outsideMinutes(checkIn) || (checkOut && (outsideMinutes(checkOut) || otherDay)))) flagSet.add('outside_shift');
+  if (!dayOff && !untimed && (outsideMinutes(checkIn) || (checkOut && (outsideMinutes(checkOut) || otherDay)))) flagSet.add('outside_shift');
 
   const gross = normalizedSegments.reduce((sum, segment, index) => {
     const segmentEnd = segment.out || (index === normalizedSegments.length - 1 ? end : segment.in);
@@ -429,7 +428,7 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
     result.effectiveWithMission = Math.max(0, Math.round(result.effective + result.missionMinutes - overlap));
   }
 
-  if (checkOut) {
+  if (checkOut && !untimed) { // بدون ساعتِ مورد انتظار: زودرفتن و اضافه‌کاری معنا ندارد
     const checkOutMinutes = posOf(checkOut);
     if (dayOff) {
       result.overtime = result.workedGross; // روز غیرکاری: کل کار اضافه‌کاری است (S3-7c)

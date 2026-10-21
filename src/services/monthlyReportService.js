@@ -236,7 +236,7 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
       const mainPart = parts.slice().sort((a, b) => b.minutes - a.minutes)[0] || null;
 
       let status;
-      if (cal.isTimed === false) {
+      if (cal.isTimed === false && !hasCheckIn) {
         status = 'untimed';
       } else if (hasCheckIn) {
         if (cal.isWorkingDay) att.presentDays += 1; else att.workedOnNonWorkingDays += 1;
