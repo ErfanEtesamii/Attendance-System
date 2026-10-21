@@ -10,6 +10,7 @@
 <script src="/js/theme.js"></script>
 <title>پنل حضور و غیاب فرازهنر</title>
 <link rel="stylesheet" href="/admin/css/datepicker.css" />
+<link rel="stylesheet" href="/css/tokens.css" />
 <link rel="stylesheet" href="/admin/css/style.css" />
 <link rel="stylesheet" href="/admin/css/notebook.css" />
 </head>
@@ -19,20 +20,28 @@
   <!-- صفحه ورود -->
   <div id="login-screen" class="login-screen">
     <div class="login-card">
-      <div class="brand brand-center">
-        <div class="brand-mark">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      <div class="login-brand-panel" aria-hidden="true">
+        <div class="login-brand-art">
+          <svg viewBox="0 0 240 180"><path d="M35 142c22-50 47-81 86-86 38-5 66 20 84 67"/><circle cx="82" cy="75" r="25"/><path d="M82 62v16l12 8M48 142h144M146 54h43M168 32v44"/></svg>
         </div>
+        <p>زمان تیم، شفاف و منظم</p>
       </div>
-      <h1>پنل حضور و غیاب</h1>
-      <p class="muted">برای ورود، در بات دکمه‌ی «🖥 پنل» را بزنید، یا با حساب تلگرامی که در بات ثبت شده وارد شوید.</p>
-      <div id="telegram-login-container"></div>
-      <div class="code-login">
-        <p class="muted">یا در بات دکمه‌ی «🖥 پنل» را بزنید و کد ورود را اینجا وارد کنید:</p>
-        <input id="code-input" type="text" inputmode="numeric" maxlength="8" autocomplete="one-time-code" placeholder="کد ۸ رقمی" aria-label="کد ورود ۸ رقمی" dir="ltr">
-        <button id="code-login-btn" type="button">ورود با کد</button>
+      <div class="login-form-panel">
+        <div class="brand brand-center">
+          <div class="brand-mark">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          </div>
+        </div>
+        <h1>پنل حضور و غیاب</h1>
+        <p class="muted">برای ورود، در بات دکمه‌ی «🖥 پنل» را بزنید، یا با حساب تلگرامی که در بات ثبت شده وارد شوید.</p>
+        <div id="telegram-login-container"></div>
+        <div class="code-login">
+          <p class="muted">یا در بات دکمه‌ی «🖥 پنل» را بزنید و کد ورود را اینجا وارد کنید:</p>
+          <input id="code-input" type="text" inputmode="numeric" maxlength="8" autocomplete="one-time-code" placeholder="کد ۸ رقمی" aria-label="کد ورود ۸ رقمی" dir="ltr">
+          <button id="code-login-btn" type="button">ورود با کد</button>
+        </div>
+        <p id="login-error" class="error-msg"></p>
       </div>
-      <p id="login-error" class="error-msg"></p>
     </div>
   </div>
 
@@ -89,6 +98,9 @@
         </button>
         <button id="theme-btn" class="icon-btn theme-btn" type="button" data-theme-toggle title="تم" aria-label="تغییر تم">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        </button>
+        <button id="density-btn" class="icon-btn density-btn" type="button" title="تراکم نمایش" aria-label="تغییر تراکم نمایش" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
         </button>
         <button id="refresh-btn" class="icon-btn" title="تازه‌سازی" aria-label="تازه‌سازی">
           <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg>

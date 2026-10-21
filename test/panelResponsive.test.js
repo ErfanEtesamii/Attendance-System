@@ -8,6 +8,7 @@ const vm = require('node:vm');
 const ROOT = path.join(__dirname, '..');
 const read = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8').replace(/\r\n/g, '\n');
 const CSS = read('public-admin/css/style.css');
+const TOKENS = read('public/css/tokens.css');
 const HTML = read('public-admin/index.html');
 
 // ---------- ابزار ----------
@@ -39,7 +40,7 @@ function mediaBlocks(css, header) { // همه‌ی بلوک‌هایی که با
   return out;
 }
 const varsOf = (txt) => Object.fromEntries([...txt.matchAll(/--([a-z0-9-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
-const THEMES = { dark: varsOf(block(CSS, ':root,\n:root[data-theme="dark"]')), light: varsOf(block(CSS, ':root[data-theme="light"]')) };
+const THEMES = { dark: varsOf(block(TOKENS, ':root,\n:root[data-theme="dark"]')), light: varsOf(block(TOKENS, ':root[data-theme="light"]')) };
 
 // ---------- ۱) حلقه‌ی فوکوس ----------
 describe('T8: حلقه‌ی فوکوس', () => {

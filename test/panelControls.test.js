@@ -6,6 +6,7 @@ const path = require('node:path');
 
 const read = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8').replace(/\r\n/g, '\n');
 const CSS = read('public-admin/css/style.css');
+const TOKENS = read('public/css/tokens.css');
 
 // ---- ابزار رنگ (هم‌شکل theme.test.js) ----
 const parseColor = (v) => {
@@ -25,7 +26,7 @@ function block(css, selector) {
   return css.slice(i + selector.length + 2, css.indexOf('\n}', i));
 }
 const varsOf = (txt) => Object.fromEntries([...txt.matchAll(/--([a-z0-9-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
-const THEMES = { dark: varsOf(block(CSS, ':root,\n:root[data-theme="dark"]')), light: varsOf(block(CSS, ':root[data-theme="light"]')) };
+const THEMES = { dark: varsOf(block(TOKENS, ':root,\n:root[data-theme="dark"]')), light: varsOf(block(TOKENS, ':root[data-theme="light"]')) };
 
 // ---- ابزار CSS: همه‌ی بدنه‌های قاعده‌هایی که انتخابگرشان (دقیقاً) در فهرست انتخابگرها هست ----
 const STRIPPED = CSS.replace(/\/\*[\s\S]*?\*\//g, '');
@@ -114,14 +115,14 @@ describe('T4: ساختار CSS', () => {
     assert.match(r, /color:\s*var\(--on-accent\)/);
     assert.doesNotMatch(r, /gradient|box-shadow/);
     assert.match(bodies('.btn.primary:hover'), /background:\s*var\(--accent-dark\)/);
-    assert.match(bodies('.btn'), /border-radius:\s*10px/);
+    assert.match(bodies('.btn'), /border-radius:\s*var\(--r-md\)/);
     for (const sel of ['.btn', '.btn.primary', '.btn.primary:hover', '.btn.ghost', '.btn.ghost:hover', '.btn.danger', '.btn.danger:hover', '.btn.success', '.btn.success:hover', '.btn.small']) {
       assert.doesNotMatch(bodies(sel), OLD_GREEN, `${sel}: رنگ سبز/سخت‌کد قدیمی`);
       assert.doesNotMatch(bodies(sel), /var\(--green-dark|var\(--on-green/, `${sel}: --on-green فقط برای سطوح سبز`);
     }
     assert.match(bodies('.btn.ghost'), /background:\s*var\(--card-2\)/);
     assert.doesNotMatch(bodies('.btn.ghost'), /border-color/);
-    assert.match(bodies('.btn.small'), /border-radius:\s*8px/);
+    assert.match(bodies('.btn.small'), /border-radius:\s*var\(--r-sm\)/);
   });
   test('دکمه‌ها: disabled و loading (aria-busy) و فوکوس و کاهش حرکت', () => {
     assert.match(bodies('.btn:disabled'), /opacity:\s*\.5/);
@@ -178,7 +179,7 @@ describe('T4: ساختار CSS', () => {
     }
     assert.match(bodies('.badge.dot::before'), /background:\s*currentColor/);
   });
-  test('آیکن‌های آمار: تخت (بدون گرادیان/سایه‌ی رنگی)، آیکن currentColor؛ کاشی بدون حاشیه/سایه؛ عدد برند', () => {
+  test('آیکن‌های آمار: تخت، آیکن currentColor؛ کاشی با عمق ظریف؛ عدد برند', () => {
     for (const g of ['g-green', 'g-orange', 'g-red', 'g-purple', 'g-blue', 'g-gray']) {
       const r = bodies(`.stat-icon.${g}`);
       assert.doesNotMatch(r, /gradient|box-shadow|#[0-9a-f]{3,6}\b|rgba?\(/i, `${g}: گرادیان/سایه/رنگ سخت‌کد`);
@@ -190,8 +191,8 @@ describe('T4: ساختار CSS', () => {
     assert.match(bodies('.stat-icon svg'), /stroke:\s*currentColor/);
     assert.doesNotMatch(bodies('.stat-icon svg'), /#fff/);
     const stat = bodies('.stat');
-    assert.match(stat, /border:\s*0/);
-    assert.match(stat, /box-shadow:\s*none/);
+    assert.match(stat, /border:\s*1px solid var\(--border\)/);
+    assert.match(stat, /box-shadow:\s*0 8px 22px/);
     assert.match(bodies('.stat-value'), /color:\s*var\(--brand\)/);
     assert.match(bodies('.stat-value'), /unicode-bidi:\s*isolate/);
   });

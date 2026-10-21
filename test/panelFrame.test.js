@@ -33,12 +33,13 @@ describe('T2: قاب صفحه', () => {
       assert.doesNotMatch(r, /var\(--green/, `${sel}: --green فقط برای معنای «موفق/حاضر»`);
     }
   });
-  test('کارت مسطح: بدون حاشیه و سایه، شعاع از توکن (۲۸px)', () => {
+  test('کارت روشن: عمق ظریف و شعاع از مقیاس توکن', () => {
     const r = rule('.card');
-    assert.match(r, /border:\s*0/);
-    assert.match(r, /box-shadow:\s*none/);
+    assert.match(r, /border:\s*1px solid var\(--border\)/);
+    assert.match(r, /box-shadow:\s*0 10px 28px/);
     assert.match(r, /border-radius:\s*var\(--radius\)/);
-    assert.match(CSS, /--radius:\s*28px/);
+    assert.match(CSS, /--r-xl:\s*28px/);
+    assert.match(CSS, /--radius:\s*var\(--r-xl\)/);
   });
   test('نوار بالا: پس‌زمینه‌ی توکنی و بدون blur/حاشیه‌ی تیره‌ی ثابت؛ فیلد جستجو از --field', () => {
     const r = rule('.topbar');
@@ -47,12 +48,11 @@ describe('T2: قاب صفحه', () => {
     assert.match(rule('.search-box input'), /background:\s*var\(--field\)/);
     assert.match(CSS, /\.search-box input:focus-visible \{[^}]*box-shadow/);
   });
-  test('سرتیتر صفحه: ۳۲px سبک، رنگ --brand؛ موبایل ۲۴px', () => {
+  test('سرتیتر صفحه: clamp واکنش‌گرا، وزن هماهنگ و رنگ --brand', () => {
     const r = rule('.view-header h2');
-    assert.match(r, /font-size:\s*32px/);
-    assert.match(r, /font-weight:\s*500/);
+    assert.match(r, /font-size:\s*clamp\(22px, 4vw, 32px\)/);
+    assert.match(r, /font-weight:\s*750/);
     assert.match(r, /color:\s*var\(--brand\)/);
-    assert.match(CSS, /\.view-header h2 \{ font-size: 24px; \}/);
   });
   test('لوگو/آواتار با --brand و --on-brand', () => {
     assert.match(rule('.brand-mark'), /background:\s*var\(--brand\)[\s\S]*color:\s*var\(--on-brand\)/);
@@ -69,10 +69,11 @@ describe('T2: صفحه‌ی ورود', () => {
     assert.match(seg, /id="code-input"[^>]*aria-label="کد ورود ۸ رقمی"/);
     assert.match(seg, /id="code-login-btn"/);
   });
-  test('دکمه‌ی ورود با کد نارنجی با متن --on-accent و کارت ورود مسطح', () => {
+  test('دکمه‌ی ورود با کد نارنجی و کارت ورود دوپنله با عمق', () => {
     const r = CSS.slice(CSS.indexOf('.code-login #code-login-btn {'), CSS.indexOf('}', CSS.indexOf('.code-login #code-login-btn {')));
     assert.match(r, /background:\s*var\(--accent\)/);
     assert.match(r, /color:\s*var\(--on-accent\)/);
-    assert.match(rule('.login-card'), /box-shadow:\s*none/);
+    assert.match(rule('.login-card'), /grid-template-columns:/);
+    assert.match(rule('.login-card'), /box-shadow:\s*var\(--shadow\)/);
   });
 });

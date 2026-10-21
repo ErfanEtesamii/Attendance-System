@@ -68,14 +68,14 @@
       ${admin ? `<td>${s.seq > 1 ? `<button type="button" class="btn danger small" data-del-segment>${icon('trash')} حذف نوبت</button>` : ''}</td>` : ''}</tr>`;
 
     const body = `
-      <div class="profile-head" style="margin-bottom:14px">
+      <div class="profile-head u-mb-14">
         ${AP.avatar(u.fullName, '')}
-        <div class="grow"><h2 style="font-size:17px;margin:0 0 4px"><a href="#/profile/${r.user_id}" style="color:inherit" data-close-link>${esc(u.fullName || '—')}</a></h2>
+        <div class="grow"><h2 class="u-title-sm"><a class="u-link-inherit" href="#/profile/${r.user_id}" data-close-link>${esc(u.fullName || '—')}</a></h2>
           <div class="muted">${esc(fmt.dateLong(r.record_date))} · ${esc(u.department || '')}</div></div>
         ${AP.statusBadge(r.status)}${r.via_remote ? ` ${AP.badge('purple', 'دورکاری')}` : ''}
       </div>
 
-      <div class="grid-2" style="gap:12px;margin-bottom:6px">
+      <div class="grid-2 record-grid">
         <div class="kv">
           <div class="kv-row"><span>ورود</span><span class="num">${fmt.clock(r.check_in_time)}</span></div>
           <div class="kv-row"><span>IP ورود</span><span class="ltr">${esc(r.check_in_ip || '—')}</span></div>
@@ -94,10 +94,10 @@
 
       <div class="section-title">استراحت‌ها (${fmt.num(r.breaks.length)}) · مجموع ${fmt.min(r.breakMinutes)}</div>
       ${r.breaks.length ? `<div class="table-wrap"><table><thead><tr><th>نوع</th><th>شروع</th><th>پایان</th>${admin ? '<th></th>' : ''}</tr></thead><tbody>${r.breaks.map(breakRow).join('')}</tbody></table></div>` : `<div class="muted">استراحتی ثبت نشده است.</div>`}
-      ${admin ? `<form class="form-grid" id="add-break" style="margin-top:12px;align-items:end">
+      ${admin ? `<form class="form-grid add-break-form" id="add-break">
         <label class="field"><span>شروع استراحت جدید</span><input type="datetime-local" name="startTime" required /></label>
         <label class="field"><span>پایان</span><input type="datetime-local" name="endTime" /></label>
-        <button class="btn ghost small" type="submit" style="grid-column:1/-1;justify-self:start">${icon('plus')} افزودن استراحت</button></form>` : ''}
+        <button class="btn ghost small add-break-submit" type="submit">${icon('plus')} افزودن استراحت</button></form>` : ''}
 
       ${admin ? `<div class="section-title">اصلاح رکورد</div>
         <form class="form" id="fix-form">
@@ -112,7 +112,7 @@
             <button class="btn danger" type="button" id="del-rec">${icon('trash')} حذف رکورد</button></div>
         </form>` : ''}
 
-      ${r.disputes.length ? `<div class="section-title">اعتراض‌های مرتبط</div>${r.disputes.map((d) => `<div class="item" style="margin-bottom:8px"><div class="grow">${AP.badge(d.status, d.status === 'open' ? 'باز' : 'بسته')}<p class="text">${esc(d.message)}</p></div></div>`).join('')}` : ''}
+      ${r.disputes.length ? `<div class="section-title">اعتراض‌های مرتبط</div>${r.disputes.map((d) => `<div class="item dispute-item"><div class="grow">${AP.badge(d.status, d.status === 'open' ? 'باز' : 'بسته')}<p class="text">${esc(d.message)}</p></div></div>`).join('')}` : ''}
 
       ${AP.can('audit.read') && r.history && r.history.length ? `<div class="section-title">تاریخچه‌ی تغییرات</div><div class="kv">${r.history.map((h) => `
         <div class="kv-row"><span>${esc(h.userFullName || '—')} · ${esc(h.action)}</span><span class="muted">${esc(fmt.dateTime(h.occurred_at))}</span></div>`).join('')}</div>` : ''}`;
@@ -219,7 +219,7 @@
           } catch (err) {
             const m = $('.form-msg', b);
             m.className = 'form-msg err';
-            m.innerHTML = esc(err.message) + (err.data && err.data.recordId ? ` <a href="#" data-open="${err.data.recordId}" style="color:var(--green)">مشاهده‌ی رکورد موجود</a>` : '');
+            m.innerHTML = esc(err.message) + (err.data && err.data.recordId ? ` <a class="u-link-accent" href="#" data-open="${err.data.recordId}">مشاهده‌ی رکورد موجود</a>` : '');
             const a = $('[data-open]', m);
             if (a) a.addEventListener('click', (ev) => { ev.preventDefault(); h.close(); AP.openRecord(a.dataset.open); });
           }
@@ -377,7 +377,7 @@
           <div class="item">
             ${AP.avatar(l.employee ? l.employee.fullName : '?', '')}
             <div class="grow">
-              <div class="title"><a href="#/profile/${l.employee ? l.employee.id : ''}" style="color:inherit">${esc(l.employee ? l.employee.fullName : '—')}</a>
+              <div class="title"><a class="u-link-inherit" href="#/profile/${l.employee ? l.employee.id : ''}">${esc(l.employee ? l.employee.fullName : '—')}</a>
                 ${AP.badge(l.leaveType === 'mission' ? 'mission' : 'leave', AP.LEAVE_TYPE[l.leaveType])} ${AP.badge(l.status, AP.LEAVE_STATUS[l.status])}</div>
               <div class="meta">${esc(fmt.dateLong(l.startDate))} تا ${esc(fmt.dateLong(l.endDate))} · ثبت: ${esc(fmt.dateTime(l.createdAt))}</div>
               ${l.reason ? `<p class="text">${esc(l.reason)}</p>` : ''}
@@ -447,7 +447,7 @@
     const dur = it.durationMinutes != null ? ` · مدت: ${esc(fmt.min(it.durationMinutes))}` : '';
     const span = it.startDate === it.endDate ? esc(fmt.dateLong(it.startDate)) : `${esc(fmt.dateLong(it.startDate))} تا ${esc(fmt.dateLong(it.endDate))}`;
     const att = it.attachment
-      ? `<div class="meta">پیوست: <a href="${esc(it.attachment.url)}" target="_blank" rel="noopener" style="color:var(--green)">${esc(it.attachment.name || 'دانلود')}</a></div>` : '';
+      ? `<div class="meta">پیوست: <a class="u-link-accent" href="${esc(it.attachment.url)}" target="_blank" rel="noopener">${esc(it.attachment.name || 'دانلود')}</a></div>` : '';
     const waiting = it.status === 'pending' && it.awaitingRole ? ` ${AP.badge('purple', `منتظر ${ROLE_STEP[it.awaitingRole] || it.awaitingRole}`)}` : '';
     const check = it.canDecide
       ? `<input type="checkbox" class="q-check" data-q="${esc(it.id)}" aria-label="انتخاب درخواست ${esc(emp ? emp.fullName : it.id)}" ${queueSel.has(it.id) ? 'checked' : ''} />` : '';
@@ -458,7 +458,7 @@
         ${check}
         ${AP.avatar(emp ? emp.fullName : '?', '')}
         <div class="grow">
-          <div class="title">${emp ? `<a href="#/profile/${esc(emp.id)}" style="color:inherit">${esc(emp.fullName)}</a>` : '—'}
+          <div class="title">${emp ? `<a class="u-link-inherit" href="#/profile/${esc(emp.id)}">${esc(emp.fullName)}</a>` : '—'}
             ${AP.badge(it.kind === 'mission' ? 'mission' : 'leave', type)} ${AP.badge(it.status, AP.LEAVE_STATUS[it.status] || it.status)}${waiting}</div>
           <div class="meta">${emp ? `${esc(emp.department || '')}${emp.personnelCode ? ` · کد پرسنلی <span class="ltr">${esc(emp.personnelCode)}</span>` : ''} · ` : ''}${span}${dur} · ثبت: ${esc(fmt.dateTime(it.createdAt))}</div>
           ${it.reason ? `<p class="text">${esc(it.reason)}</p>` : ''}
@@ -475,7 +475,7 @@
     if (!failed.length) return AP.toast(`${fmt.num(summary.succeeded)} درخواست ${data.action === 'approve' ? 'تأیید' : 'رد'} شد.`);
     AP.modal({
       title: 'نتیجه‌ی تصمیم دسته‌جمعی',
-      body: `<p style="margin:0 0 12px;line-height:1.9">${fmt.num(summary.succeeded)} مورد انجام شد و ${fmt.num(summary.failed)} مورد انجام نشد. موارد موفق ثبت شده‌اند و نیازی به تکرار ندارند.</p>
+      body: `<p class="bulk-result-copy">${fmt.num(summary.succeeded)} مورد انجام شد و ${fmt.num(summary.failed)} مورد انجام نشد. موارد موفق ثبت شده‌اند و نیازی به تکرار ندارند.</p>
         <div class="list">${failed.map((r) => `<div class="item"><div class="grow"><div class="title">${esc(names.get(r.id) || `درخواست ${r.id}`)}</div>
           <div class="meta">${esc(BULK_ERR[r.code] || r.error || 'ناموفق')}${r.error && BULK_ERR[r.code] ? ` — ${esc(r.error)}` : ''}</div></div></div>`).join('')}</div>
         <div class="modal-actions"><button class="btn ghost" type="button" data-close-x>بستن</button></div>`,
@@ -519,14 +519,14 @@
           <label class="field"><span>تا تاریخ</span><input type="date" name="to" value="${esc(queueUi.to)}" /></label>
           ${queueUi.status === 'pending' ? `<label class="check-row"><input type="checkbox" name="decidable" ${queueUi.decidable ? 'checked' : ''} /> فقط مواردی که من تصمیم می‌گیرم</label>` : ''}
         </form>
-        ${decidableIds.length ? `<div class="filters" id="q-bulk" style="align-items:center">
+        ${decidableIds.length ? `<div class="filters filters-center" id="q-bulk">
           <label class="check-row"><input type="checkbox" id="q-all" ${decidableIds.every((id) => queueSel.has(id)) ? 'checked' : ''} /> انتخاب همه‌ی این صفحه</label>
           <span class="muted" id="q-count">${queueSel.size ? `${fmt.num(queueSel.size)} مورد انتخاب شده` : ''}</span>
           <button class="btn success small" type="button" id="q-approve" ${queueSel.size ? '' : 'disabled'}>${icon('check')} تأیید انتخاب‌شده‌ها</button>
           <button class="btn danger small" type="button" id="q-reject" ${queueSel.size ? '' : 'disabled'}>${icon('x')} رد انتخاب‌شده‌ها</button>
         </div>` : ''}
         <div class="list">${data.items.length ? data.items.map(queueItemHtml).join('') : `<div class="card">${emptyBox('درخواستی با این فیلتر وجود ندارد.')}</div>`}</div>
-        ${data.total > QUEUE_LIMIT ? `<div class="filters" style="margin-top:14px;justify-content:center;align-items:center">
+        ${data.total > QUEUE_LIMIT ? `<div class="filters u-actions-center">
           <button class="btn ghost small" type="button" id="q-prev" ${queueUi.offset > 0 ? '' : 'disabled'}>صفحه‌ی قبل</button>
           <button class="btn ghost small" type="button" id="q-next" ${to < data.total ? '' : 'disabled'}>صفحه‌ی بعد</button></div>` : ''}`;
 
@@ -623,7 +623,7 @@
       <div class="item">
         ${AP.avatar(u ? u.fullName : '?', '')}
         <div class="grow">
-          <div class="title">${u ? `<a href="#/profile/${esc(u.id)}" style="color:inherit">${esc(u.fullName)}</a>` : '—'} ${AP.badge(cls, label)}</div>
+          <div class="title">${u ? `<a class="u-link-inherit" href="#/profile/${esc(u.id)}">${esc(u.fullName)}</a>` : '—'} ${AP.badge(cls, label)}</div>
           <div class="meta">${u ? `${esc(u.department || '')}${u.personnelCode ? ` · کد پرسنلی <span class="ltr">${esc(u.personnelCode)}</span>` : ''} · ` : ''}${esc(fmt.dateLong(it.date))}${late} · درخواست: ${esc(fmt.dateTime(it.requestedAt))}</div>
           <p class="text">${esc(it.reason)}</p>
           ${decided}
@@ -853,7 +853,7 @@
       const items = await AP.api(`/admin/suspicious${qs}`);
       const html = `
         <div class="view-header"><div><h2>موارد مشکوک</h2><div class="sub">${fmt.num(items.length)} نشانه</div></div></div>
-        <div class="card" style="margin-bottom:14px"><p class="muted" style="margin:0;line-height:2">
+        <div class="card u-mb-14"><p class="muted import-help">
           اینجا فقط «نشانه» می‌بینید، نه اتهام یا مدرک. شناسه‌ی دستگاه توسط خود برنامه در مرورگر ساخته می‌شود و قابل جعل یا پاک‌شدن است؛
           هر نشانه باید با گفتگو و بررسی انسانی تأیید یا نادیده گرفته شود. ثبت نتیجه‌ی بررسی (با ذکر دلیل) در گزارش رویدادها می‌ماند.</p></div>
         <div class="chips" id="s-chips">${[['open', 'بررسی‌نشده'], ['reviewed', 'بررسی‌شده'], ['ignored', 'بی‌اهمیت'], ['all', 'همه']]
@@ -864,10 +864,10 @@
           <div class="item">
             <div class="grow">
               <div class="title">${esc(SUSP_TYPE[e.eventType] || e.eventType)} ${AP.badge(cls, label)}
-                <span class="muted" style="font-weight:400;font-size:12px">${esc(fmt.dateLong(e.eventDate))}</span></div>
-              <div class="meta">${e.users.map((u) => `<a href="#/profile/${esc(u.id)}" style="color:var(--green)">${esc(u.fullName || `کاربر ${u.id}`)}</a>`).join('، ')}</div>
+                <span class="muted table-hint">${esc(fmt.dateLong(e.eventDate))}</span></div>
+              <div class="meta">${e.users.map((u) => `<a class="u-link-accent" href="#/profile/${esc(u.id)}">${esc(u.fullName || `کاربر ${u.id}`)}</a>`).join('، ')}</div>
               ${suspDetailLines(e).map((t) => `<p class="text">${esc(t)}</p>`).join('')}
-              ${e.recordIds.length ? `<div class="meta">رکوردهای مرتبط: ${e.recordIds.map((id) => `<a href="#" data-rec="${esc(id)}" style="color:var(--green)">#${fmt.num(id)}</a>`).join('، ')}</div>` : ''}
+              ${e.recordIds.length ? `<div class="meta">رکوردهای مرتبط: ${e.recordIds.map((id) => `<a class="u-link-accent" href="#" data-rec="${esc(id)}">#${fmt.num(id)}</a>`).join('، ')}</div>` : ''}
               ${e.reviewedAt ? `<div class="meta">${e.status === 'ignored' ? 'ثبت‌شده به‌عنوان بی‌اهمیت' : 'بررسی‌شده'} توسط ${esc(e.reviewedBy ? e.reviewedBy.fullName || `کاربر ${e.reviewedBy.id}` : '—')} · ${esc(fmt.dateTime(e.reviewedAt))}</div>` : ''}
             </div>
             <div class="row-actions">
@@ -926,7 +926,7 @@
         <div class="item">
           ${AP.avatar(l.employee ? l.employee.fullName : '?', '')}
           <div class="grow">
-            <div class="title"><a href="#/profile/${l.employee ? l.employee.id : ''}" style="color:inherit">${esc(l.employee ? l.employee.fullName : '—')}</a>
+            <div class="title"><a class="u-link-inherit" href="#/profile/${l.employee ? l.employee.id : ''}">${esc(l.employee ? l.employee.fullName : '—')}</a>
               ${AP.badge(l.leaveType === 'mission' ? 'mission' : 'leave', AP.LEAVE_TYPE[l.leaveType])}</div>
             <div class="meta">${esc(fmt.dateLong(l.startDate))} تا ${esc(fmt.dateLong(l.endDate))} · ثبت: ${esc(fmt.dateTime(l.createdAt))}</div>
             ${l.reason ? `<p class="text">${esc(l.reason)}</p>` : ''}
@@ -940,10 +940,10 @@
         <div class="item">
           ${AP.avatar(d.employee ? d.employee.fullName : '?', 'purple')}
           <div class="grow">
-            <div class="title"><a href="#/profile/${d.employee ? d.employee.id : ''}" style="color:inherit">${esc(d.employee ? d.employee.fullName : '—')}</a>
-              <span class="muted" style="font-weight:400;font-size:12px">${esc(fmt.dateTime(d.createdAt))}</span></div>
+            <div class="title"><a class="u-link-inherit" href="#/profile/${d.employee ? d.employee.id : ''}">${esc(d.employee ? d.employee.fullName : '—')}</a>
+              <span class="muted table-hint">${esc(fmt.dateTime(d.createdAt))}</span></div>
             <p class="text">${esc(d.message)}</p>
-            ${d.record ? `<div class="meta">رکورد مرتبط: <a href="#" data-rec="${d.record.id}" style="color:var(--green)">${esc(fmt.dateLong(d.record.date))}</a></div>` : ''}
+            ${d.record ? `<div class="meta">رکورد مرتبط: <a class="u-link-accent" href="#" data-rec="${d.record.id}">${esc(fmt.dateLong(d.record.date))}</a></div>` : ''}
           </div>
           <div class="row-actions">
             ${AP.can('disputes.resolve') ? `<button class="btn success small" data-resolve="${d.id}">${icon('check')} بستن و پاسخ</button>` : ''}
@@ -954,19 +954,19 @@
           <div><h2>مرور شبانه</h2>
             <div class="sub">${esc(fmt.dateLong(data.date))}${data.holiday ? ' · تعطیل رسمی' : ''} · ${fmt.num(t.total)} نفر · ${fmt.num(t.attention)} مورد نیازمند بررسی</div></div>
           <div class="header-actions">
-            <label class="field" style="margin:0"><input type="date" id="nt-date" name="ntDate" value="${esc(data.date)}" max="${esc(data.today)}" /></label>
+            <label class="field u-m0"><input type="date" id="nt-date" name="ntDate" value="${esc(data.date)}" max="${esc(data.today)}" /></label>
           </div>
         </div>
         <div class="chips" id="nt-chips">${chips.map(([k, l, c]) => `<button class="chip ${k === nightUi.filter ? 'active' : ''}" data-f="${k}">${esc(l)}<b>${fmt.num(c)}</b></button>`).join('')}
-          <span class="muted" style="margin-inline-start:8px;font-size:12.5px">حاضر: ${fmt.num(t.present)} · متأخر: ${fmt.num(t.late)} · بدون خروج: ${fmt.num(t.noCheckout)} · غایب: ${fmt.num(t.absent)} · مرخصی: ${fmt.num(t.leave)}</span></div>
+          <span class="muted night-summary">حاضر: ${fmt.num(t.present)} · متأخر: ${fmt.num(t.late)} · بدون خروج: ${fmt.num(t.noCheckout)} · غایب: ${fmt.num(t.absent)} · مرخصی: ${fmt.num(t.leave)}</span></div>
         <div class="card flush"><div class="table-wrap"><table>
           <thead><tr><th>کارمند</th><th>وضعیت</th><th>ورود</th><th>خروج</th><th>ساعت مفید</th><th>نکات</th><th>عملیات</th></tr></thead>
           <tbody id="nt-body"></tbody></table></div></div>
 
-        <div class="view-header" style="margin-top:26px"><div><h2>مرخصی و مأموریت منتظر پاسخ</h2><div class="sub">${fmt.num(leaves.length)} درخواست</div></div></div>
+        <div class="view-header u-mt-26"><div><h2>مرخصی و مأموریت منتظر پاسخ</h2><div class="sub">${fmt.num(leaves.length)} درخواست</div></div></div>
         <div class="list">${leaves.length ? leaveItems : `<div class="card">${emptyBox('درخواستی در انتظار نیست.')}</div>`}</div>
 
-        <div class="view-header" style="margin-top:26px"><div><h2>اعتراض‌های باز</h2><div class="sub">${fmt.num(disputes.length)} مورد</div></div></div>
+        <div class="view-header u-mt-26"><div><h2>اعتراض‌های باز</h2><div class="sub">${fmt.num(disputes.length)} مورد</div></div></div>
         <div class="list">${disputes.length ? disputeItems : `<div class="card">${emptyBox('اعتراض بازی وجود ندارد.')}</div>`}</div>`;
 
       return {
@@ -979,7 +979,7 @@
             $$('.chip', chipsEl).forEach((c) => c.classList.toggle('active', c.dataset.f === nightUi.filter));
             const list = nightUi.filter === 'attention' ? rows.filter((r) => r.needsAttention) : rows;
             body.innerHTML = list.length ? list.map((r) => `<tr>
-              <td><a class="cell-user" href="#/profile/${r.user.id}" style="color:inherit;text-decoration:none">${AP.avatar(r.user.fullName, 'sm')}
+              <td><a class="cell-user u-link-inherit" href="#/profile/${r.user.id}">${AP.avatar(r.user.fullName, 'sm')}
                 <span><b>${esc(r.user.fullName)}</b><small>${esc(r.user.department || '—')}</small></span></a></td>
               <td>${AP.stateBadge(r.state)} ${r.onMission ? AP.badge('mission', 'مأموریت') : ''}</td>
               <td class="num">${r.checkIn ? fmt.clock(r.checkIn) : '—'}</td>

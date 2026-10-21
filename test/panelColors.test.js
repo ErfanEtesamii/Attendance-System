@@ -7,6 +7,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const read = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8').replace(/\r\n/g, '\n');
 const CSS = read('public-admin/css/style.css');
+const TOKENS = read('public/css/tokens.css');
 const JS_DIR = path.join(ROOT, 'public-admin/js');
 const JS_FILES = fs.readdirSync(JS_DIR).filter((f) => f.endsWith('.js'));
 
@@ -28,7 +29,7 @@ function block(css, selector) {
   return css.slice(i + selector.length + 2, css.indexOf('\n}', i));
 }
 const varsOf = (txt) => Object.fromEntries([...txt.matchAll(/--([a-z0-9-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
-const THEMES = { dark: varsOf(block(CSS, ':root,\n:root[data-theme="dark"]')), light: varsOf(block(CSS, ':root[data-theme="light"]')) };
+const THEMES = { dark: varsOf(block(TOKENS, ':root,\n:root[data-theme="dark"]')), light: varsOf(block(TOKENS, ':root[data-theme="light"]')) };
 
 // CSS بدون کامنت و بدون بلوک‌های @media print (چاپ عمداً پالت روشنِ سخت‌کد دارد و دست‌نخورده می‌ماند)
 function stripBlocks(css, startRe) {

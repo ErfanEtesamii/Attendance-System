@@ -37,7 +37,7 @@
           <label class="field"><span>روند تأخیر</span><select name="granularity"><option value="week" ${ui.granularity === 'week' ? 'selected' : ''}>هفتگی (۱۲ هفته)</option><option value="month" ${ui.granularity === 'month' ? 'selected' : ''}>ماهانه (۱۲ ماه)</option></select></label>
           <label class="field"><span>گروه‌بندی روند</span><select name="groupBy"><option value="none" ${ui.groupBy === 'none' ? 'selected' : ''}>کل</option><option value="department" ${ui.groupBy === 'department' ? 'selected' : ''}>به‌تفکیک دپارتمان</option></select></label>
         </form>
-        <div id="an-charts" class="chart-grid" aria-live="polite"><div class="loading"><div class="spinner"></div>در حال بارگذاری نمودارها…</div></div>`;
+        <div id="an-charts" class="chart-grid" aria-live="polite">${window.UiStates.skeletonHtml('cards', { label: 'در حال بارگذاری نمودارها…' })}</div>`;
       return { html, mount: (page) => mount(page) };
     },
   });
@@ -47,6 +47,7 @@
     form.addEventListener('submit', (e) => e.preventDefault());
     $$('input, select', form).forEach((el) => el.addEventListener('change', () => { Object.assign(ui, AP.formData(form)); AP.refresh(); }));
     const box = $('#an-charts', page);
+    C.mountInteractiveCharts(box);
     const q = (o) => new URLSearchParams(Object.entries(o).filter(([, v]) => v !== '' && v != null)).toString();
     const ym = { year: ui.year, month: ui.month };
     const dep = { department: ui.department };
@@ -63,7 +64,7 @@
       ['patterns', `/admin/analytics/patterns?${q({ ...ym, ...dep })}`, (r) => P.patternsHtml(r, d), 'هشدار الگوها'],
     ];
     // جای هر نمودار از قبل رزرو می‌شود تا ترتیب ثابت بماند، هرچند پاسخ‌ها نامرتب برسند
-    box.innerHTML = jobs.map(([id]) => `<div class="chart-slot" data-chart="${id}"><div class="loading"><div class="spinner"></div></div></div>`).join('');
+    box.innerHTML = jobs.map(([id]) => `<div class="chart-slot" data-chart="${id}">${window.UiStates.skeletonHtml('cards', { rows: 2, label: 'در حال بارگذاری نمودار…' })}</div>`).join('');
     const token = AP.currentRoute;
     jobs.forEach(async ([id, url, build, title]) => {
       let out;

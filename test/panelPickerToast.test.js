@@ -6,6 +6,7 @@ const path = require('node:path');
 
 const read = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8').replace(/\r\n/g, '\n');
 const CSS = read('public-admin/css/style.css');
+const TOKENS = read('public/css/tokens.css');
 const DP = read('public-admin/css/datepicker.css');
 const HTML = read('public-admin/index.html');
 
@@ -25,7 +26,7 @@ function block(css, selector) {
   return css.slice(i + selector.length + 2, css.indexOf('\n}', i));
 }
 const varsOf = (txt) => Object.fromEntries([...txt.matchAll(/--([a-z0-9-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
-const THEMES = { dark: varsOf(block(CSS, ':root,\n:root[data-theme="dark"]')), light: varsOf(block(CSS, ':root[data-theme="light"]')) };
+const THEMES = { dark: varsOf(block(TOKENS, ':root,\n:root[data-theme="dark"]')), light: varsOf(block(TOKENS, ':root[data-theme="light"]')) };
 
 const STRIPPED = CSS.replace(/\/\*[\s\S]*?\*\//g, '');
 const ruleList = [...STRIPPED.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({ sels: m[1].split(/,(?![^(]*\))/).map((x) => x.trim()), body: m[2].trim() }));
@@ -73,7 +74,7 @@ describe('T6-3: ساختار CSS — تاریخ‌گزین', () => {
     const b = bodies('.jdp-pop');
     assert.match(b, /background:\s*var\(--card\)/);
     assert.match(b, /border:\s*0/);
-    assert.match(b, /border-radius:\s*16px/);
+    assert.match(b, /border-radius:\s*var\(--r-lg\)/);
     assert.match(b, /box-shadow:\s*var\(--shadow\),\s*0 0 0 1px var\(--border\)/);
   });
   test('عنوان و لینک --brand (نه --green)؛ روز هفته --hint؛ جمعه --red', () => {
@@ -156,9 +157,10 @@ describe('T6-3: ساختار CSS — toast', () => {
     assert.match(bodies('.toast::before'), /content:\s*"\\2713"/);
     assert.match(bodies('.toast.err::before'), /content:\s*"!"/);
   });
-  test('JS دست‌نخورده: AP.toast همان کلاس err، نقش alert/status و textContent (نه innerHTML) را می‌گذارد', () => {
+  test('JS توست را صف‌بندی می‌کند و همان کلاس err، نقش alert/status و textContent امن را می‌گذارد', () => {
     const core = read('public-admin/js/core.js');
-    const fn = core.slice(core.indexOf('AP.toast = function toast'), core.indexOf('// ---------- API'));
+    const fn = core.slice(core.indexOf('const toastQueue'), core.indexOf('// ---------- API'));
+    assert.match(fn, /toastQueue\.push/);
     assert.match(fn, /el\.textContent = msg/);
     assert.match(fn, /classList\.toggle\('err', !!isErr\)/);
     assert.match(fn, /setAttribute\('role', isErr \? 'alert' : 'status'\)/);

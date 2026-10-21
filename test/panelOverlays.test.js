@@ -6,6 +6,7 @@ const path = require('node:path');
 
 const read = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8').replace(/\r\n/g, '\n');
 const CSS = read('public-admin/css/style.css');
+const TOKENS = read('public/css/tokens.css');
 
 const parseColor = (v) => {
   v = v.trim();
@@ -24,7 +25,7 @@ function block(css, selector) {
   return css.slice(i + selector.length + 2, css.indexOf('\n}', i));
 }
 const varsOf = (txt) => Object.fromEntries([...txt.matchAll(/--([a-z0-9-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
-const THEMES = { dark: varsOf(block(CSS, ':root,\n:root[data-theme="dark"]')), light: varsOf(block(CSS, ':root[data-theme="light"]')) };
+const THEMES = { dark: varsOf(block(TOKENS, ':root,\n:root[data-theme="dark"]')), light: varsOf(block(TOKENS, ':root[data-theme="light"]')) };
 
 const STRIPPED = CSS.replace(/\/\*[\s\S]*?\*\//g, '');
 const ruleList = [...STRIPPED.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({ sels: m[1].split(/,(?![^(]*\))/).map((x) => x.trim()), body: m[2].trim() }));
@@ -143,7 +144,7 @@ describe('T6-2: ساختار CSS — منوی نتایج جستجو', () => {
     const b = bodies('.search-results');
     assert.match(b, /background:\s*var\(--card\)/);
     assert.match(b, /box-shadow:\s*var\(--shadow\)/);
-    assert.match(b, /border-radius:\s*16px/);
+    assert.match(b, /border-radius:\s*var\(--r-lg\)/);
     assert.doesNotMatch(b, /border:\s*1px/);
   });
   test('hover و فوکوس کیبورد آیتم = --brand-soft (و حلقه‌ی --brand)', () => {

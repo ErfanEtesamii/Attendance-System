@@ -256,6 +256,7 @@ describe('زنگوله‌ی پنل با سرور واقعی (S4-6a)', { skip: ha
     const denied = byTitle('صفحه‌ی بی‌مجوز');
     assert.equal(AP.viewAllowed(AP.views.system), false);
     assert.equal(AP.bell.openItem(denied.id), false);
+    await waitFor(() => /دسترسی ندارید/.test($('#toast').textContent), 'نمایش توست صف‌شده');
     assert.match($('#toast').textContent, /دسترسی ندارید/);
     assert.equal(win.location.hash, hashBefore);
     await waitFor(() => AP.bell.state.unread === 2, 'خواندن اعلان بی‌مجوز');

@@ -43,12 +43,13 @@
     return { max: step * ticks, step, ticks };
   }
 
-  const markerSvg = (shape, x, y, cls, title, d) => {
+  const markerSvg = (shape, x, y, cls, title, d, seriesIndex) => {
     const t = title ? `<title>${d.esc(title)}</title>` : '';
-    if (shape === 'square') return `<rect class="mk ${cls}" x="${n(x - 4)}" y="${n(y - 4)}" width="8" height="8">${t}</rect>`;
-    if (shape === 'triangle') return `<polygon class="mk ${cls}" points="${n(x)},${n(y - 5)} ${n(x + 5)},${n(y + 4)} ${n(x - 5)},${n(y + 4)}">${t}</polygon>`;
-    if (shape === 'diamond') return `<polygon class="mk ${cls}" points="${n(x)},${n(y - 5)} ${n(x + 5)},${n(y)} ${n(x)},${n(y + 5)} ${n(x - 5)},${n(y)}">${t}</polygon>`;
-    return `<circle class="mk ${cls}" cx="${n(x)}" cy="${n(y)}" r="4">${t}</circle>`;
+    const a = title ? ` tabindex="0" role="img" aria-label="${d.esc(title)}" data-tip="${d.esc(title)}"${seriesIndex == null ? '' : ` data-series="${seriesIndex}"`}` : '';
+    if (shape === 'square') return `<rect class="mk ${cls}" x="${n(x - 4)}" y="${n(y - 4)}" width="8" height="8"${a}>${t}</rect>`;
+    if (shape === 'triangle') return `<polygon class="mk ${cls}" points="${n(x)},${n(y - 5)} ${n(x + 5)},${n(y + 4)} ${n(x - 5)},${n(y + 4)}"${a}>${t}</polygon>`;
+    if (shape === 'diamond') return `<polygon class="mk ${cls}" points="${n(x)},${n(y - 5)} ${n(x + 5)},${n(y)} ${n(x)},${n(y + 5)} ${n(x - 5)},${n(y)}"${a}>${t}</polygon>`;
+    return `<circle class="mk ${cls}" cx="${n(x)}" cy="${n(y)}" r="4"${a}>${t}</circle>`;
   };
 
   // برچسب‌های محور را کم می‌کند تا روی هم نیفتند (حداکثر ~maxLabels برچسب)
@@ -64,7 +65,7 @@
 
   function legendHtml(series, d) {
     if (series.length < 2) return '';
-    const items = series.map((s, i) => `<li><svg viewBox="0 0 22 12" width="22" height="12" aria-hidden="true"><line class="ln ${'s' + (i % 6)}" x1="1" x2="21" y1="6" y2="6"${DASHES[i % 6] ? ` stroke-dasharray="${DASHES[i % 6]}"` : ''}/>${markerSvg(MARKERS[i % 6], 11, 6, 's' + (i % 6), '', d)}</svg><span>${d.esc(s.name)}</span></li>`).join('');
+    const items = series.map((s, i) => `<li><button type="button" data-chart-series="${i}" aria-pressed="true"><svg viewBox="0 0 22 12" width="22" height="12" aria-hidden="true"><line class="ln ${'s' + (i % 6)}" x1="1" x2="21" y1="6" y2="6"${DASHES[i % 6] ? ` stroke-dasharray="${DASHES[i % 6]}"` : ''}/>${markerSvg(MARKERS[i % 6], 11, 6, 's' + (i % 6), '', d)}</svg><span>${d.esc(s.name)}</span></button></li>`).join('');
     return `<ul class="chart-legend">${items}</ul>`;
   }
 
@@ -108,6 +109,7 @@
     for (let i = 0; i < count; i += every) g += `<text class="xtick" x="${n(xAt(i))}" y="${H - 12}" text-anchor="middle">${d.esc(ticks[i])}</text>`;
     series.forEach((s, si) => {
       const cls = `s${si}`;
+      g += `<g data-series="${si}">`;
       // شکاف برای null: هر قطعه‌ی پیوسته یک polyline
       let seg = [];
       const flush = () => { if (seg.length > 1) g += `<polyline class="ln ${cls}" fill="none"${DASHES[si] ? ` stroke-dasharray="${DASHES[si]}"` : ''} points="${seg.join(' ')}"/>`; seg = []; };
@@ -116,8 +118,9 @@
       s.values.forEach((v, i) => {
         if (!isNum(v)) return;
         const extra = s.texts && s.texts[i] ? ` — ${s.texts[i]}` : '';
-        g += markerSvg(MARKERS[si], xAt(i), yAt(v), cls, `${s.name} · ${labels[i]}: ${fmtVal(v)}${extra}`, d);
+        g += markerSvg(MARKERS[si], xAt(i), yAt(v), cls, `${s.name} · ${labels[i]}: ${fmtVal(v)}${extra}`, d, si);
       });
+      g += '</g>';
     });
     const peak = series.map((s) => Math.max(...s.values.filter(isNum), -Infinity)).reduce((a, b) => Math.max(a, b), -Infinity);
     const desc = `نمودار خطی «${spec.title}»؛ ${d.num(count)} نقطه، ${d.num(series.length)} سری؛ بیشترین مقدار ${fmtVal(peak)}. اعداد دقیق در جدول زیر نمودار است.`;
@@ -173,7 +176,8 @@
           if (!isNum(v)) return;
           const w = Math.max(v > 0 ? 2 : 0, wAt(v));
           const y = top + 7 + si * 14;
-          g += `<g><title>${d.esc(`${k > 1 ? `${s.name} · ` : ''}${c}: ${fmtVal(v)}`)}</title><rect class="bar ${'s' + si}" x="${n(x0 - w)}" y="${n(y)}" width="${n(w)}" height="10" rx="2"/><text class="val" x="${n(x0 - w - 5)}" y="${n(y + 9)}" text-anchor="end">${d.esc(fmtVal(v))}</text></g>`;
+          const tip = `${k > 1 ? `${s.name} · ` : ''}${c}: ${fmtVal(v)}`;
+          g += `<g data-series="${si}"><title>${d.esc(tip)}</title><rect class="bar ${'s' + si}" tabindex="0" role="img" aria-label="${d.esc(tip)}" data-tip="${d.esc(tip)}" x="${n(x0 - w)}" y="${n(y)}" width="${n(w)}" height="10" rx="2"/><text class="val" x="${n(x0 - w - 5)}" y="${n(y + 9)}" text-anchor="end">${d.esc(fmtVal(v))}</text></g>`;
         });
       });
     } else {
@@ -197,7 +201,8 @@
           if (!isNum(v)) return;
           const h = Math.max(v > 0 ? 2 : 0, hAt(v));
           const x = cx - (k * bw) / 2 + si * bw;
-          g += `<g><title>${d.esc(`${k > 1 ? `${s.name} · ` : ''}${c}: ${fmtVal(v)}`)}</title><rect class="bar ${'s' + si}" x="${n(x)}" y="${n(padT + innerH - h)}" width="${n(bw - 1)}" height="${n(h)}" rx="2"/></g>`;
+          const tip = `${k > 1 ? `${s.name} · ` : ''}${c}: ${fmtVal(v)}`;
+          g += `<g data-series="${si}"><title>${d.esc(tip)}</title><rect class="bar ${'s' + si}" tabindex="0" role="img" aria-label="${d.esc(tip)}" data-tip="${d.esc(tip)}" x="${n(x)}" y="${n(padT + innerH - h)}" width="${n(bw - 1)}" height="${n(h)}" rx="2"/></g>`;
         });
       });
     }
@@ -339,7 +344,39 @@
     };
   }
 
-  const api = { MAX_SERIES, niceScale, lineChartHtml, barChartHtml, fromLateTrend, fromLateCompare, fromRankings, fromAttendanceRate, fromLeaveByType, fromCheckinDistribution };
+  function mountInteractiveCharts(rootEl) {
+    if (!rootEl || rootEl.dataset.chartsInteractive === '1') return;
+    rootEl.dataset.chartsInteractive = '1';
+    const hideTip = (fig) => { const old = fig && fig.querySelector('.chart-tooltip'); if (old) old.remove(); };
+    const showTip = (target) => {
+      const fig = target.closest('.chart-fig');
+      if (!fig) return;
+      hideTip(fig);
+      const tip = document.createElement('div');
+      tip.className = 'chart-tooltip';
+      tip.textContent = target.dataset.tip;
+      const r = target.getBoundingClientRect();
+      const fr = fig.getBoundingClientRect();
+      tip.style.left = `${Math.max(8, Math.min(fr.width - 220, r.left - fr.left))}px`;
+      tip.style.top = `${Math.max(40, r.top - fr.top - 38)}px`;
+      fig.appendChild(tip);
+    };
+    rootEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-chart-series]');
+      if (!btn) return;
+      const fig = btn.closest('.chart-fig');
+      const idx = btn.dataset.chartSeries;
+      const pressed = btn.getAttribute('aria-pressed') !== 'false';
+      btn.setAttribute('aria-pressed', pressed ? 'false' : 'true');
+      fig.querySelectorAll(`.chart [data-series="${idx}"]`).forEach((el) => el.classList.toggle('is-series-hidden', pressed));
+    });
+    rootEl.addEventListener('pointerover', (e) => { const t = e.target.closest('[data-tip]'); if (t) showTip(t); });
+    rootEl.addEventListener('pointerout', (e) => { const fig = e.target.closest('.chart-fig'); if (fig && !e.relatedTarget?.closest?.('.chart-tooltip')) hideTip(fig); });
+    rootEl.addEventListener('focusin', (e) => { const t = e.target.closest('[data-tip]'); if (t) showTip(t); });
+    rootEl.addEventListener('focusout', (e) => hideTip(e.target.closest('.chart-fig')));
+  }
+
+  const api = { MAX_SERIES, niceScale, lineChartHtml, barChartHtml, fromLateTrend, fromLateCompare, fromRankings, fromAttendanceRate, fromLeaveByType, fromCheckinDistribution, mountInteractiveCharts };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (root) root.AnalyticsCharts = api;
 }(typeof window !== 'undefined' ? window : undefined));

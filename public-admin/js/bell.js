@@ -108,7 +108,7 @@
     if (!state.items.length && state.error) {
       html = `<div class="empty">${AP.icon('alert')}${esc(state.error)}<div class="mt"><button type="button" class="btn ghost small" data-act="retry">تلاش دوباره</button></div></div>`;
     } else if (!state.items.length && state.loading) {
-      html = '<div class="loading"><div class="spinner"></div>در حال بارگذاری…</div>';
+      html = window.UiStates ? window.UiStates.skeletonHtml('list', { rows: 3, label: 'در حال بارگذاری اعلان‌ها…' }) : '<div class="loading">در حال بارگذاری…</div>';
     } else if (!state.items.length) {
       html = `<div class="empty">${AP.icon('inbox')}اعلانی ندارید.</div>`;
     } else {

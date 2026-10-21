@@ -7,6 +7,7 @@ const A = require('../public-admin/js/a11y.js');
 
 const root = path.join(__dirname, '..');
 const read = (f) => fs.readFileSync(path.join(root, f), 'utf8').replace(/\r\n/g, '\n');
+const TOKENS = read('public/css/tokens.css');
 const jsFiles = fs.readdirSync(path.join(root, 'public-admin', 'js')).map((f) => `public-admin/js/${f}`);
 
 // ---- کنتراست حلقه‌ی فوکوس (غیرمتنی: ≥ ۳:۱) ----
@@ -117,8 +118,8 @@ describe('اتصال و CSS', () => {
     assert.match(core, /aria-current/);
   });
   test('حلقه‌ی فوکوس و کاهش حرکت در هر دو CSS؛ لینک پرش فقط پنل', () => {
-    // T8 (فاز ۱۶): حلقه‌ی پنل از سبز به --brand رفت (سبز دیگر رنگ برند نیست)؛ Mini App تا T9 سبز می‌ماند و همچنان --green است
-    for (const [f, ring] of [['public-admin/css/style.css', '--brand'], ['public/css/style.css', '--green']]) {
+    // فاز ۱۹/M1: حلقه‌ی Mini App هم مثل پنل از رنگ برند استفاده می‌کند تا روی تم روشن کنتراست غیرمتنی کافی داشته باشد.
+    for (const [f, ring] of [['public-admin/css/style.css', '--brand'], ['public/css/style.css', '--brand']]) {
       const css = read(f);
       assert.match(css, new RegExp(`:focus-visible \\{ outline: 2px solid var\\(${ring}\\)`));
       assert.match(css, /prefers-reduced-motion: reduce/);
@@ -126,8 +127,8 @@ describe('اتصال و CSS', () => {
     assert.match(read('public-admin/css/style.css'), /\.skip-link:focus \{ top: 8px; \}/);
   });
   test('حلقه‌ی فوکوس روی پس‌زمینه‌ی صفحه/کارت در هر دو تم ≥ ۳:۱ (WCAG 1.4.11)', () => {
-    for (const [f, cardKey, ringKey] of [['public-admin/css/style.css', 'card', 'brand'], ['public/css/style.css', 'card-bg', 'green']]) {
-      const css = read(f);
+    for (const [f, cardKey, ringKey] of [['public-admin/css/style.css', 'card', 'brand'], ['public/css/style.css', 'card', 'brand']]) {
+      const css = TOKENS;
       for (const [sel, mode] of [[':root,\n:root[data-theme="dark"]', 'dark'], [':root[data-theme="light"]', 'light']]) {
         const v = themeVars(css, sel);
         for (const bg of ['bg', cardKey]) assert.ok(ratio(hex(v[ringKey]), hex(v[bg])) >= 3, `${f} ${mode} ${ringKey}/${bg}`);
@@ -181,7 +182,7 @@ describe('T8 (فاز ۱۶): ریل، تب زیرخط‌دار و فیلد پرش
   });
   test('فیلد پرشده: متن/hint روی --field ≥ ۴٫۵:۱ و فوکوس با حلقه‌ی برند در هر دو تم', () => {
     for (const [sel, mode] of [[':root,\n:root[data-theme="dark"]', 'dark'], [':root[data-theme="light"]', 'light']]) {
-      const v = themeVars(CSS, sel);
+      const v = themeVars(TOKENS, sel);
       for (const k of ['text', 'hint']) assert.ok(ratio(hex(v[k]), hex(v.field)) >= 4.5, `${mode} ${k}/field`);
       assert.ok(ratio(hex(v.brand), hex(v.field)) >= 3, `${mode} brand/field`);
     }

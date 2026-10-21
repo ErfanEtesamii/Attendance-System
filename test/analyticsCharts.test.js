@@ -96,7 +96,7 @@ describe('نمودار میله‌ای', () => {
 
   test('افقی: میله‌ی بزرگ‌تر بلندتر و از سمت راست رشد می‌کند؛ مقدار صفر میله ندارد ولی در جدول هست', () => {
     const h = C.barChartHtml({ title: 't', categories: ['a', 'b', 'c'], series: [{ name: 's', values: [80, 40, 0] }] });
-    const bars = [...h.matchAll(/<rect class="bar s0" x="([\d.]+)" y="[\d.]+" width="([\d.]+)"/g)].map((m) => ({ x: Number(m[1]), w: Number(m[2]) }));
+    const bars = [...h.matchAll(/<rect class="bar s0"[^>]* x="([\d.]+)" y="[\d.]+" width="([\d.]+)"/g)].map((m) => ({ x: Number(m[1]), w: Number(m[2]) }));
     assert.equal(bars.length, 3);
     assert.ok(bars[0].w > bars[1].w);
     assert.equal(bars[2].w, 0);
@@ -114,7 +114,7 @@ describe('نمودار میله‌ای', () => {
   test('عمودی (هیستوگرام): یک ستون به‌ازای هر سطل، اولین سطل سمت راست، ارتفاع متناسب', () => {
     const h = C.barChartHtml({ title: 't', orientation: 'vertical', categories: ['a', 'b', 'c'], series: [{ name: 'n', values: [2, 8, 4] }] });
     NO_NAN(h);
-    const bars = [...h.matchAll(/<rect class="bar s0" x="([\d.]+)" y="[\d.]+" width="[\d.]+" height="([\d.]+)"/g)].map((m) => ({ x: Number(m[1]), h: Number(m[2]) }));
+    const bars = [...h.matchAll(/<rect class="bar s0"[^>]* x="([\d.]+)" y="[\d.]+" width="[\d.]+" height="([\d.]+)"/g)].map((m) => ({ x: Number(m[1]), h: Number(m[2]) }));
     assert.equal(bars.length, 3);
     assert.ok(bars[0].x > bars[1].x && bars[1].x > bars[2].x);
     assert.ok(bars[1].h > bars[2].h && bars[2].h > bars[0].h);

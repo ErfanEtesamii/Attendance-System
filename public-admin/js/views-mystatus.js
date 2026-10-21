@@ -119,7 +119,7 @@
     if (!p || !p.total) return '';
     const pct = p.percent == null ? 0 : p.percent;
     return `<div class="hbar"><div class="hbar-top"><span>پیشرفت</span><span>${fmt.num(p.done)} از ${fmt.num(p.total)}${p.percent == null ? '' : ` (${fmt.num(p.percent)}٪)`}</span></div>
-      <div class="hbar-track"><div class="hbar-fill" style="width:${pct}%"></div></div></div>`;
+      <div class="hbar-track"><div class="hbar-fill" data-progress="${pct}"></div></div></div>`;
   }
 
   // گزارش‌های دیرهنگام: روزهای قبلی که هنوز پاسخ می‌پذیرند (امروزِ دیرهنگام در همان فهرست اصلی است)

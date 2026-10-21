@@ -48,7 +48,7 @@
       const t = d.totals;
       const sortKeys = { name: (r) => r.user.fullName, presentDays: (r) => r.presentDays, totalEffective: (r) => r.totalEffective, avgEffective: (r) => r.avgEffective, lateCount: (r) => r.lateCount, earlyLeaveCount: (r) => r.earlyLeaveCount, incompleteCount: (r) => r.incompleteCount, leaveDays: (r) => r.leaveDays, overtimeMinutes: (r) => r.overtimeMinutes };
       const th = (k, l) => `<th class="sortable" data-sort="${k}">${l}${repUi.sort === k ? (repUi.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`;
-      const stat = (g, ic, v, l) => `<div class="stat"><div class="stat-icon ${g}">${icon(ic)}</div><div class="stat-value" style="font-size:21px">${v}</div><div class="stat-label">${l}</div></div>`;
+      const stat = (g, ic, v, l) => `<div class="stat"><div class="stat-icon ${g}">${icon(ic)}</div><div class="stat-value u-stat-value-sm">${v}</div><div class="stat-label">${l}</div></div>`;
 
       const now = new Date();
       const monthlyDefault = window.Jalali.toJalali(now.getFullYear(), now.getMonth() + 1, now.getDate());
@@ -64,7 +64,7 @@
         </form>
         <div class="card mt" id="monthly-card">
           <h3>گزارش ماهانه (ماه شمسی)</h3>
-          <div class="sub" style="margin-bottom:10px">ماه بسته‌شده از snapshot و در غیر این صورت زنده؛ چاپ A4 در تب جدید باز می‌شود.</div>
+          <div class="sub report-note">ماه بسته‌شده از snapshot و در غیر این صورت زنده؛ چاپ A4 در تب جدید باز می‌شود.</div>
           <form class="filters" id="monthly-form">
             <label class="field"><span>سال</span><input type="number" name="year" min="1300" max="1500" value="${monthlyDefault.jy}" /></label>
             <label class="field"><span>ماه</span><select name="month">${monthNames.map((n, i) => `<option value="${i + 1}" ${i + 1 === monthlyDefault.jm ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>
@@ -83,10 +83,10 @@
           ${stat('g-blue', 'leave', fmt.num(t.leaveDays), 'روز مرخصی')}
         </div>
         <div class="card"><h3>تعداد حاضرین به تفکیک روز</h3>${dailyChart(d.daily)}</div>
-        <div class="card flush mt"><div style="padding:18px 18px 0"><h3>دپارتمان‌ها</h3></div><div class="table-wrap"><table>
+        <div class="card flush mt"><div class="u-panel-head"><h3>دپارتمان‌ها</h3></div><div class="table-wrap"><table>
           <thead><tr><th>دپارتمان</th><th>کارمند</th><th>روز-نفر حضور</th><th>ساعت مفید</th><th>تأخیر</th><th>ناقص</th><th>مرخصی</th></tr></thead><tbody>
           ${d.departments.map((x) => `<tr><td>${esc(x.name)}</td><td>${fmt.num(x.employees)}</td><td>${fmt.num(x.presentDays)}</td><td>${fmt.min(x.totalEffective)}</td><td>${fmt.num(x.lateCount)}</td><td>${fmt.num(x.incompleteCount)}</td><td>${fmt.num(x.leaveDays)}</td></tr>`).join('') || `<tr><td colspan="7">${emptyBox('داده‌ای نیست.')}</td></tr>`}</tbody></table></div>${d.departments.length ? '' : emptyBox('دپارتمانی برای نمایش نیست.')}</div>
-        <div class="card flush mt"><div style="padding:18px 18px 0"><h3>جزئیات هر کارمند <span class="muted" style="font-weight:400;font-size:12px">(برای مرتب‌سازی روی عنوان ستون کلیک کنید)</span></h3></div><div class="table-wrap"><table id="rep-table">
+        <div class="card flush mt"><div class="u-panel-head"><h3>جزئیات هر کارمند <span class="muted table-hint">(برای مرتب‌سازی روی عنوان ستون کلیک کنید)</span></h3></div><div class="table-wrap"><table id="rep-table">
           <thead><tr>${th('name', 'کارمند')}${th('presentDays', 'روز حضور')}${th('totalEffective', 'مجموع مفید')}${th('avgEffective', 'میانگین روزانه')}${th('lateCount', 'تأخیر')}${th('earlyLeaveCount', 'خروج زودهنگام')}${th('overtimeMinutes', 'اضافه‌کاری')}${th('incompleteCount', 'ناقص')}${th('leaveDays', 'مرخصی')}<th>میانگین ورود</th></tr></thead><tbody>
           ${[...d.rows].sort((a, b) => {
             const f = sortKeys[repUi.sort] || sortKeys.totalEffective;
@@ -570,13 +570,13 @@
             <td>${esc(importKind(r))} · ${esc(r.scope === 'department' ? `دپارتمان «${r.department}»` : 'همه')}</td>
             <td>${AP.badge(cls, label)}${r.warning ? `<div class="form-msg err">${esc(r.warning)}</div>` : ''}</td></tr>`;
         }).join('');
-        return `${head}<div class="table-wrap" style="max-height:320px;overflow:auto"><table><thead><tr><th>خط</th><th>تاریخ</th><th>عنوان</th><th>نوع / شامل</th><th>وضعیت</th></tr></thead><tbody>${body}</tbody></table></div>`;
+        return `${head}<div class="table-wrap u-scroll-short"><table><thead><tr><th>خط</th><th>تاریخ</th><th>عنوان</th><th>نوع / شامل</th><th>وضعیت</th></tr></thead><tbody>${body}</tbody></table></div>`;
       }
       function openImport() {
         AP.modal({
           title: 'ورود گروهی تعطیلات', wide: true,
           body: `<form class="form" id="imp-form">
-            <p class="muted small" style="margin:0;line-height:2">هر خط یک تعطیلی با <b>تاریخ شمسی</b>: <span class="ltr">1405/01/01 نوروز</span> یا CSV: <span class="ltr">1405/01/03,عنوان,نیم‌روز,11:30,دپارتمان</span>
+            <p class="muted small import-help">هر خط یک تعطیلی با <b>تاریخ شمسی</b>: <span class="ltr">1405/01/01 نوروز</span> یا CSV: <span class="ltr">1405/01/03,عنوان,نیم‌روز,11:30,دپارتمان</span>
               (ستون‌های نوع، ساعت پایان و دپارتمان اختیاری‌اند؛ خط‌های خالی و خط‌های شروع‌شده با # نادیده گرفته می‌شوند.)</p>
             <label class="field"><span>فهرست تعطیلات</span><textarea name="text" rows="8" dir="auto" placeholder="1405/01/01 نوروز&#10;1405/01/02 نوروز"></textarea></label>
             <label class="field"><span>یا فایل CSV / متنی</span><input type="file" name="file" accept=".csv,.txt,text/csv,text/plain" /></label>
@@ -947,12 +947,12 @@
       }).join('');
 
       const errRows = s.recentErrors.length
-        ? s.recentErrors.map((e) => `<tr><td class="ltr">${esc(e.job_name)}</td><td>${esc(fmt.dateTime(e.finished_at || e.started_at))}</td><td class="ltr" style="white-space:normal;word-break:break-word">${esc(e.error || '—')}</td></tr>`).join('')
-        : '<tr><td colspan="3" class="muted" style="text-align:center;padding:18px">خطایی ثبت نشده است.</td></tr>';
+        ? s.recentErrors.map((e) => `<tr><td class="ltr">${esc(e.job_name)}</td><td>${esc(fmt.dateTime(e.finished_at || e.started_at))}</td><td class="ltr u-break-word">${esc(e.error || '—')}</td></tr>`).join('')
+        : '<tr><td colspan="3" class="muted u-center-pad">خطایی ثبت نشده است.</td></tr>';
 
       const alertsHtml = s.activeAlerts.length
         ? s.activeAlerts.map((a) => `<div class="kv-row"><span class="ltr">${esc(a.alert_key)}</span><span>${esc(a.detail || '')}</span></div>`).join('')
-        : '<div class="muted" style="padding:6px 0">هشدار فعالی وجود ندارد.</div>';
+        : '<div class="muted health-empty">هشدار فعالی وجود ندارد.</div>';
 
       const html = `
         <div class="view-header"><div><h2>وضعیت سیستم</h2><div class="sub">سلامت دیتابیس، بات، دیسک، بک‌آپ و Jobها · آخرین بررسی ${esc(fmt.dateTime(s.checkedAt))}</div></div>
@@ -962,17 +962,17 @@
             <div class="kv-row"><span>دیتابیس (خواندن/نوشتن آزمایشی)</span><span>${healthBadge(c.db.ok, 'سالم', 'خطا')}${c.db.detail ? ` <span class="muted ltr">${esc(c.db.detail)}</span>` : ''}</span></div>
             <div class="kv-row"><span>ارتباط بات با تلگرام (polling)</span><span>${bot.applicable ? healthBadge(bot.ok, 'برقرار', 'قطع') : AP.badge('holiday', 'در این پروسه اجرا نمی‌شود')}</span></div>
             ${bot.applicable ? `<div class="kv-row"><span>آخرین ارتباط موفق</span><span>${esc(bot.lastSuccessAt ? fmt.dateTime(bot.lastSuccessAt) : '—')}</span></div>` : ''}
-            ${bot.applicable && bot.lastError ? `<div class="kv-row"><span>آخرین خطای polling</span><span class="ltr" style="word-break:break-word">${esc(bot.lastError)}</span></div>` : ''}
+            ${bot.applicable && bot.lastError ? `<div class="kv-row"><span>آخرین خطای polling</span><span class="ltr u-break-word">${esc(bot.lastError)}</span></div>` : ''}
             <div class="kv-row"><span>فضای آزاد دیسک</span><span>${disk.freeMb != null ? `${healthBadge(disk.ok, 'کافی', 'کم')} <span class="ltr">${fmt.num(disk.freeMb)} / ${fmt.num(disk.totalMb)} MB</span>` : AP.badge('holiday', 'قابل‌اندازه‌گیری نیست')}</span></div>
             <div class="kv-row"><span>آخرین بک‌آپ</span><span>${backup.lastBackupAt ? `${esc(fmt.dateTime(backup.lastBackupAt))} (${fmt.num(backup.ageHours)} ساعت پیش)` : 'یافت نشد'}${backup.applicable ? ` ${healthBadge(backup.ok, 'به‌روز', 'قدیمی')}` : ' <span class="muted">(بررسی هشدار خاموش است)</span>'}</span></div>
             ${backup.suspect ? `<div class="kv-row"><span>فایل بک‌آپ مشکوک</span><span>${AP.badge('red', 'integrity_check ناموفق')} <span class="ltr">${esc(backup.suspect.file)}</span></span></div>` : ''}
             <div class="kv-row"><span>Jobهای ۷۲ ساعت اخیر</span><span>${healthBadge(c.jobs.ok, 'بدون شکست', `${fmt.num(c.jobs.failing.length)} شکست`)}</span></div></div></div>
           <div class="card"><h3>هشدارهای فعال</h3><div class="kv">${alertsHtml}</div>
-            <p class="muted" style="margin:14px 0 0;line-height:1.9">watchdog ${s.watchdog.enabled ? `هر چند دقیقه (<span class="ltr">${esc(s.watchdog.cron)}</span>) به ادمین‌ها در تلگرام هشدار می‌دهد؛ هشدار تکراریِ هر نوع حداکثر هر ${fmt.num(s.watchdog.throttleMinutes)} دقیقه` : 'خاموش است'}.</p></div>
+            <p class="muted u-section-note">watchdog ${s.watchdog.enabled ? `هر چند دقیقه (<span class="ltr">${esc(s.watchdog.cron)}</span>) به ادمین‌ها در تلگرام هشدار می‌دهد؛ هشدار تکراریِ هر نوع حداکثر هر ${fmt.num(s.watchdog.throttleMinutes)} دقیقه` : 'خاموش است'}.</p></div>
         </div>
-        <div class="card flush mt"><div style="padding:18px 18px 0"><h3>Jobهای زمان‌بندی‌شده</h3></div><div class="table-wrap"><table>
+        <div class="card flush mt"><div class="u-panel-head"><h3>Jobهای زمان‌بندی‌شده</h3></div><div class="table-wrap"><table>
           <thead><tr><th>نام</th><th>Cron</th><th>آخرین نتیجه</th><th>زمان آخرین نتیجه</th><th>آخرین موفقیت</th><th>مدت</th></tr></thead><tbody>${jobRows}</tbody></table></div></div>
-        <div class="card flush mt"><div style="padding:18px 18px 0"><h3>آخرین خطاهای Job</h3></div><div class="table-wrap"><table>
+        <div class="card flush mt"><div class="u-panel-head"><h3>آخرین خطاهای Job</h3></div><div class="table-wrap"><table>
           <thead><tr><th>Job</th><th>زمان</th><th>خطا</th></tr></thead><tbody>${errRows}</tbody></table></div></div>${resetOpts ? `${historyPurgeHtml()}${resetZoneHtml(resetOpts)}` : ''}`;
       return {
         html,

@@ -52,18 +52,18 @@
     return `<form class="form" id="shift-form">
       <div class="form-grid">
         <label class="field"><span>نام شیفت</span><input name="name" required maxlength="60" value="${esc(cur.name)}" placeholder="مثلاً: صبح" /></label>
-        <label class="check-row full" style="grid-column:1/-1"><input type="checkbox" name="isUntimed"${cur.isUntimed ? ' checked' : ''} /> شیفت چرخشی بدون ساعت (ثبت ورود/خروج و محاسبه‌ی تأخیر و کسری ندارد)</label>
+        <label class="check-row full u-full"><input type="checkbox" name="isUntimed"${cur.isUntimed ? ' checked' : ''} /> شیفت چرخشی بدون ساعت (ثبت ورود/خروج و محاسبه‌ی تأخیر و کسری ندارد)</label>
         <div data-timed-field><label class="field"><span>ساعت شروع</span><input type="time" name="startTime" required value="${esc(cur.startTime)}" dir="ltr" class="ltr-in" /></label></div>
         <div data-timed-field><label class="field"><span>ساعت پایان</span><input type="time" name="endTime" required value="${esc(cur.endTime)}" dir="ltr" class="ltr-in" /></label></div>
-        <label class="check-row full" style="grid-column:1/-1" data-timed-field><input type="checkbox" name="overnight"${cur.overnight ? ' checked' : ''} /> شیفت شب است (پایان بعد از نیمه‌شب، مثلاً ۲۲:۰۰ تا ۰۶:۰۰)</label>
+        <label class="check-row full u-full" data-timed-field><input type="checkbox" name="overnight"${cur.overnight ? ' checked' : ''} /> شیفت شب است (پایان بعد از نیمه‌شب، مثلاً ۲۲:۰۰ تا ۰۶:۰۰)</label>
         <div data-timed-field>${numField('graceLateMinutes', 'مهلت تأخیر (دقیقه)', 720)}</div>
         <div data-timed-field>${numField('graceEarlyMinutes', 'مهلت زودتر رفتن (دقیقه)', 720)}</div>
         <div data-timed-field>${numField('maxLunchMinutes', 'حداکثر ناهار مجاز (دقیقه؛ ۰ = بدون سقف)', 480)}</div>
         <div data-timed-field>${numField('fixedLunchDeductMinutes', 'کسر ثابت ناهار (دقیقه؛ ۰ = خاموش)', 480)}</div>
         <div data-timed-field>${optField('paidBreakCount', 'تعداد استراحت کوتاهِ با حقوق در روز (۰ تا ۱۰؛ خالی = تنظیمات سراسری)', 10)}</div>
         <div data-timed-field>${optField('paidBreakMinutes', 'استخر مجموع روزانه‌ی استراحت با حقوق (دقیقه، ۰ تا ۱۲۰؛ خالی = تنظیمات سراسری)', 120)}</div>
-        <p class="muted small full" data-timed-field style="grid-column:1/-1;margin:0">استراحت‌های کوتاهِ با حقوق از یک استخر مشترک روزانه استفاده می‌کنند؛ مازاد استخر، استراحت‌های بعد از تعداد مجاز و ناهار از ساعت کاری کم می‌شود. هر دو ۰ = خاموش.</p>
-        <div class="field full" style="grid-column:1/-1"><span>روزهای کاری این شیفت</span>
+        <p class="muted small full u-full u-m0" data-timed-field>استراحت‌های کوتاهِ با حقوق از یک استخر مشترک روزانه استفاده می‌کنند؛ مازاد استخر، استراحت‌های بعد از تعداد مجاز و ناهار از ساعت کاری کم می‌شود. هر دو ۰ = خاموش.</p>
+        <div class="field full u-full"><span>روزهای کاری این شیفت</span>
           <div class="chk-row">${DAY_ORDER.map((d) => `<label class="check-row"><input type="checkbox" name="workDays" value="${d}"${(cur.workDays || []).includes(d) ? ' checked' : ''} /> ${DAY_NAME[d]}</label>`).join('')}</div></div>
       </div>
       <div class="form-msg err"></div>
@@ -93,7 +93,7 @@
             <td><div class="row-actions"><button class="btn ghost small" data-assign="${s.id}">انتساب گروهی</button><button class="btn ghost small" data-edit="${s.id}" aria-label="ویرایش">${icon('edit')}</button>
               <button class="btn danger small" data-del="${s.id}" aria-label="حذف">${icon('trash')}</button></div></td></tr>`).join('')}
           </tbody></table></div>`
-          : `<div class="empty">${AP.icon('inbox')}هنوز شیفتی تعریف نشده است؛ همه‌ی کارمندان با ساعات پیش‌فرض تنظیمات محاسبه می‌شوند.</div>`}</div>`;
+          : `<div class="empty">${AP.icon('inbox')}<p>هنوز شیفتی تعریف نشده است؛ همه‌ی کارمندان با ساعات پیش‌فرض تنظیمات محاسبه می‌شوند.</p><button type="button" class="btn primary" data-empty-add>${icon('plus')} افزودن اولین شیفت</button></div>`}</div>`;
 
       function openForm(s) {
         const cur = s || DEFAULT_SHIFT;
@@ -137,9 +137,9 @@
         AP.modal({
           title: `کارمندان شیفت «${s.name}»`,
           body: d.users.length
-            ? `<div class="list">${d.users.map((u) => `<a class="item" href="#/profile/${u.id}" style="color:inherit;text-decoration:none">${AP.avatar(u.fullName, 'sm')}
+            ? `<div class="list">${d.users.map((u) => `<a class="item u-link-inherit" href="#/profile/${u.id}">${AP.avatar(u.fullName, 'sm')}
                 <div class="grow"><div class="title">${esc(u.fullName)}</div><div class="meta">${esc(u.department || '—')}</div></div></a>`).join('')}</div>
-              <p class="muted small" style="margin:12px 0 0">برای تغییر یا برداشتن شیفت، پرونده‌ی کارمند ← «اطلاعات و ویرایش».</p>`
+              <p class="muted small shift-help">برای تغییر یا برداشتن شیفت، پرونده‌ی کارمند ← «اطلاعات و ویرایش».</p>`
             : '<div class="empty">کارمندی در محدوده‌ی دسترسی شما به این شیفت منتسب نیست.</div>',
         });
       }
@@ -153,8 +153,8 @@
           body: `<form class="form" id="shift-bulk-form">
             <label class="field"><span>از تاریخ (شیفت از این روز به بعد مؤثر است)</span><input type="date" name="effectiveFrom" required value="${esc(localIso())}" /></label>
             <label class="field"><span>جستجوی کارمند</span><input type="search" id="bulk-q" placeholder="نام یا کد پرسنلی…" /></label>
-            <div class="check-row" style="margin:6px 0"><label><input type="checkbox" id="bulk-all" /> انتخاب همه‌ی نتایج</label> <span class="muted small" id="bulk-count"></span></div>
-            <div class="list" id="bulk-list" style="max-height:46vh;overflow:auto">${users.map((u) => `<label class="item" data-q="${esc((u.fullName + ' ' + (u.personnelCode || '')).toLowerCase())}" style="cursor:pointer">
+            <div class="check-row bulk-check"><label><input type="checkbox" id="bulk-all" /> انتخاب همه‌ی نتایج</label> <span class="muted small" id="bulk-count"></span></div>
+            <div class="list bulk-list" id="bulk-list">${users.map((u) => `<label class="item u-pointer" data-q="${esc((u.fullName + ' ' + (u.personnelCode || '')).toLowerCase())}">
                 <input type="checkbox" name="userIds" value="${u.id}"${u.shiftId === s.id ? ' checked' : ''} />
                 <div class="grow"><div class="title">${esc(u.fullName)}</div><div class="meta">${esc(u.department || '—')} · شیفت فعلی: ${esc(u.shiftName || 'پیش‌فرض')}</div></div></label>`).join('')}</div>
             <div class="form-msg err"></div>
@@ -198,6 +198,7 @@
           const byId = new Map(shifts.map((s) => [s.id, s]));
           $$('[data-assign]', page).forEach((b) => b.addEventListener('click', () => AP.attempt(() => openAssign(byId.get(Number(b.dataset.assign))))));
           $('#shift-add', page).addEventListener('click', () => openForm(null));
+          const emptyAdd = $('[data-empty-add]', page); if (emptyAdd) emptyAdd.addEventListener('click', () => openForm(null));
           $$('[data-edit]', page).forEach((b) => b.addEventListener('click', () => openForm(byId.get(Number(b.dataset.edit)))));
           $$('[data-users]', page).forEach((b) => b.addEventListener('click', () => AP.attempt(() => openUsers(byId.get(Number(b.dataset.users))))));
           $$('[data-del]', page).forEach((b) => b.addEventListener('click', async () => {
@@ -218,13 +219,13 @@
   // کارت «شیفت کاری» برای پرونده‌ی کارمند (فقط با مجوز shifts.edit؛ گیت در پروفایل). ورودی: کارمند (با shiftId) و فهرست شیفت‌ها.
   AP.shiftAssignCard = function shiftAssignCard(u, shifts) {
     const cur = u.shiftId == null ? '' : String(u.shiftId);
-    return `<div class="card" id="shift-card" style="margin-top:14px"><form class="form" id="shift-assign-form">
+    return `<div class="card shift-card" id="shift-card"><form class="form" id="shift-assign-form">
       <label class="field"><span>شیفت کاری</span><select name="shiftId">
         <option value=""${cur === '' ? ' selected' : ''}>— بدون شیفت (ساعات پیش‌فرض تنظیمات) —</option>
         ${shifts.map((s) => `<option value="${s.id}"${String(s.id) === cur ? ' selected' : ''}>${esc(s.name)} (${esc(s.startTime)}–${esc(s.endTime)}${s.overnight ? '، شب' : ''})</option>`).join('')}
       </select></label>
       <label class="field"><span>از تاریخ (روزهای قبل از آن تغییر نمی‌کنند)</span><input type="date" name="effectiveFrom" value="${esc(localIso())}" /></label>
-      ${shifts.length ? '' : '<p class="muted small" style="margin:0">هنوز شیفتی تعریف نشده است (منوی «شیفت‌ها»).</p>'}
+      ${shifts.length ? '' : '<p class="muted small u-m0">هنوز شیفتی تعریف نشده است (منوی «شیفت‌ها»).</p>'}
       <div class="form-msg"></div>
       <div class="modal-actions"><button class="btn primary" type="submit"${shifts.length ? '' : ' disabled'}>ذخیره‌ی شیفت</button></div>
     </form></div>`;

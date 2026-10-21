@@ -7,6 +7,19 @@
 
   const emptyBox = (text) => `<div class="empty">${AP.icon('inbox')}${esc(text)}</div>`;
 
+  function statTrendHtml(trend, field) {
+    const points = (trend || []).map((x) => Number(x[field])).filter(Number.isFinite);
+    if (points.length < 2) return '';
+    const current = points[points.length - 1];
+    const previous = points[points.length - 2];
+    const delta = current - previous;
+    const max = Math.max(1, ...points);
+    const coords = points.map((v, i) => `${Math.round((i / Math.max(1, points.length - 1)) * 92 + 4)},${Math.round(30 - (v / max) * 24)}`).join(' ');
+    const dir = delta > 0 ? 'up' : delta < 0 ? 'down' : 'same';
+    const arrow = delta > 0 ? '↑' : delta < 0 ? '↓' : '—';
+    return `<div class="stat-trend ${dir}" aria-label="${delta === 0 ? 'بدون تغییر نسبت به دیروز' : `${Math.abs(delta)} ${delta > 0 ? 'بیشتر' : 'کمتر'} از دیروز`}"><span>${arrow} ${delta === 0 ? 'بدون تغییر' : fmt.num(Math.abs(delta))} نسبت به دیروز</span><svg class="sparkline" viewBox="0 0 100 34" aria-hidden="true"><polyline points="${coords}"/></svg></div>`;
+  }
+
   // ---------- نمودار میله‌ای ۱۴ روز اخیر ----------
   function trendChart(trend) {
     const W = 720, H = 230, padT = 14, padB = 30, padX = 12;
@@ -47,12 +60,12 @@
       const d = await AP.api('/admin/overview');
       const t = d.totals;
       const tiles = [
-        ['present', 'حاضر در شرکت', t.present, 'g-green', 'in'],
+        ['present', 'حاضر در شرکت', t.present, 'g-green', 'in', 'present'],
         ['on_break', 'در استراحت', t.onBreak, 'g-orange', 'coffee'],
         ['checked_out', 'خروج کرده‌اند', t.checkedOut, 'g-purple', 'out'],
         ['absent', 'هنوز نیامده / غایب', t.absent, 'g-red', 'alert'],
         ['leave', 'در مرخصی', t.onLeave, 'g-blue', 'leave'],
-        ['late', 'ورود با تأخیر امروز', t.late, 'g-orange', 'clock'],
+        ['late', 'ورود با تأخیر امروز', t.late, 'g-orange', 'clock', 'late'],
         ['incomplete', 'رکورد ناقص', t.incomplete, 'g-gray', 'alert'],
       ];
       const html = `
@@ -68,10 +81,10 @@
         <div class="stat-grid">
           <div class="stat"><div class="stat-icon g-green">${icon('employees')}</div>
             <div class="stat-value">${fmt.num(t.employees)}</div><div class="stat-label">کارمند فعال</div></div>
-          ${tiles.map(([key, label, val, g, ic]) => `
+          ${tiles.map(([key, label, val, g, ic, trendField]) => `
             <button class="stat" data-go="live" data-param="${key}">
               <div class="stat-icon ${g}">${icon(ic)}</div>
-              <div class="stat-value">${fmt.num(val)}</div><div class="stat-label">${esc(label)}</div></button>`).join('')}
+              <div class="stat-value">${fmt.num(val)}</div><div class="stat-label">${esc(label)}</div>${trendField ? statTrendHtml(d.trend, trendField) : ''}</button>`).join('')}
         </div>
 
         <div class="grid-2">
@@ -82,14 +95,14 @@
           <div class="card"><h3>حضور امروز به تفکیک دپارتمان</h3>
             ${d.departments.length ? d.departments.map((x) => `
               <div class="hbar"><div class="hbar-top"><span>${esc(x.name)}</span><span>${fmt.num(x.present)} از ${fmt.num(x.total)}</span></div>
-              <div class="hbar-track"><div class="hbar-fill" style="width:${x.total ? Math.round((x.present / x.total) * 100) : 0}%"></div></div></div>`).join('') : emptyBox('دپارتمانی ثبت نشده است.')}
+              <div class="hbar-track"><div class="hbar-fill" data-progress="${x.total ? Math.round((x.present / x.total) * 100) : 0}"></div></div></div>`).join('') : emptyBox('دپارتمانی ثبت نشده است.')}
           </div>
         </div>
 
         <div class="grid-2 mt">
           <div class="card"><h3>بیشترین تأخیر در ۳۰ روز اخیر</h3>
             ${d.topLate.length ? `<div class="kv">${d.topLate.map((x) => `
-              <div class="kv-row"><span><a href="#/profile/${x.userId}" style="color:inherit">${esc(x.fullName)}</a></span>
+              <div class="kv-row"><span><a class="u-link-inherit" href="#/profile/${x.userId}">${esc(x.fullName)}</a></span>
               <span>${fmt.num(x.count)} بار · ${fmt.min(x.minutes)}</span></div>`).join('')}</div>` : emptyBox('تأخیری ثبت نشده است. 🎉')}
           </div>
 
@@ -142,7 +155,7 @@
           <div><h2><span class="live-dot"></span>تابلوی زنده</h2>
             <div class="sub">${esc(fmt.dateLong(data.date))} · به‌روزرسانی خودکار هر ۳۰ ثانیه</div></div>
           <div class="header-actions">
-            <input id="live-q" type="search" placeholder="جستجوی نام…" aria-label="جستجوی نام" style="width:200px" />
+            <input id="live-q" class="search-short" type="search" placeholder="جستجوی نام…" aria-label="جستجوی نام" />
           </div>
         </div>
         <div class="chips" id="live-chips"></div>
@@ -166,7 +179,7 @@
             body.innerHTML = list.length ? list.map((r) => {
               const rec = r.record;
               return `<tr>
-                <td><a class="cell-user" href="#/profile/${r.user.id}" style="color:inherit;text-decoration:none">${AP.avatar(r.user.fullName, 'sm')}
+                <td><a class="cell-user u-link-inherit" href="#/profile/${r.user.id}">${AP.avatar(r.user.fullName, 'sm')}
                   <span><b>${esc(r.user.fullName)}</b><small>${esc(r.user.department || '—')}</small></span></a></td>
                 <td>${AP.stateBadge(r.state)} ${r.late ? AP.badge('late', `تأخیر ${fmt.min(r.summary.lateMinutes)}`) : ''} ${r.onMission ? AP.badge('mission', 'مأموریت') : ''}</td>
                 <td class="num">${rec && rec.check_in_time ? fmt.clock(rec.check_in_time) : '—'} ${rec && rec.segmentCount > 1 ? AP.badge('purple', `${fmt.num(rec.segmentCount)} نوبت`) : ''}</td>
@@ -219,7 +232,7 @@
         <label class="field"><span>سرپرست مستقیم</span><select name="managerId"><option value="">— ندارد —</option>
           ${managers.map((m) => `<option value="${m.id}" ${u && u.managerId === m.id ? 'selected' : ''}>${esc(m.fullName)}</option>`).join('')}</select></label>
         <label class="field"><span>آیدی عددی تلگرام</span><input name="telegramUserId" class="ltr" inputmode="numeric" value="${esc(u ? u.telegramUserId || '' : '')}" /></label>
-        ${u ? `<label class="check-row full" style="grid-column:1/-1"><input type="checkbox" name="isActive" ${u.isActive ? 'checked' : ''} /> حساب فعال است</label>` : ''}
+        ${u ? `<label class="check-row full u-full"><input type="checkbox" name="isActive" ${u.isActive ? 'checked' : ''} /> حساب فعال است</label>` : ''}
       </div>`;
   }
   AP.employeeFormFields = employeeFormFields;
@@ -336,7 +349,7 @@
         else if (todayRec.check_in_time) todayKey = 'present';
       } else if (d.onLeaveToday) todayKey = 'leave';
 
-      const stat = (g, ic, v, l, hint) => `<div class="stat"><div class="stat-icon ${g}">${icon(ic)}</div><div class="stat-value" style="font-size:21px">${v}</div><div class="stat-label">${l}</div>${hint ? `<div class="stat-hint">${hint}</div>` : ''}</div>`;
+      const stat = (g, ic, v, l, hint) => `<div class="stat"><div class="stat-icon ${g}">${icon(ic)}</div><div class="stat-value u-stat-value-sm">${v}</div><div class="stat-label">${l}</div>${hint ? `<div class="stat-hint">${hint}</div>` : ''}</div>`;
 
       const tabs = [['attendance', 'تردد'], ['leave', 'مرخصی و مأموریت'], ['disputes', 'اعتراض‌ها'], ['info', 'اطلاعات و ویرایش']];
       if (AP.scheduleTab && AP.can('schedule.read')) tabs.push(['schedule', 'برنامه‌ی روزبه‌روز']); // B2
@@ -359,7 +372,7 @@
               ${AP.stateBadge(todayKey)}
               ${d.lateLimit && d.lateLimit.limit > 0 ? AP.badge(d.lateLimit.overLimit ? 'red' : '', `تأخیر این ماه: ${fmt.num(d.lateLimit.lateCount)} از ${fmt.num(d.lateLimit.limit)}${d.lateLimit.enabled ? '' : ' (اعمال خاموش)'}`) : ''}
             </div>
-            <div class="muted mt" style="margin-top:10px;font-size:12.5px">سرپرست مستقیم: ${esc(u.managerName || '—')} · عضویت از ${esc(fmt.dateLong(u.createdAt))}</div>
+            <div class="muted mt profile-meta">سرپرست مستقیم: ${esc(u.managerName || '—')} · عضویت از ${esc(fmt.dateLong(u.createdAt))}</div>
           </div>
           <div class="header-actions">
             ${AP.can('team.week_view') ? `<button class="btn ghost" id="pf-week">${icon('reports')} برنامه‌ی هفتگی</button>` : ''}
@@ -370,10 +383,10 @@
           </div>
         </div>
 
-        <div class="filters" style="margin-bottom:12px">
+        <div class="filters u-mb-12">
           <label class="field"><span>بازه‌ی آمار</span><select id="pf-days">
             ${[7, 14, 30, 60, 90, 180].map((n) => `<option value="${n}" ${n === profileUi.days ? 'selected' : ''}>${fmt.num(n)} روز اخیر</option>`).join('')}</select></label>
-          <div class="muted" style="padding-bottom:10px">${esc(fmt.dateLong(d.range.from))} تا ${esc(fmt.dateLong(d.range.to))}</div>
+          <div class="muted filter-range">${esc(fmt.dateLong(d.range.from))} تا ${esc(fmt.dateLong(d.range.to))}</div>
         </div>
 
         <div class="stat-grid">
@@ -416,7 +429,7 @@
           if (!d.disputes.length) return `<div class="card">${emptyBox('اعتراضی ثبت نشده است.')}</div>`;
           return `<div class="list">${d.disputes.map((x) => `
             <div class="item"><div class="grow"><div class="title">${AP.badge(x.status, x.status === 'open' ? 'باز' : 'بسته‌شده')}
-              <span class="muted" style="font-weight:400">${esc(fmt.dateTime(x.created_at))}</span></div><p class="text">${esc(x.message)}</p></div>
+              <span class="muted font-regular">${esc(fmt.dateTime(x.created_at))}</span></div><p class="text">${esc(x.message)}</p></div>
               <button class="btn ghost small" data-go-disputes>مدیریت اعتراض‌ها</button></div>`).join('')}</div>`;
         },
         info() {
@@ -435,7 +448,7 @@
         },
         team() {
           return `<div class="list">${d.team.map((m) => `
-            <a class="item" href="#/profile/${m.id}" style="color:inherit;text-decoration:none">${AP.avatar(m.fullName, 'sm')}
+            <a class="item u-link-inherit" href="#/profile/${m.id}">${AP.avatar(m.fullName, 'sm')}
               <div class="grow"><div class="title">${esc(m.fullName)}</div><div class="meta">${esc(m.department || '—')}</div></div>
               ${m.isActive ? AP.badge('green', 'فعال') : AP.badge('red', 'غیرفعال')}</a>`).join('')}</div>`;
         },

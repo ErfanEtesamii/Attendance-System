@@ -182,14 +182,25 @@
   AP.avatar = (name, cls = '') => `<span class="avatar ${cls}">${esc(AP.initials(name))}</span>`;
 
   // ---------- توست ----------
-  AP.toast = function toast(msg, isErr) {
+  const toastQueue = [];
+  let toastActive = false;
+  function showNextToast() {
+    if (toastActive || !toastQueue.length) return;
+    toastActive = true;
+    const { msg, isErr } = toastQueue.shift();
     const el = $('#toast');
     el.textContent = msg;
     el.classList.toggle('err', !!isErr);
     el.setAttribute('role', isErr ? 'alert' : 'status'); // خطا فوراً اعلام شود (S5-9c)
     el.classList.remove('hidden');
-    clearTimeout(toast._t);
-    toast._t = setTimeout(() => el.classList.add('hidden'), isErr ? 4200 : 2600);
+    setTimeout(() => {
+      el.classList.add('hidden');
+      setTimeout(() => { toastActive = false; showNextToast(); }, 180);
+    }, isErr ? 3000 : 2200);
+  }
+  AP.toast = function toast(msg, isErr) {
+    toastQueue.push({ msg: String(msg || ''), isErr: !!isErr });
+    showNextToast();
   };
 
   // ---------- API ----------
@@ -394,7 +405,7 @@
       const m = AP.modal({
         title, top: true,
         body: `<form class="form">
-          ${message ? `<p class="muted" style="margin:0;line-height:1.9">${esc(message)}</p>` : ''}
+          ${message ? `<p class="muted u-copy">${esc(message)}</p>` : ''}
           <label class="field"><span>${esc(label)}</span><textarea name="reason" rows="3" ${required ? 'required' : ''} placeholder="${esc(placeholder)}"></textarea></label>
           <div class="modal-actions">
             <button type="submit" class="btn ${danger ? 'danger' : 'primary'}">${esc(confirmText)}</button>
@@ -422,7 +433,7 @@
       const finish = (v) => { if (!done) { done = true; resolve(v); } };
       const m = AP.modal({
         title, top: true,
-        body: `<p style="margin:0 0 18px;line-height:1.9">${esc(message)}</p>
+        body: `<p class="u-copy-gap">${esc(message)}</p>
           <div class="modal-actions">
             <button type="button" class="btn ${danger ? 'danger' : 'primary'}" data-ok>${esc(confirmText)}</button>
             <button type="button" class="btn ghost" data-cancel>انصراف</button></div>`,
@@ -500,6 +511,7 @@
       const result = await def.render(param);
       if (token !== routeToken) return; // کاربر وسط بارگذاری صفحه عوض کرد
       page.innerHTML = result.html;
+      $$('[data-progress]', page).forEach((el) => el.style.setProperty('--progress', `${Math.max(0, Math.min(100, Number(el.dataset.progress) || 0))}%`));
       window.scrollTo({ top: 0 });
       if (result.mount) result.mount(page);
       page.removeAttribute('aria-busy');
@@ -694,27 +706,79 @@
   function setupSearch() {
     const input = $('#global-search');
     const box = $('#search-results');
-    const hide = () => box.classList.add('hidden');
-    input.addEventListener('input', async () => {
+    input.setAttribute('role', 'combobox');
+    input.setAttribute('aria-autocomplete', 'list');
+    input.setAttribute('aria-controls', 'search-results');
+    input.setAttribute('aria-expanded', 'false');
+    box.setAttribute('role', 'listbox');
+    let active = -1;
+    const hide = () => { box.classList.add('hidden'); input.setAttribute('aria-expanded', 'false'); active = -1; input.removeAttribute('aria-activedescendant'); };
+    const commands = () => [
+      ...AP.nav.filter((n) => AP.viewAllowed(AP.views[n.id])).map((n) => ({ type: 'page', id: n.id, label: n.label, detail: n.group || 'صفحه' })),
+      { type: 'action', id: 'refresh', label: 'تازه‌سازی صفحه', detail: 'اقدام سریع' },
+      { type: 'action', id: 'theme', label: 'تغییر تم روشن یا تیره', detail: 'اقدام سریع' },
+      { type: 'action', id: 'density', label: 'تغییر تراکم نمایش', detail: 'اقدام سریع' },
+    ];
+    const paintActive = () => {
+      const items = $$('.search-item', box);
+      items.forEach((el, i) => el.classList.toggle('active', i === active));
+      if (items[active]) { items[active].id = items[active].id || `cmd-${active}`; input.setAttribute('aria-activedescendant', items[active].id); items[active].scrollIntoView({ block: 'nearest' }); }
+    };
+    const render = async () => {
       const q = input.value.trim().toLowerCase();
-      if (!q) return hide();
-      const users = await AP.loadUsers().catch(() => []);
+      const pages = commands().filter((x) => !q || x.label.toLowerCase().includes(q));
+      const users = q && AP.can('users.read') ? await AP.loadUsers().catch(() => []) : [];
       const hits = users
         .filter((u) => (u.fullName || '').toLowerCase().includes(q) || (u.personnelCode || '').toLowerCase().includes(q))
         .slice(0, 8);
-      box.innerHTML = hits.length
-        ? hits.map((u) => `<button class="search-item" data-id="${u.id}">${AP.avatar(u.fullName, 'sm')}<span>${esc(u.fullName)}</span><small>${esc(u.department || '')}</small></button>`).join('')
-        : '<div class="empty" style="padding:14px">موردی پیدا نشد.</div>';
+      const pageHtml = pages.slice(0, q ? 8 : 12).map((x) => `<button type="button" role="option" class="search-item" ${x.type === 'action' ? `data-action="${esc(x.id)}"` : `data-view="${esc(x.id)}"`}>${AP.icon(x.type === 'action' ? 'settings' : 'dashboard')}<span>${esc(x.label)}</span><small>${esc(x.detail)}</small></button>`).join('');
+      const userHtml = hits.map((u) => `<button type="button" role="option" class="search-item" data-id="${u.id}">${AP.avatar(u.fullName, 'sm')}<span>${esc(u.fullName)}</span><small>${esc(u.department || '')}</small></button>`).join('');
+      box.innerHTML = pageHtml + userHtml || '<div class="empty u-empty-compact">موردی پیدا نشد.</div>';
       box.classList.remove('hidden');
+      input.setAttribute('aria-expanded', 'true');
+      active = -1;
+    };
+    input.addEventListener('input', render);
+    input.addEventListener('focus', render);
+    input.addEventListener('keydown', (e) => {
+      const items = $$('.search-item', box);
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (box.classList.contains('hidden')) render(); active = items.length ? (active + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length : -1; paintActive(); }
+      else if (e.key === 'Enter' && active >= 0 && items[active]) { e.preventDefault(); items[active].click(); }
+      else if (e.key === 'Escape') { hide(); input.blur(); }
     });
     box.addEventListener('click', (e) => {
       const b = e.target.closest('.search-item');
       if (!b) return;
       hide();
       input.value = '';
-      AP.go('profile', b.dataset.id);
+      if (b.dataset.action === 'refresh') $('#refresh-btn').click();
+      else if (b.dataset.action === 'theme') $('#theme-btn').click();
+      else if (b.dataset.action === 'density') $('#density-btn').click();
+      else AP.go(b.dataset.view || 'profile', b.dataset.id || null);
     });
     document.addEventListener('click', (e) => { if (!e.target.closest('.search-box')) hide(); });
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); input.focus(); input.select(); render(); }
+    });
+  }
+
+  function setupDensity() {
+    const btn = $('#density-btn');
+    if (!btn) return;
+    const apply = (value) => {
+      const compact = value === 'compact';
+      if (document.body && document.body.dataset) document.body.dataset.density = compact ? 'compact' : 'comfortable';
+      btn.setAttribute('aria-pressed', compact ? 'true' : 'false');
+      btn.title = compact ? 'نمایش راحت' : 'نمایش فشرده';
+    };
+    let stored = 'comfortable';
+    try { stored = localStorage.getItem('adminDensity') || stored; } catch (_) {}
+    apply(stored);
+    btn.addEventListener('click', () => {
+      const next = document.body && document.body.dataset && document.body.dataset.density === 'compact' ? 'comfortable' : 'compact';
+      apply(next);
+      try { localStorage.setItem('adminDensity', next); } catch (_) {}
+    });
   }
 
   async function enterApp() {
@@ -724,7 +788,7 @@
     await AP.loadPermissions(); // قبل از ساخت منو؛ بدون آن همه‌چیز بسته می‌ماند
     // فقط برچسب نمایشی زیر لوگو (کنترل دسترسی نیست)
     $('.brand-sub').textContent = { admin: 'پنل مدیریتی', manager: 'پنل سرپرست', hr: 'پنل منابع انسانی', employee: 'پنل کارمند' }[me.role] || 'پنل';
-    if (AP.selfOnly()) $('.search-box').classList.add('hidden'); // بدون users.read کس دیگری را جستجو نمی‌کند
+    if (AP.selfOnly()) $('#global-search').placeholder = 'جستجوی صفحه یا اقدام…'; // بدون users.read فقط فرمان‌ها/صفحه‌ها، نه افراد
     $('#me-avatar').textContent = AP.initials(me.fullName);
     $('#me-name').textContent = me.fullName;
     $('#me-role').textContent = AP.ROLE[me.role] || me.role;
@@ -733,6 +797,7 @@
     AP.rail.apply(AP.rail.read(), false);
     buildNav();
     setupSearch();
+    setupDensity();
     setupRailTip();
     $('#rail-toggle').addEventListener('click', () => { AP.rail.toggle(); const t = $('#rail-tip'); if (t) t.classList.remove('show'); });
     $('#menu-btn').addEventListener('click', () => {

@@ -20,14 +20,14 @@
   const ui = { userId: null, start: '' };
 
   function kpi(group, ic, value, label, hint) {
-    return `<div class="stat"><div class="stat-icon ${group}">${icon(ic)}</div><div class="stat-value" style="font-size:21px">${value}</div><div class="stat-label">${esc(label)}</div>${hint ? `<div class="stat-hint">${hint}</div>` : ''}</div>`;
+    return `<div class="stat"><div class="stat-icon ${group}">${icon(ic)}</div><div class="stat-value u-stat-value-sm">${value}</div><div class="stat-label">${esc(label)}</div>${hint ? `<div class="stat-hint">${hint}</div>` : ''}</div>`;
   }
 
   function completionBar(tasks) {
     const pct = tasks.completionPercent;
     return `<div class="hbar"><div class="hbar-top"><span>تکمیل تسک‌های هفته</span><span>${pct == null ? '—' : `${fmt.num(pct)}٪`}</span></div>
-      <div class="hbar-track"><div class="hbar-fill" style="width:${pct == null ? 0 : pct}%"></div></div>
-      <div class="muted" style="font-size:12px;margin-top:4px">${fmt.num(tasks.done)} انجام‌شده، ${fmt.num(tasks.partial)} ناقص، ${fmt.num(tasks.notDone)} انجام‌نشده از ${fmt.num(tasks.total)} سررسیدشده</div></div>`;
+      <div class="hbar-track"><div class="hbar-fill" data-progress="${pct == null ? 0 : pct}"></div></div>
+      <div class="muted task-summary-meta">${fmt.num(tasks.done)} انجام‌شده، ${fmt.num(tasks.partial)} ناقص، ${fmt.num(tasks.notDone)} انجام‌نشده از ${fmt.num(tasks.total)} سررسیدشده</div></div>`;
   }
 
   function weekHeader(r) {
@@ -44,7 +44,7 @@
             ${planBadge(r.plan)}
             ${r.summary.closed.allClosed ? AP.badge('', 'ماه بسته (فقط‌خواندنی)') : r.summary.closed.partlyClosed ? AP.badge('', 'بخشی از هفته در ماه بسته') : ''}
           </div>
-          <div class="muted mt" style="margin-top:10px;font-size:12.5px">شیفت مؤثر امروز: ${shiftText}</div>
+          <div class="muted mt profile-meta">شیفت مؤثر امروز: ${shiftText}</div>
         </div>
         <div class="header-actions">
           <div class="week-nav" role="group" aria-label="ناوبری هفته">
@@ -54,7 +54,7 @@
           </div>
         </div>
       </div>
-      <p class="sub" style="margin:-6px 0 16px">هفته‌ی ${esc(r.week.jalaliStart)} تا ${esc(r.week.jalaliEnd)}</p>`;
+      <p class="sub week-range">هفته‌ی ${esc(r.week.jalaliStart)} تا ${esc(r.week.jalaliEnd)}</p>`;
   }
 
   // برچسب‌های «نوع روز» (مثل DAY_KIND_LABEL سمت سرور در employeeWeekService، ولی به‌شکل نشان رنگی)
@@ -93,7 +93,7 @@
       : (d.isFuture || d.isToday ? 'هنوز ثبت نشده' : '—');
     const planned = d.schedule.start && d.schedule.end ? `برنامه: ${esc(d.schedule.start)}–${esc(d.schedule.end)}` : '';
     const eff = att && att.hasCheckIn && att.effectiveMinutes != null ? `ساعت مفید: ${fmt.min(att.effectiveMinutes)}` : '';
-    return `<div class="day-att"><span>${esc(times)}</span><span class="muted">${esc(planned)}</span></div>${eff ? `<div class="muted" style="font-size:11px">${esc(eff)}</div>` : ''}`;
+    return `<div class="day-att"><span>${esc(times)}</span><span class="muted">${esc(planned)}</span></div>${eff ? `<div class="muted text-xs">${esc(eff)}</div>` : ''}`;
   }
 
   // H5-ب: تسک واجبِ سرپرست — «🔒 واجب» + فقط‌خواندنی + پیشرفت «x از y گزارش مشاهده شد»؛ دکمه‌ی «مشاهده‌ی گزارش‌ها» فقط برای خودِ سرپرست
@@ -114,7 +114,7 @@
       <div class="title">${AP.badge('blue', '🔒 واجب', true)}${esc(t.title)}<span class="sr-only">تسک سیستمی؛ فقط‌خواندنی</span></div>
       <div class="day-task-meta">${AP.badge(cls, label)}</div>
       ${r ? `<div class="rv-progress-text" role="status">${esc(reviewProgressText(r))}</div>` : ''}
-      ${pct == null ? '' : `<div class="rv-progress" role="progressbar" aria-label="پیشرفت مشاهده‌ی گزارش‌ها" aria-valuemin="0" aria-valuemax="${r.reportCount}" aria-valuenow="${r.reviewedCount}"><div class="rv-progress-fill" style="width:${pct}%"></div></div>`}
+      ${pct == null ? '' : `<div class="rv-progress" role="progressbar" aria-label="پیشرفت مشاهده‌ی گزارش‌ها" aria-valuemin="0" aria-valuemax="${r.reportCount}" aria-valuenow="${r.reviewedCount}"><div class="rv-progress-fill" data-progress="${pct}"></div></div>`}
       ${r && !r.notYet && isSelf && AP.can('taskreports.read') ? `<button type="button" class="btn ghost small rv-open" data-act="open-reviews" data-date="${esc(r.reviewDate)}">مشاهده‌ی گزارش‌ها</button>` : ''}
     </li>`;
   }
@@ -132,7 +132,7 @@
     ].filter(Boolean).join('');
     return `<li class="day-task${t.isUrgent ? ' is-urgent' : ''}">
       <div class="title">${t.isUrgent ? AP.badge('red', t.selfAssigned ? '⚡ فوری (خودش)' : '⚡ فوری', true) : ''}${t.priority === 'high' && !t.isUrgent ? AP.badge('late', 'اولویت بالا') : ''}${esc(t.title)}</div>
-      ${t.isUrgent && ((t.selfAssigned && t.scheduledStartTime && t.urgentDeadlineTime) || (!t.selfAssigned && t.assignedBy)) ? `<div class="muted" style="font-size:11px">${t.selfAssigned ? `زمان: ${esc(t.scheduledStartTime)} تا ${esc(t.urgentDeadlineTime)}` : `از طرف: ${esc(t.assignedBy)}${t.urgentDeadlineTime ? ` · مهلت ${esc(t.urgentDeadlineTime)}` : ''}`}</div>` : ''}
+      ${t.isUrgent && ((t.selfAssigned && t.scheduledStartTime && t.urgentDeadlineTime) || (!t.selfAssigned && t.assignedBy)) ? `<div class="muted text-xs">${t.selfAssigned ? `زمان: ${esc(t.scheduledStartTime)} تا ${esc(t.urgentDeadlineTime)}` : `از طرف: ${esc(t.assignedBy)}${t.urgentDeadlineTime ? ` · مهلت ${esc(t.urgentDeadlineTime)}` : ''}`}</div>` : ''}
       <div class="day-task-meta">${meta}</div>
       ${reasonText ? `<div class="reason">${esc(reasonText)}</div>` : ''}
       ${t.note ? `<div class="reason">توضیح انجام: ${esc(t.note)}</div>` : ''}
@@ -167,7 +167,7 @@
     const tasks = d.tasks || [];
     const taskList = tasks.length
       ? `<ul class="day-tasks">${tasks.map((t) => taskRow(t, isSelf, opts)).join('')}</ul>`
-      : `<div class="muted" style="font-size:11.5px">تسکی برای این روز ثبت نشده است.</div>`;
+      : `<div class="muted text-xs-plus">تسکی برای این روز ثبت نشده است.</div>`;
     const reviewNote = d.review && d.review.reviewed
       ? `<div class="muted day-reviewed">${icon('check', 14)} مشاهده‌شده توسط سرپرست${d.review.reviews[0] && d.review.reviews[0].comment ? `: «${esc(d.review.reviews[0].comment)}»` : ''}</div>` : '';
     return `<details class="card day-card${d.isToday ? ' is-today' : ''}" open>

@@ -114,7 +114,7 @@
     }).join('');
     const body = visible.map((r) => {
       const u = r.user;
-      return `<tr class="${u.isActive ? '' : 'inactive'}"><td class="cal-name"><div class="cell-user">${AP.avatar(u.fullName, 'sm')}<div><b><a href="#/profile/${esc(u.id)}" style="color:inherit">${esc(u.fullName)}</a>${u.isActive ? '' : ' <small>(غیرفعال)</small>'}</b><small>${esc(u.department || '')}</small></div></div></td>${r.days.map((c, i) => cellHtml(r, c, i)).join('')}</tr>`;
+      return `<tr class="${u.isActive ? '' : 'inactive'}"><td class="cal-name"><div class="cell-user">${AP.avatar(u.fullName, 'sm')}<div><b><a class="u-link-inherit" href="#/profile/${esc(u.id)}">${esc(u.fullName)}</a>${u.isActive ? '' : ' <small>(غیرفعال)</small>'}</b><small>${esc(u.department || '')}</small></div></div></td>${r.days.map((c, i) => cellHtml(r, c, i)).join('')}</tr>`;
     }).join('');
     const sum = visible.length > 1
       ? `<tfoot><tr class="cal-sum"><td class="cal-name">هم‌زمان مرخصی/مأموریت</td>${counts.map((c, i) => {
@@ -155,7 +155,7 @@
     AP.modal({
       title: `${row.user.fullName} — ${fmt.dateFull(cell.date)}`,
       body: `<div class="kv">${kv.map(([k, v]) => `<div class="kv-row"><span>${esc(k)}</span><span>${v}</span></div>`).join('')}</div>
-        <div class="modal-actions" style="margin-top:14px"><a class="btn ghost small" href="#/profile/${esc(row.user.id)}" data-close-x>پروفایل کارمند</a></div>`,
+        <div class="modal-actions u-actions-center"><a class="btn ghost small" href="#/profile/${esc(row.user.id)}" data-close-x>پروفایل کارمند</a></div>`,
       onMount(b, h) {
         const a = $('[data-close-x]', b);
         if (a) a.addEventListener('click', () => h.close());

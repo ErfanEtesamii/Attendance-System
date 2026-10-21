@@ -9,6 +9,7 @@ const vm = require('node:vm');
 const root = path.join(__dirname, '..');
 const read = (f) => fs.readFileSync(path.join(root, f), 'utf8').replace(/\r\n/g, '\n');
 const CSS = read('public-admin/css/style.css');
+const TOKENS = read('public/css/tokens.css');
 const HTML = read('public-admin/index.html');
 
 // ---------- DOM ساختگی ----------
@@ -281,7 +282,7 @@ describe('T3 · index.html', () => {
 const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 const lum = (c) => { const f = (x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
 const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
-const vars = (header) => { const i = CSS.indexOf(header); const seg = CSS.slice(i, CSS.indexOf('\n}', i)); return Object.fromEntries([...seg.matchAll(/--([a-z0-9-]+):\s*(#[0-9a-f]{6});/gi)].map((m) => [m[1], hex(m[2])])); };
+const vars = (header) => { const i = TOKENS.indexOf(header); const seg = TOKENS.slice(i, TOKENS.indexOf('\n}', i)); return Object.fromEntries([...seg.matchAll(/--([a-z0-9-]+):\s*(#[0-9a-f]{6});/gi)].map((m) => [m[1], hex(m[2])])); };
 const THEMES = { روشن: vars(':root[data-theme="light"] {'), تیره: vars(':root,\n:root[data-theme="dark"] {') };
 const mix = (fg, bg, p) => fg.map((v, i) => v * p + bg[i] * (1 - p));
 
