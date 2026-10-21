@@ -1,6 +1,6 @@
 # CHANGELOG
 
-وضعیت و جزئیات کامل فازها: [`PROJECT_STATUS.md`](PROJECT_STATUS.md) — معماری: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+وضعیت و جزئیات کامل فازها: [`PROJECT_STATUS.md`](PROJECT_STATUS.md) — معماری: [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md)
 
 ## [Unreleased] — بخش ۴ (ممیزی)
 
@@ -19,13 +19,13 @@
 ### فاز ۱۹ — M1: سبک‌سازی و اصلاح دسترس‌پذیری Mini App
 - blur سراسری کارت/هدر، حباب‌های ثابت و انیمیشن بی‌نهایت لوگو حذف شد؛ blur فقط روی نوار پایین باقی ماند و قواعد override انتهایی در محل اصلی کامپوننت‌ها ادغام شدند.
 - کنترل‌های بومی از تم جاری پیروی می‌کنند، حلقه‌ی فوکوس واحد و پُرکنتراست شد و متن غیرفعال نوار پایین با `--rail-text` در هر دو تم AA است (روشن ۵٫۵۵:۱، تیره ۱۲٫۶۰:۱).
-- تست رگرسیون `phase19M1.test.js` و مستندات [`docs/PHASE19_DECISIONS.md`](docs/PHASE19_DECISIONS.md) / [`docs/PHASE19_DEPLOY.md`](docs/PHASE19_DEPLOY.md) اضافه شد. هیچ API، migration، تنظیم یا منطق محاسبه تغییر نکرد.
+- تست رگرسیون `phase19M1.test.js` و مستندات [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md) / [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md) اضافه شد. هیچ API، migration، تنظیم یا منطق محاسبه تغییر نکرد.
 
 ### فاز ۱۸ — ناهار، استراحت روزانه و ورود مجدد
 - کسر خودکار ناهار ۴۵ دقیقه فقط برای حضور حداقل ۲۴۰ دقیقه؛ ناهار ثبت‌شده دقیقاً به مدت واقعی و فقط یک‌بار در روز محاسبه می‌شود.
 - سه استراحت کوتاه از استخر مشترک روزانه ۴۵ دقیقه استفاده می‌کنند؛ مازاد و استراحت چهارم بدون حقوق است.
 - migration `042_attendance_segments`، API و UI ورود مجدد، محاسبه جمع نوبت‌ها، نمایش در Mini App و پنل ادمین، حذف نوبت با دلیل/audit و گیت‌های شبکه/ماه بسته اضافه شد.
-- جزئیات تصمیم‌ها و تست دستی در [`docs/PHASE18_DECISIONS.md`](docs/PHASE18_DECISIONS.md).
+- جزئیات تصمیم‌ها و تست دستی در [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md).
 
 ### «وضعیت من» — تسک فوریِ شخصی از پنل
 - API تازه (همه‌ی نقش‌ها، `me.read`، فقط با نشست؛ لیست سفید کارمند): `GET /admin/me/urgent/config`، `POST /admin/me/urgent`، `PATCH|DELETE /admin/me/urgent/:id` (فایل `routes/admin/myUrgent.js`). منطق همان `selfUrgentTaskService` مشترک با Mini App است (تنظیم `selfUrgentEnabled`، سقف `selfUrgentMaxPerDay`، امروز تا ۶۰ روز بعد، روز کاری، ماه بسته، ویرایش/حذف فقط بدون پاسخ، اعلان به سرپرست)؛ audit با `source: 'panel'`.
@@ -33,7 +33,7 @@
 
 ### «وضعیت من» — M5 (پرداخت و مستندسازی)
 - CSS (`.ms-*` در `style.css`): فقط توکن‌های موجود (هر دو تم)؛ دکمه‌ی تسک و نشان‌ها در همه‌ی عرض‌ها قابل شکستن‌اند (`white-space: normal`، `max-width: 100%`)؛ زیر ۳۶۰px دکمه‌های تسک تمام‌عرض؛ چاپ: دکمه‌ها و نوار اقدام پنهان، کارت‌های «امروز/برنامه‌ی بعد» و هر تسک بدون شکستن بین صفحه‌ها. داخل کارت‌ها هنوز فقط خط جداکننده است (بدون کادر تو در تو).
-- مستندات: `docs/PHASE17_DECISIONS.md` (چرا `/admin/me/*` و نه دادن `team.week_view`، تصمیم‌های M1–M5، فهرست آنچه عمداً انجام نشد، ریسک‌های باز)، ردیف `mystatus` در `docs/UI_STATES.md` و بخش فاز ۱۷ در `PROJECT_STATUS.md`.
+- مستندات: `docs/DOCUMENTATION.md` (چرا `/admin/me/*` و نه دادن `team.week_view`، تصمیم‌های M1–M5، فهرست آنچه عمداً انجام نشد، ریسک‌های باز)، ردیف `mystatus` در `docs/DOCUMENTATION.md` و بخش فاز ۱۷ در `PROJECT_STATUS.md`.
 - تست: `test/myStatusPolish.test.js` (ایستا: CSS بدون رنگ سخت‌کد/`nowrap`، قاعده‌ی چاپ، مستندات و ترتیب اسکریپت‌ها). بدون تغییر در API، migration یا تنظیمات.
 
 ### «وضعیت من» — M4 (منو و مسیردهی)
@@ -54,7 +54,7 @@
 - `public-admin/js/views-mystatus.js` (`AP.view('mystatus')`، `perm: me.read`): KPI هفته (ساعت مفید از مورد انتظار + درصد، روز تأخیر، اضافه‌کاری، تکمیل تسک‌ها)، کارت «امروز» (وضعیت، برنامه‌ی روز، ورود/خروج، ساعت مفید تا الان، تسک‌ها)، کارت «برنامه‌ی هفته‌ی بعد» (نشان ثبت‌شده/پیش‌نویس/ثبت نشده) و شبکه‌ی ۷ روزه با ناوبری هفته‌ی قبل/جاری. فقط از `GET /admin/me/week` می‌خواند و هیچ شناسه‌ی کاربری نمی‌فرستد.
 - `views-weekly.js` فقط قطعه‌های مشترک را صادر می‌کند (`AP.weekUi`: `kpi`، `dayCard`، `planBadge`، `TASK_STATUS`) و `dayCard` گزینه‌ی `readOnly` گرفت (دکمه‌های مدیریتی ساخته نمی‌شوند)؛ رفتار صفحه‌ی `weekly` تغییر نکرده.
 - کارمند (بدون `users.read`): «وضعیت من» اولین آیتم «پنل من» (بالاتر از «پروفایل من») و صفحه‌ی پیش‌فرض بعد از ورود. نقش‌های دیگر در M4.
-- CSS: `.ms-*` در `style.css` (بدون کادر تو در تو؛ متن قابل شکستن؛ فقط توکن‌های موجود). تست: `test/myStatusUi.test.js`؛ ردیف در `uiStates.test.js` و `docs/UI_STATES.md`.
+- CSS: `.ms-*` در `style.css` (بدون کادر تو در تو؛ متن قابل شکستن؛ فقط توکن‌های موجود). تست: `test/myStatusUi.test.js`؛ ردیف در `uiStates.test.js` و `docs/DOCUMENTATION.md`.
 
 ### «وضعیت من» — M1 (API فقط‌خواندنی)
 - `GET /api/admin/me/week?start=` : هفته‌ی «خودِ» کاربر برای هر چهار نقش (حضور/ساعت مفید، برنامه‌ی روز، تسک‌ها، خلاصه‌ی KPI)؛ هویت فقط از نشست، بدون پارامتر کاربر.
@@ -63,7 +63,7 @@
 - تست: `test/myWeek.test.js` و ردیف جدید ماتریس `permissionRoutes.test.js`.
 
 ### بازطراحی ظاهر پنل مدیریتی — فاز ۱۶ (T7–T10؛ T1–T6 قبلاً)
-- فقط ظاهر؛ بدون تغییر API/بک‌اند/migration/تنظیم جدید. جزئیات و انحراف‌ها: `docs/PHASE16_DECISIONS.md`، استقرار: `docs/PHASE16_DEPLOY.md`.
+- فقط ظاهر؛ بدون تغییر API/بک‌اند/migration/تنظیم جدید. جزئیات و انحراف‌ها: `docs/DOCUMENTATION.md`، استقرار: `docs/DOCUMENTATION.md`.
 - **T7** نمودارها بدون رنگ سخت‌کد (گرادیان `#bar-green` حذف؛ «تأخیر» راه‌راه با الگوی SVG؛ سری‌های تحلیل‌ها سرمه‌ای/نارنجی/آبی/فیروزه‌ای/زرد/قرمز)، «امروز» در هفته‌ی کارمند با نشانه‌ی متنی، برنامه‌ی روزبه‌روز/تقویم/انتخاب فعال با توکن، رنگ سخت‌کد در JS = صفر.
 - **T8** حلقه‌ی فوکوس پنل از سبز به `--brand`، بلوک صریح کاهش حرکت، `forced-colors` (ریل، تب، سوییچ، نمودار)، ایزوله‌ی بیدی شمارنده‌ها/تاریخ‌ها، چاپ `#rail-tip`، تست تم با `localStorage` خالی/مسدود.
 - **T9** Mini App: توکن‌های سطح/متن/planner هم‌خانواده‌ی سرمه‌ای پنل (`--bg` تیره `#17143a` ⇒ `Theme.BG.dark`، `theme-color`، فالبک `app.js`)؛ دکمه‌ی اصلیِ سبز و عنوان صورتی دفترچه دست‌نخورده.
@@ -84,7 +84,7 @@
 - **D1** صفحه‌ی «📋 امروز من» (`view-myday`): دو لیست، تیک/برداشتن تیک، توضیح انجام. **D2** انتقال داخل شیت (فردا / تاریخ مشخص، علت الزامی) با نوار «↩ واگرد» ۸ ثانیه‌ای؛ رفع باگ toast «[object Object]».
 - **F1** پنل (فقط‌خواندنی): «توضیح انجام» و برچسب «⚡ فوری (خودش)»، `tasks.selfUrgent` در خلاصه‌ی هفته.
 - **H1** `taskDayTally` (`src/services/taskDayTally.js`) تنها منبع شمارش: پاسخ‌نداده‌های الزامی در total؛ «گزارش نداده» ⇒ «⏳ N بدون وضعیت»؛ عدد پنل = تلگرام. **H2** `recipientsMap()`: سرپرست = تیم مستقیم، ادمین = همه (گروه‌بندی تیم + خلاصه‌ی شرکت در آخرین پیام)، `everyReport` یکتا، تنظیم `taskReportAdminMaxParts` (پیش‌فرض ۶)، ممیزی `task_report_sent`. **H3** تاریخ به وقت شرکت، «هنوز خروج نزده»، «وضعیت نهایی دیروز» در خلاصه‌ی صبحگاهی.
-- ⚠️ **هنوز اعمال نشده:** R1 جدید (حذف کامل سؤال هنگام خروج؛ مخزن هنوز R1 قدیمی را دارد)، D3 (⚡ تسک فوریِ من)، E1 (`note` در `DailyReport` و «همه به فردا»)؛ همچنین A2/A3/A4 فقط تا حدی که B1 و D لازم داشتند. جزئیات: `docs/PHASE15_DECISIONS.md`.
+- ⚠️ **هنوز اعمال نشده:** R1 جدید (حذف کامل سؤال هنگام خروج؛ مخزن هنوز R1 قدیمی را دارد)، D3 (⚡ تسک فوریِ من)، E1 (`note` در `DailyReport` و «همه به فردا»)؛ همچنین A2/A3/A4 فقط تا حدی که B1 و D لازم داشتند. جزئیات: `docs/DOCUMENTATION.md`.
 
 ### فاز ۱۴ — R8: تست امنیتی و UI نهایی
 - test/remoteSecurity.test.js: ماتریس مجوز، محافظت همه‌ی routeهای ادمین، نخواندن زمان/کاربر از بدنه در Mini App، FORBIDDEN/NOT_IN_SCOPE/SELF_NOT_ALLOWED بدون اثر روی رکورد رسمی و audit، escape محتوای کاربر در پنل، نبود alert/confirm/inline.
@@ -103,7 +103,7 @@
 - **بات:** آیتم «🏠 دورکاری‌های منتظر» در گروه «تیم» (سبز، `MANAGER_UP`) با نشانگر تعداد در متن دکمه («… (۳)»؛ صفر ⇒ بدون عدد؛ خطا ⇒ متن ساده). handler `pendingRemote` خلاصه‌ی هر کارمند را می‌فرستد و با دکمه‌ی web_app به همان صف پنل می‌رود (تأیید/رد در پنل). تعداد آیتم‌های منو ۱۶ ⇒ ۱۷.
 - **یادآوری هفتگی:** `runRemoteWorkWeeklyReminder` با همان cron مؤثر job `weeklyReport` (بدون job/تنظیم جدید، با `runAll`)؛ هر سرپرستِ دارای صف (و ادمین‌ها فقط برای کارمندان بدون سرپرستِ فعال) هفته‌ای یک اعلان (پنل + تلگرام + دکمه‌ی «صف دورکاری») می‌گیرد؛ `dedupeKey` به شروع هفته بسته است؛ صف خالی ⇒ هیچ.
 - **سرویس/ریپازیتوری:** `remoteWorkAdminService.pendingSummary` و `reminderTargets`، `remoteWorkRepository.pendingClosedByUser`.
-- تست: `test/remoteReminderBot.test.js`، `test/remotePanelUi.test.js` (ساختاری)، به‌روزرسانی `test/botMenu.test.js` (۱۷ آیتم) و `test/uiStates.test.js` / `docs/UI_STATES.md` (صفحه‌ی `remote`).
+- تست: `test/remoteReminderBot.test.js`، `test/remotePanelUi.test.js` (ساختاری)، به‌روزرسانی `test/botMenu.test.js` (۱۷ آیتم) و `test/uiStates.test.js` / `docs/DOCUMENTATION.md` (صفحه‌ی `remote`).
 - ⚠️ UI فقط با تست ساختاری بررسی شده (بدون مرورگر)؛ گزارش‌ها هنوز `via_remote` را نمی‌خوانند (R7).
 
 ### فاز ۱۴ — R5: بررسی و تأیید دورکاری توسط سرپرست/ادمین (R5-۱ تا R5-۷)
@@ -113,7 +113,7 @@
 - **R5-۴:** `POST /api/admin/remote-work/:id/approve` — داخل یک تراکنش رکورد رسمی `via_remote=1` + انتقال استراحت‌ها + `reviewed_*` + audit (`remote_work_approve`)؛ idempotent، اصلاح ساعت (`approved_start_at/approved_end_at`)، `MONTH_CLOSED`، `SESSION_OPEN`، `TIME_CONFLICT`. چند نشست یک روز در یک رکورد ادغام می‌شوند و فاصله‌ی بینشان استراحت است.
 - **R5-۵:** `POST /api/admin/remote-work/:id/reject` با `review_note` اجباری؛ رکورد رسمی ساخته نمی‌شود؛ audit (`remote_work_reject`) و اعلان `remote_work_rejected` به کارمند (پنل + تلگرام، بعد از commit). idempotent.
 - **R5-۶:** هم‌پوشانی با حضور حضوری فقط با تصمیم صریح `overlap_decision` (`merge` یا `keep_onsite`) و یادداشت اجباری؛ بدون آن ۴۰۹ `ONSITE_OVERLAP`. audit اضافه: `remote_work_overlap_decision`.
-- **R5-۷:** `POST /api/admin/remote-work/approve-batch` (`user_id` و/یا `week`) — هر نشست تراکنش جدا، ردشده‌ها در `skipped`، سقف ۵۰۰، idempotent، audit خلاصه (`remote_work_batch_approve`). مستندات: `docs/PHASE14_DECISIONS.md`، `docs/PHASE14_DEPLOY.md`.
+- **R5-۷:** `POST /api/admin/remote-work/approve-batch` (`user_id` و/یا `week`) — هر نشست تراکنش جدا، ردشده‌ها در `skipped`، سقف ۵۰۰، idempotent، audit خلاصه (`remote_work_batch_approve`). مستندات: `docs/DOCUMENTATION.md`، `docs/DOCUMENTATION.md`.
 - تست: `test/remoteWorkQueue.test.js`، `test/remoteWorkAdminScope.test.js`، `test/remoteViaMarker.test.js`، `test/remoteWorkApprove.test.js`، `test/remoteWorkReview.test.js`.
 - ⚠️ تا R7 هیچ گزارشی `via_remote` را نمی‌خواند؛ رکورد تأییدشده مثل رکورد عادی حساب می‌شود. UI پنل/بات (R6) هنوز نیامده است.
 
@@ -157,7 +157,7 @@
 - تست: `test/nextPlanManage.test.js` (DOM ساختگی)، `test/supervisorComment.test.js` (سرور؛ هنگام نگارش اجرا نشد). مرور دستی انجام نشده.
 
 ### فاز ۱۳ — F1: بازبینی نهایی و مستندسازی
-- مستندات: `docs/PHASE13_DECISIONS.md` (تصمیم‌ها، migration ۰۳۳–۰۳۵، بازبینی، ریسک‌ها) و `docs/PHASE13_DEPLOY.md` (استقرار ویندوز/NSSM + چک‌لیست تست دستی)؛ به‌روزرسانی `README.md`، `PROJECT_STATUS.md`.
+- مستندات: `docs/DOCUMENTATION.md` (تصمیم‌ها، migration ۰۳۳–۰۳۵، بازبینی، ریسک‌ها) و `docs/DOCUMENTATION.md` (استقرار ویندوز/NSSM + چک‌لیست تست دستی)؛ به‌روزرسانی `README.md`، `PROJECT_STATUS.md`.
 - یک تکرار کوچک E2 حذف شد: فهرست «روز غیرکاری» یک‌جا (`AP.notebook.NON_WORK`). `npm test && npm run smoke && npm run secret-scan` هنگام نگارش اجرا نشد.
 
 ### فاز ۱۳ — E2: جابه‌جایی و مرتب‌سازی (منوی کیبوردی، drag & drop دسکتاپ، لمس)
@@ -209,11 +209,11 @@
 - **بنر «سرپرست برنامه را تغییر داده»:** migration ۰۳۵ (`weekly_plans.employee_seen_at`؛ تریگر نسخه‌ی ۰۳۴ با «دیده شد» نسخه را زیاد نمی‌کند تا مدیرِ در حال ویرایش `PLAN_CONFLICT` نگیرد)، `markSeen`، `managerChange` در `getPlan`، و `POST /miniapp/plan/seen`.
 - **Mini App:** برچسب «🔒 از طرف سرپرست»، ردیف فقط‌خواندنی، یادداشت سقف، بنر با «متوجه شدم»؛ استایل‌ها در `public/css/style.css`.
 - **تست:** `test/weeklyPlanStale.test.js` (فهرست کهنه، تسک حذف‌شده‌ی مدیر، غیرقابل‌حذف بودن، سقف ۳۰) و `test/planManagerUi.test.js` (برچسب/بنر ایستا + داده‌ی بنر/`markSeen`). **بررسی نشده:** تست‌ها در محیط نگارش اجرا نشدند (بدون `node_modules`)؛ فقط بخش ایستای `planManagerUi` جداگانه اجرا و سبز بود. UI در مرورگر واقعی دیده نشده.
-- **مستندات:** بخش «تسک مدیر و بنر تغییر سرپرست» در `docs/UI_STATES.md`.
+- **مستندات:** بخش «تسک مدیر و بنر تغییر سرپرست» در `docs/DOCUMENTATION.md`.
 
 ### فاز ۱۲ — G1: مستندسازی و استقرار
-- **مستندات جدید:** [`docs/PHASE12_DECISIONS.md`](docs/PHASE12_DECISIONS.md) (تعریف تأخیر و «بیش از ۳ بار»، رفتار ورود با اجازه، فرمول استراحت با حقوق و وضعیت ناهار، اولویت override/شیفت/سراسری، استثنای قفل برای تسک فوری، فرمول درصد عملکرد، نتیجه‌ی تشخیص H3 و H4، تسک واجب سرپرست، ریسک‌های باز) و [`docs/PHASE12_DEPLOY.md`](docs/PHASE12_DEPLOY.md) (دستورهای استقرار PowerShell با `deploy\nssm.exe`، فعال‌سازی تدریجی، چک‌لیست ۱۲ بندی تست دستی، rollback).
-- **به‌روزرسانی:** `README.md` (routeهای تازه، Jobها، استقرار، پوشش تست)، `PROJECT_STATUS.md`، `docs/UI_STATES.md`.
+- **مستندات جدید:** [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md) (تعریف تأخیر و «بیش از ۳ بار»، رفتار ورود با اجازه، فرمول استراحت با حقوق و وضعیت ناهار، اولویت override/شیفت/سراسری، استثنای قفل برای تسک فوری، فرمول درصد عملکرد، نتیجه‌ی تشخیص H3 و H4، تسک واجب سرپرست، ریسک‌های باز) و [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md) (دستورهای استقرار PowerShell با `deploy\nssm.exe`، فعال‌سازی تدریجی، چک‌لیست ۱۲ بندی تست دستی، rollback).
+- **به‌روزرسانی:** `README.md` (routeهای تازه، Jobها، استقرار، پوشش تست)، `PROJECT_STATUS.md`، `docs/DOCUMENTATION.md`.
 - **بستن کار باز H5:** Jobِ `teamReviewEnsure` (هر روز ۰۰:۱۰؛ `CRON_TEAM_REVIEW_ENSURE`) در README/PROJECT_STATUS ثبت شد.
 - **migration:** آخرین migration `032_urgent_tasks`؛ فاز ۱۲ شامل ۰۲۸ تا ۰۳۲ است (همه افزایشی). `.env` تغییر اجباری ندارد؛ دو متغیر اختیاری `CRON_URGENT_TASK_REMINDER` و `CRON_TEAM_REVIEW_ENSURE` در `.env.example` هست. تنظیم‌های تازه (`paidBreakCount`، `paidBreakMinutes`، `lateMonthlyLimit`، `lateLimitGateMode`، `lateLimitPermissionTtlMinutes`) همه به‌صورت پیش‌فرض خاموش‌اند.
 - ⚠️ **H1 (ساعت دورکاری) پیاده‌سازی نشده** و مستندات آن را رفتار فعلی معرفی نمی‌کنند؛ بند ۸ چک‌لیست دستی تا اجرای H1 قابل انجام نیست.
@@ -225,34 +225,34 @@
 - **C1 — استراحت با حقوق:** migration ۰۳۰، تنظیم‌های سراسری و فیلد روی شیفت؛ خروجی‌های `breakPaid`/`breakUnpaid` در `computeDay`؛ ستون‌های تازه در گزارش‌ها و خروجی‌ها؛ پیام «استراحت با حقوق» هم‌گام با تایمر و هشدار پایان سهمیه در Mini App.
 - **D1–D3 — سقف تأخیر و اجازه‌ی ورود:** migration ۰۳۱، `lateLimitService` (شمارش ماه شمسی، `wouldBeLate`، چرخه‌ی اجازه)؛ گیت `POST /miniapp/check-in` (`off|soft|enforce`، ۴۰۹ `LATE_LIMIT_REACHED`)؛ کارت «درخواست اجازه‌ی ورود» در Mini App؛ اعلان و دکمه‌های تأیید/رد در بات، صف پنل و شمار تأخیر ماه («۲ از ۳») در پروفایل.
 - **E1–E3 — تسک فوری:** migration ۰۳۲؛ `urgentTaskService` (استثنای `PLAN_LOCKED`، اولویت high، اسکوپ سرپرست، ماه بسته)؛ یادآوری مهلت ساعتی (cron)؛ نمایش «⚡ فوری» و بنر در Mini App؛ ثبت از پنل و از بات.
-- **F1/F2 — نمای هفتگی کارمند:** `GET /admin/users/:id/week` (مجوز `team.week_view`) با روزها، حضور، تسک‌ها، «مشاهده شد» و خلاصه‌ی عملکرد (فرمول در `docs/PHASE12_DECISIONS.md`)؛ صفحه‌ی `weekly` پنل با KPI، شبکه‌ی ۷ روزه، اقدامات مدیریتی (تسک فوری، ویرایش برنامه‌ی روز، مشاهده شد/نظر) و چاپ.
+- **F1/F2 — نمای هفتگی کارمند:** `GET /admin/users/:id/week` (مجوز `team.week_view`) با روزها، حضور، تسک‌ها، «مشاهده شد» و خلاصه‌ی عملکرد (فرمول در `docs/DOCUMENTATION.md`)؛ صفحه‌ی `weekly` پنل با KPI، شبکه‌ی ۷ روزه، اقدامات مدیریتی (تسک فوری، ویرایش برنامه‌ی روز، مشاهده شد/نظر) و چاپ.
 
 ### فاز ۱۲ — H5 (بخش ۲ و ۳): نمایش و تست تسک واجب سرپرست
 - **نمایش (بخش ۲):** `src/services/teamReviewProgress.js` (جدید) فیلد `review` (`reviewDate`، `reportCount`، `reviewedCount`، `noReportCount`، `complete`، `notYet`) را برای تسک `review_team_reports` می‌سازد؛ در `getPlan` (Mini App) و نمای هفتگی F1 استفاده شد. Mini App و پنل: برچسب «🔒 واجب»، فقط‌خواندنی، «۳ از ۴ گزارش مشاهده شد» با نوار پیشرفت و دکمه‌ی «مشاهده‌ی گزارش‌ها» (`teamreports` برای همان روز؛ `?go=صفحه/پارامتر` در پنل). باز شدن نمای هفتگیِ F1 سرپرست، تسک را برای امروز و روزهای بعد می‌سازد (idempotent). `morningDigest` بدون تغییر: یک خط «مشاهده نشده» برای هر سرپرست.
 - **تست (بخش ۳):** `test/teamReviewH5.test.js` با `mock.timers` روی ۲۰۲۶-۱۰-۱۲: سرپرست جدید بدون برنامه، زیردست جدید وسط هفته، روز قبل تعطیل، ادمین/سرپرست بدون زیردست، اجرای دوباره، F1، پیشرفت زنده، رد ویرایش/حذف، ماه بسته، خط `morningDigest` و بررسی ایستای UI.
-- **مستندات:** بخش H5 در `docs/UI_STATES.md`؛ ردیف معماری به‌روز شد.
+- **مستندات:** بخش H5 در `docs/DOCUMENTATION.md`؛ ردیف معماری به‌روز شد.
 - **بررسی نشده:** تست‌ها اجرا نشده‌اند و باز شدن پنل از Mini App روی گوشی واقعی دیده نشده. ⚠️ نمای هفتگی F1 برای سرپرست دیگر کاملاً بدون نوشتن نیست (ساخت تسک/برنامه‌ی پیش‌نویس). Jobِ بخش ۱ باید در README/PROJECT_STATUS ثبت شود.
 
 ### فاز ۱۲ — H4: تایپ ساعت با کیبورد گوشی (پنل و بات)
 - **بخش ۱ (پنل):** `public-admin/js/timeinput.js` (`window.TimeInput`، بدون وابستگی): ورودی ساعت متنی با `inputmode=numeric`، ماسک `HH:MM`، پذیرش ارقام فارسی/عربی و `1530` / `15.30` / `15:3`، پیام خطای فارسی (ساعت ۰–۲۳، دقیقه ۰–۵۹)، و دیده‌شدن فیلد بالای کیبورد با `visualViewport`/`scrollIntoView` (`--kb` در CSS مودال). `AP.dates.mount` هر `time` و ساعت جفت «تاریخ شمسی + ساعت» را به آن تبدیل می‌کند؛ ISO پنهان (`YYYY-MM-DDTHH:MM`)، `AP.formData` و `fmt.fromLocalInput` بدون تغییر. فرم‌های اصلاح رکورد/استراحت، شیفت، برنامه‌ی روز، تنظیمات و تسک فوری پوشش داده شد.
 - **بخش ۲ (بات):** `src/utils/timeInput.js` (همان منطق پنل) برای تایپ ساعت و تاریخ در `fixRecord`؛ گزینه‌ی `typeHint` در `askDate/askTime/askText` پیام `force_reply` («⌨️ یا ساعت را تایپ کنید، مثل 15:30») را جدا از پیام انتخابگر می‌فرستد؛ پایان، لغو و انصراف جریان کیبورد «📂 منو» را برمی‌گردانند (`menuKeyboardOpts`).
-- **بخش ۳ (تست و مستندات):** `test/timeInput.test.js` (parse/mask/ارقام فارسی/مرزها/نامعتبر، همگام‌سازی با ISO پنهان و `AP.formData` با DOM ساختگی، اتصال ایستا) و `test/botTimeInput.test.js` (مسیر بات با `1530` و ارقام فارسی، پیام نامعتبر، hint، برگشت کیبورد منو)؛ بخش H4 در `docs/UI_STATES.md`. حین نوشتن تست اصلاح شد: ماسک برای ورودی چهاررقمی با ساعت بیش از ۲۳ (مثل `2500`) دیگر بی‌صدا «2:50» نمی‌کرد و حالا «25:00» با خطای ساعت می‌دهد (فقط ورودی سه‌رقمی مثل `930` ⇒ `9:30`).
+- **بخش ۳ (تست و مستندات):** `test/timeInput.test.js` (parse/mask/ارقام فارسی/مرزها/نامعتبر، همگام‌سازی با ISO پنهان و `AP.formData` با DOM ساختگی، اتصال ایستا) و `test/botTimeInput.test.js` (مسیر بات با `1530` و ارقام فارسی، پیام نامعتبر، hint، برگشت کیبورد منو)؛ بخش H4 در `docs/DOCUMENTATION.md`. حین نوشتن تست اصلاح شد: ماسک برای ورودی چهاررقمی با ساعت بیش از ۲۳ (مثل `2500`) دیگر بی‌صدا «2:50» نمی‌کرد و حالا «25:00» با خطای ساعت می‌دهد (فقط ورودی سه‌رقمی مثل `930` ⇒ `9:30`).
 - **بررسی نشده:** کیبورد عددی و دیده‌شدن فیلد در پنل و باز شدن کیبورد سیستم با `force_reply` در بات روی گوشی/تلگرام واقعی (فقط تست‌های واحد). تغییر دیتابیس و `.env` ندارد.
 
 ### فاز ۱۲ — H3: بازشدن Mini App/پنل بدون دکمه‌ی آبی چپ
 - **بخش ۱:** هیچ دکمه‌ی `web_app` در کیبورد پاسخ نیست (فقط inline یا menu button، چون `initData` امضاشده فقط از آن‌ها می‌آید). با `MINI_APP_URL` غیر https دکمه‌های «ثبت تردد/برنامه هفتگی/پنل مدیریت» دیگر مخفی نمی‌شوند: دکمه‌ی callback می‌شوند و لمسشان راهنمای ادمین (https/`MINI_APP_URL`) و هشدار لاگ می‌دهد؛ هشدار راه‌اندازی بات؛ پیام روشن‌تر `panelLogin`.
 - **بخش ۲:** Mini App و پنل بدون `initData`/توکن پیام «برای ورود، از دکمه‌ی 📂 منو در بات باز کنید.» نشان می‌دهند؛ خطاهای ۴۰۱ لینک/کد منقضی در `adminAuth` دیگر به `/panel` ارجاع نمی‌دهند.
-- **بخش ۳:** دو تست H2 به رفتار جدید عوض شد (بدون https دکمه‌ها می‌مانند؛ `mn:checkin` منقضی نیست)؛ تست‌های جدید H3 در `test/botMenu.test.js` (کیبورد بدون `web_app`، https با `view` درست، http با راهنما و هشدار، callbackهای قدیمی، نقش سمت سرور، پیام بدون `initData`، متن خطاهای API)؛ بخش H3 در `docs/UI_STATES.md`.
+- **بخش ۳:** دو تست H2 به رفتار جدید عوض شد (بدون https دکمه‌ها می‌مانند؛ `mn:checkin` منقضی نیست)؛ تست‌های جدید H3 در `test/botMenu.test.js` (کیبورد بدون `web_app`، https با `view` درست، http با راهنما و هشدار، callbackهای قدیمی، نقش سمت سرور، پیام بدون `initData`، متن خطاهای API)؛ بخش H3 در `docs/DOCUMENTATION.md`.
 - **بررسی نشده:** باز شدن هر چهار بخش روی گوشی واقعی (فقط تست‌های واحد).
 
 ### فاز ۱۲ — H2: منوی بات فقط با یک دکمه‌ی «📂 منو»
 - **هسته (بخش ۱):** `buildMainKeyboard` فقط یک دکمه‌ی «📂 منو» برمی‌گرداند؛ لمس آن پیام منوی inline نقش‌محور (`buildMenuInline`، ۲ ستونه، سرتیتر گروه، «✖️ بستن منو») می‌فرستد. آیتم‌های handler با `mn:<id>` (همان مسیر `handleMenuCallback`، نقش هر بار از دیتابیس) و آیتم‌های web_app با دکمه‌ی inline از نوع `web_app` (فقط https). بعد از انتخاب یا بستن، پیام منو پاک می‌شود (فقط پیام خودِ منو؛ خطای `deleteMessage` نادیده است).
 - **سازگاری و متن‌ها (بخش ۲):** لمس دکمه‌ی کیبورد قدیمی ۱۵ دکمه‌ای اجرا می‌شود و پیش از handler یک‌بار کیبورد جدید فرستاده می‌شود؛ متن `/start`، «❓ راهنما»، «🏠 منوی اصلی»، پیام کارمند جدید، `panelLogin`، گزارش شبانه و پیام‌های مرخصی به «📂 منو» ارجاع می‌دهند؛ `src/scripts/pushPanelButton.js` کیبورد جدید را برای هر کاربر (نقش‌محور) می‌فرستد.
-- **تست و مستندات (بخش ۳):** `test/botMenu.test.js` برای کیبورد تک‌دکمه‌ای، منوی inline هر نقش، باز کردن منو، جایگزینی کیبورد قدیمی و callbackهای منو (انتخاب، بستن، سرتیتر، نقش نامجاز، اعلان، خطای حذف) به‌روز/تکمیل شد؛ `README.md` و `docs/UI_STATES.md` به‌روز شدند. تغییر دیتابیس و `.env` ندارد.
+- **تست و مستندات (بخش ۳):** `test/botMenu.test.js` برای کیبورد تک‌دکمه‌ای، منوی inline هر نقش، باز کردن منو، جایگزینی کیبورد قدیمی و callbackهای منو (انتخاب، بستن، سرتیتر، نقش نامجاز، اعلان، خطای حذف) به‌روز/تکمیل شد؛ `README.md` و `docs/DOCUMENTATION.md` به‌روز شدند. تغییر دیتابیس و `.env` ندارد.
 
 ### فاز ۱۱ — E1: مستندسازی و استقرار
-- **مستندات جدید:** [`docs/PHASE11_DECISIONS.md`](docs/PHASE11_DECISIONS.md) (رفتار تسک low در گزارش‌ها، مدل وضعیت اعتراض، سقف reopen، قفل برنامه، فرض‌ها و ریسک‌های باز) و [`docs/PHASE11_DEPLOY.md`](docs/PHASE11_DEPLOY.md) (دستورهای استقرار PowerShell با `deploy\nssm.exe`، چک‌لیست تست دستی، rollback).
-- **به‌روزرسانی:** `README.md` (routeهای اعتراض و برنامه، استقرار، پوشش تست)، `PROJECT_STATUS.md`، `docs/ARCHITECTURE.md`، `docs/UI_STATES.md` (مرجع تصمیم‌ها).
+- **مستندات جدید:** [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md) (رفتار تسک low در گزارش‌ها، مدل وضعیت اعتراض، سقف reopen، قفل برنامه، فرض‌ها و ریسک‌های باز) و [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md) (دستورهای استقرار PowerShell با `deploy\nssm.exe`، چک‌لیست تست دستی، rollback).
+- **به‌روزرسانی:** `README.md` (routeهای اعتراض و برنامه، استقرار، پوشش تست)، `PROJECT_STATUS.md`، `docs/DOCUMENTATION.md`، `docs/DOCUMENTATION.md` (مرجع تصمیم‌ها).
 - **migration:** آخرین migration `027_dispute_messages`؛ فاز ۱۱ فقط همین یکی را دارد (افزایشی). `.env` تغییری ندارد؛ تنظیم جدید `disputeMaxReopens` (پیش‌فرض ۳).
 
 ### فاز ۱۱ — خلاصه‌ی مراحل A تا D
@@ -262,8 +262,8 @@
 - **D1–D7 — گفت‌وگوی اعتراض:** migration ۰۲۷ (جدول `dispute_messages`، ستون‌های `closed_by`/`closed_at`/`reopen_count`/`last_message_at`)؛ API کارمند (فهرست، thread، پیام، ادامه، خاتمه؛ rate limit ۱۰ در دقیقه) و ادمین (thread، پاسخ، resolve/reopen، شمارنده‌ها)؛ اعلان پیام ادمین (پنل + تلگرام) و پیام کارمند (پنل)؛ فقط اعتراض باز مانع بستن ماه است؛ UI «اعتراض‌های من» و thread پنل؛ تست یکپارچه‌ی سناریوی کامل.
 
 ### فاز ۱۰ — F1: مستندسازی و استقرار
-- **مستندات جدید:** [`docs/PHASE10_DECISIONS.md`](docs/PHASE10_DECISIONS.md) (تصمیم‌ها و فرض‌های مراحل A تا E) و [`docs/PHASE10_DEPLOY.md`](docs/PHASE10_DEPLOY.md) (دستورهای استقرار PowerShell، تنظیمات جدید، چک‌لیست تست دستی سناریوی کامل، فعال‌سازی تدریجی، rollback).
-- **به‌روزرسانی:** `README.md` (routeهای فاز ۱۰، استقرار، ساختار پوشه‌ها، پوشش تست)، `docs/ARCHITECTURE.md` (ماژول‌های فاز ۱۰ و تصمیم‌های ثابت جدید)، `PROJECT_STATUS.md` (وضعیت فاز ۱۰ و کارهای باقی‌مانده).
+- **مستندات جدید:** [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md) (تصمیم‌ها و فرض‌های مراحل A تا E) و [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md) (دستورهای استقرار PowerShell، تنظیمات جدید، چک‌لیست تست دستی سناریوی کامل، فعال‌سازی تدریجی، rollback).
+- **به‌روزرسانی:** `README.md` (routeهای فاز ۱۰، استقرار، ساختار پوشه‌ها، پوشش تست)، `docs/DOCUMENTATION.md` (ماژول‌های فاز ۱۰ و تصمیم‌های ثابت جدید)، `PROJECT_STATUS.md` (وضعیت فاز ۱۰ و کارهای باقی‌مانده).
 - **نسخه‌ی migration:** آخرین migration `026_plan_gate_exemptions`؛ فاز ۱۰ شامل ۰۲۳ تا ۰۲۶ است (همه افزایشی).
 - **env:** `CRON_MORNING_DIGEST` و `ALLOW_DATA_RESET` در `.env.example` مستند هستند (بدون تغییر رفتار پیش‌فرض).
 
@@ -309,7 +309,7 @@
 ### S5-9c (تکمیل) — موارد باقی‌مانده
 - **Mini App:** skeleton/خالی/خطا با «تلاش دوباره» برای تاریخچه، مرخصی و گزارش؛ بوت ناموفق کارت خطا + تلاش مجدد می‌دهد (قبلاً فقط توست زودگذر و صفحه‌ی خالی)؛ پیام خطا دیگر خام در `innerHTML` نمی‌رود؛ توست `role=alert/status`؛ دکمه‌های ورود/خروج، فرم مرخصی و اعتراض حین درخواست غیرفعال می‌شوند.
 - `states.js` به `public/js/` منتقل شد و پنل و Mini App یک نسخه را به‌اشتراک می‌گذارند.
-- **پنل:** skeleton اختصاصی برای هر ۲۰ صفحه؛ `AP.attempt` دکمه را حین درخواست قفل می‌کند؛ جدول → کارت زیر ۶۰۰px (`A11y.stackTable`، جز جدول‌های مرتب‌سازی و تقویم)؛ فایل قدیمی `public-admin/js/app.js` حذف شد (ارجاع در `docs/SECURITY.md` به‌روز).
+- **پنل:** skeleton اختصاصی برای هر ۲۰ صفحه؛ `AP.attempt` دکمه را حین درخواست قفل می‌کند؛ جدول → کارت زیر ۶۰۰px (`A11y.stackTable`، جز جدول‌های مرتب‌سازی و تقویم)؛ فایل قدیمی `public-admin/js/app.js` حذف شد (ارجاع در `docs/DOCUMENTATION.md` به‌روز).
 - هنوز نشده: فایل woff2 فونت و `telegram-web-app.js` (نیاز به دانلود)، skeleton نمای «امروز» Mini App، تبدیل جدول‌های مرتب‌سازی به کارت، تست روی دستگاه واقعی.
 
 ### S5-9c — حالت‌های UI
@@ -317,7 +317,7 @@
 - روتر برای **همه‌ی ۲۰ صفحه‌ی پنل**: skeleton به‌جای اسپینر، `aria-busy` تا پایان، و خطا با «تلاش دوباره» که همان route را دوباره اجرا می‌کند. توست خطا `role="alert"` و موفقیت `role="status"`.
 - گزارش‌ها: جدول دپارتمان‌ها و جزئیات کارمند پیام خالی گرفتند (قبلاً جدول بی‌سطر نشان می‌داد).
 - بررسی: هیچ `alert/confirm/prompt` در کد نیست؛ هر `DELETE` پنل و عملیات «ابطال نشست‌ها/بازنشانی تنظیم» تأیید یا دلیل اجباری دارد (تست ایستا).
-- **فهرست صفحات انجام‌شده/نشده: `docs/UI_STATES.md`.** انجام‌نشده: حالت‌های Mini App کارمند (فقط متن «در حال بارگذاری…» دارد)، شکل اختصاصی skeleton برای هر صفحه، غیرفعال‌کردن دکمه حین درخواست، و فایل قدیمی `public-admin/js/app.js` (بارگذاری نمی‌شود؛ بهتر است حذف شود).
+- **فهرست صفحات انجام‌شده/نشده: `docs/DOCUMENTATION.md`.** انجام‌نشده: حالت‌های Mini App کارمند (فقط متن «در حال بارگذاری…» دارد)، شکل اختصاصی skeleton برای هر صفحه، غیرفعال‌کردن دکمه حین درخواست، و فایل قدیمی `public-admin/js/app.js` (بارگذاری نمی‌شود؛ بهتر است حذف شود).
 
 ### S5-9b — RTL و موبایل
 - ایزوله‌ی بیدی (`unicode-bidi: isolate`) برای `.ltr/.num/bdi/[dir=ltr]` تا ساعت، عدد و کد وسط متن فارسی جابه‌جا نشود (قبلاً `embed`).
@@ -404,7 +404,7 @@
 - تست: `test/reportDocuments.test.js`؛ `settingsRegistry.test.js` به‌روز شد.
 
 ### S5-4c — تصمیم PDF
-- PDF سمت سرور پیاده **نشد**؛ دلیل و شرط بازنگری در `docs/PDF_DECISION.md`: شکل‌دهی/bidi فارسی بدون موتور مناسب و فونت embed تضمین‌شدنی و تست‌شدنی نیست (حروف جدا/معکوس) و وابستگی جدید ضروری نبود. جایگزین: «نمای چاپ» (S5-4b) + Save as PDF مرورگر.
+- PDF سمت سرور پیاده **نشد**؛ دلیل و شرط بازنگری در `docs/DOCUMENTATION.md`: شکل‌دهی/bidi فارسی بدون موتور مناسب و فونت embed تضمین‌شدنی و تست‌شدنی نیست (حروف جدا/معکوس) و وابستگی جدید ضروری نبود. جایگزین: «نمای چاپ» (S5-4b) + Save as PDF مرورگر.
 - بدون تغییر کد/تست.
 
 ### S5-4b — نمای چاپ A4 گزارش ماهانه
@@ -1008,7 +1008,7 @@
 - **پنل** (`public-admin/js/views-ops.js`، view با شناسه‌ی `suspicious`، گروه «کارمندان و تردد»): فهرست نشانه‌ها با فیلتر وضعیت (بررسی‌نشده | بررسی‌شده | بی‌اهمیت | همه)، نوع قاعده به فارسی، کاربران درگیر (لینک به پروفایل)، رکوردهای مرتبط (باز شدن همان modal رکورد)، توضیح خوانایی از `details` و دکمه‌های «بررسی شد» / «بی‌اهمیت» (و تغییر وضعیت برای موارد بسته) که از `AP.askReason` **دلیل اجباری** می‌گیرند و به `POST /admin/suspicious/:id/review` (S2-5a) می‌روند. متن‌ها «نشانه» می‌گویند نه «اتهام»؛ بالای صفحه هم یادآوری شده که `device_id` قابل جعل/پاک‌شدن است. شناسه‌ی دستگاه فقط ۸ نویسه‌ی اول نمایش داده می‌شود و همه‌ی مقدارها `esc` می‌شوند. صفحه `employee:true`/`admin:true` ندارد: **ادمین و سرپرست** می‌بینند، کارمند نه (در نوار کناری نیست و روتر او را به خانه برمی‌گرداند؛ سرور هم ۴۰۳ می‌دهد).
 - **شمارنده‌ی ناوبری** (`core.js` ← `refreshCounts`): تعداد نشانه‌های بررسی‌نشده فقط برای سرپرست/ادمین گرفته می‌شود؛ شکست آن شمارنده‌های مرخصی/اعتراض را خراب نمی‌کند (کارمند اصلاً صدا نمی‌زند چون ۴۰۳ می‌گیرد).
 - **مرور شبانه‌ی تلگرام** (`nightlyReview.js`): اگر تیم سرپرست نشانه‌ی بازِ بررسی‌نشده داشته باشد (همان اسکوپ API: همه‌ی کاربران مورد در تیمش)، خط «🔎 N نشانه‌ی بررسی‌نشده … (فقط نشانه، نه اتهام) → پنل ‹ موارد مشکوک» اضافه می‌شود. شمارش ضدخطاست (خرابی ⇒ بدون خط، پیام همچنان می‌رود). ادمین کل مرور شبانه نمی‌گیرد، پس تغییری برایش نیست.
-- **مستند**: `docs/SUSPICIOUS_EVENTS.md` (معنی هر قاعده، علت‌های بی‌گناه، محدودیت‌های `device_id` شامل جعل، پاک‌شدن، CloudStorage مشترک، IP مشترک، و جریان بررسی).
+- **مستند**: `docs/DOCUMENTATION.md` (معنی هر قاعده، علت‌های بی‌گناه، محدودیت‌های `device_id` شامل جعل، پاک‌شدن، CloudStorage مشترک، IP مشترک، و جریان بررسی).
 - بدون migration، بدون تغییر API/route، بدون وابستگی جدید. ⚠️ دلیل بررسی فقط در audit است و در کارت نمایش داده نمی‌شود (کارت فقط «چه کسی و کِی» را نشان می‌دهد)؛ اگر خواستید کنار کارت دیده شود، یک migration (ستون دلیل) در بخش بعد لازم است.
 - تست: `test/suspiciousPanel.test.js` (۴ تست: شمارش و اسکوپ مرور شبانه، تحمل خرابی، رندر واقعی view با AP ساختگی شامل escape و لیبل‌ها، حالت خالی/بسته). تست مرورگر واقعی انجام نشده (فهرست تست دستی در گزارش). `npm test`: ۲۵۰ سبز.
 
@@ -1075,7 +1075,7 @@
 - تست: `test/deviceId.test.js` (۱۲ تست: فرمت معتبر/نامعتبر، UA، `extractDeviceInfo` با ورودی خراب، ستون‌های migration و اجرای دوباره، NULL برای مسیرهای بدون device، و HTTP واقعی ورود/خروج با device معتبر، نبودن device، فرمت‌های خراب، UA بلند، بی‌اثر بودن روی زمان/ورود تکراری، دو کاربر روی یک device). `test/migrations.test.js` برای migration پنجم به‌روز شد. `npm test`: ۲۱۱ سبز.
 
 ### S2-2b — مستند بازیابی و پاک‌سازی فایل قدیمی
-- `docs/BACKUP_RESTORE.md` (فقط مستند، بدون تغییر کد): انواع فایل `data/backups/` (daily/monthly/pre-migration/pre-restore/.suspect/.partial)، تفاوت daily با pre-migration، مراحل `nssm stop` ← فهرست ← `--dry-run` ← restore ← `nssm start` ← تأیید، کدهای خروج، تمرین بازیابی روی کپی، و نکته‌ی نگهداری بیرونی.
+- `docs/DOCUMENTATION.md` (فقط مستند، بدون تغییر کد): انواع فایل `data/backups/` (daily/monthly/pre-migration/pre-restore/.suspect/.partial)، تفاوت daily با pre-migration، مراحل `nssm stop` ← فهرست ← `--dry-run` ← restore ← `nssm start` ← تأیید، کدهای خروج، تمرین بازیابی روی کپی، و نکته‌ی نگهداری بیرونی.
 - `data/attendance.backup.db` (قدیمی، خارج از چرخه‌ی بک‌آپ، هیچ کدی به آن ارجاع نمی‌دهد؛ با `data/*.db` در `.gitignore` و هرگز در git نبوده): صاحب پروژه دستی پاک کند و در zip تحویلی هم نگذارد.
 - ⚠️ یادداشت: migrator فقط ۱۰ فایل `pre-migration-*` آخر را نگه می‌دارد (مستند شد)، در حالی‌که retention روزانه به آن‌ها دست نمی‌زند.
 
@@ -1092,7 +1092,7 @@
 - ⚠️ **`MONITOR_BACKUP_CHECK` اکنون پیش‌فرض `true` است** (`config.js` و `.env.example`؛ فقط مقدار دقیق `false` خاموشش می‌کند). پیامد: تا وقتی اولین بک‌آپ روزانه ساخته نشده، `/api/health` برابر `degraded` و هشدار «هیچ بک‌آپ سالمی پیدا نشد» می‌آید ⇒ بعد از استقرار یک‌بار بک‌آپ را اجرا کنید (یا ۰۲:۳۰ صبر کنید). فایل `.env` واقعی این مقدار را نداشت، پس پیش‌فرض جدید اعمال می‌شود.
 - بدون migration، بدون وابستگی جدید. `test/monitoring.test.js`: بررسی بک‌آپ در سطح فایل خاموش شد (تست‌های خودِ بک‌آپ آن را صریح روشن می‌کنند).
 - تست (`test/backup.test.js`، ۵ تست جدید): پیش‌فرض config (true/true/false)، `systemHealth` با `.suspect` جدیدتر/قدیمی‌تر/بررسی خاموش، **سناریوی کامل با bot ماک** (بک‌آپ خرابِ عمدی از مسیر `wrapJob`+`runDailyBackup` ⇒ هشدار به ادمین ⇒ عدم تکرار ⇒ بک‌آپ سالم بعدی ⇒ رفع شد)، خاموش‌بودن هشدار با `MONITOR_BACKUP_CHECK=false` و نبودن توکن در متن. `npm test`: ۱۹۵ سبز.
-- مستند: `docs/MONITORING.md` (نوع هشدار جدید، بخش «بک‌آپ سالم و فایل‌های .suspect»).
+- مستند: `docs/DOCUMENTATION.md` (نوع هشدار جدید، بخش «بک‌آپ سالم و فایل‌های .suspect»).
 
 ### S2-1c (قسمت ۱ از ۲) — تأیید سلامت فایل بک‌آپ
 - `runDailyBackup` بعد از `db.backup()` و **قبل از** rename به نام نهایی، `PRAGMA integrity_check` کامل را روی همان فایل بک‌آپ اجرا می‌کند (`monitorRepository.integrityCheckFile`، اتصال جدا و فقط‌خواندنی؛ فایل خراب/غیر SQLite استثنا نمی‌دهد، نتیجه‌ی «ناسالم» می‌گیرد).
@@ -1123,7 +1123,7 @@
 - **راز**: متن خطا قبل از ذخیره/ارسال از `sanitizeText` رد می‌شود (توکن بات داخل URL خطای شبکه حذف می‌شود).
 - تنظیمات جدید `.env`: `WATCHDOG_ENABLED`، `CRON_WATCHDOG`، `ALERT_THROTTLE_MINUTES`، `MONITOR_*`، `BACKUP_DIR`. `MONITOR_BACKUP_CHECK` پیش‌فرض خاموش است تا ۲-ج۲ Job بک‌آپ را بسازد.
 - تست: `test/monitoring.test.js` (۳۳ تست)؛ `test/migrations.test.js` و `test/routesAccess.test.js` و smoke به‌روز شدند. `npm test`: ۱۷۳ سبز.
-- مستندات: `docs/MONITORING.md`.
+- مستندات: `docs/DOCUMENTATION.md`.
 
 ### ۲-ب۲ — rate limit ماندگار
 - **شمارنده‌ی ماندگار**: migration `003_rate_limits` (جدول `rate_limit_hits`) + `rateLimitRepository` (UPSERT اتمیک)؛ `src/middleware/rateLimiter.js` به‌جای Map حافظه از SQLite استفاده می‌کند، پس ری‌استارت/crash سرویس سقف تلاش ورود را صفر نمی‌کند. ردیف‌های منقضی هر ۱۰ دقیقه پاک می‌شوند. `RATE_LIMIT_STORE=memory` رفتار قبلی.
@@ -1137,7 +1137,7 @@
 - **اسکنر رازها**: `npm run secret-scan` (`scripts/secret-scan.js`) — توکن بات (حتی داخل URL)، کلید خصوصی PEM، فایل‌های کلید سرگردان، انتساب مشکوک به SECRET/TOKEN/PASSWORD؛ کد خروج غیرصفر در صورت یافتن؛ مقدار راز چاپ نمی‌شود؛ استثنای عمدی با `// secret-scan:allow`. چهار مقدار ساختگی تست علامت‌گذاری شدند.
 - **کنترل راه‌اندازی** (`src/utils/startupChecks.js`): در production، `ADMIN_SESSION_SECRET` خالی/کوتاه‌تر از ۳۲/نمونه/غیرتصادفی ⇒ سرور بالا نمی‌آید و **قبل از** `getDb()` متوقف می‌شود (بدون migration/بک‌آپ). `TELEGRAM_BOT_USERNAME` خالی ⇒ هشدار. جایگزین شرط ساده‌ی قبلی «راز خالی» در `server.js`.
 - `.gitignore`: افزودن `.env.*` (به‌جز نمونه)، `*.pem/*.key/*.pfx/*.p12`، `*.log`، `logs/`، `dist/`، `data/attachments/`.
-- مستندات: `docs/SECRETS.md` (چک‌لیست «اگر راز لو رفت»، دستورات `icacls`). رفع در حین کار: اسکنر ابتدا فایل `.env.production` را نمی‌دید (پسوند نامتعارف) — با تست پیدا و اصلاح شد.
+- مستندات: `docs/DOCUMENTATION.md` (چک‌لیست «اگر راز لو رفت»، دستورات `icacls`). رفع در حین کار: اسکنر ابتدا فایل `.env.production` را نمی‌دید (پسوند نامتعارف) — با تست پیدا و اصلاح شد.
 - تست: `test/secrets.test.js` (۲۸ تست جدید، شامل اجرای واقعی `createApp` در production در پروسه‌ی جدا و ساخت zip از خود پروژه). ⚠️ `server.js` اکنون یک `require` و یک فراخوانی جدید دارد (CRLF حفظ شد).
 
 ### ۲-الف — هدرهای امنیتی، کوکی، CSRF، ابطال نشست
@@ -1146,7 +1146,7 @@
 - **CSRF**: روی همه‌ی متدهای نوشتنی `/api/admin/*` — هدر `X-Requested-With: AttendancePanel` + بررسی `Origin`/`Referer`. فرانت پنل هدر را می‌فرستد. ⚠️ هر کلاینت دیگری که مستقیم به `/api/admin/*` می‌نویسد باید هدر را اضافه کند.
 - **ابطال نشست**: migration `002_session_version`؛ `sv` (نسخه‌ی کاربر) و `ge` (epoch سراسری در `settings`) داخل توکن؛ افزایش خودکار با تغییر `is_active`/`role`/`telegram_user_id`؛ `POST /admin/users/:id/revoke-sessions` و `POST /admin/system/revoke-all-sessions` (ادمین کل، دلیل اجباری، audit) + دکمه‌های پنل. رفتار تغییرکرده: کاربر غیرفعال‌شده از طریق پنل/بات در درخواست بعدی `401` (قبلاً `403`) می‌گیرد؛ توکن‌های قبلی تا اولین ابطال معتبرند.
 - `AP.boot()` درون‌خطی به `public-admin/js/boot.js` منتقل شد (سازگاری با CSP).
-- مستندات: `docs/SECURITY.md`. تست‌ها: `test/security.test.js` (۳۷ تست جدید).
+- مستندات: `docs/DOCUMENTATION.md`. تست‌ها: `test/security.test.js` (۳۷ تست جدید).
 
 ## [1.0.0-rc.1] — بخش ۱ (پایه فنی)
 
@@ -1157,7 +1157,7 @@
 - رفع: بک‌آپ قبل از migration اگر شکست بخورد، فایل صفربایتی ناقص را باقی نمی‌گذارد.
 - رفع تست ناپایدار `initData` (۱ از ۱۶ اجراها بی‌دلیل خراب می‌شد).
 - تست‌های جدید: `test/routeOrder.test.js` (عدم پنهان‌شدن route، یک‌بار ثبت‌بودن `requireAdminAuth`)، ۴۰۴ بودن مسیرهای قدیمی، رفتار جدید `networkRestriction`.
-- مستندات: بازنویسی کامل `README.md`، `docs/ARCHITECTURE.md`، اصلاح `PROJECT_STATUS.md`، نسخه و توضیح `package.json`.
+- مستندات: بازنویسی کامل `README.md`، `docs/DOCUMENTATION.md`، اصلاح `PROJECT_STATUS.md`، نسخه و توضیح `package.json`.
 
 ### ۱-الف — migration و زیرساخت تست
 - سیستم migration (`schema_migrations`، `001_baseline`، helper بازسازی جدول، بک‌آپ قبل از اجرا)، `npm run migrate[:status]`.

@@ -1,19 +1,80 @@
 # سیستم حضور و غیاب تلگرامی فرازهنر
 
-ثبت ورود/خروج/استراحت کارکنان از طریق **بات تلگرام** و **Telegram Mini App**، با محاسبه‌ی ساعت مفید کاری، مرخصی/مأموریت، گزارش‌های دوره‌ای و یک **پنل مدیریتی وب**. ثبت تردد فقط از داخل شبکه‌ی شرکت ممکن است.
+ثبت ورود/خروج/استراحت کارکنان از طریق **بات تلگرام** و **Telegram Mini App**، با محاسبه‌ی ساعت مفید کاری، مرخصی/مأموریت/دورکاری، برنامه‌ی هفتگی و گزارش روزانه‌ی تسک‌ها، گزارش‌های دوره‌ای و یک **پنل مدیریتی وب**. ثبت تردد حضوری فقط از داخل شبکه‌ی شرکت ممکن است (خارج از شبکه فقط با مأموریت تأییدشده یا دورکاری تأییدشده).
 
-- معماری و تصمیمات ثابت: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-- وضعیت فازها و کارهای باقی‌مانده: [`PROJECT_STATUS.md`](PROJECT_STATUS.md)
-- تاریخچه‌ی تغییرات: [`CHANGELOG.md`](CHANGELOG.md)
-- فاز ۱۰ (استراحت، ریست برنامه، ماموریت، برنامه‌ی هفتگی/گزارش روزانه، بات دکمه‌ای): تصمیم‌ها [`docs/PHASE10_DECISIONS.md`](docs/PHASE10_DECISIONS.md) و استقرار/تست دستی [`docs/PHASE10_DEPLOY.md`](docs/PHASE10_DEPLOY.md)
-- فاز ۱۱ (گیت خروج بر اساس اولویت، قفل برنامه‌ی هفتگی با شروع هفته، UI کارت‌های روزانه، گفت‌وگوی دوطرفه روی اعتراض): تصمیم‌ها [`docs/PHASE11_DECISIONS.md`](docs/PHASE11_DECISIONS.md) و استقرار/تست دستی [`docs/PHASE11_DEPLOY.md`](docs/PHASE11_DEPLOY.md)
-- فاز ۱۲ (شیفت با تاریخ اعمال و برنامه‌ی روزبه‌روز، استراحت با حقوق، سقف تأخیر و اجازه‌ی ورود، تسک فوری، نمای هفتگی کارمند، منوی «📂 منو»، ورودی ساعت قابل‌تایپ، تسک واجب سرپرست): تصمیم‌ها [`docs/PHASE12_DECISIONS.md`](docs/PHASE12_DECISIONS.md) و استقرار/تست دستی [`docs/PHASE12_DEPLOY.md`](docs/PHASE12_DEPLOY.md). ⚠️ H1 (ساعت دورکاری) هنوز پیاده‌سازی نشده است.
-- فاز ۱۸ (قانون ناهار، استخر روزانه استراحت با حقوق و ورود مجدد): تصمیم‌ها و چک‌لیست تست دستی در [`docs/PHASE18_DECISIONS.md`](docs/PHASE18_DECISIONS.md). تنظیم‌های اصلی: `fixedLunchDeductMinutes=45`، `fixedLunchMinPresenceMinutes=240`، `paidBreakCount=3`، `paidBreakMinutes=45` و `maxReEntriesPerDay=1`.
-- فاز ۱۳ (برنامه‌ی هفته‌ی بعد کارمندان با ظاهر دفترچه در پنل ادمین/سرپرست: مشاهده، ویرایش درجا، جابه‌جایی با کیبورد/drag/لمس، همزمانی با `PLAN_CONFLICT`، اعلان تجمیعی به کارمند، ساعت کاری روز/تسک فوری/یادداشت سرپرست از همان صفحه): تصمیم‌ها [`docs/PHASE13_DECISIONS.md`](docs/PHASE13_DECISIONS.md) و استقرار/تست دستی [`docs/PHASE13_DEPLOY.md`](docs/PHASE13_DEPLOY.md).
+## فهرست
+
+- [مستندات](#مستندات)
+- [قابلیت‌ها](#قابلیتها)
+- [فناوری‌ها](#فناوریها)
+- [نصب و اجرا](#نصب-و-اجرا)
+- [متغیرهای محیطی](#متغیرهای-محیطی)
+- [دیتابیس و migration](#دیتابیس-و-migration)
+- [ساختار پوشه‌ها](#ساختار-پوشهها)
+- [نقش‌ها و دسترسی](#نقشها-و-دسترسی)
+- [احراز هویت](#احراز-هویت)
+- [محدودیت شبکه و دورکاری](#محدودیت-شبکه-و-دورکاری)
+- [مسیرهای API](#مسیرهای-api)
+- [بات تلگرام و Jobها](#بات-تلگرام-و-jobها)
+- [امنیت و پایش](#امنیت-و-پایش)
+- [استقرار (ویندوز + NSSM)](#استقرار-ویندوز--nssm)
+- [بک‌آپ و بازیابی](#بکآپ-و-بازیابی)
+- [تست](#تست)
+- [وضعیت فعلی و کارهای باز](#وضعیت-فعلی-و-کارهای-باز)
+
+## مستندات
+
+| فایل | محتوا |
+|---|---|
+| [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md) | **مستند فنی یکپارچه**: معماری، امنیت/رازها/مانیتورینگ/موارد مشکوک، حالت‌های UI، تصمیم‌ها و چک‌لیست استقرار/تست دستی هر فاز (۱۰ تا ۱۹)، تصمیم PDF، تست دستی ویزارد گزارش روزانه. در ابتدای فایل فهرست قابل‌کلیک دارد. |
+| [`PROJECT_STATUS.md`](PROJECT_STATUS.md) | وضعیت فازها، نقشه‌ی فایل‌ها، کارهای باقی‌مانده و مرجع کامل `.env` |
+| [`CHANGELOG.md`](CHANGELOG.md) | تاریخچه‌ی تغییرات |
+| [`BACKUP_RESTORE.md`](BACKUP_RESTORE.md) | بک‌آپ و بازیابی دیتابیس |
+| [`.env.example`](.env.example) | نمونه‌ی تنظیمات با توضیح هر مقدار |
+
+> پوشه‌ی `docs/` قبلاً چند ده فایل جدا (`PHASE*_DECISIONS.md`، `PHASE*_DEPLOY.md`، `SECURITY.md`، …) داشت؛ همه در `docs/DOCUMENTATION.md` ادغام شده‌اند. ارجاع به نام فایل‌های قدیمی (مثلاً در `CHANGELOG.md`) را در همان فایل ادغامی، کنار عنوان هر بخش، می‌توانید پیدا کنید.
+
+## قابلیت‌ها
+
+**تردد و ساعت کاری**
+- ورود، خروج، استراحت و **ورود مجدد** در همان روز (چند نوبت حضور، سقف `maxReEntriesPerDay`، جمع نوبت‌ها در موتور محاسبه و گزارش‌ها)
+- قانون ناهار: کسر خودکار `fixedLunchDeductMinutes=45` برای حضور حداقل `fixedLunchMinPresenceMinutes=240`؛ در صورت ثبت ناهار فقط مدت واقعی
+- استراحت با حقوق: استخر روزانه‌ی مشترک (`paidBreakCount=3`، `paidBreakMinutes=45`)؛ مازاد بدون حقوق
+- شیفت با «تاریخ اعمال»، شیفت چرخشی و برنامه‌ی کاری روزبه‌روز (override) برای هر کارمند
+- سقف تأخیر و «اجازه‌ی ورود» (درخواست کارمند، تأیید سرپرست/ادمین)
+- موتور محاسبه‌ی ساعت مفید، اضافه‌کاری با تأیید، علامت‌گذاری تعطیل/مرخصی، بستن خودکار رکوردهای ناقص
+
+**مرخصی، مأموریت، دورکاری**
+- انواع مرخصی با مانده، زنجیره‌ی تأیید (سرپرست ← منابع انسانی)، جانشین، پیوست و صف تأیید دسته‌جمعی
+- مأموریت (ثبت، «همین حالا»، لغو، تأیید شبانه) که استثنای شبکه را می‌دهد
+- **دورکاری خارج از شبکه** (فاز ۱۴): نشست و استراحت جدا، تأیید سرپرست، شمارش جدا در گزارش‌ها (تنظیم `remoteWorkEnabled`)
+
+**برنامه‌ی هفتگی و تسک‌ها**
+- برنامه‌ی هفته‌ی بعد توسط کارمند، با گیت خروج بر اساس اولویت و قفل پس از شروع هفته (`PLAN_LOCKED`)
+- گزارش روزانه‌ی تسک‌ها (انجام شد / ناقص / انجام نشد، توضیح، انتقال تسک و واگرد)، صفحه‌ی «امروزِ من» و تخته‌ی هفته
+- تسک فوری (توسط سرپرست/ادمین یا شخصی) با یادآوری مهلت؛ تسک واجب «بررسی گزارش روز قبل» برای سرپرستان
+- ویرایش برنامه‌ی هفته‌ی بعد کارمندان توسط ادمین/سرپرست با ظاهر «دفترچه»، با کنترل همزمانی (`PLAN_CONFLICT`)
+- گزارش شبانه‌ی تسک‌ها برای سرپرست/ادمین و شاخص‌های تسک (KPI)
+
+**گزارش، تحلیل و کنترل**
+- گزارش‌های روزانه/هفتگی/ماهانه (تقویم شمسی)، خروجی CSV (و `.xlsx` در صورت نصب `exceljs`)، نمای چاپ
+- تحلیل‌ها: روند و مقایسه‌ی تأخیر، رتبه‌بندی، نرخ حضور، توزیع ورود، الگوها؛ تقویم؛ مانده‌ی مرخصی
+- بستن ماه (چک‌لیست، تعدیل، بازگشایی)، موارد مشکوک (ضدتقلب: IP یکسان، تغییر دستگاه)، Audit Log غیرقابل‌ویرایش با آرشیو
+- اعتراض به رکورد با گفت‌وگوی دوطرفه (پیام، بازگشایی تا `disputeMaxReopens`، خاتمه)
+
+**رابط‌ها**
+- **Mini App کارمند** (`public/`): پالت سرمه‌ای/نارنجی، حلقه‌ی پیشرفت «امروز»، گرید شمسی تاریخچه، نمودارهای SVG، یکپارچگی با Telegram WebApp (BackButton، Haptic، safe-area، تم تلگرام)
+- **پنل مدیریتی** (`public-admin/`): داشبورد، «وضعیت من» برای هر چهار نقش، صفحه‌ی تنظیمات گروه‌بندی‌شده، جدول‌های واکنش‌گرا، bottom-sheet، پالت فرمان (`Ctrl/Cmd+K`)، نمودارهای دسترس‌پذیر، تم روشن/تیره
+- **بات تلگرام**: منوی نقش‌محور «📂 منو» (تنها دکمه‌ی کیبورد)
+
+**مدیریت و عملیات**
+- ریست برنامه (تأیید دوگانه، بک‌آپ، قفل Go-Live)، پیام گروهی، بک‌آپ روزانه، آرشیو Audit، نگهداری دیتابیس
+- watchdog با هشدار تلگرامی به ادمین‌ها (دیسک، polling، Job، بک‌آپ) و ثبت اجرای Jobها
 
 ## فناوری‌ها
 
-Node.js (>=18) · Express 4 · SQLite (`better-sqlite3`) · `node-telegram-bot-api` (polling) · `node-cron` · `jalaali-js`.
+Node.js (>=18) · Express 4 · SQLite (`better-sqlite3`) · `node-telegram-bot-api` (polling) · `node-cron` · `jalaali-js` · `exceljs` (اختیاری، برای `.xlsx`).
+فرانت‌اند (Mini App و پنل) بدون build و با JavaScript ساده است.
 SQLite یعنی بدون سرویس دیتابیس جدا؛ کل دیتابیس یک فایل است (`data/attendance.db`). اجرا روی سرور محلی ویندوز با NSSM.
 
 ## نصب و اجرا
@@ -33,7 +94,23 @@ npm start                   # API + بات در یک پروسه
 ### ادمین اول
 دیتابیس بدون کاربر شروع می‌شود. به بات پیام بدهید (`/start`)؛ آیدی عددی تلگرامتان را می‌گوید. بعد `npm run create-admin -- <آیدی> "نام"` و دوباره `/start`.
 
-### متغیرهای محیطی
+### اسکریپت‌های npm
+
+| دستور | کار |
+|---|---|
+| `npm start` / `npm run dev` / `npm run start:api-only` | اجرا (عادی / با watch / فقط API) |
+| `npm run init-db` / `npm run migrate` / `npm run migrate:status` | دیتابیس |
+| `npm run create-admin -- <id> "نام"` | ساخت اولین ادمین |
+| `npm test` / `npm run test:watch` | تست‌ها |
+| `npm run smoke` | تست دودی روی سرور واقعی و دیتابیس موقت |
+| `npm run bench:analytics` | بنچمارک تحلیل‌ها |
+| `npm run secret-scan` | جست‌وجوی راز در پروژه (کد خروج ۱ = یافته) |
+| `npm run package` | ساخت zip تحویل بدون راز در `dist/` |
+
+اسکریپت‌های کمکی دیگر: `src/scripts/seedEmployees.js`، `src/scripts/pushPanelButton.js` (جایگزینی کیبورد قدیمی بات؛ `--apply`)، `scripts/restore-backup.js`، `scripts/install-fonts.js`.
+
+## متغیرهای محیطی
+
 مرجع کامل در [`PROJECT_STATUS.md`](PROJECT_STATUS.md) (بخش ۷) و توضیح هر مقدار داخل `.env.example`. مهم‌ترین‌ها:
 
 | متغیر | توضیح |
@@ -41,22 +118,32 @@ npm start                   # API + بات در یک پروسه
 | `TELEGRAM_BOT_TOKEN` | توکن بات از BotFather |
 | `TELEGRAM_BOT_USERNAME` | یوزرنیم بات بدون `@` (برای ورود پنل) |
 | `ADMIN_SESSION_SECRET` | **الزامی در production**؛ رشته‌ی تصادفی طولانی (`openssl rand -hex 32`) |
+| `ADMIN_SESSION_MAX_AGE_DAYS` | مدت اعتبار نشست پنل |
 | `MINI_APP_URL` | آدرس نهایی Mini App، مثلاً `https://attendance.farazhonar.com/` |
+| `PORT` / `NODE_ENV` | پورت و حالت اجرا (`production` برای استقرار) |
 | `SSL_CERT_PATH` / `SSL_KEY_PATH` | گواهی HTTPS؛ خالی = HTTP ساده (فقط توسعه) |
 | `ALLOWED_NETWORK_CIDR` | رنج شبکه‌ی مجاز ثبت تردد (پیش‌فرض `192.168.10.0/24`) |
 | `TRUST_PROXY` | باید `false` بماند (پراکسی نداریم) |
 | `DB_PATH` | مسیر فایل دیتابیس (پیش‌فرض `./data/attendance.db`) |
-| `CSP_MODE` | `report-only` (پیش‌فرض) / `enforce` / `off` — سیاست CSP؛ [`docs/SECURITY.md`](docs/SECURITY.md) |
+| `TIMEZONE`، `WORK_DAY_START`، `WORK_DAY_END` | منطقه‌ی زمانی و ساعت کاری پیش‌فرض |
+| `LATE_CHECKIN_GRACE_MINUTES`، `CHECKOUT_REMINDER_MINUTES_BEFORE`، `REPEATED_LATENESS_THRESHOLD` | آستانه‌های تأخیر و یادآوری |
+| `CRON_*` | زمان‌بندی Jobها (گزارش‌ها، یادآورها، مرور شبانه، بک‌آپ، آرشیو، watchdog، …) |
+| `ALLOW_DATA_RESET` | اجازه‌ی ریست برنامه (در production عمداً خاموش نگه دارید) |
+| `CSP_MODE` | `report-only` (پیش‌فرض) / `enforce` / `off` |
 | `ADMIN_COOKIE_SAMESITE` | `strict` (پیش‌فرض) یا `lax` برای بازگشت اضطراری |
-| `RATE_LIMIT_STORE` | `sqlite` (پیش‌فرض: شمارنده‌ی ماندگار، با ری‌استارت صفر نمی‌شود) یا `memory`؛ [`docs/SECURITY.md`](docs/SECURITY.md) بخش ۷ |
-| `WATCHDOG_ENABLED` / `CRON_WATCHDOG` / `ALERT_THROTTLE_MINUTES` / `MONITOR_*` | مانیتورینگ و هشدار تلگرامی به ادمین‌ها (دیسک، polling، Job، بک‌آپ)؛ [`docs/MONITORING.md`](docs/MONITORING.md) |
-| `CSP_PANEL_UNSAFE_EVAL` / `HSTS_MAX_AGE_SECONDS` / `CSRF_EXTRA_ORIGINS` | تنظیمات پیشرفته‌ی امنیت وب (پیش‌فرض‌ها معمولاً کافی‌اند) |
+| `RATE_LIMIT_STORE` | `sqlite` (پیش‌فرض، ماندگار) یا `memory` |
+| `WATCHDOG_ENABLED` / `ALERT_THROTTLE_MINUTES` / `MONITOR_*` | مانیتورینگ و هشدار تلگرامی |
+| `CRON_DAILY_BACKUP` / `BACKUP_KEEP_DAILY` / `BACKUP_KEEP_MONTHLY` | بک‌آپ خودکار و نگهداری |
+| `FRAUD_*` | آستانه‌های تشخیص موارد مشکوک |
+| `CSP_PANEL_UNSAFE_EVAL` / `HSTS_MAX_AGE_SECONDS` / `CSRF_EXTRA_ORIGINS` | تنظیمات پیشرفته‌ی امنیت وب |
 
-> ⚠️ `.env`، پوشه‌ی `.ssl/` و فایل‌های `data/*.db` هرگز commit یا در zip تحویلی گذاشته نشوند. برای ساخت بسته‌ی تحویل از `npm run package` استفاده کنید (رازها را خودکار حذف می‌کند) و قبل از commit/ارسال `npm run secret-scan` بزنید. در production اگر `ADMIN_SESSION_SECRET` کمتر از ۳۲ نویسه یا نمونه باشد سرور بالا نمی‌آید. جزئیات و چک‌لیست «اگر راز لو رفت»: [`docs/SECRETS.md`](docs/SECRETS.md).
+> ⚠️ `.env`، پوشه‌ی `.ssl/` و فایل‌های `data/*.db` هرگز commit یا در zip تحویلی گذاشته نشوند. برای ساخت بسته‌ی تحویل از `npm run package` استفاده کنید (رازها را خودکار حذف می‌کند) و قبل از commit/ارسال `npm run secret-scan` بزنید. در production اگر `ADMIN_SESSION_SECRET` کمتر از ۳۲ نویسه یا نمونه باشد سرور بالا نمی‌آید. چک‌لیست «اگر راز لو رفت»: بخش «مدیریت رازها» در [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md).
+
+بیشتر قوانین کسب‌وکار (ناهار، استراحت، سقف تأخیر، دورکاری، گیت‌های برنامه/گزارش، …) در جدول `settings` هستند و از صفحه‌ی «تنظیمات» پنل (یا `GET/PATCH /api/admin/settings`) تغییر می‌کنند، نه از `.env`.
 
 ## دیتابیس و migration
 
-تغییر ساختار دیتابیس **فقط** با migration انجام می‌شود (`src/db/migrations/`، فایل‌های شماره‌دار):
+تغییر ساختار دیتابیس **فقط** با migration انجام می‌شود (`src/db/migrations/`، فایل‌های شماره‌دار؛ فعلاً `001` تا `042`):
 
 ```bash
 npm run migrate           # اعمال migrationهای باقی‌مانده (قبلش بک‌آپ می‌گیرد)
@@ -66,10 +153,10 @@ npm run migrate:status    # فقط نمایش وضعیت
 - هر migration داخل یک transaction اجرا می‌شود و در صورت خطا کامل rollback می‌شود.
 - قبل از اجرا، بک‌آپ سازگار با WAL در `data/backups/pre-migration-<زمان>.db` گرفته می‌شود (چند نسخه‌ی آخر نگه داشته می‌شود).
 - سرور هنگام بالا آمدن migrationهای باقی‌مانده را خودکار اجرا می‌کند.
-- روی سرور production بهتر است قبل از `npm run migrate` دستی، سرویس را stop کنید (`nssm stop <service>`).
+- روی production بهتر است قبل از `npm run migrate` دستی، سرویس را stop کنید (`nssm stop <service>`).
 - برای تغییر `CHECK` در SQLite، helper بازسازی جدول (`rebuildTable`) در `src/db/migrator.js` موجود است.
 
-جدول‌ها: `users`، `attendance_records`، `break_records`، `leave_requests`، `holidays`، `record_disputes`، `settings`، `audit_log` (غیرقابل‌ویرایش) و `schema_migrations`.
+گروه‌های اصلی جدول‌ها: کاربران و نقش‌ها (`users`)، تردد (`attendance_records`، `attendance_segments`، `break_records`)، مرخصی (`leave_requests`، `leave_types`، `leave_balances`، تأییدها و پیوست‌ها)، تعطیلات و بستن ماه، اعتراض‌ها (`record_disputes` و پیام‌ها)، شیفت و برنامه‌ی روزبه‌روز، برنامه‌ی هفتگی و تسک‌ها (`weekly_plans`، تسک فوری، لاگ تسک)، دورکاری (نشست و استراحت)، اجازه‌ی ورود، اعلان‌ها، موارد مشکوک، `settings`، `rate_limits`، `job_runs`، `audit_log` (غیرقابل‌ویرایش) و `schema_migrations`.
 همه‌ی زمان‌های تردد از **ساعت سرور** گرفته می‌شود، نه کلاینت.
 
 ## ساختار پوشه‌ها
@@ -81,105 +168,169 @@ src/
   config.js                خواندن .env (در NODE_ENV=test خوانده نمی‌شود)
   db/                      connection، migrator، migrate.js، init.js، migrations/
   repositories/            تنها لایه‌ای که SQL می‌نویسد
-  middleware/              adminAuth، telegramAuth، networkRestriction، rateLimiter، errorHandler
+  services/                منطق کسب‌وکار (مرخصی، مأموریت، دورکاری، برنامه‌ی هفتگی، تسک‌ها، گزارش‌ها،
+                           تحلیل، بستن ماه، ریست، اعلان‌ها، …)
+  engine/                  موتور محاسبه‌ی روز کاری (computeDay، dayService، calendarService)
+  middleware/              adminAuth، telegramAuth، networkRestriction، rateLimiter، csrf، permissions،
+                           securityHeaders، maintenanceGate، errorHandler
   api/routes/
     index.js               سوار کردن همه‌ی routeها زیر /api
-    health.js  miniapp.js  adminAuth.js
-    admin/                 پنل مدیریتی، تقسیم‌شده بر اساس دامنه (index/common/dashboard/users/
-                           attendance/leave/disputes/reports/settings/audit/system)
-  bot/                     بات، دستورها (commands/)، Jobهای cron (scheduler/)، notifier
-  utils/                   workHours، jalali، csv، session، serverTime، telegramInitData، telegramLoginAuth ...
+    health.js  miniapp.js  adminAuth.js  cspReport.js
+    admin/                 پنل مدیریتی، تقسیم‌شده بر اساس دامنه (یک فایل برای هر حوزه)
+  bot/                     بات، commands/، منو (menu/)، انتخابگرهای دکمه‌ای (ui/)، Jobهای cron (scheduler/)، notifier
+  content/                 متن‌های ثابت (پیام‌های تشویقی، برچسب گزارش‌ها)
+  utils/                   workHours، jalali، csv، session، serverTime، telegramInitData، telegramLoginAuth،
+                           fraudDetection، jobRunner، backupRetention ...
   scripts/                 createAdmin، seedEmployees، pushPanelButton
-public/                    Mini App کارمند (بدون build)
-public-admin/              پنل مدیریتی وب (بدون build)، زیر /admin/
-                           (فاز ۱۳ — C1) سیستم طراحی «دفترچه»: css/notebook.css + js/notebook.js (اسکوپ .nb)؛ صفحه‌ی نمایشی توسعه: /admin/nb-demo.html (داده‌ی ثابت، بدون API؛ در استقرار همراه بقیه‌ی public-admin می‌آید، مشکلی برای secret-scan ندارد و می‌توان حذفش کرد)
+public/                    Mini App کارمند (بدون build): app.js، planner.js، dailyReport.js، css/tokens.css (توکن مشترک تم)
+public-admin/              پنل مدیریتی وب (بدون build)، زیر /admin/؛ viewها در js/views-*.js
+                           سیستم طراحی «دفترچه»: css/notebook.css + js/notebook.js؛ صفحه‌ی نمایشی /admin/nb-demo.html
+                           (داده‌ی ثابت، بدون API؛ قابل حذف)
 scripts/                   install-service.ps1 (NSSM)، setup-ssl-renewal.ps1، run-tests.js، smoke-test.js،
-                           package-release.js (zip بدون راز)، secret-scan.js، lib/ (zip، اسکنر، قوانین release)
+                           package-release.js، secret-scan.js، restore-backup.js، bench-analytics.js، lib/
+deploy/                    فایل‌های bat برای نصب/ری‌استارت/حذف سرویس
 test/                      تست‌های خودکار (node:test)
-docs/                      ARCHITECTURE.md، PHASE10_DECISIONS.md، PHASE10_DEPLOY.md، PHASE11_DECISIONS.md، PHASE11_DEPLOY.md، PHASE12_DECISIONS.md، PHASE12_DEPLOY.md، UI_STATES.md، SECURITY.md (هدرها/CSP/کوکی/CSRF/ابطال نشست)، SECRETS.md (مدیریت رازها)
+docs/                      DOCUMENTATION.md (مستند فنی یکپارچه)
+data/                      دیتابیس، backups/، attachments/ (commit نمی‌شوند)
 ```
 
-## نقش‌ها
+> فایل‌های `port-3000.patch` و `port-443-revert.patch` در ریشه patchهای قدیمیِ تغییر پورت هستند و در اجرای برنامه نقشی ندارند.
+
+## نقش‌ها و دسترسی
 
 | نقش | دسترسی |
 |---|---|
-| `admin` | همه‌چیز؛ تنظیمات، Audit، اصلاح رکورد، پیام گروهی، بک‌آپ |
-| `manager` («سرپرست») | فقط تیم خودش (`manager_id`)؛ مشاهده، تأیید مرخصی، رسیدگی به اعتراض، پیام به تیم |
+| `admin` | همه‌چیز؛ تنظیمات، Audit، اصلاح رکورد، پیام گروهی، بک‌آپ، ریست، بستن ماه |
+| `hr` (منابع انسانی) | مشاهده‌ی سراسری (کاربران، گزارش‌ها، تحلیل‌ها، مانده‌ی مرخصی، ماه‌های بسته)، مرحله‌ی «منابع انسانی» در زنجیره‌ی تأیید مرخصی؛ بدون اختیارات مدیریتی ادمین |
+| `manager` («سرپرست») | فقط تیم خودش (`manager_id`)؛ مشاهده، تأیید مرخصی/دورکاری/اجازه‌ی ورود، رسیدگی به اعتراض، برنامه‌ی هفتگی و تسک فوری زیردستان، پیام به تیم |
 | `employee` | فقط داده‌ی خودش و فقط مسیرهای لیست سفید `EMPLOYEE_ALLOWED` در `src/middleware/adminAuth.js`؛ هر مسیر جدید برای او پیش‌فرض بسته است (default-deny) |
 
-اسکوپ نقش‌ها سمت سرور اعمال می‌شود (`src/api/routes/admin/common.js`)؛ پنهان‌کردن دکمه‌ها در UI امنیت نیست.
+مجوزها به‌صورت «حوزه.عمل» (مثل `leave.approve`، `schedule.manage`، `plan.edit_team`) در `src/middleware/permissions.js` تعریف شده‌اند و نقش‌ها به آن‌ها نگاشت می‌شوند. اسکوپ تیم سرپرست سمت سرور اعمال می‌شود (`src/api/routes/admin/common.js`)؛ پنهان‌کردن دکمه‌ها در UI امنیت نیست. نقش بات هم هر بار از دیتابیس چک می‌شود.
 
-## احراز هویت (دو الگوریتم جدا — هرگز جایگزین هم نشوند)
+## احراز هویت
+
+دو الگوریتم جدا — هرگز جایگزین هم نشوند:
 
 | ورودی | الگوریتم | فایل |
 |---|---|---|
 | Mini App | `initData` — `HMAC_SHA256(key="WebAppData")` | `src/utils/telegramInitData.js` |
 | ورود پنل | Login Widget — `secret = SHA256(botToken)` | `src/utils/telegramLoginAuth.js` |
 
-پنل پس از ورود یک کوکی `HttpOnly` امضاشده (stateless) می‌گیرد (`src/utils/session.js`). ورود با کد یک‌بارمصرف از بات و لینک مستقیم دکمه‌ی پنل هم وجود دارد.
+پنل پس از ورود یک کوکی `HttpOnly` امضاشده (stateless) می‌گیرد (`src/utils/session.js`). ورود با کد یک‌بارمصرف از بات و لینک مستقیم دکمه‌ی پنل هم وجود دارد. نشست‌ها قابل ابطال‌اند و درخواست‌های تغییردهنده زیر حفاظت CSRF هستند (جزئیات در [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md)، بخش امنیت وب).
 
-## محدودیت شبکه
+## محدودیت شبکه و دورکاری
 
 `src/middleware/networkRestriction.js` روی `check-in`، `re-check-in`، `check-out` و `break/*` در Mini App اعمال می‌شود: IP مبدأ باید داخل `ALLOWED_NETWORK_CIDR` باشد، یا کاربر **مأموریت تأییدشده** برای همان روز داشته باشد. هویت کاربر برای این استثنا فقط از `req.miniAppUser` (امضاشده) خوانده می‌شود. هر رد و هر عبور با استثنا در `audit_log` ثبت می‌شود.
 
-## فهرست routeها (`/api`)
+اگر `remoteWorkEnabled` روشن باشد، کارمند خارج از شبکه (`OUT_OF_NETWORK`) می‌تواند نشست **دورکاری** شروع کند (`/api/miniapp/remote/*`)؛ این نشست‌ها پس از تأیید سرپرست در گزارش‌ها با شمارنده و برچسب جدا شمرده می‌شوند.
 
+## مسیرهای API
+
+همه‌ی مسیرها زیر `/api` هستند. فهرست زیر خلاصه‌ی گروهی است؛ مرجع دقیق، فایل‌های `src/api/routes/miniapp.js` و `src/api/routes/admin/*.js` و ماتریس تست نقش × route است. مسیرهای قدیمی فاز ۱ (`/api/users*`، `/api/attendance/*`، `/api/audit-log`) در `1.0.0-rc.1` حذف شدند.
+
+### عمومی
 | مسیر | توضیح |
 |---|---|
-| `GET /health` | سلامت سرویس (عمومی): فقط `status` (`ok`/`degraded`) و `time` |
-| `GET /miniapp/me`، `/today`، `/history`، `/report` | داده‌ی کارمند (پشت `telegramAuth`) |
-| `POST /miniapp/check-in`، `/check-out`، `/break/start`، `/break/end` | ثبت تردد (+ شبکه + rate limit)؛ ورودِ دیر با سقف تأخیر در حالت `enforce` ⇒ ۴۰۹ `LATE_LIMIT_REACHED` |
-| `GET/POST /miniapp/checkin-permission`، `GET /miniapp/schedule/upcoming` | وضعیت گیت تأخیر و درخواست «اجازه‌ی ورود»؛ ساعت کاری مؤثر امروز و روزهای بعد |
-| `GET/POST /miniapp/leave` | مرخصی/مأموریت |
-| `GET/POST /miniapp/dispute`، `GET /miniapp/dispute/:id`، `POST /miniapp/dispute/:id/(messages\|reopen\|close)` | اعتراض کارمند و گفت‌وگو روی آن (پیام، ادامه تا سقف `disputeMaxReopens`، خاتمه) |
-| `POST /miniapp/mission`، `/mission/now`، `/mission/now/end`، `/missions/:id/cancel`؛ `GET /miniapp/missions`، `/mission/day` | ماموریت (ثبت، «همین حالا»، لغو، فهرست) |
-| `GET/PUT /miniapp/plan`، `POST /miniapp/plan/submit`، `GET /miniapp/plan-gate` | برنامه‌ی هفتگی و وضعیت گیت خروج (هفته‌ی شروع‌شده ⇒ `editMode=readonly`، نوشتن ⇒ ۴۰۹ `PLAN_LOCKED`) |
-| `GET /miniapp/daily-tasks`، `POST /miniapp/daily-report`، `GET /miniapp/report-backfill` | گزارش روزانه‌ی تسک‌ها (تسک low اختیاری است: `optional:true`، مانع خروج نیست) |
-| `GET /miniapp/team-review`، `POST /miniapp/report-reviews` | مشاهده‌ی گزارش تیم (سرپرست) |
-| `POST /admin/auth/webapp`، `/token`، `/code`، `/telegram`، `/logout`؛ `GET /admin/public-config` | ورود/خروج پنل |
-| `GET /admin/me`، `/dashboard`، `/overview`، `/live`، `/nightly-review` | نمای کلی |
-| `GET/POST /admin/users`، `GET /admin/users/export`، `GET/PATCH/DELETE /admin/users/:id`، `GET /admin/users/:id/details`، `POST /admin/users/:id/message` | کارمندان |
-| `GET /admin/attendance`، `/attendance/export`؛ `GET/POST/PATCH/DELETE /admin/attendance-records…`؛ `POST /admin/attendance-records/:id/breaks`؛ `PATCH/DELETE /admin/break-records/:id` | رکوردهای تردد و استراحت |
-| `GET/POST/PATCH/DELETE /admin/leave-requests…` | مرخصی/مأموریت |
-| `GET /admin/leave-queue`، `POST /admin/leave-queue/bulk` | صف تأیید (فیلتر، مانده، تأیید/رد دسته‌جمعی) |
-| `GET /admin/disputes`، `/disputes/counts`، `/disputes/:id`؛ `POST /admin/disputes/:id/messages`، `/disputes/:id/(resolve\|reopen)` | اعتراض‌ها و thread گفت‌وگو (پاسخ/حل/بازکردن با `disputes.resolve`) |
-| `GET /admin/reports/summary`، `/reports/export` | گزارش (CSV) |
-| `GET/POST/DELETE /admin/holidays`، `GET/PATCH /admin/settings` | تعطیلات و تنظیمات |
-| `GET /admin/audit-log`، `/audit-log/export`، `/audit-actions` | Audit Log (فقط ادمین) |
-| `POST /admin/broadcast`، `GET /admin/system`، `/system/status`، `/system/backup` | سیستم و وضعیت/مانیتورینگ (فقط ادمین) |
-| `GET /admin/system/reset/options`، `POST /admin/system/reset/preview`، `POST /admin/system/reset` | ریست برنامه (فقط ادمین؛ تأیید دوگانه، بک‌آپ، rate limit؛ قفل Go-Live) |
-| `GET /admin/team-review`، `/team-reports`، `/team-reports/export`، `/task-kpis`؛ `POST /admin/report-reviews`، `/plan-gate/exemptions` | گزارش‌های تیم، شاخص‌های تسک، مشاهده‌ی گزارش و معافیت یک‌باره‌ی گیت برنامه |
-| `GET /admin/users/:id/schedule`؛ `PUT/DELETE /admin/users/:id/schedule/:date`؛ `POST /admin/schedule/bulk` | برنامه‌ی کاری روزبه‌روز (override؛ `schedule.read`/`schedule.manage`؛ ماه بسته ⇒ ۴۰۹؛ گروهی تا ۳۱ روز و ۵۰ نفر) |
-| `GET/POST /admin/shifts…`، `PUT /admin/users/:id/shift`، `POST /admin/shifts/assign` | شیفت‌ها و انتساب (فردی/گروهی) با «تاریخ اعمال» |
-| `GET /admin/checkin-permissions`، `POST /admin/checkin-permissions/:id/decide` | صف «اجازه‌ی ورود» و تأیید/رد (سرپرست مستقیم یا ادمین؛ HR فقط‌خواندنی) |
-| `POST /admin/users/:id/urgent-tasks`، `GET /admin/urgent-tasks`، `DELETE /admin/urgent-tasks/:taskId` | تسک فوری (`tasks.assign_urgent`؛ ادمین همه، سرپرست زیردست مستقیم) |
-| `GET /admin/users/:id/week?start=` | نمای هفتگی کامل کارمند با خلاصه‌ی عملکرد (`team.week_view`؛ فقط‌خواندنی) |
+| `GET /health` | سلامت سرویس: فقط `status` (`ok`/`degraded`) و `time` |
+| `POST /csp-report` | دریافت گزارش‌های CSP |
 
-> مسیرهای قدیمی فاز ۱ (`/api/users*`، `/api/attendance/*`، `/api/audit-log`) در نسخه‌ی `1.0.0-rc.1` حذف شدند (بدون مصرف‌کننده و بدون احراز هویت درست). دلیل در `CHANGELOG.md`.
+### Mini App کارمند (`/miniapp/*`، پشت `telegramAuth`)
+| مسیر | توضیح |
+|---|---|
+| `GET me`، `today`، `history`، `report`، `network-state` | داده‌ی کارمند و وضعیت شبکه |
+| `POST check-in`، `re-check-in`، `check-out`، `break/start`، `break/end` | ثبت تردد (+ شبکه + rate limit)؛ ورود دیر با سقف تأخیر در حالت `enforce` ⇒ ۴۰۹ `LATE_LIMIT_REACHED` |
+| `GET/POST checkin-permission`، `GET schedule/upcoming` | گیت تأخیر و «اجازه‌ی ورود»؛ ساعت کاری مؤثر امروز و روزهای بعد |
+| `GET remote/today`، `remote/history`؛ `POST remote/start`، `remote/end`، `remote/break/start`، `remote/break/end` | دورکاری |
+| `GET leave-types`، `GET/POST leave`، `GET leave/:id/attachment` | مرخصی |
+| `POST mission`، `mission/now`، `mission/now/end`، `missions/:id/cancel`، `missions/:id/attachment`؛ `GET missions`، `mission/day`؛ `DELETE missions/:id` | مأموریت |
+| `GET/PUT plan`، `POST plan/seen`، `plan/submit`، `GET plan-gate`، `week-board` | برنامه‌ی هفتگی و گیت خروج (هفته‌ی شروع‌شده ⇒ فقط‌خواندنی، نوشتن ⇒ ۴۰۹ `PLAN_LOCKED`) |
+| `GET daily-tasks`، `report-backfill`؛ `POST daily-report`، `daily-report/undo`؛ `PATCH daily-report/note` | گزارش روزانه‌ی تسک‌ها (تسک low اختیاری است) |
+| `POST my-urgent`؛ `PATCH/DELETE my-urgent/:id` | تسک فوریِ شخصی |
+| `GET team-review`؛ `POST report-reviews` | مشاهده‌ی گزارش تیم (سرپرست) |
+| `GET/POST dispute`، `GET dispute/:id`، `POST dispute/:id/(messages\|reopen\|close)` | اعتراض و گفت‌وگو روی آن |
 
-## بات تلگرام
+### پنل مدیریتی (`/admin/*`)
+| حوزه | مسیرها |
+|---|---|
+| ورود | `POST auth/webapp`، `auth/token`، `auth/code`، `auth/telegram`، `auth/logout`؛ `GET public-config` |
+| نمای کلی | `GET me`، `dashboard`، `overview`، `live`، `nightly-review`، `calendar` |
+| «وضعیت من» (همه‌ی نقش‌ها، فقط داده‌ی خود) | `GET me/week`، `me/tasks/(today\|backfill\|pending-count)`؛ `POST me/tasks/(answer\|undo)`؛ `PATCH me/tasks/note`؛ `GET me/urgent/config`، `POST me/urgent`، `PATCH/DELETE me/urgent/:id` |
+| کارمندان | `GET/POST users`، `GET users/export`، `GET/PATCH/DELETE users/:id`، `GET users/:id/details`، `POST users/:id/message` |
+| تردد | `GET attendance`، `attendance/export`؛ `GET/POST/PATCH/DELETE attendance-records…`؛ `POST attendance-records/:id/breaks`؛ `PATCH/DELETE break-records/:id`؛ تأیید اضافه‌کاری `GET overtime-approvals`، `POST overtime-approvals/:recordId/(approve\|reject)` |
+| مرخصی/مأموریت | `GET/POST/PATCH/DELETE leave-requests…`، `GET leave-queue`، `POST leave-queue/bulk`، `GET leave-balances`، `POST leave-balances/adjust`، `PUT leave-balances/entitlement`، انواع مرخصی |
+| دورکاری | `GET remote-work`، `remote-work/count`؛ `POST remote-work/approve-batch`، `remote-work/:id/(approve\|reject)` |
+| اعتراض‌ها | `GET disputes`، `disputes/counts`، `disputes/:id`؛ `POST disputes/:id/messages`، `disputes/:id/(resolve\|reopen)` |
+| شیفت و برنامه‌ی کاری | `GET/POST shifts…`، `PUT users/:id/shift`، `POST shifts/assign`؛ `GET users/:id/schedule`، `PUT/DELETE users/:id/schedule/:date`، `POST schedule/bulk` |
+| اجازه‌ی ورود | `GET checkin-permissions`، `POST checkin-permissions/:id/decide` |
+| برنامه‌ی هفتگی تیم | `GET users/:id/plan`، `plan-overview`، `users/:id/week`؛ `POST users/:id/plan/tasks`، `plan/reorder`، `plan/notify`؛ `PATCH/DELETE plan-tasks/:taskId`؛ `PUT users/:id/plan/supervisor-comment`؛ `POST plan-gate/exemptions` |
+| تسک‌ها و بازبینی | `POST users/:id/urgent-tasks`، `GET urgent-tasks`، `DELETE urgent-tasks/:taskId`؛ `GET team-review`، `team-reports`، `team-reports/export`، `task-kpis`؛ `POST report-reviews` |
+| گزارش و تحلیل | `GET reports/summary`، `reports/export`؛ `GET analytics/(late-trend\|late-compare\|rankings\|attendance-rate\|leave-by-type\|checkin-distribution\|patterns)` |
+| بستن ماه | `GET month-closures`، `month-closures/:y/:m/(checklist\|adjustments)`؛ `POST month-closures/:y/:m/(close\|reopen)` |
+| کنترل و اعلان | `GET suspicious`، `POST suspicious/:id/review`؛ `GET notifications`، `notifications/unread-count`؛ `POST notifications/read-all`، `notifications/:id/read` |
+| تعطیلات و تنظیمات | `GET/POST/DELETE holidays`، `GET/PATCH settings` |
+| سیستم (فقط ادمین) | `GET audit-log`، `audit-log/export`، `audit-actions`؛ `POST broadcast`؛ `GET system`، `system/status`، `system/backup`؛ ریست: `GET system/reset/options`، `POST system/reset/preview`، `POST system/reset` |
 
-Polling (بدون webhook و بدون پورت ورودی). همه‌ی کارها از دکمه‌ی **«📂 منو»** انجام می‌شود که تنها دکمه‌ی کیبورد پایین چت است؛ با لمس آن پیام منوی inline نقش‌محور (۲ ستونه، گروه‌بندی «کارهای من / تیم / مدیریت»، با «✖️ بستن منو») باز می‌شود و بعد از انتخاب پاک می‌شود. «🕒 ثبت تردد»، «📋 برنامه هفتگی» و «⚙️ پنل مدیریت» دکمه‌ی inline از نوع `web_app` (فقط https) هستند. کاربری که هنوز کیبورد قدیمی ۱۵ دکمه‌ای را دارد با اولین لمس یکی از دکمه‌هایش کیبورد جدید را می‌گیرد؛ برای جایگزینی یک‌جا می‌توان `node src/scripts/pushPanelButton.js --apply` را اجرا کرد (منوی «/» تلگرام عمداً خالی است؛ فقط `/start` برای شروع کار می‌کند). گزینه‌های منو — کارمند: «🕒 ثبت تردد»، «📊 وضعیت من»، «📈 گزارش من»، «🏖 مرخصی / 🚗 ماموریت»، «📋 برنامه هفتگی»، «🖥 پنل»، «❓ راهنما»؛ سرپرست: + «👥 گزارش تیم»، «📥 درخواست‌های منتظر»، «💬 اعتراض‌ها»، «📝 گزارش‌های دیروز تیم»، «👤 لیست اعضا»؛ ادمین: + «➕ افزودن کارمند»، «🛠 اصلاح رکورد»، «⚙️ پنل مدیریت». نقش هر بار سمت سرور از دیتابیس چک می‌شود. در جریان‌های چندمرحله‌ای تاریخ با تقویم شمسی inline، ساعت با اسلات ۳۰ دقیقه‌ای و کارمند/سرپرست با فهرست دکمه‌ای انتخاب می‌شود (تایپ `YYYY-MM-DD` / `HH:MM` هم پذیرفته است)؛ زیر هر مرحله «❌ انصراف | 🏠 منوی اصلی» هست و دکمه‌ی پیام قدیمی/منقضی «این دکمه منقضی شده، منو را باز کنید.» می‌دهد. فقط متن آزاد (نام، توضیح، دلیل) تایپ می‌ماند. حالت گفتگوهای چندمرحله‌ای در حافظه است و با ری‌استارت پروسه از بین می‌رود.
+## بات تلگرام و Jobها
 
-Jobهای `node-cron` (`src/bot/scheduler/`): یادآور تأخیر و خروج، علامت‌گذاری تعطیل/مرخصی، بستن رکوردهای ناقص، گزارش روزانه/هفتگی/ماهانه (ماه شمسی)، مرور شبانه، یادآوری مهلت تسک فوری (هر ۱۰ دقیقه، `CRON_URGENT_TASK_REMINDER`)، ساخت خودکار تسک واجب «بررسی گزارش روز قبل» برای سرپرست‌ها (هر روز ۰۰:۱۰، `CRON_TEAM_REVIEW_ENSURE`)، و **watchdog** (هشدار تلگرامی به ادمین‌ها؛ [`docs/MONITORING.md`](docs/MONITORING.md)). هر اجرای Job در جدول `job_runs` ثبت می‌شود و در پنل (ادمین ← «وضعیت سیستم») دیده می‌شود. عبارات `CRON_*` و ساعت‌ها در `.env` قابل تنظیم‌اند؛ **پیش‌فرض‌ها شنبه تا چهارشنبه را فرض می‌کنند — با روزهای کاری واقعی تطبیق دهید.**
+Polling (بدون webhook و بدون پورت ورودی). همه‌ی کارها از دکمه‌ی **«📂 منو»** انجام می‌شود که تنها دکمه‌ی کیبورد پایین چت است؛ با لمس آن منوی inline نقش‌محور (۲ ستونه، گروه‌بندی «کارهای من / تیم / مدیریت»، با «✖️ بستن منو») باز می‌شود و بعد از انتخاب پاک می‌شود. «🕒 ثبت تردد»، «📋 برنامه هفتگی» و «⚙️ پنل مدیریت» دکمه‌ی inline از نوع `web_app` (فقط https) هستند. منوی «/» تلگرام عمداً خالی است؛ فقط `/start` کار می‌کند. کاربری که هنوز کیبورد قدیمی را دارد با اولین لمس کیبورد جدید را می‌گیرد؛ برای جایگزینی یک‌جا: `node src/scripts/pushPanelButton.js --apply`.
+
+| نقش | گزینه‌های منو |
+|---|---|
+| کارمند | «🕒 ثبت تردد»، «📊 وضعیت من»، «📈 گزارش من»، «🏖 مرخصی / 🚗 ماموریت»، «📋 برنامه هفتگی»، «🖥 پنل»، «❓ راهنما» |
+| سرپرست | + «👥 گزارش تیم»، «📥 درخواست‌های منتظر»، «💬 اعتراض‌ها»، «📝 گزارش‌های دیروز تیم»، «👤 لیست اعضا» |
+| ادمین | + «➕ افزودن کارمند»، «🛠 اصلاح رکورد»، «⚙️ پنل مدیریت» |
+
+در جریان‌های چندمرحله‌ای تاریخ با تقویم شمسی inline، ساعت با اسلات ۳۰ دقیقه‌ای و کارمند/سرپرست با فهرست دکمه‌ای انتخاب می‌شود (تایپ `YYYY-MM-DD` / `HH:MM` هم پذیرفته است)؛ زیر هر مرحله «❌ انصراف | 🏠 منوی اصلی» هست. فقط متن آزاد (نام، توضیح، دلیل) تایپ می‌ماند. حالت گفتگوهای چندمرحله‌ای در حافظه است و با ری‌استارت پروسه از بین می‌رود.
+
+**Jobهای `node-cron`** (`src/bot/scheduler/`):
+
+| دسته | Jobها |
+|---|---|
+| یادآورها | تأخیر در ورود، خروج، مهلت تسک فوری (هر ۱۰ دقیقه)، تأیید مرخصی، دورکاری |
+| محاسبه و نگهداری | علامت‌گذاری تعطیل/مرخصی، بستن رکوردهای ناقص، بک‌آپ روزانه، آرشیو Audit، نگهداری دیتابیس |
+| گزارش | روزانه/هفتگی/ماهانه (ماه شمسی)، خلاصه‌ی صبحگاهی، مرور شبانه، گزارش شبانه‌ی تسک‌ها، اسناد گزارش |
+| سرپرستان | ساخت خودکار تسک واجب «بررسی گزارش روز قبل» (هر روز ۰۰:۱۰، `CRON_TEAM_REVIEW_ENSURE`) |
+| پایش | **watchdog** (هشدار تلگرامی به ادمین‌ها) |
+
+هر اجرای Job در جدول `job_runs` ثبت و در پنل (ادمین ← «وضعیت سیستم») نمایش داده می‌شود. عبارات `CRON_*` در `.env` (و برخی در تنظیمات پنل) قابل تغییرند؛ **پیش‌فرض‌ها شنبه تا چهارشنبه را فرض می‌کنند — با روزهای کاری واقعی تطبیق دهید.**
+
+## امنیت و پایش
+
+- هدرهای امنیتی و CSP (`CSP_MODE`، پیش‌فرض `report-only`)، HSTS، کوکی `HttpOnly` با `SameSite=Strict`، CSRF، ابطال نشست
+- Rate limit ماندگار روی تردد و ورود پنل (SQLite، با ری‌استارت صفر نمی‌شود)
+- default-deny برای نقش کارمند؛ کنترل رازهای راه‌اندازی، `secret-scan` و بسته‌ساز release بدون راز
+- Audit Log غیرقابل‌ویرایش (با آرشیو ماهانه) و موارد مشکوک (IP یکسان، تغییر دستگاه)
+- مانیتورینگ: `GET /api/health`، `GET /api/admin/system/status` و هشدار تلگرامی watchdog برای دیسک، polling، شکست Job و کهنگی بک‌آپ
+
+جزئیات هر مورد در [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md) (بخش «امنیت، رازها و پایش»).
 
 ## استقرار (ویندوز + NSSM)
 
 1. `npm install --omit=dev` و پر کردن `.env` (`NODE_ENV=production`).
 2. گواهی HTTPS با DNS-01: `scripts/setup-ssl-renewal.ps1` (نیمه‌دستی؛ توضیح داخل اسکریپت). مسیرها در `SSL_CERT_PATH`/`SSL_KEY_PATH`.
-3. نصب سرویس: `scripts/install-service.ps1` (NSSM، شروع خودکار، چرخش لاگ، ری‌استارت در crash).
+3. نصب سرویس: `scripts/install-service.ps1` (NSSM، شروع خودکار، چرخش لاگ، ری‌استارت در crash؛ نام پیش‌فرض سرویس `FarazHonarAttendance`).
 4. در BotFather: `/setdomain` برای دامنه‌ی پنل (لازم برای Login Widget).
 5. هر ارتقا: `nssm stop` ← جایگزینی کد ← `npm install` ← `npm run migrate` ← `nssm start`.
 
-ارتقا به فاز ۱۳ (migration ۰۳۳ تا ۰۳۵، فقط افزایشی؛ `.env` و وابستگی npm بدون تغییر): دستورها و چک‌لیست تست دستی در [`docs/PHASE13_DEPLOY.md`](docs/PHASE13_DEPLOY.md).
+ارتقاهای فازی (فقط افزایشی؛ بدون تغییر اجباری `.env` مگر در موارد ذکرشده):
 
-ارتقا به فاز ۱۲ (migration ۰۲۸ تا ۰۳۲، فقط افزایشی؛ `.env` تغییر اجباری ندارد؛ تنظیم‌های تازه‌ی استراحت با حقوق و سقف تأخیر به‌صورت پیش‌فرض خاموش‌اند): دستورها، فعال‌سازی تدریجی و چک‌لیست تست دستی در [`docs/PHASE12_DEPLOY.md`](docs/PHASE12_DEPLOY.md).
+| فاز | migration | نکته |
+|---|---|---|
+| ۱۰ | ۰۲۳–۰۲۶ | گیت‌های برنامه‌ی هفتگی/گزارش روزانه و قفل Go-Live پیش‌فرض خاموش؛ `.env` جدید: `CRON_MORNING_DIGEST`، `ALLOW_DATA_RESET` |
+| ۱۱ | ۰۲۷ | تنظیم تازه‌ی `disputeMaxReopens` |
+| ۱۲ | ۰۲۸–۰۳۲ | استراحت با حقوق و سقف تأخیر پیش‌فرض خاموش |
+| ۱۳ | ۰۳۳–۰۳۵ | بدون تغییر `.env` |
+| ۱۴ | ۰۳۶–۰۳۸ | دورکاری؛ `ALLOWED_NETWORK_CIDR` و `TRUST_PROXY` را بررسی کنید |
+| ۱۵ | ۰۳۹ | «امروزِ من»، توضیح انجام تسک |
+| ۱۶–۱۹ | ۰۴۰–۰۴۲ | بازطراحی UI، ناهار/استراحت/ورود مجدد؛ تغییر اصلی سمت فرانت‌اند |
 
-ارتقا به فاز ۱۱ (فقط migration ۰۲۷، افزایشی؛ بدون متغیر `.env` جدید؛ تنظیم تازه‌ی `disputeMaxReopens`): دستورها و چک‌لیست تست دستی در [`docs/PHASE11_DEPLOY.md`](docs/PHASE11_DEPLOY.md).
-
-ارتقا به فاز ۱۰ (migration ۰۲۳ تا ۰۲۶، فقط افزایشی): دستورها و چک‌لیست تست دستی در [`docs/PHASE10_DEPLOY.md`](docs/PHASE10_DEPLOY.md). گیت‌های برنامه‌ی هفتگی و گزارش روزانه و قفل Go-Live پیش‌فرض **خاموش**اند؛ فعال‌سازی تدریجی توصیه می‌شود. متغیرهای جدید `.env`: `CRON_MORNING_DIGEST`، `ALLOW_DATA_RESET`.
+دستورها و چک‌لیست تست دستی هر فاز: [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md) (بخش «فازها»).
 
 > اسکریپت‌های PowerShell روی ویندوز واقعی با دسترسی Administrator باید یک‌بار امتحان شوند.
+
+## بک‌آپ و بازیابی
+
+بک‌آپ خودکار روزانه (`CRON_DAILY_BACKUP`) و پیش از هر migration در `data/backups/` گرفته می‌شود؛ بک‌آپ دستی از پنل (ادمین ← سیستم ← بک‌آپ) هم ممکن است. بازیابی با `scripts/restore-backup.js`. راهنمای کامل مرحله‌به‌مرحله: [`BACKUP_RESTORE.md`](BACKUP_RESTORE.md).
 
 ## تست
 
@@ -191,6 +342,22 @@ npm run secret-scan  # جست‌وجوی توکن/کلید/راز در پروژ�
 npm run package      # zip تحویل بدون .env/.ssl/data/node_modules/.git → dist/
 ```
 
-تست‌ها hermetic هستند: دیتابیس موقت، توکن و راز ساختگی، و `.env` واقعی خوانده نمی‌شود. پوشش فعلی: migration، `initData` و Login Widget، سشن، `networkRestriction`، ماتریس دسترسی نقش × route، ساختار ترتیب routeها، و (بخش ۲-الف) هدرها/CSP، کوکی، CSRF و ابطال نشست، و (بخش ۲-ب۱) کنترل رازهای راه‌اندازی، اسکنر رازها و بسته‌ساز release، و (بخش ۲-ج۱) ثبت اجرای Jobها، نبض polling، سلامت سیستم، watchdog با بات ماک‌شده و `/api/health` + `/api/admin/system/status`. تست‌های موتور محاسبه با بخش ۳ می‌آید. فاز ۱۰: استراحت، ریست برنامه (rollback، قفل Go-Live، rate limit)، ماموریت (اعتبارسنجی، اثر روی ساعت کاری، تأیید شبانه، ورود با ماموریت pending)، برنامه‌ی هفتگی و گیت‌های خروج، گزارش روزانه/تشویقی، گزارش تیم، منوی نقش‌محور بات و انتخابگرهای دکمه‌ای. فاز ۱۱: گیت خروج بر اساس اولویت، قفل برنامه‌ی هفتگی (`PLAN_LOCKED`)، UI برنامه‌ی هفتگی، گفت‌وگوی اعتراض (migration ۰۲۷، API کارمند/ادمین، اعلان‌ها، بستن ماه، UI) و سناریوی یکپارچه‌ی اعتراض. فاز ۱۲: پاسخ ادمین از بات در thread اعتراض (`disputeBotReply`)، شیفت با تاریخ اعمال (`shiftEffectiveFrom`، `shifts`)، برنامه‌ی روزبه‌روز (`userSchedule`)، استراحت با حقوق (`paidBreaks`، `computeDay`)، سقف تأخیر و اجازه‌ی ورود (`lateLimit`، `lateLimitGate`، `checkinPermissionNotify`)، تسک فوری (`urgentTaskBot` و تست‌های مرتبط)، نمای هفتگی کارمند (`employeeWeek`)، منوی «📂 منو» (`botMenu`)، ورودی ساعت قابل‌تایپ (`timeInput`، `botTimeInput`) و تسک واجب سرپرست «بررسی گزارش روز قبل» (`teamReviewH5`: ساخت خودکار و Job، پیشرفت «x از y مشاهده شد»، F1، رد ویرایش/حذف، ماه بسته، `morningDigest`). تست‌های فاز ۱۲ هنگام نگارش مستندات G1 اجرا نشده‌اند؛ پیش از استقرار `npm test` را اجرا کنید.
+تست‌ها hermetic هستند: دیتابیس موقت، توکن و راز ساختگی، و `.env` واقعی خوانده نمی‌شود. آخرین اجرای ثبت‌شده در `PROJECT_STATUS.md`: ۲٬۶۴۳ تست در ۵۳۲ suite، بدون شکست. حوزه‌های پوشش:
 
-فاز ۱۵: «امروزِ من» (`myDayUi`، `plannerLogic`، `planBoardUi`، `weekBoard`)، انتقال تسک، توضیح انجام (migration ۰۳۹)، دید مدیر (`employeeWeek`) و گزارش شبانه‌ی تسک‌ها برای سرپرست/ادمین (`nightlyTaskReport`، `morningDigest`، `teamReports`؛ شمارش مشترک `taskDayTally`). تست‌های سرور این فاز هنگام نگارش مستندات G1 اجرا نشده‌اند؛ پیش از استقرار `npm test` را اجرا کنید. جزئیات: `docs/PHASE15_DECISIONS.md`.
+- **هسته و امنیت:** migration، `initData` و Login Widget، سشن، `networkRestriction`، ماتریس دسترسی نقش × route و ترتیب routeها، هدرها/CSP، کوکی، CSRF، ابطال نشست، کنترل رازها و اسکنر، بسته‌ساز release
+- **عملیات و پایش:** ثبت اجرای Jobها، نبض polling، watchdog با بات ماک‌شده، `/api/health` و `/api/admin/system/status`
+- **تردد و محاسبه:** موتور `computeDay`، استراحت و استراحت با حقوق، ناهار، ورود مجدد/نوبت‌ها، شیفت و برنامه‌ی روزبه‌روز، سقف تأخیر و اجازه‌ی ورود، دورکاری
+- **مرخصی و ماموریت:** اعتبارسنجی، اثر روی ساعت کاری، تأیید شبانه، مانده‌ها، زنجیره‌ی تأیید
+- **برنامه و تسک:** برنامه‌ی هفتگی و گیت‌های خروج (`PLAN_LOCKED`)، گزارش روزانه، تسک فوری، «امروزِ من»، دید مدیر، گزارش شبانه، تسک واجب سرپرست
+- **بات:** منوی نقش‌محور، انتخابگرهای دکمه‌ای، ورودی ساعت قابل‌تایپ
+- **UI:** تست‌های ایستای CSS/دسترس‌پذیری/کنتراست، پوشش حالت‌های هر صفحه (طبق جدول بخش «حالت‌های UI» در `docs/DOCUMENTATION.md`)، تاریخ شمسی و رگرسیون پنل
+
+## وضعیت فعلی و کارهای باز
+
+فازهای ۱ تا ۱۹ در کد و تست خودکار تکمیل‌اند. موارد باز (جزئیات در [`PROJECT_STATUS.md`](PROJECT_STATUS.md)):
+
+- **تست دستی روی محیط واقعی:** بات polling و `initData`/Login Widget روی تلگرام واقعی، HTTPS/DNS-01، اسکریپت‌های NSSM/win-acme، و UI پنل و Mini App در مرورگر/تلگرام (۳۲۰/۳۹۰/۷۶۸/۱۴۴۰px، دو تم، RTL، صفحه‌خوان، iOS/Android)
+- **قبل از هر استقرار:** `npm test && npm run smoke && npm run secret-scan` روی سیستم هدف (بعضی محیط‌های توسعه `better-sqlite3` بومی نداشتند)
+- **قوانین رسمی اضافه‌کاری** (سقف، ضریب، گرد‌کردن) هنوز با کارفرما نهایی نشده است
+- **lazy-load viewهای پنل** به یک فاز معماری مستقل موکول شده است
+- **تعیین DNS provider دامنه** برای خودکار شدن کامل تمدید SSL

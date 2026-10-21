@@ -295,7 +295,7 @@ describe('D6 — thread کامل', () => {
 describe('D6 — قرارداد کد و استایل', () => {
   const ops = read('public-admin/js/views-ops.js');
   const css = read('public-admin/css/style.css');
-  test('پنل: فقط AP.view(disputes) (بدون view تازه)، پوشش حالت‌ها طبق docs/UI_STATES.md، بدون alert/confirm/prompt', () => {
+  test('پنل: فقط AP.view(disputes) (بدون view تازه)، پوشش حالت‌ها طبق docs/DOCUMENTATION.md، بدون alert/confirm/prompt', () => {
     assert.equal((ops.match(/AP\.view\('disputes'/g) || []).length, 1);
     const i = ops.indexOf("AP.view('disputes'");
     const next = [...ops.matchAll(/AP\.view\('(\w+)'/g)].map((m) => m.index).find((x) => x > i);

@@ -120,7 +120,7 @@ describe('توست به‌جای alert/confirm و تأیید عملیات مخر
   });
 });
 
-// فهرست پوشش صفحه‌ها (همان جدول docs/UI_STATES.md): هر صفحه‌ی ثبت‌شده در AP.view باید اینجا باشد.
+// فهرست پوشش صفحه‌ها (همان جدول docs/DOCUMENTATION.md): هر صفحه‌ی ثبت‌شده در AP.view باید اینجا باشد.
 const PAGES = {
   // name: [فایل، حالت خالی چطور: 'inline' | 'chart' | 'helper' | 'n/a']
   reports: ['views-admin.js', 'inline'], broadcast: ['views-admin.js', 'n/a'], settings: ['views-admin.js', 'inline'], holidays: ['views-admin.js', 'inline'],
@@ -157,9 +157,9 @@ describe('پوشش صفحه‌ها', () => {
     assert.match(src, /emptyBox\('دپارتمانی برای نمایش نیست\.'\)/);
     assert.match(src, /emptyBox\('در این بازه داده‌ای برای کارمندان نیست\.'\)/);
   });
-  test('docs/UI_STATES.md همه‌ی صفحه‌ها را فهرست کرده است', () => {
-    const doc = read('docs/UI_STATES.md');
-    for (const name of Object.keys(PAGES)) assert.ok(doc.includes(`\`${name}\``), `${name} در docs/UI_STATES.md نیست`);
+  test('docs/DOCUMENTATION.md همه‌ی صفحه‌ها را فهرست کرده است', () => {
+    const doc = read('docs/DOCUMENTATION.md');
+    for (const name of Object.keys(PAGES)) assert.ok(doc.includes(`\`${name}\``), `${name} در docs/DOCUMENTATION.md نیست`);
     assert.match(doc, /Mini App/);
     assert.match(doc, /انجام نشده/);
   });

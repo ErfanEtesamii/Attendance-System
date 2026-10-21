@@ -2090,7 +2090,7 @@
   // ---------- D1 (فاز ۱۵): «امروزِ من» — صفحه‌ی تیک‌محور با دو لیست ----------
   // داده از GET /daily-tasks (Planner.myDayModel). تیک = POST /daily-report با فقط همان تسک؛ برداشتن تیک = POST /daily-report/undo؛
   // توضیح انجام = PATCH /daily-report/note (بدون مسدودکردن). هیچ سؤال/بنر/۴۰۹ الزامی در کار نیست؛ همه‌چیز داوطلبانه است.
-  // در حالت دورکاری این نما عمداً در REMOTE_VIEWS نیست (تصمیم در docs/PHASE15_DECISIONS.md).
+  // در حالت دورکاری این نما عمداً در REMOTE_VIEWS نیست (تصمیم در docs/DOCUMENTATION.md).
   const myDay = {
     model: null, seg: 'pending', otherOpen: false, lateOpen: false, backfill: [], hours: '', msg: '', err: false,
     busy: new Set(), noteBusy: new Set(), noteOpen: new Set(), drafts: new Map(), checkEls: new Map(), noteEls: new Map(),

@@ -35,7 +35,7 @@ function main() {
       console.error(`  - [${LABELS[f.type] || f.type}] ${f.file}${f.line ? `:${f.line}` : ''}  ${f.preview}`);
     }
     console.error('\nاگر مورد عمدی و بی‌خطر است (مثلاً داده‌ی ساختگی تست)، در همان خط عبارت «secret-scan:allow» را کامنت کنید.');
-    console.error('اگر راز واقعی بود: آن را حذف کنید و طبق docs/SECRETS.md بچرخانید (ابطال و ساخت مقدار جدید).');
+    console.error('اگر راز واقعی بود: آن را حذف کنید و طبق docs/DOCUMENTATION.md (بخش «مدیریت رازها») بچرخانید (ابطال و ساخت مقدار جدید).');
   }
   process.exit(result.findings.length ? 1 : 0);
 }

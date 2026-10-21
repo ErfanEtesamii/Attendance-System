@@ -46,7 +46,7 @@ describe('«وضعیت من» M5: ترتیب اسکریپت و مستندات', 
     assert.ok(at('views-mystatus.js') < at('bell.js'));
   });
   test('PHASE17_DECISIONS.md: دلیل /admin/me/* و فهرست «عمداً انجام نشد» و ریسک‌های باز', () => {
-    const d = read('docs/PHASE17_DECISIONS.md');
+    const d = read('docs/DOCUMENTATION.md');
     assert.match(d, /team\.week_view/);
     assert.match(d, /## عمداً انجام نشد/);
     assert.match(d, /## ریسک‌های باز/);
@@ -57,7 +57,7 @@ describe('«وضعیت من» M5: ترتیب اسکریپت و مستندات', 
     assert.match(c, /«وضعیت من» — M5/);
     assert.match(c, /«وضعیت من» — M4/);
     assert.match(read('PROJECT_STATUS.md'), /فاز ۱۷/);
-    assert.match(read('docs/UI_STATES.md'), /mystatus.*M4\/M5/);
+    assert.match(read('docs/DOCUMENTATION.md'), /mystatus.*M4\/M5/);
   });
   test('هیچ مسیر /miniapp یا userId در views-mystatus.js (اسکوپ فقط از نشست)', () => {
     const v = read('public-admin/js/views-mystatus.js');

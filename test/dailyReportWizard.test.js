@@ -1,5 +1,5 @@
 // D7-ب: منطق خالصِ ویزارد گزارش روزانه (public/js/dailyReport.js) + بررسی ساختاری/دسترس‌پذیری Mini App.
-// (DOM واقعی در تست نیست؛ جریانِ کامل در docs/D7_WIZARD_MANUAL_TEST.md دستی چک می‌شود.)
+// (DOM واقعی در تست نیست؛ جریانِ کامل در docs/DOCUMENTATION.md دستی چک می‌شود.)
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');

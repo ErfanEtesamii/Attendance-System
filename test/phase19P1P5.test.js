@@ -52,6 +52,6 @@ describe('فاز ۱۹ — P1 تا P5 پنل', () => {
     const files = fs.readdirSync(path.join(root, 'public-admin/js')).filter((x) => x.endsWith('.js'));
     for (const file of files) assert.doesNotMatch(read(`public-admin/js/${file}`), /style="/i, file);
     assert.match(core, /data-progress/);
-    assert.match(read('docs/PHASE19_DECISIONS.md'), /lazy-load فایل‌های view عمداً در این بسته انجام نشد/);
+    assert.match(read('docs/DOCUMENTATION.md'), /lazy-load فایل‌های view عمداً در این بسته انجام نشد/);
   });
 });

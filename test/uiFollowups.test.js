@@ -185,16 +185,16 @@ describe('فایل قدیمی و مستندات', () => {
   test('public-admin/js/app.js حذف شده و هیچ‌جا ارجاع زنده ندارد', () => {
     assert.equal(fs.existsSync(path.join(root, 'public-admin', 'js', 'app.js')), false);
     assert.doesNotMatch(read('public-admin/index.html'), /admin\/js\/app\.js/);
-    assert.doesNotMatch(read('docs/SECURITY.md'), /بلااستفاده‌ی `public-admin\/js\/app\.js` هم هدر را دارد/);
+    assert.doesNotMatch(read('docs/DOCUMENTATION.md'), /بلااستفاده‌ی `public-admin\/js\/app\.js` هم هدر را دارد/);
   });
-  test('docs/UI_STATES.md: Mini App و موارد تکمیل‌شده ثبت شده؛ بخش «انجام نشده» فقط موارد واقعاً باقی‌مانده', () => {
-    const doc = read('docs/UI_STATES.md');
+  test('docs/DOCUMENTATION.md: Mini App و موارد تکمیل‌شده ثبت شده؛ بخش «انجام نشده» فقط موارد واقعاً باقی‌مانده', () => {
+    const doc = read('docs/DOCUMENTATION.md');
     assert.match(doc, /Mini App/);
     assert.match(doc, /انجام نشده/);
     assert.doesNotMatch(doc, /فایل قدیمی است و در `index.html` بارگذاری نمی‌شود؛ حالت‌هایش بررسی نشد/);
   });
-  test('docs/UI_STATES.md: برنامه‌ی هفتگی (C3) با بارگذاری/خطا/خالی/فقط‌خواندنی/دسترسی‌پذیری ثبت شده', () => {
-    const doc = read('docs/UI_STATES.md');
+  test('docs/DOCUMENTATION.md: برنامه‌ی هفتگی (C3) با بارگذاری/خطا/خالی/فقط‌خواندنی/دسترسی‌پذیری ثبت شده', () => {
+    const doc = read('docs/DOCUMENTATION.md');
     assert.match(doc, /برنامه‌ی هفتگی \(کارت‌های روزانه\)/);
     for (const w of ['retry-plan', 'skeletonHtml(\'plan\')', 'فقط‌خواندنی', 'aria-current', 'dir="auto"', 'aria-labelledby', 'tabindex=-1']) assert.ok(doc.includes(w), w);
   });
