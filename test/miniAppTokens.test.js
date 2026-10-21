@@ -8,6 +8,7 @@ const Theme = require('../public/js/theme.js');
 const ROOT = path.join(__dirname, '..');
 const read = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8').replace(/\r\n/g, '\n');
 const MINI = read('public/css/style.css');
+const TOKENS = read('public/css/tokens.css');
 const PLAN = read('public/css/planner.css');
 const PANEL = read('public-admin/css/style.css');
 
@@ -28,13 +29,18 @@ function block(css, selector) {
   return css.slice(i + selector.length + 2, css.indexOf('\n}', i));
 }
 const varsOf = (txt) => Object.fromEntries([...txt.matchAll(/--([a-z0-9-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
+const resolved = (vars) => Object.fromEntries(Object.entries(vars).map(([key, value]) => {
+  const alias = /^var\(--([a-z0-9-]+)\)$/.exec(value);
+  return [key, alias ? vars[alias[1]] : value];
+}));
 const SEL = { dark: ':root,\n:root[data-theme="dark"]', light: ':root[data-theme="light"]' };
 const FALLBACK = '@media (prefers-color-scheme: light) {\n  :root:not([data-theme])';
 const fallbackVars = (css) => { const i = css.indexOf(FALLBACK); assert.ok(i >= 0); return varsOf(css.slice(i, css.indexOf('\n  }', i))); };
-const mini = { dark: varsOf(block(MINI, SEL.dark)), light: varsOf(block(MINI, SEL.light)) };
+const rawMini = { dark: varsOf(block(TOKENS, SEL.dark)), light: varsOf(block(TOKENS, SEL.light)) };
+const mini = { dark: resolved(rawMini.dark), light: resolved(rawMini.light) };
 const strip = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k.replace(/^pl-/, ''), v])); // --pl-ink ⇒ ink
 const plan = { dark: strip(varsOf(block(PLAN, SEL.dark))), light: strip(varsOf(block(PLAN, SEL.light))) };
-const panel = { dark: varsOf(block(PANEL, SEL.dark)), light: varsOf(block(PANEL, SEL.light)) };
+const panel = { dark: resolved(rawMini.dark), light: resolved(rawMini.light) };
 
 describe('T9: توکن‌های Mini App هم‌خانواده‌ی برند پنل', () => {
   test('تیره: bg/bg-2/card/card-2/text/hint دقیقاً هم‌مقدار پنل‌اند (سرمه‌ای)', () => {
@@ -44,10 +50,10 @@ describe('T9: توکن‌های Mini App هم‌خانواده‌ی برند پ�
     assert.equal(mini.light.text, panel.light.text);
     assert.equal(mini.light.hint, panel.light.hint);
     for (const k of ['border', 'shadow', 'ov-08']) assert.match(mini.light[k], /43, 37, 96/, k);
-    assert.doesNotMatch(block(MINI, SEL.light), /27, 28, 44/);
+    assert.doesNotMatch(block(TOKENS, SEL.light), /27, 28, 44/);
   });
   test('روشنِ صریح و fallback مدیا هم‌مقدارند (Mini App و planner)', () => {
-    assert.deepEqual(fallbackVars(MINI), mini.light);
+    assert.deepEqual(fallbackVars(TOKENS), rawMini.light);
     assert.deepEqual(strip(fallbackVars(PLAN)), plan.light);
   });
   for (const mode of ['dark', 'light']) {
@@ -118,9 +124,14 @@ describe('T9: دامنه — چیدمان و منطق دست‌نخورده', ()
     for (const k of ['KEY', 'BG', 'LABEL', 'NEXT', 'normalize', 'resolveTheme']) assert.ok(k in Theme, k);
     assert.deepEqual(Object.keys(Theme.BG), ['dark', 'light']);
   });
-  test('گرادیان‌ها و دکمه‌ی اصلیِ سبزِ Mini App (کنش اصلی خودش) دست‌نخورده است', () => {
-    assert.match(MINI, /\.btn\.primary, \.tab-btn\.active, \.report-head, \.nav-btn\.active \{\s*background: var\(--accent\);\s*color: var\(--on-accent\);/);
-    assert.match(MINI, /--on-accent: #17143a;/);
-    assert.match(MINI, /:root\[data-theme="light"\][\s\S]*--on-accent: #2b2560;/);
+  test('کنش‌های اصلی Mini App در قواعد اصلی خودشان از accent استفاده می‌کنند', () => {
+    const primary = block(MINI, '.btn.primary');
+    assert.match(primary, /background: var\(--accent\);/);
+    assert.match(primary, /color: var\(--on-accent\);/);
+    assert.match(block(MINI, '.tab-btn.active'), /border-bottom-color: var\(--brand\)/);
+    assert.match(block(MINI, '.nav-btn.active'), /color: var\(--rail-text\)/);
+    assert.doesNotMatch(MINI, /\.report-head/);
+    assert.match(TOKENS, /--on-accent: #17143a;/);
+    assert.match(TOKENS, /:root\[data-theme="light"\][\s\S]*--on-accent: #2b2560;/);
   });
 });

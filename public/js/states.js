@@ -17,9 +17,9 @@
       case 'table': body = `<div class="sk-box">${tableRows}</div>`; break;
       case 'cards': body = `<div class="sk-grid">${cards}</div>`; break;
       case 'today':
-        body = `<div class="sk-box">${bar('w30')}${bar('w50 tall')}${bar('w100')}</div>` +
-          `<div class="sk-grid two"><div class="sk-card">${bar('w50')}${bar('w30')}</div><div class="sk-card">${bar('w50')}${bar('w30')}</div></div>` +
-          `<div class="sk-box">${bar('w60')}${bar('w60')}${bar('w60')}</div>`;
+        body = `<div class="sk-box sk-today-status">${bar('w30')}<span class="sk-ring"></span>${bar('w60')}</div>` +
+          `<div class="sk-card sk-action-primary">${bar('w40 tall')}${bar('w60')}</div>` +
+          `<div class="sk-box sk-today-times"><span>${bar('w60')}${bar('w40')}</span><span>${bar('w60')}${bar('w40')}</span><span>${bar('w60')}${bar('w40')}</span></div>`;
         break;
       case 'plan': body = `<div class="pl-board sk-plan">${Array.from({ length: 3 }, () => `<div class="pl-day sk-day">${bar('w40 tall')}${bar('w100')}${bar('w60')}</div>`).join('')}</div>`; break;
       case 'notebook':

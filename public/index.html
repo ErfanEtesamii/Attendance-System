@@ -5,36 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#ffffff" />
 <meta name="default-theme" content="light" />
-<meta name="theme-default-mode" content="fixed" />
 <script src="/js/theme.js"></script>
 <title>حضور و غیاب فرازهنر</title>
 <link rel="stylesheet" href="/admin/css/datepicker.css" />
+<link rel="stylesheet" href="/css/tokens.css" />
 <link rel="stylesheet" href="/css/style.css" />
 <link rel="stylesheet" href="/css/planner.css" />
 <script src="/js/telegram-web-app.js"></script>
+<script src="/js/telegramIntegration.js"></script>
 </head>
 <body>
-
-  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-    <defs>
-      <linearGradient id="g-green" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#7be495" />
-        <stop offset="1" stop-color="#16b886" />
-      </linearGradient>
-      <linearGradient id="g-purple" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#a99bff" />
-        <stop offset="1" stop-color="#6b5ce7" />
-      </linearGradient>
-      <linearGradient id="g-orange" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#ffd27a" />
-        <stop offset="1" stop-color="#ff9f43" />
-      </linearGradient>
-      <linearGradient id="g-red" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#ff9a9a" />
-        <stop offset="1" stop-color="#f0506e" />
-      </linearGradient>
-    </defs>
-  </svg>
 
   <div id="app-error" class="screen hidden" aria-live="assertive"></div>
 
@@ -82,13 +62,25 @@
       <!-- صفحه اصلی: وضعیت امروز -->
       <section id="view-today" class="view">
         <div id="today-skeleton" class="hidden"></div>
-        <div class="card status-card">
+        <div class="card status-card" id="today-status-card">
           <div class="status-pill" id="status-pill"><i class="dot"></i><span id="status-label">در حال بارگذاری…</span></div>
-          <div class="timer" id="timer">--:--:--</div>
-          <div class="today-summary" id="today-summary"></div>
+          <div class="progress-ring" id="today-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="پیشرفت ساعت مفید امروز: صفر درصد">
+            <svg viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="progress-ring-track" cx="60" cy="60" r="52" pathLength="100"></circle>
+              <circle class="progress-bar" id="progress-bar" cx="60" cy="60" r="52" pathLength="100"></circle>
+            </svg>
+            <div class="progress-ring-content">
+              <div class="timer" id="timer">--:--:--</div>
+              <div class="today-summary" id="today-summary"></div>
+            </div>
+          </div>
           <div class="break-note hidden" id="break-note" role="status" aria-live="polite"></div>
-          <div class="progress" aria-hidden="true"><div class="progress-bar" id="progress-bar"></div></div>
           <div class="progress-legend"><span id="progress-text">۰٪ از ۸ ساعت</span><span>هدف روزانه</span></div>
+        </div>
+
+        <div class="card action-feedback hidden" id="action-feedback" role="status" aria-live="polite">
+          <span class="action-feedback-check" aria-hidden="true">✓</span>
+          <span id="action-feedback-text"></span>
         </div>
 
         <div class="card work-hours-card hidden" id="work-hours-card" aria-live="polite"></div>
@@ -101,26 +93,28 @@
         <div class="card late-limit-card hidden" id="late-limit-card" aria-live="polite"></div>
         <div class="actions" id="today-actions"></div>
 
-        <div class="card" id="today-times-card">
-          <div class="row">
-            <span class="row-label"><i class="chip chip-green"><svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg></i>ساعت ورود</span>
+        <div class="card today-times" id="today-times-card">
+          <div class="time-stat">
+            <span class="time-stat-label"><i class="icon-chip icon-chip-green"><svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg></i>ورود</span>
             <span class="row-value" id="ti-checkin">—</span>
           </div>
-          <div class="row">
-            <span class="row-label"><i class="chip chip-orange"><svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8zM6 1v3M10 1v3M14 1v3"/></svg></i>مجموع استراحت</span>
+          <div class="time-stat">
+            <span class="time-stat-label"><i class="icon-chip icon-chip-orange"><svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8zM6 1v3M10 1v3M14 1v3"/></svg></i>استراحت</span>
             <span class="row-value" id="ti-breaks">—</span>
           </div>
-          <div class="row">
-            <span class="row-label"><i class="chip chip-red"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></i>ساعت خروج</span>
+          <div class="time-stat">
+            <span class="time-stat-label"><i class="icon-chip icon-chip-red"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></i>خروج</span>
             <span class="row-value" id="ti-checkout">—</span>
           </div>
+          <div class="segment-count hidden" id="ti-segments"></div>
         </div>
       </section>
 
       <!-- تاریخچه -->
       <section id="view-history" class="view hidden">
         <h3 class="view-title">تاریخچه (۳۰ روز اخیر)</h3>
-        <div id="history-list" class="list"></div>
+        <div id="history-list" class="history-calendar"></div>
+        <div id="history-detail" class="card history-detail hidden" aria-live="polite"></div>
       </section>
 
       <!-- گزارش شخصی -->
@@ -287,7 +281,7 @@
       <!-- دورکاری (R4، فاز ۱۴): فقط وقتی سرور remoteAllowed بدهد و کاربر دیالوگ را «تأیید» کند باز می‌شود -->
       <section id="view-remote" class="view hidden" aria-labelledby="remote-title">
         <h3 class="view-title" id="remote-title" tabindex="-1">ثبت دورکاری</h3>
-        <div class="card status-card">
+        <div class="card status-card" id="remote-status-card">
           <div class="status-pill" id="remote-status-pill"><i class="dot"></i><span id="remote-status-label">در حال بارگذاری…</span></div>
           <div class="timer" id="remote-timer">--:--:--</div>
           <div class="today-summary" id="remote-summary"></div>

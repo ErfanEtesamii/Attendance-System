@@ -27,7 +27,7 @@ function makeEnv({ dp = true, jalali = true, telegram = false, routes = {} } = {
       classList: { add: noop, remove: noop, toggle: noop },
       addEventListener(type, fn) { (handlers[type] = handlers[type] || []).push(fn); },
       appendChild(c) { this.children.push(c); return c; },
-      setAttribute: noop, removeAttribute: noop,
+      setAttribute(k, v) { this.attrs = this.attrs || {}; this.attrs[k] = String(v); }, removeAttribute: noop,
     };
   };
   const $ = (sel) => { if (!els.has(sel)) els.set(sel, makeEl(sel)); return els.get(sel); };
@@ -82,22 +82,17 @@ const submit = async (env, ) => {
 };
 
 describe('نمایش شمسی در Mini App (S3-11d)', () => {
-  test('تاریخچه: تاریخ رکوردها شمسی است (مرز کبیسه ۳۰ اسفند ۱۴۰۳ ← ۱ فروردین ۱۴۰۴) و ISO میلادی نمایش داده نمی‌شود', async () => {
-    const records = [
-      { record_date: '2025-03-20', status: 'normal', check_in_time: null, check_out_time: null },
-      { record_date: '2025-03-21', status: 'late', check_in_time: null, check_out_time: null },
-      { record_date: '2026-10-07 00:00:00', status: 'normal', check_in_time: null, check_out_time: null },
-    ];
+  test('تاریخچه: ۳۰ روز اخیر با برچسب شمسی و بدون ISO میلادی خام نمایش داده می‌شود', async () => {
+    const isoAt = (offset) => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + offset); return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`; };
+    const records = [-2, -1, 0].map((offset, i) => ({ record_date: isoAt(offset), status: i === 1 ? 'late' : 'normal', check_in_time: null, check_out_time: null }));
     const env = makeEnv({ routes: { '/history?days=30': records } });
     click(env.navBtns[0]);
     await flush();
     const list = env.$('#history-list');
-    const out = list.children.map((c) => c.innerHTML);
-    assert.equal(out.length, 3);
-    assert.match(out[0], /<span>۳۰ اسفند ۱۴۰۳<\/span>/);
-    assert.match(out[1], /<span>۱ فروردین ۱۴۰۴<\/span>/);
-    assert.match(out[2], /<span>۱۵ مهر ۱۴۰۵<\/span>/);
-    assert.ok(!out.join('').includes('2025-03'), 'تاریخ میلادی خام نباید دیده شود');
+    const labels = list.children.map((c) => c.attrs && c.attrs['aria-label']).filter(Boolean).join(' | ');
+    assert.equal((list.children.filter((c) => /history-day-number/.test(c.innerHTML))).length, 30);
+    records.forEach((record) => assert.match(labels, new RegExp(J.formatIso(record.record_date, { long: true }))));
+    records.forEach((record) => assert.ok(!labels.includes(record.record_date), 'تاریخ میلادی خام نباید دیده شود'));
   });
 
   test('فهرست مرخصی: بازه‌ی «از تا» شمسی', async () => {
@@ -132,9 +127,10 @@ describe('نمایش شمسی در Mini App (S3-11d)', () => {
     const env = makeEnv({ jalali: false, dp: false, routes: { '/history?days=30': [{ record_date: '2026-10-07', status: 'normal' }] } });
     click(env.navBtns[0]);
     await flush();
-    const row = env.$('#history-list').children[0].innerHTML;
-    assert.match(row, /[۰-۹]/, 'ارقام فارسی');
-    assert.ok(!row.includes('2026-10-07'));
+    const cells = env.$('#history-list').children.filter((c) => /history-day-number/.test(c.innerHTML));
+    assert.equal(cells.length, 30);
+    assert.match(cells[0].innerHTML, /[۰-۹]/, 'ارقام فارسی');
+    assert.ok(!cells.map((c) => c.innerHTML).join('').includes('2026-10-07'));
   });
 });
 

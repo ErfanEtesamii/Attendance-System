@@ -5,9 +5,14 @@
   'use strict';
 
   const tg = window.Telegram ? window.Telegram.WebApp : null;
+  const TGI = window.MiniAppTelegram && window.MiniAppTelegram.create
+    ? window.MiniAppTelegram.create(tg, document)
+    : {
+        init() {}, impact() {}, notify() {}, setBackHandler() {},
+        ask(_message, fallback) { return Promise.resolve(fallback ? fallback() : false); },
+      };
+  TGI.init();
   if (tg) {
-    tg.ready();
-    tg.expand();
     // رنگ نوار بالا/پایین را theme.js با تم روشن/تیره هماهنگ می‌کند (S5-8a)؛ اینجا فقط اگر theme.js بارگذاری نشده بود
     if (window.Theme && window.Theme.apply) window.Theme.apply();
     else {
@@ -28,7 +33,15 @@
     me: null,
     today: null,
     timerInterval: null,
+    network: null,
+    currentView: 'today',
   };
+
+  if (document && typeof document.addEventListener === 'function') {
+    document.addEventListener('click', (event) => {
+      if (event.target && event.target.closest && event.target.closest('button, [role="button"]')) TGI.impact('light');
+    }, true);
+  }
 
   // حالت دورکاری (R4): active = نمای دورکاری باز است؛ accepted = کاربر در همین نشست دیالوگ را «تأیید» کرده
   const remoteUi = { active: false, accepted: false, dialog: null, today: null, busy: false };
@@ -121,6 +134,18 @@
     showToast._t = setTimeout(() => el.classList.add('hidden'), Math.min(8000, Math.max(2600, String(msg || '').length * 60)));
   }
 
+  function showActionFeedback(message) {
+    const card = $('#action-feedback');
+    if (!card) return;
+    const text = $('#action-feedback-text');
+    if (text) text.textContent = message;
+    card.classList.remove('hidden', 'is-visible');
+    void card.offsetWidth;
+    card.classList.add('is-visible');
+    clearTimeout(showActionFeedback._t);
+    showActionFeedback._t = setTimeout(() => card.classList.add('hidden'), 4200);
+  }
+
   // ---------- حالت‌های UI (S5-9c): skeleton، خالی، خطا با «تلاش دوباره»، دکمه‌ی در حال ارسال ----------
   const U = window.UiStates;
   function renderLoading(el, kind) {
@@ -155,11 +180,13 @@
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
+      if ((options.method || 'GET') !== 'GET') TGI.notify(res.status === 409 ? 'warning' : 'error');
       const err = new Error(data.error || 'خطای ناشناخته');
       err.status = res.status;
       err.data = data;
       throw err;
     }
+    if ((options.method || 'GET') !== 'GET') TGI.notify('success');
     return data;
   }
 
@@ -237,6 +264,9 @@
     $('#view-' + name).classList.remove('hidden');
     const navName = name === 'dispute' ? 'profile' : name; // گفت‌وگوی اعتراض زیرمجموعه‌ی «پروفایل» است
     $all('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.view === (navName === 'myday' ? 'today' : navName))); // «امروزِ من» زیرمجموعه‌ی «امروز» است
+    state.currentView = name;
+    const backTargets = { myday: 'today', leave: 'today', mission: 'today', plan: 'today', dreport: 'today', dispute: 'profile', 'remote-history': 'remote' };
+    TGI.setBackHandler(backTargets[name] ? () => switchView(backTargets[name]) : null);
 
     hideUndoBar(); // نوار «واگرد» انتقال فقط روی همان صفحه معتبر است
     if (name === 'myday') loadMyDay();
@@ -384,18 +414,9 @@
     box.className = 'actions';
     const r = state.today && state.today.record;
     const openBreak = state.today && state.today.openBreak;
-    const daySegments = state.today && Array.isArray(state.today.segments) ? state.today.segments : [];
-    const addSegmentsCard = () => {
-      if (daySegments.length <= 1) return;
-      const list = document.createElement('div');
-      list.className = 'card done-card';
-      list.textContent = daySegments.map((s, i) => `نوبت ${i + 1}: ${fmtClock(s.check_in_time)} — ${s.check_out_time ? fmtClock(s.check_out_time) : 'در حال انجام'}`).join(' | ');
-      box.appendChild(list);
-    };
-
-    function addTile({ title, sub, color, icon, wide, handler, locked }) {
+    function addTile({ title, sub, color, icon, wide, primary, handler, locked }) {
       const b = document.createElement('button');
-      b.className = 'action-tile t-' + color + (wide ? ' wide' : '');
+      b.className = 'action-tile t-' + color + (wide ? ' wide' : '') + (primary ? ' is-primary' : '');
       b.innerHTML = `
         <span class="tile-icon">${ICONS[icon]}</span>
         <span class="tile-text">
@@ -425,13 +446,12 @@
         hideLateLimitCard();
         addTile({
           title: 'ثبت ورود', sub: 'شروع روز کاری', color: 'green', icon: 'in', wide: true,
-          handler: () => doAction('/check-in', {}, 'ورود ثبت شد.'),
+          primary: true, handler: () => doAction('/check-in', {}, 'ورود ثبت شد.'),
         });
       }
       addMissionTile();
       addMyDayTile();
       addPlanTile();
-      addSegmentsCard();
       return;
     }
 
@@ -441,14 +461,13 @@
       if (state.today && state.today.canReEnter) {
         addTile({
           title: 'ورود مجدد', sub: `امروز هنوز ${(state.today.reEntriesMax - state.today.reEntriesUsed).toLocaleString('fa-IR')} بار می‌توانید برگردید`, color: 'green', icon: 'in', wide: true,
-          handler: async () => { if (await confirmReEntry()) doAction('/re-check-in', {}, 'ورود مجدد ثبت شد.'); },
+          primary: true, handler: async () => { if (await confirmReEntry()) doAction('/re-check-in', {}, 'ورود مجدد ثبت شد.'); },
         });
       }
       const done = document.createElement('div');
       done.className = 'card done-card';
       done.textContent = 'امروز به پایان رسید. تا فردا خوش باشید 🌤️';
       box.appendChild(done);
-      addSegmentsCard();
       addMissionTile();
       addMyDayTile();
       addPlanTile();
@@ -459,46 +478,54 @@
       box.classList.add('single');
       addTile({
         title: 'پایان استراحت', sub: 'بازگشت به کار', color: 'orange', icon: 'resume', wide: true,
-        handler: () => doAction('/break/end', {}, 'استراحت پایان یافت.'),
+        primary: true, handler: () => doAction('/break/end', {}, 'استراحت پایان یافت.'),
       });
       addMissionTile();
       addMyDayTile();
       addPlanTile();
-      addSegmentsCard();
       return;
     }
 
     addTile({
+      title: 'ثبت خروج', sub: 'پایان روز کاری', color: 'red', icon: 'out', primary: true, wide: true,
+      handler: () => startCheckout(),
+    });
+    addTile({
       title: 'ثبت استراحت', sub: 'شروع وقفه', color: 'orange', icon: 'lunch',
       handler: () => openBreakSheet(),
     });
-    addTile({
-      title: 'ثبت خروج', sub: 'پایان روز کاری', color: 'red', icon: 'out',
-      handler: () => startCheckout(),
-    });
-    addSegmentsCard();
     addMissionTile();
     addMyDayTile();
     addPlanTile();
   }
 
-  function confirmReEntry() {
-    const message = 'از ورود مجدد برای ادامه‌ی کار مطمئن هستید؟';
-    if (tg && typeof tg.showConfirm === 'function') return new Promise((resolve) => tg.showConfirm(message, resolve));
+  function confirmDialog(message, titleText, yesText) {
     return new Promise((resolve) => {
       const backdrop = rEl('div', 'remote-backdrop');
       const box = rEl('div', 'remote-dialog');
       box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
-      const title = rEl('h2', 'remote-dialog-title', 'تأیید ورود مجدد');
+      const title = rEl('h2', 'remote-dialog-title', titleText);
       const text = rEl('p', 'remote-dialog-text', message);
       const actions = rEl('div', 'remote-dialog-actions');
       const finish = (answer) => { if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop); resolve(answer); };
-      const yes = rEl('button', 'btn primary', 'ورود مجدد'); yes.type = 'button'; yes.addEventListener('click', () => finish(true));
+      const yes = rEl('button', 'btn primary', yesText); yes.type = 'button'; yes.addEventListener('click', () => finish(true));
       const no = rEl('button', 'btn secondary', 'انصراف'); no.type = 'button'; no.addEventListener('click', () => finish(false));
       actions.appendChild(yes); actions.appendChild(no); box.appendChild(title); box.appendChild(text); box.appendChild(actions); backdrop.appendChild(box);
       backdrop.addEventListener('click', (event) => { if (event.target === backdrop) finish(false); });
       document.body.appendChild(backdrop); yes.focus();
     });
+  }
+
+  function confirmAction(message, titleText, yesText) {
+    return TGI.ask(message, () => confirmDialog(message, titleText, yesText));
+  }
+
+  function confirmReEntry() {
+    return confirmAction('از ورود مجدد برای ادامه‌ی کار مطمئن هستید؟', 'تأیید ورود مجدد', 'ورود مجدد');
+  }
+
+  function confirmCheckout() {
+    return confirmAction('از ثبت خروج و پایان روز کاری مطمئن هستید؟', 'تأیید ثبت خروج', 'ثبت خروج');
   }
 
   // ---------- bottom-sheet انتخاب نوع استراحت (A1) ----------
@@ -642,9 +669,11 @@
         if (deviceId) body = { ...(body || {}), deviceId };
       }
       const res = await api(path, { method: 'POST', body });
-      showToast(path === '/check-out' ? checkoutMessage(res, successMsg) : successMsg);
+      const feedback = path === '/check-out' ? checkoutMessage(res, successMsg) : successMsg;
+      showToast(feedback);
       if (path === '/check-out') { reportUi.answers = new Map(); reportUi.extras = []; reportUi.date = ''; switchView('today'); }
       await loadToday();
+      if (['/check-in', '/check-out', '/re-check-in'].includes(path)) showActionFeedback(feedback);
       return true;
     } catch (err) {
       const code = err && err.data && err.data.code;
@@ -703,9 +732,11 @@
     }
   }
 
-  function setStatus(label, cls) {
+  function setStatus(label, cls, statusName) {
     $('#status-label').textContent = label;
     $('#status-pill').className = 'status-pill ' + cls;
+    const card = $('#today-status-card');
+    if (card) card.dataset.state = statusName || 'outside';
   }
 
   // اولین بارگذاری نمای «امروز»: skeleton به‌جای مقدارهای خالی (--:--:--)؛ بعد از پایان (موفق یا ناموفق) برداشته می‌شود (S5-9c)
@@ -756,6 +787,12 @@
 
     $('#ti-checkin').textContent = fmtClock(r?.check_in_time);
     $('#ti-checkout').textContent = fmtClock(r?.check_out_time);
+    const segments = Array.isArray(data.segments) ? data.segments : [];
+    const segmentBadge = $('#ti-segments');
+    if (segmentBadge) {
+      segmentBadge.textContent = segments.length > 1 ? `${segments.length.toLocaleString('fa-IR')} نوبت کاری` : '';
+      segmentBadge.classList.toggle('hidden', segments.length <= 1);
+    }
 
     const totalBreak = (data.breaks || []).reduce((sum, b) => {
       if (!b.end_time) return sum;
@@ -770,26 +807,27 @@
     renderBreakNote(data); // C1: خاموش/بدون استراحت باز ⇒ پنهان
 
     if (!r) {
-      setStatus('هنوز ورود ثبت نشده', '');
+      setStatus('هنوز ورود ثبت نشده', '', 'outside');
       stopTimer();
       timerEl.textContent = '--:--:--';
       timerEl.classList.remove('is-text');
       $('#today-summary').textContent = 'برای شروع، ورود خود را ثبت کنید';
     } else if (r.check_out_time) {
-      setStatus('خروج ثبت شد', 'is-done');
+      setStatus('خروج ثبت شد', 'is-done', 'done');
       stopTimer();
       progressMin = data.summary?.effectiveMinutes || 0;
       timerEl.textContent = fmtDuration(data.summary?.effectiveMinutes);
       timerEl.classList.add('is-text');
       $('#today-summary').textContent = 'ساعت مفید کاری امروز';
     } else if (data.openBreak) {
-      setStatus('در حال استراحت', 'is-break');
+      setStatus('در حال استراحت', 'is-break', 'break');
       startTimer(data.openBreak.start_time);
       timerEl.classList.remove('is-text');
       progressMin = data.summary?.effectiveMinutes || 0;
       $('#today-summary').textContent = 'مدت استراحت جاری';
     } else {
-      setStatus('حاضر در شرکت', 'is-active');
+      const mission = state.network && state.network.viaMission;
+      setStatus(mission ? 'در مأموریت' : 'حاضر در شرکت', mission ? 'is-mission' : 'is-active', mission ? 'mission' : 'active');
       const currentSegment = (data.segments || []).at(-1);
       startTimer(currentSegment?.check_in_time || r.check_in_time);
       timerEl.classList.remove('is-text');
@@ -798,7 +836,12 @@
     }
 
     const pct = Math.max(0, Math.min(100, Math.round((progressMin / TARGET_MIN) * 100)));
-    $('#progress-bar').style.width = pct + '%';
+    $('#progress-bar').style.strokeDashoffset = String(100 - pct);
+    const progress = $('#today-progress');
+    if (progress) {
+      progress.setAttribute('aria-valuenow', String(pct));
+      progress.setAttribute('aria-label', `${pct.toLocaleString('fa-IR')} درصد از هدف روزانه`);
+    }
     $('#progress-text').textContent = pct.toLocaleString('fa-IR') + '٪ از ۸ ساعت';
 
     renderTodayActions();
@@ -913,28 +956,68 @@
 
   // ---------- تاریخچه ----------
 
+  function isoDateOffset(days) {
+    const d = new Date();
+    d.setHours(12, 0, 0, 0);
+    d.setDate(d.getDate() + days);
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  }
+
+  const HISTORY_ICONS = { normal: '✓', late: '!', incomplete: '–', leave: 'م', holiday: 'ت' };
+
+  function renderHistoryDetail(record, date) {
+    const detail = $('#history-detail');
+    if (!detail) return;
+    detail.classList.remove('hidden');
+    detail.innerHTML = '';
+    const title = document.createElement('h3');
+    title.textContent = fmtDate(date);
+    const status = document.createElement('p');
+    status.className = 'history-detail-status';
+    status.textContent = record ? (STATUS_LABELS[record.status] || record.status) : 'بدون رکورد ثبت‌شده';
+    const times = document.createElement('p');
+    times.textContent = record
+      ? `${fmtClock(record.check_in_time)} تا ${fmtClock(record.check_out_time)} · ${fmtDuration(record.summary?.effectiveMinutes)}`
+      : 'برای این روز جزئیات ترددی وجود ندارد.';
+    const dispute = document.createElement('button');
+    dispute.type = 'button'; dispute.className = 'btn secondary'; dispute.textContent = 'اعتراض یا درخواست اصلاح این روز';
+    dispute.addEventListener('click', () => {
+      switchView('profile');
+      const input = $('#dispute-form textarea[name="message"]');
+      if (input) { input.value = `مغایرت رکورد ${fmtDate(date)}: `; input.focus(); }
+    });
+    detail.append(title, status, times, dispute);
+    detail.scrollIntoView({ block: 'nearest' });
+  }
+
   async function loadHistory() {
     const list = $('#history-list');
     renderLoading(list, 'list');
     try {
       const records = await api('/history?days=30');
-      if (!records.length) { renderEmpty(list, 'رکوردی یافت نشد.'); return; }
       list.removeAttribute('aria-busy');
       list.innerHTML = '';
-      records.forEach((r) => {
-        const el = document.createElement('div');
-        el.className = 'list-item';
-        el.innerHTML = `
-          <div class="li-top">
-            <span>${fmtDate(r.record_date)}</span>
-            <span class="badge ${r.status}">${STATUS_LABELS[r.status] || r.status}</span>${r.via_remote ? ' <span class="badge">دورکاری</span>' : ''}
-          </div>
-          <div class="li-bottom">
-            <span>${fmtClock(r.check_in_time)} — ${fmtClock(r.check_out_time)}</span>
-            <span>${fmtDuration(r.summary?.effectiveMinutes)}</span>
-          </div>`;
-        list.appendChild(el);
-      });
+      const byDate = new Map(records.map((r) => [r.record_date, r]));
+      const weekdays = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
+      weekdays.forEach((day) => { const h = document.createElement('span'); h.className = 'history-weekday'; h.textContent = day; list.appendChild(h); });
+      const first = new Date(`${isoDateOffset(-29)}T12:00:00`);
+      const blankCount = (first.getDay() + 1) % 7;
+      for (let i = 0; i < blankCount; i += 1) { const blank = document.createElement('span'); blank.className = 'history-day is-blank'; blank.setAttribute('aria-hidden', 'true'); list.appendChild(blank); }
+      for (let offset = -29; offset <= 0; offset += 1) {
+        const date = isoDateOffset(offset);
+        const record = byDate.get(date) || null;
+        const day = document.createElement('button');
+        day.type = 'button';
+        day.className = `history-day status-${record ? record.status : 'empty'}`;
+        const dateObj = new Date(`${date}T12:00:00`);
+        const dayNo = dateObj.toLocaleDateString('fa-IR-u-ca-persian', { day: 'numeric' });
+        day.innerHTML = `<span class="history-day-number">${dayNo}</span><span class="history-day-icon" aria-hidden="true">${record ? (HISTORY_ICONS[record.status] || '•') : '·'}</span>`;
+        day.setAttribute('aria-label', `${fmtDate(date)}، ${record ? (STATUS_LABELS[record.status] || record.status) : 'بدون رکورد'}`);
+        day.addEventListener('click', () => renderHistoryDetail(record, date));
+        list.appendChild(day);
+      }
+      const detail = $('#history-detail');
+      if (detail) detail.classList.add('hidden');
     } catch (err) {
       renderError(list, err, loadHistory, 'retry-history');
     }
@@ -954,10 +1037,37 @@
     const card = $('#report-card');
     renderLoading(card, 'table');
     try {
-      const r = await api('/report?period=' + period);
+      const days = period === 'month' ? 30 : 7;
+      const [r, historyResult] = await Promise.all([
+        api('/report?period=' + period),
+        api('/history?days=' + days),
+      ]);
+      const records = Array.isArray(historyResult) ? historyResult : [];
+      const chronological = records.slice().sort((a, b) => String(a.record_date).localeCompare(String(b.record_date)));
+      const recent = chronological.slice(-days);
+      const maxMinutes = Math.max(480, ...recent.map((x) => Number(x.summary?.effectiveMinutes) || 0));
+      const barGap = recent.length > 14 ? 2 : 4;
+      const barWidth = Math.max(3, (296 - barGap * Math.max(0, recent.length - 1)) / Math.max(recent.length, 1));
+      const bars = recent.map((x, i) => {
+        const minutes = Math.max(0, Number(x.summary?.effectiveMinutes) || 0);
+        const height = Math.round((minutes / maxMinutes) * 96);
+        const xPos = 12 + i * (barWidth + barGap);
+        return `<rect class="report-bar status-${x.status || 'normal'}" x="${xPos}" y="${112 - height}" width="${barWidth}" height="${height}" rx="3"><title>${fmtDate(x.record_date)}: ${fmtDuration(minutes)}</title></rect>`;
+      }).join('');
+      const counts = { normal: 0, late: 0, incomplete: 0, leave: 0 };
+      records.forEach((x) => { if (Object.prototype.hasOwnProperty.call(counts, x.status)) counts[x.status] += 1; });
+      const total = Math.max(1, Object.values(counts).reduce((sum, n) => sum + n, 0));
+      let offset = 0;
+      const rings = Object.entries(counts).map(([key, count]) => {
+        const pct = (count / total) * 100;
+        const ring = `<circle class="report-ring status-${key}" cx="60" cy="60" r="46" pathLength="100" stroke-dasharray="${pct} ${100 - pct}" stroke-dashoffset="${-offset}"><title>${STATUS_LABELS[key] || key}: ${count.toLocaleString('fa-IR')}</title></circle>`;
+        offset += pct;
+        return ring;
+      }).join('');
       card.removeAttribute('aria-busy');
       card.innerHTML = `
-        <div class="report-head"><span>شاخص</span><span>مقدار</span></div>
+        <section class="report-chart" aria-labelledby="hours-chart-title"><h3 id="hours-chart-title">ساعت مفید روزانه</h3><svg class="report-bars" viewBox="0 0 320 124" role="img" aria-label="نمودار ساعت مفید روزانه">${bars}</svg></section>
+        <section class="report-chart report-donut-wrap" aria-labelledby="status-chart-title"><div><h3 id="status-chart-title">ترکیب وضعیت روزها</h3><div class="report-legend"><span>عادی ${counts.normal.toLocaleString('fa-IR')}</span><span>تأخیر ${counts.late.toLocaleString('fa-IR')}</span><span>ناقص ${counts.incomplete.toLocaleString('fa-IR')}</span><span>مرخصی ${counts.leave.toLocaleString('fa-IR')}</span></div></div><svg class="report-donut" viewBox="0 0 120 120" role="img" aria-label="نمودار ترکیب وضعیت روزها">${rings}<circle class="report-donut-hole" cx="60" cy="60" r="31"/></svg></section>
         <div class="row"><span class="row-label">مجموع ساعت مفید</span><span class="row-value">${fmtDuration(r.totalEffective)}</span></div>
         <div class="row"><span class="row-label">تعداد روزهای کاری</span><span class="row-value">${r.dayCount}</span></div>
         <div class="row"><span class="row-label">تعداد تأخیر</span><span class="row-value">${r.lateCount}</span></div>
@@ -2532,6 +2642,11 @@
   }
 
   // checkout: اگر تسکِ پاسخ‌نداده هست و حالت soft است، اول ویزارد با «بعداً پر می‌کنم»؛ در enforce سرور با 409 ویزارد را باز می‌کند
+  async function submitCheckout(body) {
+    if (!(await confirmCheckout())) return false;
+    return doAction('/check-out', body || {}, 'خروج ثبت شد.');
+  }
+
   async function startCheckout() {
     try {
       const d = await api('/daily-tasks');
@@ -2540,7 +2655,7 @@
         return;
       }
     } catch (_) { /* پیش‌بررسی اختیاری است؛ تصمیم نهایی با /check-out */ }
-    doAction('/check-out', {}, 'خروج ثبت شد.');
+    submitCheckout({});
   }
 
   async function openLateReport(date) {
@@ -2639,7 +2754,7 @@
         card.appendChild(urgentBadge());
         card.appendChild(dEl('div', { class: 'urgent-meta', text: urgentMetaText(t) }));
         if (t.urgentNote) card.appendChild(dEl('div', { class: 'plan-meta', text: t.urgentNote }));
-      } else if (t.priority === 'high') card.appendChild(dEl('span', { class: 'chip chip-orange', text: 'اولویت بالا' }));
+      } else if (t.priority === 'high') card.appendChild(dEl('span', { class: 'prio-badge prio-high', text: 'اولویت بالا' }));
       if (optional) {
         card.appendChild(dEl('span', { class: 'dr-tag', text: 'اختیاری' }));
         card.appendChild(dEl('div', { class: 'plan-meta', text: 'اولویتِ این تسک کم است و ثبت خروج را مسدود نمی‌کند؛ اگر نخواستید پاسخ بدهید رد کنید.' }));
@@ -2838,7 +2953,7 @@
     const bodyOf = () => DR.buildBody({ tasks: ui.tasks, answers: ui.answers, extras: ui.extras, date: ui.mode === 'late' ? ui.date : undefined }, opts);
     if (ui.mode === 'checkout') {
       const go = dEl('button', { type: 'button', class: 'btn primary', text: 'ثبت گزارش و خروج', disabled: missing.length > 0 });
-      go.addEventListener('click', () => withBusy(go, () => doAction('/check-out', bodyOf(), 'خروج ثبت شد.')));
+      go.addEventListener('click', () => withBusy(go, () => submitCheckout(bodyOf())));
       nav.appendChild(go);
       if (ui.allowLater) nav.appendChild(laterBtn());
     } else {
@@ -3010,6 +3125,8 @@
   function setRemoteStatus(label, cls) {
     $('#remote-status-label').textContent = label;
     $('#remote-status-pill').className = 'status-pill ' + cls;
+    const card = $('#remote-status-card');
+    if (card) card.dataset.state = cls === 'is-active' ? 'remote' : (cls === 'is-break' ? 'break' : (cls === 'is-done' ? 'done' : 'outside'));
   }
 
   function remoteTile(box, { title, sub, color, icon, wide, handler }) {
@@ -3560,6 +3677,7 @@
       } catch (_) { /* ignore */ }
       // R4: اول وضعیت شبکه (قبل از رندر کارت ثبت تردد). بیرون از شبکه و بدون ماموریت ⇒ دیالوگ دورکاری؛ در غیر این صورت رفتار فعلی
       const net = await fetchNetworkState();
+      state.network = net;
       if (net.remoteAllowed) {
         if (remoteUi.accepted) enterRemoteMode();
         else showRemoteDialog();

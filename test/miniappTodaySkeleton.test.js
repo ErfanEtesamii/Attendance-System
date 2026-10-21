@@ -11,13 +11,13 @@ const read = (f) => fs.readFileSync(path.join(root, f), 'utf8').replace(/\r\n/g,
 const appSrc = read('public/js/app.js');
 
 describe('skeleton «امروز»', () => {
-  test('ماژول: نوع today با کارت وضعیت، دو دکمه و سه ردیف؛ aria-busy و برچسب مخصوص خوانشگر؛ بدون style/on*', () => {
+  test('ماژول: نوع today با حلقه، کنش اصلی و خلاصه‌ی سه‌ستونه؛ aria-busy و برچسب خوانشگر؛ بدون style/on*', () => {
     const h = S.skeletonHtml('today', { label: 'در حال بارگذاری وضعیت امروز…' });
     assert.match(h, /role="status" aria-busy="true"/);
     assert.match(h, /<span class="sr-only">در حال بارگذاری وضعیت امروز…<\/span>/);
-    assert.equal((h.match(/class="sk-card"/g) || []).length, 2);
-    assert.match(h, /sk-grid two/);
-    assert.match(h, /sk-line w50 tall/);
+    assert.match(h, /sk-ring/);
+    assert.match(h, /sk-action-primary/);
+    assert.match(h, /sk-today-times/);
     assert.doesNotMatch(h, /<[^>]*\s(on[a-z]+|style)\s*=|<script|https?:\/\//i);
   });
   test('نشانه‌گذاری و CSS: ظرف مخفی در ابتدای نما؛ حین بارگذاری فقط skeleton دیده می‌شود', () => {

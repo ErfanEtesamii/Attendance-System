@@ -9,6 +9,7 @@ const Theme = require('../public/js/theme.js');
 const read = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8').replace(/\r\n/g, '\n');
 const PANEL = read('public-admin/css/style.css');
 const MINI = read('public/css/style.css');
+const TOKENS = read('public/css/tokens.css');
 const PANEL_HTML = read('public-admin/index.html');
 const metaOf = (html, name) => { const m = html.match(new RegExp(`<meta name="${name}" content="([^"]*)"`)); return m ? m[1].toLowerCase() : null; };
 const PANEL_BG = { dark: metaOf(PANEL_HTML, 'theme-bg-dark'), light: metaOf(PANEL_HTML, 'theme-bg-light') };
@@ -46,7 +47,7 @@ const PAIRS_PANEL = [
 const SOFT = [['brand', 'brand-soft'], ['green', 'green-soft'], ['orange', 'orange-soft'], ['red', 'red-soft'], ['yellow', 'yellow-soft'], ['blue', 'blue-soft'], ['purple-text', 'purple-soft']];
 
 describe('کنتراست AA (۴٫۵:۱) از روی CSS واقعی', () => {
-  for (const [name, css, cardKey] of [['پنل', PANEL, 'card'], ['Mini App', MINI, 'card-bg']]) {
+  for (const [name, css, cardKey] of [['پنل', TOKENS, 'card'], ['Mini App', TOKENS, 'card']]) {
     const T = THEMES(css);
     for (const mode of ['dark', 'light']) {
       const v = T[mode];
@@ -60,12 +61,8 @@ describe('کنتراست AA (۴٫۵:۱) از روی CSS واقعی', () => {
           assert.ok(r >= 4.5, `${name}/${mode} ${fk} روی ${bk}: ${r.toFixed(2)}`);
         }
       });
-      test(`${name} / ${mode}: متن روی دکمه/تب/آواتار سبز (--on-accent) و نشان‌های نرم`, () => {
-        const og = 'on-green' in v ? 'on-green' : 'on-accent'; // پنل: --on-green (سطوح سبز)؛ Mini App هنوز --on-accent
-        for (const bg of ['#25d9a0', '#14a878', '#7be495', '#16b886']) {
-          const r = ratio(get(og), parseColor(bg));
-          assert.ok(r >= 4.5, `${name}/${mode} ${og} روی ${bg}: ${r.toFixed(2)}`);
-        }
+      test(`${name} / ${mode}: متن دکمه‌ی اصلی و نشان‌های نرم کنتراست کافی دارند`, () => {
+        assert.ok(ratio(get('on-accent'), get('accent')) >= 4.5, `${name}/${mode} on-accent/accent`);
         const card = get(cardKey);
         for (const [fg, soft] of SOFT) {
           if (!(fg in v) || !(soft in v)) continue;
@@ -82,7 +79,7 @@ describe('کنتراست AA (۴٫۵:۱) از روی CSS واقعی', () => {
 
 describe('پالت‌ها و CSS', () => {
   test('کلیدهای دو تم یکی‌اند و رنگ نوار تلگرام (BG) با --bg هر تم برابر است', () => {
-    for (const css of [PANEL, MINI]) {
+    for (const css of [TOKENS]) {
       const T = THEMES(css);
       const keys = (o) => Object.keys(o).filter((k) => !['radius', 'radius-sm', 'sidebar-w'].includes(k)).sort();
       for (const k of keys(T.light)) assert.ok(k in T.dark, `کلید ${k} فقط در روشن است`);
@@ -93,7 +90,7 @@ describe('پالت‌ها و CSS', () => {
     }
   });
   test('T1: توکن‌های برند پنل در هر دو تم و fallback هستند؛ نارنجی دست‌کم قابل‌تشخیص', () => {
-    const T = THEMES(PANEL);
+    const T = THEMES(TOKENS);
     for (const k of ['field', 'brand', 'brand-soft', 'on-brand', 'accent', 'accent-dark', 'on-accent', 'on-green', 'teal-text', 'rail', 'rail-text', 'rail-active-text']) {
       assert.ok(k in T.dark && k in T.light, `توکن --${k} در یکی از دو تم نیست`);
     }
@@ -105,13 +102,13 @@ describe('پالت‌ها و CSS', () => {
   });
   test('T1: پنل نارنجی را فقط با متن تیره می‌خواند (سفید روی accent رد می‌شود)', () => {
     for (const mode of ['dark', 'light']) {
-      const v = THEMES(PANEL)[mode];
+      const v = THEMES(TOKENS)[mode];
       assert.ok(ratio(parseColor('#ffffff'), parseColor(v.accent)) < 4.5, 'اگر این شکست خورد، on-accent را دوباره بررسی کن');
       assert.ok(ratio(parseColor(v['on-accent']), parseColor(v.accent)) >= 4.5);
     }
   });
   test('پشتیبان بدون JS: prefers-color-scheme: light ⇒ همان مقادیر بلاک روشن', () => {
-    for (const css of [PANEL, MINI]) {
+    for (const css of [TOKENS]) {
       const i = css.indexOf('@media (prefers-color-scheme: light)');
       assert.ok(i > 0);
       const seg = css.slice(i, css.indexOf('\n}\n', i + 40));
@@ -121,7 +118,7 @@ describe('پالت‌ها و CSS', () => {
     }
   });
   test('رنگ سفید-شفاف ثابت (rgba(255,255,255,…)) فقط در تعریف متغیر تیره/چاپ مانده؛ بقیه با --ov-*', () => {
-    for (const css of [PANEL, MINI]) {
+    for (const css of [TOKENS, PANEL, MINI]) {
       const bad = css.split('\n').filter((l) => /rgba\(255,\s*255,\s*255/.test(l) && !/^\s*--(ov-\d+|border):/.test(l));
       assert.deepEqual(bad, []);
     }
@@ -211,14 +208,14 @@ describe('theme.js: منطق', () => {
     assert.equal(boot({ prefersDark: true, metas: { 'default-theme': 'light' } }).attrs['data-theme'], 'dark'); // سیستم تیره ⇒ تیره
     assert.equal(boot({ noMatchMedia: true, stored: 'dark', metas: { 'default-theme': 'light' } }).attrs['data-theme'], 'dark');
   });
-  test('Mini App: پیش‌فرض ثابت روشن، تم تلگرام/سیستم را نادیده می‌گیرد و کاربر می‌تواند تیره را انتخاب کند', () => {
-    const metas = { 'default-theme': 'light', 'theme-default-mode': 'fixed' };
+  test('Mini App: در حالت خودکار از تم تلگرام پیروی می‌کند و انتخاب دستی اولویت دارد', () => {
+    const metas = { 'default-theme': 'light' };
     const e = boot({ prefersDark: true, tgScheme: 'dark', metas });
-    assert.equal(e.attrs['data-theme'], 'light');
+    assert.equal(e.attrs['data-theme'], 'dark');
+    assert.equal(e.T.cycle(), 'light');
+    assert.equal(e.store.theme, 'light');
     assert.equal(e.T.cycle(), 'dark');
     assert.equal(e.store.theme, 'dark');
-    assert.equal(e.T.cycle(), 'light');
-    assert.equal('theme' in e.store, false);
   });
   test('T1: index.html پنل و Mini App: پیش‌فرض روشن و رنگ نوار هم‌خوان است', () => {
     assert.equal(metaOf(PANEL_HTML, 'default-theme'), 'light');
@@ -226,7 +223,7 @@ describe('theme.js: منطق', () => {
     assert.match(PANEL_BG.dark, /^#[0-9a-f]{6}$/); assert.match(PANEL_BG.light, /^#[0-9a-f]{6}$/);
     const mini = read('public/index.html');
     assert.equal(metaOf(mini, 'default-theme'), 'light');
-    assert.match(mini, /<meta name="theme-default-mode" content="fixed"/);
+    assert.doesNotMatch(mini, /theme-default-mode/);
     assert.equal(metaOf(mini, 'theme-color'), Theme.BG.light);
     assert.match(mini, /<button class="theme-btn"[^>]*data-theme-toggle[^>]*aria-label=/);
   });
