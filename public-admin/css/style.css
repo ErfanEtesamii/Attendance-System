@@ -1631,7 +1631,7 @@ body[data-density="compact"] .stat { padding: 12px; gap: 7px; }
 .rv-progress-fill { width: var(--progress, 0%); }
 
 /* Phase 20: کارت «کارکرد این ماه» در «وضعیت من» (رنگ‌ها فقط از توکن‌های تم؛ روشن/تیره و RTL) */
-.earn-card { overflow: hidden; margin-bottom: 18px; background: radial-gradient(260px 140px at 100% 0, var(--green-soft), transparent 72%), var(--card); }
+.earn-card { overflow: hidden; margin-bottom: 0; min-width: 0; background: radial-gradient(260px 140px at 100% 0, var(--green-soft), transparent 72%), var(--card); }
 .earn-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .earn-head h3 { margin: 0; font-size: 15px; color: var(--text); }
 .earn-head svg { width: 25px; height: 25px; color: var(--green); flex: none; }
@@ -1639,3 +1639,10 @@ body[data-density="compact"] .stat { padding: 12px; gap: 7px; }
 .earn-amount { margin: 10px 0 2px; color: var(--green); font-weight: 850; font-size: clamp(25px, 5vw, 34px); letter-spacing: -.5px; }
 .earn-useful { color: var(--text); font-weight: 650; }
 .earn-note { padding-top: 8px; border-top: 1px solid var(--border); font-size: 11.5px; }
+
+/* کارت حقوق داخل ردیف کاشی‌های آماری «وضعیت من»: بعد از «تکمیل تسک‌ها» و پرکردن فضای خالی */
+.stat-grid.ms-stats-earn { grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 2fr); align-items: stretch; }
+@media (max-width: 1100px) {
+  .stat-grid.ms-stats-earn { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat-grid.ms-stats-earn > .earn-card { grid-column: 1 / -1; }
+}

@@ -63,13 +63,14 @@
   const row = (label, valueHtml) => `<div class="ms-row"><dt>${esc(label)}</dt><dd>${valueHtml}</dd></div>`;
   const emptyBox = (msg) => `<div class="card"><div class="empty" role="status">${icon('alert')}${esc(msg)}</div></div>`;
 
-  function kpiRow(r) {
+  function kpiRow(r, earningsHtml) {
     const s = r.summary; const t = s.tasks; const a = s.attendance; const W = AP.weekUi;
-    return `<div class="stat-grid">
+    return `<div class="stat-grid${earningsHtml ? ' ms-stats-earn' : ''}">
       ${W.kpi('g-blue', 'clock', fmt.min(a.usefulMinutes), 'ساعت مفید', `${a.workedGrossMinutes ? `${a.usefulOfWorkedPercent == null ? '—' : `${fmt.num(a.usefulOfWorkedPercent)}٪`} از کل حضور ثبت‌شده (${fmt.min(a.workedGrossMinutes)})` : (a.expectedMinutes ? `از ${fmt.min(a.expectedMinutes)} مورد انتظار (${a.usefulPercent == null ? '—' : `${fmt.num(a.usefulPercent)}٪`})` : '')}${a.latePenaltyMinutes ? ` · امتیاز پس از تأخیر: ${fmt.min(a.performanceUsefulMinutes)}` : ''}`)}
       ${W.kpi('g-orange', 'alert', fmt.num(a.lateDays), 'روز تأخیر')}
       ${W.kpi('g-purple', 'clock', fmt.min(a.overtimeMinutes), 'اضافه‌کاری')}
       ${W.kpi('g-green', 'check', t.completionPercent == null ? '—' : `${fmt.num(t.completionPercent)}٪`, 'تکمیل تسک‌ها', `${fmt.num(t.total)} تسک سررسیدشده`)}
+      ${earningsHtml || ''}
     </div>`;
   }
 
@@ -256,7 +257,7 @@
   function liveHtml(d) {
     const W = AP.weekUi;
     const grid = `<div class="week-grid">${d.sel.days.map((x) => W.dayCard(x, true, { readOnly: true, selfUrgent: !!(d.urgentCfg && d.urgentCfg.enabled) })).join('')}</div>`;
-    return `${earningsCard(d.earnings)}${kpiRow(d.sel)}
+    return `${kpiRow(d.sel, earningsCard(d.earnings))}
         <div class="ms-top">${todayCard(d.cur, d.daily, d.backfill, d.urgentCfg)}${nextPlanCard(d.cur, d.next)}</div>
         <h3 class="ms-section-title">روزهای ${esc(weekTitle(d.sel, d.cur))}</h3>
         ${grid}`;
