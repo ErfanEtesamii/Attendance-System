@@ -196,7 +196,6 @@ docs/                      DOCUMENTATION.md (unified technical documentation)
 data/                      database, backups/, attachments/ (not committed)
 ```
 
-> The `port-3000.patch` and `port-443-revert.patch` files in the root are old port-change patches and play no role at runtime.
 
 ## Roles and Permissions
 

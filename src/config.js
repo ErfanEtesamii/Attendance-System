@@ -27,7 +27,7 @@ function nonNegativeIntEnv(value, fallback) {
 }
 
 const config = {
-  port: parseInt(process.env.PORT || '3000', 10),
+  port: parseInt(process.env.PORT || '443', 10),
   dbPath: path.resolve(process.cwd(), process.env.DB_PATH || './data/attendance.db'),
   nodeEnv: process.env.NODE_ENV || 'development',
   allowedNetworkCidr: process.env.ALLOWED_NETWORK_CIDR || '192.168.10.0/24',

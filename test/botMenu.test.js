@@ -80,7 +80,7 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
     });
 
     test('بدون https هم کیبورد پایین همان یک دکمه است', () => {
-      config.miniAppUrl = 'http://192.168.1.5:3000/app/';
+      config.miniAppUrl = 'http://192.168.1.5/app/';
       try {
         assert.deepEqual(labelsOf(menu.buildMainKeyboard(admin)), ['📂 منو']);
         config.miniAppUrl = '';
@@ -172,7 +172,7 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
 
     test('بدون https (H3): آیتم‌های web_app می‌مانند ولی دکمه‌ی callback می‌شوند (نه web_app)', () => {
       const httpsTexts = itemTexts(menu.buildMenuInline(admin));
-      config.miniAppUrl = 'http://192.168.1.5:3000/app/';
+      config.miniAppUrl = 'http://192.168.1.5/app/';
       try {
         const kb = menu.buildMenuInline(admin);
         const texts = itemTexts(kb);
@@ -522,7 +522,7 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
     const MSG = 'برای ورود، از دکمه‌ی 📂 منو در بات باز کنید';
 
     test('buildMainKeyboard برای هر سه نقش و با هر MINI_APP_URL (https، http، خالی) هیچ web_app ندارد', () => {
-      for (const url of [HTTPS, 'http://192.168.1.5:3000/app/', '']) {
+      for (const url of [HTTPS, 'http://192.168.1.5/app/', '']) {
         config.miniAppUrl = url;
         try {
           for (const user of [emp, mgr, admin]) {
@@ -549,14 +549,14 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
     test('panelWebAppButton مقصد go را حفظ می‌کند؛ بدون https دکمه ساخته نمی‌شود', async () => {
       const b = panelLinks.panelWebAppButton({ view: 'teamreports' });
       assert.equal(new URL(b.web_app.url).searchParams.get('go'), 'teamreports');
-      await withUrl('http://192.168.1.5:3000/app/', async () => {
+      await withUrl('http://192.168.1.5/app/', async () => {
         assert.equal(panelLinks.panelWebAppButton({ view: 'teamreports' }), null);
         assert.equal(panelLinks.canUseWebApp(panelLinks.miniAppLink({ view: 'plan' })), false);
       });
     });
 
     test('http: لمس «ثبت تردد» (mn:checkin) ⇒ یک‌بار answer، پیام منو پاک، پیام راهنمای ادمین (https/MINI_APP_URL)، بدون web_app، با هشدار لاگ', async () => {
-      await withUrl('http://192.168.1.5:3000/app/', async (warn) => {
+      await withUrl('http://192.168.1.5/app/', async (warn) => {
         for (const [user, id] of [[emp, 'mn:checkin'], [emp, 'mn:plan'], [admin, 'mn:admin_panel']]) {
           const bot = mockBot(); const { calls, h } = spies();
           const before = warn.mock.calls.length;
