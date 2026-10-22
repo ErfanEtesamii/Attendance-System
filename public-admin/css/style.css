@@ -1623,7 +1623,7 @@ body[data-density="compact"] .stat { padding: var(--space-3); gap: 7px; }
 .u-panel-head { padding: var(--space-4) var(--space-4) 0; }
 .u-actions-center { margin-top: var(--space-3); justify-content: center; align-items: center; }
 .u-mt-26 { margin-top: var(--space-5); }
-.u-mb-12, .u-mb-14 { margin-bottom: var(--space-3); }
+.u-mb-12 { margin-bottom: var(--space-3); }
 .u-small-meta { font-size: var(--fs-xs); }
 .u-section-note { margin: var(--space-3) 0 0; line-height: 1.9; }
 .u-pointer { cursor: pointer; }
@@ -1633,7 +1633,7 @@ body[data-density="compact"] .stat { padding: var(--space-3); gap: 7px; }
 .font-regular { font-weight: 400; }
 .task-summary-meta { font-size: var(--fs-xs); margin-top: var(--space-1); }
 .week-range { margin: -6px 0 var(--space-4); }
-.text-xs, .text-xs-plus { font-size: var(--fs-xs); }
+.text-xs { font-size: var(--fs-xs); }
 .report-note { margin-bottom: var(--space-3); }
 .table-hint { font-weight: 400; font-size: var(--fs-xs); }
 .import-help { margin: 0; line-height: 2; }

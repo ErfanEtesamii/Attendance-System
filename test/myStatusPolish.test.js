@@ -19,7 +19,10 @@ describe('«وضعیت من» M5: CSS', () => {
   });
   test('هیچ white-space: nowrap و عرض ثابت بزرگ روی .ms-*؛ دکمه‌ی تسک قابل شکستن است', () => {
     const rules = msRules().join('\n');
-    assert.doesNotMatch(rules, /white-space:\s*nowrap/);
+    // مقدارهای KPI (عدد و واحد) می‌توانند کنار هم بمانند؛ دکمه‌ها و سایر بخش‌های .ms-* باید بشکنند.
+    const withoutKpiValue = rules.replace(/\.ms-stats \.stat-value \{[^}]*\}/g, '');
+    assert.doesNotMatch(withoutKpiValue, /white-space:\s*nowrap/);
+    assert.match(rules, /\.ms-stats \.stat-value \{[^}]*white-space:\s*nowrap/);
     assert.match(rules, /\.ms-task-actions \.btn \{[^}]*white-space:\s*normal/);
     assert.match(rules, /\.ms-task-actions \.btn \{[^}]*max-width:\s*100%/);
   });

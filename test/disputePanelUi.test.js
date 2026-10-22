@@ -310,7 +310,9 @@ describe('D6 — قرارداد کد و استایل', () => {
     assert.equal(Number(/const MESSAGE_MAX = (\d+);/.exec(svc)[1]), Number(/const DISP_MSG_MAX = (\d+);/.exec(ops)[1]));
   });
   test('CSS پنل: حباب‌ها، فیلد پاسخ و شمارنده؛ ویژگی‌های منطقی (بدون left/right فیزیکی)؛ وضعیت با متن', () => {
-    const block = css.slice(css.indexOf('/* گفت‌وگوی اعتراض (D6)'));
+    const start = css.indexOf('/* گفت‌وگوی اعتراض (D6)');
+    const end = css.indexOf('/* B2', start);
+    const block = css.slice(start, end);
     for (const re of [/\.dsp-msg\.user/, /\.dsp-msg\.admin/, /\.dsp-thread/, /\.dsp-reply textarea/, /white-space: pre-wrap/, /margin-inline-end: auto/]) assert.match(block, re);
     assert.doesNotMatch(block, /(^|[\s;{])(left|right)\s*:|margin-(left|right)|padding-(left|right)|text-align:\s*(left|right)/);
   });

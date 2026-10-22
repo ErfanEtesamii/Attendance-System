@@ -68,7 +68,7 @@
       ${admin ? `<td>${s.seq > 1 ? `<button type="button" class="btn danger small" data-del-segment>${icon('trash')} حذف نوبت</button>` : ''}</td>` : ''}</tr>`;
 
     const body = `
-      <div class="profile-head u-mb-14">
+      <div class="profile-head u-mb-12">
         ${AP.avatar(u.fullName, '')}
         <div class="grow"><h2 class="u-title-sm"><a class="u-link-inherit" href="#/profile/${r.user_id}" data-close-link>${esc(u.fullName || '—')}</a></h2>
           <div class="muted">${esc(fmt.dateLong(r.record_date))} · ${esc(u.department || '')}</div></div>
@@ -853,7 +853,7 @@
       const items = await AP.api(`/admin/suspicious${qs}`);
       const html = `
         <div class="view-header"><div><h2>موارد مشکوک</h2><div class="sub">${fmt.num(items.length)} نشانه</div></div></div>
-        <div class="card u-mb-14"><p class="muted import-help">
+        <div class="card u-mb-12"><p class="muted import-help">
           اینجا فقط «نشانه» می‌بینید، نه اتهام یا مدرک. شناسه‌ی دستگاه توسط خود برنامه در مرورگر ساخته می‌شود و قابل جعل یا پاک‌شدن است؛
           هر نشانه باید با گفتگو و بررسی انسانی تأیید یا نادیده گرفته شود. ثبت نتیجه‌ی بررسی (با ذکر دلیل) در گزارش رویدادها می‌ماند.</p></div>
         <div class="chips" id="s-chips">${[['open', 'بررسی‌نشده'], ['reviewed', 'بررسی‌شده'], ['ignored', 'بی‌اهمیت'], ['all', 'همه']]
@@ -959,7 +959,7 @@
         </div>
         <div class="chips" id="nt-chips">${chips.map(([k, l, c]) => `<button class="chip ${k === nightUi.filter ? 'active' : ''}" data-f="${k}">${esc(l)}<b>${fmt.num(c)}</b></button>`).join('')}
           <span class="muted night-summary">حاضر: ${fmt.num(t.present)} · متأخر: ${fmt.num(t.late)} · بدون خروج: ${fmt.num(t.noCheckout)} · غایب: ${fmt.num(t.absent)} · مرخصی: ${fmt.num(t.leave)}</span></div>
-        <div class="card flush"><div class="table-wrap"><table>
+        <div class="card card--primary flush"><div class="table-wrap"><table>
           <thead><tr><th>کارمند</th><th>وضعیت</th><th>ورود</th><th>خروج</th><th>ساعت مفید</th><th>نکات</th><th>عملیات</th></tr></thead>
           <tbody id="nt-body"></tbody></table></div></div>
 

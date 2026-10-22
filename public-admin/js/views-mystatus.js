@@ -182,7 +182,7 @@
       ].filter(Boolean).join('');
       if (chips) rows.push(row('تأخیر / اضافه‌کاری', `<span class="ms-chips">${chips}</span>`));
     } else if (d.holidayTitle) rows.push(row('مناسبت', esc(d.holidayTitle)));
-    return `<section class="card ms-today" aria-labelledby="ms-today-h">
+    return `<section class="card card--primary ms-today" aria-labelledby="ms-today-h">
       <h3 id="ms-today-h" tabindex="-1">امروز · ${esc(fmt.date(d.date))}</h3>
       <dl class="ms-rows">${rows.join('')}</dl>
       ${urgentCfg && urgentCfg.enabled && d.schedule.isWorkingDay ? `<div class="ms-actions"><button type="button" class="btn ghost small" data-act="su-add" data-date="${esc(d.date)}">⚡ تسک فوری برای امروز</button></div>` : ''}

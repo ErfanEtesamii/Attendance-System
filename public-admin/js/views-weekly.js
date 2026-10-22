@@ -167,7 +167,7 @@
     const tasks = d.tasks || [];
     const taskList = tasks.length
       ? `<ul class="day-tasks">${tasks.map((t) => taskRow(t, isSelf, opts)).join('')}</ul>`
-      : `<div class="muted text-xs-plus">تسکی برای این روز ثبت نشده است.</div>`;
+      : `<div class="muted text-xs">تسکی برای این روز ثبت نشده است.</div>`;
     const reviewNote = d.review && d.review.reviewed
       ? `<div class="muted day-reviewed">${icon('check', 14)} مشاهده‌شده توسط سرپرست${d.review.reviews[0] && d.review.reviews[0].comment ? `: «${esc(d.review.reviews[0].comment)}»` : ''}</div>` : '';
     return `<details class="card day-card${d.isToday ? ' is-today' : ''}" open>
