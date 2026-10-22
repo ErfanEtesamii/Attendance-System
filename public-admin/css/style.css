@@ -485,6 +485,8 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 
 /* کاشی‌های آماری */
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 14px; margin-bottom: 18px; }
+/* کاشی‌ها و تب‌ها/فیلترها بعد از کارت چسبیده نباشند */
+.card + .stat-grid, .filters + .stat-grid, .card + .filters, .card + .week-grid { margin-top: var(--space-4); }
 .stat {
   position: relative;
   display: flex; flex-direction: column; gap: 10px;
