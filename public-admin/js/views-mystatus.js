@@ -238,12 +238,9 @@
     const amount = Math.max(0, Number(e.amountToman) || 0);
     const useful = Math.max(0, Number(e.usefulMinutes) || 0);
     return `<section class="card earn-card" id="ms-earnings" aria-labelledby="ms-earn-h">
-      <div class="earn-head">
-        <span class="earn-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M16.5 7.5c0-1.7-2-3-4.5-3S7.5 5.8 7.5 7.5 9.5 10.5 12 10.5s4.5 1.3 4.5 3-2 3-4.5 3-4.5-1.3-4.5-3"/></svg></span>
-        <div class="earn-titles"><h3 id="ms-earn-h">کارکرد این ماه</h3>
-          <p class="earn-intro">تا امروز در ${esc(e.monthLabel)} کار کرده‌ای</p></div>
-      </div>
-      <p class="earn-amount"><span id="ms-earn-amount" data-amount="${amount}">${fmt.num(amount)}</span><small>تومان</small></p>
+      <div class="earn-head"><h3 id="ms-earn-h">💰 کارکرد این ماه</h3></div>
+      <p class="earn-intro">تا امروز در ${esc(e.monthLabel)} کار کرده‌ای</p>
+      <p class="earn-amount"><span id="ms-earn-amount" data-amount="${amount}">${fmt.num(amount)}</span><small>تومان</small><span class="earn-spark" aria-hidden="true">✨</span></p>
       <div class="earn-foot">
         <span class="earn-useful"><span class="earn-chip">${fmt.min(useful)} ساعت مفید</span></span>
         <span class="earn-note"><span aria-hidden="true">ⓘ</span> تخمینی؛ حقوق نهایی بر اساس تایید حسابداری است</span>
