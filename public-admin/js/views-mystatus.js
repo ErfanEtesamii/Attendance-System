@@ -209,22 +209,54 @@
     const enc = encodeURIComponent;
     const cur = await AP.api('/admin/me/week');
     const loadDaily = (date) => AP.api(tasksUrl('today', date ? `date=${enc(date)}` : '')).catch((err) => ({ ok: false, error: err.message }));
-    const [sel, next, daily0, backfill, urgentCfg] = await Promise.all([
+    const [sel, next, daily0, backfill, urgentCfg, earnings] = await Promise.all([
       ui.start && ui.start !== cur.week.start ? AP.api(`/admin/me/week?start=${enc(ui.start)}`) : Promise.resolve(cur),
       AP.api(`/admin/me/week?start=${enc(cur.week.nextWeekStart)}`).catch(() => null), // غیرحیاتی: فقط نشان وضعیت برنامه
       loadDaily(ui.taskDate),
       AP.api(tasksUrl('backfill')).catch(() => null), // غیرحیاتی: بنر گزارش دیرهنگام
       AP.api('/admin/me/urgent/config').catch(() => null), // غیرحیاتی: نبودنش فقط دکمه‌های «تسک فوری» را مخفی می‌کند
+      AP.api('/admin/me/earnings').then((r) => (r && r.earnings) || null).catch(() => null), // غیرحیاتی: null ⇒ کارت نمایش داده نمی‌شود
     ]);
     let daily = daily0;
     if (ui.taskDate && !(daily && daily.ok)) { ui.taskDate = ''; daily = await loadDaily(''); } // مهلت روزِ گذشته تمام شده ⇒ برگرد به امروز
-    return { cur, sel, next, daily, backfill, urgentCfg };
+    return { cur, sel, next, daily, backfill, urgentCfg, earnings };
+  }
+
+  // Phase 20: کارت «کارکرد این ماه» (null ⇒ اصلاً رندر نمی‌شود). مبلغ با count-up کوتاه فقط بار اول؛ با prefers-reduced-motion بدون انیمیشن.
+  function earningsCard(e) {
+    if (!e) return '';
+    const amount = Math.max(0, Number(e.amountToman) || 0);
+    const useful = Math.max(0, Number(e.usefulMinutes) || 0);
+    return `<section class="card earn-card" id="ms-earnings" aria-labelledby="ms-earn-h">
+      <div class="earn-head"><h3 id="ms-earn-h">💰 کارکرد این ماه</h3>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M16.5 7.5c0-1.7-2-3-4.5-3S7.5 5.8 7.5 7.5 9.5 10.5 12 10.5s4.5 1.3 4.5 3-2 3-4.5 3-4.5-1.3-4.5-3"/></svg>
+      </div>
+      <p class="earn-intro">تا امروز در ${esc(e.monthLabel)} کار کرده‌ای</p>
+      <p class="earn-amount"><span id="ms-earn-amount" data-amount="${amount}">${fmt.num(amount)}</span> تومان <span aria-hidden="true">✨</span></p>
+      <p class="earn-useful">${fmt.min(useful)} ساعت مفید</p>
+      <p class="earn-note">تخمینی؛ حقوق نهایی بر اساس تایید حسابداری است</p>
+    </section>`;
+  }
+  function animateEarnings(root) {
+    const el = $('#ms-earn-amount', root);
+    if (!el || ui.earningsShown) return;
+    ui.earningsShown = true;
+    const amount = Number(el.dataset.amount) || 0;
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || !window.requestAnimationFrame || amount === 0) return;
+    const t0 = performance.now();
+    const tick = (now) => {
+      const p = Math.min(1, (now - t0) / 800);
+      el.textContent = fmt.num(Math.round(amount * p));
+      if (p < 1 && el.isConnected) requestAnimationFrame(tick); else el.textContent = fmt.num(amount);
+    };
+    requestAnimationFrame(tick);
   }
 
   function liveHtml(d) {
     const W = AP.weekUi;
     const grid = `<div class="week-grid">${d.sel.days.map((x) => W.dayCard(x, true, { readOnly: true, selfUrgent: !!(d.urgentCfg && d.urgentCfg.enabled) })).join('')}</div>`;
-    return `${kpiRow(d.sel)}
+    return `${earningsCard(d.earnings)}${kpiRow(d.sel)}
         <div class="ms-top">${todayCard(d.cur, d.daily, d.backfill, d.urgentCfg)}${nextPlanCard(d.cur, d.next)}</div>
         <h3 class="ms-section-title">روزهای ${esc(weekTitle(d.sel, d.cur))}</h3>
         ${grid}`;
@@ -388,6 +420,7 @@
           }));
           $$('[data-act="su-add-any"]', page).forEach((b) => b.addEventListener('click', () => openUrgentForm(page, null, '')));
           bindLive($('#ms-live', page) || page, page);
+          animateEarnings(page);
         },
       };
     },

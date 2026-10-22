@@ -1629,3 +1629,13 @@ body[data-density="compact"] .stat { padding: 12px; gap: 7px; }
 .filters-center { align-items: center; }
 .night-summary { margin-inline-start: 8px; font-size: 12.5px; }
 .rv-progress-fill { width: var(--progress, 0%); }
+
+/* Phase 20: کارت «کارکرد این ماه» در «وضعیت من» (رنگ‌ها فقط از توکن‌های تم؛ روشن/تیره و RTL) */
+.earn-card { overflow: hidden; margin-bottom: 18px; background: radial-gradient(260px 140px at 100% 0, var(--green-soft), transparent 72%), var(--card); }
+.earn-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.earn-head h3 { margin: 0; font-size: 15px; color: var(--text); }
+.earn-head svg { width: 25px; height: 25px; color: var(--green); flex: none; }
+.earn-intro, .earn-useful, .earn-note { margin: 8px 0 0; color: var(--hint); font-size: 12.5px; }
+.earn-amount { margin: 10px 0 2px; color: var(--green); font-weight: 850; font-size: clamp(25px, 5vw, 34px); letter-spacing: -.5px; }
+.earn-useful { color: var(--text); font-weight: 650; }
+.earn-note { padding-top: 8px; border-top: 1px solid var(--border); font-size: 11.5px; }
