@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## Phase 20 — Weekly-plan exit gate
+- A draft plan is gate-satisfied when it has an active, ordinary supervisor-locked task; its raw status remains `draft`, so the employee can still add tasks and submit finally.
+- Mini App and admin overview identify supervisor-configured plans; nightly reporting and KPI use the same satisfied definition, with a separate KPI count for supervisor-configured plans that are not finally submitted.
+
 وضعیت و جزئیات کامل فازها: [`PROJECT_STATUS.md`](PROJECT_STATUS.md) — معماری: [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md)
 
 ## [Unreleased] — بخش ۴ (ممیزی)

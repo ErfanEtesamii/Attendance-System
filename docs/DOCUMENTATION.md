@@ -251,6 +251,10 @@
 #### ۲. جلوگیری از لورفتن (آنچه در کد پیاده شده)
 
 ##### ۲.۱ بسته‌ی تحویل/استقرار بدون راز
+## Phase 20 — Weekly-plan exit gate
+
+A weekly plan satisfies the exit gate when it is `submitted` with at least `planMinTasks` active ordinary tasks, or when it contains one active ordinary task with `manager_locked = 1`. The latter keeps the raw plan status as `draft`: the employee can view the supervisor-configured plan, add their own tasks, and submit finally. Nightly reporting and task KPI use this same gate definition; the KPI separately reports supervisor-configured plans that have not been finally submitted.
+
 ```bash
 npm run package                       # → dist/farazhonar-attendance-<نسخه>-<تاریخ>.zip
 node scripts/package-release.js --out C:\temp\release.zip
