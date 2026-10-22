@@ -28,9 +28,12 @@ function earningsForUser(user, settings, { today } = {}) {
       .map((dispute) => dispute.record_date)
       .filter(Boolean),
   );
-  const usefulMinutes = (report.users[0]?.days || []).reduce((total, day) => (
-    disputedDates.has(day.date) ? total : total + Number(day.effectiveWithMission || 0)
-  ), 0);
+  // مثل جمع ماهانه‌ی monthlyReportService: روزِ گذشته‌ی «ورود بدون خروج» (missing_checkout) ساعت مفیدِ بی‌معنا می‌دهد (موتور تا now می‌شمارد) و در جمع نمی‌آید.
+  const usefulMinutes = (report.users[0]?.days || []).reduce((total, day) => {
+    if (disputedDates.has(day.date)) return total;
+    if ((day.flags || []).includes('missing_checkout') || day.effectiveWithMission == null) return total;
+    return total + Number(day.effectiveWithMission);
+  }, 0);
 
   return {
     enabled: true,

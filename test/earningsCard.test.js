@@ -40,6 +40,20 @@ describe('کارت کارکرد ماهانه (Phase 20)', () => {
     assert.equal(afterDispute.usefulMinutes, 0);
     assert.equal(afterDispute.amountToman, 0);
   });
+
+  test('روز گذشته‌ی ورود بدون خروج (missing_checkout) در مبلغ نمی‌آید', () => {
+    resetDb();
+    const user = makeUser();
+    usersRepository.setHourlyRateKt(user.id, 100);
+    const date = '2026-08-01';
+    attendanceRepository.createManual({
+      userId: user.id, recordDate: date,
+      checkInTime: zonedTimeToUtc(date, '08:30', 'Asia/Tehran').toISOString(), checkOutTime: null, status: 'incomplete',
+    });
+    const result = earningsForUser(user, { showEarningsCard: true }, { today: '2026-08-03' });
+    assert.equal(result.usefulMinutes, 0);
+    assert.equal(result.amountToman, 0);
+  });
 });
 
 describe('کارت کارکرد ماهانه — API Mini App', { skip: hasDeps ? false : 'express نصب نیست' }, () => {
