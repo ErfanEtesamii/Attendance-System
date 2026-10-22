@@ -14,6 +14,7 @@ const teamReview = require('./teamReviewService');
 const taskReportService = require('./taskReportService');
 const { taskDayTally } = require('./taskDayTally');
 const attendanceRepository = require('../repositories/attendanceRepository');
+const { planSatisfied } = require('./planGateService');
 const { REASON_LABELS } = require('../content/reportLabels');
 const { isoDateToJalaliString } = require('../utils/jalali');
 const { addDays } = require('../utils/shiftDay');
@@ -47,8 +48,9 @@ function memberReport(member, date, settings) {
   if (!tally) return null;
   const weekStart = calendarService.weekStartOf(date, settings.weekStartDay);
   const planDay = calendarService.getPlanDay(member, weekStart, { settings });
-  const nextPlan = plansRepo.findByUserWeek(member.id, addDays(weekStart, 7));
-  const planMissing = settings.planGateMode !== 'off' && planDay === date && !(nextPlan && nextPlan.status === 'submitted');
+  const nextWeek = addDays(weekStart, 7);
+  const planMissing = settings.planGateMode !== 'off' && planDay === date
+    && !planSatisfied(member.id, nextWeek, settings.planMinTasks);
   if (!tally.relevant && !planMissing) return null;
   return {
     member, tally, hasReport: tally.hasReport, total: tally.total, done: tally.done, percent: tally.percent,

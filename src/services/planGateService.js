@@ -2,7 +2,7 @@
 // همه‌ی تصمیم‌ها سمت سرور است؛ UI فقط کاربر را به ویزارد می‌برد و خروج را دوباره می‌فرستد.
 //   • فعال‌شدن: planGateMode ≠ off و تاریخ رکورد ≥ planGateStartDate (اگر پر باشد).
 //   • «روز ثبت» = getPlanDay(کاربر، هفته‌ی تاریخ رکورد). گیت از همان روز تا آخر همان هفته فعال است (یعنی اگر روز ثبت خروج نزد، اولین خروجِ بعدی هم گیت می‌شود).
-//   • برآورده‌شدن: برنامه‌ی هفته‌ی بعد submitted و دست‌کم planMinTasks تسک (غیرسیستمی، حذف‌نشده) دارد.
+//   • برآورده‌شدن: برنامه‌ی هفته‌ی بعد submitted و دست‌کم planMinTasks تسک عادی دارد، یا دست‌کم یک تسک عادیِ قفل‌شده توسط سرپرست دارد.
 //   • ماهِ بسته ⇒ ثبت برنامه ممکن نیست ⇒ گیت اعمال نمی‌شود. روز ثبت وجود ندارد (مرخصی/تعطیلیِ کل هفته) ⇒ اعمال نمی‌شود.
 //   • معافیت یک‌باره (ادمین/سرپرست با علت): خروج مجاز و معافیت مصرف می‌شود.
 //   • enforce ⇒ block، soft ⇒ remind (خروج ثبت می‌شود + یادآوری)، off ⇒ allow.
@@ -18,9 +18,9 @@ const { addDays } = require('../utils/shiftDay');
 
 function planSatisfied(userId, weekStart, minTasks) {
   const plan = plansRepo.findByUserWeek(userId, weekStart);
-  if (!plan || plan.status !== 'submitted') return false;
-  const count = plansRepo.listTasks(plan.id).filter((t) => !t.is_system && !t.is_urgent).length;
-  return count >= Math.max(0, minTasks);
+  if (!plan) return false;
+  if (plansRepo.countManagerTasks(plan.id) > 0) return true;
+  return plan.status === 'submitted' && plansRepo.countOrdinaryTasks(plan.id) >= Math.max(0, minTasks);
 }
 
 /** وضعیت گیت برای کاربر در تاریخِ رکورد. هرگز چیزی نمی‌نویسد. */
@@ -117,4 +117,4 @@ function status(user, today) {
   };
 }
 
-module.exports = { evaluate, check, consumeExemption, grantExemption, status };
+module.exports = { planSatisfied, evaluate, check, consumeExemption, grantExemption, status };

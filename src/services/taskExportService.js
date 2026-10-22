@@ -7,6 +7,7 @@ const plansRepo = require('../repositories/weeklyPlanRepository');
 const logsRepo = require('../repositories/taskLogRepository');
 const reviewsRepo = require('../repositories/reportReviewRepository');
 const calendarService = require('../engine/calendarService');
+const { planSatisfied } = require('./planGateService');
 const teamReports = require('./teamReportsService');
 const { REASON_LABELS, STATUS_LABELS } = require('../content/reportLabels');
 const { isoDateToJalaliString } = require('../utils/jalali');
@@ -115,7 +116,8 @@ function localDate(iso, tz) {
  * شاخص‌های مدیریتی (اسکوپ نقش):
  *  teams[]: به‌ازای هر سرپرست — نرخ انجام تسک تیم، تعداد برنامه‌ریزی/انجام
  *  reviewers[]: نرخ «بررسی به‌موقع» = سهم گزارش‌های اعضا که تا پایانِ روز کاریِ بعدی مشاهده شده‌اند
- *  unplanned: افراد بدون برنامه‌ی ثبت‌شده‌ی هفته‌ی بعدِ بازه (و تعدادشان)
+ *  unplanned: افراد با برنامه‌ی هفته‌ی بعدِ برآورده‌نشده (و تعدادشان)
+ *  managerConfiguredNotSubmitted: برنامه‌ی تنظیم‌شده توسط سرپرست که کارمند هنوز ارسال نهایی نکرده است
  */
 function taskKpis(viewer, input = {}, { now = new Date() } = {}) {
   const settings = settingsRepository.getAll();
@@ -162,12 +164,20 @@ function taskKpis(viewer, input = {}, { now = new Date() } = {}) {
   const reviewerRows = [...rev.values()].map((r) => ({ ...r, onTimeRate: r.reports ? Math.round((r.onTime / r.reports) * 100) : null }));
 
   const nextWeek = addDays(calendarService.weekStartOf(to, settings.weekStartDay), 7);
+  const managerConfiguredNotSubmitted = [];
   const unplanned = users.filter((u) => {
     const p = plansRepo.findByUserWeek(u.id, nextWeek);
-    return !(p && p.status === 'submitted');
+    if (p && p.status !== 'submitted' && plansRepo.countManagerTasks(p.id) > 0) {
+      managerConfiguredNotSubmitted.push({ userId: u.id, fullName: u.full_name, department: u.department || null });
+    }
+    return !planSatisfied(u.id, nextWeek, settings.planMinTasks);
   }).map((u) => ({ userId: u.id, fullName: u.full_name, department: u.department || null }));
 
-  return { ok: true, from, to, nextWeekStart: nextWeek, teams: teamRows, reviewers: reviewerRows, unplanned: { count: unplanned.length, users: unplanned } };
+  return {
+    ok: true, from, to, nextWeekStart: nextWeek, teams: teamRows, reviewers: reviewerRows,
+    unplanned: { count: unplanned.length, users: unplanned },
+    managerConfiguredNotSubmitted: { count: managerConfiguredNotSubmitted.length, users: managerConfiguredNotSubmitted },
+  };
 }
 
 module.exports = { buildTaskSheets, taskKpis, resolveRange, MAX_RANGE_DAYS };
