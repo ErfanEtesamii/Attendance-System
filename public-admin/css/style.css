@@ -1631,14 +1631,19 @@ body[data-density="compact"] .stat { padding: 12px; gap: 7px; }
 .rv-progress-fill { width: var(--progress, 0%); }
 
 /* Phase 20: کارت «کارکرد این ماه» در «وضعیت من» (رنگ‌ها فقط از توکن‌های تم؛ روشن/تیره و RTL) */
-.earn-card { overflow: hidden; margin-bottom: 0; min-width: 0; background: radial-gradient(260px 140px at 100% 0, var(--green-soft), transparent 72%), var(--card); }
-.earn-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.earn-card { display: flex; flex-direction: column; gap: 12px; overflow: hidden; margin-bottom: 0; min-width: 0; background: radial-gradient(320px 180px at 100% 0, var(--green-soft), transparent 70%), var(--card); }
+.earn-head { display: flex; align-items: center; gap: 12px; }
+.earn-ico { flex: none; width: 42px; height: 42px; display: grid; place-items: center; border-radius: var(--r-md); background: var(--green-soft); color: var(--green); }
+.earn-head h3::before { display: none; }
+.earn-ico svg { width: 22px; height: 22px; }
+.earn-titles { min-width: 0; }
 .earn-head h3 { margin: 0; font-size: 15px; color: var(--text); }
-.earn-head svg { width: 25px; height: 25px; color: var(--green); flex: none; }
-.earn-intro, .earn-useful, .earn-note { margin: 8px 0 0; color: var(--hint); font-size: 12.5px; }
-.earn-amount { margin: 10px 0 2px; color: var(--green); font-weight: 850; font-size: clamp(25px, 5vw, 34px); letter-spacing: -.5px; }
-.earn-useful { color: var(--text); font-weight: 650; }
-.earn-note { padding-top: 8px; border-top: 1px solid var(--border); font-size: 11.5px; }
+.earn-intro { margin: 2px 0 0; color: var(--hint); font-size: 12px; }
+.earn-amount { margin: 4px 0 0; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; color: var(--green); font-weight: 850; font-size: clamp(30px, 5vw, 40px); line-height: 1.15; letter-spacing: -.5px; unicode-bidi: isolate; }
+.earn-amount small { font-size: 14px; font-weight: 600; color: var(--hint); letter-spacing: 0; }
+.earn-foot { margin-top: auto; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.earn-chip { display: inline-block; padding: 4px 12px; border-radius: 999px; background: var(--green-soft); color: var(--green); font-size: 12.5px; font-weight: 700; }
+.earn-note { color: var(--hint); font-size: 11.5px; line-height: 1.7; }
 
 /* کارت حقوق داخل ردیف کاشی‌های آماری «وضعیت من»: بعد از «تکمیل تسک‌ها» و پرکردن فضای خالی */
 .stat-grid.ms-stats-earn { grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 2fr); align-items: stretch; }
@@ -1646,3 +1651,11 @@ body[data-density="compact"] .stat { padding: 12px; gap: 7px; }
   .stat-grid.ms-stats-earn { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stat-grid.ms-stats-earn > .earn-card { grid-column: 1 / -1; }
 }
+
+/* کاشی‌های «وضعیت من»: آیکون‌ها یکدست (پس‌زمینه ملایم + آیکون رنگی) و زمان در یک خط */
+.ms-stats .stat-icon.g-orange { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent); }
+.ms-stats .stat-icon.g-purple { background: color-mix(in srgb, var(--brand) 14%, transparent); color: var(--brand); }
+.ms-stats .stat-value { white-space: nowrap; overflow-wrap: normal; }
+.ms-stats .stat-value .tv { font-size: 1em; }
+.ms-stats .stat-value .tu { margin: 0 3px 0 6px; font-size: .52em; font-weight: 600; color: var(--hint); }
+.ms-stats .stat-value .tu:last-child { margin-left: 0; }

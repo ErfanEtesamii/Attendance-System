@@ -63,12 +63,21 @@
   const row = (label, valueHtml) => `<div class="ms-row"><dt>${esc(label)}</dt><dd>${valueHtml}</dd></div>`;
   const emptyBox = (msg) => `<div class="card"><div class="empty" role="status">${icon('alert')}${esc(msg)}</div></div>`;
 
+  // «۳۵ ساعت و ۲۶ دقیقه» → عدد درشت + واحد ریز، در یک خط (شکستن عدد بین دو خط ارتفاع کاشی‌ها را ناهماهنگ می‌کرد)
+  function minHtml(m) {
+    if (m == null || Number.isNaN(m)) return '—';
+    const abs = Math.abs(Math.round(m)); const h = Math.floor(abs / 60); const r = abs % 60;
+    const part = (n, u) => `<span class="tv">${fmt.num(n)}</span><span class="tu">${u}</span>`;
+    if (!h) return part(r, 'دقیقه');
+    return r ? `${part(h, 'ساعت')} ${part(r, 'دقیقه')}` : part(h, 'ساعت');
+  }
+
   function kpiRow(r, earningsHtml) {
     const s = r.summary; const t = s.tasks; const a = s.attendance; const W = AP.weekUi;
-    return `<div class="stat-grid${earningsHtml ? ' ms-stats-earn' : ''}">
-      ${W.kpi('g-blue', 'clock', fmt.min(a.usefulMinutes), 'ساعت مفید', `${a.workedGrossMinutes ? `${a.usefulOfWorkedPercent == null ? '—' : `${fmt.num(a.usefulOfWorkedPercent)}٪`} از کل حضور ثبت‌شده (${fmt.min(a.workedGrossMinutes)})` : (a.expectedMinutes ? `از ${fmt.min(a.expectedMinutes)} مورد انتظار (${a.usefulPercent == null ? '—' : `${fmt.num(a.usefulPercent)}٪`})` : '')}${a.latePenaltyMinutes ? ` · امتیاز پس از تأخیر: ${fmt.min(a.performanceUsefulMinutes)}` : ''}`)}
+    return `<div class="stat-grid ms-stats${earningsHtml ? ' ms-stats-earn' : ''}">
+      ${W.kpi('g-blue', 'clock', minHtml(a.usefulMinutes), 'ساعت مفید', `${a.workedGrossMinutes ? `${a.usefulOfWorkedPercent == null ? '—' : `${fmt.num(a.usefulOfWorkedPercent)}٪`} از کل حضور ثبت‌شده (${fmt.min(a.workedGrossMinutes)})` : (a.expectedMinutes ? `از ${fmt.min(a.expectedMinutes)} مورد انتظار (${a.usefulPercent == null ? '—' : `${fmt.num(a.usefulPercent)}٪`})` : '')}${a.latePenaltyMinutes ? ` · امتیاز پس از تأخیر: ${fmt.min(a.performanceUsefulMinutes)}` : ''}`)}
       ${W.kpi('g-orange', 'alert', fmt.num(a.lateDays), 'روز تأخیر')}
-      ${W.kpi('g-purple', 'clock', fmt.min(a.overtimeMinutes), 'اضافه‌کاری')}
+      ${W.kpi('g-purple', 'clock', minHtml(a.overtimeMinutes), 'اضافه‌کاری')}
       ${W.kpi('g-green', 'check', t.completionPercent == null ? '—' : `${fmt.num(t.completionPercent)}٪`, 'تکمیل تسک‌ها', `${fmt.num(t.total)} تسک سررسیدشده`)}
       ${earningsHtml || ''}
     </div>`;
@@ -229,13 +238,16 @@
     const amount = Math.max(0, Number(e.amountToman) || 0);
     const useful = Math.max(0, Number(e.usefulMinutes) || 0);
     return `<section class="card earn-card" id="ms-earnings" aria-labelledby="ms-earn-h">
-      <div class="earn-head"><h3 id="ms-earn-h">💰 کارکرد این ماه</h3>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M16.5 7.5c0-1.7-2-3-4.5-3S7.5 5.8 7.5 7.5 9.5 10.5 12 10.5s4.5 1.3 4.5 3-2 3-4.5 3-4.5-1.3-4.5-3"/></svg>
+      <div class="earn-head">
+        <span class="earn-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M16.5 7.5c0-1.7-2-3-4.5-3S7.5 5.8 7.5 7.5 9.5 10.5 12 10.5s4.5 1.3 4.5 3-2 3-4.5 3-4.5-1.3-4.5-3"/></svg></span>
+        <div class="earn-titles"><h3 id="ms-earn-h">کارکرد این ماه</h3>
+          <p class="earn-intro">تا امروز در ${esc(e.monthLabel)} کار کرده‌ای</p></div>
       </div>
-      <p class="earn-intro">تا امروز در ${esc(e.monthLabel)} کار کرده‌ای</p>
-      <p class="earn-amount"><span id="ms-earn-amount" data-amount="${amount}">${fmt.num(amount)}</span> تومان <span aria-hidden="true">✨</span></p>
-      <p class="earn-useful">${fmt.min(useful)} ساعت مفید</p>
-      <p class="earn-note">تخمینی؛ حقوق نهایی بر اساس تایید حسابداری است</p>
+      <p class="earn-amount"><span id="ms-earn-amount" data-amount="${amount}">${fmt.num(amount)}</span><small>تومان</small></p>
+      <div class="earn-foot">
+        <span class="earn-useful"><span class="earn-chip">${fmt.min(useful)} ساعت مفید</span></span>
+        <span class="earn-note"><span aria-hidden="true">ⓘ</span> تخمینی؛ حقوق نهایی بر اساس تایید حسابداری است</span>
+      </div>
     </section>`;
   }
   function animateEarnings(root) {

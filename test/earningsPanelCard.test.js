@@ -20,7 +20,7 @@ test('UI وضعیت من: با null کارت رندر نمی‌شود؛ مبلغ
   const js = read('public-admin', 'js', 'views-mystatus.js');
   assert.match(js, /function earningsCard\(e\) \{\s*if \(!e\) return '';/);
   assert.match(js, /\/admin\/me\/earnings/);
-  assert.match(js, /💰 کارکرد این ماه/);
+  assert.match(js, />کارکرد این ماه</);
   assert.match(js, /تا امروز در \$\{esc\(e\.monthLabel\)\} کار کرده‌ای/);
   assert.match(js, /fmt\.num\(amount\)/);
   assert.match(js, /prefers-reduced-motion: reduce/);
