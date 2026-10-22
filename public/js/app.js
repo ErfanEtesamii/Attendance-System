@@ -2416,6 +2416,9 @@
     if (planUi.step !== 'done') body.appendChild(planEl('div', { class: 'plan-steps' }, steps.map(([k, l], i) => { const sp = planEl('span', { class: planUi.step === k ? 'on' : '', text: `${i + 1}. ${l}` }); if (planUi.step === k) sp.setAttribute('aria-current', 'step'); return sp; })));
     const mBanner = managerBanner(data);
     if (mBanner) body.appendChild(mBanner);
+    if (data.managerConfigured && data.status !== 'submitted') {
+      body.appendChild(planEl('div', { class: 'notice', role: 'status', text: 'سرپرست برنامه‌ی هفته‌ی بعدت را تنظیم کرده ✅' }));
+    }
     const msg = planEl('div', { class: 'form-msg' + (planUi.msg ? ' err' : ''), role: planUi.msg ? 'alert' : 'status', text: planUi.msg }); // خطا ⇒ alert تا خوانشگر اعلام کند
     const go = (step) => { planUi.step = step; planUi.msg = ''; planUi.focusTop = true; renderPlan(); };
 

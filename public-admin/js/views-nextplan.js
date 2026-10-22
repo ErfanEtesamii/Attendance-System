@@ -45,11 +45,12 @@
   // ---------- HTML ----------
   function employeeButton(e, selectedId) {
     const [cls, label] = PLAN_STATUS[e.planStatus] || PLAN_STATUS.none;
+    const managerConfigured = e.managerConfigured ? AP.badge('approved', 'تنظیم‌شده توسط سرپرست', true) : '';
     const warn = e.needsAttention ? '<span class="np-warn"><span aria-hidden="true">⚠</span><span class="sr-only">نیازمند توجه</span></span>' : '';
     return `<li><button type="button" class="np-emp${e.id === selectedId ? ' is-active' : ''}" data-np-user="${esc(e.id)}"${e.id === selectedId ? ' aria-current="true"' : ''}>
       <span class="np-emp-name">${esc(e.fullName)}</span>
       <span class="np-emp-dep muted">${esc(e.department || 'بدون دپارتمان')}</span>
-      <span class="np-emp-tags">${AP.badge(cls, label, true)}${warn}</span>
+      <span class="np-emp-tags">${AP.badge(cls, label, true)}${managerConfigured}${warn}</span>
     </button></li>`;
   }
 
@@ -97,6 +98,7 @@
             ${me.role ? AP.badge(me.role === 'admin' ? 'purple' : me.role === 'manager' ? 'blue' : '', AP.ROLE[me.role] || me.role) : ''}
             ${AP.badge('', me.department || 'بدون دپارتمان')}
             ${AP.badge(cls, label, true)}
+            ${plan.managerConfigured ? AP.badge('approved', 'تنظیم‌شده توسط سرپرست', true) : ''}
             ${editBadge(plan)}
           </div>
           <div class="muted np-shift">شیفت مؤثر: ${esc(shiftText(r.days)).replace(/\((\d{1,2}:\d{2})–(\d{1,2}:\d{2})\)/, '(<bdi dir="ltr">$1–$2</bdi>)')}</div>

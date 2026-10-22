@@ -301,6 +301,7 @@ function getPlanState(actor, employeeId, startInput, { now } = {}) {
 
   const lockReason = weeklyPlan.lockReason(weekStart, ctx);
   const plan = plansRepo.findByUserWeek(target.id, weekStart);
+  const managerConfigured = !!(plan && plansRepo.countManagerTasks(plan.id) > 0);
   const editable = scopeFailure(actor, target) === null && !lockReason;
   const tasks = (plan ? plansRepo.listTasks(plan.id) : []).map((t) => ({
     ...presentTask(t), canEdit: editable && !t.is_system && !t.is_urgent,
@@ -317,6 +318,7 @@ function getPlanState(actor, employeeId, startInput, { now } = {}) {
     isNextWeek: weekStart === weeklyPlan.targetWeek('next', ctx),
     plan: {
       id: plan ? plan.id : null, status: plan ? plan.status : 'draft',
+      managerConfigured,
       version: planVersion(plan), updatedAt: plan ? plan.updated_at : null, submittedAt: plan ? plan.submitted_at : null,
       supervisorComment: plan ? plan.supervisor_comment : null,
       editable, lockReason,
@@ -349,16 +351,20 @@ function listPlanOverview(actor, startInput, { now } = {}) {
 
   const users = usersRepository.listUsers({ onlyActive: true }).filter((u) => u.id !== actor.id && employeeWeek.canView(actor, u));
   const plans = new Map(plansRepo.listByWeek(weekStart, users.map((u) => u.id)).map((p) => [p.user_id, p]));
-  const counts = plansRepo.countOrdinaryByPlanIds([...plans.values()].map((p) => p.id));
+  const planIds = [...plans.values()].map((p) => p.id);
+  const counts = plansRepo.countOrdinaryByPlanIds(planIds);
+  const managerCounts = plansRepo.countManagerByPlanIds(planIds);
   const min = Math.max(0, Number(ctx.settings.planMinTasks) || 0);
 
   const employees = users.map((u) => {
     const plan = plans.get(u.id) || null;
     const planStatus = plan ? (plan.status === 'submitted' ? 'submitted' : 'draft') : 'none';
     const taskCount = plan ? (counts.get(plan.id) || 0) : 0;
+    const managerConfigured = !!(plan && (managerCounts.get(plan.id) || 0) > 0);
     return {
       id: u.id, fullName: u.full_name, department: u.department || null, role: u.role,
-      planStatus, taskCount, needsAttention: planStatus !== 'submitted' || (min > 0 && taskCount < min),
+      planStatus, taskCount, managerConfigured,
+      needsAttention: !managerConfigured && (planStatus !== 'submitted' || (min > 0 && taskCount < min)),
     };
   });
   return {

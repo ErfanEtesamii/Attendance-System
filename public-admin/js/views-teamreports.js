@@ -118,7 +118,8 @@
       box.innerHTML = `<h3>شاخص‌ها (۳۰ روز اخیر)</h3>
         <div class="table-wrap"><table><thead><tr><th>تیم</th><th>اعضا</th><th>انجام‌شده</th><th>نرخ انجام</th></tr></thead><tbody>${teams}</tbody></table></div>
         <div class="table-wrap"><table><thead><tr><th>سرپرست</th><th>گزارش‌ها</th><th>بررسی به‌موقع</th><th>نرخ</th></tr></thead><tbody>${revs}</tbody></table></div>
-        <p class="sub">برنامه‌ی هفته‌ی بعد ثبت‌نشده: ${fmt.num(k.unplanned.count)} نفر${k.unplanned.users.length ? ` — ${k.unplanned.users.slice(0, 10).map((u) => esc(u.fullName)).join('، ')}` : ''}</p>`;
+        <p class="sub">برنامه‌ی هفته‌ی بعدِ برآورده‌نشده: ${fmt.num(k.unplanned.count)} نفر${k.unplanned.users.length ? ` — ${k.unplanned.users.slice(0, 10).map((u) => esc(u.fullName)).join('، ')}` : ''}</p>
+        <p class="sub">تنظیم‌شده توسط سرپرست (ارسال نهایی نشده): ${fmt.num(k.managerConfiguredNotSubmitted.count)} نفر${k.managerConfiguredNotSubmitted.users.length ? ` — ${k.managerConfiguredNotSubmitted.users.slice(0, 10).map((u) => esc(u.fullName)).join('، ')}` : ''}</p>`;
     } catch (err) {
       box.innerHTML = ui.empty(err.message);
     }

@@ -151,6 +151,7 @@ function getPlan(user, which, { now } = {}) {
     planDay,
     days,
     status: plan ? plan.status : 'draft',
+    managerConfigured: !!(plan && plansRepo.countManagerTasks(plan.id) > 0),
     submittedAt: plan ? plan.submitted_at : null,
     supervisorSeenAt: plan ? plan.supervisor_seen_at : null,
     supervisorComment: plan ? plan.supervisor_comment : null,
