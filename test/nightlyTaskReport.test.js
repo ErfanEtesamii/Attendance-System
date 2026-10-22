@@ -75,6 +75,17 @@ describe('گزارش شبانه‌ی تسک‌ها (D11)', () => {
     assert.match(reportFor(boss, THU).messages.join('\n'), /علی[^]*⚠️ برنامه‌ی هفته‌ی بعد ثبت نشده/);
   });
 
+  test('پیش‌نویس با تسک سرپرست در گزارش شبانه «برنامه ثبت نشده» نیست', () => {
+    reset();
+    db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('plan_gate_mode', 'soft')").run();
+    task(a, THU, 'گزارش امروز', 'done');
+    const next = plans.getOrCreate(a.id, '2026-08-08');
+    plans.addTask(next.id, { title: 'تسک سرپرست', managerLocked: true, editedByUserId: boss.id });
+    assert.equal(svc.memberReport(a, THU, require('../src/repositories/settingsRepository').getAll()).planMissing, false);
+    db.exec('DELETE FROM plan_tasks WHERE plan_id = ' + next.id);
+    assert.equal(svc.memberReport(a, THU, require('../src/repositories/settingsRepository').getAll()).planMissing, true);
+  });
+
   test('گیرنده‌ها: هر تیم فقط اعضای خودش؛ سرپرست ⇒ مدیر بالادست؛ بدون سرپرست ⇒ ادمین؛ خلاصه‌ی شرکت فقط ادمین', () => {
     reset();
     task(a, D, 't1', 'done'); task(c, D, 't2', 'done'); task(solo, D, 't3', 'done'); task(boss, D, 't4', 'done');

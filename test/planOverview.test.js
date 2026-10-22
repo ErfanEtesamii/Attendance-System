@@ -35,7 +35,7 @@ describe('فهرست کارمندان با وضعیت برنامه‌ی هفته
     plansRepo.markSubmitted(p1.id);
     // ب: پیش‌نویس با ۱ تسک
     const p2 = plansRepo.getOrCreate(draftEmp.id, NEXT);
-    plansRepo.addTask(p2.id, { title: 'ب۱' });
+    plansRepo.addTask(p2.id, { title: 'ب۱', managerLocked: true, editedByUserId: mgr.id });
     // برنامه‌ی هفته‌ی دیگر نباید دیده شود
     plansRepo.getOrCreate(noPlan.id, TODAY);
   });
@@ -53,7 +53,7 @@ describe('فهرست کارمندان با وضعیت برنامه‌ی هفته
     assert.ok(r.employees.every((e) => e.id !== admin.id && e.id !== inactive.id));
     const m = byName(r);
     assert.deepEqual([m['الف'].planStatus, m['الف'].taskCount, m['الف'].needsAttention], ['submitted', 2, false]);
-    assert.deepEqual([m['ب'].planStatus, m['ب'].taskCount, m['ب'].needsAttention], ['draft', 1, true]);
+    assert.deepEqual([m['ب'].planStatus, m['ب'].taskCount, m['ب'].managerConfigured, m['ب'].needsAttention], ['draft', 1, true, false]);
     assert.deepEqual([m['ج'].planStatus, m['ج'].taskCount, m['ج'].needsAttention], ['none', 0, true]); // برنامه‌ی هفته‌ی جاری او شمرده نمی‌شود
     assert.equal(m['د'].planStatus, 'none');
   });

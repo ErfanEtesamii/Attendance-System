@@ -89,6 +89,15 @@ describe('خروجی و شاخص‌های تسک (D13)', () => {
     assert.ok(!kb.unplanned.users.some((u) => u.userId === other.id));
   });
 
+  test('KPI: پیش‌نویسِ تنظیم‌شده توسط سرپرست unplanned نیست و جداگانه گزارش می‌شود', () => {
+    reset();
+    const next = plans.getOrCreate(a.id, '2026-08-08');
+    plans.addTask(next.id, { title: 'تسک سرپرست', managerLocked: true, editedByUserId: boss.id });
+    const k = svc.taskKpis(admin, range);
+    assert.ok(!k.unplanned.users.some((u) => u.userId === a.id));
+    assert.ok(k.managerConfiguredNotSubmitted.users.some((u) => u.userId === a.id));
+  });
+
   test('مسیرها: دسترسی در ماتریس مجوز (E/M/A) و hr فقط‌خواندنی', () => {
     const { hasPermission } = require('../src/middleware/permissions');
     assert.equal(hasPermission('employee', 'taskreports.read'), true);

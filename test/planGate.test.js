@@ -65,6 +65,20 @@ describe('گیت برنامه‌ی هفتگی — سرویس (D5)', () => {
     assert.equal(gate.check(u, '2026-08-06').action, 'block');
   });
 
+  test('پیش‌نویسِ تنظیم‌شده توسط سرپرست گیت را برآورده می‌کند؛ حذف یا تسک سیستمی/فوری دوباره block است', () => {
+    reset();
+    const p = plans.getOrCreate(u.id, '2026-08-08');
+    const managerTask = plans.addTask(p.id, { title: 'تسک سرپرست', managerLocked: true, editedByUserId: boss.id });
+    assert.equal(gate.check(u, '2026-08-06').action, 'allow');
+    const state = gate.status(u, '2026-08-06');
+    assert.deepEqual([state.satisfied, state.blocked], [true, false]);
+    plans.softDeleteTask(managerTask.id);
+    assert.equal(gate.check(u, '2026-08-06').action, 'block');
+    plans.addTask(p.id, { title: 'سیستمی', managerLocked: true, editedByUserId: boss.id, isSystem: true });
+    plans.addTask(p.id, { title: 'فوری', managerLocked: true, editedByUserId: boss.id, isUrgent: true });
+    assert.equal(gate.check(u, '2026-08-06').action, 'block');
+  });
+
   test('planMinTasks رعایت می‌شود', () => {
     reset();
     submitPlan(1);
@@ -177,6 +191,21 @@ describe('گیت برنامه‌ی هفتگی — API (D5)', { skip: hasDeps ? f
     assert.ok(ok.json.check_out_time);
     assert.equal(ok.json.planReminder, undefined);
     assert.equal((await S.call(u, 'POST', 'check-out', {})).status, 400); // دبل‌کلیک
+  });
+
+  test('enforce: پیش‌نویس با تسک سرپرست خروج را ثبت می‌کند، بدون ارسال نهایی کارمند', async () => {
+    setup('enforce');
+    const u = F.makeUser({ managerId: boss.id });
+    const { addDays } = require('../src/utils/shiftDay');
+    const weekStart = addDays(cal.weekStartOf(todayDateString(), settings.getAll().weekStartDay), 7);
+    const repo = require('../src/repositories/weeklyPlanRepository');
+    const p = repo.getOrCreate(u.id, weekStart);
+    repo.addTask(p.id, { title: 'کار سرپرست', managerLocked: true, editedByUserId: boss.id });
+    await S.call(u, 'POST', 'check-in', {});
+    const r = await S.call(u, 'POST', 'check-out', {});
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    assert.ok(r.json.check_out_time);
+    assert.equal(repo.findById(p.id).status, 'draft');
   });
 
   test('گیت برای سرپرست هم اعمال می‌شود', async () => {
