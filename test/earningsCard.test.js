@@ -105,11 +105,9 @@ test('رابط: کارت با مقدار نمایش داده می‌شود و ح
   const css = fs.readFileSync(path.join(root, 'public', 'css', 'style.css'), 'utf8');
   assert.match(html, /id="earnings-card"/);
   assert.match(html, /💰 کارکرد این ماه/);
-  assert.match(html, /currentColor/);
   assert.match(app, /function renderEarnings\(earnings\)/);
   assert.match(app, /card\.classList\.add\('hidden'\)/);
   assert.match(app, /toLocaleString\('fa-IR'\)/);
   assert.match(app, /prefers-reduced-motion: reduce/);
   assert.match(css, /\.earnings-card/);
-  assert.match(css, /stroke: currentColor/);
 });

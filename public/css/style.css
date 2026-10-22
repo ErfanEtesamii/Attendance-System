@@ -141,13 +141,16 @@ body {
     radial-gradient(260px 140px at 100% 0, var(--green-soft), transparent 72%),
     var(--card-bg);
 }
-.earnings-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.earnings-card { display: flex; flex-direction: column; gap: 10px; }
+.earnings-heading { display: flex; align-items: center; gap: 12px; }
 .earnings-heading h3 { margin: 0; font-size: 15px; color: var(--text); }
-.earnings-heading svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; color: var(--green); }
-.earnings-intro, .earnings-useful, .earnings-note { margin: 8px 0 0; color: var(--hint); font-size: 12.5px; }
-.earnings-amount { margin: 10px 0 2px; color: var(--green); font-weight: 850; font-size: clamp(25px, 8vw, 34px); letter-spacing: -.5px; }
-.earnings-useful { color: var(--text); font-weight: 650; }
-.earnings-note { padding-top: 8px; border-top: 1px solid var(--border); font-size: 11.5px; }
+.earnings-intro { margin: -4px 0 0; color: var(--hint); font-size: 12px; }
+.earnings-amount { margin: 2px 0 0; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; color: var(--green); font-weight: 850; font-size: clamp(28px, 9vw, 38px); line-height: 1.15; letter-spacing: -.5px; }
+.earnings-amount small { font-size: 13px; font-weight: 600; color: var(--hint); letter-spacing: 0; }
+.earnings-spark { font-size: .8em; }
+.earnings-foot { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.earnings-useful { display: inline-block; padding: 4px 12px; border-radius: 999px; background: var(--green-soft); color: var(--green); font-size: 12.5px; font-weight: 700; }
+.earnings-note { color: var(--hint); font-size: 11.5px; line-height: 1.7; }
 
 .status-pill {
   display: inline-flex;
