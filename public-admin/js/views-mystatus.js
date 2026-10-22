@@ -233,40 +233,93 @@
   }
 
   // Phase 20: کارت «کارکرد این ماه» (null ⇒ اصلاً رندر نمی‌شود). مبلغ با count-up کوتاه فقط بار اول؛ با prefers-reduced-motion بدون انیمیشن.
-  function earningsCard(e) {
+  function earningsCard(e, live) {
     if (!e) return '';
     const amount = Math.max(0, Number(e.amountToman) || 0);
     const useful = Math.max(0, Number(e.usefulMinutes) || 0);
-    return `<section class="card earn-card" id="ms-earnings" aria-labelledby="ms-earn-h">
-      <div class="earn-head"><h3 id="ms-earn-h">💰 کارکرد این ماه</h3></div>
+    return `<section class="card earn-card" id="ms-earnings" aria-labelledby="ms-earn-h"${live ? ' data-live="1"' : ''} data-useful="${useful}">
+      <div class="earn-head"><h3 id="ms-earn-h">💰 کارکرد این ماه</h3>${live ? '<span class="earn-live" id="ms-earn-live" aria-hidden="true"><i></i>زنده</span>' : ''}</div>
       <p class="earn-intro">تا امروز در ${esc(e.monthLabel)} کار کرده‌ای</p>
-      <p class="earn-amount"><span id="ms-earn-amount" data-amount="${amount}">${fmt.num(amount)}</span><small>تومان</small><span class="earn-spark" aria-hidden="true">✨</span></p>
+      <p class="earn-amount" id="ms-earn-row"><span id="ms-earn-amount" data-amount="${amount}">${fmt.num(amount)}</span><small>تومان</small><span class="earn-spark" aria-hidden="true">✨</span></p>
       <div class="earn-foot">
-        <span class="earn-useful"><span class="earn-chip">${fmt.min(useful)} ساعت مفید</span></span>
+        <span class="earn-useful"><span class="earn-chip" id="ms-earn-useful">${fmt.min(useful)} ساعت مفید</span></span>
         <span class="earn-note"><span aria-hidden="true">ⓘ</span> تخمینی؛ حقوق نهایی بر اساس تایید حسابداری است</span>
       </div>
     </section>`;
   }
   function animateEarnings(root) {
+    stopEarningsLive();
     const el = $('#ms-earn-amount', root);
-    if (!el || ui.earningsShown) return;
-    ui.earningsShown = true;
+    if (!el) return;
     const amount = Number(el.dataset.amount) || 0;
     const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduce || !window.requestAnimationFrame || amount === 0) return;
-    const t0 = performance.now();
-    const tick = (now) => {
-      const p = Math.min(1, (now - t0) / 800);
-      el.textContent = fmt.num(Math.round(amount * p));
-      if (p < 1 && el.isConnected) requestAnimationFrame(tick); else el.textContent = fmt.num(amount);
+    if (!ui.earningsShown) {
+      ui.earningsShown = true;
+      if (!(reduce || !window.requestAnimationFrame || amount === 0)) {
+        const t0 = performance.now();
+        const tick = (now) => {
+          const p = Math.min(1, (now - t0) / 800);
+          el.textContent = fmt.num(Math.round(amount * p));
+          if (p < 1 && el.isConnected) requestAnimationFrame(tick); else el.textContent = fmt.num(amount);
+        };
+        requestAnimationFrame(tick);
+      }
+    }
+    startEarningsLive(root, el, amount, reduce);
+  }
+
+  function stopEarningsLive() {
+    if (ui.earnTimer) { clearInterval(ui.earnTimer); ui.earnTimer = null; }
+    if (ui.earnFrame) { cancelAnimationFrame(ui.earnFrame); ui.earnFrame = null; }
+  }
+
+  // تیک زنده‌ی کارت حقوق: وقتی کاربر امروز وارد شده و هنوز خارج نشده، با هر دقیقه‌ی تمام‌شده مبلغ بالا می‌رود (نرخ = مبلغ ÷ دقیقه‌ی مفید؛ فیلد جدیدی از API نمی‌آید).
+  // اطلاعات استراحتِ بدون حقوق در این صفحه نیست؛ با رفرش بعدی مقدار با سرور هم‌گام می‌شود.
+  function startEarningsLive(root, el, amount, reduce) {
+    const card = $('#ms-earnings', root);
+    const useful = card ? Number(card.dataset.useful) || 0 : 0;
+    if (!card || card.dataset.live !== '1' || useful <= 0 || amount <= 0) return;
+    const perMinute = amount / useful;
+    const fetchedAt = Date.now();
+    const row = $('#ms-earn-row', root);
+    const usefulEl = $('#ms-earn-useful', root);
+    let applied = 0; let shown = amount;
+    const animateTo = (target) => {
+      if (ui.earnFrame) cancelAnimationFrame(ui.earnFrame);
+      const from = shown; shown = target;
+      if (reduce || !window.requestAnimationFrame) { el.textContent = fmt.num(target); return; }
+      const t0 = performance.now();
+      const step = (now) => {
+        const p = Math.min(1, (now - t0) / 900);
+        el.textContent = fmt.num(Math.round(from + (target - from) * (1 - Math.pow(1 - p, 3))));
+        ui.earnFrame = p < 1 ? requestAnimationFrame(step) : null;
+      };
+      ui.earnFrame = requestAnimationFrame(step);
     };
-    requestAnimationFrame(tick);
+    ui.earnTimer = setInterval(() => {
+      if (!el.isConnected) { stopEarningsLive(); return; }
+      const minutes = Math.floor((Date.now() - fetchedAt) / 60000);
+      if (minutes <= applied) return;
+      applied = minutes;
+      const target = Math.round(amount + perMinute * applied);
+      const delta = target - shown;
+      animateTo(target);
+      if (!reduce && row && delta > 0) {
+        const chip = document.createElement('span');
+        chip.className = 'earn-gain'; chip.dir = 'ltr'; chip.setAttribute('aria-hidden', 'true'); chip.textContent = `+${fmt.num(delta)}`;
+        row.appendChild(chip); setTimeout(() => chip.remove(), 1800);
+      }
+      if (usefulEl) usefulEl.textContent = `${fmt.min(useful + applied)} ساعت مفید`;
+    }, 1000);
   }
 
   function liveHtml(d) {
     const W = AP.weekUi;
     const grid = `<div class="week-grid">${d.sel.days.map((x) => W.dayCard(x, true, { readOnly: true, selfUrgent: !!(d.urgentCfg && d.urgentCfg.enabled) })).join('')}</div>`;
-    return `${kpiRow(d.sel, earningsCard(d.earnings))}
+    const todayRow = d.cur && d.cur.days ? d.cur.days.find((x) => x.isToday) : null;
+    const att = todayRow && todayRow.attendance;
+    const live = !!(att && att.hasCheckIn && !att.checkOut);
+    return `${kpiRow(d.sel, earningsCard(d.earnings, live))}
         <div class="ms-top">${todayCard(d.cur, d.daily, d.backfill, d.urgentCfg)}${nextPlanCard(d.cur, d.next)}</div>
         <h3 class="ms-section-title">روزهای ${esc(weekTitle(d.sel, d.cur))}</h3>
         ${grid}`;

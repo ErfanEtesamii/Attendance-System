@@ -18,7 +18,7 @@ test('route /admin/me/earnings: مجوز me.read، هویت فقط req.adminUser
 
 test('UI وضعیت من: با null کارت رندر نمی‌شود؛ مبلغ/ماه/ساعت مفید و prefers-reduced-motion', () => {
   const js = read('public-admin', 'js', 'views-mystatus.js');
-  assert.match(js, /function earningsCard\(e\) \{\s*if \(!e\) return '';/);
+  assert.match(js, /function earningsCard\(e, live\) \{\s*if \(!e\) return '';/);
   assert.match(js, /\/admin\/me\/earnings/);
   assert.match(js, /💰 کارکرد این ماه/);
   assert.match(js, /تا امروز در \$\{esc\(e\.monthLabel\)\} کار کرده‌ای/);

@@ -784,6 +784,7 @@
     const card = $('#earnings-card');
     if (!card) return;
     if (!earnings) {
+      stopEarningsLive();
       card.classList.add('hidden');
       return;
     }
@@ -797,9 +798,17 @@
 
     const amountEl = $('#earnings-amount');
     if (state.earningsAnimationFrame) cancelAnimationFrame(state.earningsAnimationFrame);
+    stopEarningsLive();
     const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // تیک زنده: فقط وقتی کاربر الان در شرکت است (ورود ثبت‌شده، خروج نخورده، استراحتِ بدون حقوق باز نیست).
+    // نرخ از خودِ پاسخ استخراج می‌شود (مبلغ ÷ دقیقه‌ی مفید)؛ هیچ فیلد جدیدی از API نمی‌آید و مقدار با هر loadToday با سرور هم‌گام می‌شود.
+    const startLive = () => {
+      if (!isEarningsLive(state.today) || usefulMinutes <= 0 || amount <= 0) return;
+      startEarningsLive({ amount, usefulMinutes, reduceMotion, amountEl, faNumber });
+    };
     if (reduceMotion || !window.requestAnimationFrame) {
       amountEl.textContent = faNumber(amount);
+      startLive();
       return;
     }
     const startedAt = performance.now();
@@ -810,6 +819,68 @@
       else state.earningsAnimationFrame = null;
     };
     state.earningsAnimationFrame = requestAnimationFrame(tick);
+    startLive();
+  }
+
+  function isEarningsLive(today) {
+    const r = today && today.record;
+    if (!r || !r.check_in_time || r.check_out_time) return false;
+    if (today.openBreak) return !!(today.openBreakPaid && today.openBreakPaid.isPaid);
+    return true;
+  }
+
+  function stopEarningsLive() {
+    if (state.earningsLiveTimer) { clearInterval(state.earningsLiveTimer); state.earningsLiveTimer = null; }
+    if (state.earningsLiveFrame) { cancelAnimationFrame(state.earningsLiveFrame); state.earningsLiveFrame = null; }
+    const badge = $('#earnings-live');
+    if (badge) badge.classList.add('hidden');
+  }
+
+  // هر دقیقه‌ی تمام‌شده: مبلغ با count-up کوتاه بالا می‌رود، «+N» شناور می‌شود و ساعت مفید یک دقیقه جلو می‌رود.
+  function startEarningsLive({ amount, usefulMinutes, reduceMotion, amountEl, faNumber }) {
+    const perMinute = amount / usefulMinutes;
+    const fetchedAt = Date.now();
+    let applied = 0;
+    let shown = amount;
+    const badge = $('#earnings-live');
+    if (badge) badge.classList.remove('hidden');
+    const usefulEl = $('#earnings-useful');
+    const row = $('#earnings-amount-row');
+    const setUseful = (mins) => { if (usefulEl) usefulEl.textContent = `${faNumber(Math.floor(mins / 60))} ساعت و ${faNumber(mins % 60)} دقیقه ساعت مفید`; };
+    const animateTo = (target) => {
+      if (state.earningsLiveFrame) cancelAnimationFrame(state.earningsLiveFrame);
+      const from = shown;
+      shown = target;
+      if (reduceMotion || !window.requestAnimationFrame) { amountEl.textContent = faNumber(target); return; }
+      const t0 = performance.now();
+      const step = (now) => {
+        const p = Math.min(1, (now - t0) / 900);
+        const eased = 1 - Math.pow(1 - p, 3);
+        amountEl.textContent = faNumber(Math.round(from + (target - from) * eased));
+        state.earningsLiveFrame = p < 1 ? requestAnimationFrame(step) : null;
+      };
+      state.earningsLiveFrame = requestAnimationFrame(step);
+    };
+    const floatGain = (delta) => {
+      if (reduceMotion || !row || delta <= 0) return;
+      const chip = document.createElement('span');
+      chip.className = 'earnings-gain'; chip.dir = 'ltr';
+      chip.setAttribute('aria-hidden', 'true');
+      chip.textContent = `+${faNumber(delta)}`;
+      row.appendChild(chip);
+      setTimeout(() => chip.remove(), 1800);
+    };
+    state.earningsLiveTimer = setInterval(() => {
+      if (!amountEl.isConnected) { stopEarningsLive(); return; }
+      const minutes = Math.floor((Date.now() - fetchedAt) / 60000);
+      if (minutes <= applied) return;
+      applied = minutes;
+      const target = Math.round(amount + perMinute * applied);
+      const delta = target - shown;
+      animateTo(target);
+      floatGain(delta);
+      setUseful(usefulMinutes + applied);
+    }, 1000);
   }
 
   async function loadToday() {
