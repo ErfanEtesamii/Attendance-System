@@ -30,7 +30,7 @@
 }
 :root[data-theme="light"] {
   --pl-title: #a8246f;
-  --pl-cutout: #ffffff;
+  --pl-cutout: #f4f3fb;
   --pl-surface: #ffffff;
   --pl-surface-2: #eef0f7;
   --pl-ink: #2b2560;
@@ -58,7 +58,7 @@
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
     --pl-title: #a8246f;
-    --pl-cutout: #ffffff;
+    --pl-cutout: #f4f3fb;
     --pl-surface: #ffffff;
     --pl-surface-2: #eef0f7;
     --pl-ink: #2b2560;

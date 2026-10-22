@@ -17,9 +17,9 @@
     if (window.Theme && window.Theme.apply) window.Theme.apply();
     else {
       try {
-        tg.setHeaderColor('#ffffff');
-        tg.setBackgroundColor('#ffffff');
-        if (tg.setBottomBarColor) tg.setBottomBarColor('#ffffff');
+        tg.setHeaderColor('#f4f3fb');
+        tg.setBackgroundColor('#f4f3fb');
+        if (tg.setBottomBarColor) tg.setBottomBarColor('#f4f3fb');
       } catch (_) { /* نسخه‌های قدیمی تلگرام */ }
     }
   }
@@ -154,7 +154,7 @@
   }
   function renderEmpty(el, message) {
     el.removeAttribute('aria-busy');
-    el.innerHTML = U ? U.emptyHtml(message) : `<div class="list-item">${message}</div>`;
+    el.innerHTML = U ? U.emptyHtml(message, { hint: 'وقتی چیزی ثبت شود، همین‌جا نمایش داده می‌شود.' }) : `<div class="list-item">${message}</div>`;
   }
   function renderError(el, err, retry, retryId) {
     el.removeAttribute('aria-busy');
@@ -429,14 +429,14 @@
     }
     // کاشی ماموریت (C2): همیشه هست؛ با استراحت باز غیرفعال است (ابتدا استراحت را پایان دهید)
     const addMissionTile = () => addTile({
-      title: 'ماموریت 🚗', sub: openBreak ? 'ابتدا استراحت را پایان دهید' : 'ثبت درخواست ماموریت', color: 'purple', icon: 'mission', wide: true,
+      title: 'ماموریت', sub: openBreak ? 'ابتدا استراحت را پایان دهید' : 'ثبت درخواست ماموریت', color: 'purple', icon: 'mission', wide: true,
       handler: () => openMissionView(), locked: !!openBreak,
     });
 
     // D1 (فاز ۱۵): یک تایلِ «امروز من» (نوار پایین شلوغ نمی‌شود)؛ در حالت دورکاری این صفحه نیست
-    const addMyDayTile = () => addTile({ title: 'امروز من 📋', sub: 'تیک تسک‌ها و انتقال', color: 'blue', icon: 'myday', wide: true, handler: () => switchView('myday') });
+    const addMyDayTile = () => addTile({ title: 'امروز من', sub: 'تیک تسک‌ها و انتقال', color: 'blue', icon: 'myday', wide: true, handler: () => switchView('myday') });
 
-    const addPlanTile = () => addTile({ title: 'برنامه‌ی هفتگی 📅', sub: 'ثبت یا ویرایش برنامه‌ی هفته', color: 'green', icon: 'plan', wide: true, handler: () => switchView('plan') });
+    const addPlanTile = () => addTile({ title: 'برنامه‌ی هفتگی', sub: 'ثبت یا ویرایش برنامه‌ی هفته', color: 'green', icon: 'plan', wide: true, handler: () => switchView('plan') });
 
     if (!r) {
       box.classList.add('single');
@@ -466,7 +466,7 @@
       }
       const done = document.createElement('div');
       done.className = 'card done-card';
-      done.textContent = 'امروز به پایان رسید. تا فردا خوش باشید 🌤️';
+      done.textContent = 'امروز به پایان رسید. تا فردا خوش باشید.';
       box.appendChild(done);
       addMissionTile();
       addMyDayTile();

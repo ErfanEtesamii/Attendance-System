@@ -97,11 +97,15 @@ for (const mode of ['dark', 'light']) {
     test('آیکن‌های آمار: آیکن (≥ ۳:۱ برای گرافیک) روی پس‌زمینه‌ی تخت', () => {
       const cases = [
         ['green', onSurface('green-soft', 'card')], ['red', onSurface('red-soft', 'card')], ['blue', onSurface('blue-soft', 'card')],
-        ['on-accent', c('accent')], ['on-brand', c('brand')], ['hint', c('card-2')],
+        ['orange', onSurface('orange-soft', 'card')], ['purple-text', onSurface('purple-soft', 'card')], ['hint', c('card-2')],
       ];
       for (const [fg, bgc] of cases) assert.ok(ratio(c(fg), bgc) >= 3, `${mode} stat-icon ${fg}: ${ratio(c(fg), bgc).toFixed(2)}`);
     });
-    test('عدد بزرگ آمار (brand) روی کارت و کاشی hover', () => {
+    test('عدد بزرگ آمار با رنگ وضعیت (green/red-text/orange) روی کارت و کاشی hover AA', () => {
+      for (const k of ['green', 'red-text', 'orange']) {
+        assert.ok(ratio(c(k), c('card')) >= 4.5, `${mode} stat-value ${k} روی card: ${ratio(c(k), c('card')).toFixed(2)}`);
+        assert.ok(ratio(c(k), c('card-2')) >= 4.5, `${mode} stat-value ${k} روی card-2: ${ratio(c(k), c('card-2')).toFixed(2)}`);
+      }
       assert.ok(ratio(c('brand'), c('card')) >= 4.5);
       assert.ok(ratio(c('brand'), c('card-2')) >= 4.5);
     });
@@ -186,13 +190,13 @@ describe('T4: ساختار CSS', () => {
       assert.match(r, /background:\s*var\(--/);
       assert.match(r, /color:\s*var\(--/);
     }
-    assert.match(bodies('.stat-icon.g-orange'), /background:\s*var\(--accent\)[\s\S]*color:\s*var\(--on-accent\)/);
-    assert.match(bodies('.stat-icon.g-purple'), /background:\s*var\(--brand\)[\s\S]*color:\s*var\(--on-brand\)/);
+    assert.match(bodies('.stat-icon.g-orange'), /background:\s*var\(--orange-soft\)[\s\S]*color:\s*var\(--orange\)/); // بخش ۳: آیکن نرم و یکدست
+    assert.match(bodies('.stat-icon.g-purple'), /background:\s*var\(--purple-soft\)[\s\S]*color:\s*var\(--purple-text\)/);
     assert.match(bodies('.stat-icon svg'), /stroke:\s*currentColor/);
     assert.doesNotMatch(bodies('.stat-icon svg'), /#fff/);
     const stat = bodies('.stat');
     assert.match(stat, /border:\s*1px solid var\(--border\)/);
-    assert.match(stat, /box-shadow:\s*0 8px 22px/);
+    assert.match(stat, /box-shadow:\s*var\(--shadow\)/); // سایه‌ی دو لایه‌ی توکن
     assert.match(bodies('.stat-value'), /color:\s*var\(--brand\)/);
     assert.match(bodies('.stat-value'), /unicode-bidi:\s*isolate/);
   });

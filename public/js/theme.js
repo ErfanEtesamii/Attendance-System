@@ -7,7 +7,7 @@
 (function (root) {
   'use strict';
   const KEY = 'theme';
-  const BG = { dark: '#17143a', light: '#ffffff' }; // باید با --bg هر تم در CSS یکی باشد (تست)
+  const BG = { dark: '#17143a', light: '#f4f3fb' }; // باید با --bg هر تم در CSS یکی باشد (تست)
   const LABEL = { auto: 'خودکار', light: 'روشن', dark: 'تیره' };
   const NEXT = { auto: 'light', light: 'dark', dark: 'auto' };
 

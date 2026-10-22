@@ -38,7 +38,8 @@
 
   function emptyHtml(message, o) {
     const esc = (o && o.esc) || FALLBACK_ESC;
-    return `<div class="empty">${(o && o.icon) || ''}${esc(message)}</div>`;
+    const hint = o && o.hint ? `<small class="empty-hint">${esc(o.hint)}</small>` : '';
+    return `<div class="empty">${(o && o.icon) || ''}${esc(message)}${hint}</div>`;
   }
 
   // خطا: پیام + دکمه‌ی «تلاش دوباره» (id برای اتصال listener در جای فراخوان)؛ role=alert تا خوانشگر اعلام کند

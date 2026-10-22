@@ -477,6 +477,29 @@
     return first ? { id: first.id, param: null } : null;
   };
 
+  // انیمیشن count-up سبک برای عددهای ساده‌ی .stat-value (متن نهایی دقیقاً همان متن اصلی می‌ماند؛ با reduced-motion خاموش)
+  let lastRouteKey = null;
+  function countUp(root) {
+    if (!window.requestAnimationFrame || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+    const FA = '۰۱۲۳۴۵۶۷۸۹';
+    $$('.stat-value', root).forEach((el) => {
+      if (el.children.length) return;
+      const text = el.textContent.trim();
+      if (!/^[0-9۰-۹٬,]+$/.test(text)) return;
+      const target = Number(text.replace(/[٬,]/g, '').replace(/[۰-۹]/g, (d) => FA.indexOf(d)));
+      if (!Number.isFinite(target) || target < 2 || target > 1e9) return;
+      const show = (n) => (AP.fmt && AP.fmt.num ? AP.fmt.num(Math.round(n)) : String(Math.round(n)));
+      const t0 = performance.now();
+      const step = (now) => {
+        const p = Math.min(1, (now - t0) / 450);
+        if (p >= 1 || !el.isConnected) { el.textContent = text; return; }
+        el.textContent = show(target * (1 - (1 - p) * (1 - p)));
+        requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+  }
+
   async function route() {
     if (!AP.state.me) return;
     let { id, param } = parseHash();
@@ -515,6 +538,9 @@
       window.scrollTo({ top: 0 });
       if (result.mount) result.mount(page);
       page.removeAttribute('aria-busy');
+      const routeKey = `${id}:${param == null ? '' : param}`;
+      if (routeKey !== lastRouteKey) countUp(page); // فقط هنگام ورود به صفحه، نه در رفرش‌های خودکار
+      lastRouteKey = routeKey;
       if (window.A11y) window.A11y.enhance(page); // ردیف‌های کلیک‌پذیر/سرستون‌های مرتب‌سازی با کیبورد (S5-9a)
     } catch (err) {
       if (token !== routeToken) return;

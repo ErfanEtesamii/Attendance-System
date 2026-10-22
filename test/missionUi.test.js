@@ -24,7 +24,7 @@ describe('ماموریت — ساختار (C2)', () => {
 
   test('کاشی «ماموریت 🚗» در هر چهار حالت امروز؛ با استراحت باز غیرفعال', () => {
     assert.equal((appSrc.match(/addMissionTile\(\);/g) || []).length, 4);
-    assert.match(appSrc, /title: 'ماموریت 🚗', sub: openBreak \? 'ابتدا استراحت را پایان دهید'/);
+    assert.match(appSrc, /title: 'ماموریت', sub: openBreak \? 'ابتدا استراحت را پایان دهید'/);
     assert.match(appSrc, /locked: !!openBreak/);
     assert.match(appSrc, /if \(locked\) \{ b\.disabled = true; b\.setAttribute\('aria-disabled', 'true'\)/);
     assert.match(appSrc, /handler: \(\) => openMissionView\(\)/);

@@ -15,9 +15,10 @@ describe('bottom-sheet ثبت استراحت (A1)', () => {
     const sheet = html.slice(html.indexOf('id="break-sheet"'), html.indexOf('id="toast"'));
     const opts = [...sheet.matchAll(/data-break-kind="(\w+)" data-break-type="(\w+)"/g)].map((m) => [m[1], m[2]]);
     assert.deepEqual(opts, [['lunch', 'lunch'], ['prayer', 'short_break'], ['short', 'short_break']]);
-    assert.match(sheet, /🍽[\s\S]*ناهار/);
-    assert.match(sheet, /🕌[\s\S]*نماز/);
-    assert.match(sheet, /☕[\s\S]*استراحت کوتاه/);
+    assert.match(sheet, /sheet-icon[\s\S]*<svg[\s\S]*ناهار/); // فاز ۲۰: ایموجی ← آیکن SVG
+    assert.match(sheet, /sheet-icon[\s\S]*<svg[\s\S]*نماز/);
+    assert.match(sheet, /sheet-icon[\s\S]*<svg[\s\S]*استراحت کوتاه/);
+    assert.doesNotMatch(sheet, /🍽|🕌|☕/);
     assert.match(sheet, /ناهار روی ساعت کاری اثر ثابت دارد/);
     assert.match(sheet, /id="break-sheet-cancel"[^>]*>انصراف</);
   });

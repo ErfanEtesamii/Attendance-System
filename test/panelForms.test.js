@@ -86,7 +86,7 @@ describe('T5: فیلدها', () => {
     assert.match(r, /border:\s*1px solid transparent/);
     assert.match(r, /border-radius:\s*var\(--r-sm\)/);
     assert.match(r, /min-height:\s*44px/);
-    assert.match(r, /padding:\s*0 12px/);
+    assert.match(r, /padding:\s*0 var\(--space-3\)/); // فاز ۲۰ / بخش ۱: ۱۲px ← --space-3
     assert.doesNotMatch(r, /color-scheme/, 'color-scheme: dark اجباری در تم روشن ویجت‌های بومی را تیره می‌کرد');
   });
   test('روی کارت/مودال/کشوی اعلان از --card-2', () => {
@@ -113,12 +113,12 @@ describe('T5: فیلدها', () => {
     const f = bodies('.field');
     assert.match(f, /flex-direction:\s*column/);
     assert.match(f, /gap:\s*6px/);
-    assert.match(f, /font-size:\s*13px/);
+    assert.match(f, /font-size:\s*var\(--fs-sm\)/); // فاز ۲۰ / بخش ۱: مقیاس تایپوگرافی (۱۳px ← ۱۴px)
     assert.match(f, /color:\s*var\(--hint\)/);
     assert.match(bodies('.st-label'), /color:\s*var\(--hint\)/);
     assert.match(bodies('.st-fields'), /repeat\(2, minmax\(0, 1fr\)\)/);
-    assert.match(bodies('.st-fields'), /gap:\s*24px/);
-    assert.match(bodies('.form-grid'), /gap:\s*16px 24px/);
+    assert.match(bodies('.st-fields'), /gap:\s*var\(--space-5\)/); // ۲۴px
+    assert.match(bodies('.form-grid'), /gap:\s*var\(--space-4\) var\(--space-5\)/); // ۱۶px ۲۴px
     assert.match(CSS, /@media \(max-width: 760px\) \{ \.st-fields \{ grid-template-columns: minmax\(0, 1fr\); \} \}/);
   });
   test('فیلدهای تنظیمات از قاعده‌ی سراسری می‌گیرند (بدون پس‌زمینه/حاشیه‌ی اختصاصی)', () => {

@@ -36,7 +36,7 @@ describe('T2: قاب صفحه', () => {
   test('کارت روشن: عمق ظریف و شعاع از مقیاس توکن', () => {
     const r = rule('.card');
     assert.match(r, /border:\s*1px solid var\(--border\)/);
-    assert.match(r, /box-shadow:\s*0 10px 28px/);
+    assert.match(r, /box-shadow:\s*var\(--shadow\)/);
     assert.match(r, /border-radius:\s*var\(--radius\)/);
     assert.match(CSS, /--r-xl:\s*28px/);
     assert.match(CSS, /--radius:\s*var\(--r-xl\)/);

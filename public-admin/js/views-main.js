@@ -88,7 +88,7 @@
         </div>
 
         <div class="grid-2">
-          <div class="card"><h3>روند حضور ۱۴ روز اخیر</h3>
+          <div class="card card--primary"><h3>روند حضور ۱۴ روز اخیر</h3>
             <div class="legend"><span><i class="lg-a"></i>حاضر</span><span><i class="lg-b"></i>ورود با تأخیر</span></div>
             ${trendChart(d.trend)}</div>
 
@@ -159,7 +159,7 @@
           </div>
         </div>
         <div class="chips" id="live-chips"></div>
-        <div class="card flush"><div class="table-wrap"><table>
+        <div class="card card--primary flush"><div class="table-wrap"><table>
           <thead><tr><th>کارمند</th><th>وضعیت</th><th>ورود</th><th>خروج</th><th>ساعت مفید</th><th>استراحت</th><th>IP ورود</th><th>عملیات</th></tr></thead>
           <tbody id="live-body"></tbody></table></div></div>`;
 

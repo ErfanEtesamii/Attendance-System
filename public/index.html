@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#ffffff" />
+<meta name="theme-color" content="#f4f3fb" />
 <meta name="default-theme" content="light" />
 <script src="/js/theme.js"></script>
 <title>حضور و غیاب فرازهنر</title>
@@ -66,6 +66,13 @@
           <div class="status-pill" id="status-pill"><i class="dot"></i><span id="status-label">در حال بارگذاری…</span></div>
           <div class="progress-ring" id="today-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="پیشرفت ساعت مفید امروز: صفر درصد">
             <svg viewBox="0 0 120 120" aria-hidden="true">
+              <defs>
+                <linearGradient id="ring-grad-default" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="gs gs-brand"/><stop offset="1" class="gs gs-teal"/></linearGradient>
+                <linearGradient id="ring-grad-active" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="gs gs-green"/><stop offset="1" class="gs gs-teal"/></linearGradient>
+                <linearGradient id="ring-grad-break" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="gs gs-orange"/><stop offset="1" class="gs gs-yellow"/></linearGradient>
+                <linearGradient id="ring-grad-mission" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="gs gs-purple"/><stop offset="1" class="gs gs-blue"/></linearGradient>
+                <linearGradient id="ring-grad-remote" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="gs gs-blue"/><stop offset="1" class="gs gs-teal"/></linearGradient>
+              </defs>
               <circle class="progress-ring-track" cx="60" cy="60" r="52" pathLength="100"></circle>
               <circle class="progress-bar" id="progress-bar" cx="60" cy="60" r="52" pathLength="100"></circle>
             </svg>
@@ -80,19 +87,19 @@
 
         <section class="card earnings-card hidden" id="earnings-card" aria-labelledby="earnings-title">
           <div class="earnings-heading">
-            <h3 id="earnings-title">💰 کارکرد این ماه</h3>
+            <h3 id="earnings-title"><span class="icon-chip icon-chip-green" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v10a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1H5a2 2 0 0 1-2-2"/><circle cx="16.5" cy="13.5" r="1"/></svg></span>کارکرد این ماه</h3>
             <span class="earnings-live hidden" id="earnings-live" aria-hidden="true"><i></i>زنده</span>
           </div>
           <p class="earnings-intro" id="earnings-intro"></p>
-          <p class="earnings-amount" id="earnings-amount-row"><span id="earnings-amount">۰</span><small>تومان</small><span class="earnings-spark" aria-hidden="true">✨</span></p>
+          <p class="earnings-amount" id="earnings-amount-row"><span id="earnings-amount">۰</span><small>تومان</small><span class="earnings-spark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.7 1.8L21.5 17.5l-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg></span></p>
           <div class="earnings-foot">
             <span class="earnings-useful" id="earnings-useful"></span>
-            <span class="earnings-note"><span aria-hidden="true">ⓘ</span> تخمینی؛ حقوق نهایی بر اساس تایید حسابداری است</span>
+            <span class="earnings-note"><span class="earnings-info" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg></span> تخمینی؛ حقوق نهایی بر اساس تایید حسابداری است</span>
           </div>
         </section>
 
         <div class="card action-feedback hidden" id="action-feedback" role="status" aria-live="polite">
-          <span class="action-feedback-check" aria-hidden="true">✓</span>
+          <span class="action-feedback-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
           <span id="action-feedback-text"></span>
         </div>
 
@@ -351,15 +358,15 @@
       <h2 id="break-sheet-title" class="sheet-title">ثبت استراحت</h2>
       <div class="sheet-options" role="radiogroup" aria-labelledby="break-sheet-title">
         <button type="button" class="sheet-option" role="radio" data-break-kind="lunch" data-break-type="lunch">
-          <span class="sheet-emoji" aria-hidden="true">🍽</span>
+          <span class="sheet-emoji sheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3v8"/><path d="M4 3v5a3 3 0 0 0 6 0V3"/><path d="M7 11v10"/><path d="M17 3c-2 1.5-3 4-3 7h6V3z"/><path d="M17 10v11"/></svg></span>
           <span class="sheet-option-text"><span class="sheet-option-title">ناهار</span><span class="sheet-option-sub">ناهار روی ساعت کاری اثر ثابت دارد</span></span>
         </button>
         <button type="button" class="sheet-option" role="radio" data-break-kind="prayer" data-break-type="short_break">
-          <span class="sheet-emoji" aria-hidden="true">🕌</span>
+          <span class="sheet-emoji sheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3a4 4 0 0 0-4 4v1h8V7a4 4 0 0 0-4-4z"/><path d="M5 21V12h14v9"/><path d="M10 21v-4a2 2 0 0 1 4 0v4"/><path d="M3 21h18"/></svg></span>
           <span class="sheet-option-text"><span class="sheet-option-title">نماز</span></span>
         </button>
         <button type="button" class="sheet-option" role="radio" data-break-kind="short" data-break-type="short_break">
-          <span class="sheet-emoji" aria-hidden="true">☕</span>
+          <span class="sheet-emoji sheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 8h11v6a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5z"/><path d="M16 9h2a2 2 0 0 1 0 5h-2"/><path d="M8 3v2"/><path d="M12 3v2"/></svg></span>
           <span class="sheet-option-text"><span class="sheet-option-title">استراحت کوتاه</span></span>
         </button>
       </div>
