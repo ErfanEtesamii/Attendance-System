@@ -185,6 +185,27 @@ router.get('/admin/users/:id', requirePermission('users.read'), (req, res) => {
   });
 });
 
+// ---------- نرخ ساعتی (Phase 20؛ فقط نقش‌های دارای users.write) ----------
+// نرخ هرگز در پاسخ‌های عمومی کاربر (لیست/پروفایل/export/جزئیات) نمی‌آید؛ فقط همین مسیر و PATCH پایین.
+// پاسخ: { hourlyRateKt: عدد | null }  (هزار تومان در ساعت)
+
+const MAX_HOURLY_RATE_KT = 100000;
+// undefined ⇒ دست‌نخورده | null/'' ⇒ حذف نرخ | عدد صحیح نامنفی (یا رشته‌ی ارقام) ⇒ همان | غیر از این ⇒ { error }
+function parseHourlyRateKt(raw) {
+  if (raw === undefined) return { skip: true };
+  if (raw === null || (typeof raw === 'string' && raw.trim() === '')) return { value: null };
+  const n = typeof raw === 'number' ? raw : (typeof raw === 'string' && /^\d{1,6}$/.test(raw.trim()) ? Number(raw.trim()) : NaN);
+  if (!Number.isInteger(n) || n < 0 || n > MAX_HOURLY_RATE_KT) return { error: `نرخ ساعتی باید عدد صحیح بین ۰ و ${MAX_HOURLY_RATE_KT} (هزار تومان) باشد.` };
+  return { value: n };
+}
+
+router.get('/admin/users/:id/hourly-rate', requirePermission('users.write'), (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const rate = usersRepository.getHourlyRateKt(id);
+  if (rate === undefined) return res.status(404).json({ error: 'کارمند یافت نشد.' });
+  res.json({ hourlyRateKt: rate });
+});
+
 // ---------- ویرایش پروفایل کارمند (فقط ادمین کل) ----------
 
 router.patch('/admin/users/:id', requirePermission('users.write'), (req, res) => {
@@ -194,6 +215,8 @@ router.patch('/admin/users/:id', requirePermission('users.write'), (req, res) =>
 
   const { fullName, personnelCode, department, role, managerId, isActive, telegramUserId } =
     req.body || {};
+  const rateIn = parseHourlyRateKt((req.body || {}).hourlyRateKt);
+  if (rateIn.error) return res.status(400).json({ error: rateIn.error });
   // جلوگیری از قفل شدن پنل: ادمین نباید خودش را غیرفعال یا تنزل نقش کند
   if (id === req.adminUser.id) {
     if (isActive !== undefined && !isActive) {
@@ -233,6 +256,22 @@ router.patch('/admin/users/:id', requirePermission('users.write'), (req, res) =>
   }
   if (fields.manager_id !== undefined || fields.role !== undefined || fields.is_active !== undefined) {
     refreshTeamReview([updated.manager_id, updated.id, user.manager_id]);
+  }
+
+  // Phase 20: نرخ ساعتی جدا از بقیه‌ی فیلدها ذخیره و ممیزی می‌شود (مقدار قبل/بعد فقط در before/after ساختاریافته؛ نه در meta/متن آزاد و نه در پاسخ)
+  if (!rateIn.skip) {
+    const beforeRate = usersRepository.getHourlyRateKt(id);
+    if ((beforeRate === undefined ? null : beforeRate) !== rateIn.value) {
+      usersRepository.setHourlyRateKt(id, rateIn.value);
+      auditChange(req, {
+        action: 'employee_hourly_rate_changed',
+        entityType: 'user',
+        entityId: id,
+        before: { hourly_rate_kt: beforeRate === undefined ? null : beforeRate },
+        after: { hourly_rate_kt: rateIn.value },
+        meta: { targetUserId: id },
+      });
+    }
   }
 
   auditChange(req, {

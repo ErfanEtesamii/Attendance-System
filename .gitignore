@@ -23,3 +23,6 @@ dist/
 data/attachments/
 
 deploy/nssm.exe
+
+# Phase 20: نرخ‌های ساعتی کارمندان (داده‌ی حساس) هرگز commit نشود
+data/hourly-rates.json

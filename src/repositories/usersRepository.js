@@ -1,5 +1,18 @@
 const { getDb } = require('../db/connection');
 
+// Phase 20: نرخ ساعتی (hourly_rate_kt) یک داده‌ی حساس است و عمداً در «SELECT *» نمی‌آید تا هیچ route/خروجی/لاگی
+// که ردیف کاربر را کامل برمی‌گرداند آن را درز ندهد. فقط getHourlyRateKt / setHourlyRateKt به آن دست می‌زنند.
+const SENSITIVE_COLUMNS = new Set(['hourly_rate_kt']);
+const columnListCache = new WeakMap();
+function userColumns(db) {
+  let list = columnListCache.get(db);
+  if (!list) {
+    list = db.prepare("PRAGMA table_info('users')").all().map((c) => c.name).filter((n) => !SENSITIVE_COLUMNS.has(n)).join(', ');
+    columnListCache.set(db, list);
+  }
+  return list;
+}
+
 function listUsers({ onlyActive = false, managerId = null } = {}) {
   const db = getDb();
   const conditions = [];
@@ -10,17 +23,17 @@ function listUsers({ onlyActive = false, managerId = null } = {}) {
     params.push(managerId);
   }
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-  return db.prepare(`SELECT * FROM users ${where} ORDER BY full_name`).all(...params);
+  return db.prepare(`SELECT ${userColumns(db)} FROM users ${where} ORDER BY full_name`).all(...params);
 }
 
 function findById(id) {
   const db = getDb();
-  return db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+  return db.prepare(`SELECT ${userColumns(db)} FROM users WHERE id = ?`).get(id);
 }
 
 function findByTelegramId(telegramUserId) {
   const db = getDb();
-  return db.prepare('SELECT * FROM users WHERE telegram_user_id = ?').get(telegramUserId);
+  return db.prepare(`SELECT ${userColumns(db)} FROM users WHERE telegram_user_id = ?`).get(telegramUserId);
 }
 
 function createUser({ telegramUserId, fullName, personnelCode, department, role, managerId }) {
@@ -59,6 +72,18 @@ function updateUser(id, fields) {
   const bumpSql = bump ? ', session_version = session_version + 1' : '';
   db.prepare(`UPDATE users SET ${setClause}${bumpSql}, updated_at = datetime('now') WHERE id = ?`).run(...values, id);
   return findById(id);
+}
+
+// نرخ ساعتی (هزار تومان در ساعت). NULL = تعریف نشده. کاربر نبود ⇒ undefined.
+function getHourlyRateKt(id) {
+  const row = getDb().prepare('SELECT hourly_rate_kt AS rate FROM users WHERE id = ?').get(id);
+  return row ? row.rate : undefined;
+}
+
+// value = عدد صحیح نامنفی یا null؛ اعتبارسنجی با caller است (CHECK دیتابیس آخرین سد). updated_at و نسخه‌ی نشست عمداً دست نمی‌خورد.
+function setHourlyRateKt(id, value) {
+  const info = getDb().prepare('UPDATE users SET hourly_rate_kt = ? WHERE id = ?').run(value, id);
+  return info.changes > 0;
 }
 
 // باطل‌کردن همه‌ی نشست‌های پنل یک کاربر (دکمه‌ی «خروج از همه‌ی نشست‌ها»). نسخه‌ی جدید را برمی‌گرداند یا null اگر کاربر نبود.
@@ -130,4 +155,6 @@ module.exports = {
   setUserShift,
   getHistoryCounts,
   deleteUserPermanently,
+  getHourlyRateKt,
+  setHourlyRateKt,
 };

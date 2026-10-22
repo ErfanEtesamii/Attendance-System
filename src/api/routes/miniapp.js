@@ -43,6 +43,7 @@ const fraudRunner = require('../../utils/fraudRunner');
 const notificationEvents = require('../../services/notificationEvents');
 const { todayDateString } = require('../../utils/serverTime');
 const { addDays } = require('../../utils/shiftDay');
+const { earningsForUser } = require('../../services/earningsService');
 
 // همه مسیرهای زیر /miniapp ابتدا باید هویت تلگرام معتبر داشته باشند
 router.use('/miniapp', telegramAuth);
@@ -163,10 +164,11 @@ router.get('/miniapp/today', (req, res) => {
   const breakPolicy = breakPolicyService.policyFor(req.miniAppUser.id, record ? record.record_date : null);
   const openBreakPaid = record && openBreak ? breakPolicyService.paidInfo(req.miniAppUser.id, record.record_date, breaks, openBreak) : null;
   const settings = settingsRepository.getAll();
+  const earnings = earningsForUser(req.miniAppUser, settings, { today: todayDateString() });
   const segments = record ? attendanceRepository.listSegments(record.id) : [];
   const reEntriesUsed = Math.max(0, segments.length - 1);
   const canReEnter = Boolean(record && record.check_out_time && settings.maxReEntriesPerDay > reEntriesUsed);
-  res.json({ record: record || null, openBreak: openBreak || null, breaks, summary, breakPolicy, openBreakPaid, segments, reEntriesUsed, reEntriesMax: settings.maxReEntriesPerDay, canReEnter });
+  res.json({ record: record || null, openBreak: openBreak || null, breaks, summary, breakPolicy, openBreakPaid, earnings, segments, reEntriesUsed, reEntriesMax: settings.maxReEntriesPerDay, canReEnter });
 });
 
 router.post('/miniapp/re-check-in', (req, res) => {

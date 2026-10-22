@@ -780,9 +780,42 @@
     state.breakNoteTick = paid.isPaid ? paint : null; // سهمیه‌ی تمام‌شده ثابت است؛ تیک لازم ندارد
   }
 
+  function renderEarnings(earnings) {
+    const card = $('#earnings-card');
+    if (!card) return;
+    if (!earnings) {
+      card.classList.add('hidden');
+      return;
+    }
+
+    card.classList.remove('hidden');
+    const usefulMinutes = Math.max(0, Number(earnings.usefulMinutes) || 0);
+    const amount = Math.max(0, Number(earnings.amountToman) || 0);
+    const faNumber = (value) => Number(value).toLocaleString('fa-IR');
+    $('#earnings-intro').textContent = `تا امروز در ${earnings.monthLabel} کار کرده‌ای`;
+    $('#earnings-useful').textContent = `${faNumber(Math.floor(usefulMinutes / 60))} ساعت و ${faNumber(usefulMinutes % 60)} دقیقه ساعت مفید`;
+
+    const amountEl = $('#earnings-amount');
+    if (state.earningsAnimationFrame) cancelAnimationFrame(state.earningsAnimationFrame);
+    const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion || !window.requestAnimationFrame) {
+      amountEl.textContent = faNumber(amount);
+      return;
+    }
+    const startedAt = performance.now();
+    const tick = (now) => {
+      const progress = Math.min(1, (now - startedAt) / 800);
+      amountEl.textContent = faNumber(Math.round(amount * progress));
+      if (progress < 1) state.earningsAnimationFrame = requestAnimationFrame(tick);
+      else state.earningsAnimationFrame = null;
+    };
+    state.earningsAnimationFrame = requestAnimationFrame(tick);
+  }
+
   async function loadToday() {
     const data = await api('/today');
     state.today = data;
+    renderEarnings(data.earnings);
     const r = data.record;
 
     $('#ti-checkin').textContent = fmtClock(r?.check_in_time);

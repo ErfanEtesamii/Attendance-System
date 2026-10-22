@@ -232,6 +232,7 @@
         <label class="field"><span>سرپرست مستقیم</span><select name="managerId"><option value="">— ندارد —</option>
           ${managers.map((m) => `<option value="${m.id}" ${u && u.managerId === m.id ? 'selected' : ''}>${esc(m.fullName)}</option>`).join('')}</select></label>
         <label class="field"><span>آیدی عددی تلگرام</span><input name="telegramUserId" class="ltr" inputmode="numeric" value="${esc(u ? u.telegramUserId || '' : '')}" /></label>
+        ${u && AP.can('users.write') ? `<label class="field"><span>نرخ ساعتی (هزار تومان)</span><input name="hourlyRateKt" class="ltr" inputmode="numeric" autocomplete="off" disabled placeholder="در حال بارگذاری…" /></label>` : ''}
         ${u ? `<label class="check-row full u-full"><input type="checkbox" name="isActive" ${u.isActive ? 'checked' : ''} /> حساب فعال است</label>` : ''}
       </div>`;
   }
@@ -477,12 +478,23 @@
             if (AP.bindShiftAssign) AP.bindShiftAssign(panel, u);
             if (profileUi.tab === 'schedule' && AP.scheduleTab) AP.scheduleTab.mount(panel, u);
             const form = $('#pf-form', panel);
+            // Phase 20: نرخ ساعتی جدا از پروفایل (پاسخ عمومی کاربر آن را ندارد) بارگذاری می‌شود؛ تا بارگذاری موفق نشده فیلد غیرفعال است و در PATCH نمی‌رود (نرخ بی‌خبر پاک نمی‌شود).
+            const rateInput = form ? form.querySelector('[name="hourlyRateKt"]') : null;
+            if (rateInput) {
+              AP.api(`/admin/users/${u.id}/hourly-rate`).then((r) => {
+                rateInput.value = r && r.hourlyRateKt != null ? String(r.hourlyRateKt) : '';
+                rateInput.placeholder = 'تعریف نشده';
+                rateInput.disabled = false;
+                rateInput.dataset.loaded = '1';
+              }).catch(() => { rateInput.placeholder = 'بارگذاری نشد'; });
+            }
             if (form) form.addEventListener('submit', async (e) => {
               e.preventDefault();
               const f = AP.formData(form);
+              const rateField = rateInput && rateInput.dataset.loaded === '1' ? { hourlyRateKt: String(f.hourlyRateKt || '').replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))) } : {};
               const ok = await AP.attempt(() => AP.api(`/admin/users/${u.id}`, { method: 'PATCH', body: {
                 fullName: f.fullName, personnelCode: f.personnelCode, department: f.department, role: f.role,
-                managerId: f.managerId ? Number(f.managerId) : null, telegramUserId: f.telegramUserId, isActive: f.isActive } }), 'تغییرات ذخیره شد.');
+                managerId: f.managerId ? Number(f.managerId) : null, telegramUserId: f.telegramUserId, isActive: f.isActive, ...rateField } }), 'تغییرات ذخیره شد.');
               if (ok) { AP.state.users = null; AP.refresh(); }
             });
           };

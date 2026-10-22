@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## Phase 20 — Monthly earnings card
+- The Mini App can show an optional personal monthly work estimate from official useful time (including mission time); open-dispute days and remote-work entries are excluded.
+- The estimate is calculated only for the authenticated Mini App user when the feature is enabled and an authorized rate exists; the rate itself is never returned by the API.
+
 ## Phase 20 — Weekly-plan exit gate
 - A draft plan is gate-satisfied when it has an active, ordinary supervisor-locked task; its raw status remains `draft`, so the employee can still add tasks and submit finally.
 - Mini App and admin overview identify supervisor-configured plans; nightly reporting and KPI use the same satisfied definition, with a separate KPI count for supervisor-configured plans that are not finally submitted.

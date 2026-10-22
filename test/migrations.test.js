@@ -48,7 +48,7 @@ function snapshot(db) {
   for (const t of userTables(db).filter((n) => !OPERATIONAL.includes(n))) {
     out[t] = db.prepare(`SELECT * FROM "${t}" ORDER BY rowid`).all().map((r) => {
       const row = { ...r };
-      if (t === 'users') { delete row.session_version; delete row.shift_id; } // shift_id: migration ۰۰۹ (S3-6a)
+      if (t === 'users') { delete row.session_version; delete row.shift_id; delete row.hourly_rate_kt; } // shift_id: ۰۰۹؛ نرخ: ۰۴۳
       // leave_type_id/rejected_reason: migration ۰۱۴ (S4-7b) — ستون‌های جدید؛ نگاشت و حفظ داده در test/leaveRequestType.test.js بررسی می‌شود
       if (t === 'leave_requests') { delete row.source; delete row.destination; /* migration ۰۲۳ (C1) */ delete row.leave_type_id; delete row.rejected_reason; delete row.unit; delete row.half_day_part; delete row.start_time; delete row.end_time; delete row.duration_minutes; delete row.current_step; delete row.substitute_user_id; delete row.attachment_id; delete row.attachment_mime; delete row.attachment_size; delete row.attachment_name; } // ستون‌های ۰۱۵ (S4-8a): test/leaveUnits.test.js
       // ستون‌های kind/half_end_time/scope/department (migration ۰۱۰، S3-7b) روی ردیف‌های قدیمی مقدار پیش‌فرض می‌گیرند؛ در تست migration 010 جدا بررسی می‌شوند
@@ -257,7 +257,8 @@ describe('rebuildTable — تغییر CHECK روی جدول مرجع‌شده', 
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     session_version INTEGER NOT NULL DEFAULT 0,
-    shift_id INTEGER -- migration ۰۰۹ (S3-6a)؛ بدون FK چون این fixture جدول work_shifts ندارد
+    shift_id INTEGER, -- migration ۰۰۹ (S3-6a)؛ بدون FK چون این fixture جدول work_shifts ندارد
+    hourly_rate_kt INTEGER NULL CHECK (hourly_rate_kt IS NULL OR hourly_rate_kt >= 0)
   )`;
 
   function migrationSource(foreignKeysLine) {
@@ -353,7 +354,7 @@ describe('migration 002 — session_version', () => {
     assert.equal(usersAfter.length, usersBefore.length);
     usersAfter.forEach((u, i) => {
       assert.equal(u.session_version, 0);
-      const { session_version: _sv, shift_id: _shift, ...rest } = u; // shift_id: migration ۰۰۹ (S3-6a)
+      const { session_version: _sv, shift_id: _shift, hourly_rate_kt: _rate, ...rest } = u; // ستون نرخ: migration ۰۴۳
       assert.deepEqual(rest, usersBefore[i]);
     });
   });
