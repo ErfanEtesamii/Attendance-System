@@ -59,7 +59,7 @@
 
   function weekExports(r, userId) {
     if (typeof AP.exportBar !== 'function') return '';
-    return AP.exportBar({ path: `/admin/users/${userId}/week/export`, params: { start: r.week.start }, formats: [['xlsx', 'Excel'], ['csv', 'CSV'], ['txt', 'متن']], print: false })
+    return AP.exportBar({ path: `/api/admin/users/${userId}/week/export`, params: { start: r.week.start }, formats: [['xlsx', 'Excel'], ['csv', 'CSV'], ['txt', 'متن']], print: false })
       + `<button type="button" class="btn ghost small" data-copy-week aria-label="کپی متن برنامه‌ی هفتگی">کپی متن</button>`;
   }
 
@@ -244,7 +244,7 @@
           }));
           $$('[data-copy-week]', page).forEach((b) => b.addEventListener('click', async () => {
             try {
-              const response = await fetch(AP.buildExportUrl(`/admin/users/${userId}/week/export`, { start: r.week.start }, 'txt'), { credentials: 'same-origin' });
+              const response = await fetch(AP.buildExportUrl(`/api/admin/users/${userId}/week/export`, { start: r.week.start }, 'txt'), { credentials: 'same-origin' });
               if (!response.ok) throw new Error('دریافت متن ناموفق بود.');
               const text = await response.text();
               if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(text);
