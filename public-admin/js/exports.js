@@ -25,7 +25,8 @@
   function exportBarHtml(spec, deps = {}) {
     const esc = deps.esc || ((v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])));
     const icon = deps.icon || (() => '');
-    const parts = FORMATS.map(([fmt, label]) => `<a class="btn ghost" data-export="${fmt}" href="${esc(buildUrl(spec.path, spec.params, fmt))}" download>${icon('download')} ${label}</a>`);
+    const formats = spec.formats || FORMATS;
+    const parts = formats.map(([fmt, label]) => `<a class="btn ghost small" data-export="${fmt}" href="${esc(buildUrl(spec.path, spec.params, fmt))}" download>${icon('download')} ${label}</a>`);
     const print = spec.print === undefined ? 'window' : spec.print;
     if (print === 'window') parts.push(`<button type="button" class="btn ghost" data-print>${icon('download')} چاپ</button>`);
     else if (print && print.href) parts.push(`<a class="btn ghost" data-export="print" href="${esc(print.href)}" target="_blank" rel="noopener">${icon('download')} چاپ</a>`);

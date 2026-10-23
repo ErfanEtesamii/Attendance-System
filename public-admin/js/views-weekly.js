@@ -57,6 +57,12 @@
       <p class="sub week-range">هفته‌ی ${esc(r.week.jalaliStart)} تا ${esc(r.week.jalaliEnd)}</p>`;
   }
 
+  function weekExports(r, userId) {
+    if (typeof AP.exportBar !== 'function') return '';
+    return AP.exportBar({ path: `/admin/users/${userId}/week/export`, params: { start: r.week.start }, formats: [['xlsx', 'Excel'], ['csv', 'CSV'], ['txt', 'متن']], print: false })
+      + `<button type="button" class="btn ghost small" data-copy-week aria-label="کپی متن برنامه‌ی هفتگی">کپی متن</button>`;
+  }
+
   // برچسب‌های «نوع روز» (مثل DAY_KIND_LABEL سمت سرور در employeeWeekService، ولی به‌شکل نشان رنگی)
   const KIND_BADGE = {
     half: ['', 'نیم‌روز'],
@@ -221,7 +227,7 @@
       const html = `
         <div class="view-header">
           <button class="btn ghost small" data-go="profile" data-param="${userId}">→ بازگشت به پروفایل کارمند</button>
-          <div class="header-actions">${AP.can('team.week_view') ? `<button type="button" class="btn ghost small" data-go="nextplan" data-param="${userId}">📓 برنامه‌ی هفته بعد</button>` : ''}<button type="button" class="btn ghost small" data-print>${icon('download', 14)} چاپ</button></div>
+          <div class="header-actions">${AP.can('team.week_view') ? `<button type="button" class="btn ghost small" data-go="nextplan" data-param="${userId}">📓 برنامه‌ی هفته بعد</button>` : ''}${weekExports(r, userId)}<button type="button" class="btn ghost small" data-print>${icon('download', 14)} چاپ</button></div>
         </div>
         ${weekHeader(r)}
         ${kpiRow(r)}
@@ -235,6 +241,16 @@
             if (b.disabled) return;
             ui.start = b.dataset.weekNav;
             AP.refresh();
+          }));
+          $$('[data-copy-week]', page).forEach((b) => b.addEventListener('click', async () => {
+            try {
+              const response = await fetch(AP.buildExportUrl(`/admin/users/${userId}/week/export`, { start: r.week.start }, 'txt'), { credentials: 'same-origin' });
+              if (!response.ok) throw new Error('دریافت متن ناموفق بود.');
+              const text = await response.text();
+              if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(text);
+              else { const area = document.createElement('textarea'); area.value = text; document.body.appendChild(area); area.select(); document.execCommand('copy'); area.remove(); }
+              AP.toast('متن برنامه کپی شد.');
+            } catch (err) { AP.toast(err.message || 'کپی متن ناموفق بود.', true); }
           }));
           // اکشن‌های مدیریتی کارت هر روز؛ هر سه پس از موفقیت کل هفته را رفرش می‌کنند (AP.refresh)
           // H5-ب: «مشاهده‌ی گزارش‌ها» ⇒ صفحه‌ی گزارش‌های تیم برای روزِ گزارش‌ها (پارامتر مسیر = تاریخ)

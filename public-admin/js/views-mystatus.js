@@ -36,6 +36,7 @@
   function weekTitle(sel, cur) {
     if (sel.week.start === cur.week.start) return 'این هفته';
     if (sel.week.start === cur.week.prevWeekStart) return 'هفته‌ی قبل';
+    if (sel.week.start === cur.week.nextWeekStart) return 'هفته‌ی بعد';
     return 'هفته‌ی انتخاب‌شده';
   }
 
@@ -209,7 +210,14 @@
     return `<div class="week-nav" role="group" aria-label="ناوبری هفته">
       <button type="button" class="btn ghost small" data-week-nav="${esc(sel.week.prevWeekStart)}">◀ هفته‌ی قبل</button>
       <button type="button" class="btn ghost small" data-week-nav="${esc(cur.week.today)}" ${sel.week.isCurrentWeek ? 'disabled' : ''}>هفته‌ی جاری</button>
+      <button type="button" class="btn ghost small" data-week-nav="${esc(sel.week.nextWeekStart)}">هفته‌ی بعد ▶</button>
     </div>`;
+  }
+
+  function weekExports(sel) {
+    if (typeof AP.exportBar !== 'function') return '';
+    return AP.exportBar({ path: '/admin/me/week/export', params: { start: sel.week.start }, formats: [['xlsx', 'Excel'], ['csv', 'CSV'], ['txt', 'متن']], print: false })
+      + '<button type="button" class="btn ghost small" data-copy-week aria-label="کپی متن برنامه‌ی هفتگی">کپی متن</button>';
   }
 
   // ---------- داده ----------
@@ -335,7 +343,7 @@
       const html = `
         <div class="view-header">
           <div><h2>وضعیت من</h2><div class="sub">${esc(weekTitle(sel, cur))} · ${esc(sel.week.jalaliStart)} تا ${esc(sel.week.jalaliEnd)}</div></div>
-          <div class="header-actions">${weekNav(sel, cur)}${data.urgentCfg && data.urgentCfg.enabled ? '<button type="button" class="btn ghost small" data-act="su-add-any">⚡ تسک فوری</button>' : ''}<button type="button" class="btn ghost small" data-print>${icon('download', 14)} چاپ</button></div>
+          <div class="header-actions">${weekNav(sel, cur)}${weekExports(sel)}${data.urgentCfg && data.urgentCfg.enabled ? '<button type="button" class="btn ghost small" data-act="su-add-any">⚡ تسک فوری</button>' : ''}<button type="button" class="btn ghost small" data-print>${icon('download', 14)} چاپ</button></div>
         </div>
         <div id="ms-live">${liveHtml(data)}</div>`;
 
@@ -482,6 +490,16 @@
             AP.refresh();
           }));
           $$('[data-act="su-add-any"]', page).forEach((b) => b.addEventListener('click', () => openUrgentForm(page, null, '')));
+          $$('[data-copy-week]', page).forEach((b) => b.addEventListener('click', async () => {
+            try {
+              const response = await fetch(AP.buildExportUrl('/admin/me/week/export', { start: data.sel.week.start }, 'txt'), { credentials: 'same-origin' });
+              if (!response.ok) throw new Error('دریافت متن ناموفق بود.');
+              const text = await response.text();
+              if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(text);
+              else { const area = document.createElement('textarea'); area.value = text; document.body.appendChild(area); area.select(); document.execCommand('copy'); area.remove(); }
+              AP.toast('متن برنامه کپی شد.');
+            } catch (err) { AP.toast(err.message || 'کپی متن ناموفق بود.', true); }
+          }));
           bindLive($('#ms-live', page) || page, page);
           animateEarnings(page);
         },

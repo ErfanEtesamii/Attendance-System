@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## Unreleased — Weekly plan export
+- برنامه‌ی هفتگیِ «وضعیت من» و نمای هفتگی کارمند اکنون به‌صورت Excel، CSV و متن UTF-8 قابل دریافت و کپی است؛ خروجی همان داده‌ی نمای هفته، با اسکوپ نقش، ثبت audit و محافظت formula injection را دارد.
+
 ## Phase 20 — Monthly earnings card
 - The Mini App can show an optional personal monthly work estimate from official useful time (including mission time); open-dispute days and remote-work entries are excluded.
 - The estimate is calculated only for the authenticated Mini App user when the feature is enabled and an authorized rate exists; the rate itself is never returned by the API.

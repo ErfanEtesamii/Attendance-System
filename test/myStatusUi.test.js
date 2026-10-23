@@ -175,6 +175,21 @@ describe('ناوبری هفته', () => {
   });
 });
 
+describe('weekTitle و ناوبری هفته‌ی بعد', () => {
+  const { AP } = setup();
+  test('برچسب جاری/قبل/بعد/انتخاب‌شده', () => {
+    const cur = WEEK();
+    const sel = (start) => ({ week: { ...cur.week, start } });
+    assert.equal(AP.myStatus.weekTitle(sel('2026-10-17'), cur), 'این هفته');
+    assert.equal(AP.myStatus.weekTitle(sel('2026-10-10'), cur), 'هفته‌ی قبل');
+    assert.equal(AP.myStatus.weekTitle(sel('2026-10-24'), cur), 'هفته‌ی بعد');
+    assert.equal(AP.myStatus.weekTitle(sel('2026-11-07'), cur), 'هفته‌ی انتخاب‌شده');
+  });
+  test('دکمه‌ی «هفته‌ی بعد» در هدر با تاریخ nextWeekStart ساخته می‌شود', () => {
+    assert.match(read('public-admin/js/views-mystatus.js'), /data-week-nav="\$\{esc\(sel\.week\.nextWeekStart\)\}">هفته‌ی بعد ▶/);
+  });
+});
+
 describe('todayStatus', () => {
   const { AP } = setup();
   const st = (d) => AP.myStatus.todayStatus(d)[1];
