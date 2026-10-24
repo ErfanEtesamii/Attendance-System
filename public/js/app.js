@@ -765,20 +765,13 @@
     if (!paid || !data.openBreak || data.record?.check_out_time) { el.classList.add('hidden'); el.textContent = ''; el.classList.remove('is-over'); return; }
     const fa = (n) => (J ? J.toFaDigits(String(n)) : String(n));
     const from = new Date(data.openBreak.start_time).getTime();
-    if (paid.unlimited) {
-      const t = 'استراحت با حقوق — بدون محدودیت';
-      if (el.textContent !== t) el.textContent = t;
-      el.classList.remove('is-over', 'hidden');
-      state.breakNoteTick = null;
-      return;
-    }
     const paint = (diffMs) => {
       const remaining = paid.remainingMinutes == null ? paid.minutes : paid.remainingMinutes;
       const over = paid.isPaid && diffMs > remaining * 60000;
       let text;
-      if (!paid.isPaid) text = `سهمیه‌ی استراحت با حقوقِ امروز (${fa(paid.count)} بار) تمام شده؛ این استراحت از ساعت کاری کم می‌شود.`;
-      else if (over) text = `استراحت با حقوق ${fa(paid.index)} از ${fa(paid.count)} — از این‌جا به بعد از ساعت کاری کم می‌شود.`;
-      else text = `استراحت با حقوق ${fa(paid.index)} از ${fa(paid.count)} — ${fa(remaining)} دقیقه از سهمیه روزانه باقی مانده`;
+      if (!paid.isPaid) text = paid.unlimited ? `سهمیه‌ی ${fa(paid.minutes)} دقیقه‌ایِ استراحت با حقوقِ امروز تمام شده؛ این استراحت از ساعت کاری کم می‌شود.` : `سهمیه‌ی استراحت با حقوقِ امروز (${fa(paid.count)} بار) تمام شده؛ این استراحت از ساعت کاری کم می‌شود.`;
+      else if (over) text = paid.unlimited ? 'از این‌جا به بعد از ساعت کاری کم می‌شود.' : `استراحت با حقوق ${fa(paid.index)} از ${fa(paid.count)} — از این‌جا به بعد از ساعت کاری کم می‌شود.`;
+      else text = paid.unlimited ? `استراحت با حقوق — ${fa(remaining)} دقیقه از سهمیه روزانه باقی مانده` : `استراحت با حقوق ${fa(paid.index)} از ${fa(paid.count)} — ${fa(remaining)} دقیقه از سهمیه روزانه باقی مانده`;
       if (el.textContent !== text) el.textContent = text;
       el.classList.toggle('is-over', over || !paid.isPaid);
     };

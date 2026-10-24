@@ -27,15 +27,14 @@ const pick = (d) => [d.break, d.breakPaid, d.breakUnpaid, d.effective];
 const PAID = { paidBreakCount: 3, paidBreakMinutes: 45 };
 
 describe('استراحت با حقوق — موتور computeDay (C1)', () => {
-  test('paidBreakUnlimited ⇒ همه‌ی استراحت‌های کوتاه (حتی بیش از ۱۰ بار و بیش از استخر) با حقوق؛ ناهار بدون حقوق', () => {
+  test('paidBreakCountUnlimited ⇒ تعداد نامحدود ولی استخر دقیقه برقرار؛ مازاد ۴۵ دقیقه بدون حقوق', () => {
     const shorts = [];
-    for (let h = 9; h < 15; h += 1) { shorts.push(sb(`${String(h).padStart(2, '0')}:00`, `${String(h).padStart(2, '0')}:20`)); shorts.push(sb(`${String(h).padStart(2, '0')}:30`, `${String(h).padStart(2, '0')}:50`)); }
-    const d = run(shorts, { paidBreakUnlimited: true, paidBreakCount: 0, paidBreakMinutes: 0 });
-    assert.equal(d.breakUnpaid, 0);
-    assert.equal(d.breakPaid, 240);
-    assert.equal(d.effective, 480);
-    const withLunch = run([...shorts, lunch('13:00', '13:30')], { paidBreakUnlimited: true });
-    assert.equal(withLunch.breakUnpaid, 30);
+    for (let h = 9; h < 15; h += 1) { const p = String(h).padStart(2, '0'); shorts.push(sb(`${p}:00`, `${p}:20`), sb(`${p}:30`, `${p}:50`)); } // ۱۲ بار × ۲۰ = ۲۴۰
+    const d = run(shorts, { paidBreakCountUnlimited: true, paidBreakCount: 0, paidBreakMinutes: 45 });
+    assert.deepEqual(pick(d), [240, 45, 195, 285]);
+    const many = run([sb('09:00', '09:10'), sb('10:00', '10:10'), sb('11:00', '11:10'), sb('12:00', '12:10'), sb('13:00', '13:10')], { paidBreakCountUnlimited: true, paidBreakMinutes: 45 });
+    assert.deepEqual(pick(many), [50, 45, 5, 475]); // استراحت پنجم هم از استخر سهم می‌گیرد
+    assert.equal(run(shorts, { paidBreakCountUnlimited: true, paidBreakMinutes: 0 }).breakPaid, 0); // استخر ۰ ⇒ خاموش
   });
 
   test('۳ استراحت ۱۵دقیقه‌ای ⇒ breakUnpaid=۰ و effective کم نمی‌شود (۴۸۰)', () => {
