@@ -3,7 +3,7 @@
 const { getDb } = require('../db/connection');
 
 // ستون‌هایی که به کارمند نشان داده می‌شوند (بدون ip_address / reviewed_by)
-const SESSION_COLS = 'id, user_id, work_date, start_at, end_at, status, auto_closed, reviewed_at, review_note, approved_start_at, approved_end_at';
+const SESSION_COLS = 'id, user_id, work_date, start_at, end_at, status, source, auto_closed, reviewed_at, review_note, approved_start_at, approved_end_at';
 
 function findOpenSession(userId) {
   return getDb().prepare(`SELECT ${SESSION_COLS} FROM remote_work_sessions WHERE user_id = ? AND end_at IS NULL`).get(userId) || null;
@@ -27,10 +27,10 @@ function listForUserRange(userId, from, to) {
     .all(userId, from, to);
 }
 
-function insertSession({ userId, workDate, startAt, ip }) {
+function insertSession({ userId, workDate, startAt, ip, source = 'miniapp' }) {
   const r = getDb()
-    .prepare('INSERT INTO remote_work_sessions (user_id, work_date, start_at, ip_address) VALUES (?, ?, ?, ?)')
-    .run(userId, workDate, startAt, ip || null);
+    .prepare('INSERT INTO remote_work_sessions (user_id, work_date, start_at, ip_address, source) VALUES (?, ?, ?, ?, ?)')
+    .run(userId, workDate, startAt, ip || null, source);
   return findSessionById(r.lastInsertRowid);
 }
 
@@ -66,7 +66,7 @@ function closeBreak(id, endAt) {
 // ستون‌های صف (بدون ip_address). هم‌پوشانی با حضور حضوری: رکورد رسمیِ «حضوری» (via_remote = 0 و دارای ورود) در همان روز کاری؛
 // رکوردهای ساخته‌شده از دورکاری (via_remote = 1) و ردیف‌های بدون ورود (مرخصی/تعطیل) هم‌پوشانی حساب نمی‌شوند.
 // UNIQUE(user_id, record_date) روی attendance_records تضمین می‌کند JOIN ردیف تکراری نمی‌سازد.
-const QUEUE_COLS = 's.id, s.user_id, s.work_date, s.start_at, s.end_at, s.status, s.auto_closed, s.reviewed_by, s.reviewed_at, s.review_note, s.approved_start_at, s.approved_end_at, s.attendance_record_id';
+const QUEUE_COLS = 's.id, s.user_id, s.work_date, s.start_at, s.end_at, s.status, s.source, s.auto_closed, s.reviewed_by, s.reviewed_at, s.review_note, s.approved_start_at, s.approved_end_at, s.attendance_record_id';
 
 /**
  * @param {{userIds?: number[]|null, status?: string|null, from?: string|null, to?: string|null, userId?: number|null, limit?: number, offset?: number}} f

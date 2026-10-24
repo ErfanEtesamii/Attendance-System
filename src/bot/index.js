@@ -26,6 +26,7 @@ const { handlePendingLeaves, handlePendingLeavesCallback } = require('./commands
 const { startMissionReject, startMissionEdit, handleMissionRejectText, handleMissionEditText } = require('./commands/missionApproval');
 const { handleReportReviewCallback, handleReportCommentText } = require('./commands/reportReview');
 const { handleCheckinPermissionCallback } = require('./commands/checkinPermission');
+const { handleRemoteWorkCallback } = require('./commands/remoteWork');
 const { handlePendingDisputes, handleDisputeCallback, handleDisputeReplyText } = require('./commands/pendingDisputes');
 const {
   handleFixRecordCommand,
@@ -103,6 +104,8 @@ function createBot() {
       if (isPickerCallback(data)) return await handlePickerCallback(bot, query);
       // E4: دکمه‌های inline که به handlerِ دکمه‌ی منو می‌روند (mn:<id>)؛ نقش سمت سرور چک می‌شود
       if (data.startsWith('mn:')) return await handleMenuCallback(bot, query);
+
+      if (data.startsWith('rw:')) return await handleRemoteWorkCallback(bot, query);
 
       if (data.startsWith('rvs:') || data.startsWith('rvc:')) return await handleReportReviewCallback(bot, query);
       if (data.startsWith('cp_ok:') || data.startsWith('cp_no:')) return await handleCheckinPermissionCallback(bot, query); // D3: تأیید/رد اجازه‌ی ورود

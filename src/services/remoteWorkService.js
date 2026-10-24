@@ -54,14 +54,14 @@ function getHistory(userId, { days = 30, now = new Date() } = {}) {
   return { from, to, sessions };
 }
 
-function start(user, { ip = null, now = new Date() } = {}) {
+function start(user, { ip = null, now = new Date(), source = 'miniapp' } = {}) {
   const nowIso = now.toISOString();
   try {
     return getDb().transaction(() => {
       if (repo.findOpenSession(user.id)) return ERR.ALREADY_OPEN();
       const workDate = attendanceRepository.currentRecordDate(user.id, now);
-      const session = repo.insertSession({ userId: user.id, workDate, startAt: nowIso, ip });
-      auditRepository.logEvent({ userId: user.id, action: 'remote_work_start', ipAddress: ip, details: { source: 'miniapp', sessionId: session.id, workDate } });
+      const session = repo.insertSession({ userId: user.id, workDate, startAt: nowIso, ip, source });
+      auditRepository.logEvent({ userId: user.id, action: 'remote_work_start', ipAddress: ip, details: { source, sessionId: session.id, workDate } });
       return { ok: true, session: publicSession(session, []) };
     })();
   } catch (err) {
@@ -70,7 +70,7 @@ function start(user, { ip = null, now = new Date() } = {}) {
   }
 }
 
-function end(user, { ip = null, now = new Date() } = {}) {
+function end(user, { ip = null, now = new Date(), source = 'miniapp' } = {}) {
   const nowIso = now.toISOString();
   return getDb().transaction(() => {
     const open = repo.findOpenSession(user.id);
@@ -80,15 +80,15 @@ function end(user, { ip = null, now = new Date() } = {}) {
     const openBreak = repo.findOpenBreak(open.id);
     if (openBreak) {
       closedBreak = repo.closeBreak(openBreak.id, isoMax(endAt, openBreak.start_at));
-      auditRepository.logEvent({ userId: user.id, action: 'remote_break_end', ipAddress: ip, details: { source: 'miniapp', sessionId: open.id, breakId: openBreak.id, autoClosedByEnd: true } });
+      auditRepository.logEvent({ userId: user.id, action: 'remote_break_end', ipAddress: ip, details: { source, sessionId: open.id, breakId: openBreak.id, autoClosedByEnd: true } });
     }
     const session = repo.closeSession(open.id, endAt);
-    auditRepository.logEvent({ userId: user.id, action: 'remote_work_end', ipAddress: ip, details: { source: 'miniapp', sessionId: open.id, workDate: open.work_date, autoClosedBreak: Boolean(closedBreak) } });
+    auditRepository.logEvent({ userId: user.id, action: 'remote_work_end', ipAddress: ip, details: { source, sessionId: open.id, workDate: open.work_date, autoClosedBreak: Boolean(closedBreak) } });
     return { ok: true, session: publicSession(session, repo.listBreaks(open.id)), autoClosedBreak: closedBreak };
   })();
 }
 
-function breakStart(user, { ip = null, now = new Date() } = {}) {
+function breakStart(user, { ip = null, now = new Date(), source = 'miniapp' } = {}) {
   const nowIso = now.toISOString();
   try {
     return getDb().transaction(() => {
@@ -96,7 +96,7 @@ function breakStart(user, { ip = null, now = new Date() } = {}) {
       if (!open) return ERR.NOT_STARTED();
       if (repo.findOpenBreak(open.id)) return ERR.BREAK_OPEN();
       const brk = repo.insertBreak(open.id, isoMax(nowIso, open.start_at));
-      auditRepository.logEvent({ userId: user.id, action: 'remote_break_start', ipAddress: ip, details: { source: 'miniapp', sessionId: open.id, breakId: brk.id } });
+      auditRepository.logEvent({ userId: user.id, action: 'remote_break_start', ipAddress: ip, details: { source, sessionId: open.id, breakId: brk.id } });
       return { ok: true, break: brk };
     })();
   } catch (err) {
@@ -105,7 +105,7 @@ function breakStart(user, { ip = null, now = new Date() } = {}) {
   }
 }
 
-function breakEnd(user, { ip = null, now = new Date() } = {}) {
+function breakEnd(user, { ip = null, now = new Date(), source = 'miniapp' } = {}) {
   const nowIso = now.toISOString();
   return getDb().transaction(() => {
     const open = repo.findOpenSession(user.id);
@@ -113,7 +113,7 @@ function breakEnd(user, { ip = null, now = new Date() } = {}) {
     const openBreak = repo.findOpenBreak(open.id);
     if (!openBreak) return ERR.NO_BREAK();
     const brk = repo.closeBreak(openBreak.id, isoMax(nowIso, openBreak.start_at));
-    auditRepository.logEvent({ userId: user.id, action: 'remote_break_end', ipAddress: ip, details: { source: 'miniapp', sessionId: open.id, breakId: openBreak.id, autoClosedByEnd: false } });
+    auditRepository.logEvent({ userId: user.id, action: 'remote_break_end', ipAddress: ip, details: { source, sessionId: open.id, breakId: openBreak.id, autoClosedByEnd: false } });
     return { ok: true, break: brk };
   })();
 }

@@ -198,14 +198,14 @@ describe('سرویس سیاست (Mini App) و گزارش ماهانه (C1)', () 
   after(cleanup);
 
   test('policyFor: پیش‌فرض خاموش؛ تنظیم سراسری؛ شیفتِ مؤثر آن روز بر سراسری غالب است', () => {
-    assert.deepEqual(breakSvc.policyFor(u.id, '2026-09-14'), { enabled: true, count: 3, minutes: 45 });
+    assert.deepEqual(breakSvc.policyFor(u.id, '2026-09-14'), { enabled: true, unlimited: false, count: 3, minutes: 45 });
     settings.setValue('paidBreakCount', 3);
     settings.setValue('paidBreakMinutes', 15);
-    assert.deepEqual(breakSvc.policyFor(u.id, '2026-09-14'), { enabled: true, count: 3, minutes: 15 });
+    assert.deepEqual(breakSvc.policyFor(u.id, '2026-09-14'), { enabled: true, unlimited: false, count: 3, minutes: 15 });
     shiftsRepo.updateShift(shift.id, { paidBreakCount: 2, paidBreakMinutes: 10 });
     shiftsRepo.assignShift({ userId: u.id, shiftId: shift.id, effectiveFrom: '2026-09-10' });
-    assert.deepEqual(breakSvc.policyFor(u.id, '2026-09-14'), { enabled: true, count: 2, minutes: 10 });
-    assert.deepEqual(breakSvc.policyFor(u.id, '2026-09-09'), { enabled: true, count: 3, minutes: 15 }, 'قبل از تاریخ اعمال شیفت ⇒ سراسری');
+    assert.deepEqual(breakSvc.policyFor(u.id, '2026-09-14'), { enabled: true, unlimited: false, count: 2, minutes: 10 });
+    assert.deepEqual(breakSvc.policyFor(u.id, '2026-09-09'), { enabled: true, unlimited: false, count: 3, minutes: 15 }, 'قبل از تاریخ اعمال شیفت ⇒ سراسری');
     shiftsRepo.updateShift(shift.id, { paidBreakCount: 0 });
     assert.equal(breakSvc.policyFor(u.id, '2026-09-14').enabled, false, '۰ روی شیفت = خاموش');
     shiftsRepo.updateShift(shift.id, { paidBreakCount: null, paidBreakMinutes: null });

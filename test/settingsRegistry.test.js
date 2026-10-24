@@ -14,7 +14,7 @@ describe('رجیستری تنظیمات (S3-1a)', () => {
     assert.deepEqual(registry.selfCheck(), []);
     const registryKeys = registry.keys();
     assert.equal(registryKeys.includes('maxReEntriesPerDay'), true);
-    assert.deepEqual(registryKeys.filter((key) => key !== 'maxReEntriesPerDay'), [
+    assert.deepEqual(registryKeys.filter((key) => !['maxReEntriesPerDay', 'paidBreakCountUnlimited', 'remoteWorkBotEnabled', 'remoteWorkBotBlockOnsiteToday'].includes(key)), [
       'timezone', 'workDayStart', 'workDayEnd', 'lateGraceMinutes', 'lateCountsFrom', 'earlyGraceMinutes', 'weekendDays', 'halfDayWeekdays', 'halfDayEndTime', 'teamCalendarMaxConcurrent', 'maxLunchMinutes', 'fixedLunchDeductMinutes', 'fixedLunchMinPresenceMinutes', 'paidBreakCount', 'paidBreakMinutes', 'lateMonthlyLimit', 'lateLimitGateMode', 'lateLimitPermissionTtlMinutes', 'longOpenBreakMinutes', 'outsideShiftMarginMinutes', 'overtimeEnabled', 'overtimeMinMinutes', 'overtimeDailyCapMinutes', 'overtimeFactor', 'overtimeHolidayFactor', 'overtimeRoundStep', 'overtimeRounding', 'overtimeMonthlyCapMinutes', 'overtimeRequiresApproval', 'monthCloseRequireMonthEnded', 'monthCloseBlockIncomplete', 'monthCloseBlockOpenDisputes', 'monthCloseBlockPendingLeave', 'monthCloseBlockPendingOvertime', 'monthCloseBlockSuspicious', 'reportXlsxEnabled', 'reportXlsxRecipientRoles', 'reportXlsxRequireClosed', 'leaveDefaultEntitlementMinutes', 'leaveCarryOverCapMinutes', 'leaveBalancePolicy', 'leaveAllowPastRequests', 'leaveMaxPastDays', 'leaveMaxFutureDays', 'leaveMinNoticeHours', 'backupIncludeAttachments', 'leaveAttachmentMaxKb', 'leaveAttachmentTypes', 'leaveApprovalReminderHours', 'leaveApprovalEscalateHours', 'leaveEscalateWhenApproverOnLeave', 'leaveApprovalExtraStepDays', 'leaveApprovalExtraStepTypes', 'leaveApprovalExtraStepRole', 'lateCheckinGraceMinutes', 'checkoutReminderMinutesBefore', 'repeatedLatenessThreshold',
       'missionBackdateDays', 'missionAdvanceDays', 'allowCheckinWithPendingMission', 'weekStartDay', 'planSubmissionWeekday', 'planGateWarnWeekday', 'planMinTasks', 'planGateMode', 'planGateStartDate', 'dailyReportGateMode', 'reportBackfillDays', 'taskCarryMaxTimes', 'selfUrgentEnabled', 'selfUrgentMaxPerDay', 'taskReportAdminMaxParts', 'encouragementsEnabled', 'latePerformancePenaltyEnabled', 'latePerformanceThresholdMinutes', 'latePerformancePenaltyFactor', 'performanceRewardEnabled', 'performanceRewardFactor', 'showEarningsCard', 'disputeMaxReopens', 'systemGoLive',
       'blockOnSharedDevice', 'remoteWorkEnabled', 'remoteWorkMaxOpenHours', 'auditRetentionMonths', 'auditArchiveEnabled',
@@ -22,12 +22,19 @@ describe('رجیستری تنظیمات (S3-1a)', () => {
       'patternConsecutiveLateDays', 'patternWeekdayLateMinCount', 'patternWeekdayLateMinSharePercent', 'patternWeekdayLateMarginPercent', 'patternWeekendAbsenceMinCount', 'patternWeekendAbsenceMinSharePercent', 'patternSuddenIncreaseFactor', 'patternSuddenIncreaseMinExtraLate', 'patternBaselineMonths', 'patternBaselineMinMonths', 'patternMinPresentDays', 'patternIdenticalTimeMinDays', 'patternIdenticalTimeMinSharePercent',
       'cronLateCheckinCheck', 'cronCheckoutReminderCheck', 'cronDailyReport', 'cronWeeklyReport', 'cronMonthlyReport', 'cronNightlyReview', 'cronMorningDigest', 'cronAutoCloseIncomplete', 'cronMarkNonWorkingDays', 'cronDailyBackup', 'cronAuditArchive', 'cronDbMaintenance', 'cronLeaveApprovalReminder', 'cronUrgentTaskReminder', 'cronTeamReviewEnsure', 'cronWatchdog',
     ]);
+    assert.deepEqual(
+      ['paidBreakCountUnlimited', 'remoteWorkBotEnabled', 'remoteWorkBotBlockOnsiteToday'].map((key) => registryKeys.includes(key)),
+      [true, true, true],
+    );
     assert.equal(registry.getDef('workDayStart').dbKey, 'work_day_start');
     assert.equal(registry.getDef('rateLimitRetentionDays').dbKey, 'rate_limit_retention_days');
     registry.REGISTRY.forEach((d) => assert.ok(d.description && registry.GROUP_LABELS[d.group], d.key));
     const actualSettings = settings.getAll();
-    assert.deepEqual({ maxReEntriesPerDay: actualSettings.maxReEntriesPerDay, paidBreakCount: actualSettings.paidBreakCount, paidBreakMinutes: actualSettings.paidBreakMinutes }, { maxReEntriesPerDay: 1, paidBreakCount: 3, paidBreakMinutes: 45 });
+    assert.deepEqual({ maxReEntriesPerDay: actualSettings.maxReEntriesPerDay, paidBreakCount: actualSettings.paidBreakCount, paidBreakMinutes: actualSettings.paidBreakMinutes, paidBreakCountUnlimited: actualSettings.paidBreakCountUnlimited, remoteWorkBotEnabled: actualSettings.remoteWorkBotEnabled, remoteWorkBotBlockOnsiteToday: actualSettings.remoteWorkBotBlockOnsiteToday }, { maxReEntriesPerDay: 1, paidBreakCount: 3, paidBreakMinutes: 45, paidBreakCountUnlimited: false, remoteWorkBotEnabled: true, remoteWorkBotBlockOnsiteToday: true });
     delete actualSettings.maxReEntriesPerDay;
+    delete actualSettings.paidBreakCountUnlimited;
+    delete actualSettings.remoteWorkBotEnabled;
+    delete actualSettings.remoteWorkBotBlockOnsiteToday;
     actualSettings.paidBreakCount = 0;
     actualSettings.paidBreakMinutes = 0;
     assert.deepEqual(actualSettings, {

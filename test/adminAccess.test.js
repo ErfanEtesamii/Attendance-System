@@ -85,7 +85,7 @@ describe('لیست سفید کارمند (default-deny)', () => {
       assert.equal(call(employee, method, url).nextCalled, true, `${method} ${url}`);
     }
     // هر الگوی لیست سفید حداقل در یکی از نمونه‌ها پوشش داده شده (اگر کسی ورودی جدید اضافه کند این تست یادآوری می‌کند)
-    assert.equal(EMPLOYEE_ALLOWED.length, 26, 'لیست سفید تغییر کرده؛ ماتریس تست را به‌روز کنید');
+    assert.equal(EMPLOYEE_ALLOWED.length, 27, 'لیست سفید تغییر کرده؛ ماتریس تست را به‌روز کنید');
   });
 
   test('هر چیزی خارج از لیست سفید برای کارمند ۴۰۳ است (از جمله route های آینده)', () => {

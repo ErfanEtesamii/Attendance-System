@@ -56,15 +56,15 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
       assert.equal(n(null), '');
     });
 
-    test('هر ۱۷ دکمه‌ی منو برچسب نرمال‌شده‌ی یکتا دارند', () => {
+    test('هر ۱۸ دکمه‌ی منو برچسب نرمال‌شده‌ی یکتا دارند', () => {
       const labels = menu.ITEMS.map((it) => menu.normalizeLabel(it.label));
-      assert.equal(menu.ITEMS.length, 17);
+      assert.equal(menu.ITEMS.length, 18);
       assert.equal(new Set(labels).size, labels.length);
       assert.ok(labels.every(Boolean));
     });
   });
 
-  const EMP = ['🕒 ثبت تردد', '📊 وضعیت من', '📈 گزارش من', '🏖 مرخصی / 🚗 ماموریت', '📋 برنامه هفتگی', '🖥 پنل', '❓ راهنما'];
+  const EMP = ['🕒 ثبت تردد', '🏠 ثبت دورکاری', '📊 وضعیت من', '📈 گزارش من', '🏖 مرخصی / 🚗 ماموریت', '📋 برنامه هفتگی', '🖥 پنل', '❓ راهنما'];
   const MGR = ['👥 گزارش تیم', '📥 درخواست‌های منتظر', '💬 اعتراض‌ها', '🏠 دورکاری‌های منتظر', '📝 گزارش‌های دیروز تیم', '👤 لیست اعضا', '⚡ تسک فوری'];
   const ADM = ['➕ افزودن کارمند', '🛠 اصلاح رکورد', '⚙️ پنل مدیریت'];
 
@@ -338,7 +338,7 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
     const itemLabels = (kb) => kb.inline_keyboard.flat().filter((b) => b.callback_data !== 'mn:_' && b.callback_data !== 'mn:_close').map((b) => b.text);
 
     test('هر نقش پیام منوی inline همان نقش را می‌گیرد؛ handler اجرا نمی‌شود و پیام کیبورد قدیمی نمی‌رود', async () => {
-      for (const [user, n] of [[emp, 7], [mgr, 14], [admin, 17]]) {
+      for (const [user, n] of [[emp, 8], [mgr, 15], [admin, 18]]) {
         const bot = mockBot(); const { calls, h } = spies();
         assert.equal(await menu.routeMenuText(bot, msgFrom(user, '📂 منو'), h), true);
         assert.deepEqual(calls, []);

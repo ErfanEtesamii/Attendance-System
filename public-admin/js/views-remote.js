@@ -36,6 +36,7 @@
   function badges(it) {
     const [cls, label] = STATUS_BADGE[it.status] || ['normal', it.status];
     const out = [AP.badge(cls, label, true)];
+    if (it.source === 'bot') out.push(AP.badge('purple', 'از طریق بات'));
     if (it.autoClosed) out.push(AP.badge('holiday', 'بسته‌شده توسط سیستم'));
     if (it.overlapsOnsite) out.push(AP.badge('rejected', 'هم‌پوشانی با حضور حضوری'));
     return out.join(' ');

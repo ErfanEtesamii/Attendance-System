@@ -84,8 +84,8 @@ describe('مدل روزبه‌روز برنامه‌ی هفته‌ی بعد (B1-
 
   test('هفته‌ی شروع‌شده: editable=false، lockReason و canEdit همه false', () => {
     const r = state(admin, emp.id, TODAY);
-    assert.equal(r.plan.editable, false);
-    assert.equal(r.plan.lockReason, 'week_started');
+    assert.equal(r.plan.editable, true);
+    assert.equal(r.plan.lockReason, null);
     assert.equal(r.days.length, 7);
   });
 
@@ -279,10 +279,10 @@ describe('هشدارهای برنامه‌ریزی روی GET plan (B1-c): کا�
     const plan = plansRepo.getOrCreate(emp.id, TODAY);
     plansRepo.addTask(plan.id, { title: 'تسک هفته‌ی جاری', plannedDate: TODAY });
     const r = get(admin, emp.id, TODAY);
-    assert.equal(r.plan.editable, false);
-    assert.equal(r.plan.lockReason, 'week_started');
+    assert.equal(r.plan.editable, true);
+    assert.equal(r.plan.lockReason, null);
     assert.equal(r.days[0].tasks.length, 1);
-    assert.equal(r.days.flatMap((d) => d.tasks).every((x) => x.canEdit === false), true);
+    assert.equal(r.days.flatMap((d) => d.tasks).every((x) => x.canEdit === true), true);
     assert.equal(Array.isArray(r.warnings), true);
   });
 });

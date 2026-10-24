@@ -214,6 +214,8 @@ def('disputeMaxReopens', 'dispute_max_reopens', 'number', { group: 'disputes', m
 def('systemGoLive', 'system_go_live', 'boolean', { group: 'security', default: false, description: 'حالت Go-Live: وقتی روشن است ریست برنامه (حذف داده‌ی عملیاتی) ۴۰۳ می‌دهد، مگر ALLOW_DATA_RESET=true در .env باشد' });
 def('blockOnSharedDevice', 'block_on_shared_device', 'boolean', { group: 'security', default: false, description: 'مسدودکردن ثبت تردد وقتی دستگاه همان روز برای کاربر دیگری استفاده شده' });
 def('remoteWorkEnabled', 'remote_work_enabled', 'boolean', { group: 'security', default: true, description: 'دورکاری خارج از شبکه: کاربرِ بیرون از شبکه‌ی شرکت (بدون ماموریت) می‌تواند ساعتش را به‌عنوان دورکار ثبت کند؛ این ساعت‌ها تا تأیید سرپرست در هیچ گزارشی حساب نمی‌شوند (خاموش = مثل قبل فقط خطای «خارج از شبکه»)' });
+def('remoteWorkBotEnabled', 'remote_work_bot_enabled', 'boolean', { group: 'security', default: true, description: 'ثبت دورکاری از طریق بات تلگرام؛ خاموش‌کردن اضطراری فقط شروع نشست تازه از بات را می‌بندد و پایان نشست باز همچنان ممکن است' });
+def('remoteWorkBotBlockOnsiteToday', 'remote_work_bot_block_onsite_today', 'boolean', { group: 'security', default: true, description: 'ثبت دورکاری از بات را برای کاربری که همان روز حضور حضوری ثبت کرده مسدود می‌کند' });
 def('remoteWorkMaxOpenHours', 'remote_work_max_open_hours', 'number', { group: 'security', min: 1, max: 72, default: 16, description: 'دورکاری: نشستِ بازی که بیش از این‌قدر ساعت باز بماند (ورود بدون خروج) در job شبانه بسته و برای بررسی دقیق‌تر سرپرست علامت می‌خورد؛ پایان آن = شروع + همین سقف' });
 // نگهداری و آرشیو
 def('auditRetentionMonths', 'audit_retention_months', 'number', { group: 'retention', min: 1, max: 240, default: 24, description: 'مدت نگهداری رویدادهای audit در جدول اصلی (ماه)' });

@@ -32,6 +32,7 @@ const MENU_GROUPS = [
 // ترتیب آرایه همان ترتیب نمایش است: کارمند، سپس افزوده‌های سرپرست، سپس افزوده‌های ادمین (ادمین همه را دارد).
 const ITEMS = [
   { id: 'checkin', label: '🕒 ثبت تردد', roles: null, url: () => panelLinks.miniAppLink() },
+  { id: 'remote_work', label: '🏠 ثبت دورکاری', roles: null, handler: 'remoteWork' },
   { id: 'status', label: '📊 وضعیت من', roles: null, handler: 'status' },
   { id: 'report', label: '📈 گزارش من', roles: null, handler: 'report' },
   { id: 'leave', label: '🏖 مرخصی / 🚗 ماموریت', roles: null, handler: 'leave' },
@@ -206,6 +207,7 @@ function defaultHandlers() {
     yesterdayReports: sendTeamReportsLink,
     urgentTask: require('../commands/urgentTask').handleUrgentTaskCommand,
     pendingRemote: require('../commands/pendingRemote').handlePendingRemote,
+    remoteWork: require('../commands/remoteWork').handleRemoteWork,
   };
 }
 

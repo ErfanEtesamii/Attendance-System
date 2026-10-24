@@ -6,6 +6,7 @@ const leaveRepository = require('../../repositories/leaveRepository');
 const { summarizeRecord } = require('../../engine/dayService');
 const { formatMinutes } = require('../../utils/workHours');
 const { todayDateString } = require('../../utils/serverTime');
+const remoteWorkService = require('../../services/remoteWorkService');
 
 function formatTime(isoString) {
   return new Date(isoString).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
@@ -16,6 +17,13 @@ async function handleStatus(bot, msg) {
   const user = getRegisteredUser(msg.from.id);
   if (!user) {
     await bot.sendMessage(chatId, notRegisteredMessage(msg.from.id), { parse_mode: 'Markdown' });
+    return;
+  }
+
+  const remote = remoteWorkService.getToday(user.id);
+  if (remote.openSession) {
+    const mode = remote.openBreak ? 'در استراحت' : 'در حال کار';
+    await bot.sendMessage(chatId, `🏠 دورکاری باز: از ساعت ${formatTime(remote.openSession.start_at)} (${mode})`);
     return;
   }
 

@@ -22,6 +22,7 @@ const { createRateLimiter } = require('../../middleware/rateLimiter');
 
 const attendanceRepository = require('../../repositories/attendanceRepository');
 const remoteWorkService = require('../../services/remoteWorkService');
+const remoteWorkRepository = require('../../repositories/remoteWorkRepository');
 const breakRepository = require('../../repositories/breakRepository');
 const breakPolicyService = require('../../services/breakPolicyService');
 const lateLimitService = require('../../services/lateLimitService');
@@ -61,6 +62,17 @@ router.use('/miniapp/check-out', networkRestriction);
 router.use('/miniapp/re-check-in', networkRestriction);
 router.use('/miniapp/break/start', networkRestriction);
 router.use('/miniapp/break/end', networkRestriction);
+
+// نشست باز دورکاری و حضور حضوری هم‌زمان نباید ایجاد شود. هویت فقط از initData امضاشده است.
+function blockOpenRemoteSession(req, res, next) {
+  if (!remoteWorkRepository.findOpenSession(req.miniAppUser.id)) return next();
+  return res.status(409).json({
+    error: 'یک دورکاری باز دارید؛ ابتدا از «📂 منو ← 🏠 ثبت دورکاری» در بات پایان دورکاری را ثبت کنید.',
+    code: 'REMOTE_SESSION_OPEN',
+  });
+}
+router.use('/miniapp/check-in', blockOpenRemoteSession);
+router.use('/miniapp/re-check-in', blockOpenRemoteSession);
 
 // فاز ۹: rate limiting روی همین چهار مسیر حساس (ضد اسپم/کلیک مکرر روی دکمه‌ها).
 // کلید محدودسازی، شناسه‌ی کاربر تلگرام (نه IP) است: چون همه‌ی کارمندان از پشت همان یک IP/رنج
