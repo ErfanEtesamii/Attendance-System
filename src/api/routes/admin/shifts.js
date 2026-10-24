@@ -7,7 +7,7 @@ const router = express.Router();
 const { requirePermission } = require('../../../middleware/permissions');
 const shiftsRepository = require('../../../repositories/shiftsRepository');
 const usersRepository = require('../../../repositories/usersRepository');
-const { validateShiftInput, checkConsistency } = require('../../../utils/shiftValidation');
+const { validateShiftInput, checkConsistency, checkWeekdayHours } = require('../../../utils/shiftValidation');
 const monthClosuresRepository = require('../../../repositories/monthClosuresRepository');
 const { todayDateString } = require('../../../utils/serverTime');
 const { requireReason, audit, scopedUserIds, userBrief } = require('./common');
@@ -58,6 +58,8 @@ router.patch('/admin/shifts/:id', requirePermission('shifts.edit'), (req, res) =
   const merged = { ...before, ...checked.value };
   const consistent = merged.isUntimed ? { ok: true } : checkConsistency(merged);
   if (!consistent.ok) return res.status(400).json({ error: consistent.error, field: consistent.field });
+  const whCheck = checkWeekdayHours(merged); // ساعت ثابت روزها فقط برای شیفت چرخشی و روزهای کاریِ همان شیفت
+  if (!whCheck.ok) return res.status(400).json({ error: whCheck.error, field: whCheck.field });
 
   const changes = {};
   Object.keys(checked.value).forEach((k) => {

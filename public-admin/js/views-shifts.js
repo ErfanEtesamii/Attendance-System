@@ -10,7 +10,7 @@
   // ۰=یکشنبه … ۶=شنبه (همان قرارداد API)؛ ترتیب نمایش از شنبه تا جمعه
   const DAY_ORDER = [6, 0, 1, 2, 3, 4, 5];
   const DAY_NAME = { 6: 'شنبه', 0: 'یکشنبه', 1: 'دوشنبه', 2: 'سه‌شنبه', 3: 'چهارشنبه', 4: 'پنجشنبه', 5: 'جمعه' };
-  const DEFAULT_SHIFT = { name: '', startTime: '08:00', endTime: '16:30', overnight: false, isUntimed: false, graceLateMinutes: 0, graceEarlyMinutes: 0, maxLunchMinutes: 0, fixedLunchDeductMinutes: 0, paidBreakCount: null, paidBreakMinutes: null, workDays: [6, 0, 1, 2, 3] };
+  const DEFAULT_SHIFT = { name: '', startTime: '08:00', endTime: '16:30', overnight: false, isUntimed: false, graceLateMinutes: 0, graceEarlyMinutes: 0, maxLunchMinutes: 0, fixedLunchDeductMinutes: 0, paidBreakCount: null, paidBreakMinutes: null, workDays: [6, 0, 1, 2, 3], weekdayHours: {} };
 
   // «امروز» محلی مرورگر به‌صورت YYYY-MM-DD (پیش‌فرض «از تاریخ»؛ اعتبار نهایی با سرور است)
   const localIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -19,6 +19,13 @@
   const paidText = (s) => (s.paidBreakCount == null && s.paidBreakMinutes == null
     ? ''
     : `<div class="muted small">استراحت با حقوق: حداکثر ${s.paidBreakCount == null ? 'تعداد سراسری' : fmt.num(s.paidBreakCount)} نوبت، استخر ${s.paidBreakMinutes == null ? 'سراسری' : `${fmt.num(s.paidBreakMinutes)} دقیقه`} در روز</div>`);
+
+  // خلاصه‌ی «ساعت ثابتِ روزها» در شیفت چرخشی برای جدول
+  const fixedHoursText = (s) => {
+    const wh = s.weekdayHours || {};
+    const list = DAY_ORDER.filter((d) => wh[d]);
+    return list.length ? `<div class=\"muted small\">ساعت ثابت: ${list.map((d) => `${DAY_NAME[d]} <span class=\"ltr\">${esc(wh[d].startTime)} – ${esc(wh[d].endTime)}</span>`).join('، ')}</div>` : '';
+  };
 
   const daysText = (days) => {
     const list = DAY_ORDER.filter((d) => (days || []).includes(d));
@@ -43,6 +50,8 @@
       paidBreakCount: nullableNum(f.paidBreakCount), // C1: خالی = از تنظیمات سراسری
       paidBreakMinutes: nullableNum(f.paidBreakMinutes),
       workDays: $$('input[name="workDays"]', form).filter((el) => el.checked).map((el) => Number(el.value)),
+      // ساعت ثابتِ روزهای مشخص (فقط شیفت چرخشی): ردیف‌های تیک‌خورده؛ بدون تیک/شیفت عادی ⇒ {}
+      weekdayHours: f.isUntimed ? Object.fromEntries($$('input[name="whDay"]', form).filter((el) => el.checked).map((el) => [el.value, { startTime: $(`input[name="whStart${el.value}"]`, form).value, endTime: $(`input[name="whEnd${el.value}"]`, form).value }])) : {},
     };
   }
 
@@ -65,6 +74,9 @@
         <p class="muted small full u-full u-m0" data-timed-field>استراحت‌های کوتاهِ با حقوق از یک استخر مشترک روزانه استفاده می‌کنند؛ مازاد استخر، استراحت‌های بعد از تعداد مجاز و ناهار از ساعت کاری کم می‌شود. هر دو ۰ = خاموش.</p>
         <div class="field full u-full"><span>روزهای کاری این شیفت</span>
           <div class="chk-row">${DAY_ORDER.map((d) => `<label class="check-row"><input type="checkbox" name="workDays" value="${d}"${(cur.workDays || []).includes(d) ? ' checked' : ''} /> ${DAY_NAME[d]}</label>`).join('')}</div></div>
+        <div class="field full u-full" data-untimed-field><span>ساعت ثابت برای روزهای مشخص (اختیاری)</span>
+          <p class="muted small u-m0">روزی که اینجا تیک بخورد، با وجودِ چرخشی‌بودن شیفت، ساعت شروع/پایان ثابت دارد (تأخیر، زودرفتن و کسری حساب می‌شود) و نیم‌روزِ هفتگیِ سراسری رویش اعمال نمی‌شود. فقط روزهای کاریِ شیفت.</p>
+          ${DAY_ORDER.map((d) => { const e = (cur.weekdayHours || {})[d]; return `<div class="chk-row"><label class="check-row"><input type="checkbox" name="whDay" value="${d}"${e ? ' checked' : ''} /> ${DAY_NAME[d]}</label><input type="time" name="whStart${d}" aria-label="ساعت شروع ثابت ${DAY_NAME[d]}" value="${esc(e ? e.startTime : '08:30')}" dir="ltr" class="ltr-in" /><input type="time" name="whEnd${d}" aria-label="ساعت پایان ثابت ${DAY_NAME[d]}" value="${esc(e ? e.endTime : '16:00')}" dir="ltr" class="ltr-in" /></div>`; }).join('')}</div>
       </div>
       <div class="form-msg err"></div>
       <div class="modal-actions"><button class="btn primary" type="submit">${isEdit ? 'ذخیره‌ی تغییرات' : 'افزودن شیفت'}</button><button class="btn ghost" type="button" data-cancel>انصراف</button></div>
@@ -85,7 +97,7 @@
           <th>نام</th><th>ساعت کار</th><th>روزهای کاری</th><th>مهلت تأخیر / زودتر رفتن</th><th>ناهار</th><th>کارمندان</th><th></th></tr></thead><tbody>
           ${shifts.map((s) => `<tr data-id="${s.id}">
             <td><b>${esc(s.name)}</b></td>
-            <td>${s.isUntimed ? AP.badge('blue', 'چرخشی بدون ساعت') : `<span class="ltr">${esc(s.startTime)} – ${esc(s.endTime)}</span>${s.overnight ? ` ${AP.badge('purple', 'شب')}` : ''}`}</td>
+            <td>${s.isUntimed ? `${AP.badge('blue', 'چرخشی بدون ساعت')}${fixedHoursText(s)}` : `<span class="ltr">${esc(s.startTime)} – ${esc(s.endTime)}</span>${s.overnight ? ` ${AP.badge('purple', 'شب')}` : ''}`}</td>
             <td>${esc(daysText(s.workDays))}</td>
             <td>${fmt.num(s.graceLateMinutes)} / ${fmt.num(s.graceEarlyMinutes)} دقیقه</td>
             <td>${s.maxLunchMinutes ? `حداکثر ${fmt.num(s.maxLunchMinutes)}` : 'بدون سقف'}${s.fixedLunchDeductMinutes ? ` · کسر ثابت ${fmt.num(s.fixedLunchDeductMinutes)}` : ''}${paidText(s)}</td>
@@ -107,6 +119,7 @@
             const untimed = $('input[name="isUntimed"]', form);
             const syncTimedFields = () => {
               $$('[data-timed-field]', form).forEach((el) => { el.hidden = untimed.checked; });
+              $$('[data-untimed-field]', form).forEach((el) => { el.hidden = !untimed.checked; });
               $$('input[name="startTime"], input[name="endTime"]', form).forEach((el) => { el.required = !untimed.checked; });
             };
             untimed.addEventListener('change', syncTimedFields);

@@ -92,7 +92,8 @@ function resolveCalendarDay({ dateStr, shift = null, settings, holiday = null, o
     const s = minutesOf(start);
     const e = minutesOf(end);
     const ends = [];
-    if ((settings.halfDayWeekdays || []).includes(weekday)) ends.push(halfEnd(settings.halfDayEndTime, s, e));
+    // روزی که ساعتِ ثابتِ صریح در شیفت چرخشی دارد، نیم‌روزِ هفتگیِ سراسری (مثلاً پنجشنبه) را نمی‌گیرد؛ تعطیلیِ نیم‌روز همچنان اعمال می‌شود
+    if (!(shift && shift.weekdayHoursApplied) && (settings.halfDayWeekdays || []).includes(weekday)) ends.push(halfEnd(settings.halfDayEndTime, s, e));
     if (holiday) ends.push(halfEnd(holiday.half_end_time, s, e));
     const valid = ends.filter((x) => x !== null);
     if (valid.length) {

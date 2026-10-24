@@ -1,7 +1,7 @@
 // اعتبارسنجی خالص ورودی شیفت (S3-6a) — بدون دیتابیس. خروجی: { ok:true, value } یا { ok:false, error }.
 // value با نام‌های camelCase و مقادیر نرمال‌شده است (HH:MM دو رقمی، workDays مرتب و یکتا، overnight بولین).
 
-const FIELDS = ['name', 'startTime', 'endTime', 'graceLateMinutes', 'graceEarlyMinutes', 'workDays', 'overnight', 'maxLunchMinutes', 'fixedLunchDeductMinutes', 'paidBreakCount', 'paidBreakMinutes', 'isUntimed'];
+const FIELDS = ['name', 'startTime', 'endTime', 'graceLateMinutes', 'graceEarlyMinutes', 'workDays', 'overnight', 'maxLunchMinutes', 'fixedLunchDeductMinutes', 'paidBreakCount', 'paidBreakMinutes', 'isUntimed', 'weekdayHours'];
 const REQUIRED = ['name', 'startTime', 'endTime'];
 const DEFAULTS = {
   graceLateMinutes: 0,
@@ -45,6 +45,33 @@ function toMinutes(raw) {
   if (typeof raw === 'number') return Number.isInteger(raw) ? raw : null;
   if (typeof raw === 'string' && /^\s*\d+\s*$/.test(raw)) return parseInt(raw, 10);
   return null;
+}
+
+// ساعت ثابت روزهای هفته در شیفت چرخشی: { "3": { startTime, endTime } } (کلید ۰=یکشنبه … ۶=شنبه). null/{} ⇒ بدون ساعت ثابت. شیفتِ بدون عبور از نیمه‌شب: پایان بعد از شروع.
+function normalizeWeekdayHours(raw) {
+  if (raw === null || raw === '') return { ok: true, value: {} };
+  if (typeof raw !== 'object' || Array.isArray(raw)) return bad('«weekdayHours» باید شیء { روز: { startTime, endTime } } باشد.', 'weekdayHours');
+  const value = {};
+  for (const [k, e] of Object.entries(raw)) {
+    const d = /^[0-6]$/.test(k) ? Number(k) : null;
+    if (d === null) return bad('کلید «weekdayHours» باید روز هفته (۰=یکشنبه … ۶=شنبه) باشد.', 'weekdayHours');
+    const st = e && normalizeTime(e.startTime);
+    const en = e && normalizeTime(e.endTime);
+    if (!st || !en) return bad('برای هر روزِ «weekdayHours» ساعت شروع و پایان معتبر (HH:MM) لازم است.', 'weekdayHours');
+    if (en <= st) return bad('در «weekdayHours» ساعت پایان باید بعد از شروع باشد (شب‌کاری پشتیبانی نمی‌شود).', 'weekdayHours');
+    value[d] = { startTime: st, endTime: en };
+  }
+  return { ok: true, value };
+}
+
+// سازگاری ساعت ثابت با بقیه‌ی شیفت (روی مقدارِ ادغام‌شده): فقط شیفت چرخشی، و فقط روزهای کاریِ شیفت
+function checkWeekdayHours({ isUntimed, workDays, weekdayHours }) {
+  const keys = Object.keys(weekdayHours || {});
+  if (keys.length === 0) return { ok: true };
+  if (!isUntimed) return bad('ساعت ثابت روزها فقط برای شیفت چرخشی (بدون ساعت) تعریف می‌شود.', 'weekdayHours');
+  const bad_ = keys.filter((k) => !(workDays || []).includes(Number(k)));
+  if (bad_.length) return bad('هر روزِ دارای ساعت ثابت باید جزو روزهای کاری شیفت باشد.', 'weekdayHours');
+  return { ok: true };
 }
 
 // partial=false (ایجاد): فیلدهای اجباری باید باشند و بقیه پیش‌فرض می‌گیرند.
@@ -91,6 +118,11 @@ function validateShiftInput(body, { partial = false } = {}) {
     if (b === null) return bad('«overnight» باید true یا false باشد.', 'overnight');
     out.overnight = b;
   }
+  if (input.weekdayHours !== undefined) {
+    const w = normalizeWeekdayHours(input.weekdayHours);
+    if (!w.ok) return w;
+    out.weekdayHours = w.value;
+  }
   if (input.workDays !== undefined) {
     const days = input.workDays;
     if (!Array.isArray(days) || days.length === 0 || days.length > 7) return bad('«workDays» باید آرایه‌ای ۱ تا ۷ عضوی از روزهای هفته (۰=یکشنبه … ۶=شنبه) باشد.', 'workDays');
@@ -112,6 +144,10 @@ function validateShiftInput(body, { partial = false } = {}) {
     const c = checkConsistency(value);
     if (!c.ok) return c;
   }
+  if (!partial) {
+    const w = checkWeekdayHours(value);
+    if (!w.ok) return w;
+  }
   return { ok: true, value };
 }
 
@@ -123,4 +159,4 @@ function checkConsistency({ startTime, endTime, overnight }) {
   return { ok: true };
 }
 
-module.exports = { validateShiftInput, checkConsistency, normalizeTime, DEFAULTS, NAME_MAX };
+module.exports = { validateShiftInput, checkConsistency, checkWeekdayHours, normalizeTime, DEFAULTS, NAME_MAX };

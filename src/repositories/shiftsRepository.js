@@ -3,6 +3,7 @@
 
 const { getDb } = require('../db/connection');
 const { todayDateString } = require('../utils/serverTime');
+const { dayNumber } = require('../utils/shiftDay');
 
 const EARLIEST = '1970-01-01'; // effective_from «از ابتدا» (backfill migration ۰۲۸)
 const isDate = (d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
@@ -22,6 +23,34 @@ function parseWorkDays(text) {
   }
 }
 
+// ساعت ثابتِ روزهای هفته در شیفت چرخشی: JSON { "<روز>": { startTime, endTime } }؛ خراب/نامعتبر ⇒ {} (نه exception)
+function parseWeekdayHours(text) {
+  try {
+    const v = JSON.parse(text);
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return {};
+    const out = {};
+    for (const [k, e] of Object.entries(v)) {
+      const d = Number(k);
+      if (Number.isInteger(d) && d >= 0 && d <= 6 && e && typeof e.startTime === 'string' && typeof e.endTime === 'string') out[d] = { startTime: e.startTime, endTime: e.endTime };
+    }
+    return out;
+  } catch (_) {
+    return {};
+  }
+}
+
+// شیفتِ چرخشی (isUntimed) در روزی که ساعت ثابت دارد ⇒ همان روز «شیفت عادی» با آن شروع/پایان می‌شود (isUntimed=false، weekdayHoursApplied=true)
+// تا تقویم و موتور محاسبه (تأخیر، زودرفتن، انتظار) بدون هیچ تغییر دیگری درست کار کنند. روزِ بدون ساعت ثابت یا خارج از workDays ⇒ همان شیفت.
+function applyWeekdayHours(shift, date) {
+  if (!shift || !shift.isUntimed || !isDate(date)) return shift;
+  const dn = dayNumber(date);
+  if (dn === null) return shift;
+  const weekday = (((dn + 4) % 7) + 7) % 7; // 1970-01-01 پنجشنبه (۴) بود
+  const entry = shift.weekdayHours && shift.weekdayHours[weekday];
+  if (!entry || !(shift.workDays || []).includes(weekday)) return shift;
+  return { ...shift, isUntimed: false, startTime: entry.startTime, endTime: entry.endTime, overnight: false, weekdayHoursApplied: true };
+}
+
 function toShift(row) {
   if (!row) return null;
   return {
@@ -38,6 +67,7 @@ function toShift(row) {
     paidBreakCount: row.paid_break_count === undefined ? null : row.paid_break_count, // C1: null = از تنظیمات سراسری
     paidBreakMinutes: row.paid_break_minutes === undefined ? null : row.paid_break_minutes,
     isUntimed: !!row.is_untimed,
+    weekdayHours: parseWeekdayHours(row.weekday_hours),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     ...(row.user_count !== undefined ? { userCount: row.user_count } : {}),
@@ -60,7 +90,7 @@ function findById(id) {
 
 // شیفتِ مؤثر کاربر در یک روز (فاز ۱۲، B1): آخرین انتساب با effective_from ≤ date. بدون هیچ انتسابی ⇒ null (تنظیمات سراسری).
 // date نامعتبر ⇒ امروز. کاربر ناموجود ⇒ null.
-function shiftOn(userId, date) {
+function shiftOnRaw(userId, date) {
   const d = isDate(date) ? date : todayDateString();
   const db = getDb();
   if (!db.prepare('SELECT 1 AS x FROM user_shift_assignments WHERE user_id = ? LIMIT 1').get(userId)) {
@@ -74,6 +104,12 @@ function shiftOn(userId, date) {
       )
       .get(userId, d)
   );
+}
+
+// شیفتِ مؤثرِ کاربر در یک روز، با اعمال ساعت ثابتِ همان روز هفته در شیفت چرخشی (applyWeekdayHours)
+function shiftOn(userId, date) {
+  const d = isDate(date) ? date : todayDateString();
+  return applyWeekdayHours(shiftOnRaw(userId, d), d);
 }
 
 // شیفتِ «امروزِ» کاربر (S3-6b؛ سازگار با گذشته)؛ بدون شیفت/کاربر ناموجود ⇒ null
@@ -91,13 +127,14 @@ function makeShiftResolver(userIds = null) {
   rows.forEach((r) => { if (!byUser.has(r.user_id)) byUser.set(r.user_id, []); byUser.get(r.user_id).push(r); });
   const shiftById = new Map(db.prepare('SELECT * FROM work_shifts').all().map((r) => [r.id, toShift(r)]));
   const mirror = new Map(db.prepare('SELECT id, shift_id FROM users WHERE shift_id IS NOT NULL').all().map((r) => [r.id, r.shift_id]));
-  return (userId, date) => {
+  const raw = (userId, date) => {
     const list = byUser.get(userId);
     if (!list) return mirror.has(userId) ? shiftById.get(mirror.get(userId)) || null : null; // بدون تاریخچه ⇒ آینه
     let pick = null;
     for (const a of list) { if (a.effective_from <= date) pick = a; else break; }
     return pick && pick.shift_id != null ? shiftById.get(pick.shift_id) || null : null;
   };
+  return (userId, date) => applyWeekdayHours(raw(userId, date), date);
 }
 
 // انتساب «برای همه‌ی تاریخ‌ها» (رفتار قدیمی setUserShift): تاریخچه‌ی کاربر پاک و یک ردیف از ابتدا ساخته می‌شود (shiftId = null ⇒ بدون شیفت).
@@ -151,11 +188,11 @@ function createShift(v) {
   const fixedLunchDeductMinutes = v.fixedLunchDeductMinutes ?? 0;
   const info = db
     .prepare(
-      `INSERT INTO work_shifts (name, start_time, end_time, grace_late_minutes, grace_early_minutes, work_days, overnight, max_lunch_minutes, fixed_lunch_deduct_minutes, paid_break_count, paid_break_minutes, is_untimed)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO work_shifts (name, start_time, end_time, grace_late_minutes, grace_early_minutes, work_days, overnight, max_lunch_minutes, fixed_lunch_deduct_minutes, paid_break_count, paid_break_minutes, is_untimed, weekday_hours)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(v.name, v.startTime, v.endTime, graceLateMinutes, graceEarlyMinutes, JSON.stringify(workDays), v.overnight ? 1 : 0, maxLunchMinutes, fixedLunchDeductMinutes,
-      v.paidBreakCount === undefined ? null : v.paidBreakCount, v.paidBreakMinutes === undefined ? null : v.paidBreakMinutes, v.isUntimed ? 1 : 0);
+      v.paidBreakCount === undefined ? null : v.paidBreakCount, v.paidBreakMinutes === undefined ? null : v.paidBreakMinutes, v.isUntimed ? 1 : 0, JSON.stringify(v.weekdayHours || {}));
   return findById(info.lastInsertRowid);
 }
 
@@ -172,6 +209,7 @@ const COLUMN_OF = {
   paidBreakCount: 'paid_break_count',
   paidBreakMinutes: 'paid_break_minutes',
   isUntimed: 'is_untimed',
+  weekdayHours: 'weekday_hours',
 };
 
 // فقط کلیدهای شناخته‌شده‌ی camelCase؛ مقدار ستون‌ها از placeholder می‌آید (نه الحاق رشته).
@@ -181,6 +219,7 @@ function updateShift(id, fields) {
   const setClause = keys.map((k) => `${COLUMN_OF[k]} = ?`).join(', ');
   const values = keys.map((k) => {
     if (k === 'workDays') return JSON.stringify(fields[k]);
+    if (k === 'weekdayHours') return JSON.stringify(fields[k] || {});
     if (k === 'overnight') return fields[k] ? 1 : 0;
     if (k === 'isUntimed') return fields[k] ? 1 : 0;
     return fields[k];
