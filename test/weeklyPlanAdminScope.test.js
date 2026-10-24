@@ -64,15 +64,29 @@ describe('ویرایش برنامه‌ی کارمند توسط مدیر — گی
     assert.equal(open(hr, 999999).code, 'FORBIDDEN');
   });
 
-  test('هفته‌ی شروع‌شده یا گذشته: PLAN_LOCKED (۴۰۹)؛ هفته‌ی آینده‌ی دورتر آزاد', () => {
+  test('سرپرست: هفته‌ی شروع‌شده یا گذشته PLAN_LOCKED (۴۰۹)؛ هفته‌ی آینده‌ی دورتر آزاد', () => {
     for (const week of ['2026-08-01', '2026-07-25']) {
-      const r = open(admin, emp.id, week);
+      const r = open(boss, emp.id, week);
       assert.deepEqual([r.ok, r.code, r.status], [false, 'PLAN_LOCKED', 409], week);
     }
-    assert.equal(open(admin, emp.id, '2026-08-15').weekStart, '2026-08-15');
+    assert.equal(open(boss, emp.id, '2026-08-15').weekStart, '2026-08-15');
     // دقیقاً روز شروع هفته‌ی بعد: today < weekStart هنوز آزاد است
-    assert.equal(open(admin, emp.id, NEXT, at('2026-08-07', '23:00')).ok, true);
-    assert.equal(open(admin, emp.id, NEXT, at('2026-08-08', '00:30')).code, 'PLAN_LOCKED');
+    assert.equal(open(boss, emp.id, NEXT, at('2026-08-07', '23:00')).ok, true);
+    assert.equal(open(boss, emp.id, NEXT, at('2026-08-08', '00:30')).code, 'PLAN_LOCKED');
+  });
+
+  test('ادمین: هر زمان — هفته‌ی جاری، شروع‌شده و گذشته هم قابل ویرایش است', () => {
+    for (const week of ['2026-08-01', '2026-07-25']) {
+      const r = open(admin, emp.id, week);
+      assert.equal(r.ok, true, week);
+      assert.equal(r.weekStart, week);
+    }
+    assert.equal(open(admin, emp.id, NEXT, at('2026-08-08', '00:30')).ok, true);
+    const state = svc.getPlanState(admin, emp.id, '2026-08-01', { now: SUN });
+    assert.equal(state.plan.editable, true);
+    assert.equal(state.plan.lockReason, null);
+    // سرپرست همان هفته را فقط‌خواندنی می‌بیند
+    assert.equal(svc.getPlanState(boss, emp.id, '2026-08-01', { now: SUN }).plan.editable, false);
   });
 
   test('ماه بسته: MONTH_CLOSED (۴۰۹)', () => {
@@ -81,6 +95,7 @@ describe('ویرایش برنامه‌ی کارمند توسط مدیر — گی
       const r = open(admin, emp.id);
       assert.deepEqual([r.ok, r.code, r.status], [false, 'MONTH_CLOSED', 409]);
       assert.equal(open(boss, emp.id, '2026-08-15').code, 'MONTH_CLOSED');
+      assert.equal(open(admin, emp.id, '2026-08-01').code, 'MONTH_CLOSED'); // ماه بسته برای ادمین هم قفل است
     } finally {
       db.exec('DELETE FROM month_closures;');
     }

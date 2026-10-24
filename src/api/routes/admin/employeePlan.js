@@ -71,6 +71,7 @@ function auditPlanEdit(req, op, employeeId, r) {
   if (!r || !r.ok || !r.changed) return;
   try {
     const meta = { op, targetUserId: Number(employeeId), planId: r.plan.id, weekStart: r.plan.weekStart };
+    if (r.plan.weekStart <= new Date().toISOString().slice(0, 10)) meta.retroactive = true; // ویرایش هفته‌ی شروع‌شده (فقط ادمین)
     if (op === 'reorder') {
       auditChange(req, {
         action: AUDIT_ACTION, entityType: 'weekly_plan', entityId: r.plan.id,

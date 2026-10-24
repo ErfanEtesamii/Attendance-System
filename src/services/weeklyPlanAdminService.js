@@ -19,7 +19,8 @@
 //   • مجوز: plan.edit_team — admin همه‌ی کارمندان (سرپرست‌ها هم)؛ manager فقط کارمندان مستقیمش؛ hr و کارمند ندارند.
 //   • برنامه‌ی «خودِ» actor از این مسیر ممنوع است (SELF_NOT_ALLOWED)؛ او از Mini App ویرایش می‌کند.
 //   • کارمند غیرفعال یا ناموجود ⇒ USER_NOT_FOUND (همان رفتار urgentTaskService).
-//   • فقط هفته‌های آینده قابل ویرایش‌اند؛ هفته‌ی شروع‌شده ⇒ PLAN_LOCKED، ماه بسته ⇒ MONTH_CLOSED (هر دو ۴۰۹).
+//   • سرپرست فقط هفته‌های آینده را ویرایش می‌کند؛ هفته‌ی شروع‌شده ⇒ PLAN_LOCKED، ماه بسته ⇒ MONTH_CLOSED (هر دو ۴۰۹).
+//     ادمین (role=admin) هر هفته‌ای را هر زمان ویرایش می‌کند (جاری/گذشته هم)؛ فقط ماه بسته برای او هم قفل است (lockReasonFor).
 //   • تسک فوری تنها استثنای قفل است و فقط از urgentTaskService (E1) می‌آید؛ این سرویس آن را دور نمی‌زند.
 const usersRepository = require('../repositories/usersRepository');
 const plansRepo = require('../repositories/weeklyPlanRepository');
@@ -69,6 +70,19 @@ function versionFailure(plan, expectedVersion) {
   return null;
 }
 
+/**
+ * قفل هفته برای actor: «ادمین» (role=admin) هر زمان می‌تواند برنامه‌ی کارمندان را تغییر دهد (هفته‌ی جاری و گذشته هم)،
+ * مثلاً وقتی کارمند با دلیل موجه برنامه‌اش را ثبت نکرده و به ادمین داده است. سرپرست همچنان فقط هفته‌های آینده.
+ * استثنا فقط «هفته شروع شده» است؛ ماهِ بسته برای ادمین هم قفل می‌ماند (ابتدا با monthclose.reopen باز شود).
+ */
+function lockReasonFor(actor, weekStart, ctx) {
+  const reason = weeklyPlan.lockReason(weekStart, ctx);
+  return actor && actor.role === 'admin' && reason === 'week_started' ? null : reason;
+}
+function lockFailureFor(actor, weekStart, ctx) {
+  return lockReasonFor(actor, weekStart, ctx) === null ? null : weeklyPlan.lockFailure(weekStart, ctx);
+}
+
 /** آیا actor مجاز است برنامه‌ی target را ویرایش کند؟ → null (مجاز) یا fail(...). ترتیب: مجوز، وجود کارمند، خود، اسکوپ تیم. */
 function scopeFailure(actor, target, perm = 'plan.edit_team') {
   if (!actor || !hasPermission(actor.role, perm)) return fail('FORBIDDEN', 'برای ویرایش برنامه‌ی کارمندان مجوز لازم را ندارید.');
@@ -108,7 +122,7 @@ function openWeek(actor, employeeId, weekStartInput, { now, expectedVersion } = 
   const wk = resolveWeekStart(weekStartInput, ctx);
   if (!wk.ok) return wk;
   const weekStart = wk.weekStart;
-  const locked = weeklyPlan.lockFailure(weekStart, ctx);
+  const locked = lockFailureFor(actor, weekStart, ctx);
   if (locked) return withStatus(locked);
   const conflict = versionFailure(plansRepo.findByUserWeek(target.id, weekStart), expectedVersion);
   if (conflict) return conflict;
@@ -143,7 +157,7 @@ function openTask(actor, employeeId, taskId, { now, expectedVersion } = {}) {
   if (!task || task.deleted_at || !plan || plan.user_id !== target.id) return fail('TASK_NOT_FOUND', 'تسک در برنامه‌ی این کارمند یافت نشد.');
 
   // مستقیم از lockFailure (نه openWeek): اگر weekStartDay بعداً عوض شده باشد، برنامه‌ی آینده‌ی موجود نباید ویرایش‌ناپذیر شود.
-  const locked = weeklyPlan.lockFailure(plan.week_start_date, weeklyPlan.context(now));
+  const locked = lockFailureFor(actor, plan.week_start_date, weeklyPlan.context(now));
   if (locked) return withStatus(locked);
   const conflict = versionFailure(plan, expectedVersion);
   if (conflict) return conflict;
@@ -299,7 +313,7 @@ function getPlanState(actor, employeeId, startInput, { now } = {}) {
   if (!wk.ok) return wk;
   const { weekStart } = wk;
 
-  const lockReason = weeklyPlan.lockReason(weekStart, ctx);
+  const lockReason = lockReasonFor(actor, weekStart, ctx);
   const plan = plansRepo.findByUserWeek(target.id, weekStart);
   const managerConfigured = !!(plan && plansRepo.countManagerTasks(plan.id) > 0);
   const editable = scopeFailure(actor, target) === null && !lockReason;
