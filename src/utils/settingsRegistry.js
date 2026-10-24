@@ -134,6 +134,7 @@ def('fixedLunchMinPresenceMinutes', 'fixed_lunch_min_presence_minutes', 'number'
 def('maxReEntriesPerDay', 'max_re_entries_per_day', 'number', { group: 'workHours', min: 0, max: 5, default: 1, description: 'حداکثر ورود مجدد پس از خروج در یک روز؛ ۰ = غیرفعال' });
 // C1 (فاز ۱۲): استراحت کوتاهِ با حقوق (هر دو پیش‌فرض ۰ = خاموش ⇒ رفتار قبلی). روی هر شیفت هم می‌شود جدا تنظیم کرد (NULL = همین مقدار سراسری)
 def('paidBreakCount', 'paid_break_count', 'number', { group: 'workHours', min: 0, max: 10, default: 3, description: 'حداکثر تعداد استراحت کوتاهِ دارای سهم با حقوق در روز؛ ۰ = خاموش' });
+def('paidBreakUnlimited', 'paid_break_unlimited', 'boolean', { group: 'workHours', default: false, description: 'استراحت کوتاه با حقوقِ نامحدود: روشن ⇒ همه‌ی استراحت‌های کوتاهِ بسته‌شده (بدون سقف تعداد و بدون استخر دقیقه) با حقوق‌اند و از ساعت مفید کم نمی‌شوند؛ ناهار همچنان بدون حقوق است. روی تنظیم شیفت‌ها هم غالب است' });
 def('paidBreakMinutes', 'paid_break_minutes', 'number', { group: 'workHours', min: 0, max: 120, default: 45, description: 'استخر مجموعِ روزانه‌ی استراحت کوتاه با حقوق (دقیقه)؛ بین استراحت‌های مجاز به ترتیب شروع تقسیم می‌شود و ۰ = خاموش است' });
 // D1 (فاز ۱۲): سقف تأخیر در هر ماه شمسی و «اجازه‌ی ورود». lateMonthlyLimit=۰ ⇒ خاموش؛ با سقف N، N بار تأخیرِ بسته‌شده آزاد است و ورودِ دیرِ بعدی اجازه می‌خواهد.
 def('lateMonthlyLimit', 'late_monthly_limit', 'number', { group: 'workHours', min: 0, max: 31, default: 0, description: 'سقف تعداد تأخیر در هر ماه شمسی؛ بعد از این تعداد، ثبتِ ورودِ دیر نیازمند اجازه‌ی سرپرست است. ۰ = خاموش' });

@@ -117,6 +117,7 @@ function paidBreakParams(settings, shift) {
     return graceMinutes(v === null ? undefined : v, name, shiftValue !== undefined && shiftValue !== null ? prefix : 'settings.');
   };
   return {
+    paidUnlimited: settings.paidBreakUnlimited === true || settings.paidBreakUnlimited === 'true' || settings.paidBreakUnlimited === 1, // سراسری؛ بر شیفت غالب است
     paidCount: pick(shift ? shift.paidBreakCount : undefined, settings.paidBreakCount, 'paidBreakCount', 'shift.'),
     paidMinutes: pick(shift ? shift.paidBreakMinutes : undefined, settings.paidBreakMinutes, 'paidBreakMinutes', 'shift.'),
   };
@@ -246,8 +247,15 @@ function normalizeLeaveWindows(approvedLeaves, workStart, workEnd) {
 
 // تقسیم استراحت‌های کوتاهِ بسته‌شده به «با حقوق/بدون حقوق» (U2، خالص). به ترتیب شروع؛ حداکثر count نوبت از استخر روزانه‌ی minutes سهم می‌گیرند.
 // ناهار و استراحت باز هرگز با حقوق نیست. مدت منفی (پایان قبل از شروع) سهمی ندارد. خروجی: Map(آیتم ⇒ ms با حقوق) فقط برای آیتم‌های با سهم > ۰.
-function paidBreakSplit(items, count, minutes) {
+function paidBreakSplit(items, count, minutes, unlimited = false) {
   const paid = new Map();
+  if (unlimited) { // بدون محدودیت: همه‌ی استراحت‌های کوتاهِ بسته‌شده کاملاً با حقوق‌اند (ناهار و استراحت باز نه)
+    items.filter((b) => !b.lunch && b.endMs !== null).forEach((b) => {
+      const ms = b.endMs - b.startMs;
+      if (ms > 0) paid.set(b, ms);
+    });
+    return paid;
+  }
   if (!(count > 0) || !(minutes > 0)) return paid;
   const shorts = items.filter((b) => !b.lunch && b.endMs !== null).sort((a, b) => a.startMs - b.startMs);
   let remaining = minutes * 60000;
@@ -262,7 +270,7 @@ function paidBreakSplit(items, count, minutes) {
 function computeDay({ record, breaks, settings, now, timezone, shift, calendar, approvedLeaves, segments } = {}) {
   if (!settings || typeof settings !== 'object') throw new TypeError('settings الزامی است.');
   const params = resolveShiftParams(settings, shift);
-  const { workStart, lateGrace, earlyGrace, maxLunch, fixedLunch, overnight, paidCount, paidMinutes } = params;
+  const { workStart, lateGrace, earlyGrace, maxLunch, fixedLunch, overnight, paidCount, paidMinutes, paidUnlimited } = params;
   // این آستانه عمداً سراسری است؛ شیفت فقط مقدار کسر ثابت را تعیین می‌کند.
   // نبودن آن در فراخوانی مستقیم computeDay معادل ۰ است تا سازگاری فراخوانی‌های قدیمی حفظ شود.
   const fixedLunchMinPresence = graceMinutes(settings.fixedLunchMinPresenceMinutes, 'fixedLunchMinPresenceMinutes');
@@ -336,7 +344,7 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
   const emit = () => { result.flags = FLAG_ORDER.filter((f) => flagSet.has(f)); return result; };
 
   result.break = sumItems(read.items);
-  const paidMsOf = paidBreakSplit(read.items, paidCount, paidMinutes); // C1: Map(آیتم ⇒ میلی‌ثانیه‌ی با حقوق)
+  const paidMsOf = paidBreakSplit(read.items, paidCount, paidMinutes, paidUnlimited); // C1: Map(آیتم ⇒ میلی‌ثانیه‌ی با حقوق)
   let paidTotalMs = 0;
   for (const ms of paidMsOf.values()) paidTotalMs += ms;
   result.breakPaid = Math.round(paidTotalMs / 60000);

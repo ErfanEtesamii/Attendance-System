@@ -13,6 +13,7 @@ const pick = (shiftValue, settingValue) => {
 // ⇒ { enabled, count, minutes }
 function policyFor(userId, date, settings = null) {
   const s = settings || settingsRepository.getAll();
+  if (s.paidBreakUnlimited === true) return { enabled: true, unlimited: true, count: 0, minutes: 0 };
   const shift = date ? shiftsRepository.shiftOn(userId, date) : shiftsRepository.findByUserId(userId);
   const count = pick(shift && shift.paidBreakCount, s.paidBreakCount);
   const minutes = pick(shift && shift.paidBreakMinutes, s.paidBreakMinutes);
@@ -34,6 +35,7 @@ function paidInfo(userId, date, breaks, breakRow, settings = null) {
   if (!policy.enabled) return null;
   const index = shortOrdinal(breaks, breakRow);
   if (index === null) return null;
+  if (policy.unlimited) return { unlimited: true, count: null, minutes: null, index, remainingMinutes: null, isPaid: true };
   const prior = breaks.filter((b) => b.break_type === 'short_break' && b.id !== breakRow.id && b.end_time && b.start_time <= breakRow.start_time)
     .reduce((sum, b) => sum + Math.max(0, (Date.parse(b.end_time) - Date.parse(b.start_time)) / 60000), 0);
   const remainingMinutes = Math.max(0, policy.minutes - Math.round(prior));

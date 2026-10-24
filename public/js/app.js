@@ -765,6 +765,13 @@
     if (!paid || !data.openBreak || data.record?.check_out_time) { el.classList.add('hidden'); el.textContent = ''; el.classList.remove('is-over'); return; }
     const fa = (n) => (J ? J.toFaDigits(String(n)) : String(n));
     const from = new Date(data.openBreak.start_time).getTime();
+    if (paid.unlimited) {
+      const t = 'استراحت با حقوق — بدون محدودیت';
+      if (el.textContent !== t) el.textContent = t;
+      el.classList.remove('is-over', 'hidden');
+      state.breakNoteTick = null;
+      return;
+    }
     const paint = (diffMs) => {
       const remaining = paid.remainingMinutes == null ? paid.minutes : paid.remainingMinutes;
       const over = paid.isPaid && diffMs > remaining * 60000;

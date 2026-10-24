@@ -27,6 +27,17 @@ const pick = (d) => [d.break, d.breakPaid, d.breakUnpaid, d.effective];
 const PAID = { paidBreakCount: 3, paidBreakMinutes: 45 };
 
 describe('استراحت با حقوق — موتور computeDay (C1)', () => {
+  test('paidBreakUnlimited ⇒ همه‌ی استراحت‌های کوتاه (حتی بیش از ۱۰ بار و بیش از استخر) با حقوق؛ ناهار بدون حقوق', () => {
+    const shorts = [];
+    for (let h = 9; h < 15; h += 1) { shorts.push(sb(`${String(h).padStart(2, '0')}:00`, `${String(h).padStart(2, '0')}:20`)); shorts.push(sb(`${String(h).padStart(2, '0')}:30`, `${String(h).padStart(2, '0')}:50`)); }
+    const d = run(shorts, { paidBreakUnlimited: true, paidBreakCount: 0, paidBreakMinutes: 0 });
+    assert.equal(d.breakUnpaid, 0);
+    assert.equal(d.breakPaid, 240);
+    assert.equal(d.effective, 480);
+    const withLunch = run([...shorts, lunch('13:00', '13:30')], { paidBreakUnlimited: true });
+    assert.equal(withLunch.breakUnpaid, 30);
+  });
+
   test('۳ استراحت ۱۵دقیقه‌ای ⇒ breakUnpaid=۰ و effective کم نمی‌شود (۴۸۰)', () => {
     const d = run([sb('10:00', '10:15'), sb('12:00', '12:15'), sb('14:00', '14:15')], PAID);
     assert.deepEqual(pick(d), [45, 45, 0, 480]);
