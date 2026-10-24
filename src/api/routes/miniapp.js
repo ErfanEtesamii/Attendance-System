@@ -29,11 +29,11 @@ const leaveRepository = require('../../repositories/leaveRepository');
 const leaveTypesRepository = require('../../repositories/leaveTypesRepository');
 const leaveService = require('../../services/leaveService');
 const missionService = require('../../services/missionService');
-const { getCalendarDay } = require('../../engine/calendarService');
+const { getCalendarDay, weekStartOf } = require('../../engine/calendarService');
 const attachmentService = require('../../services/attachmentService');
 const { sendAttachment } = require('../../utils/attachmentResponse');
 const leaveBalanceService = require('../../services/leaveBalanceService');
-const { jalaliYearOfDateString } = require('../../utils/jalali');
+const { jalaliYearOfDateString, jalaliPartsOfDateString, jalaliMonthRangeOf } = require('../../utils/jalali');
 const auditRepository = require('../../repositories/auditRepository');
 const settingsRepository = require('../../repositories/settingsRepository');
 const monthClosuresRepository = require('../../repositories/monthClosuresRepository');
@@ -390,8 +390,14 @@ router.post('/miniapp/remote/break/end', (req, res) => {
 
 router.get('/miniapp/history', (req, res) => {
   const days = Math.min(parseInt(req.query.days, 10) || 30, 90);
-  const from = dateDaysAgo(days);
-  const to = todayDateString();
+  // from/to (اختیاری، YYYY-MM-DD): برای «هفته/ماه جاری» در گزارش؛ بازه حداکثر ۹۳ روز و to بعد از امروز نمی‌رود. وگرنه رفتار قبلی (days روز اخیر)
+  const isoRe = /^\d{4}-\d{2}-\d{2}$/;
+  const today = todayDateString();
+  const hasRange = isoRe.test(String(req.query.from || '')) && isoRe.test(String(req.query.to || ''));
+  const toQ = hasRange ? (req.query.to > today ? today : req.query.to) : null;
+  const rangeOk = hasRange && req.query.from <= toQ && (Date.parse(toQ) - Date.parse(req.query.from)) / 86400000 <= 93;
+  const from = rangeOk ? req.query.from : dateDaysAgo(days);
+  const to = rangeOk ? toQ : today;
   const records = attendanceRepository.listByUserAndRange(req.miniAppUser.id, from, to);
   const enriched = records.map((r) => ({ ...r, summary: dayService.summarizeRecord(r) }));
   res.json(enriched);
@@ -401,8 +407,15 @@ router.get('/miniapp/history', (req, res) => {
 
 router.get('/miniapp/report', (req, res) => {
   const isMonth = req.query.period === 'month';
-  const from = dateDaysAgo(isMonth ? 30 : 7);
   const to = todayDateString();
+  // ماه جاری: از اول ماه شمسی تا امروز؛ هفته جاری: از روز شروع هفته (weekStartDay، پیش‌فرض شنبه) تا امروز
+  let from;
+  if (isMonth) {
+    const parts = jalaliPartsOfDateString(to);
+    from = parts ? jalaliMonthRangeOf(parts.jy, parts.jm).from : dateDaysAgo(30);
+  } else {
+    from = weekStartOf(to, settingsRepository.getAll().weekStartDay);
+  }
   const records = attendanceRepository.listByUserAndRange(req.miniAppUser.id, from, to);
   const summary = dayService.summarizeRange(records);
   res.json({ period: isMonth ? 'month' : 'week', from, to, ...summary });

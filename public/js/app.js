@@ -1174,14 +1174,12 @@
     const card = $('#report-card');
     renderLoading(card, 'table');
     try {
-      const days = period === 'month' ? 30 : 7;
-      const [r, historyResult] = await Promise.all([
-        api('/report?period=' + period),
-        api('/history?days=' + days),
-      ]);
+      // بازه را سرور می‌گوید: ماه جاری = از اول ماه شمسی، هفته جاری = از روز شروع هفته؛ هر دو تا امروز
+      const r = await api('/report?period=' + period);
+      const historyResult = await api('/history?from=' + encodeURIComponent(r.from) + '&to=' + encodeURIComponent(r.to));
       const records = Array.isArray(historyResult) ? historyResult : [];
       const chronological = records.slice().sort((a, b) => String(a.record_date).localeCompare(String(b.record_date)));
-      const recent = chronological.slice(-days);
+      const recent = chronological;
       const maxMinutes = Math.max(480, ...recent.map((x) => Number(x.summary?.effectiveMinutes) || 0));
       const barGap = recent.length > 14 ? 2 : 4;
       const barWidth = Math.max(3, (296 - barGap * Math.max(0, recent.length - 1)) / Math.max(recent.length, 1));
