@@ -95,6 +95,7 @@
       <div class="section-title">استراحت‌ها (${fmt.num(r.breaks.length)}) · مجموع ${fmt.min(r.breakMinutes)}</div>
       ${r.breaks.length ? `<div class="table-wrap"><table><thead><tr><th>نوع</th><th>شروع</th><th>پایان</th>${admin ? '<th></th>' : ''}</tr></thead><tbody>${r.breaks.map(breakRow).join('')}</tbody></table></div>` : `<div class="muted">استراحتی ثبت نشده است.</div>`}
       ${admin ? `<form class="form-grid add-break-form" id="add-break">
+        <label class="field"><span>نوع استراحت</span><select name="breakType"><option value="lunch" selected>ناهار</option><option value="short_break">نماز / استراحت کوتاه</option></select></label>
         <label class="field"><span>شروع استراحت جدید</span><input type="datetime-local" name="startTime" required /></label>
         <label class="field"><span>پایان</span><input type="datetime-local" name="endTime" /></label>
         <button class="btn ghost small add-break-submit" type="submit">${icon('plus')} افزودن استراحت</button></form>` : ''}
@@ -149,6 +150,7 @@
           const reason = await AP.askReason({ title: 'افزودن استراحت', confirmText: 'افزودن' });
           if (reason === null) return;
           const ok = await AP.attempt(() => AP.api(`/admin/attendance-records/${id}/breaks`, { method: 'POST', body: {
+            breakType: f.breakType === 'short_break' ? 'short_break' : 'lunch',
             startTime: fmt.fromLocalInput(f.startTime), endTime: fmt.fromLocalInput(f.endTime), reason } }), 'استراحت اضافه شد.');
           if (ok) reopen();
         });
