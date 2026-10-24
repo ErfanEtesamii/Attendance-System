@@ -256,6 +256,9 @@ body {
 .time-stat-label .icon-chip { width: 26px; height: 26px; border-radius: 9px; }
 .time-stat-label .icon-chip svg { width: 14px; height: 14px; }
 .time-stat-value { font-weight: 800; font-size: var(--fs-sm); }
+.time-stat .row-value { text-align: center; }
+.break-split-line { display: grid; justify-items: center; line-height: 1.5; font-size: var(--fs-sm); }
+.break-split-label { color: var(--hint); font-size: var(--fs-xs); font-weight: 500; }
 .segment-count { grid-column: 1 / -1; justify-self: stretch; padding: 7px 10px; border-top: 1px solid var(--border); background: var(--brand-soft); color: var(--brand); font-size: var(--fs-xs); font-weight: 700; }
 /* برچسب متنیِ «اختیاری» در گزارش روزانه (A2) */
 .dr-tag { align-self: flex-start; display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: var(--fs-xs); background: var(--card-bg-2); color: var(--hint); border: 1px solid var(--border); }

@@ -190,6 +190,36 @@
     return data;
   }
 
+  // «۱ ساعت و ۱۰ دقیقه» / «۲۵ دقیقه» (بدون «۰ ساعت»)
+  function fmtDurationCompact(totalMinutes) {
+    const abs = Math.max(0, Math.round(totalMinutes));
+    const h = Math.floor(abs / 60);
+    const m = abs % 60;
+    const fa = (n) => n.toLocaleString('fa-IR');
+    if (h > 0 && m > 0) return `${fa(h)} ساعت و ${fa(m)} دقیقه`;
+    if (h > 0) return `${fa(h)} ساعت`;
+    return `${fa(m)} دقیقه`;
+  }
+
+  // سلول «استراحت» کارت امروز: دو خط جدا (کوتاه / ناهار)؛ خطِ بدون مقدار نمایش داده نمی‌شود؛ هیچ‌کدام ⇒ «—». فقط با textContent
+  function renderBreakBreakdown(el, totals) {
+    if (!el) return;
+    el.textContent = '';
+    const rows = [['کوتاه', totals.short], ['ناهار', totals.lunch]].filter(([, v]) => v > 0);
+    if (!rows.length) { el.textContent = '—'; return; }
+    rows.forEach(([label, minutes]) => {
+      const line = document.createElement('span');
+      line.className = 'break-split-line';
+      const name = document.createElement('span');
+      name.className = 'break-split-label';
+      name.textContent = label;
+      const val = document.createElement('span');
+      val.textContent = fmtDurationCompact(minutes);
+      line.append(name, val);
+      el.appendChild(line);
+    });
+  }
+
   function fmtDuration(totalMinutes) {
     if (totalMinutes == null) return '—';
     const sign = totalMinutes < 0 ? '-' : '';
@@ -898,11 +928,14 @@
       segmentBadge.classList.toggle('hidden', segments.length <= 1);
     }
 
-    const totalBreak = (data.breaks || []).reduce((sum, b) => {
-      if (!b.end_time) return sum;
-      return sum + (new Date(b.end_time) - new Date(b.start_time)) / 60000;
-    }, 0);
-    $('#ti-breaks').textContent = totalBreak > 0 ? fmtDuration(totalBreak) : '—';
+    // جمع استراحت‌های بسته‌شده به تفکیک نوع: ناهار (lunch) و کوتاه (short_break؛ شامل نماز)
+    const breakTotals = { short: 0, lunch: 0 };
+    (data.breaks || []).forEach((b) => {
+      if (!b.end_time) return;
+      const min = Math.max(0, (new Date(b.end_time) - new Date(b.start_time)) / 60000);
+      breakTotals[b.break_type === 'lunch' ? 'lunch' : 'short'] += min;
+    });
+    renderBreakBreakdown($('#ti-breaks'), breakTotals);
 
     const TARGET_MIN = 8 * 60;
     const timerEl = $('#timer');
