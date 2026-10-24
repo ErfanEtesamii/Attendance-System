@@ -70,9 +70,18 @@ function start(user, { ip = null, now = new Date(), source = 'miniapp' } = {}) {
   }
 }
 
+// پیام «دورکاری جدید برای بررسی» برای سرپرست/ادمین؛ بعد از commit، fire-and-forget و بدون شکستن جریان اصلی (require تنبل: چرخه‌ی ماژول پیش نیاید).
+function notifySubmitted(sessionId) {
+  try {
+    require('./notificationEvents').remoteWorkSubmitted(sessionId).catch(() => {});
+  } catch (err) {
+    console.error('[remoteWork] اعلان ثبت دورکاری ناموفق (نادیده گرفته شد):', err && err.message);
+  }
+}
+
 function end(user, { ip = null, now = new Date(), source = 'miniapp' } = {}) {
   const nowIso = now.toISOString();
-  return getDb().transaction(() => {
+  const result = getDb().transaction(() => {
     const open = repo.findOpenSession(user.id);
     if (!open) return ERR.NOT_STARTED();
     const endAt = isoMax(nowIso, open.start_at);
@@ -86,6 +95,8 @@ function end(user, { ip = null, now = new Date(), source = 'miniapp' } = {}) {
     auditRepository.logEvent({ userId: user.id, action: 'remote_work_end', ipAddress: ip, details: { source, sessionId: open.id, workDate: open.work_date, autoClosedBreak: Boolean(closedBreak) } });
     return { ok: true, session: publicSession(session, repo.listBreaks(open.id)), autoClosedBreak: closedBreak };
   })();
+  if (result.ok) notifySubmitted(result.session.id); // پایان ثبت شد ⇒ پیام برای سرپرست (بعد از commit)
+  return result;
 }
 
 function breakStart(user, { ip = null, now = new Date(), source = 'miniapp' } = {}) {
@@ -132,6 +143,7 @@ function autoCloseStale({ now = new Date() } = {}) {
       auditRepository.logEvent({ userId: s.user_id, action: 'remote_work_auto_closed', details: { sessionId: s.id, workDate: s.work_date, endAt, maxOpenHours: maxHours, autoClosedBreak: Boolean(openBreak) } });
     })();
     closed += 1;
+    notifySubmitted(s.id); // بستن خودکار هم برای بررسی دقیق‌تر به سرپرست خبر می‌دهد (با هشدار «بسته‌شده‌ی خودکار»)
   }
   return closed;
 }

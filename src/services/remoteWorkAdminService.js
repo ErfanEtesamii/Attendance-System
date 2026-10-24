@@ -429,11 +429,19 @@ function approveInner(actor, sessionId, input = {}, { ip = null, now = new Date(
 
 // تابع عمومی تأیید: خطای rollback داخلی (مثلاً ONSITE_OVERLAP بعد از نوشتن) ⇒ نتیجه‌ی fail اصلی؛ تراکنش قبلاً کامل برگشته است.
 // ردِ ناشی از keep_onsite بعد از commit اعلان می‌گیرد.
+// options.notify = false ⇒ پیام تأیید فرستاده نمی‌شود (تأیید دسته‌ای خودش «یک» پیام تجمیعی برای هر کارمند می‌فرستد).
 function approve(...args) {
   let r;
   try { r = approveInner(...args); } catch (err) { if (err && err.fail) return err.fail; throw err; }
   if (r && r._rejected) { notifyRejected(r._rejected, args[2] && args[2].reviewNote, args[0]); delete r._rejected; }
+  if (r && r.ok && !r.alreadyApproved && r.outcome !== 'rejected' && !(args[3] && args[3].notify === false)) notifyApproved(r.session.id, args[2] && args[2].reviewNote, args[0]);
   return r;
+}
+
+function notifyApproved(sessionId, note, actor) {
+  try {
+    require('./notificationEvents').remoteWorkApproved(sessionId, { note, actor }).catch(() => {}); // هرگز جریان اصلی را نمی‌شکند
+  } catch (err) { console.error('[remoteWorkAdmin] اعلان تأیید ناموفق (نادیده گرفته شد):', err && err.message); }
 }
 
 function notifyRejected(session, note, actor) {
@@ -509,9 +517,23 @@ function approveBatch(actor, input = {}, { ip = null, now = new Date() } = {}) {
   const { rows, total } = remoteRepo.listQueue({ userIds: scope.userIds, status: 'pending', from: weekStart, to: weekEnd, userId, limit: BATCH_MAX, offset: 0 });
   let approved = 0;
   const skipped = [];
+  const approvedByUser = new Map(); // userId → [sessionId]؛ برای «یک» پیام تجمیعی به هر کارمند
   for (const r of rows) {
-    const res = approve(actor, r.id, { reviewNote: noteR.note }, { ip, now });
-    if (res.ok) { if (!res.alreadyApproved) approved += 1; } else skipped.push({ id: r.id, code: res.code, error: res.error });
+    const res = approve(actor, r.id, { reviewNote: noteR.note }, { ip, now, notify: false });
+    if (res.ok) {
+      if (!res.alreadyApproved) {
+        approved += 1;
+        if (res.outcome !== 'rejected') {
+          if (!approvedByUser.has(r.user_id)) approvedByUser.set(r.user_id, []);
+          approvedByUser.get(r.user_id).push(r.id);
+        }
+      }
+    } else skipped.push({ id: r.id, code: res.code, error: res.error });
+  }
+  for (const [uid, ids] of approvedByUser) {
+    try {
+      require('./notificationEvents').remoteWorkBatchApproved(uid, ids, { actor, note: noteR.note }).catch(() => {});
+    } catch (err) { console.error('[remoteWorkAdmin] اعلان تأیید دسته‌ای ناموفق (نادیده گرفته شد):', err && err.message); }
   }
   auditRepository.logEvent({
     userId: actor.id, action: 'remote_work_batch_approve', ipAddress: ip,

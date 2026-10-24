@@ -14,6 +14,9 @@
 //   urgentTaskAssigned({...})        تسک فوریِ تازه (E1)             ⇒ خودِ کارمند (پنل + تلگرام، با دکمه‌ی باز کردن Mini App)
 //   selfUrgentTaskAdded(employee, task)  تسک فوریِ خودِ کارمند (A3، فاز ۱۵) ⇒ همان گیرنده‌های weeklyPlanChanged (سرپرست یا ادمین‌ها؛ فقط پنل)، نه خودِ کارمند
 //   urgentTaskReminder({...})        یادآوریِ نزدیک‌شدن مهلتِ تسک فوری (E1) ⇒ خودِ کارمند (پنل + تلگرام)
+//   remoteWorkSubmitted(sessionId)   ثبت پایان دورکاری (بات/Mini App/بستن خودکار) ⇒ تأییدکننده‌ها (مدیر مستقیم‌ِ فعال؛ وگرنه ادمین‌ها) (پنل + تلگرام با دکمه‌ی «صف دورکاری»)
+//   remoteWorkApproved(sessionId, {note, actor})  تأیید دورکاری توسط سرپرست/ادمین ⇒ خودِ کارمند (پنل + تلگرام)
+//   remoteWorkBatchApproved(userId, sessionIds, {actor})  تأیید دسته‌ای ⇒ «یک» پیام تجمیعی برای هر کارمند (نه یک پیام برای هر نشست)
 //   remoteWorkRejected(session, {note, actor})  رد دورکاری توسط سرپرست/ادمین (R5-۵)  ⇒ خودِ کارمند (پنل + تلگرام)
 //   weeklyPlanEditedByManager(employee, actor, plan, summary)  اعلان «تجمیعی» ویرایش برنامه‌ی هفتگی توسط مدیر (A2-۵؛ فقط با دکمه‌ی «اطلاع به کارمند») ⇒ خودِ کارمند (پنل + تلگرام)
 //
@@ -24,6 +27,7 @@
 //   • dedupeKey: فراخوانی دوباره‌ی همان رویداد اعلان تکراری نمی‌سازد (شناسه‌ی رویداد + در تصمیم‌ها وضعیت و updated_at).
 
 const usersRepository = require('../repositories/usersRepository');
+const remoteRepo = require('../repositories/remoteWorkRepository');
 const { notify } = require('./notificationService');
 const { sendMessage } = require('../bot/notifier');
 const panelLinks = require('../bot/panelLinks');
@@ -530,17 +534,158 @@ function checkinPermissionDecided(permission, { actor = null, note = null } = {}
   });
 }
 
+// ---------- دورکاری: پیام‌های «ثبت برای بررسی» (سرپرست) و «تأیید / رد» (کارمند) ----------
+// قالب مشترک: خط جداکننده، یک ایموجی ثابت برای هر سطر، ارقام فارسی. ساعت‌ها به وقت شرکت (TIMEZONE تنظیمات) نمایش داده می‌شوند.
+const REMOTE_LINE = '━━━━━━━━━━━━━━';
+const FA_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
+const faNum = (v) => String(v).replace(/\d/g, (d) => FA_DIGITS[Number(d)]);
+const faTime = (iso) => faNum(require('../utils/time').formatTime(iso));
+const faDate = (iso) => faNum(isoDateToJalaliString(iso));
+function faDuration(minutes) {
+  const m = Math.max(0, Math.round(minutes));
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  if (!h) return `${faNum(r)} دقیقه`;
+  return r ? `${faNum(h)} ساعت و ${faNum(r)} دقیقه` : `${faNum(h)} ساعت`;
+}
+
+// مدت کل، استراحت و ساعت خالصِ یک نشست (approved = true ⇒ با ساعت اصلاح‌شده‌ی سرپرست)؛ استراحت‌ها به بازه بریده می‌شوند
+function remoteMinutes(session, { approved = false } = {}) {
+  const start = Date.parse((approved && session.approved_start_at) || session.start_at);
+  const end = Date.parse((approved && session.approved_end_at) || session.end_at);
+  const span = Math.max(0, (end - start) / 60000);
+  let brk = 0;
+  for (const b of remoteRepo.listBreaks(session.id)) {
+    const bs = Math.max(Date.parse(b.start_at), start);
+    const be = Math.min(b.end_at ? Date.parse(b.end_at) : end, end);
+    if (be > bs) brk += (be - bs) / 60000;
+  }
+  return { span, brk, net: Math.max(0, span - brk) };
+}
+
+const remoteRange = (session, approved) => `${faTime((approved && session.approved_start_at) || session.start_at)} تا ${faTime((approved && session.approved_end_at) || session.end_at)}`;
+const roleWho = (actor) => (actor && actor.role === 'admin' ? 'ادمین' : 'سرپرست');
+
+/**
+ * پایان یک نشست دورکاری ثبت شد (کارمند خودش، یا job شبانه بسته است) ⇒ پیام «برای بررسی» برای تأییدکننده‌ها.
+ * فقط نشستِ بسته‌ی pending؛ غیر آن بی‌اثر. dedupe روی شناسه‌ی نشست ⇒ دوباره‌خوانی پیام تکراری نمی‌سازد.
+ */
+function remoteWorkSubmitted(sessionId) {
+  return guard('remoteWorkSubmitted', () => {
+    const s = remoteRepo.findSessionFull(sessionId);
+    if (!s || s.status !== 'pending' || !s.end_at) return [];
+    const employee = usersRepository.findById(s.user_id);
+    if (!employee) return [];
+    const m = remoteMinutes(s);
+    const lines = [
+      REMOTE_LINE,
+      `👤 ${sanitizeText(employee.full_name, 100)}`,
+      `📅 ${faDate(s.work_date)}`,
+      `🕘 ${remoteRange(s, false)}`,
+      `⏱ مدت: ${faDuration(m.span)}   ☕ استراحت: ${faDuration(m.brk)}`,
+      `✅ ساعت خالص: ${faDuration(m.net)}`,
+      `📲 ثبت از: ${s.source === 'bot' ? 'بات تلگرام' : 'Mini App'}`,
+    ];
+    if (s.auto_closed) lines.push('⚠️ این ثبت را سیستم خودکار بسته است؛ ساعت پایان را با دقت بررسی کنید.');
+    lines.push(REMOTE_LINE, '⏳ تا تأیید شما در حضور و غیاب و حقوق حساب نمی‌شود.');
+    const button = panelLinks.panelWebAppButton({ view: 'remote', text: '🖥 بررسی در صف دورکاری' });
+    return handlersOf(employee).map((h) => send('remoteWorkSubmitted', h.id, {
+      type: 'remote_work_submitted',
+      title: '🏠 دورکاری جدید برای بررسی',
+      body: lines.join('\n'),
+      link: '#/remote',
+      data: { sessionId: s.id, userId: s.user_id, workDate: s.work_date, status: 'pending', autoClosed: s.auto_closed === 1 },
+      dedupeKey: `remote_work_submitted:${s.id}`,
+      telegram: true,
+      telegramButton: button || undefined,
+    }));
+  });
+}
+
+/** تأیید یک نشست دورکاری ⇒ پیام برای کارمند. session = شناسه؛ ردیف از DB خوانده می‌شود (فقط status = approved). */
+function remoteWorkApproved(sessionId, { note = null, actor = null } = {}) {
+  return guard('remoteWorkApproved', () => {
+    const s = remoteRepo.findSessionFull(sessionId);
+    if (!s || s.status !== 'approved') return [];
+    const who = roleWho(actor);
+    const m = remoteMinutes(s, { approved: true });
+    const adjusted = Boolean(s.approved_start_at || s.approved_end_at);
+    const lines = [REMOTE_LINE, `📅 ${faDate(s.work_date)}`, `🕘 ${remoteRange(s, true)}`];
+    if (adjusted) lines.push(`🛠 ساعت توسط ${who} اصلاح شد (ثبت شما: ${remoteRange(s, false)})`);
+    lines.push(`✅ ساعت لحاظ‌شده: ${faDuration(m.net)}`);
+    if (actor && actor.full_name) lines.push(`👤 تأییدکننده: ${sanitizeText(actor.full_name, 100)}`);
+    if (note) lines.push(`💬 یادداشت ${who}: ${sanitizeText(note, 300)}`);
+    lines.push(REMOTE_LINE, 'از همین حالا این ساعت‌ها در حضور و غیاب و گزارش‌های شما حساب می‌شود. ممنون از زحمتتان 🙏');
+    return [
+      send('remoteWorkApproved', s.user_id, {
+        type: 'remote_work_approved',
+        title: '✅ دورکاری شما تأیید شد',
+        body: lines.join('\n'),
+        data: { sessionId: s.id, workDate: s.work_date, status: 'approved' },
+        dedupeKey: `remote_work_approved:${s.id}`,
+        telegram: true,
+      }),
+    ];
+  });
+}
+
+/**
+ * تأیید دسته‌ای ⇒ برای هر کارمند «یک» پیام تجمیعی (نه یک پیام برای هر نشست). یک نشست ⇒ همان پیام تکی.
+ * فقط نشست‌های approved و متعلق به همان کاربر شمرده می‌شوند.
+ */
+function remoteWorkBatchApproved(userId, sessionIds, { actor = null, note = null } = {}) {
+  let rows;
+  try { // خواندن DB هم داخل محافظ: این تابع هرگز استثنا نمی‌دهد و همیشه Promise برمی‌گرداند
+    rows = (Array.isArray(sessionIds) ? sessionIds : []).map((id) => remoteRepo.findSessionFull(id)).filter((s) => s && s.status === 'approved' && s.user_id === userId);
+  } catch (err) {
+    logError('remoteWorkBatchApproved', err);
+    return Promise.resolve([]);
+  }
+  if (rows.length === 1) return remoteWorkApproved(rows[0].id, { actor, note });
+  return guard('remoteWorkBatchApproved', () => {
+    if (rows.length === 0) return [];
+    rows.sort((a, b) => (a.work_date + a.start_at < b.work_date + b.start_at ? -1 : 1));
+    const who = roleWho(actor);
+    const MAX = 10;
+    let total = 0;
+    const items = rows.map((s) => {
+      const net = remoteMinutes(s, { approved: true }).net;
+      total += net;
+      return `• ${faDate(s.work_date)} | ${remoteRange(s, true)} | ${faDuration(net)}`;
+    });
+    const lines = [REMOTE_LINE, ...items.slice(0, MAX)];
+    if (items.length > MAX) lines.push(`و ${faNum(items.length - MAX)} مورد دیگر`);
+    lines.push(REMOTE_LINE, `✅ مجموع ساعت لحاظ‌شده: ${faDuration(total)}`);
+    if (actor && actor.full_name) lines.push(`👤 تأییدکننده: ${sanitizeText(actor.full_name, 100)}`);
+    if (note) lines.push(`💬 یادداشت ${who}: ${sanitizeText(note, 300)}`);
+    lines.push('از همین حالا این ساعت‌ها در حضور و غیاب و گزارش‌های شما حساب می‌شود. ممنون از زحمتتان 🙏');
+    const ids = rows.map((s) => s.id);
+    return [
+      send('remoteWorkBatchApproved', userId, {
+        type: 'remote_work_approved',
+        title: `✅ ${faNum(rows.length)} دورکاری شما تأیید شد`,
+        body: lines.join('\n'),
+        data: { sessionIds: ids.slice(0, 50), count: ids.length, status: 'approved' },
+        dedupeKey: `remote_work_batch_approved:${userId}:${crypto.createHash('sha1').update(ids.join(',')).digest('hex').slice(0, 16)}`,
+        telegram: true,
+      }),
+    ];
+  });
+}
+
 /** رد یک نشست دورکاری (R5-۵). session = ردیف remote_work_sessions «پس از رد». غیر rejected ⇒ بی‌اثر. */
 function remoteWorkRejected(session, { note = null, actor = null } = {}) {
   return guard('remoteWorkRejected', () => {
     if (!session || session.status !== 'rejected') return [];
-    const who = actor && actor.role === 'admin' ? 'ادمین' : 'سرپرست';
-    const lines = [`دورکاری روز ${isoDateToJalaliString(session.work_date)} رد شد و در حضور و غیاب و حقوق حساب نمی‌شود.`];
-    if (note) lines.push(`دلیل ${who}: ${sanitizeText(note, 300)}`);
+    const who = roleWho(actor);
+    const lines = [REMOTE_LINE, `📅 ${faDate(session.work_date)}`];
+    if (session.start_at && session.end_at) lines.push(`🕘 ${remoteRange(session, false)}`);
+    if (note) lines.push(`💬 دلیل ${who}: ${sanitizeText(note, 300)}`);
+    lines.push(REMOTE_LINE, `این ساعت‌ها در حضور و غیاب و حقوق حساب نمی‌شود. اگر فکر می‌کنید اشتباهی شده، با ${who} صحبت کنید.`);
     return [
       send('remoteWorkRejected', session.user_id, {
         type: 'remote_work_rejected',
-        title: 'دورکاری شما رد شد',
+        title: '❌ دورکاری شما رد شد',
         body: lines.join('\n'),
         data: { sessionId: session.id, workDate: session.work_date, status: 'rejected' },
         dedupeKey: `remote_work_rejected:${session.id}`,
@@ -550,4 +695,4 @@ function remoteWorkRejected(session, { note = null, actor = null } = {}) {
   });
 }
 
-module.exports = { remoteWorkRejected, urgentTaskAssigned, selfUrgentTaskAdded, urgentTaskReminder, weeklyPlanEditedByManager, checkinPermissionRequested, checkinPermissionDecided, reportCommented, weeklyPlanChanged, leaveRequested, leaveStepAdvanced, leaveDecided, disputeOpened, disputeResolved, disputeResolvedTelegram, disputeAdminMessage, disputeUserMessage, systemAlert, suspiciousCreated };
+module.exports = { remoteWorkSubmitted, remoteWorkApproved, remoteWorkBatchApproved, remoteWorkRejected, urgentTaskAssigned, selfUrgentTaskAdded, urgentTaskReminder, weeklyPlanEditedByManager, checkinPermissionRequested, checkinPermissionDecided, reportCommented, weeklyPlanChanged, leaveRequested, leaveStepAdvanced, leaveDecided, disputeOpened, disputeResolved, disputeResolvedTelegram, disputeAdminMessage, disputeUserMessage, systemAlert, suspiciousCreated };

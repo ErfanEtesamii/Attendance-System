@@ -115,7 +115,7 @@ function listBreaksForSessions(sessionIds) {
 
 // ---------- R5-۴: تأیید (نوشتن؛ فقط SQL — قواعد، تراکنش و audit در remoteWorkAdminService) ----------
 // ستون‌های کامل یک نشست برای تصمیم (شامل ip_address که فقط به سرپرست/ادمین می‌رسد و در رکورد رسمی به‌عنوان IP ورود/خروج می‌نشیند)
-const FULL_COLS = 'id, user_id, work_date, start_at, end_at, status, ip_address, auto_closed, reviewed_by, reviewed_at, review_note, approved_start_at, approved_end_at, attendance_record_id';
+const FULL_COLS = 'id, user_id, work_date, start_at, end_at, status, source, ip_address, auto_closed, reviewed_by, reviewed_at, review_note, approved_start_at, approved_end_at, attendance_record_id';
 
 function findSessionFull(id) {
   return getDb().prepare(`SELECT ${FULL_COLS} FROM remote_work_sessions WHERE id = ?`).get(id) || null;
