@@ -1758,3 +1758,27 @@ body[data-density="compact"] tbody td { padding-block: 7px; }
 .inbox-item { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: 8px 10px; border-radius: 12px; background: var(--card); border: 1px solid var(--border); font-size: var(--fs-sm); }
 .inbox-name { min-width: 0; overflow-wrap: anywhere; }
 .inbox-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+/* ---------- «مرخصی و مأموریت» (صفحه‌ی ادغام‌شده): فقط ظاهر، بدون تغییر رفتار ---------- */
+#q-filters, #q-bulk {
+  padding: var(--space-3) var(--space-4);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+#q-bulk { background: var(--brand-soft); border-color: var(--brand); }
+.leave-item {
+  position: relative;
+  border-inline-start: 4px solid var(--border);
+  box-shadow: 0 1px 2px var(--ov-08);
+  transition: background .15s, box-shadow .15s, border-color .15s;
+}
+.leave-item:hover { background: var(--card-2); box-shadow: 0 4px 14px var(--ov-08); }
+.leave-item.st-pending { border-inline-start-color: var(--yellow); }
+.leave-item.st-approved { border-inline-start-color: var(--green); }
+.leave-item.st-rejected { border-inline-start-color: var(--red); }
+.leave-item .title a { color: var(--text); text-decoration: none; }
+.leave-item .title a:hover { color: var(--brand); }
+.leave-item .text { padding: 6px var(--space-3); background: var(--card-2); border-radius: var(--r-md); }
+.leave-item .row-actions { align-self: center; }
+@media (prefers-reduced-motion: reduce) { .leave-item { transition: none; } }

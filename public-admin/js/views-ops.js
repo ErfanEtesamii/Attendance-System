@@ -465,7 +465,7 @@
       ? `<button class="btn success small" data-act="approve" data-id="${esc(it.id)}">${icon('check')} تأیید</button><button class="btn danger small" data-act="reject" data-id="${esc(it.id)}">${icon('x')} رد</button>` : '')
       + (AP.can('leave.edit') ? `<button class="btn ghost small" data-edit="${esc(it.id)}">${icon('edit')} ویرایش</button>` : '');
     return `
-      <div class="item">
+      <div class="item leave-item st-${esc(it.status)}">
         ${check}
         ${AP.avatar(emp ? emp.fullName : '?', '')}
         <div class="grow">
