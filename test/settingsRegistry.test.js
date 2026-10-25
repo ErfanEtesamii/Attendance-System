@@ -30,11 +30,12 @@ describe('رجیستری تنظیمات (S3-1a)', () => {
     assert.equal(registry.getDef('rateLimitRetentionDays').dbKey, 'rate_limit_retention_days');
     registry.REGISTRY.forEach((d) => assert.ok(d.description && registry.GROUP_LABELS[d.group], d.key));
     const actualSettings = settings.getAll();
-    assert.deepEqual({ maxReEntriesPerDay: actualSettings.maxReEntriesPerDay, paidBreakCount: actualSettings.paidBreakCount, paidBreakMinutes: actualSettings.paidBreakMinutes, paidBreakCountUnlimited: actualSettings.paidBreakCountUnlimited, remoteWorkBotEnabled: actualSettings.remoteWorkBotEnabled, remoteWorkBotBlockOnsiteToday: actualSettings.remoteWorkBotBlockOnsiteToday }, { maxReEntriesPerDay: 1, paidBreakCount: 3, paidBreakMinutes: 45, paidBreakCountUnlimited: false, remoteWorkBotEnabled: true, remoteWorkBotBlockOnsiteToday: true });
+    assert.deepEqual({ maxReEntriesPerDay: actualSettings.maxReEntriesPerDay, paidBreakCount: actualSettings.paidBreakCount, paidBreakMinutes: actualSettings.paidBreakMinutes, paidBreakCountUnlimited: actualSettings.paidBreakCountUnlimited, remoteWorkBotEnabled: actualSettings.remoteWorkBotEnabled, remoteWorkBotBlockOnsiteToday: actualSettings.remoteWorkBotBlockOnsiteToday, remoteWorkAllowAfterOnsiteCheckout: actualSettings.remoteWorkAllowAfterOnsiteCheckout }, { maxReEntriesPerDay: 1, paidBreakCount: 3, paidBreakMinutes: 45, paidBreakCountUnlimited: false, remoteWorkBotEnabled: true, remoteWorkBotBlockOnsiteToday: true, remoteWorkAllowAfterOnsiteCheckout: true });
     delete actualSettings.maxReEntriesPerDay;
     delete actualSettings.paidBreakCountUnlimited;
     delete actualSettings.remoteWorkBotEnabled;
     delete actualSettings.remoteWorkBotBlockOnsiteToday;
+    delete actualSettings.remoteWorkAllowAfterOnsiteCheckout;
     actualSettings.paidBreakCount = 0;
     actualSettings.paidBreakMinutes = 0;
     assert.deepEqual(actualSettings, {

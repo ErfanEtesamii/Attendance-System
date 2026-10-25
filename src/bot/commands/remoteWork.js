@@ -18,7 +18,7 @@ function buildView(state, access, now = new Date()) {
   const open = state.openSession;
   if (!open && !access.ok) {
     const rows = [];
-    if ((access.code === 'ONSITE_TODAY' || access.code === 'MISSION_TODAY') && panelLinks.canUseWebApp(panelLinks.miniAppLink())) {
+    if ((access.code === 'ONSITE_TODAY' || access.code === 'ONSITE_OPEN' || access.code === 'MISSION_TODAY') && panelLinks.canUseWebApp(panelLinks.miniAppLink())) {
       rows.push([{ text: '🕒 ثبت تردد', web_app: { url: panelLinks.miniAppLink() } }, button('📊 وضعیت من', 'mn:status')]);
     }
     rows.push([button('🏠 منوی اصلی', 'rw:m')]);
