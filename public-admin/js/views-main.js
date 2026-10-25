@@ -320,7 +320,7 @@
           const tile = (cls, label, n) => `<div class="emp-stat ${cls}"><span class="emp-stat-n">${fmt.num(n)}</span><span class="emp-stat-l">${label}</span></div>`;
           $('#emp-stats', page).innerHTML = tile('', 'کل کارمندان', users.length) + tile('is-ok', 'فعال', active.length) + tile('is-in', 'داخل شرکت', cntBy('checked_in')) + tile('is-out', 'خارج‌شده', cntBy('checked_out')) + tile('is-abs', 'غایب / نیامده', cntBy('not_checked_in'));
           draw();
-          $('.filters input, .filters select', page).forEach((el) => el.addEventListener('input', draw));
+          $$('.filters input, .filters select', page).forEach((el) => el.addEventListener('input', draw));
           body.addEventListener('click', (e) => { const tr = e.target.closest('tr[data-id]'); if (tr) AP.go('profile', tr.dataset.id); });
           const add = $('#add-emp', page);
           if (add) add.addEventListener('click', () => {

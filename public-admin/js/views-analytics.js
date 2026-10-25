@@ -82,7 +82,7 @@
       const legend = [0, 1, 2, 3, 4, 5].map((l) => `<span class="heat-cell heat-key" data-level="${l}"></span>`).join('');
       return `<figure class="chart-fig heat-fig"><figcaption>نقشه حرارتی ساعت ورود <small class="heat-sub">۳۰ روز اخیر</small></figcaption>
         <div class="heat-summary"><span class="heat-pill">شلوغ‌ترین زمان: <b>${NAMES[peak.wd]}، ${hh(peak.h)} تا ${hh(peak.h + 1)}</b></span><span class="heat-pill">${fa(peak.c)} ورود در همان ساعت</span><span class="heat-pill">مجموع: ${fa(total)} ورود</span></div>
-        <div class="heat-scroll"><div class="heatmap" role="img" aria-label="شدت ورودها در روزهای هفته و ساعت‌های روز؛ شلوغ‌ترین زمان ${NAMES[peak.wd]} ${hh(peak.h)}" style="--heat-cols:${hours.length}">${rows}${axis}</div></div>
+        <div class="heat-scroll"><div class="heatmap" role="img" aria-label="شدت ورودها در روزهای هفته و ساعت‌های روز؛ شلوغ‌ترین زمان ${NAMES[peak.wd]} ${hh(peak.h)}" data-heat-cols="${hours.length}">${rows}${axis}</div></div>
         <div class="heat-legend"><span>کم</span>${legend}<span>زیاد</span></div>
         <p class="chart-note">هر خانه تعداد ورودها در همان ساعت از روز است؛ هرچه رنگ پررنگ‌تر (و در بالاترین سطح نارنجی) باشد ورود بیشتری رخ داده است. خانه‌ی خالی یعنی ورودی ثبت نشده.</p></figure>`;
     };
@@ -106,7 +106,10 @@
       try { out = build(await AP.api(url)); } catch (err) { out = cardError(title, err); }
       if (AP.currentRoute !== token) return; // کاربر صفحه را عوض کرده
       const slot = $(`[data-chart="${id}"]`, box);
-      if (slot) slot.innerHTML = out;
+      if (slot) {
+        slot.innerHTML = out;
+        $$('[data-heat-cols]', slot).forEach((el) => el.style.setProperty('--heat-cols', el.dataset.heatCols));
+      }
     });
   }
 })();

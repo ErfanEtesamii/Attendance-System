@@ -175,6 +175,7 @@ describe('T5: سوییچ‌ها و چیپ‌ها', () => {
   test('هیچ --green (رنگ برند قدیمی) در قاعده‌های st-* و فیلدها نمانده', () => {
     for (const r of ruleList) {
       if (!r.sels.some((s) => /\.st-|input|select|textarea|::placeholder|\.field\b/.test(s))) continue;
+      if (r.sels.every((s) => /^\.leave-item\.st-/.test(s))) continue; // رنگ معنایی وضعیت مرخصی (تأییدشده = سبز)، نه رنگ برند
       assert.doesNotMatch(r.body, /var\(--green|#1fcf95|#7be495|#14a878/, `${r.sels.join(', ')}`);
     }
   });

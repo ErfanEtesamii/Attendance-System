@@ -14,7 +14,7 @@ describe('رجیستری تنظیمات (S3-1a)', () => {
     assert.deepEqual(registry.selfCheck(), []);
     const registryKeys = registry.keys();
     assert.equal(registryKeys.includes('maxReEntriesPerDay'), true);
-    assert.deepEqual(registryKeys.filter((key) => !['maxReEntriesPerDay', 'paidBreakCountUnlimited', 'remoteWorkBotEnabled', 'remoteWorkBotBlockOnsiteToday'].includes(key)), [
+    assert.deepEqual(registryKeys.filter((key) => !['maxReEntriesPerDay', 'paidBreakCountUnlimited', 'remoteWorkBotEnabled', 'remoteWorkBotBlockOnsiteToday', 'remoteWorkAllowAfterOnsiteCheckout'].includes(key)), [
       'timezone', 'workDayStart', 'workDayEnd', 'lateGraceMinutes', 'lateCountsFrom', 'earlyGraceMinutes', 'weekendDays', 'halfDayWeekdays', 'halfDayEndTime', 'teamCalendarMaxConcurrent', 'maxLunchMinutes', 'fixedLunchDeductMinutes', 'fixedLunchMinPresenceMinutes', 'paidBreakCount', 'paidBreakMinutes', 'lateMonthlyLimit', 'lateLimitGateMode', 'lateLimitPermissionTtlMinutes', 'longOpenBreakMinutes', 'outsideShiftMarginMinutes', 'crossMidnightMode', 'overtimeEnabled', 'overtimeMinMinutes', 'overtimeDailyCapMinutes', 'overtimeFactor', 'overtimeHolidayFactor', 'overtimeRoundStep', 'overtimeRounding', 'overtimeMonthlyCapMinutes', 'overtimeRequiresApproval', 'monthCloseRequireMonthEnded', 'monthCloseBlockIncomplete', 'monthCloseBlockOpenDisputes', 'monthCloseBlockPendingLeave', 'monthCloseBlockPendingOvertime', 'monthCloseBlockSuspicious', 'reportXlsxEnabled', 'reportXlsxRecipientRoles', 'reportXlsxRequireClosed', 'leaveDefaultEntitlementMinutes', 'leaveCarryOverCapMinutes', 'leaveBalancePolicy', 'leaveAllowPastRequests', 'leaveMaxPastDays', 'leaveMaxFutureDays', 'leaveMinNoticeHours', 'backupIncludeAttachments', 'leaveAttachmentMaxKb', 'leaveAttachmentTypes', 'leaveApprovalReminderHours', 'leaveApprovalEscalateHours', 'leaveEscalateWhenApproverOnLeave', 'leaveApprovalExtraStepDays', 'leaveApprovalExtraStepTypes', 'leaveApprovalExtraStepRole', 'lateCheckinGraceMinutes', 'checkoutReminderMinutesBefore', 'repeatedLatenessThreshold',
       'missionBackdateDays', 'missionAdvanceDays', 'allowCheckinWithPendingMission', 'weekStartDay', 'planSubmissionWeekday', 'planGateWarnWeekday', 'planMinTasks', 'planGateMode', 'planGateStartDate', 'dailyReportGateMode', 'reportBackfillDays', 'taskCarryMaxTimes', 'selfUrgentEnabled', 'selfUrgentMaxPerDay', 'taskReportAdminMaxParts', 'encouragementsEnabled', 'latePerformancePenaltyEnabled', 'latePerformanceThresholdMinutes', 'latePerformancePenaltyFactor', 'performanceRewardEnabled', 'performanceRewardFactor', 'showEarningsCard', 'disputeMaxReopens', 'systemGoLive',
       'blockOnSharedDevice', 'remoteWorkEnabled', 'remoteWorkMaxOpenHours', 'auditRetentionMonths', 'auditArchiveEnabled',
@@ -23,8 +23,8 @@ describe('رجیستری تنظیمات (S3-1a)', () => {
       'cronLateCheckinCheck', 'cronCheckoutReminderCheck', 'cronDailyReport', 'cronWeeklyReport', 'cronMonthlyReport', 'cronNightlyReview', 'cronMorningDigest', 'cronAutoCloseIncomplete', 'cronMarkNonWorkingDays', 'cronDailyBackup', 'cronAuditArchive', 'cronDbMaintenance', 'cronLeaveApprovalReminder', 'cronUrgentTaskReminder', 'cronTeamReviewEnsure', 'cronWatchdog',
     ]);
     assert.deepEqual(
-      ['paidBreakCountUnlimited', 'remoteWorkBotEnabled', 'remoteWorkBotBlockOnsiteToday'].map((key) => registryKeys.includes(key)),
-      [true, true, true],
+      ['paidBreakCountUnlimited', 'remoteWorkBotEnabled', 'remoteWorkBotBlockOnsiteToday', 'remoteWorkAllowAfterOnsiteCheckout'].map((key) => registryKeys.includes(key)),
+      [true, true, true, true],
     );
     assert.equal(registry.getDef('workDayStart').dbKey, 'work_day_start');
     assert.equal(registry.getDef('rateLimitRetentionDays').dbKey, 'rate_limit_retention_days');
