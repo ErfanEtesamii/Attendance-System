@@ -1,4 +1,4 @@
-// S4-13b: UI صف تأیید مرخصی/مأموریت در پنل (views-ops.js، view با شناسه‌ی leaveQueue).
+// S4-13b: UI صف تأیید مرخصی/مأموریت در پنل (views-ops.js). از S6 داخل صفحه‌ی ادغام‌شده‌ی «مرخصی و مأموریت» (view با شناسه‌ی leave)؛ leaveQueue فقط alias است.
 // بدون مرورگر و بدون سرور: views-ops.js واقعی داخل vm با AP ساختگی اجرا می‌شود و API را با داده‌ی قالب پاسخ S4-13a می‌گیرد؛
 // خود API/اسکوپ/مجوز سرور در test/leaveQueueApi.test.js قفل است. تست دستی مرورگر در گزارش S4-13b آمده است.
 const { test, describe } = require('node:test');
@@ -62,13 +62,14 @@ function setup({ queue, types = [{ id: 1, title: 'استحقاقی' }], users = 
       if (url.startsWith('/admin/leave-queue/bulk')) return AP.bulkResponse(opts.body);
       if (url.startsWith('/admin/leave-queue')) return typeof queue === 'function' ? queue(url) : queue;
       if (url.startsWith('/admin/leave-types')) return types;
+      if (url.startsWith('/admin/leave-requests')) return [];
       throw new Error(`مسیر پیش‌بینی‌نشده: ${url}`);
     },
     bulkResponse: (body) => ({ action: body.action, results: body.ids.map((id) => ({ id, ok: true })), summary: { requested: body.ids.length, succeeded: body.ids.length, failed: 0 } }),
   };
   const sandbox = { window: { AP }, document: {}, console, URLSearchParams };
   vm.runInNewContext(read('views-ops.js'), sandbox);
-  return { AP, calls, toasts, modals, answers, def: AP.views.leaveQueue };
+  return { AP, calls, toasts, modals, answers, def: AP.views.leave, alias: AP.views.leaveQueue };
 }
 
 // صفحه‌ی ساختگی: عنصرهایی که mount می‌گیرد؛ listenerها ثبت می‌شوند تا تست بتواند رویداد بفرستد
@@ -101,11 +102,35 @@ function makePage(items) {
 const plain = (v) => JSON.parse(JSON.stringify(v));
 
 describe('UI صف تأیید مرخصی (S4-13b)', () => {
-  test('ثبت صفحه: شناسه leaveQueue، منوی «صف تأیید»، مجوز «هرکدام از» leave.approve یا leave.approve.hr', () => {
-    const { def, AP } = setup({ queue: { items: [], total: 0, limit: 50, offset: 0 } });
-    assert.ok(def, 'AP.view("leaveQueue")');
-    assert.deepEqual(plain(def.perm), ['leave.approve', 'leave.approve.hr']);
-    assert.ok(AP.nav.some((n) => n.id === 'leaveQueue' && n.label === 'صف تأیید'));
+  test('ثبت صفحه: شناسه leave با منوی «مرخصی و مأموریت»؛ leaveQueue فقط alias (بدون منو) با مجوز «هرکدام از» leave.approve یا leave.approve.hr', () => {
+    const { def, alias, AP } = setup({ queue: { items: [], total: 0, limit: 50, offset: 0 } });
+    assert.ok(def, 'AP.view("leave")');
+    assert.equal(def.perm, 'leave.read');
+    assert.ok(AP.nav.some((n) => n.id === 'leave' && n.label === 'مرخصی و مأموریت' && n.counter === true));
+    assert.ok(!AP.nav.some((n) => n.id === 'leaveQueue' || n.label === 'صف تأیید'), 'آیتم منوی «صف تأیید» حذف شده');
+    assert.ok(alias, 'alias leaveQueue');
+    assert.deepEqual(plain(alias.perm), ['leave.approve', 'leave.approve.hr']);
+    assert.equal(alias.navId, 'leave');
+    assert.equal(alias.nav, undefined);
+    assert.equal(alias.render, def.render);
+  });
+
+  test('صفحه‌ی ادغام‌شده: «ثبت برای کارمند» و «ویرایش» فقط با leave.edit؛ کارمند (فقط leave.read) فهرست ساده می‌بیند نه صف', async () => {
+    const q = { items: [item({ id: 1 }), item({ id: 2, canDecide: false })], total: 2, limit: 50, offset: 0 };
+    const withEdit = setup({ queue: q, perms: ['leave.read', 'leave.approve', 'leave.edit', 'users.read'] });
+    const h1 = (await withEdit.def.render()).html;
+    assert.match(h1, /<h2>مرخصی و مأموریت<\/h2>/);
+    assert.match(h1, /id="lv-new"/);
+    assert.equal((h1.match(/data-edit=/g) || []).length, 2, 'ویرایش روی همه‌ی ردیف‌ها');
+    assert.match(h1, /id="q-filters"/);
+    const noEdit = setup({ queue: q, perms: ['leave.read', 'leave.approve.hr', 'users.read'] });
+    const h2 = (await noEdit.def.render()).html;
+    assert.doesNotMatch(h2, /id="lv-new"|data-edit=/);
+    assert.match(h2, /id="q-filters"/, 'hr هم صف را می‌بیند');
+    const emp = setup({ queue: q, perms: ['leave.read'] });
+    const h3 = (await emp.def.render()).html;
+    assert.doesNotMatch(h3, /id="q-filters"|data-edit=|id="lv-new"/);
+    assert.ok(emp.calls.every((c) => !c.url.startsWith('/admin/leave-queue')), 'کارمند به API صف نمی‌رود (۴۰۳)');
   });
 
   test('viewAllowed واقعی (core.js): perm آرایه‌ای ⇒ هرکدام کافی؛ بدون هیچ‌کدام (کارمند) ⇒ بسته؛ perm رشته‌ای مثل قبل', () => {

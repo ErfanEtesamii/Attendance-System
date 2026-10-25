@@ -126,7 +126,7 @@ const PAGES = {
   reports: ['views-admin.js', 'inline'], broadcast: ['views-admin.js', 'n/a'], settings: ['views-admin.js', 'inline'], holidays: ['views-admin.js', 'inline'],
   audit: ['views-admin.js', 'inline'], system: ['views-admin.js', 'n/a'], status: ['views-admin.js', 'n/a'], analytics: ['views-analytics.js', 'chart'],
   teamCalendar: ['views-calendar.js', 'helper'], dashboard: ['views-main.js', 'inline'], live: ['views-main.js', 'inline'], employees: ['views-main.js', 'inline'],
-  profile: ['views-main.js', 'inline'], attendance: ['views-ops.js', 'inline'], leave: ['views-ops.js', 'inline'], leaveQueue: ['views-ops.js', 'inline'], checkin_permissions: ['views-ops.js', 'inline'],
+  profile: ['views-main.js', 'inline'], attendance: ['views-ops.js', 'inline'], leave: ['views-ops.js', 'inline'], checkin_permissions: ['views-ops.js', 'inline'],
   disputes: ['views-ops.js', 'inline'], suspicious: ['views-ops.js', 'inline'], nightly: ['views-ops.js', 'inline'], shifts: ['views-shifts.js', 'inline'], teamreports: ['views-teamreports.js', 'inline'],
   nextplan: ['views-nextplan.js', 'helper'], // D1 (فاز ۱۳): «برنامه هفته بعد»؛ حالت خالی: «برنامه‌ای ثبت نشده» و «کارمندی انتخاب نشده»
   remote: ['views-remote.js', 'helper'], // R6 (فاز ۱۴): صف بررسی دورکاری؛ حالت خالی: «ثبت دورکاری‌ای با این فیلتر پیدا نشد»

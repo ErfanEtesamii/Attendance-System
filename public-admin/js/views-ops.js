@@ -361,56 +361,64 @@
     });
   };
 
+  // صفحه‌ی ادغام‌شده‌ی «مرخصی و مأموریت»: هرکس مجوز تصمیم دارد (leave.approve یا leave.approve.hr) صف تأیید با فیلترها را می‌بیند؛
+  // بقیه (کارمند: فقط leave.read) همان فهرست ساده‌ی داده‌ی خودشان را. کلید قدیمی leaveQueue فقط alias است (لینک‌ها نشکنند).
+  const canDecideLeave = () => AP.can('leave.approve') || AP.can('leave.approve.hr');
   const leaveUi = { status: 'pending' };
   AP.view('leave', {
     skeleton: 'list', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'leave.read',
     nav: { icon: 'leave', label: 'مرخصی و مأموریت', group: 'درخواست‌ها', counter: true },
-    async render() {
-      const items = await AP.api(`/admin/leave-requests?status=${leaveUi.status}`);
-      const html = `
-        <div class="view-header">
-          <div><h2>مرخصی و مأموریت</h2><div class="sub">${fmt.num(items.length)} درخواست</div></div>
-          <div class="header-actions">${AP.can('leave.edit') ? `<button class="btn primary" id="lv-new">${icon('plus')} ثبت برای کارمند</button>` : ''}</div>
-        </div>
-        <div class="chips" id="lv-chips">${[['pending', 'در انتظار'], ['approved', 'تأییدشده'], ['rejected', 'ردشده'], ['all', 'همه']]
-          .map(([k, l]) => `<button class="chip ${k === leaveUi.status ? 'active' : ''}" data-s="${k}">${l}</button>`).join('')}</div>
-        <div class="list">${items.length ? items.map((l) => `
-          <div class="item">
-            ${AP.avatar(l.employee ? l.employee.fullName : '?', '')}
-            <div class="grow">
-              <div class="title"><a class="u-link-inherit" href="#/profile/${l.employee ? l.employee.id : ''}">${esc(l.employee ? l.employee.fullName : '—')}</a>
-                ${AP.badge(l.leaveType === 'mission' ? 'mission' : 'leave', AP.LEAVE_TYPE[l.leaveType])} ${AP.badge(l.status, AP.LEAVE_STATUS[l.status])}</div>
-              <div class="meta">${esc(fmt.dateLong(l.startDate))} تا ${esc(fmt.dateLong(l.endDate))} · ثبت: ${esc(fmt.dateTime(l.createdAt))}</div>
-              ${l.reason ? `<p class="text">${esc(l.reason)}</p>` : ''}
-            </div>
-            <div class="row-actions">
-              ${l.status === 'pending' && AP.can('leave.approve') ? `<button class="btn success small" data-act="approve" data-id="${l.id}">${icon('check')} تأیید</button><button class="btn danger small" data-act="reject" data-id="${l.id}">${icon('x')} رد</button>` : ''}
-              ${AP.can('leave.edit') ? `<button class="btn ghost small" data-edit="${l.id}">${icon('edit')} ویرایش</button>` : ''}
-            </div></div>`).join('') : `<div class="card">${emptyBox('درخواستی وجود ندارد.')}</div>`}</div>`;
-      return {
-        html,
-        mount(page) {
-          $('#lv-chips', page).addEventListener('click', (e) => { const c = e.target.closest('[data-s]'); if (c) { leaveUi.status = c.dataset.s; AP.refresh(); } });
-          $$('[data-act]', page).forEach((b) => b.addEventListener('click', async () => {
-            const approve = b.dataset.act === 'approve';
-            let note = '';
-            if (!approve) {
-              note = await AP.askReason({ title: 'رد درخواست', label: 'دلیل رد (اختیاری — برای کارمند در تلگرام ارسال می‌شود)', confirmText: 'رد کن', danger: true, required: false });
-              if (note === null) return;
-            }
-            const ok = await AP.attempt(() => AP.api(`/admin/leave-requests/${b.dataset.id}/${b.dataset.act}`, { method: 'POST', body: { note } }), approve ? 'تأیید شد.' : 'رد شد.');
-            if (ok) { AP.refresh(); AP.refreshCounts(); }
-          }));
-          $$('[data-edit]', page).forEach((b) => b.addEventListener('click', () => AP.openLeaveEditor(b.dataset.edit)));
-          const n = $('#lv-new', page); if (n) n.addEventListener('click', () => AP.openLeaveCreate({}));
-        },
-      };
-    },
+    render() { return canDecideLeave() ? renderLeaveQueue() : renderLeaveSimple(); },
   });
+  // alias: #/leaveQueue (داشبورد، لینک‌ها) همان صفحه است؛ مجوز قبلی (فقط تصمیم‌گیرنده) حفظ، بدون آیتم منوی جدا؛ منوی فعال «leave»
+  AP.views.leaveQueue = Object.assign({}, AP.views.leave, { perm: ['leave.approve', 'leave.approve.hr'], navId: 'leave' });
+  delete AP.views.leaveQueue.nav;
+
+  async function renderLeaveSimple() {
+    const items = await AP.api(`/admin/leave-requests?status=${leaveUi.status}`);
+    const html = `
+      <div class="view-header">
+        <div><h2>مرخصی و مأموریت</h2><div class="sub">${fmt.num(items.length)} درخواست</div></div>
+        <div class="header-actions">${AP.can('leave.edit') ? `<button class="btn primary" id="lv-new">${icon('plus')} ثبت برای کارمند</button>` : ''}</div>
+      </div>
+      <div class="chips" id="lv-chips">${[['pending', 'در انتظار'], ['approved', 'تأییدشده'], ['rejected', 'ردشده'], ['all', 'همه']]
+        .map(([k, l]) => `<button class="chip ${k === leaveUi.status ? 'active' : ''}" data-s="${k}">${l}</button>`).join('')}</div>
+      <div class="list">${items.length ? items.map((l) => `
+        <div class="item">
+          ${AP.avatar(l.employee ? l.employee.fullName : '?', '')}
+          <div class="grow">
+            <div class="title"><a class="u-link-inherit" href="#/profile/${l.employee ? l.employee.id : ''}">${esc(l.employee ? l.employee.fullName : '—')}</a>
+              ${AP.badge(l.leaveType === 'mission' ? 'mission' : 'leave', AP.LEAVE_TYPE[l.leaveType])} ${AP.badge(l.status, AP.LEAVE_STATUS[l.status])}</div>
+            <div class="meta">${esc(fmt.dateLong(l.startDate))} تا ${esc(fmt.dateLong(l.endDate))} · ثبت: ${esc(fmt.dateTime(l.createdAt))}</div>
+            ${l.reason ? `<p class="text">${esc(l.reason)}</p>` : ''}
+          </div>
+          <div class="row-actions">
+            ${l.status === 'pending' && AP.can('leave.approve') ? `<button class="btn success small" data-act="approve" data-id="${l.id}">${icon('check')} تأیید</button><button class="btn danger small" data-act="reject" data-id="${l.id}">${icon('x')} رد</button>` : ''}
+            ${AP.can('leave.edit') ? `<button class="btn ghost small" data-edit="${l.id}">${icon('edit')} ویرایش</button>` : ''}
+          </div></div>`).join('') : `<div class="card">${emptyBox('درخواستی وجود ندارد.')}</div>`}</div>`;
+    return {
+      html,
+      mount(page) {
+        $('#lv-chips', page).addEventListener('click', (e) => { const c = e.target.closest('[data-s]'); if (c) { leaveUi.status = c.dataset.s; AP.refresh(); } });
+        $$('[data-act]', page).forEach((b) => b.addEventListener('click', async () => {
+          const approve = b.dataset.act === 'approve';
+          let note = '';
+          if (!approve) {
+            note = await AP.askReason({ title: 'رد درخواست', label: 'دلیل رد (اختیاری — برای کارمند در تلگرام ارسال می‌شود)', confirmText: 'رد کن', danger: true, required: false });
+            if (note === null) return;
+          }
+          const ok = await AP.attempt(() => AP.api(`/admin/leave-requests/${b.dataset.id}/${b.dataset.act}`, { method: 'POST', body: { note } }), approve ? 'تأیید شد.' : 'رد شد.');
+          if (ok) { AP.refresh(); AP.refreshCounts(); }
+        }));
+        $$('[data-edit]', page).forEach((b) => b.addEventListener('click', () => AP.openLeaveEditor(b.dataset.edit)));
+        const n = $('#lv-new', page); if (n) n.addEventListener('click', () => AP.openLeaveCreate({}));
+      },
+    };
+  }
 
   // ======================================================
-  // صف تأیید مرخصی/مأموریت (S4-13b): UI روی API صف (S4-13a)
+  // صف تأیید مرخصی/مأموریت (S4-13b): UI روی API صف (S4-13a)؛ حالا داخل صفحه‌ی ادغام‌شده‌ی «مرخصی و مأموریت» (AP.view('leave'))
   //   فیلتر وضعیت/نوع/تیم/بازه + «فقط قابل‌تصمیم من»، مانده‌ی کارمند، پیوست، انتخاب و تأیید/رد دسته‌جمعی (دلیل رد اجباری).
   //   فقط نمایش است: اسکوپ و مجوز تصمیم را سرور اعمال می‌کند؛ مانده مانع تأیید نیست و فقط هشدار می‌دهد.
   // ======================================================
@@ -453,8 +461,9 @@
     const waiting = it.status === 'pending' && it.awaitingRole ? ` ${AP.badge('purple', `منتظر ${ROLE_STEP[it.awaitingRole] || it.awaitingRole}`)}` : '';
     const check = it.canDecide
       ? `<input type="checkbox" class="q-check" data-q="${esc(it.id)}" aria-label="انتخاب درخواست ${esc(emp ? emp.fullName : it.id)}" ${queueSel.has(it.id) ? 'checked' : ''} />` : '';
-    const actions = it.canDecide
-      ? `<button class="btn success small" data-act="approve" data-id="${esc(it.id)}">${icon('check')} تأیید</button><button class="btn danger small" data-act="reject" data-id="${esc(it.id)}">${icon('x')} رد</button>` : '';
+    const actions = (it.canDecide
+      ? `<button class="btn success small" data-act="approve" data-id="${esc(it.id)}">${icon('check')} تأیید</button><button class="btn danger small" data-act="reject" data-id="${esc(it.id)}">${icon('x')} رد</button>` : '')
+      + (AP.can('leave.edit') ? `<button class="btn ghost small" data-edit="${esc(it.id)}">${icon('edit')} ویرایش</button>` : '');
     return `
       <div class="item">
         ${check}
@@ -485,125 +494,124 @@
     });
   }
 
-  AP.view('leaveQueue', {
-    skeleton: 'list', // شکل skeleton هنگام بارگذاری (S5-9c)
-    perm: ['leave.approve', 'leave.approve.hr'],
-    nav: { icon: 'check', label: 'صف تأیید', group: 'درخواست‌ها' },
-    async render() {
-      // فهرست انواع و سرپرست‌ها فقط برای فیلتر است؛ خرابی آن‌ها صفحه را نمی‌اندازد
-      const [data, types, users] = await Promise.all([
-        AP.api(`/admin/leave-queue?${queueQs()}`),
-        AP.api('/admin/leave-types').catch(() => []),
-        AP.can('users.read') ? AP.loadUsers().catch(() => []) : [],
-      ]);
-      // آخرین صفحه‌ی پس از تصمیم‌ها خالی شده؛ یک صفحه عقب برو
-      if (!data.items.length && data.total > 0 && queueUi.offset > 0) {
-        queueUi.offset = Math.max(0, Math.floor((data.total - 1) / QUEUE_LIMIT) * QUEUE_LIMIT);
-        return this.render();
-      }
-      const managers = AP.state.me && AP.state.me.role === 'manager' ? [] : users.filter((u) => u.role === 'manager' && u.isActive);
-      const names = new Map(data.items.map((i) => [i.id, i.employee ? i.employee.fullName : `درخواست ${i.id}`]));
-      const decidableIds = data.items.filter((i) => i.canDecide).map((i) => i.id);
-      [...queueSel].forEach((id) => { if (!decidableIds.includes(id)) queueSel.delete(id); });
-      const from = queueUi.offset + 1;
-      const to = queueUi.offset + data.items.length;
+  async function renderLeaveQueue() {
+    // فهرست انواع و سرپرست‌ها فقط برای فیلتر است؛ خرابی آن‌ها صفحه را نمی‌اندازد
+    const [data, types, users] = await Promise.all([
+      AP.api(`/admin/leave-queue?${queueQs()}`),
+      AP.api('/admin/leave-types').catch(() => []),
+      AP.can('users.read') ? AP.loadUsers().catch(() => []) : [],
+    ]);
+    // آخرین صفحه‌ی پس از تصمیم‌ها خالی شده؛ یک صفحه عقب برو
+    if (!data.items.length && data.total > 0 && queueUi.offset > 0) {
+      queueUi.offset = Math.max(0, Math.floor((data.total - 1) / QUEUE_LIMIT) * QUEUE_LIMIT);
+      return renderLeaveQueue();
+    }
+    const managers = AP.state.me && AP.state.me.role === 'manager' ? [] : users.filter((u) => u.role === 'manager' && u.isActive);
+    const names = new Map(data.items.map((i) => [i.id, i.employee ? i.employee.fullName : `درخواست ${i.id}`]));
+    const decidableIds = data.items.filter((i) => i.canDecide).map((i) => i.id);
+    [...queueSel].forEach((id) => { if (!decidableIds.includes(id)) queueSel.delete(id); });
+    const from = queueUi.offset + 1;
+    const to = queueUi.offset + data.items.length;
 
-      const html = `
-        <div class="view-header"><div><h2>صف تأیید</h2>
-          <div class="sub">${fmt.num(data.total)} درخواست${data.items.length ? ` · نمایش ${fmt.num(from)} تا ${fmt.num(to)}` : ''}</div></div></div>
-        <div class="chips" id="q-chips">${[['pending', 'در انتظار'], ['approved', 'تأییدشده'], ['rejected', 'ردشده'], ['all', 'همه']]
-          .map(([k, l]) => `<button class="chip ${k === queueUi.status ? 'active' : ''}" data-s="${k}">${l}</button>`).join('')}</div>
-        <form class="filters" id="q-filters">
-          <label class="field"><span>نوع کلی</span><select name="kind"><option value="">همه</option><option value="leave" ${queueUi.kind === 'leave' ? 'selected' : ''}>مرخصی</option><option value="mission" ${queueUi.kind === 'mission' ? 'selected' : ''}>مأموریت</option></select></label>
-          <label class="field"><span>نوع مرخصی</span><select name="leaveTypeId"><option value="">همه</option>${types.map((t) => `<option value="${esc(t.id)}" ${String(t.id) === String(queueUi.leaveTypeId) ? 'selected' : ''}>${esc(t.title)}</option>`).join('')}</select></label>
-          ${managers.length ? `<label class="field"><span>تیم (سرپرست)</span><select name="team"><option value="">همه</option>${managers.map((m) => `<option value="${esc(m.id)}" ${String(m.id) === String(queueUi.team) ? 'selected' : ''}>${esc(m.fullName)}</option>`).join('')}</select></label>` : ''}
-          <label class="field"><span>از تاریخ</span><input type="date" name="from" value="${esc(queueUi.from)}" /></label>
-          <label class="field"><span>تا تاریخ</span><input type="date" name="to" value="${esc(queueUi.to)}" /></label>
-          ${queueUi.status === 'pending' ? `<label class="check-row"><input type="checkbox" name="decidable" ${queueUi.decidable ? 'checked' : ''} /> فقط مواردی که من تصمیم می‌گیرم</label>` : ''}
-        </form>
-        ${decidableIds.length ? `<div class="filters filters-center" id="q-bulk">
-          <label class="check-row"><input type="checkbox" id="q-all" ${decidableIds.every((id) => queueSel.has(id)) ? 'checked' : ''} /> انتخاب همه‌ی این صفحه</label>
-          <span class="muted" id="q-count">${queueSel.size ? `${fmt.num(queueSel.size)} مورد انتخاب شده` : ''}</span>
-          <button class="btn success small" type="button" id="q-approve" ${queueSel.size ? '' : 'disabled'}>${icon('check')} تأیید انتخاب‌شده‌ها</button>
-          <button class="btn danger small" type="button" id="q-reject" ${queueSel.size ? '' : 'disabled'}>${icon('x')} رد انتخاب‌شده‌ها</button>
-        </div>` : ''}
-        <div class="list">${data.items.length ? data.items.map(queueItemHtml).join('') : `<div class="card">${emptyBox('درخواستی با این فیلتر وجود ندارد.')}</div>`}</div>
-        ${data.total > QUEUE_LIMIT ? `<div class="filters u-actions-center">
-          <button class="btn ghost small" type="button" id="q-prev" ${queueUi.offset > 0 ? '' : 'disabled'}>صفحه‌ی قبل</button>
-          <button class="btn ghost small" type="button" id="q-next" ${to < data.total ? '' : 'disabled'}>صفحه‌ی بعد</button></div>` : ''}`;
+    const html = `
+      <div class="view-header"><div><h2>مرخصی و مأموریت</h2>
+        <div class="sub">${fmt.num(data.total)} درخواست${data.items.length ? ` · نمایش ${fmt.num(from)} تا ${fmt.num(to)}` : ''}</div></div>
+        <div class="header-actions">${AP.can('leave.edit') ? `<button class="btn primary" id="lv-new">${icon('plus')} ثبت برای کارمند</button>` : ''}</div></div>
+      <div class="chips" id="q-chips">${[['pending', 'در انتظار'], ['approved', 'تأییدشده'], ['rejected', 'ردشده'], ['all', 'همه']]
+        .map(([k, l]) => `<button class="chip ${k === queueUi.status ? 'active' : ''}" data-s="${k}">${l}</button>`).join('')}</div>
+      <form class="filters" id="q-filters">
+        <label class="field"><span>نوع کلی</span><select name="kind"><option value="">همه</option><option value="leave" ${queueUi.kind === 'leave' ? 'selected' : ''}>مرخصی</option><option value="mission" ${queueUi.kind === 'mission' ? 'selected' : ''}>مأموریت</option></select></label>
+        <label class="field"><span>نوع مرخصی</span><select name="leaveTypeId"><option value="">همه</option>${types.map((t) => `<option value="${esc(t.id)}" ${String(t.id) === String(queueUi.leaveTypeId) ? 'selected' : ''}>${esc(t.title)}</option>`).join('')}</select></label>
+        ${managers.length ? `<label class="field"><span>تیم (سرپرست)</span><select name="team"><option value="">همه</option>${managers.map((m) => `<option value="${esc(m.id)}" ${String(m.id) === String(queueUi.team) ? 'selected' : ''}>${esc(m.fullName)}</option>`).join('')}</select></label>` : ''}
+        <label class="field"><span>از تاریخ</span><input type="date" name="from" value="${esc(queueUi.from)}" /></label>
+        <label class="field"><span>تا تاریخ</span><input type="date" name="to" value="${esc(queueUi.to)}" /></label>
+        ${queueUi.status === 'pending' ? `<label class="check-row"><input type="checkbox" name="decidable" ${queueUi.decidable ? 'checked' : ''} /> فقط مواردی که من تصمیم می‌گیرم</label>` : ''}
+      </form>
+      ${decidableIds.length ? `<div class="filters filters-center" id="q-bulk">
+        <label class="check-row"><input type="checkbox" id="q-all" ${decidableIds.every((id) => queueSel.has(id)) ? 'checked' : ''} /> انتخاب همه‌ی این صفحه</label>
+        <span class="muted" id="q-count">${queueSel.size ? `${fmt.num(queueSel.size)} مورد انتخاب شده` : ''}</span>
+        <button class="btn success small" type="button" id="q-approve" ${queueSel.size ? '' : 'disabled'}>${icon('check')} تأیید انتخاب‌شده‌ها</button>
+        <button class="btn danger small" type="button" id="q-reject" ${queueSel.size ? '' : 'disabled'}>${icon('x')} رد انتخاب‌شده‌ها</button>
+      </div>` : ''}
+      <div class="list">${data.items.length ? data.items.map(queueItemHtml).join('') : `<div class="card">${emptyBox('درخواستی با این فیلتر وجود ندارد.')}</div>`}</div>
+      ${data.total > QUEUE_LIMIT ? `<div class="filters u-actions-center">
+        <button class="btn ghost small" type="button" id="q-prev" ${queueUi.offset > 0 ? '' : 'disabled'}>صفحه‌ی قبل</button>
+        <button class="btn ghost small" type="button" id="q-next" ${to < data.total ? '' : 'disabled'}>صفحه‌ی بعد</button></div>` : ''}`;
 
-      return {
-        html,
-        mount(page) {
-          const form = $('#q-filters', page);
-          AP.dates.mount(form); // از/تا تاریخ شمسی؛ مقدار میلادی (قبل از بستن listenerها)
-          const reload = () => { queueSel.clear(); AP.refresh(); };
-          $$('input, select', form).forEach((el) => el.addEventListener('change', () => {
-            const f = AP.formData(form);
-            Object.assign(queueUi, { kind: f.kind || '', leaveTypeId: f.leaveTypeId || '', team: f.team || '', from: f.from || '', to: f.to || '', decidable: !!f.decidable, offset: 0 });
-            if (queueUi.from && queueUi.to && queueUi.from > queueUi.to) { AP.toast('تاریخ شروع فیلتر بعد از تاریخ پایان است.', true); return; }
-            reload();
-          }));
-          $('#q-chips', page).addEventListener('click', (e) => {
-            const c = e.target.closest('[data-s]');
-            if (c) { queueUi.status = c.dataset.s; queueUi.offset = 0; reload(); }
-          });
-          const prev = $('#q-prev', page); if (prev) prev.addEventListener('click', () => { queueUi.offset = Math.max(0, queueUi.offset - QUEUE_LIMIT); reload(); });
-          const next = $('#q-next', page); if (next) next.addEventListener('click', () => { queueUi.offset += QUEUE_LIMIT; reload(); });
+    return {
+      html,
+      mount(page) {
+        const form = $('#q-filters', page);
+        AP.dates.mount(form); // از/تا تاریخ شمسی؛ مقدار میلادی (قبل از بستن listenerها)
+        const reload = () => { queueSel.clear(); AP.refresh(); };
+        $$('input, select', form).forEach((el) => el.addEventListener('change', () => {
+          const f = AP.formData(form);
+          Object.assign(queueUi, { kind: f.kind || '', leaveTypeId: f.leaveTypeId || '', team: f.team || '', from: f.from || '', to: f.to || '', decidable: !!f.decidable, offset: 0 });
+          if (queueUi.from && queueUi.to && queueUi.from > queueUi.to) { AP.toast('تاریخ شروع فیلتر بعد از تاریخ پایان است.', true); return; }
+          reload();
+        }));
+        $('#q-chips', page).addEventListener('click', (e) => {
+          const c = e.target.closest('[data-s]');
+          if (c) { queueUi.status = c.dataset.s; queueUi.offset = 0; reload(); }
+        });
+        const prev = $('#q-prev', page); if (prev) prev.addEventListener('click', () => { queueUi.offset = Math.max(0, queueUi.offset - QUEUE_LIMIT); reload(); });
+        const next = $('#q-next', page); if (next) next.addEventListener('click', () => { queueUi.offset += QUEUE_LIMIT; reload(); });
 
-          // انتخاب
-          const syncBulk = () => {
-            const c = $('#q-count', page); if (c) c.textContent = queueSel.size ? `${fmt.num(queueSel.size)} مورد انتخاب شده` : '';
-            ['#q-approve', '#q-reject'].forEach((s) => { const b = $(s, page); if (b) b.disabled = !queueSel.size; });
-            const all = $('#q-all', page); if (all) all.checked = decidableIds.length > 0 && decidableIds.every((id) => queueSel.has(id));
-          };
-          $$('.q-check', page).forEach((cb) => cb.addEventListener('change', () => {
-            const id = Number(cb.dataset.q);
-            if (cb.checked) queueSel.add(id); else queueSel.delete(id);
-            syncBulk();
-          }));
-          const all = $('#q-all', page);
-          if (all) all.addEventListener('change', () => {
-            decidableIds.forEach((id) => { if (all.checked) queueSel.add(id); else queueSel.delete(id); });
-            $$('.q-check', page).forEach((cb) => { cb.checked = all.checked; });
-            syncBulk();
-          });
+        // انتخاب
+        const syncBulk = () => {
+          const c = $('#q-count', page); if (c) c.textContent = queueSel.size ? `${fmt.num(queueSel.size)} مورد انتخاب شده` : '';
+          ['#q-approve', '#q-reject'].forEach((s) => { const b = $(s, page); if (b) b.disabled = !queueSel.size; });
+          const all = $('#q-all', page); if (all) all.checked = decidableIds.length > 0 && decidableIds.every((id) => queueSel.has(id));
+        };
+        $$('.q-check', page).forEach((cb) => cb.addEventListener('change', () => {
+          const id = Number(cb.dataset.q);
+          if (cb.checked) queueSel.add(id); else queueSel.delete(id);
+          syncBulk();
+        }));
+        const all = $('#q-all', page);
+        if (all) all.addEventListener('change', () => {
+          decidableIds.forEach((id) => { if (all.checked) queueSel.add(id); else queueSel.delete(id); });
+          $$('.q-check', page).forEach((cb) => { cb.checked = all.checked; });
+          syncBulk();
+        });
 
-          // تصمیم (تکی و دسته‌جمعی هر دو از endpoint دسته‌جمعی؛ منطق یکسان سمت سرور)
-          const decide = async (action, ids) => {
-            let note = '';
-            if (action === 'reject') {
-              note = await AP.askReason({
-                title: ids.length > 1 ? `رد ${fmt.num(ids.length)} درخواست` : 'رد درخواست',
-                label: 'دلیل رد (اجباری — برای کارمند در تلگرام ارسال می‌شود)',
-                confirmText: 'رد کن', danger: true,
-              });
-              if (note === null) return;
-            } else {
-              const risky = data.items.filter((i) => ids.includes(i.id) && i.balance && i.balance.insufficient === true).length;
-              const ok = await AP.confirmBox({
-                title: ids.length > 1 ? `تأیید ${fmt.num(ids.length)} درخواست` : 'تأیید درخواست',
-                message: `${ids.length > 1 ? `${fmt.num(ids.length)} درخواست` : 'درخواست'} تأیید می‌شود.${risky ? ` توجه: برای ${fmt.num(risky)} مورد مانده‌ی کارمند کافی نیست و پس از تأیید منفی می‌شود.` : ''}`,
-                confirmText: 'تأیید',
-              });
-              if (!ok) return;
-            }
-            let res;
-            try {
-              res = await AP.api('/admin/leave-queue/bulk', { method: 'POST', body: { action, ids, note } });
-            } catch (err) { AP.toast(err.message, true); return; }
-            queueSel.clear();
-            queueShowResult(res, names);
-            AP.refresh();
-            AP.refreshCounts();
-          };
-          $$('[data-act]', page).forEach((b) => b.addEventListener('click', () => decide(b.dataset.act, [Number(b.dataset.id)])));
-          const ba = $('#q-approve', page); if (ba) ba.addEventListener('click', () => decide('approve', [...queueSel]));
-          const br = $('#q-reject', page); if (br) br.addEventListener('click', () => decide('reject', [...queueSel]));
-        },
-      };
-    },
-  });
+        // تصمیم (تکی و دسته‌جمعی هر دو از endpoint دسته‌جمعی؛ منطق یکسان سمت سرور)
+        const decide = async (action, ids) => {
+          let note = '';
+          if (action === 'reject') {
+            note = await AP.askReason({
+              title: ids.length > 1 ? `رد ${fmt.num(ids.length)} درخواست` : 'رد درخواست',
+              label: 'دلیل رد (اجباری — برای کارمند در تلگرام ارسال می‌شود)',
+              confirmText: 'رد کن', danger: true,
+            });
+            if (note === null) return;
+          } else {
+            const risky = data.items.filter((i) => ids.includes(i.id) && i.balance && i.balance.insufficient === true).length;
+            const ok = await AP.confirmBox({
+              title: ids.length > 1 ? `تأیید ${fmt.num(ids.length)} درخواست` : 'تأیید درخواست',
+              message: `${ids.length > 1 ? `${fmt.num(ids.length)} درخواست` : 'درخواست'} تأیید می‌شود.${risky ? ` توجه: برای ${fmt.num(risky)} مورد مانده‌ی کارمند کافی نیست و پس از تأیید منفی می‌شود.` : ''}`,
+              confirmText: 'تأیید',
+            });
+            if (!ok) return;
+          }
+          let res;
+          try {
+            res = await AP.api('/admin/leave-queue/bulk', { method: 'POST', body: { action, ids, note } });
+          } catch (err) { AP.toast(err.message, true); return; }
+          queueSel.clear();
+          queueShowResult(res, names);
+          AP.refresh();
+          AP.refreshCounts();
+        };
+        $$('[data-act]', page).forEach((b) => b.addEventListener('click', () => decide(b.dataset.act, [Number(b.dataset.id)])));
+        const ba = $('#q-approve', page); if (ba) ba.addEventListener('click', () => decide('approve', [...queueSel]));
+        const br = $('#q-reject', page); if (br) br.addEventListener('click', () => decide('reject', [...queueSel]));
+        // ویرایش/حذف (مودال openLeaveEditor) و «ثبت برای کارمند» (openLeaveCreate) — همان منطق صفحه‌ی قدیمی «مرخصی و مأموریت»
+        $$('[data-edit]', page).forEach((b) => b.addEventListener('click', () => AP.openLeaveEditor(b.dataset.edit)));
+        const nw = $('#lv-new', page); if (nw) nw.addEventListener('click', () => AP.openLeaveCreate({}));
+      },
+    };
+  }
 
   // ======================================================
   // صف «اجازه‌ی ورود» (فاز ۱۲، D3): کارمندی که سقف تأخیر ماهانه را رد کرده برای ثبت ورودِ دیر از سرپرست اجازه می‌خواهد.
