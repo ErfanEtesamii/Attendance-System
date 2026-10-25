@@ -8,6 +8,7 @@ const EXCLUDED_DIRS = new Set(['node_modules', '.git', '.ssl', 'data', 'dist', '
 
 // نام فایل‌هایی که هرگز نباید در بسته باشند. .env.example عمداً مجاز است (بدون مقدار واقعی).
 function isExcludedFile(name) {
+  if (name === '_styleguide.html') return true;
   if (name === '.env.example') return false;
   if (name === '.env' || name.startsWith('.env.')) return true;
   if (/\.(pem|key|pfx|p12|crt|cer)$/i.test(name)) return true;

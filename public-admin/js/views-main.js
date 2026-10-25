@@ -57,7 +57,7 @@
     perm: 'dashboard.read',
     nav: { icon: 'dashboard', label: 'داشبورد', group: 'نمای کلی' },
     async render() {
-      const d = await AP.api('/admin/overview');
+      const [d, inbox] = await Promise.all([AP.api('/admin/overview'), AP.api('/admin/inbox')]);
       const t = d.totals;
       const tiles = [
         ['present', 'حاضر در شرکت', t.present, 'g-green', 'in', 'present'],
@@ -68,6 +68,13 @@
         ['late', 'ورود با تأخیر امروز', t.late, 'g-orange', 'clock', 'late'],
         ['incomplete', 'رکورد ناقص', t.incomplete, 'g-gray', 'alert'],
       ];
+      const inboxMeta = { leave: ['مرخصی', 'leaveQueue'], mission: ['مأموریت', 'leaveQueue'], remoteWork: ['دورکاری', 'remote'], dispute: ['اعتراض', 'disputes'], checkinPermission: ['اجازه ورود', 'checkin_permissions'], reportReview: ['مرور گزارش تیم', 'teamreports'] };
+      const canDecide = (key) => ({ leave: AP.can('leave.approve') || AP.can('leave.approve.hr'), mission: AP.can('leave.approve') || AP.can('leave.approve.hr'), remoteWork: AP.can('remote_work.review'), dispute: AP.can('disputes.resolve'), checkinPermission: AP.can('checkin_permissions.decide'), reportReview: AP.can('reviews.write') })[key];
+      const inboxRows = Object.entries(inboxMeta).map(([key, [label, go]]) => {
+        const bucket = inbox[key] || {}; const items = bucket.items || [];
+        const actions = (item) => !canDecide(key) ? '' : `<span class="inbox-actions">${key === 'reportReview' ? `<button class="btn ghost small" data-inbox-action="approve" data-kind="${key}" data-id="${item.id}" data-user="${item.userId}" data-date="${item.reportDate || ''}">ثبت مشاهده</button>` : `<button class="btn ghost small" data-inbox-action="approve" data-kind="${key}" data-id="${item.id}">تأیید</button><button class="btn danger small" data-inbox-action="reject" data-kind="${key}" data-id="${item.id}">رد</button>`}</span>`;
+        return `<div class="inbox-group"><div class="kv-row"><span>${label}</span><span>${fmt.num(bucket.count || 0)} <button class="btn ghost small" data-go="${go}">بررسی</button></span></div>${items.map((item) => `<div class="kv-row inbox-item" data-inbox-row><span>${esc(item.name)}</span>${actions(item)}</div>`).join('')}</div>`;
+      }).join('');
       const html = `
         <div class="view-header">
           <div><h2>سلام ${esc(AP.state.me.fullName)} 👋</h2>
@@ -78,7 +85,7 @@
           </div>
         </div>
 
-        <div class="stat-grid">
+        <div class="stat-grid" data-widget="stats">
           <div class="stat"><div class="stat-icon g-green">${icon('employees')}</div>
             <div class="stat-value">${fmt.num(t.employees)}</div><div class="stat-label">کارمند فعال</div></div>
           ${tiles.map(([key, label, val, g, ic, trendField]) => `
@@ -87,7 +94,9 @@
               <div class="stat-value">${fmt.num(val)}</div><div class="stat-label">${esc(label)}</div>${trendField ? statTrendHtml(d.trend, trendField) : ''}</button>`).join('')}
         </div>
 
-        <div class="grid-2">
+        <div class="card" data-widget="inbox"><div class="view-header"><h3>منتظر تصمیم شما</h3><button class="btn ghost small" data-hide-widget="inbox">پنهان‌کردن</button></div><div class="kv">${inboxRows}</div></div>
+
+        <div class="grid-2" data-widget="trend">
           <div class="card card--primary"><h3>روند حضور ۱۴ روز اخیر</h3>
             <div class="legend"><span><i class="lg-a"></i>حاضر</span><span><i class="lg-b"></i>ورود با تأخیر</span></div>
             ${trendChart(d.trend)}</div>
@@ -99,7 +108,7 @@
           </div>
         </div>
 
-        <div class="grid-2 mt">
+        <div class="grid-2 mt" data-widget="late">
           <div class="card"><h3>بیشترین تأخیر در ۳۰ روز اخیر</h3>
             ${d.topLate.length ? `<div class="kv">${d.topLate.map((x) => `
               <div class="kv-row"><span><a class="u-link-inherit" href="#/profile/${x.userId}">${esc(x.fullName)}</a></span>
@@ -118,6 +127,35 @@
       return {
         html,
         mount(page) {
+          const defaultLayout = ['stats', 'inbox', 'trend', 'late'];
+          let currentLayout = { order: defaultLayout, hidden: [], sizes: {} };
+          const saveLayout = (next) => { currentLayout = { ...currentLayout, ...next }; return AP.api('/admin/me/dashboard-layout', { method: 'PUT', body: currentLayout }); };
+          const applyLayout = (layout) => {
+            currentLayout = { ...currentLayout, ...layout };
+            const host = page; const by = new Map([...host.querySelectorAll('[data-widget]')].map((el) => [el.dataset.widget, el]));
+            (layout.hidden || []).forEach((key) => by.get(key)?.remove());
+            (layout.order || []).slice().reverse().forEach((key) => { const el = by.get(key); if (el && el.isConnected) host.insertBefore(el, host.firstChild); });
+            [...host.querySelectorAll('[data-widget]')].forEach((el) => { const key = el.dataset.widget; el.draggable = true; el.dataset.size = (layout.sizes || {})[key] || 'medium'; const controls = document.createElement('div'); controls.className = 'widget-controls'; controls.innerHTML = `<button type="button" class="btn ghost small" data-move="up" aria-label="انتقال ویجت به بالا">بالا</button><button type="button" class="btn ghost small" data-move="down" aria-label="انتقال ویجت به پایین">پایین</button><select class="widget-size" data-widget-size aria-label="اندازه ویجت"><option value="small">کوچک</option><option value="medium">متوسط</option><option value="large">بزرگ</option></select>`; $('[data-widget-size]', controls).value = el.dataset.size; el.prepend(controls); });
+          };
+          AP.api('/admin/me/dashboard-layout').then(applyLayout).catch(() => {});
+          const saveOrder = () => saveLayout({ order: [...page.querySelectorAll('[data-widget]')].map((el) => el.dataset.widget) });
+          page.addEventListener('click', (event) => { const move = event.target.closest('[data-move]'); if (!move) return; const card = move.closest('[data-widget]'); if (!card) return; if (move.dataset.move === 'up' && card.previousElementSibling) page.insertBefore(card, card.previousElementSibling); if (move.dataset.move === 'down' && card.nextElementSibling) page.insertBefore(card.nextElementSibling, card); saveOrder().catch((err) => AP.toast(err.message, true)); });
+          page.addEventListener('change', (event) => { const s = event.target.closest('[data-widget-size]'); if (!s) return; const card = s.closest('[data-widget]'); card.dataset.size = s.value; saveLayout({ sizes: { ...(currentLayout.sizes || {}), [card.dataset.widget]: s.value } }).catch((err) => AP.toast(err.message, true)); });
+          page.addEventListener('dragstart', (event) => { const card = event.target.closest('[data-widget]'); if (card) event.dataTransfer.setData('text/plain', card.dataset.widget); });
+          page.addEventListener('dragover', (event) => { if (event.target.closest('[data-widget]')) event.preventDefault(); });
+          page.addEventListener('drop', (event) => { const target = event.target.closest('[data-widget]'); const source = page.querySelector(`[data-widget="${event.dataTransfer.getData('text/plain')}"]`); if (!target || !source || target === source) return; event.preventDefault(); page.insertBefore(source, target); saveOrder().catch((err) => AP.toast(err.message, true)); });
+          page.addEventListener('click', (event) => { const b = event.target.closest('[data-hide-widget]'); if (!b) return; saveLayout({ hidden: [...new Set([...(currentLayout.hidden || []), b.dataset.hideWidget]) ] }).then(() => b.closest('[data-widget]')?.remove()).catch((err) => AP.toast(err.message, true)); });
+          const reset = document.createElement('button'); reset.className = 'btn ghost small'; reset.type = 'button'; reset.textContent = 'بازگشت چیدمان پیش‌فرض'; reset.addEventListener('click', () => saveLayout({ order: defaultLayout, hidden: [], sizes: {} }).then(() => AP.refresh())); page.prepend(reset);
+          page.addEventListener('click', async (event) => {
+            const button = event.target.closest('[data-inbox-action]'); if (!button || button.disabled) return;
+            const { kind, id, user, date } = button.dataset; const reject = button.dataset.inboxAction === 'reject';
+            const reason = reject ? await AP.askReason({ title: 'رد درخواست', confirmText: 'رد', danger: true }) : '';
+            if (reject && reason === null) return;
+            const routes = { leave: `/admin/leave-requests/${id}/${reject ? 'reject' : 'approve'}`, mission: `/admin/leave-requests/${id}/${reject ? 'reject' : 'approve'}`, remoteWork: `/admin/remote-work/${id}/${reject ? 'reject' : 'approve'}`, dispute: `/admin/disputes/${id}/${reject ? 'reopen' : 'resolve'}`, checkinPermission: `/admin/checkin-permissions/${id}/decide`, reportReview: '/admin/report-reviews' };
+            const body = kind === 'checkinPermission' ? { decision: reject ? 'reject' : 'approve', note: reason || undefined } : kind === 'remoteWork' ? { reviewNote: reason || undefined } : kind === 'reportReview' ? { subjectUserId: Number(user), reportDate: date } : { note: reason || undefined };
+            const row = button.closest('[data-inbox-row]');
+            try { button.disabled = true; await AP.api(routes[kind], { method: 'POST', body }); row?.remove(); AP.toast(reject ? 'رد شد.' : 'ثبت شد.'); AP.api('/admin/inbox').then((next) => { const b = next[kind] || {}; const group = row?.closest('.inbox-group'); const count = group?.querySelector('.kv-row span:last-child'); if (count) count.firstChild.nodeValue = `${fmt.num(b.count || 0)} `; }); } catch (err) { button.disabled = false; AP.toast(err.message, true); }
+          });
           $$('[data-go]', page).forEach((b) => b.addEventListener('click', () => AP.go(b.dataset.go, b.dataset.param)));
           const timer = setInterval(() => { if (!document.hidden) AP.refresh(); }, 60000);
           AP.onLeave = () => clearInterval(timer);

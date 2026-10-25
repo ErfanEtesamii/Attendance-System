@@ -14,6 +14,8 @@ const { reportFromSnapshot } = require('../../../services/monthCloseService');
 const monthClosuresRepository = require('../../../repositories/monthClosuresRepository');
 const { todayDateString } = require('../../../utils/serverTime');
 const { analyticsCache, analyticsCacheKey } = require('../../../utils/analyticsCache');
+const attendanceRepository = require('../../../repositories/attendanceRepository');
+const { getZonedParts, minutesSinceMidnight } = require('../../../utils/time');
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const flag = (v) => v === '1' || v === 'true';
@@ -142,6 +144,21 @@ router.get('/admin/analytics/checkin-distribution', requirePermission('analytics
   try {
     return respondCached(res, 'checkin-distribution', r.users, { from, to, binMinutes }, () => breakdown.checkinDistribution({ users: r.users, from, to, binMinutes }));
   } catch (err) { return fail(res, err); }
+});
+
+// D4: نقشهٔ حرارتی ورودها، با bucket پانزده‌دقیقه‌ای و روز هفته؛ فقط دادهٔ خواندنیِ اسکوپ کاربر.
+router.get('/admin/analytics/checkin-heatmap', requirePermission('analytics.read'), (req, res) => {
+  const to = DATE_RE.test(String(req.query.to || '')) ? req.query.to : todayDateString();
+  const from = DATE_RE.test(String(req.query.from || '')) ? req.query.from : shiftIso(to, -29);
+  const r = resolveUsers(req); if (r.error) return res.status(r.error.status).json(r.error.json);
+  const tz = require('../../../repositories/settingsRepository').getTimezone();
+  return respondCached(res, 'checkin-heatmap', r.users, { from, to }, () => {
+    const cells = Array.from({ length: 7 }, () => Array(96).fill(0));
+    attendanceRepository.listByUserIdsAndRange(r.users.map((u) => u.id), from, to).forEach((row) => {
+      if (!row.check_in_time) return; const p = getZonedParts(row.check_in_time, tz); const bin = Math.floor(minutesSinceMidnight(row.check_in_time, tz) / 15); if (bin >= 0 && bin < 96) cells[p.weekday][bin] += 1;
+    });
+    return { from, to, cells, max: Math.max(1, ...cells.flat()) };
+  });
 });
 
 // GET /admin/analytics/patterns?year=&month=[&department=][&userId=][&includeInactive=1]  (S5-7b)

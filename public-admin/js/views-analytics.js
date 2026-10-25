@@ -52,6 +52,10 @@
     const ym = { year: ui.year, month: ui.month };
     const dep = { department: ui.department };
     const d = deps();
+    const heatmap = (r) => {
+      const cells = (r.cells || []).flatMap((row, day) => row.map((count, bin) => `<span class="heat-cell" style="--heat:${Math.round((count / r.max) * 100)}" title="روز ${day + 1}، ${String(Math.floor(bin / 4)).padStart(2, '0')}:${String((bin % 4) * 15).padStart(2, '0')} — ${count}"></span>`)).join('');
+      return `<figure class="chart-fig"><figcaption>نقشه حرارتی ساعت ورود</figcaption><div class="heatmap" role="img" aria-label="شدت ورودها در روزهای هفته و بازه‌های پانزده دقیقه‌ای">${cells}</div><p class="muted">هر خانه یک بازهٔ ۱۵ دقیقه‌ای است؛ تیرگی بیشتر یعنی ورود بیشتر.</p></figure>`;
+    };
     // [شناسه، آدرس API، سازنده‌ی نمودار از پاسخ، عنوان برای خطا]
     const jobs = [
       ['trend', `/admin/analytics/late-trend?${q({ granularity: ui.granularity, groupBy: ui.groupBy, ...dep })}`, (r) => C.lineChartHtml(C.fromLateTrend(r, d), d), 'روند نرخ تأخیر'],
@@ -61,6 +65,7 @@
       ['rate', `/admin/analytics/attendance-rate?${q({ ...ym, groupBy: 'department', ...dep })}`, (r) => C.barChartHtml(C.fromAttendanceRate(r, d), d), 'نرخ حضور'],
       ['leave', `/admin/analytics/leave-by-type?${q({ ...ym, ...dep })}`, (r) => C.barChartHtml(C.fromLeaveByType(r, d), d), 'مرخصی به‌تفکیک نوع'],
       ['checkin', `/admin/analytics/checkin-distribution?${q(dep)}`, (r) => C.barChartHtml(C.fromCheckinDistribution(r, d), d), 'توزیع ساعت ورود'],
+      ['heatmap', `/admin/analytics/checkin-heatmap?${q(dep)}`, heatmap, 'نقشه حرارتی ورود'],
       ['patterns', `/admin/analytics/patterns?${q({ ...ym, ...dep })}`, (r) => P.patternsHtml(r, d), 'هشدار الگوها'],
     ];
     // جای هر نمودار از قبل رزرو می‌شود تا ترتیب ثابت بماند، هرچند پاسخ‌ها نامرتب برسند

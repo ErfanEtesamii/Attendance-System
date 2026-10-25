@@ -387,6 +387,39 @@
     return handle;
   };
 
+  // پرونده‌ی کنارصفحه‌ای زمینه‌ی جدول را برای بررسی حفظ می‌کند.
+  let employeeDrawer = null;
+  const drawerFocusables = (el) => [...el.querySelectorAll('a[href],button:not([disabled]),textarea,input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])')].filter((x) => x.offsetParent !== null);
+  const closeEmployeeDrawer = () => {
+    if (!employeeDrawer) return;
+    const { backdrop, opener, onKeydown } = employeeDrawer;
+    document.removeEventListener('keydown', onKeydown, true); backdrop.remove(); employeeDrawer = null;
+    if (opener && document.contains(opener)) opener.focus({ preventScroll: true });
+  };
+  async function openEmployeeDrawer(id, opener) {
+    closeEmployeeDrawer();
+    const data = await AP.api(`/admin/users/${id}/details`); const u = data.user || {};
+    const backdrop = document.createElement('div'); backdrop.className = 'employee-drawer-backdrop';
+    backdrop.innerHTML = `<aside class="employee-drawer" role="dialog" aria-modal="true" aria-labelledby="employee-drawer-title" tabindex="-1"><div class="employee-drawer-head"><div>${AP.avatar(u.fullName || '?')}<h3 id="employee-drawer-title">${esc(u.fullName || 'کارمند')}</h3><p>${esc(AP.ROLE[u.role] || u.role || '')} · ${esc(u.department || 'بدون دپارتمان')}</p></div><button type="button" class="icon-btn" data-close aria-label="بستن">${AP.icon('x')}</button></div><div class="employee-drawer-body"><div class="kv"><div class="kv-row"><span>ساعت مفید ماه</span><strong>${fmt.min(data.stats?.totalEffective || data.stats?.effectiveMinutes || 0)}</strong></div><div class="kv-row"><span>تأخیر</span><strong>${fmt.num(data.stats?.lateCount || 0)}</strong></div><div class="kv-row"><span>مرخصی</span><strong>${fmt.num((data.leaves || []).filter((x) => x.status === 'approved').length)}</strong></div></div><h4>۵ رکورد آخر</h4><div class="kv">${(data.records || []).slice(0, 5).map((r) => `<div class="kv-row"><span>${esc(fmt.date(r.record_date))}</span><span>${fmt.min(r.summary?.effectiveMinutes || r.effective_minutes || 0)}</span></div>`).join('') || '<p class="muted">رکوردی ثبت نشده است.</p>'}</div><div class="employee-drawer-actions">${AP.can('leave.edit') ? '<button class="btn primary" data-drawer-leave>ثبت مرخصی</button>' : ''}${AP.can('reviews.read') ? `<a class="btn ghost" href="#/profile/${u.id}" data-drawer-report>مشاهده گزارش</a>` : ''}${AP.can('users.message') ? '<button class="btn ghost" data-drawer-message>پیام به کارمند</button>' : ''}</div></div></aside>`;
+    const drawer = $('.employee-drawer', backdrop);
+    const onKeydown = (event) => { if (event.key === 'Escape') { event.preventDefault(); closeEmployeeDrawer(); return; } if (event.key !== 'Tab') return; const all = drawerFocusables(drawer); if (!all.length) { event.preventDefault(); drawer.focus(); return; } if (event.shiftKey && document.activeElement === all[0]) { event.preventDefault(); all.at(-1).focus(); } else if (!event.shiftKey && document.activeElement === all.at(-1)) { event.preventDefault(); all[0].focus(); } };
+    employeeDrawer = { backdrop, opener, onKeydown }; backdrop.addEventListener('click', (event) => { if (event.target === backdrop) closeEmployeeDrawer(); });
+    $('[data-close]', backdrop).addEventListener('click', closeEmployeeDrawer);
+    $('[data-drawer-leave]', backdrop)?.addEventListener('click', () => { closeEmployeeDrawer(); AP.go('leave'); });
+    $('[data-drawer-report]', backdrop)?.addEventListener('click', () => closeEmployeeDrawer());
+    $('[data-drawer-message]', backdrop)?.addEventListener('click', async () => { const text = await AP.askReason({ title: 'پیام به کارمند', label: 'متن پیام', confirmText: 'ارسال', required: true }); if (text !== null) await AP.attempt(() => AP.api(`/admin/users/${u.id}/message`, { method: 'POST', body: { text } }), 'پیام ارسال شد.'); });
+    document.body.appendChild(backdrop); document.addEventListener('keydown', onKeydown, true); (drawerFocusables(drawer)[0] || drawer).focus({ preventScroll: true });
+  }
+  document.addEventListener('click', async (event) => {
+    const link = event.target.closest && event.target.closest('a[href^="#/profile/"]');
+    if (!link || event.ctrlKey || event.metaKey) return;
+    const id = /^#\/profile\/(\d+)$/.exec(link.getAttribute('href') || ''); if (!id) return;
+    event.preventDefault();
+    try {
+      await openEmployeeDrawer(id[1], link);
+    } catch (err) { AP.toast(err.message, true); }
+  });
+
   document.addEventListener('keydown', (e) => {
     if (!modalStack.length) {
       // منوی جمع‌شده‌ی موبایل: Esc می‌بندد و فوکوس به دکمه‌ی منو برمی‌گردد (S5-9b)

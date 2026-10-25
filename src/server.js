@@ -43,6 +43,10 @@ function createApp() {
 
   // فاز ۸: پنل مدیریتی وب، زیر مسیر /admin/ از همان سرور سرو می‌شود
   // (مثلاً https://attendance.farazhonar.com/admin/)
+  app.use('/admin/_styleguide.html', (req, res, next) => {
+    if (config.nodeEnv === 'production') return res.status(404).end();
+    return next();
+  });
   app.use('/admin', express.static(path.join(__dirname, '..', 'public-admin')));
 
   // مسیرهای API زیر /api قرار می‌گیرند تا از Mini App و بات صدا زده شوند

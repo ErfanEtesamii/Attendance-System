@@ -3,6 +3,7 @@
 
 const express = require('express');
 const router = express.Router();
+const { getDb } = require('../../../db/connection');
 
 const usersRepository = require('../../../repositories/usersRepository');
 const attendanceRepository = require('../../../repositories/attendanceRepository');
@@ -11,6 +12,9 @@ const leaveRepository = require('../../../repositories/leaveRepository');
 const holidaysRepository = require('../../../repositories/holidaysRepository');
 const settingsRepository = require('../../../repositories/settingsRepository');
 const disputeRepository = require('../../../repositories/disputeRepository');
+const remoteWorkRepository = require('../../../repositories/remoteWorkRepository');
+const checkinPermissionRepository = require('../../../repositories/checkinPermissionRepository');
+const teamReviewService = require('../../../services/teamReviewService');
 const auditRepository = require('../../../repositories/auditRepository');
 const dayService = require('../../../engine/dayService');
 const dayReview = require('../../../utils/dayReview');
@@ -28,6 +32,30 @@ router.get('/admin/me', requirePermission('me.read'), (req, res) => {
 router.get('/admin/me/permissions', requirePermission('me.read'), (req, res) => {
   const role = req.adminUser.role;
   res.json({ role, permissions: permissionsFor(role) });
+});
+
+const DASHBOARD_WIDGETS = ['stats', 'inbox', 'trend', 'late'];
+const DASHBOARD_SIZES = new Set(['small', 'medium', 'large']);
+const DEFAULT_DASHBOARD_LAYOUT = { order: DASHBOARD_WIDGETS, hidden: [], sizes: {} };
+function safeDashboardLayout(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return DEFAULT_DASHBOARD_LAYOUT;
+  const allowed = new Set(DASHBOARD_WIDGETS);
+  const order = Array.isArray(value.order) ? value.order.filter((x) => allowed.has(x)) : [];
+  const hidden = Array.isArray(value.hidden) ? value.hidden.filter((x) => allowed.has(x)) : [];
+  const sizes = Object.fromEntries(Object.entries(value.sizes || {}).filter(([key, size]) => allowed.has(key) && DASHBOARD_SIZES.has(size)));
+  return { order: [...new Set([...order, ...DASHBOARD_WIDGETS])], hidden: [...new Set(hidden)], sizes };
+}
+router.get('/admin/me/dashboard-layout', requirePermission('me.read'), (req, res) => {
+  const row = getDb().prepare('SELECT dashboard_layout FROM user_dashboard_prefs WHERE user_id = ?').get(req.adminUser.id);
+  let raw = null; try { raw = row ? JSON.parse(row.dashboard_layout) : null; } catch (_) {}
+  res.json(safeDashboardLayout(raw));
+});
+router.put('/admin/me/dashboard-layout', requirePermission('me.read'), (req, res) => {
+  const layout = safeDashboardLayout(req.body);
+  const json = JSON.stringify(layout);
+  if (Buffer.byteLength(json, 'utf8') > 4096) return res.status(400).json({ error: 'چیدمان بیش از حد بزرگ است.' });
+  getDb().prepare(`INSERT INTO user_dashboard_prefs (user_id, dashboard_layout, updated_at) VALUES (?, ?, datetime('now')) ON CONFLICT(user_id) DO UPDATE SET dashboard_layout = excluded.dashboard_layout, updated_at = excluded.updated_at`).run(req.adminUser.id, json);
+  res.json(layout);
 });
 
 // ---------- داشبورد خلاصه ----------
@@ -57,6 +85,32 @@ router.get('/admin/dashboard', requirePermission('dashboard.read'), (req, res) =
     incompleteToday: incompleteCount,
     date: todayDateString(),
   });
+});
+
+// D1: inbox فقط‌خواندنی؛ cache کوتاه کلیدشده با کاربر تا بین درخواست‌های داشبورد فشار اضافی ایجاد نشود.
+const inboxCache = new Map();
+router.get('/admin/inbox', requirePermission('dashboard.read'), (req, res) => {
+  const cached = inboxCache.get(req.adminUser.id); if (cached && cached.until > Date.now()) return res.json(cached.value);
+  const ids = scopedUserIds(req.adminUser);
+  const within = (row) => ids === null || ids.includes(row.user_id);
+  const pendingLeave = leaveRepository.listPending().filter(within);
+  const buckets = [
+    ['leave', pendingLeave.filter((row) => row.kind !== 'mission')],
+    ['mission', pendingLeave.filter((row) => row.kind === 'mission')],
+    ['remoteWork', remoteWorkRepository.listQueue({ userIds: ids, status: 'pending', limit: 5 }).rows],
+    ['dispute', disputeRepository.listOpen().filter(within)],
+    ['checkinPermission', checkinPermissionRepository.list({ status: 'pending', userIds: ids, limit: 200 })],
+  ];
+  if (teamReviewService.isReviewer(req.adminUser)) {
+    const reviewDate = teamReviewService.reviewDateFor(req.adminUser, todayDateString());
+    const review = reviewDate ? teamReviewService.reviewState(req.adminUser, reviewDate) : null;
+    buckets.push(['reportReview', review ? review.unreviewed.map((x) => ({ id: x.userId, user_id: x.userId, created_at: reviewDate })) : []]);
+  } else buckets.push(['reportReview', []]);
+  const userMap = makeUserMap();
+  const out = {};
+  buckets.forEach(([key, rows]) => { out[key] = { count: rows.length, items: rows.slice(0, 5).map((row) => ({ id: row.id, userId: row.user_id, name: userMap.get(row.user_id)?.full_name || '—', createdAt: row.created_at || row.requested_at || row.start_at || null, reportDate: key === 'reportReview' ? row.created_at : undefined })) }; });
+  inboxCache.set(req.adminUser.id, { until: Date.now() + 15000, value: out });
+  res.json(out);
 });
 
 // ---------- نمای کلی (داشبورد کامل) ----------
