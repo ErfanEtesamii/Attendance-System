@@ -13,8 +13,11 @@
 <link rel="stylesheet" href="/css/planner.css" />
 <script src="/js/telegram-web-app.js"></script>
 <script src="/js/telegramIntegration.js"></script>
+<script src="/js/celebrate.js"></script>
 </head>
 <body>
+  <div id="offline-bar" class="offline-bar hidden" role="status">اتصال قطع است؛ ثبت تردد تا بازگشت اینترنت موقتاً غیرفعال است.</div>
+  <div id="appearance-sheet" class="sheet-backdrop hidden"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="appearance-title" tabindex="-1"><div class="sheet-handle"></div><h2 class="sheet-title" id="appearance-title">ظاهر</h2><div class="appearance-options"><label>تم <select id="appearance-theme"><option value="auto">خودکار</option><option value="light">روشن</option><option value="dark">تیره</option></select></label><label>اندازه متن <select id="appearance-text"><option value="normal">معمولی</option><option value="small">کوچک</option><option value="large">بزرگ</option></select></label><label><input type="checkbox" id="appearance-contrast"> کنتراست بالا</label></div><button type="button" class="sheet-cancel" id="appearance-close">بستن</button></div></div>
 
   <div id="app-error" class="screen hidden" aria-live="assertive"></div>
 
@@ -23,7 +26,9 @@
       <h2>عدم ثبت در سیستم</h2>
       <p>شما هنوز در سیستم حضور و غیاب ثبت نشده‌اید.</p>
       <p>این عدد را برای ادمین ارسال کنید تا شما را ثبت کند:</p>
-      <div class="tg-id-box" id="tg-id-box">-</div>
+      <div class="tg-id-box mono" id="tg-id-box">-</div>
+      <p class="not-registered-help">شناسه را کپی کنید و برای ادمین سامانه بفرستید.</p>
+      <button type="button" class="btn primary" id="copy-tg-id">کپی شناسه</button>
     </div>
   </div>
 
@@ -39,7 +44,7 @@
     <header class="app-header">
       <div class="brand">
         <div class="brand-logo">
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          <svg class="icon icon-lg" aria-hidden="true"><use href="/icons.svg#i-clock"/></svg>
         </div>
         <div class="brand-text">
           <div class="app-title">حضور و غیاب فرازهنر</div>
@@ -51,6 +56,9 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
       </button>
     </header>
+    <div id="week-strip" class="week-strip hidden" role="list" aria-label="وضعیت این هفته"></div>
+    <div id="sticky-status" class="sticky-status hidden" aria-hidden="true"></div>
+    <div id="seasonal-banner" class="seasonal-banner hidden" role="status"><span id="seasonal-text"></span><button type="button" id="seasonal-close" aria-label="بستن">×</button></div>
 
     <main id="views">
 
@@ -85,9 +93,11 @@
           <div class="progress-legend"><span id="progress-text">۰٪ از ۸ ساعت</span><span>هدف روزانه</span></div>
         </div>
 
+        <div class="actions" id="today-actions"></div>
+
         <section class="card earnings-card hidden" id="earnings-card" aria-labelledby="earnings-title">
           <div class="earnings-heading">
-            <h3 id="earnings-title"><span class="icon-chip icon-chip-green" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v10a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1H5a2 2 0 0 1-2-2"/><circle cx="16.5" cy="13.5" r="1"/></svg></span>💰 کارکرد این ماه</h3>
+            <h3 id="earnings-title"><span class="icon-chip icon-chip-green" aria-hidden="true"><svg class="icon"><use href="/icons.svg#i-wallet"/></svg></span> کارکرد این ماه</h3>
             <span class="earnings-live hidden" id="earnings-live" aria-hidden="true"><i></i>زنده</span>
           </div>
           <p class="earnings-intro" id="earnings-intro"></p>
@@ -114,7 +124,6 @@
         <div class="card plan-gate-banner report-banner hidden" id="report-banner" role="status"></div>
 
         <div class="card late-limit-card hidden" id="late-limit-card" aria-live="polite"></div>
-        <div class="actions" id="today-actions"></div>
 
         <div class="card today-times" id="today-times-card">
           <div class="time-stat">

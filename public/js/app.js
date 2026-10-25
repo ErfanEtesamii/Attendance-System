@@ -124,6 +124,14 @@
 
   function $(sel) { return document.querySelector(sel); }
   function $all(sel) { return Array.from(document.querySelectorAll(sel)); }
+  function icon(name, { size = '', label = '' } = {}) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', `icon${size ? ` icon-${size}` : ''}`);
+    if (label) { svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', label); }
+    else svg.setAttribute('aria-hidden', 'true');
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttribute('href', `/icons.svg#i-${name}`); svg.appendChild(use); return svg;
+  }
 
   function showToast(msg, isErr) {
     const el = $('#toast');
@@ -147,6 +155,44 @@
     showActionFeedback._t = setTimeout(() => card.classList.add('hidden'), 4200);
   }
 
+  function arrangeToday() {
+    const view = $('#view-today'); const actions = $('#today-actions'); const times = $('#today-times-card');
+    if (!view || !actions || !times) return;
+    const warnings = ['#late-limit-card', '#plan-gate-banner', '#report-banner', '#urgent-card', '#missing-checkout-card'];
+    view.insertBefore(actions, view.querySelector('.earnings-card'));
+    warnings.forEach((selector) => { const el = $(selector); if (el) view.insertBefore(el, times); });
+    view.insertBefore(times, view.querySelector('.earnings-card'));
+  }
+
+  function initStickyStatus() {
+    const source = $('#today-status-card'); const target = $('#sticky-status'); if (!source || !target || !window.IntersectionObserver) return;
+    const update = () => { const label = $('#status-label'); const timer = $('#timer'); target.textContent = `${label ? label.textContent : 'وضعیت'} · ${timer ? timer.textContent : ''}`; };
+    new MutationObserver(update).observe(source, { childList: true, subtree: true, characterData: true }); update();
+    new IntersectionObserver(([entry]) => target.classList.toggle('hidden', entry.isIntersecting), { threshold: .1 }).observe(source);
+  }
+
+  function applyAccessibility() {
+    try {
+      document.documentElement.setAttribute('data-text-size', localStorage.getItem('textSize') || 'normal');
+      document.documentElement.setAttribute('data-contrast', localStorage.getItem('contrast') || 'normal');
+    } catch (_) {}
+  }
+  function initAppearance() {
+    const sheet = $('#appearance-sheet'); const toggle = $('[data-theme-toggle]'); if (!sheet || !toggle) return;
+    const close = () => sheet.classList.add('hidden');
+    toggle.addEventListener('click', (event) => { event.preventDefault(); event.stopPropagation(); $('#appearance-theme').value = window.Theme ? window.Theme.get() : 'auto'; try { $('#appearance-text').value = localStorage.getItem('textSize') || 'normal'; $('#appearance-contrast').checked = localStorage.getItem('contrast') === 'high'; } catch (_) {} sheet.classList.remove('hidden'); sheet.querySelector('.sheet').focus(); });
+    $('#appearance-close').addEventListener('click', close); sheet.addEventListener('click', (event) => { if (event.target === sheet) close(); });
+    $('#appearance-theme').addEventListener('change', (event) => { if (window.Theme) window.Theme.set(event.target.value); });
+    $('#appearance-text').addEventListener('change', (event) => { try { localStorage.setItem('textSize', event.target.value); } catch (_) {} applyAccessibility(); });
+    $('#appearance-contrast').addEventListener('change', (event) => { try { localStorage.setItem('contrast', event.target.checked ? 'high' : 'normal'); } catch (_) {} applyAccessibility(); });
+  }
+  function initSeasonalBanner() {
+    let type = 'off'; try { type = localStorage.getItem('seasonalTheme') || 'off'; } catch (_) {}
+    const labels = { nowruz: 'نوروزتان پیروز باد', yalda: 'شب یلدایتان روشن', ramadan: 'ماه رمضان مبارک', custom: 'پیام مناسبتی' }; const box = $('#seasonal-banner');
+    let closed = false; try { closed = localStorage.getItem(`seasonalClosed:${type}`) === '1'; } catch (_) {} if (!box || !labels[type] || closed) return; $('#seasonal-text').textContent = labels[type]; box.classList.remove('hidden');
+    $('#seasonal-close').addEventListener('click', () => { try { localStorage.setItem(`seasonalClosed:${type}`, '1'); } catch (_) {} box.classList.add('hidden'); });
+  }
+
   // ---------- حالت‌های UI (S5-9c): skeleton، خالی، خطا با «تلاش دوباره»، دکمه‌ی در حال ارسال ----------
   const U = window.UiStates;
   function renderLoading(el, kind) {
@@ -167,18 +213,24 @@
   // دکمه را تا پایان درخواست غیرفعال می‌کند (جلوگیری از ارسال دوباره)
   async function withBusy(btn, fn) {
     if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
-    try { return await fn(); } finally { if (btn) { btn.disabled = false; btn.removeAttribute('aria-busy'); } }
+    try { const result = await fn(); if (btn) { btn.classList.add('success-pop'); setTimeout(() => btn.classList.remove('success-pop'), 650); } return result; } finally { if (btn) { btn.disabled = false; btn.removeAttribute('aria-busy'); } }
   }
 
   async function api(path, options = {}) {
-    const res = await fetch('/api/miniapp' + path, {
+    const method = options.method || 'GET';
+    const retries = method === 'GET' ? 2 : 0;
+    for (let attempt = 0; ; attempt += 1) try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), Number(options.timeoutMs) || 15000);
+      const res = await fetch('/api/miniapp' + path, {
       method: options.method || 'GET',
       headers: {
         'Content-Type': 'application/json',
         'X-Telegram-Init-Data': initData,
       },
-      body: options.body ? JSON.stringify(options.body) : undefined,
-    });
+        body: options.body ? JSON.stringify(options.body) : undefined, signal: controller.signal,
+      });
+      clearTimeout(timer);
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       if ((options.method || 'GET') !== 'GET') TGI.notify(res.status === 409 ? 'warning' : 'error');
@@ -187,9 +239,23 @@
       err.data = data;
       throw err;
     }
-    if ((options.method || 'GET') !== 'GET') TGI.notify('success');
-    return data;
+      if (method !== 'GET') TGI.notify('success');
+      return data;
+    } catch (cause) {
+      const timeout = cause && cause.name === 'AbortError';
+      if (attempt < retries) { await new Promise((resolve) => setTimeout(resolve, attempt ? 3000 : 1000)); continue; }
+      if (timeout) { const err = new Error('اتصال ضعیف است. دوباره تلاش کنید.'); err.code = 'TIMEOUT'; throw err; }
+      throw cause;
+    }
   }
+
+  function setOffline(offline) {
+    const bar = $('#offline-bar'); if (bar) bar.classList.toggle('hidden', !offline);
+    $all('#today-actions button, #remote-actions button').forEach((button) => { button.setAttribute('aria-disabled', String(offline)); });
+  }
+  window.addEventListener('offline', () => setOffline(true));
+  window.addEventListener('online', () => { setOffline(false); loadToday().catch(() => {}); });
+  setOffline(!navigator.onLine);
 
   // «۱ ساعت و ۱۰ دقیقه» / «۲۵ دقیقه» (بدون «۰ ساعت»)
   function fmtDurationCompact(totalMinutes) {
@@ -340,13 +406,13 @@
   }
 
   const ICONS = {
-    in: '<svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>',
-    out: '<svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
-    lunch: '<svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8zM6 1v3M10 1v3M14 1v3"/></svg>',
-    resume: '<svg viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z"/></svg>',
-    plan: '<svg viewBox="0 0 24 24"><path d="M4 5h16v15H4zM4 9h16M8 3v4M16 3v4M8 13h3M8 16h6"/></svg>',
-    mission: '<svg viewBox="0 0 24 24"><path d="M5 17h14M3 13l2-6h14l2 6v4H3v-4zM7 17v2M17 17v2M7 13h.01M17 13h.01"/></svg>',
-    myday: '<svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg>',
+    in: 'in',
+    out: 'out',
+    lunch: 'break',
+    resume: 'play',
+    plan: 'plan',
+    mission: 'mission',
+    myday: 'checklist',
   };
 
   // ---------- اجازه‌ی ورود (D2) ----------
@@ -449,7 +515,7 @@
       const b = document.createElement('button');
       b.className = 'action-tile t-' + color + (wide ? ' wide' : '') + (primary ? ' is-primary' : '');
       const iconEl = document.createElement('span');
-      iconEl.className = 'tile-icon'; iconEl.textContent = ICONS[icon] || '';
+      iconEl.className = 'tile-icon'; if (ICONS[icon]) iconEl.appendChild(icon(ICONS[icon]));
       const text = document.createElement('span'); text.className = 'tile-text';
       const titleEl = document.createElement('span'); titleEl.className = 'tile-title'; titleEl.textContent = title;
       const subEl = document.createElement('span'); subEl.className = 'tile-sub'; subEl.textContent = sub;
@@ -530,22 +596,25 @@
     addPlanTile();
   }
 
-  function confirmDialog(message, titleText, yesText) {
+  function confirmSheet({ title, message, confirmLabel, cancelLabel = 'انصراف', tone = 'primary' }) {
     return new Promise((resolve) => {
       const backdrop = rEl('div', 'remote-backdrop');
       const box = rEl('div', 'remote-dialog');
       box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
-      const title = rEl('h2', 'remote-dialog-title', titleText);
+      const titleEl = rEl('h2', 'remote-dialog-title', title);
       const text = rEl('p', 'remote-dialog-text', message);
       const actions = rEl('div', 'remote-dialog-actions');
-      const finish = (answer) => { if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop); resolve(answer); };
-      const yes = rEl('button', 'btn primary', yesText); yes.type = 'button'; yes.addEventListener('click', () => finish(true));
-      const no = rEl('button', 'btn secondary', 'انصراف'); no.type = 'button'; no.addEventListener('click', () => finish(false));
-      actions.appendChild(yes); actions.appendChild(no); box.appendChild(title); box.appendChild(text); box.appendChild(actions); backdrop.appendChild(box);
+      const finish = (answer) => { document.removeEventListener('keydown', onKey); if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop); resolve(answer); };
+      const yes = rEl('button', `btn ${tone === 'danger' ? 'danger' : 'primary'}`, confirmLabel); yes.type = 'button'; yes.addEventListener('click', () => finish(true));
+      const no = rEl('button', 'btn secondary', cancelLabel); no.type = 'button'; no.addEventListener('click', () => finish(false));
+      const onKey = (event) => { if (event.key === 'Escape') finish(false); }; document.addEventListener('keydown', onKey);
+      actions.appendChild(no); actions.appendChild(yes); box.appendChild(titleEl); box.appendChild(text); box.appendChild(actions); backdrop.appendChild(box);
       backdrop.addEventListener('click', (event) => { if (event.target === backdrop) finish(false); });
       document.body.appendChild(backdrop); yes.focus();
     });
   }
+
+  function confirmDialog(message, titleText, yesText) { return confirmSheet({ title: titleText, message, confirmLabel: yesText }); }
 
   function confirmAction(message, titleText, yesText) {
     return TGI.ask(message, () => confirmDialog(message, titleText, yesText));
@@ -701,6 +770,7 @@
       }
       const res = await api(path, { method: 'POST', body });
       const feedback = path === '/check-out' ? checkoutMessage(res, successMsg) : successMsg;
+      if (window.celebrate && (path === '/check-out' || path === '/check-in')) window.celebrate('check');
       showToast(feedback);
       if (path === '/check-out') { reportUi.answers = new Map(); reportUi.extras = []; reportUi.date = ''; switchView('today'); }
       await loadToday();
@@ -935,6 +1005,7 @@
     state.today = data;
     renderEarnings(data.earnings);
     loadMissingCheckout();
+    loadWeekStrip();
     const r = data.record;
 
     $('#ti-checkin').textContent = fmtClock(r?.check_in_time);
@@ -1005,6 +1076,20 @@
     loadUrgentCard();
     loadPlanGateBanner();
     loadReportBanner();
+  }
+
+  async function loadWeekStrip() {
+    const box = $('#week-strip'); if (!box) return;
+    try {
+      const data = await api('/week-strip'); const days = data && data.days;
+      if (!Array.isArray(days) || days.length !== 7) { box.classList.add('hidden'); return; }
+      box.textContent = '';
+      days.forEach((d) => {
+        const status = d.isFuture ? 'future' : (d.kind === 'leave' || d.kind === 'mission' ? d.kind : (d.absent ? 'absent' : (d.attendance && d.attendance.flags && d.attendance.flags.includes('missing_checkout') ? 'incomplete' : (d.attendance && d.attendance.lateMinutes > 0 ? 'late' : (d.attendance ? 'present' : 'off')))));
+        const b = document.createElement('button'); b.type = 'button'; b.className = `week-dot is-${status}${d.isToday ? ' is-today' : ''}`; b.setAttribute('role', 'listitem'); b.textContent = String(d.weekday || '').slice(0, 1); b.setAttribute('aria-label', `${fmtDate(d.date)}، ${status}`);
+        b.addEventListener('click', () => { switchView('history'); renderHistoryDetail(null, d.date); }); box.appendChild(b);
+      }); box.classList.remove('hidden');
+    } catch (_) { box.classList.add('hidden'); }
   }
 
   async function loadMissingCheckout() {
@@ -1179,6 +1264,7 @@
     renderLoading(list, 'list');
     try {
       const records = await api('/history?days=30');
+      const oldLegend = $('#view-history .history-legend'); if (oldLegend) oldLegend.remove();
       list.removeAttribute('aria-busy');
       list.innerHTML = '';
       const byDate = new Map(records.map((r) => [r.record_date, r]));
@@ -1192,7 +1278,9 @@
         const record = byDate.get(date) || null;
         const day = document.createElement('button');
         day.type = 'button';
-        day.className = `history-day status-${record ? record.status : 'empty'}`;
+        const effective = Number(record?.summary?.effectiveMinutes) || 0;
+        const level = effective ? Math.min(4, Math.max(1, Math.ceil(effective / 120))) : 0;
+        day.className = `history-day status-${record ? record.status : 'empty'}${level ? ` level-${level}` : ''}`;
         const dateObj = new Date(`${date}T12:00:00`);
         const dayNo = dateObj.toLocaleDateString('fa-IR-u-ca-persian', { day: 'numeric' });
         day.innerHTML = `<span class="history-day-number">${dayNo}</span><span class="history-day-icon" aria-hidden="true">${record ? (HISTORY_ICONS[record.status] || '•') : '·'}</span>`;
@@ -1200,6 +1288,7 @@
         day.addEventListener('click', () => renderHistoryDetail(record, date));
         list.appendChild(day);
       }
+      const legend = document.createElement('div'); legend.className = 'history-legend'; legend.textContent = 'شدت رنگ = ساعت مفید'; list.parentNode.insertBefore(legend, list.nextSibling);
       const detail = $('#history-detail');
       if (detail) detail.classList.add('hidden');
     } catch (err) {
@@ -1248,6 +1337,7 @@
       }).join('');
       card.removeAttribute('aria-busy');
       card.innerHTML = `
+        <section class="report-chart"><h3>وضعیت من</h3><div class="report-legend"><span>ساعت مفید ${fmtDuration(r.totalEffective)}</span><span>روز بدون تأخیر ${(counts.normal || 0).toLocaleString('fa-IR')}</span><span>تسک تکمیل‌شده —</span></div>${counts.normal ? `<p class="plan-meta">این هفته ${counts.normal.toLocaleString('fa-IR')} روز سر ساعت رسیدی.</p>` : ''}</section>
         <section class="report-chart" aria-labelledby="hours-chart-title"><h3 id="hours-chart-title">ساعت مفید روزانه</h3><svg class="report-bars" viewBox="0 0 320 124" role="img" aria-label="نمودار ساعت مفید روزانه">${bars}</svg></section>
         <section class="report-chart report-donut-wrap" aria-labelledby="status-chart-title"><div><h3 id="status-chart-title">ترکیب وضعیت روزها</h3><div class="report-legend"><span>عادی ${counts.normal.toLocaleString('fa-IR')}</span><span>تأخیر ${counts.late.toLocaleString('fa-IR')}</span><span>ناقص ${counts.incomplete.toLocaleString('fa-IR')}</span><span>مرخصی ${counts.leave.toLocaleString('fa-IR')}</span></div></div><svg class="report-donut" viewBox="0 0 120 120" role="img" aria-label="نمودار ترکیب وضعیت روزها">${rings}<circle class="report-donut-hole" cx="60" cy="60" r="31"/></svg></section>
         <div class="row"><span class="row-label">مجموع ساعت مفید</span><span class="row-value">${fmtDuration(r.totalEffective)}</span></div>
@@ -3856,6 +3946,11 @@
   }
 
   async function boot() {
+    arrangeToday();
+    initStickyStatus();
+    applyAccessibility();
+    initAppearance();
+    initSeasonalBanner();
     initBreakSheet();
     getDeviceId(); // S2-3: از همین ابتدا آماده شود تا لمس «ثبت ورود» معطل نماند
     const errBox = $('#app-error');

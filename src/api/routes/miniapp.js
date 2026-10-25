@@ -45,6 +45,7 @@ const notificationEvents = require('../../services/notificationEvents');
 const { todayDateString } = require('../../utils/serverTime');
 const { addDays } = require('../../utils/shiftDay');
 const { earningsForUser } = require('../../services/earningsService');
+const employeeWeekService = require('../../services/employeeWeekService');
 const disputeRepository = require('../../repositories/disputeRepository');
 
 const IDEMPOTENT_WINDOW_MS = 2 * 60 * 1000;
@@ -188,6 +189,12 @@ router.get('/miniapp/today', (req, res) => {
   const reEntriesUsed = Math.max(0, segments.length - 1);
   const canReEnter = Boolean(record && record.check_out_time && settings.maxReEntriesPerDay > reEntriesUsed);
   res.json({ record: record || null, openBreak: openBreak || null, breaks, summary, breakPolicy, openBreakPaid, earnings, segments, reEntriesUsed, reEntriesMax: settings.maxReEntriesPerDay, canReEnter });
+});
+
+router.get('/miniapp/week-strip', (req, res) => {
+  const result = employeeWeekService.getMyWeek(req.miniAppUser, {});
+  if (!result.ok) return res.status(result.status || 400).json({ error: result.error, code: result.code });
+  return res.json({ days: result.days.map((d) => ({ date: d.date, jalali: d.jalali, weekday: d.weekday, isToday: d.isToday, isFuture: d.isFuture, kind: d.kind, absent: d.absent, attendance: d.attendance ? { lateMinutes: d.attendance.lateMinutes, effectiveMinutes: d.attendance.effectiveMinutes, flags: d.attendance.flags } : null })) });
 });
 
 router.post('/miniapp/re-check-in', (req, res) => {
