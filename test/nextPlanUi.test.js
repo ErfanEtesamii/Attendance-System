@@ -123,8 +123,16 @@ describe('فهرست کارمندان (ستون کناری)', () => {
     assert.match(again.html, /data-np-user="8" aria-current="true"/);
   });
 
-  test('بدون کارمند انتخاب‌شده: پیام راهنما و هیچ درخواست برنامه‌ای نمی‌رود', async () => {
+  test('اولین ورود بدون کارمند انتخاب‌شده: اولین کارمندِ نیازمند توجه خودکار باز می‌شود', async () => {
     const t = setup();
+    const { html } = await t.def.render(null);
+    assert.doesNotMatch(html, /یک کارمند را از فهرست انتخاب کنید/);
+    assert.match(html, /np-emp is-active" data-np-user="8" aria-current="true"/);
+    assert.deepEqual(t.urls, ['/admin/plan-overview', '/admin/users/8/plan']);
+  });
+
+  test('فهرست خالی: پیام راهنما و هیچ درخواست برنامه‌ای نمی‌رود', async () => {
+    const t = setup({ ov: OV({ employees: [] }) });
     const { html } = await t.def.render(null);
     assert.match(html, /یک کارمند را از فهرست انتخاب کنید/);
     assert.deepEqual(t.urls, ['/admin/plan-overview']);

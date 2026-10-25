@@ -181,7 +181,12 @@
       const ov = await AP.api(`/admin/plan-overview${q}`); // خطا ⇒ صفحه‌ی خطای روتر (با «تلاش دوباره»)
 
       const picked = param ? Number(param) : ui.userId;
-      const userId = Number.isInteger(picked) && picked > 0 ? picked : null;
+      let userId = Number.isInteger(picked) && picked > 0 ? picked : null;
+      // اولین ورود (کارمندی انتخاب نشده): به‌جای صفحه‌ی خالی، اولین کارمندِ نیازمند توجه (وگرنه اولین نفر فهرست) باز می‌شود.
+      if (!userId && !param) {
+        const first = ov.employees.find((e) => e.needsAttention) || ov.employees[0];
+        if (first) userId = first.id;
+      }
       ui.userId = userId;
 
       let r = null; let err = null;
