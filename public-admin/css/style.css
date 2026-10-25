@@ -1851,3 +1851,16 @@ body[data-density="compact"] tbody td { padding-block: 7px; }
   .tr-filters .field { max-width: none; }
   .tr-filters .export-group { margin-inline-start: 0; width: 100%; }
 }
+
+/* منوی بازشوندهٔ select: رنگ متن و پس‌زمینه‌ی گزینه‌ها هم‌تم */
+select { color-scheme: inherit; }
+select option,
+select optgroup {
+  background-color: var(--card-2);
+  color: var(--text);
+}
+select option:checked,
+select option:hover {
+  background-color: var(--brand);
+  color: var(--on-brand);
+}
