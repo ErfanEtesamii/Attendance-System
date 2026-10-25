@@ -1,0 +1,34 @@
+/* ===== صفحه‌ی نمودارها: ظاهر جدید + نقشه‌ی حرارتی خوانا ===== */
+#an-filters { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-4); margin-bottom: var(--space-4); box-shadow: var(--shadow-1); }
+.chart-grid { gap: var(--space-5); }
+.chart-fig { position: relative; border-radius: var(--r-lg); padding: 22px; box-shadow: var(--shadow-1); transition: box-shadow .18s, transform .18s, border-color .18s; overflow: hidden; }
+.chart-fig::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 4px; background: linear-gradient(90deg, var(--brand), var(--accent)); opacity: .85; }
+.chart-fig:hover { box-shadow: 0 8px 28px rgba(43, 37, 96, .12); border-color: color-mix(in srgb, var(--brand) 30%, var(--border)); transform: translateY(-1px); }
+.chart-fig figcaption { font-size: var(--fs-md); display: flex; align-items: baseline; gap: var(--space-2); margin-bottom: var(--space-4); }
+.chart-fig figcaption::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; align-self: center; }
+.chart-note { background: var(--brand-soft); border-radius: var(--r-sm); padding: 8px 12px; }
+.chart-data summary { padding: 6px 0; font-weight: 700; }
+.chart-fig .empty { padding: var(--space-5) 0; text-align: center; color: var(--hint); }
+@media (prefers-reduced-motion: reduce) { .chart-fig { transition: none; } .chart-fig:hover { transform: none; } }
+.chart-slot[data-chart="heatmap"] { grid-column: 1 / -1; }
+
+/* نقشه‌ی حرارتی: ردیف = روز هفته، ستون = ساعت */
+.heat-sub { font-size: var(--fs-xs); font-weight: 600; color: var(--hint); margin-inline-start: auto; }
+.heat-summary { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-4); }
+.heat-pill { background: var(--brand-soft); color: var(--text); border-radius: 999px; padding: 6px 14px; font-size: var(--fs-xs); }
+.heat-pill b { color: var(--brand); }
+.heat-scroll { overflow-x: auto; padding-bottom: var(--space-2); }
+.heatmap { display: grid; direction: ltr; grid-template-columns: repeat(var(--heat-cols, 16), minmax(34px, 1fr)) minmax(96px, auto); gap: 4px; min-width: max-content; width: 100%; }
+.heatmap .heat-cell { aspect-ratio: auto; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: transparent; background: color-mix(in srgb, var(--hint) 9%, var(--card)); border: 1px solid color-mix(in srgb, var(--hint) 12%, transparent); transition: transform .12s; }
+.heatmap .heat-cell:hover { transform: scale(1.12); outline: 2px solid var(--text); z-index: 1; position: relative; }
+.heat-cell[data-level="1"] { background: color-mix(in srgb, var(--brand) 22%, var(--card)); color: var(--text); border-color: transparent; }
+.heat-cell[data-level="2"] { background: color-mix(in srgb, var(--brand) 42%, var(--card)); color: var(--text); border-color: transparent; }
+.heat-cell[data-level="3"] { background: color-mix(in srgb, var(--brand) 64%, var(--card)); color: var(--on-brand); border-color: transparent; }
+.heat-cell[data-level="4"] { background: var(--brand); color: var(--on-brand); border-color: transparent; }
+.heat-cell[data-level="5"] { background: var(--accent); color: #17143a; border-color: transparent; box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
+.heat-day { direction: rtl; display: flex; flex-direction: column; justify-content: center; padding-inline-start: var(--space-3); line-height: 1.5; }
+.heat-day b { font-size: var(--fs-sm); }
+.heat-day small { font-size: 11px; color: var(--hint); }
+.heat-hour { text-align: center; font-size: 11px; color: var(--hint); direction: ltr; padding-top: 2px; }
+.heat-legend { display: flex; align-items: center; gap: 6px; margin-top: var(--space-4); font-size: var(--fs-xs); color: var(--hint); }
+.heatmap .heat-cell.heat-key, .heat-legend .heat-cell { width: 26px; height: 14px; border-radius: 4px; }

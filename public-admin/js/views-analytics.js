@@ -52,9 +52,39 @@
     const ym = { year: ui.year, month: ui.month };
     const dep = { department: ui.department };
     const d = deps();
+    // نقشه‌ی حرارتی: ردیف = روز هفته (شنبه تا جمعه)، ستون = ساعت؛ هر خانه جمعِ ورودهای همان ساعت است. ساعت‌های خالیِ ابتدا و انتها حذف می‌شوند.
     const heatmap = (r) => {
-      const cells = (r.cells || []).flatMap((row, day) => row.map((count, bin) => `<span class="heat-cell" data-heat="${r.max ? Math.round((count / r.max) * 10) : 0}" title="روز ${day + 1}، ${String(Math.floor(bin / 4)).padStart(2, '0')}:${String((bin % 4) * 15).padStart(2, '0')} — ${count}"></span>`)).join('');
-      return `<figure class="chart-fig"><figcaption>نقشه حرارتی ساعت ورود</figcaption><div class="heatmap" role="img" aria-label="شدت ورودها در روزهای هفته و بازه‌های پانزده دقیقه‌ای">${cells}</div><p class="muted">هر خانه یک بازهٔ ۱۵ دقیقه‌ای است؛ تیرگی بیشتر یعنی ورود بیشتر.</p></figure>`;
+      const ORDER = [6, 0, 1, 2, 3, 4, 5]; // شنبه … جمعه (داده: ۰=یکشنبه … ۶=شنبه)
+      const NAMES = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه'];
+      const fa = d.fa;
+      const hourly = (r.cells || []).map((row) => Array.from({ length: 24 }, (_, h) => (row || []).slice(h * 4, h * 4 + 4).reduce((a, b) => a + (b || 0), 0)));
+      const total = hourly.flat().reduce((a, b) => a + b, 0);
+      if (!total) return '<figure class="chart-fig"><figcaption>نقشه حرارتی ساعت ورود</figcaption><div class="empty">داده‌ای برای نمایش نیست.</div></figure>';
+      const used = hourly.flatMap((row) => row.map((c, h) => (c ? h : -1))).filter((h) => h >= 0);
+      const lo = Math.max(0, Math.min(...used) - 1);
+      const hi = Math.min(23, Math.max(...used) + 1);
+      const hours = Array.from({ length: hi - lo + 1 }, (_, i) => lo + i);
+      const max = Math.max(...hourly.flat());
+      const hh = (h) => `${fa(String(h).padStart(2, '0'))}:۰۰`;
+      let peak = { c: -1 };
+      const rows = ORDER.map((wd) => {
+        const row = hourly[wd] || Array(24).fill(0);
+        const sum = row.reduce((a, b) => a + b, 0);
+        const cells = hours.map((h) => {
+          const c = row[h];
+          if (c > peak.c) peak = { c, wd, h };
+          const lvl = c ? Math.min(5, Math.max(1, Math.ceil((c / max) * 5))) : 0;
+          return `<span class="heat-cell" data-level="${lvl}" title="${NAMES[wd]}، ${hh(h)} تا ${hh(h + 1)} — ${fa(c)} ورود">${c ? fa(c) : ''}</span>`;
+        }).join('');
+        return `${cells}<span class="heat-day"><b>${NAMES[wd]}</b><small>${fa(sum)} ورود</small></span>`;
+      }).join('');
+      const axis = `${hours.map((h) => `<span class="heat-hour">${fa(String(h).padStart(2, '0'))}</span>`).join('')}<span></span>`;
+      const legend = [0, 1, 2, 3, 4, 5].map((l) => `<span class="heat-cell heat-key" data-level="${l}"></span>`).join('');
+      return `<figure class="chart-fig heat-fig"><figcaption>نقشه حرارتی ساعت ورود <small class="heat-sub">۳۰ روز اخیر</small></figcaption>
+        <div class="heat-summary"><span class="heat-pill">شلوغ‌ترین زمان: <b>${NAMES[peak.wd]}، ${hh(peak.h)} تا ${hh(peak.h + 1)}</b></span><span class="heat-pill">${fa(peak.c)} ورود در همان ساعت</span><span class="heat-pill">مجموع: ${fa(total)} ورود</span></div>
+        <div class="heat-scroll"><div class="heatmap" role="img" aria-label="شدت ورودها در روزهای هفته و ساعت‌های روز؛ شلوغ‌ترین زمان ${NAMES[peak.wd]} ${hh(peak.h)}" style="--heat-cols:${hours.length}">${rows}${axis}</div></div>
+        <div class="heat-legend"><span>کم</span>${legend}<span>زیاد</span></div>
+        <p class="chart-note">هر خانه تعداد ورودها در همان ساعت از روز است؛ هرچه رنگ پررنگ‌تر (و در بالاترین سطح نارنجی) باشد ورود بیشتری رخ داده است. خانه‌ی خالی یعنی ورودی ثبت نشده.</p></figure>`;
     };
     // [شناسه، آدرس API، سازنده‌ی نمودار از پاسخ، عنوان برای خطا]
     const jobs = [
