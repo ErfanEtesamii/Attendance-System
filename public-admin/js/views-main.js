@@ -275,13 +275,15 @@
             ${AP.can('users.write') ? `<button class="btn primary" id="add-emp">${icon('plus')} افزودن کارمند</button>` : ''}
           </div>
         </div>
-        <div class="filters">
+        <div class="emp-stats" id="emp-stats"></div>
+        <div class="filters emp-filters">
           <label class="field grow"><span>جستجو</span><input id="f-q" type="search" placeholder="نام یا کد پرسنلی…" /></label>
           <label class="field"><span>دپارتمان</span><select id="f-dept"><option value="">همه</option>${depts.map((d) => `<option>${esc(d)}</option>`).join('')}</select></label>
           <label class="field"><span>نقش</span><select id="f-role"><option value="">همه</option>${Object.entries(AP.ROLE).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label>
           <label class="field"><span>وضعیت حساب</span><select id="f-active"><option value="">همه</option><option value="1">فعال</option><option value="0">غیرفعال</option></select></label>
         </div>
-        <div class="card flush"><div class="table-wrap"><table>
+        <div class="emp-count" id="emp-count" role="status" aria-live="polite"></div>
+        <div class="card flush emp-table"><div class="table-wrap"><table>
           <thead><tr><th>کارمند</th><th>کد پرسنلی</th><th>دپارتمان</th><th>نقش</th><th>سرپرست مستقیم</th><th>شیفت مؤثر</th><th>وضعیت امروز</th><th>آیدی تلگرام</th><th>حساب</th></tr></thead>
           <tbody id="emp-body"></tbody></table></div></div>`;
       const todayMap = { not_checked_in: 'absent', checked_in: 'present', checked_out: 'checked_out', incomplete: 'incomplete', holiday: 'holiday', leave: 'leave' };
@@ -299,6 +301,7 @@
             const list = users.filter((u) =>
               (!q || u.fullName.toLowerCase().includes(q) || (u.personnelCode || '').toLowerCase().includes(q)) &&
               (!dp || u.department === dp) && (!rl || u.role === rl) && (!ac || String(u.isActive ? 1 : 0) === ac));
+            $('#emp-count', page).textContent = `نمایش ${fmt.num(list.length)} از ${fmt.num(users.length)} کارمند`;
             body.innerHTML = list.length ? list.map((u) => `
               <tr class="clickable ${u.isActive ? '' : 'inactive'}" data-id="${u.id}">
                 <td><div class="cell-user">${AP.avatar(u.fullName, 'sm')}<span><b>${esc(u.fullName)}</b></span></div></td>
@@ -312,8 +315,12 @@
                 <td>${u.isActive ? AP.badge('green', 'فعال') : AP.badge('red', 'غیرفعال')}</td></tr>`).join('')
               : `<tr><td colspan="9">${emptyBox('کارمندی با این فیلتر پیدا نشد.')}</td></tr>`;
           };
+          const active = users.filter((u) => u.isActive);
+          const cntBy = (st) => active.filter((u) => u.todayStatus === st).length;
+          const tile = (cls, label, n) => `<div class="emp-stat ${cls}"><span class="emp-stat-n">${fmt.num(n)}</span><span class="emp-stat-l">${label}</span></div>`;
+          $('#emp-stats', page).innerHTML = tile('', 'کل کارمندان', users.length) + tile('is-ok', 'فعال', active.length) + tile('is-in', 'داخل شرکت', cntBy('checked_in')) + tile('is-out', 'خارج‌شده', cntBy('checked_out')) + tile('is-abs', 'غایب / نیامده', cntBy('not_checked_in'));
           draw();
-          $$('.filters input, .filters select', page).forEach((el) => el.addEventListener('input', draw));
+          $('.filters input, .filters select', page).forEach((el) => el.addEventListener('input', draw));
           body.addEventListener('click', (e) => { const tr = e.target.closest('tr[data-id]'); if (tr) AP.go('profile', tr.dataset.id); });
           const add = $('#add-emp', page);
           if (add) add.addEventListener('click', () => {
