@@ -115,10 +115,9 @@
       const rate = (v) => (v == null ? '—' : `${fmt.num(v)}٪`);
       const teams = k.teams.map((t) => `<tr><td>${esc(t.managerName)}</td><td>${fmt.num(t.members)}</td><td>${fmt.num(t.done)} از ${fmt.num(t.planned)}</td><td>${rate(t.completionRate)}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">داده‌ای نیست.</td></tr>';
       const revs = k.reviewers.map((r) => `<tr><td>${esc(r.reviewerName)}</td><td>${fmt.num(r.reports)}</td><td>${fmt.num(r.onTime)}</td><td>${rate(r.onTimeRate)}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">داده‌ای نیست.</td></tr>';
-      box.innerHTML = `<h3>شاخص‌ها (۳۰ روز اخیر)</h3>
-        <div class="stack">
-        <section><h4>نرخ انجام تیم‌ها</h4><div class="table-wrap"><table><thead><tr><th>تیم</th><th>اعضا</th><th>انجام‌شده</th><th>نرخ انجام</th></tr></thead><tbody>${teams}</tbody></table></div></section>
-        <section><h4>بررسی به‌موقع سرپرست‌ها</h4><div class="table-wrap"><table><thead><tr><th>سرپرست</th><th>گزارش‌ها</th><th>بررسی به‌موقع</th><th>نرخ</th></tr></thead><tbody>${revs}</tbody></table></div></section></div>
+      box.innerHTML = `<h3 class="u-m-0">شاخص‌ها (۳۰ روز اخیر)</h3>
+        <section class="card"><h4>نرخ انجام تیم‌ها</h4><div class="table-wrap"><table><thead><tr><th>تیم</th><th>اعضا</th><th>انجام‌شده</th><th>نرخ انجام</th></tr></thead><tbody>${teams}</tbody></table></div></section>
+        <section class="card"><h4>بررسی به‌موقع سرپرست‌ها</h4><div class="table-wrap"><table><thead><tr><th>سرپرست</th><th>گزارش‌ها</th><th>بررسی به‌موقع</th><th>نرخ</th></tr></thead><tbody>${revs}</tbody></table></div></section>
         <p class="sub">برنامه‌ی هفته‌ی بعدِ برآورده‌نشده: ${fmt.num(k.unplanned.count)} نفر${k.unplanned.users.length ? ` — ${k.unplanned.users.slice(0, 10).map((u) => esc(u.fullName)).join('، ')}` : ''}</p>
         <p class="sub">تنظیم‌شده توسط سرپرست (ارسال نهایی نشده): ${fmt.num(k.managerConfiguredNotSubmitted.count)} نفر${k.managerConfiguredNotSubmitted.users.length ? ` — ${k.managerConfiguredNotSubmitted.users.slice(0, 10).map((u) => esc(u.fullName)).join('، ')}` : ''}</p>`;
     } catch (err) {
@@ -158,9 +157,9 @@
           <label class="field"><span>تا تاریخ</span><input type="date" name="to" value="${esc(ui.expTo || fmt.today())}" /></label>
           ${managers.length ? `<label class="field"><span>تیم</span><select name="managerId"><option value="">کل مجموعه</option>${managers.map((m) => `<option value="${m.id}" ${String(m.id) === String(ui.expManager) ? 'selected' : ''}>${esc(m.fullName)}</option>`).join('')}</select></label>` : ''}
           ${users.length ? `<label class="field"><span>فرد</span><select name="expUserId"><option value="">همه</option>${users.map((u) => `<option value="${u.id}" ${String(u.id) === String(ui.expUser) ? 'selected' : ''}>${esc(u.fullName || u.full_name)}</option>`).join('')}</select></label>` : ''}
-          <span id="tr-export-bar">${expBar()}</span>
+          <span id="tr-export-bar" class="export-group">${expBar()}</span>
         </form>
-        ${AP.can('analytics.read') ? '<div id="tr-kpis" class="card" aria-live="polite"></div>' : ''}
+        ${AP.can('analytics.read') ? '<div id="tr-kpis" class="stack" aria-live="polite"></div>' : ''}
         <div class="filters" role="tablist">${TABS.map(([k, l]) => `<button type="button" class="btn ${k === ui.tab ? 'primary' : 'ghost'}" data-tab="${k}" role="tab" aria-selected="${k === ui.tab}">${l}</button>`).join('')}</div>
         <form class="filters" id="tr-filters">
           <label class="field"><span>تاریخ گزارش</span><input type="date" name="date" value="${esc(ui.date)}" /></label>

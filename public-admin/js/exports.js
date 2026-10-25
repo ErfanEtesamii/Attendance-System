@@ -43,5 +43,46 @@
     root.document.addEventListener('click', (e) => {
       if (e.target && e.target.closest && e.target.closest('[data-print]')) root.print();
     });
+
+    // دانلود Excel/CSV با fetch: اگر سرور خطا بدهد (۴xx/۵xx) پیام واقعی در توست دیده می‌شود، نه یک فایل «export.json» بی‌معنی.
+    // اگر سرور به‌جای xlsx، CSV داده باشد (exceljs نصب نیست) هم اعلام می‌شود. کلیک‌های غیر-fetch (مرورگر قدیمی) همان لینک عادی می‌مانند.
+    const fileName = (res, fallback) => {
+      const cd = res.headers.get('Content-Disposition') || '';
+      const star = /filename\*=(?:UTF-8'')?([^;]+)/i.exec(cd);
+      if (star) { try { return decodeURIComponent(star[1].trim().replace(/^"|"$/g, '')); } catch (_) { /* ادامه */ } }
+      const plain = /filename="?([^";]+)"?/i.exec(cd);
+      return plain ? plain[1] : fallback;
+    };
+    root.document.addEventListener('click', async (e) => {
+      const a = e.target && e.target.closest ? e.target.closest('a[data-export="xlsx"], a[data-export="csv"]') : null;
+      if (!a || typeof root.fetch !== 'function') return;
+      e.preventDefault();
+      if (a.getAttribute('aria-busy') === 'true') return;
+      a.setAttribute('aria-busy', 'true');
+      try {
+        const res = await root.fetch(a.href, { credentials: 'include', headers: { 'X-Requested-With': 'AttendancePanel' } });
+        if (!res.ok) {
+          let msg = '';
+          try { msg = (await res.json()).error || ''; } catch (_) { /* بدنه JSON نبود */ }
+          AP.toast(`دریافت خروجی ناموفق بود (${res.status})${msg ? `: ${msg}` : ''}`, true);
+          return;
+        }
+        const notice = res.headers.get('X-Export-Notice');
+        if (notice) { try { AP.toast(decodeURIComponent(notice), true); } catch (_) { /* نادیده */ } }
+        const blob = await res.blob();
+        const url = root.URL.createObjectURL(blob);
+        const link = root.document.createElement('a');
+        link.href = url;
+        link.download = fileName(res, `export.${a.dataset.export}`);
+        root.document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => root.URL.revokeObjectURL(url), 10000);
+      } catch (err) {
+        AP.toast(`دریافت خروجی ناموفق بود: ${err && err.message ? err.message : 'خطای شبکه'}`, true);
+      } finally {
+        a.removeAttribute('aria-busy');
+      }
+    });
   }
 }(typeof window !== 'undefined' ? window : undefined));

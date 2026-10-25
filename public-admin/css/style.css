@@ -1782,3 +1782,7 @@ body[data-density="compact"] tbody td { padding-block: 7px; }
 .leave-item .text { padding: 6px var(--space-3); background: var(--card-2); border-radius: var(--r-md); }
 .leave-item .row-actions { align-self: center; }
 @media (prefers-reduced-motion: reduce) { .leave-item { transition: none; } }
+
+/* گروه دکمه‌های خروجی (Excel/CSV) بیرون از .header-actions: فاصله‌ی بین دکمه‌ها */
+.export-group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.u-m-0 { margin: 0; }
