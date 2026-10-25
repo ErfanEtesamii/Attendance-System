@@ -180,4 +180,91 @@ function taskKpis(viewer, input = {}, { now = new Date() } = {}) {
   };
 }
 
-module.exports = { buildTaskSheets, taskKpis, resolveRange, MAX_RANGE_DAYS };
+/**
+ * گزارش کامل تسک‌ها برای خروجی Excel — به‌ازای هر تسکِ هر روز: وضعیت (انجام شد/نیمه‌کاره/انجام نشد/پاسخ داده نشده)،
+ * توضیحِ انجام (note)، علت و توضیح علتِ انجام‌نشدن. فیلتر: userId (فرد) | managerId (تیم = اعضای مستقیم یک سرپرست) | هیچ‌کدام (کل دامنه‌ی دسترسی).
+ * شیت‌ها: «ریز تسک‌ها» (CSV همین شیت است)، «خلاصه افراد»، «خلاصه تیم‌ها» (آخرین ردیف = «کل مجموعه»).
+ * «پاسخ داده نشده» = تسک برنامه‌ی روزِ مشخص (planned_date) که تا امروز گذشته و برایش پاسخی نیست؛ تسک‌های «هر روز» (بدون planned_date) شمرده نمی‌شوند.
+ * اسکوپ نقش با teamReports.scopeUsers: مدیر کل/hr همه، سرپرست تیم خودش، کارمند فقط خودش. فقط ساخت داده؛ ارسال و audit در route.
+ */
+function buildTaskReportSheets(viewer, input = {}, { now = new Date() } = {}) {
+  const settings = settingsRepository.getAll();
+  const range = resolveRange(input, settings, now);
+  if (!range.ok) return range;
+  const sc = scoped(viewer, input.userId);
+  if (!sc.ok) return sc;
+  const { from, to } = range;
+  const today = todayInZone(settings.timezone, now);
+  let users = sc.users;
+  if (input.managerId !== undefined && input.managerId !== null && input.managerId !== '') {
+    users = users.filter((u) => String(u.manager_id) === String(input.managerId));
+    if (!users.length) return fail('SUBJECT_NOT_IN_SCOPE', 'این تیم در محدوده‌ی دسترسی شما نیست یا عضوی ندارد.');
+  }
+  const byId = new Map(users.map((u) => [u.id, u]));
+  const ids = users.map((u) => u.id);
+  const everyone = new Map(usersRepository.listUsers({}).map((u) => [u.id, u]));
+  const teamName = (u) => { const b = u.manager_id ? everyone.get(u.manager_id) : null; return b ? `تیم ${b.full_name}` : 'بدون سرپرست'; };
+  const yesNo = (v) => (v ? 'بله' : 'خیر');
+
+  const rows = []; // { date, userId, cells }
+  const answered = new Set(); // `${userId}|${taskId}|${date}`
+  for (const l of logsRepo.listRangeWithTaskDetails(ids, from, to)) {
+    if (l.task_is_system) continue;
+    const u = byId.get(l.user_id);
+    answered.add(`${l.user_id}|${l.task_id}|${l.log_date}`);
+    rows.push({
+      date: l.log_date, userId: l.user_id, status: l.status, extra: l.task_system_key === OUT_OF_PLAN_KEY,
+      cells: [l.log_date, jal(l.log_date), u ? u.full_name || '' : '', u ? u.department || '' : '', u ? teamName(u) : '', l.task_title, l.task_description || '',
+        PRIORITY[l.task_priority] || l.task_priority || '', STATUS_LABELS[l.status] || l.status, l.note || '',
+        l.reason_code ? (REASON_LABELS[l.reason_code] || l.reason_code) : '', l.reason_text || '',
+        l.reschedule_to === 'drop' ? 'حذف شد' : (l.reschedule_to || ''), yesNo(l.task_system_key === OUT_OF_PLAN_KEY), yesNo(l.answered_late)],
+    });
+  }
+  // تسک‌های برنامه‌ی روزِ مشخص که تا امروز گذشته‌اند و پاسخ ندارند
+  const wFrom = calendarService.weekStartOf(from, settings.weekStartDay);
+  const wTo = calendarService.weekStartOf(to, settings.weekStartDay);
+  for (const u of users) {
+    for (const plan of plansRepo.listByUserRange(u.id, wFrom, wTo)) {
+      for (const t of plansRepo.listTasks(plan.id)) {
+        if (t.is_system || !t.planned_date || t.planned_date < from || t.planned_date > to || t.planned_date > today) continue;
+        if (answered.has(`${u.id}|${t.id}|${t.planned_date}`)) continue;
+        rows.push({
+          date: t.planned_date, userId: u.id, status: 'unanswered', extra: false,
+          cells: [t.planned_date, jal(t.planned_date), u.full_name || '', u.department || '', teamName(u), t.title, t.description || '',
+            PRIORITY[t.priority] || t.priority || '', 'پاسخ داده نشده', '', '', '', '', 'خیر', 'خیر'],
+        });
+      }
+    }
+  }
+  rows.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (a.cells[2] || '').localeCompare(b.cells[2] || '', 'fa')));
+
+  const tally = (list) => {
+    const planned = list.filter((r) => !r.extra);
+    const c = (st) => planned.filter((r) => r.status === st).length;
+    const done = c('done');
+    return { total: planned.length, done, partial: c('partial'), notDone: c('not_done'), unanswered: c('unanswered'), percent: planned.length ? Math.round((done / planned.length) * 100) : '', extra: list.length - planned.length };
+  };
+  const personRows = users.map((u) => {
+    const t = tally(rows.filter((r) => r.userId === u.id));
+    return [u.full_name || '', u.department || '', teamName(u), t.total, t.done, t.partial, t.notDone, t.unanswered, t.percent, t.extra];
+  });
+  const teamKeys = [...new Set(users.map(teamName))].sort((a, b) => a.localeCompare(b, 'fa'));
+  const teamRows = teamKeys.map((k) => {
+    const mem = users.filter((u) => teamName(u) === k).map((u) => u.id);
+    const t = tally(rows.filter((r) => mem.includes(r.userId)));
+    return [k, mem.length, t.total, t.done, t.partial, t.notDone, t.unanswered, t.percent, t.extra];
+  });
+  const all = tally(rows);
+  teamRows.push(['کل مجموعه', users.length, all.total, all.done, all.partial, all.notDone, all.unanswered, all.percent, all.extra]);
+
+  return {
+    ok: true, from, to, count: rows.length,
+    sheets: [
+      { name: 'ریز تسک‌ها', headers: ['تاریخ', 'تاریخ (شمسی)', 'نام', 'دپارتمان', 'تیم', 'تسک', 'توضیح تسک', 'اولویت', 'وضعیت', 'توضیح انجام', 'علت انجام‌نشدن', 'توضیح علت', 'انتقال', 'خارج از برنامه', 'گزارش دیرهنگام'], rows: rows.map((r) => r.cells) },
+      { name: 'خلاصه افراد', headers: ['نام', 'دپارتمان', 'تیم', 'کل تسک‌ها', 'انجام‌شده', 'نیمه‌کاره', 'انجام‌نشده', 'پاسخ داده نشده', 'درصد انجام', 'خارج از برنامه'], rows: personRows },
+      { name: 'خلاصه تیم‌ها', headers: ['تیم', 'تعداد اعضا', 'کل تسک‌ها', 'انجام‌شده', 'نیمه‌کاره', 'انجام‌نشده', 'پاسخ داده نشده', 'درصد انجام', 'خارج از برنامه'], rows: teamRows },
+    ],
+  };
+}
+
+module.exports = { buildTaskSheets, buildTaskReportSheets, taskKpis, resolveRange, MAX_RANGE_DAYS };

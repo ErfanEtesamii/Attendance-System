@@ -59,6 +59,14 @@ function listRangeWithTasks(userIds, fromDate, toDate) {
     WHERE l.user_id IN (${userIds.map(() => '?').join(',')}) AND l.log_date BETWEEN ? AND ? ORDER BY l.user_id, l.task_id, l.log_date`).all(...userIds, fromDate, toDate);
 }
 
+// گزارش تسک‌ها (خروجی Excel): مثل listRangeWithTasks + توضیح و اولویت تسک؛ فقط‌خواندنی.
+function listRangeWithTaskDetails(userIds, fromDate, toDate) {
+  if (!Array.isArray(userIds) || !userIds.length) return [];
+  return getDb().prepare(`SELECT l.*, t.title AS task_title, t.description AS task_description, t.priority AS task_priority, t.is_system AS task_is_system, t.system_key AS task_system_key
+    FROM task_daily_logs l JOIN plan_tasks t ON t.id = l.task_id
+    WHERE l.user_id IN (${userIds.map(() => '?').join(',')}) AND l.log_date BETWEEN ? AND ? ORDER BY l.log_date, l.user_id, l.task_id`).all(...userIds, fromDate, toDate);
+}
+
 // پاسخ‌های ثبت‌شده از لحظه‌ی sinceIso به بعد (UTC ISO) برای چند کاربر، با log_date ≥ fromDate (خلاصه‌ی صبحگاهی؛ D12)
 function listAnsweredSince(userIds, sinceIso, fromDate) {
   if (!Array.isArray(userIds) || !userIds.length) return [];
@@ -105,4 +113,4 @@ function listLastLogsBefore(userId, beforeDate) {
     AND l.log_date = (SELECT MAX(x.log_date) FROM task_daily_logs x WHERE x.task_id = l.task_id AND x.log_date < ?)`).all(userId, beforeDate, beforeDate);
 }
 
-module.exports = { countCarriesByTask, setNote, listRangeDetailed, listRescheduledIntoRange, listLastLogsBefore, findByTaskDate, upsert, listByUserDate, listByUserRange, listUserIdsWithLogsOnDate, listByTask, listRescheduledTo, listRecentEncouragements, remove, listRangeWithTasks, listAnsweredSince };
+module.exports = { listRangeWithTaskDetails, countCarriesByTask, setNote, listRangeDetailed, listRescheduledIntoRange, listLastLogsBefore, findByTaskDate, upsert, listByUserDate, listByUserRange, listUserIdsWithLogsOnDate, listByTask, listRescheduledTo, listRecentEncouragements, remove, listRangeWithTasks, listAnsweredSince };

@@ -145,9 +145,20 @@
       if (param && /^\d{4}-\d{2}-\d{2}$/.test(param)) { ui.date = param; ui.tab = 'daily'; } // H5-ب: #/teamreports/<YYYY-MM-DD> ⇒ گزارش همان روز
       ui.empty = (msg) => `<div class="empty">${AP.icon('alert')}${esc(msg)}</div>`; // حالت خطا/خالی (S5-9c)
       const users = AP.selfOnly() ? [] : await AP.loadUsers().catch(() => []);
+      const managers = users.filter((u) => users.some((x) => x.managerId === u.id)); // تیم = اعضای مستقیم یک سرپرست
+      const expParams = () => ({ from: ui.expFrom || fmt.daysAgo(29), to: ui.expTo || fmt.today(), managerId: ui.expManager, userId: ui.expUser });
+      const expBar = () => AP.exportBar({ path: '/api/admin/task-report/export', params: expParams(), print: false });
       const html = `
         <div class="view-header"><div><h2>گزارش‌های تیم</h2><div class="sub">برنامه‌ی هفتگی و گزارش روزانه‌ی تسک‌ها؛ پیش‌فرض «روز کاریِ قبل».</div></div>
           <div class="header-actions">${AP.exportBar({ path: '/api/admin/team-reports/export', params: { userId: ui.userId }, print: false })}</div></div>
+        <form class="filters card" id="tr-export" aria-label="خروجی کامل تسک‌ها">
+          <strong>خروجی Excel تسک‌ها</strong>
+          <label class="field"><span>از تاریخ</span><input type="date" name="from" value="${esc(ui.expFrom || fmt.daysAgo(29))}" /></label>
+          <label class="field"><span>تا تاریخ</span><input type="date" name="to" value="${esc(ui.expTo || fmt.today())}" /></label>
+          ${managers.length ? `<label class="field"><span>تیم</span><select name="managerId"><option value="">کل مجموعه</option>${managers.map((m) => `<option value="${m.id}" ${String(m.id) === String(ui.expManager) ? 'selected' : ''}>${esc(m.fullName)}</option>`).join('')}</select></label>` : ''}
+          ${users.length ? `<label class="field"><span>فرد</span><select name="expUserId"><option value="">همه</option>${users.map((u) => `<option value="${u.id}" ${String(u.id) === String(ui.expUser) ? 'selected' : ''}>${esc(u.fullName || u.full_name)}</option>`).join('')}</select></label>` : ''}
+          <span id="tr-export-bar">${expBar()}</span>
+        </form>
         ${AP.can('analytics.read') ? '<div id="tr-kpis" class="card" aria-live="polite"></div>' : ''}
         <div class="filters" role="tablist">${TABS.map(([k, l]) => `<button type="button" class="btn ${k === ui.tab ? 'primary' : 'ghost'}" data-tab="${k}" role="tab" aria-selected="${k === ui.tab}">${l}</button>`).join('')}</div>
         <form class="filters" id="tr-filters">
@@ -160,6 +171,14 @@
         html,
         mount: (page) => {
           $$('[data-tab]', page).forEach((b) => b.addEventListener('click', () => { ui.tab = b.dataset.tab; AP.refresh(); }));
+          const exp = $('#tr-export', page);
+          AP.dates.mount(exp);
+          exp.addEventListener('submit', (e) => e.preventDefault());
+          $$('input, select', exp).forEach((el) => el.addEventListener('change', () => {
+            const f = AP.formData(exp);
+            ui.expFrom = f.from; ui.expTo = f.to; ui.expManager = f.managerId || ''; ui.expUser = f.expUserId || '';
+            $('#tr-export-bar', exp).innerHTML = expBar();
+          }));
           const form = $('#tr-filters', page);
           form.addEventListener('submit', (e) => e.preventDefault());
           $$('input, select', form).forEach((el) => el.addEventListener('change', () => { Object.assign(ui, AP.formData(form)); load(page); }));

@@ -40,6 +40,20 @@ router.get('/admin/team-reports/export', requirePermission('taskreports.read'), 
   });
 });
 
+// خروجی کامل تسک‌ها (Excel پیش‌فرض‌نشده: ?format=xlsx | csv): ریز تسک هر روز با وضعیت/توضیح/علت + خلاصه‌ی افراد و تیم‌ها و کل مجموعه.
+// پارامترها: from، to (حداکثر ۹۳ روز)، userId (فرد)، managerId (تیم). اسکوپ نقش در سرویس؛ audit report_exported (kind: task_report_full)
+router.get('/admin/task-report/export', requirePermission('taskreports.read'), (req, res) => {
+  const r = taskExportService.buildTaskReportSheets(req.adminUser, { from: req.query.from, to: req.query.to, userId: req.query.userId, managerId: req.query.managerId });
+  if (!r.ok) return res.status(teamReportsService.statusOf(r.code)).json({ error: r.error, code: r.code });
+  return sendSheets(req, res, `task-report_${r.from}_${r.to}.csv`, r.sheets, {
+    csv: { headers: r.sheets[0].headers, rows: r.sheets[0].rows },
+    onExport: (info) => auditRepository.logEvent({
+      userId: req.adminUser.id, action: 'report_exported', ipAddress: req.ip,
+      details: { source: 'admin_panel', kind: 'task_report_full', from: r.from, to: r.to, userId: req.query.userId || null, managerId: req.query.managerId || null, count: r.count, ...exportAuditFields(info) },
+    }),
+  });
+});
+
 // D13: شاخص‌های مدیریتی (نرخ انجام هر تیم، نرخ بررسی به‌موقع هر سرپرست، برنامه‌ی ثبت‌نشده) — analytics.read (کارمند ممنوع؛ سرپرست تیم خودش؛ admin/hr همه)
 router.get('/admin/task-kpis', requirePermission('analytics.read'), (req, res) => {
   const r = taskExportService.taskKpis(req.adminUser, { from: req.query.from, to: req.query.to });
