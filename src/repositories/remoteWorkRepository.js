@@ -137,6 +137,14 @@ function listApprovedInRange(userIds, from, to) {
     .all(...userIds, from, to);
 }
 
+// خروجی گزارش: نشست‌های بسته‌شده با وضعیت واقعی؛ pending هرگز با approved جمع نمی‌شود.
+function listClosedInRange(userIds, from, to) {
+  if (!Array.isArray(userIds) || !userIds.length) return [];
+  const ph = userIds.map(() => '?').join(',');
+  return getDb().prepare(`SELECT ${FULL_COLS} FROM remote_work_sessions WHERE end_at IS NOT NULL AND user_id IN (${ph}) AND work_date >= ? AND work_date <= ? ORDER BY work_date, id`)
+    .all(...userIds, from, to);
+}
+
 function findOfficialRecord(userId, date) {
   return getDb().prepare('SELECT * FROM attendance_records WHERE user_id = ? AND record_date = ?').get(userId, date) || null;
 }
@@ -214,7 +222,7 @@ function pendingClosedByUser({ userIds = null, excludeUserId = null } = {}) {
 
 module.exports = {
   listQueue, listBreaksForSessions,
-  findSessionFull, listApprovedForDay, listApprovedInRange, findOfficialRecord, insertRemoteRecord, updateRemoteRecord, adoptPlaceholder, replaceRemoteBreaks, markApproved, markRejected, updateRecordTimes, insertRemoteBreaks, pendingClosedByUser,
+  findSessionFull, listApprovedForDay, listApprovedInRange, listClosedInRange, findOfficialRecord, insertRemoteRecord, updateRemoteRecord, adoptPlaceholder, replaceRemoteBreaks, markApproved, markRejected, updateRecordTimes, insertRemoteBreaks, pendingClosedByUser,
   findOpenSession, findSessionById, listForUserDate, listForUserRange, insertSession, closeSession, listStaleOpenSessions,
   listBreaks, findOpenBreak, insertBreak, closeBreak,
 };

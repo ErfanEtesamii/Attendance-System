@@ -45,6 +45,13 @@ const notificationEvents = require('../../services/notificationEvents');
 const { todayDateString } = require('../../utils/serverTime');
 const { addDays } = require('../../utils/shiftDay');
 const { earningsForUser } = require('../../services/earningsService');
+const disputeRepository = require('../../repositories/disputeRepository');
+
+const IDEMPOTENT_WINDOW_MS = 2 * 60 * 1000;
+const justHappened = (value) => {
+  const at = new Date(value || 0).getTime();
+  return Number.isFinite(at) && Date.now() - at >= 0 && Date.now() - at <= IDEMPOTENT_WINDOW_MS;
+};
 
 // همه مسیرهای زیر /miniapp ابتدا باید هویت تلگرام معتبر داشته باشند
 router.use('/miniapp', telegramAuth);
@@ -186,7 +193,10 @@ router.get('/miniapp/today', (req, res) => {
 router.post('/miniapp/re-check-in', (req, res) => {
   const record = attendanceRepository.findTodayRecord(req.miniAppUser.id);
   const settings = settingsRepository.getAll();
-  const used = record ? Math.max(0, attendanceRepository.listSegments(record.id).length - 1) : 0;
+  const currentSegments = record ? attendanceRepository.listSegments(record.id) : [];
+  const used = Math.max(0, currentSegments.length - 1);
+  const lastSegment = currentSegments[currentSegments.length - 1];
+  if (lastSegment && !lastSegment.check_out_time && justHappened(lastSegment.check_in_time)) return res.json({ ok: true, alreadyDone: true, ...record, segments: currentSegments });
   if (record && monthClosuresRepository.findClosedOverlapping(record.record_date, record.record_date).length) return res.status(409).json({ code: 'MONTH_CLOSED', error: 'این روز در ماه بسته‌شده است و قابل تغییر نیست.' });
   if (!record || !record.check_out_time) return res.status(409).json({ code: 'REENTRY_NOT_AVAILABLE', error: 'ورود مجدد فقط پس از ثبت خروج ممکن است.' });
   if (!settings.maxReEntriesPerDay || used >= settings.maxReEntriesPerDay) return res.status(409).json({ code: 'REENTRY_LIMIT', error: 'سقف ورود مجدد امروز تکمیل شده است.' });
@@ -226,6 +236,7 @@ function rejectIfSharedDeviceBlocked(req, res, action) {
 router.post('/miniapp/check-in', (req, res) => {
   const existing = attendanceRepository.findTodayRecord(req.miniAppUser.id);
   if (existing) {
+    if (existing.check_in_time && !existing.check_out_time && justHappened(existing.check_in_time)) return res.json({ ok: true, alreadyDone: true, ...existing });
     return res.status(400).json({ error: 'ورود امروز قبلاً ثبت شده است.' });
   }
   if (rejectIfSharedDeviceBlocked(req, res, 'check_in')) return;
@@ -266,12 +277,33 @@ router.post('/miniapp/check-in', (req, res) => {
   fraudRunner.runFraudChecksSafe({ date: record.record_date });
 });
 
+router.get('/miniapp/checkout-readiness', (req, res) => {
+  const record = attendanceRepository.findTodayRecord(req.miniAppUser.id);
+  if (!record || record.check_out_time) return res.json([]);
+  const items = [];
+  const openBreak = breakRepository.findOpenBreak(record.id);
+  items.push(openBreak
+    ? { key: 'open_break', status: 'blocked', title: 'استراحت باز است', hint: 'برای ثبت خروج، ابتدا استراحت جاری را پایان دهید.', actionView: 'today' }
+    : { key: 'open_break', status: 'ok', title: 'استراحت', hint: '', actionView: 'today' });
+  const reportGate = taskReportService.checkoutGate(req.miniAppUser, record.record_date, {});
+  items.push(reportGate.action === 'block'
+    ? { key: 'daily_report', status: 'blocked', title: 'گزارش روزانه', hint: taskReportService.blockMessage(reportGate.pendingTasks), actionView: 'dreport' }
+    : { key: 'daily_report', status: 'ok', title: 'گزارش روزانه', hint: '', actionView: 'dreport' });
+  const planGate = planGateService.evaluate(req.miniAppUser, record.record_date);
+  const planBlocked = planGate.applies && !planGate.satisfied && !planGate.exemption && planGate.mode === 'enforce';
+  items.push(planBlocked
+    ? { key: 'weekly_plan', status: 'blocked', title: 'برنامهٔ هفتهٔ بعد', hint: 'پیش از خروج، برنامهٔ هفتهٔ بعد را ثبت کنید.', actionView: 'plan' }
+    : { key: 'weekly_plan', status: planGate.warn ? 'confirm' : 'ok', title: 'برنامهٔ هفتهٔ بعد', hint: planGate.warn ? 'امروز آخرین فرصت ثبت برنامه است.' : '', actionView: 'plan' });
+  res.json(items);
+});
+
 router.post('/miniapp/check-out', (req, res) => {
   const record = attendanceRepository.findTodayRecord(req.miniAppUser.id);
   if (!record) {
     return res.status(400).json({ error: 'ابتدا باید ورود ثبت شود.' });
   }
   if (record.check_out_time) {
+    if (justHappened(record.check_out_time)) return res.json({ ok: true, alreadyDone: true, ...record });
     return res.status(400).json({ error: 'خروج امروز قبلاً ثبت شده است.' });
   }
   const openBreak = breakRepository.findOpenBreak(record.id);
@@ -354,7 +386,9 @@ router.post('/miniapp/break/start', (req, res) => {
   if (record.check_out_time) {
     return res.status(400).json({ error: 'خروج امروز قبلاً ثبت شده؛ امکان شروع استراحت نیست.' });
   }
-  if (breakRepository.findOpenBreak(record.id)) {
+  const activeBreak = breakRepository.findOpenBreak(record.id);
+  if (activeBreak) {
+    if (justHappened(activeBreak.start_time)) return res.json({ ok: true, alreadyDone: true, ...activeBreak });
     return res.status(400).json({ error: 'یک استراحت باز از قبل فعال است.' });
   }
   const breakType = req.body?.breakType === 'short_break' ? 'short_break' : 'lunch';
@@ -371,6 +405,9 @@ router.post('/miniapp/break/end', (req, res) => {
   }
   const openBreak = breakRepository.findOpenBreak(record.id);
   if (!openBreak) {
+    const breaks = breakRepository.listByAttendanceRecord(record.id);
+    const latest = breaks[breaks.length - 1];
+    if (latest && latest.end_time && justHappened(latest.end_time)) return res.json({ ok: true, alreadyDone: true, ...latest });
     return res.status(400).json({ error: 'استراحت باز فعالی وجود ندارد.' });
   }
   const ended = breakRepository.endBreak(openBreak.id);
@@ -743,6 +780,42 @@ const disputeMessageLimiter = createRateLimiter({
 const lastDisputeMessage = (r) => r.messages[r.messages.length - 1]; // پیامی که همین الان ثبت شد (آخرین پیام thread)
 
 const sendDisputeError = (res, r) => res.status(disputeService.statusOf(r.code)).json({ error: r.error, code: r.code, ...(r.maxReopens !== undefined ? { maxReopens: r.maxReopens } : {}) });
+
+// اصلاح خروجِ ثبت‌نشده: فقط هفت روز اخیر، فقط رکورد خودِ کارمند و فقط وقتی ماه باز است.
+// پیامِ ساخت‌یافته عمداً در همان مسیر اعتراض نگه داشته می‌شود تا چرخهٔ اعلان/بازگشایی موجود حفظ شود.
+function missingCheckoutCandidate(userId) {
+  const today = todayDateString();
+  const records = attendanceRepository.listByUserAndRange(userId, addDays(today, -7), addDays(today, -1));
+  return records.sort((a, b) => String(b.record_date).localeCompare(String(a.record_date))).find((record) =>
+    record.check_in_time && !record.check_out_time &&
+    (record.status === 'incomplete' || record.record_date < today) &&
+    !monthClosuresRepository.findClosedOverlapping(record.record_date, record.record_date).length
+  ) || null;
+}
+
+router.get('/miniapp/missing-checkout', (req, res) => {
+  const record = missingCheckoutCandidate(req.miniAppUser.id);
+  if (!record) return res.json({ record: null, canRequest: false });
+  const open = disputeRepository.listByUser(req.miniAppUser.id)
+    .find((d) => d.status === 'open' && d.attendance_record_id === record.id);
+  return res.json({ record: { id: record.id, record_date: record.record_date, check_in_time: record.check_in_time }, canRequest: !open, disputeId: open ? open.id : null });
+});
+
+router.post('/miniapp/missing-checkout/:recordId', (req, res) => {
+  const candidate = missingCheckoutCandidate(req.miniAppUser.id);
+  const recordId = Number(req.params.recordId);
+  const checkoutTime = String(req.body?.checkoutTime || '');
+  const note = String(req.body?.note || '').trim();
+  if (!candidate || candidate.id !== recordId) return res.status(404).json({ code: 'NOT_FOUND', error: 'رکورد قابل اصلاح یافت نشد.' });
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(checkoutTime)) return res.status(400).json({ code: 'VALIDATION', error: 'ساعت خروج را به‌درستی وارد کنید.' });
+  const exists = disputeRepository.listByUser(req.miniAppUser.id).find((d) => d.status === 'open' && d.attendance_record_id === candidate.id);
+  if (exists) return res.status(409).json({ code: 'OPEN_REQUEST_EXISTS', error: 'برای این روز یک درخواست باز دارید.' });
+  const message = `اصلاح خروج [${checkoutTime}]${note ? ` — ${note.slice(0, 430)}` : ''}`;
+  const r = disputeService.create(req.miniAppUser, { attendanceRecordId: candidate.id, message }, { ip: req.ip });
+  if (!r.ok) return sendDisputeError(res, r);
+  notificationEvents.disputeOpened(r.dispute);
+  return res.status(201).json(r.dispute);
+});
 
 router.post('/miniapp/dispute', (req, res) => {
   const r = disputeService.create(req.miniAppUser, req.body || {}, { ip: req.ip });

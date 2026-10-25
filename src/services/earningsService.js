@@ -29,9 +29,11 @@ function earningsForUser(user, settings, { today } = {}) {
       .filter(Boolean),
   );
   // مثل جمع ماهانه‌ی monthlyReportService: روزِ گذشته‌ی «ورود بدون خروج» (missing_checkout) ساعت مفیدِ بی‌معنا می‌دهد (موتور تا now می‌شمارد) و در جمع نمی‌آید.
+  const excludedDays = [];
   const usefulMinutes = (report.users[0]?.days || []).reduce((total, day) => {
-    if (disputedDates.has(day.date)) return total;
-    if ((day.flags || []).includes('missing_checkout') || day.effectiveWithMission == null) return total;
+    if (disputedDates.has(day.date)) { excludedDays.push({ date: day.date, reason: 'open_dispute' }); return total; }
+    if ((day.flags || []).includes('missing_checkout')) { excludedDays.push({ date: day.date, reason: 'missing_checkout' }); return total; }
+    if (day.effectiveWithMission == null) return total;
     return total + Number(day.effectiveWithMission);
   }, 0);
 
@@ -40,6 +42,7 @@ function earningsForUser(user, settings, { today } = {}) {
     usefulMinutes,
     amountToman: calculateAmountToman(usefulMinutes, rateKt),
     monthLabel: report.label,
+    excludedDays,
   };
 }
 

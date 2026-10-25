@@ -826,6 +826,22 @@
     const faNumber = (value) => Number(value).toLocaleString('fa-IR');
     $('#earnings-intro').textContent = `تا امروز در ${earnings.monthLabel} کار کرده‌ای`;
     $('#earnings-useful').textContent = `${faNumber(Math.floor(usefulMinutes / 60))} ساعت و ${faNumber(usefulMinutes % 60)} دقیقه ساعت مفید`;
+    const excluded = Array.isArray(earnings.excludedDays) ? earnings.excludedDays : [];
+    const excludedEl = $('#earnings-excluded');
+    excludedEl.classList.toggle('hidden', excluded.length === 0);
+    excludedEl.textContent = '';
+    if (excluded.length) {
+      excludedEl.append(document.createTextNode(`${faNumber(excluded.length)} روز هنوز در برآورد لحاظ نشده است. `));
+      const details = document.createElement('button');
+      details.type = 'button'; details.className = 'btn-link'; details.textContent = 'جزئیات';
+      details.addEventListener('click', async () => {
+        const labels = excluded.map((d) => `${fmtDate(d.date)}${d.reason === 'missing_checkout' ? ' (خروج ثبت نشده)' : ' (اعتراض باز)'}`).join('\n');
+        const hasMissing = excluded.some((d) => d.reason === 'missing_checkout');
+        const moveToRepair = await confirmDialog(`${labels}${hasMissing ? '\n\nبرای اصلاح خروج ثبت‌نشده، کارت زرد را باز کنید.' : ''}`, 'روزهای خارج از برآورد', hasMissing ? 'رفتن به اصلاح' : 'بستن');
+        if (hasMissing && moveToRepair) $('#missing-checkout-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+      excludedEl.appendChild(details);
+    }
 
     const amountEl = $('#earnings-amount');
     if (state.earningsAnimationFrame) cancelAnimationFrame(state.earningsAnimationFrame);
@@ -918,6 +934,7 @@
     const data = await api('/today');
     state.today = data;
     renderEarnings(data.earnings);
+    loadMissingCheckout();
     const r = data.record;
 
     $('#ti-checkin').textContent = fmtClock(r?.check_in_time);
@@ -988,6 +1005,35 @@
     loadUrgentCard();
     loadPlanGateBanner();
     loadReportBanner();
+  }
+
+  async function loadMissingCheckout() {
+    const card = $('#missing-checkout-card');
+    if (!card) return;
+    try {
+      const item = await api('/missing-checkout');
+      card.textContent = '';
+      if (!item || !item.record) { card.classList.add('hidden'); return; }
+      const title = document.createElement('h3'); title.textContent = 'خروج یک روز ثبت نشده است';
+      const text = document.createElement('p'); text.textContent = `روز ${fmtDate(item.record.record_date)} را با ثبت ساعت خروج تکمیل کنید.`;
+      card.append(title, text);
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'btn secondary';
+      button.textContent = item.canRequest ? 'اصلاح خروج' : 'درخواست در حال بررسی است';
+      button.disabled = !item.canRequest;
+      button.addEventListener('click', async () => {
+        const time = window.prompt('ساعت خروج را وارد کنید (مثلاً ۱۷:۳۰):', '17:30');
+        if (time === null) return;
+        const normalized = String(time).replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+        if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(normalized)) { showToast('ساعت خروج را به شکل ۱۷:۳۰ وارد کنید.', true); return; }
+        const note = window.prompt('توضیح کوتاه (اختیاری):', '') || '';
+        try {
+          await api(`/missing-checkout/${item.record.id}`, { method: 'POST', body: { checkoutTime: normalized, note } });
+          showToast('درخواست اصلاح خروج برای مدیر ارسال شد.');
+          loadMissingCheckout();
+        } catch (err) { showToast(err.message, true); }
+      });
+      card.appendChild(button); card.classList.remove('hidden');
+    } catch (_) { card.classList.add('hidden'); }
   }
 
   // ساعت کاری مؤثر امروز و فردا (B2): اگر ادمین/سرپرست «برنامه‌ی ویژه» گذاشته باشد با نشان جدا؛ خطا هرگز نمای امروز را نمی‌شکند.
@@ -2791,6 +2837,17 @@
   }
 
   async function startCheckout() {
+    try {
+      const readiness = await api('/checkout-readiness');
+      const blocked = (readiness || []).find((item) => item.status === 'blocked');
+      const confirm = (readiness || []).find((item) => item.status === 'confirm');
+      if (blocked) {
+        showToast(`${blocked.title}: ${blocked.hint}`, true);
+        if (blocked.actionView) switchView(blocked.actionView);
+        return;
+      }
+      if (confirm && !(await confirmDialog(`${confirm.title}: ${confirm.hint}`, 'بررسی پیش از خروج', 'ادامه'))) return;
+    } catch (_) { /* پیش‌بررسی فقط برای تجربهٔ کاربر است؛ سرور در /check-out مرجع نهایی می‌ماند. */ }
     try {
       const d = await api('/daily-tasks');
       if (d && d.mode === 'soft' && !d.fullDayOff && d.tasks && d.tasks.length) {

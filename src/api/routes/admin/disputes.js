@@ -17,8 +17,22 @@ const { scopedUserIds, canAccessUser, userBrief, makeUserMap, auditChange, audit
 const { disputeView } = require('../../../utils/auditViews');
 const { requirePermission } = require('../../../middleware/permissions');
 const notificationEvents = require('../../../services/notificationEvents');
+const attendanceRepository = require('../../../repositories/attendanceRepository');
+const auditRepository = require('../../../repositories/auditRepository');
+const { formatTime, zonedTimeToUtc } = require('../../../utils/time');
+const { addDays } = require('../../../utils/shiftDay');
 
 const sendFailure = (res, r) => res.status(disputeService.statusOf(r.code)).json({ error: r.error, code: r.code });
+
+// پیام‌های Mini App با این قالب ساخته می‌شوند؛ پیام‌های آزادِ قدیمی هیچ تغییر خودکاری ایجاد نمی‌کنند.
+function missingCheckoutTime(dispute, record) {
+  const match = /^اصلاح خروج\s*\[([0-2]\d:[0-5]\d)\]/.exec(String(dispute.message || ''));
+  if (!match || !record || !record.check_in_time || record.check_out_time) return null;
+  const requested = match[1];
+  const checkInLocal = formatTime(record.check_in_time);
+  const date = requested < checkInLocal ? addDays(record.record_date, 1) : record.record_date;
+  return zonedTimeToUtc(date, requested).toISOString();
+}
 
 // اعتراض موجود و در حوزه‌ی نقش، یا پاسخ ۴۰۴/۴۰۳ (و null)
 function loadScoped(req, res) {
@@ -91,6 +105,26 @@ router.post('/admin/disputes/:id/:action(resolve|reopen)', requirePermission('di
     : disputeService.reopenAsAdmin(req.adminUser, dispute.id, req.body || {});
   if (!r.ok) return sendFailure(res, r);
   const { updated, note } = r;
+  let attendanceCorrection = null;
+  if (resolving && dispute.attendance_record_id) {
+    const record = attendanceRepository.findById(dispute.attendance_record_id);
+    const checkOutTime = missingCheckoutTime(dispute, record);
+    if (checkOutTime) {
+      const beforeRecord = record;
+      attendanceCorrection = attendanceRepository.manualUpdate(record.id, { check_out_time: checkOutTime, status: 'normal' });
+      auditRepository.logChange({
+        actor: req.adminUser,
+        action: 'attendance_record_manually_fixed',
+        entityType: 'attendance_record',
+        entityId: record.id,
+        before: beforeRecord,
+        after: attendanceCorrection,
+        reason: `تأیید درخواست اصلاح خروج (اعتراض ${dispute.id})`,
+        ip: req.ip,
+        meta: { disputeId: dispute.id, targetUserId: record.user_id, source: 'missing_checkout_dispute' },
+      });
+    }
+  }
   auditChange(req, {
     action: resolving ? 'dispute_resolved' : 'dispute_reopened',
     entityType: 'dispute',
@@ -103,7 +137,7 @@ router.post('/admin/disputes/:id/:action(resolve|reopen)', requirePermission('di
   if (resolving) notificationEvents.disputeResolved(updated, { note }); // اعلان پنل برای کارمند (S4-6b)
   else if (r.message) notificationEvents.disputeAdminMessage(updated, r.message, { actor: req.adminUser }); // بازگشایی همراه پیام ⇒ مثل پاسخ (D4)
   if (resolving) notificationEvents.disputeResolvedTelegram(updated, { note, actor: req.adminUser }); // تلگرام + دکمه‌ی گفت‌وگو (مسیر مشترک با بات)
-  res.json(updated);
+  res.json(attendanceCorrection ? { ...updated, attendanceCorrection } : updated);
 });
 
 module.exports = router;

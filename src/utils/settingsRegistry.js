@@ -143,6 +143,7 @@ def('lateLimitPermissionTtlMinutes', 'late_limit_permission_ttl_minutes', 'numbe
 // S3-4b: آستانه‌ی پرچم‌ها (فقط گزارش؛ عددی را عوض نمی‌کنند)
 def('longOpenBreakMinutes', 'long_open_break_minutes', 'number', { group: 'workHours', min: 1, max: 720, default: 120, description: 'آستانه‌ی پرچم «استراحت بسته‌نشده» (دقیقه): استراحتی که پایان نخورده و بیش از این مدت طول کشیده پرچم می‌شود' });
 def('outsideShiftMarginMinutes', 'outside_shift_margin_minutes', 'number', { group: 'workHours', min: 0, max: 720, default: 120, description: 'حاشیه‌ی مجاز (دقیقه) ورود/خروج پیش از شروع یا پس از پایان کار؛ بیرون از آن پرچم «خارج از شیفت» می‌خورد (۷۲۰ = عملاً خاموش)' });
+def('crossMidnightMode', 'cross_midnight_mode', 'enum', { group: 'workHours', values: ['legacy', 'by_shift_day'], default: 'legacy', description: 'خروج پس از نیمه‌شب در شیفت عادی: «سازگار با گذشته» همان محاسبهٔ قبلی را نگه می‌دارد؛ «بر پایهٔ روز شیفت» آن را ادامهٔ همان روز کاری حساب می‌کند.' });
 // S3-5a: اضافه‌کاری روزانه (پیش‌فرض خاموش؛ ضریب‌ها ۱ = خنثی، عدد قانونی hard-code نشده)
 def('overtimeEnabled', 'overtime_enabled', 'boolean', { group: 'overtime', default: false, description: 'محاسبه‌ی «اضافه‌کاری قابل‌پرداخت» (خاموش = ۰؛ اضافه‌کاری خام همچنان گزارش می‌شود)' });
 def('overtimeMinMinutes', 'overtime_min_minutes', 'number', { group: 'overtime', min: 0, max: 480, default: 0, description: 'حداقل اضافه‌کاری روزانه (دقیقه) برای قابل‌پرداخت بودن؛ کمتر از آن صفر حساب می‌شود و برابر یا بیشتر کامل (۰ = بدون آستانه)' });

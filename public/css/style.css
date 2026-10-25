@@ -160,6 +160,11 @@ body {
 .earnings-foot { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
 .earnings-useful { display: inline-block; padding: var(--space-1) var(--space-3); border-radius: 999px; background: var(--green-soft); color: var(--green); font-size: var(--fs-xs); font-weight: 700; }
 .earnings-note { color: var(--hint); font-size: var(--fs-xs); line-height: 1.7; }
+.earnings-excluded { margin: 0; color: var(--hint); font-size: var(--fs-xs); }
+.btn-link { border: 0; padding: 0; background: transparent; color: var(--brand); font: inherit; text-decoration: underline; cursor: pointer; }
+.missing-checkout-card { border-color: color-mix(in srgb, var(--orange) 55%, var(--border)); background: color-mix(in srgb, var(--orange) 10%, var(--card-bg)); }
+.missing-checkout-card h3 { margin: 0 0 6px; font-size: var(--fs-md); }
+.missing-checkout-card p { margin: 0 0 10px; color: var(--hint); font-size: var(--fs-sm); }
 
 .status-pill {
   display: inline-flex;

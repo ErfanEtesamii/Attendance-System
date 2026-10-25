@@ -16,8 +16,9 @@ const dayService = require('../engine/dayService');
 const { isoDateToJalaliString } = require('../utils/jalali');
 const { formatTime } = require('../utils/time');
 const { aggregateRecords, safeSummary, minutesToHHMM } = require('../api/routes/admin/common');
+const remoteWorkRepository = require('../repositories/remoteWorkRepository');
 
-const SHEET_NAMES = { summary: 'خلاصه کارمند', daily: 'ریز روزانه', leave: 'مرخصی و مأموریت', overtime: 'اضافه‌کاری' };
+const SHEET_NAMES = { summary: 'خلاصه کارمند', daily: 'ریز روزانه', leave: 'مرخصی و مأموریت', overtime: 'اضافه‌کاری', remote: 'دورکاری' };
 
 const LEAVE_STATUS = { pending: 'در انتظار', approved: 'تأییدشده', rejected: 'ردشده' };
 const LEAVE_KIND = { leave: 'مرخصی', mission: 'مأموریت' };
@@ -57,6 +58,7 @@ function buildEmployeeReportSheets({ users, from, to }) {
   const summaryRows = [];
   const dailyRows = [];
   const overtimeRows = [];
+  const remoteRows = [];
 
   for (const u of list) {
     const records = byUser.get(u.id);
@@ -112,6 +114,13 @@ function buildEmployeeReportSheets({ users, from, to }) {
   }
 
   const userMap = new Map(list.map((u) => [u.id, u]));
+  for (const s of remoteWorkRepository.listClosedInRange(ids, from, to)) {
+    const u = userMap.get(s.user_id) || {};
+    const start = Date.parse(s.approved_start_at || s.start_at);
+    const end = Date.parse(s.approved_end_at || s.end_at);
+    const minutes = Number.isFinite(start) && Number.isFinite(end) && end > start ? Math.round((end - start) / 60000) : 0;
+    remoteRows.push([...ident(u), s.work_date, jalali(s.work_date), timeOf(s.start_at, tz), timeOf(s.end_at, tz), minutes, hhmm(minutes), s.status === 'pending' ? 'در انتظار تأیید' : (s.status === 'approved' ? 'تأییدشده' : 'ردشده')]);
+  }
   const leaveRows = leaveRepository.listInRangeWithType(ids, from, to).map((l) => {
     const u = userMap.get(l.user_id) || {};
     return [
@@ -151,6 +160,11 @@ function buildEmployeeReportSheets({ users, from, to }) {
       headers: [...IDENT_HEADERS, 'تاریخ', 'تاریخ شمسی', 'دقیقه اضافه‌کاری', 'اضافه‌کاری (ساعت:دقیقه)',
         'قابل‌پرداخت روزانه (دقیقه)', 'وضعیت تأیید', 'قابل‌پرداخت پس از تأیید (دقیقه)', 'قابل‌پرداخت پس از تأیید (ساعت:دقیقه)'],
       rows: overtimeRows,
+    },
+    {
+      name: SHEET_NAMES.remote,
+      headers: [...IDENT_HEADERS, 'تاریخ', 'تاریخ شمسی', 'شروع دورکاری', 'پایان دورکاری', 'دقیقه دورکاری', 'ساعت دورکاری (ساعت:دقیقه)', 'وضعیت تأیید'],
+      rows: remoteRows,
     },
   ];
 }

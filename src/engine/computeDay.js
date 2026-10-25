@@ -157,6 +157,19 @@ function resolveShiftParams(settings, shift) {
   };
 }
 
+// مبنای دقیقهٔ خالصِ روز: تابع خالصِ جدا برای جلوگیری از پراکندگی منطق عبور از نیمه‌شب.
+// در حالت legacy دقیقاً همان ساعت دیواریِ قبل برمی‌گردد.
+function resolveDayPosition({ recordDate, checkIn, timezone, overnight, crossMidnightMode }) {
+  const shiftDayPositions = overnight || crossMidnightMode === 'by_shift_day';
+  const refDate = shiftDayPositions ? (dayNumber(recordDate) !== null ? recordDate : formatDate(checkIn, timezone)) : null;
+  return {
+    shiftDayPositions,
+    posOf: shiftDayPositions
+      ? (instant) => dayDiff(formatDate(instant, timezone), refDate) * 1440 + minutesSinceMidnight(instant, timezone)
+      : (instant) => minutesSinceMidnight(instant, timezone),
+  };
+}
+
 function toDate(value, name) {
   const d = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(d.getTime())) throw new RangeError(`${name} زمان معتبر نیست.`);
@@ -308,6 +321,8 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
   const shiftMargin = thresholdMinutes(settings.outsideShiftMarginMinutes, 'outsideShiftMarginMinutes', DEFAULT_OUTSIDE_SHIFT_MARGIN, 0);
   const lateCountsFrom = settings.lateCountsFrom === undefined ? 'shift_start' : settings.lateCountsFrom;
   if (!LATE_COUNTS_FROM.includes(lateCountsFrom)) throw new RangeError(`settings.lateCountsFrom باید یکی از ${LATE_COUNTS_FROM.join('، ')} باشد.`);
+  const crossMidnightMode = settings.crossMidnightMode === undefined ? 'legacy' : settings.crossMidnightMode;
+  if (!['legacy', 'by_shift_day'].includes(crossMidnightMode)) throw new RangeError('settings.crossMidnightMode باید legacy یا by_shift_day باشد.');
   const tz = timezone === undefined ? DEFAULT_TIMEZONE : normalizeTimezone(timezone);
   if (!tz) throw new RangeError('timezone نامعتبر است.');
 
@@ -360,8 +375,7 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
   }
 
   // مبنای زمان (S3-6c): شیفت شب ⇒ دقیقه از نیمه‌شبِ record_date (روز بعد = ۱۴۴۰+)؛ وگرنه دقیقه‌ی ساعت دیواری مثل قبل
-  const refDate = overnight ? (dayNumber(record.record_date) !== null ? record.record_date : formatDate(checkIn, tz)) : null;
-  const posOf = overnight ? (d) => dayDiff(formatDate(d, tz), refDate) * 1440 + minutesSinceMidnight(d, tz) : (d) => minutesSinceMidnight(d, tz);
+  const { shiftDayPositions, posOf } = resolveDayPosition({ recordDate: record.record_date, checkIn, timezone: tz, overnight, crossMidnightMode });
   const checkInMinutes = posOf(checkIn);
   const lateLine = effStart + lateGrace; // تا خودِ این لحظه تأخیر نیست (بدون مرخصی effStart = workStart)
   if (!dayOff && !untimed && !fullyOnLeave && checkInMinutes > lateLine) {
@@ -375,7 +389,7 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
   // ---- پرچم‌ها (S3-4b): فقط گزارش؛ هیچ‌کدام عددی را عوض نمی‌کنند ----
   const reversed = normalizedSegments.some((segment) => segment.out && segment.out.getTime() < segment.in.getTime());
   if (reversed) flagSet.add('checkout_before_checkin');
-  const dayOver = overnight ? posOf(end) > workEnd + shiftMargin : formatDate(checkIn, tz) < formatDate(end, tz); // شیفت شب: «پایان + حاشیه» گذشته
+  const dayOver = shiftDayPositions ? posOf(end) > workEnd + shiftMargin : formatDate(checkIn, tz) < formatDate(end, tz); // حالت سازگار با گذشته فقط تغییر تاریخ را ملاک می‌گیرد
   if (!checkOut && (record.status === 'incomplete' || dayOver)) flagSet.add('missing_checkout');
   for (const b of read.items) {
     if (b.endMs === null && (end.getTime() - b.startMs) / 60000 > longOpenBreak) flagSet.add('long_open_break');
@@ -388,7 +402,7 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
     if (bEnd < b.startMs || !insidePresence) flagSet.add('break_outside_range');
   }
   const outsideMinutes = (d) => { const m = posOf(d); return m < workStart - shiftMargin || m > workEnd + shiftMargin; };
-  const otherDay = !overnight && Boolean(checkOut) && formatDate(checkOut, tz) !== formatDate(checkIn, tz); // شیفت شب عمداً از نیمه‌شب رد می‌شود
+  const otherDay = !shiftDayPositions && Boolean(checkOut) && formatDate(checkOut, tz) !== formatDate(checkIn, tz);
   if (!dayOff && !untimed && (outsideMinutes(checkIn) || (checkOut && (outsideMinutes(checkOut) || otherDay)))) flagSet.add('outside_shift');
 
   const gross = normalizedSegments.reduce((sum, segment, index) => {
