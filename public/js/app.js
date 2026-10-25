@@ -517,11 +517,11 @@
     box.className = 'actions';
     const r = state.today && state.today.record;
     const openBreak = state.today && state.today.openBreak;
-    function addTile({ title, sub, color, icon, wide, primary, handler, locked }) {
+    function addTile({ title, sub, color, icon: iconKey, wide, primary, handler, locked }) {
       const b = document.createElement('button');
       b.className = 'action-tile t-' + color + (wide ? ' wide' : '') + (primary ? ' is-primary' : '');
       const iconEl = document.createElement('span');
-      iconEl.className = 'tile-icon'; if (ICONS[icon]) iconEl.appendChild(icon(ICONS[icon]));
+      iconEl.className = 'tile-icon'; if (ICONS[iconKey]) iconEl.appendChild(icon(ICONS[iconKey]));
       const text = document.createElement('span'); text.className = 'tile-text';
       const titleEl = document.createElement('span'); titleEl.className = 'tile-title'; titleEl.textContent = title;
       const subEl = document.createElement('span'); subEl.className = 'tile-sub'; subEl.textContent = sub;
