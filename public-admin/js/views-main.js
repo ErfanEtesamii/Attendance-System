@@ -96,7 +96,7 @@
               <div class="stat-value">${fmt.num(val)}</div><div class="stat-label">${esc(label)}</div>${trendField ? statTrendHtml(d.trend, trendField) : ''}</button>`).join('')}
         </div>
 
-        <div class="card inbox-card" data-widget="inbox"><div class="view-header"><div><h3>منتظر تصمیم شما</h3><div class="sub">${inboxTotal ? `${fmt.num(inboxTotal)} مورد برای بررسی` : 'همه‌چیز مرتب است'}</div></div><button class="btn ghost small" data-hide-widget="inbox">پنهان‌کردن</button></div><div class="inbox-grid">${inboxRows}</div></div>
+        <div class="card inbox-card" data-widget="inbox"><div class="view-header"><div><h3>منتظر تصمیم شما</h3><div class="sub">${inboxTotal ? `${fmt.num(inboxTotal)} مورد برای بررسی` : 'همه‌چیز مرتب است'}</div></div></div><div class="inbox-grid">${inboxRows}</div></div>
 
         <div class="grid-2" data-widget="trend">
           <div class="card card--primary"><h3>روند حضور ۱۴ روز اخیر</h3>
@@ -129,29 +129,6 @@
       return {
         html,
         mount(page) {
-          const defaultLayout = ['stats', 'inbox', 'trend', 'late'];
-          let currentLayout = { order: defaultLayout, hidden: [], sizes: {} };
-          const saveLayout = (next) => { currentLayout = { ...currentLayout, ...next }; return AP.api('/admin/me/dashboard-layout', { method: 'PUT', body: currentLayout }); };
-          const applyLayout = (layout) => {
-            currentLayout = { ...currentLayout, ...layout };
-            const host = page; const by = new Map([...host.querySelectorAll('[data-widget]')].map((el) => [el.dataset.widget, el]));
-            (layout.hidden || []).forEach((key) => by.get(key)?.remove());
-            (layout.order || []).slice().reverse().forEach((key) => { const el = by.get(key); if (el && el.isConnected) host.insertBefore(el, host.firstChild); });
-            [...host.querySelectorAll('[data-widget]')].forEach((el) => { const key = el.dataset.widget; el.draggable = true; el.dataset.size = (layout.sizes || {})[key] || 'medium'; const controls = document.createElement('div'); controls.className = 'widget-controls'; controls.innerHTML = `<button type="button" class="btn ghost small" data-move="up" aria-label="انتقال ویجت به بالا">بالا</button><button type="button" class="btn ghost small" data-move="down" aria-label="انتقال ویجت به پایین">پایین</button><select class="widget-size" data-widget-size aria-label="اندازه ویجت"><option value="small">کوچک</option><option value="medium">متوسط</option><option value="large">بزرگ</option></select>`; $('[data-widget-size]', controls).value = el.dataset.size; el.prepend(controls); });
-          };
-          AP.api('/admin/me/dashboard-layout').then(applyLayout).catch(() => {});
-          const saveOrder = () => saveLayout({ order: [...page.querySelectorAll('[data-widget]')].map((el) => el.dataset.widget) });
-          page.addEventListener('click', (event) => { const move = event.target.closest('[data-move]'); if (!move) return; const card = move.closest('[data-widget]'); if (!card) return; if (move.dataset.move === 'up' && card.previousElementSibling) page.insertBefore(card, card.previousElementSibling); if (move.dataset.move === 'down' && card.nextElementSibling) page.insertBefore(card.nextElementSibling, card); saveOrder().catch((err) => AP.toast(err.message, true)); });
-          page.addEventListener('change', (event) => { const s = event.target.closest('[data-widget-size]'); if (!s) return; const card = s.closest('[data-widget]'); card.dataset.size = s.value; saveLayout({ sizes: { ...(currentLayout.sizes || {}), [card.dataset.widget]: s.value } }).catch((err) => AP.toast(err.message, true)); });
-          page.addEventListener('dragstart', (event) => { const card = event.target.closest('[data-widget]'); if (card && !page.classList.contains('layout-editing')) { event.preventDefault(); return; } if (card) event.dataTransfer.setData('text/plain', card.dataset.widget); });
-          page.addEventListener('dragover', (event) => { if (event.target.closest('[data-widget]')) event.preventDefault(); });
-          page.addEventListener('drop', (event) => { const target = event.target.closest('[data-widget]'); const source = page.querySelector(`[data-widget="${event.dataTransfer.getData('text/plain')}"]`); if (!target || !source || target === source) return; event.preventDefault(); page.insertBefore(source, target); saveOrder().catch((err) => AP.toast(err.message, true)); });
-          page.addEventListener('click', (event) => { const b = event.target.closest('[data-hide-widget]'); if (!b) return; saveLayout({ hidden: [...new Set([...(currentLayout.hidden || []), b.dataset.hideWidget]) ] }).then(() => b.closest('[data-widget]')?.remove()).catch((err) => AP.toast(err.message, true)); });
-          const reset = document.createElement('button'); reset.className = 'btn ghost small layout-reset'; reset.type = 'button'; reset.textContent = 'بازگشت چیدمان پیش‌فرض'; reset.addEventListener('click', () => saveLayout({ order: defaultLayout, hidden: [], sizes: {} }).then(() => AP.refresh()));
-          // کنترل‌های چیدمان فقط در «حالت ویرایش چیدمان» دیده می‌شوند؛ در حالت عادی داشبورد تمیز می‌ماند
-          const editBtn = document.createElement('button'); editBtn.className = 'btn ghost small'; editBtn.type = 'button'; editBtn.textContent = 'ویرایش چیدمان'; editBtn.setAttribute('aria-pressed', 'false');
-          editBtn.addEventListener('click', () => { const on = page.classList.toggle('layout-editing'); editBtn.setAttribute('aria-pressed', String(on)); editBtn.textContent = on ? 'پایان ویرایش' : 'ویرایش چیدمان'; });
-          const layoutBar = document.createElement('div'); layoutBar.className = 'layout-bar'; layoutBar.append(editBtn, reset); page.prepend(layoutBar);
           page.addEventListener('click', async (event) => {
             const button = event.target.closest('[data-inbox-action]'); if (!button || button.disabled) return;
             const { kind, id, user, date } = button.dataset; const reject = button.dataset.inboxAction === 'reject';
