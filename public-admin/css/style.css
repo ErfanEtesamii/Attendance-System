@@ -979,7 +979,7 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--b
   pointer-events: none;
 }
 .bell-backdrop { display: none; }
-.bell-backdrop.open { display: block; position: fixed; inset: 0; background: var(--scrim); z-index: 44; }
+.bell-backdrop.open { display: block; position: fixed; inset: 0; background: rgba(23, 20, 58, .45); z-index: 44; }
 .bell-drawer {
   position: fixed; top: 0; bottom: 0; left: 0; z-index: 45;
   width: min(400px, 100vw);
