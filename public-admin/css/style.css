@@ -1817,23 +1817,11 @@ body[data-density="compact"] tbody td { padding-block: 7px; }
 }
 .tr-callout .muted { font-size: var(--fs-xs); }
 
-/* تب‌ها: نوار قرصی یکپارچه */
-.tr-tabs {
-  display: inline-flex; flex-wrap: wrap; gap: 4px; align-self: flex-start; max-width: 100%; padding: 4px;
-  background: var(--card-2); border-radius: 999px;
-}
-.tr-tab {
-  border: 0; background: transparent; color: var(--hint); cursor: pointer;
-  padding: 9px 20px; border-radius: 999px; min-height: 40px;
-  font-family: inherit; font-size: var(--fs-sm); font-weight: 600;
-  transition: background .15s, color .15s, box-shadow .15s;
-}
-.tr-tab:hover { color: var(--text); }
-.tr-tab.active { background: var(--card); color: var(--brand); font-weight: 800; box-shadow: var(--shadow); }
-.tr-tab:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
-
+/* تب‌ها و فیلترها در یک کارت؛ تب‌ها همان سبک زیرخط‌دار بقیه‌ی پنل */
+.tr-controls { padding: 0 var(--space-5) var(--space-4); }
+.tr-controls .tabs { margin-bottom: var(--space-4); }
 /* فیلترها: کارت تمیز با فیلدهای هم‌اندازه */
-.tr-filters { margin-bottom: 0; padding: var(--space-4) var(--space-5); gap: var(--space-4); align-items: flex-end; }
+.tr-filters { margin-bottom: 0; gap: var(--space-4); align-items: flex-end; }
 .tr-filters .field { flex: 1 1 170px; min-width: 150px; max-width: 280px; }
 .tr-filters .field > span { font-size: var(--fs-xs); font-weight: 600; }
 .tr-filters .export-group { margin-inline-start: auto; }
@@ -1860,8 +1848,6 @@ body[data-density="compact"] tbody td { padding-block: 7px; }
 
 @media (max-width: 900px) {
   .tr-kpi-grid { grid-template-columns: minmax(0, 1fr); }
-  .tr-tabs { display: flex; width: 100%; border-radius: var(--r-lg); }
-  .tr-tab { flex: 1 1 calc(50% - 4px); padding-inline: 12px; }
   .tr-filters .field { max-width: none; }
   .tr-filters .export-group { margin-inline-start: 0; width: 100%; }
 }

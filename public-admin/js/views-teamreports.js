@@ -174,12 +174,14 @@
         <div class="tr-page">
           ${AP.can('analytics.read') ? '<div id="tr-kpis" aria-live="polite"></div>' : ''}
           <section class="tr-section tr-report">
-            <div class="tr-tabs" role="tablist" aria-label="نوع گزارش">${TABS.map(([k, l]) => `<button type="button" class="tr-tab${k === ui.tab ? ' active' : ''}" data-tab="${k}" role="tab" aria-selected="${k === ui.tab}">${l}</button>`).join('')}</div>
-            <form class="filters card tr-filters" id="tr-filters" aria-label="فیلتر گزارش">
+            <div class="card tr-controls">
+              <div class="tabs" role="tablist" aria-label="نوع گزارش">${TABS.map(([k, l]) => `<button type="button" class="tab${k === ui.tab ? ' active' : ''}" data-tab="${k}" role="tab" aria-selected="${k === ui.tab}">${l}</button>`).join('')}</div>
+              <form class="filters tr-filters" id="tr-filters" aria-label="فیلتر گزارش">
               ${ui.tab === 'plan' ? `<label class="field"><span>هفته (هر روزِ آن)</span><input type="date" name="weekStart" value="${esc(ui.weekStart)}" /></label>` : ''}
               ${ui.tab === 'daily' || ui.tab === 'unreviewed' ? `<label class="field"><span>تاریخ گزارش</span><input type="date" name="date" value="${esc(ui.date)}" /></label>` : ''}
               ${users.length ? `<label class="field"><span>فرد</span><select name="userId"><option value="">همه</option>${users.map((u) => `<option value="${u.id}" ${String(u.id) === String(ui.userId) ? 'selected' : ''}>${esc(u.full_name)}</option>`).join('')}</select></label>` : ''}
-            </form>
+              </form>
+            </div>
             <div id="tr-result" aria-live="polite"></div>
           </section>
           <section class="tr-section tr-export-section">
