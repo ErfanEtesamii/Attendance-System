@@ -73,8 +73,10 @@
       const inboxRows = Object.entries(inboxMeta).map(([key, [label, go]]) => {
         const bucket = inbox[key] || {}; const items = bucket.items || [];
         const actions = (item) => !canDecide(key) ? '' : `<span class="inbox-actions">${key === 'reportReview' ? `<button class="btn ghost small" data-inbox-action="approve" data-kind="${key}" data-id="${item.id}" data-user="${item.userId}" data-date="${item.reportDate || ''}">ثبت مشاهده</button>` : `<button class="btn ghost small" data-inbox-action="approve" data-kind="${key}" data-id="${item.id}">تأیید</button><button class="btn danger small" data-inbox-action="reject" data-kind="${key}" data-id="${item.id}">رد</button>`}</span>`;
-        return `<div class="inbox-group"><div class="kv-row"><span>${label}</span><span>${fmt.num(bucket.count || 0)} <button class="btn ghost small" data-go="${go}">بررسی</button></span></div>${items.map((item) => `<div class="kv-row inbox-item" data-inbox-row><span>${esc(item.name)}</span>${actions(item)}</div>`).join('')}</div>`;
+        const total = Number(bucket.count || 0);
+        return `<div class="inbox-group${total ? '' : ' is-empty'}"><div class="inbox-head"><span class="inbox-label">${label}</span><span class="inbox-count" data-inbox-count>${fmt.num(total)}</span><button class="btn ghost small" data-go="${go}">بررسی</button></div>${items.map((item) => `<div class="inbox-item" data-inbox-row><span class="inbox-name">${esc(item.name)}</span>${actions(item)}</div>`).join('')}</div>`;
       }).join('');
+      const inboxTotal = Object.keys(inboxMeta).reduce((s, k) => s + Number((inbox[k] || {}).count || 0), 0);
       const html = `
         <div class="view-header">
           <div><h2>سلام ${esc(AP.state.me.fullName)} 👋</h2>
@@ -94,7 +96,7 @@
               <div class="stat-value">${fmt.num(val)}</div><div class="stat-label">${esc(label)}</div>${trendField ? statTrendHtml(d.trend, trendField) : ''}</button>`).join('')}
         </div>
 
-        <div class="card" data-widget="inbox"><div class="view-header"><h3>منتظر تصمیم شما</h3><button class="btn ghost small" data-hide-widget="inbox">پنهان‌کردن</button></div><div class="kv">${inboxRows}</div></div>
+        <div class="card inbox-card" data-widget="inbox"><div class="view-header"><div><h3>منتظر تصمیم شما</h3><div class="sub">${inboxTotal ? `${fmt.num(inboxTotal)} مورد برای بررسی` : 'همه‌چیز مرتب است'}</div></div><button class="btn ghost small" data-hide-widget="inbox">پنهان‌کردن</button></div><div class="inbox-grid">${inboxRows}</div></div>
 
         <div class="grid-2" data-widget="trend">
           <div class="card card--primary"><h3>روند حضور ۱۴ روز اخیر</h3>
@@ -158,7 +160,7 @@
             const routes = { leave: `/admin/leave-requests/${id}/${reject ? 'reject' : 'approve'}`, mission: `/admin/leave-requests/${id}/${reject ? 'reject' : 'approve'}`, remoteWork: `/admin/remote-work/${id}/${reject ? 'reject' : 'approve'}`, dispute: `/admin/disputes/${id}/${reject ? 'reopen' : 'resolve'}`, checkinPermission: `/admin/checkin-permissions/${id}/decide`, reportReview: '/admin/report-reviews' };
             const body = kind === 'checkinPermission' ? { decision: reject ? 'reject' : 'approve', note: reason || undefined } : kind === 'remoteWork' ? { reviewNote: reason || undefined } : kind === 'reportReview' ? { subjectUserId: Number(user), reportDate: date } : { note: reason || undefined };
             const row = button.closest('[data-inbox-row]');
-            try { button.disabled = true; await AP.api(routes[kind], { method: 'POST', body }); row?.remove(); AP.toast(reject ? 'رد شد.' : 'ثبت شد.'); AP.api('/admin/inbox').then((next) => { const b = next[kind] || {}; const group = row?.closest('.inbox-group'); const count = group?.querySelector('.kv-row span:last-child'); if (count) count.firstChild.nodeValue = `${fmt.num(b.count || 0)} `; }); } catch (err) { button.disabled = false; AP.toast(err.message, true); }
+            try { button.disabled = true; await AP.api(routes[kind], { method: 'POST', body }); row?.remove(); AP.toast(reject ? 'رد شد.' : 'ثبت شد.'); AP.api('/admin/inbox').then((next) => { const b = next[kind] || {}; const group = row?.closest('.inbox-group'); const count = group?.querySelector('[data-inbox-count]'); if (count) count.textContent = fmt.num(b.count || 0); group?.classList.toggle('is-empty', !(b.count || 0)); }); } catch (err) { button.disabled = false; AP.toast(err.message, true); }
           });
           $$('[data-go]', page).forEach((b) => b.addEventListener('click', () => AP.go(b.dataset.go, b.dataset.param)));
           const timer = setInterval(() => { if (!document.hidden) AP.refresh(); }, 60000);
