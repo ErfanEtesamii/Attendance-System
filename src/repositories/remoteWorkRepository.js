@@ -34,6 +34,14 @@ function insertSession({ userId, workDate, startAt, ip, source = 'miniapp' }) {
   return findSessionById(r.lastInsertRowid);
 }
 
+// ثبت دستی ادمین: نشست «بسته» با ساعت پایان از همان ابتدا (ورود و خروج با هم)؛ نشست باز نمی‌سازد، پس به ایندکس «یک نشست باز» برخورد نمی‌کند.
+function insertClosedSession({ userId, workDate, startAt, endAt, ip = null, source = 'miniapp' }) {
+  const r = getDb()
+    .prepare('INSERT INTO remote_work_sessions (user_id, work_date, start_at, end_at, ip_address, source) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(userId, workDate, startAt, endAt, ip, source);
+  return findSessionById(r.lastInsertRowid);
+}
+
 function closeSession(id, endAt, { autoClosed = false } = {}) {
   getDb().prepare('UPDATE remote_work_sessions SET end_at = ?, auto_closed = ? WHERE id = ? AND end_at IS NULL').run(endAt, autoClosed ? 1 : 0, id);
   return findSessionById(id);
@@ -223,6 +231,6 @@ function pendingClosedByUser({ userIds = null, excludeUserId = null } = {}) {
 module.exports = {
   listQueue, listBreaksForSessions,
   findSessionFull, listApprovedForDay, listApprovedInRange, listClosedInRange, findOfficialRecord, insertRemoteRecord, updateRemoteRecord, adoptPlaceholder, replaceRemoteBreaks, markApproved, markRejected, updateRecordTimes, insertRemoteBreaks, pendingClosedByUser,
-  findOpenSession, findSessionById, listForUserDate, listForUserRange, insertSession, closeSession, listStaleOpenSessions,
+  findOpenSession, findSessionById, listForUserDate, listForUserRange, insertSession, insertClosedSession, closeSession, listStaleOpenSessions,
   listBreaks, findOpenBreak, insertBreak, closeBreak,
 };

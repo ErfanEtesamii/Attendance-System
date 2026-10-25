@@ -24,6 +24,10 @@
 // بخش R5-۷ (تأیید دسته‌ای):
 //   POST /admin/remote-work/approve-batch remote_work.review؛ body: { user_id? , week? (هر تاریخ داخل هفته)، review_note? } — حداقل یکی از user_id/week الزامی (۴۰۰ BATCH_SCOPE_REQUIRED).
 //     ⇒ ۲۰۰ { ok, approved, skipped: [{id, code, error}], total, truncated, weekStart, weekEnd } (سقف ۵۰۰ نشست در هر فراخوانی). هر نشست تراکنش جدا؛ idempotent.
+// ثبت دستی (فقط ادمین):
+//   POST /admin/remote-work   remote_work.create؛ body: { user_id, start_at, end_at (ISO)، review_note (الزامی، ≤۵۰۰)، overlap_decision? = merge } — camelCase هم پذیرفته می‌شود.
+//     نشست بسته‌شده + تأیید در یک تراکنش (همان قواعد approve: ماه بسته، آینده، ۲۴ ساعت، TIME_CONFLICT، ONSITE_OVERLAP)؛ برای خودِ ادمین ممنوع (SELF_NOT_ALLOWED).
+//     ⇒ ۲۰۰ { ok, outcome, session, attendanceRecordId }؛ خطاها مثل approve + ۴۰۰ REVIEW_NOTE_REQUIRED|INVALID_TIME|INVALID_NOTE|INVALID_DECISION، ۴۰۴ USER_NOT_FOUND.
 const express = require('express');
 const { requirePermission } = require('../../../middleware/permissions');
 const service = require('../../../services/remoteWorkAdminService');
@@ -45,6 +49,17 @@ router.get('/admin/remote-work', requirePermission('remote_work.read'), (req, re
 const bodyOf = (req) => (req.body && typeof req.body === 'object' ? req.body : {});
 const pickFrom = (b, snake, camel) => (b[snake] !== undefined ? b[snake] : b[camel]);
 const send = (res, r) => (r.ok ? res.json(r) : res.status(r.status).json({ error: r.error, code: r.code }));
+
+router.post('/admin/remote-work', requirePermission('remote_work.create'), (req, res) => {
+  const b = bodyOf(req);
+  return send(res, service.createManual(req.adminUser, {
+    userId: pickFrom(b, 'user_id', 'userId'),
+    startAt: pickFrom(b, 'start_at', 'startAt'),
+    endAt: pickFrom(b, 'end_at', 'endAt'),
+    note: pickFrom(b, 'review_note', 'reviewNote'),
+    overlapDecision: pickFrom(b, 'overlap_decision', 'overlapDecision'),
+  }, { ip: req.ip }));
+});
 
 // ثبت approve-batch قبل از مسیرهای :id (جلوگیری از هر ابهام مسیر)
 router.post('/admin/remote-work/approve-batch', requirePermission('remote_work.review'), (req, res) => {

@@ -196,6 +196,48 @@
     }
   }
 
+  // ثبت دستی دورکاری (فقط remote_work.create = ادمین): نشستِ تأییدشده برای یک کارمند؛ ساعت‌ها «YYYY-MM-DDTHH:MM» محلی ⇒ ISO/UTC با fmt.fromLocalInput.
+  // همه‌ی قواعد (ماه بسته، آینده، ۲۴ ساعت، هم‌پوشانی، خود ممنوع) سمت سرور است؛ پیام خطای سرور بی‌تغییر در مودال نشان داده می‌شود.
+  function addManual(users) {
+    const meId = AP.state.me && AP.state.me.id;
+    const options = users.filter((u) => u.isActive !== false && String(u.id) !== String(meId))
+      .map((u) => `<option value="${esc(u.id)}">${esc(u.full_name || u.fullName || u.id)}</option>`).join('');
+    AP.modal({
+      title: 'ثبت دستی دورکاری',
+      body: `<form class="form" id="rw-manual">
+        <p class="muted">دورکاری با همین ساعت‌ها برای کارمند «تأییدشده» ثبت می‌شود و در حضور و غیاب و گزارش‌ها حساب می‌شود؛ کارمند هم اعلان می‌گیرد. ثبت برای خودتان ممکن نیست.</p>
+        <div class="form-grid">
+          <label class="field full"><span>کارمند</span><select name="userId" required><option value="">انتخاب کنید…</option>${options}</select></label>
+          <label class="field"><span>شروع</span><input type="datetime-local" name="start" required /></label>
+          <label class="field"><span>پایان</span><input type="datetime-local" name="end" required /></label>
+          <label class="field full"><span>دلیل ثبت (الزامی)</span><textarea name="note" rows="2" maxlength="500" required></textarea></label>
+          <label class="field full"><span>اگر همان روز حضور حضوری هم دارد</span><select name="decision"><option value="">خطا بده (ثبت نشود)</option><option value="merge">ادغام با رکورد حضوری</option></select></label>
+        </div>
+        <div class="form-msg"></div>
+        <div class="modal-actions"><button class="btn primary" type="submit">ثبت دورکاری</button><button class="btn ghost" type="button" data-cancel>انصراف</button></div>
+      </form>`,
+      onMount(body, m) {
+        AP.dates.mount(body);
+        const form = $('#rw-manual', body);
+        const msg = (t) => { const e = $('.form-msg', form); e.className = 'form-msg err'; e.textContent = t; };
+        $('[data-cancel]', form).addEventListener('click', () => m.close());
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const f = AP.formData(form);
+          const start = fmt.fromLocalInput(f.start);
+          const end = fmt.fromLocalInput(f.end);
+          if (!f.userId) { msg('کارمند را انتخاب کنید.'); return; }
+          if (!start || !end) { msg('ساعت شروع و پایان را کامل وارد کنید.'); return; }
+          if (!String(f.note || '').trim()) { msg('دلیل ثبت را بنویسید.'); return; }
+          const r = await AP.attempt(() => AP.api('/admin/remote-work', { method: 'POST', body: { user_id: Number(f.userId), start_at: start, end_at: end, review_note: f.note.trim(), ...(f.decision ? { overlap_decision: f.decision } : {}) } }), 'دورکاری ثبت و تأیید شد.');
+          if (!r) return;
+          m.close();
+          after();
+        });
+      },
+    });
+  }
+
   AP.view('remote', {
     skeleton: 'table',
     perm: 'remote_work.read',
@@ -203,10 +245,11 @@
     async render() {
       const users = AP.selfOnly() ? [] : await AP.loadUsers().catch(() => []);
       const canReview = AP.can('remote_work.review');
+      const canCreate = AP.can('remote_work.create');
       const html = `
         <div class="view-header"><div><h2>دورکاری</h2>
           <div class="sub">ساعت‌هایی که کارمندان بیرون از شبکه ثبت کرده‌اند؛ تا تأیید شما در حضور و غیاب، گزارش‌ها و حقوق حساب نمی‌شوند.${canReview ? '' : ' (فقط‌خواندنی)'}</div></div>
-          <div class="header-actions">${canReview ? '<button type="button" class="btn primary" id="rw-batch">تأیید دسته‌ای</button>' : ''}</div></div>
+          <div class="header-actions">${canCreate ? '<button type="button" class="btn ghost" id="rw-add">ثبت دستی دورکاری</button>' : ''}${canReview ? '<button type="button" class="btn primary" id="rw-batch">تأیید دسته‌ای</button>' : ''}</div></div>
         <div class="chips" id="rw-chips">${STATUSES.map(([k, l]) => `<button type="button" class="chip ${k === ui.status ? 'active' : ''}" data-s="${k}">${l}</button>`).join('')}</div>
         <form class="filters" id="rw-filters">
           <label class="field"><span>بازه</span><select name="weekMode">${WEEK_MODES.map(([k, l]) => `<option value="${k}" ${k === ui.weekMode ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
@@ -235,6 +278,8 @@
           }));
           const b = $('#rw-batch', page);
           if (b) b.addEventListener('click', batch);
+          const ad = $('#rw-add', page);
+          if (ad) ad.addEventListener('click', () => addManual(users));
           load(page);
         },
       };

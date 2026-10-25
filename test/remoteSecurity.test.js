@@ -42,7 +42,7 @@ describe('امنیت دورکاری (R8)', () => {
   test('تمام routeهای ادمین با requirePermission محافظت شده‌اند', () => {
     const src = read('src/api/routes/admin/remoteWork.js');
     const routes = src.match(/router\.(get|post|put|patch|delete)\(/g) || [];
-    const guarded = src.match(/router\.(get|post|put|patch|delete)\('[^']+',\s*requirePermission\('remote_work\.(read|review)'\)/g) || [];
+    const guarded = src.match(/router\.(get|post|put|patch|delete)\('[^']+',\s*requirePermission\('remote_work\.(read|review|create)'\)/g) || [];
     assert.ok(routes.length >= 5);
     assert.equal(guarded.length, routes.length);
     assert.equal((src.match(/post\([^)]*remote_work\.read/g) || []).length, 0, 'POST با مجوز read');

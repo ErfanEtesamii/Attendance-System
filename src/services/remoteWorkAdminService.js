@@ -20,15 +20,19 @@ const usersRepository = require('../repositories/usersRepository');
 const remoteRepo = require('../repositories/remoteWorkRepository');
 const weeklyPlan = require('./weeklyPlanService'); // context(now): امروز/شروع هفته‌ی جاری/تنظیمات (منبع واحد با برنامه‌ی هفتگی)
 const calendarService = require('../engine/calendarService');
-const { dayNumber, addDays } = require('../utils/shiftDay');
+const { dayNumber, addDays, isOvernightShift, shiftRecordDate } = require('../utils/shiftDay');
 const { isoDateToJalaliString } = require('../utils/jalali');
 const { hasPermission } = require('../middleware/permissions');
 const { getDb } = require('../db/connection');
 const auditRepository = require('../repositories/auditRepository');
 const monthClosuresRepository = require('../repositories/monthClosuresRepository');
+const shiftsRepository = require('../repositories/shiftsRepository');
+const settingsRepository = require('../repositories/settingsRepository');
+const { formatDate } = require('../utils/time');
 
 const PERM_READ = 'remote_work.read';
 const PERM_REVIEW = 'remote_work.review';
+const PERM_CREATE = 'remote_work.create';
 
 const ERROR_STATUS = {
   FORBIDDEN: 403, SELF_NOT_ALLOWED: 403, NOT_IN_SCOPE: 403,
@@ -550,6 +554,58 @@ function presentSession(r) {
   };
 }
 
+// ---------- ثبت دستی دورکاری توسط ادمین ----------
+// فقط remote_work.create (فقط admin). ساخت نشست «بسته» + تأیید در «یک» تراکنش با همان approveInner (همان قواعد: ماه بسته، آینده/۲۴ ساعت،
+// TIME_CONFLICT، هم‌پوشانی با حضوری که فقط با overlap_decision = merge ممکن است). هر شکستی ⇒ rollback کامل (نه نشستی می‌ماند نه رکوردی).
+// دلیل ثبت (note) الزامی و در audit می‌ماند؛ ثبت برای خودِ ادمین ممنوع (SELF_NOT_ALLOWED؛ همان اصل «هیچ‌کس دورکاری خودش را تأیید نمی‌کند»).
+// نشست ساخته‌شده source='miniapp' (ستون source فقط miniapp|bot را می‌پذیرد)؛ تشخیص «دستی» از audit (remote_work_manual_create) است.
+function workDateOf(userId, startIso) {
+  const shift = shiftsRepository.findByUserId(userId);
+  if (!isOvernightShift(shift)) return formatDate(startIso);
+  const s = settingsRepository.getAll();
+  return shiftRecordDate(new Date(startIso), shift, { timezone: s.timezone, marginMinutes: s.outsideShiftMarginMinutes });
+}
+
+function createManual(actor, input = {}, { ip = null, now = new Date() } = {}) {
+  if (!actor || !hasPermission(actor.role, PERM_CREATE)) return fail('FORBIDDEN', 'فقط ادمین می‌تواند دورکاری را دستی ثبت کند.');
+  const body = input && typeof input === 'object' ? input : {};
+  if (!isId(body.userId) || Number(body.userId) < 1) return fail('USER_NOT_FOUND', 'کارمند یافت نشد.');
+  const target = usersRepository.findById(Number(body.userId));
+  if (!target) return fail('USER_NOT_FOUND', 'کارمند یافت نشد.');
+  if (target.id === actor.id) return fail('SELF_NOT_ALLOWED', 'ثبت دستی دورکاری برای خودتان ممکن نیست؛ ادمین دیگری باید آن را ثبت کند.');
+
+  const start = normalizeIso(body.startAt);
+  const end = normalizeIso(body.endAt);
+  if (!start || !end) return fail('INVALID_TIME', 'ساعت شروع و پایان الزامی و باید معتبر باشد (قالب ISO مثل 2026-10-14T08:30:00Z).');
+  if (end <= start) return fail('INVALID_TIME', 'پایان باید بعد از شروع باشد.');
+  if (Date.parse(end) - Date.parse(start) > MAX_SPAN_MS) return fail('INVALID_TIME', 'بازه‌ی دورکاری نباید بیش از ۲۴ ساعت باشد.');
+  if (end > now.toISOString()) return fail('INVALID_TIME', 'پایان دورکاری نمی‌تواند در آینده باشد.');
+  const noteR = normalizeNote(body.note);
+  if (!noteR.ok) return fail('INVALID_NOTE', `دلیل ثبت باید رشته و حداکثر ${MAX_NOTE} نویسه باشد.`);
+  if (!noteR.note) return fail('REVIEW_NOTE_REQUIRED', 'دلیل ثبت دستی الزامی است.');
+  const decR = normalizeDecision(body.overlapDecision);
+  if (!decR.ok || decR.decision === 'keep_onsite') return fail('INVALID_DECISION', 'تصمیم هم‌پوشانی نامعتبر است (فقط merge یا خالی).');
+
+  let result;
+  try {
+    result = getDb().transaction(() => {
+      const workDate = workDateOf(target.id, start);
+      const session = remoteRepo.insertClosedSession({ userId: target.id, workDate, startAt: start, endAt: end, ip });
+      const ap = approveInner(actor, session.id, { reviewNote: noteR.note, overlapDecision: decR.decision }, { ip, now });
+      if (!ap.ok) rollbackWith(ap);
+      auditRepository.logChange({
+        actor: actor.id, action: 'remote_work_manual_create', entityType: 'remote_work_session', entityId: session.id,
+        before: null, after: { status: 'approved', startAt: start, endAt: end, attendanceRecordId: ap.attendanceRecordId },
+        reason: noteR.note, ip,
+        meta: { source: 'admin_panel', targetUserId: target.id, sessionId: session.id, workDate, recordId: ap.attendanceRecordId, overlapDecision: decR.decision },
+      });
+      return ap;
+    })();
+  } catch (err) { if (err && err.fail) return err.fail; throw err; }
+  notifyApproved(result.session.id, noteR.note, actor);
+  return result;
+}
+
 // ---------- R6: خلاصه‌ی «منتظر بررسی» (شمارنده‌ی پنل، آیتم منوی بات، یادآوری هفتگی) ----------
 /**
  * نشست‌های بسته‌شده‌ی pending در اسکوپ actor (admin/hr همه، سرپرست تیم مستقیم)، بدون دورکاریِ خودِ actor. فقط‌خواندنی، بدون audit.
@@ -590,4 +646,4 @@ function reminderTargets() {
   return out;
 }
 
-module.exports = { PERM_READ, PERM_REVIEW, statusOf, readScopeFailure, reviewScopeFailure, queueScope, checkRead, checkReview, listQueue, approve, reject, approveBatch, pendingSummary, reminderTargets };
+module.exports = { PERM_READ, PERM_REVIEW, PERM_CREATE, createManual, statusOf, readScopeFailure, reviewScopeFailure, queueScope, checkRead, checkReview, listQueue, approve, reject, approveBatch, pendingSummary, reminderTargets };

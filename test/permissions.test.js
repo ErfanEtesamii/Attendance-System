@@ -116,3 +116,13 @@ test('R5-1: remote_work.read برای admin/manager/hr؛ remote_work.review فق
   assert.equal(run(requirePermission('remote_work.read'), 'employee'), 403);
   assert.equal(run(requirePermission('remote_work.review'), 'manager'), 'next');
 });
+
+test('ثبت دستی دورکاری: remote_work.create فقط admin؛ سرپرست/hr/کارمند هیچ‌کدام', () => {
+  assert.ok(PERMISSIONS.includes('remote_work.create'));
+  assert.equal(hasPermission('admin', 'remote_work.create'), true);
+  for (const r of ['manager', 'hr', 'employee', 'ناشناخته']) assert.equal(hasPermission(r, 'remote_work.create'), false, r);
+  assert.equal(hasPermission(undefined, 'remote_work.create'), false);
+  assert.equal(run(requirePermission('remote_work.create'), 'admin'), 'next');
+  for (const r of ['manager', 'hr', 'employee']) assert.equal(run(requirePermission('remote_work.create'), r), 403, r);
+});
+
