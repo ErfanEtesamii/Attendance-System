@@ -234,6 +234,14 @@
   // صفحه‌ی تردد (همه‌ی رکوردها)
   // ======================================================
   const attUi = { from: null, to: null, userId: '', department: '', status: '', q: '' };
+  // ساعت‌های دورکاریِ همان روز زیر ورود/خروج؛ وضعیت هر نشست با نشان (در انتظار / تأییدشده / ردشده)
+  const REMOTE_ST = { pending: ['pending', 'در انتظار'], approved: ['approved', 'تأییدشده'], rejected: ['rejected', 'ردشده'] };
+  const remoteCell = (list) => (list && list.length
+    ? `<div class="remote-times">${list.map((s) => {
+      const st = REMOTE_ST[s.status] || [s.status, s.status];
+      return `<div class="muted small"><span class="ltr num">${fmt.clock(s.startAt)}–${s.open ? 'در جریان' : fmt.clock(s.endAt)}</span> ${AP.badge('purple', 'دورکاری')} ${AP.badge(st[0], st[1])}</div>`;
+    }).join('')}</div>`
+    : '');
 
   AP.view('attendance', {
     skeleton: 'table', // شکل skeleton هنگام بارگذاری (S5-9c)
@@ -267,13 +275,13 @@
         </form>
         <div class="card flush"><div class="table-wrap"><table>
           <thead><tr><th>کارمند</th><th>تاریخ</th><th>ورود</th><th>خروج</th><th>استراحت</th><th>ساعت مفید</th><th>تأخیر</th><th>IP ورود</th><th>وضعیت</th></tr></thead><tbody>
-          ${data.records.length ? data.records.map((r) => `<tr class="clickable" data-rec="${r.id}">
+          ${data.records.length ? data.records.map((r) => `<tr class="${r.id ? 'clickable' : ''}" ${r.id ? `data-rec="${r.id}"` : ''}>
             <td><div class="cell-user">${AP.avatar(r.user ? r.user.fullName : '?', 'sm')}<span><b>${esc(r.user ? r.user.fullName : '—')}</b><small>${esc(r.user ? r.user.department || '' : '')}</small></span></div></td>
-            <td>${esc(fmt.date(r.record_date))}</td><td class="num">${fmt.clock(r.check_in_time)}</td><td class="num">${fmt.clock(r.check_out_time)}</td>
+            <td>${esc(fmt.date(r.record_date))}</td><td class="num">${r.remoteOnly ? '—' : fmt.clock(r.check_in_time)}${remoteCell(r.remoteSessions)}</td><td class="num">${r.remoteOnly ? '—' : fmt.clock(r.check_out_time)}</td>
             <td class="num">${r.breakMinutes ? fmt.min(r.breakMinutes) : '—'}</td>
             <td class="num">${r.summary.effectiveMinutes != null ? fmt.min(r.summary.effectiveMinutes) : '—'}</td>
             <td class="num">${r.summary.lateMinutes ? fmt.min(r.summary.lateMinutes) : '—'}</td>
-            <td><span class="ltr muted">${esc(r.check_in_ip || '—')}</span></td><td>${AP.statusBadge(r.status)}${r.via_remote ? ` ${AP.badge('purple', 'دورکاری')}` : ''}</td></tr>`).join('')
+            <td><span class="ltr muted">${esc(r.check_in_ip || '—')}</span></td><td>${r.remoteOnly ? AP.badge('purple', 'فقط دورکاری') : AP.statusBadge(r.status)}${r.via_remote ? ` ${AP.badge('purple', 'دورکاری')}` : ''}</td></tr>`).join('')
             : `<tr><td colspan="9">${emptyBox('رکوردی با این فیلتر پیدا نشد.')}</td></tr>`}
           </tbody></table></div></div>`;
       return {

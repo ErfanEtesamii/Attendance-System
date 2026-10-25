@@ -153,6 +153,16 @@ function listClosedInRange(userIds, from, to) {
     .all(...userIds, from, to);
 }
 
+// صفحه‌ی «رکوردهای تردد»: همه‌ی نشست‌های دورکاریِ چند کارمند در بازه‌ی work_date (هر وضعیتی، شامل بازِ در جریان)؛ فقط‌خواندنی.
+// ip_address عمداً نمی‌آید. approved_* = ساعت اصلاح‌شده‌ی سرپرست (NULL = همان start_at/end_at).
+function listInRangeForRecords(userIds, from, to) {
+  if (!Array.isArray(userIds) || !userIds.length) return [];
+  const ph = userIds.map(() => '?').join(',');
+  return getDb()
+    .prepare(`SELECT id, user_id, work_date, start_at, end_at, status, auto_closed, approved_start_at, approved_end_at, attendance_record_id FROM remote_work_sessions WHERE user_id IN (${ph}) AND work_date >= ? AND work_date <= ? ORDER BY work_date, start_at, id`)
+    .all(...userIds, from, to);
+}
+
 function findOfficialRecord(userId, date) {
   return getDb().prepare('SELECT * FROM attendance_records WHERE user_id = ? AND record_date = ?').get(userId, date) || null;
 }
@@ -230,7 +240,7 @@ function pendingClosedByUser({ userIds = null, excludeUserId = null } = {}) {
 
 module.exports = {
   listQueue, listBreaksForSessions,
-  findSessionFull, listApprovedForDay, listApprovedInRange, listClosedInRange, findOfficialRecord, insertRemoteRecord, updateRemoteRecord, adoptPlaceholder, replaceRemoteBreaks, markApproved, markRejected, updateRecordTimes, insertRemoteBreaks, pendingClosedByUser,
+  findSessionFull, listInRangeForRecords, listApprovedForDay, listApprovedInRange, listClosedInRange, findOfficialRecord, insertRemoteRecord, updateRemoteRecord, adoptPlaceholder, replaceRemoteBreaks, markApproved, markRejected, updateRecordTimes, insertRemoteBreaks, pendingClosedByUser,
   findOpenSession, findSessionById, listForUserDate, listForUserRange, insertSession, insertClosedSession, closeSession, listStaleOpenSessions,
   listBreaks, findOpenBreak, insertBreak, closeBreak,
 };

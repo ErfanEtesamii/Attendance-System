@@ -18,6 +18,7 @@ const { isoDateToJalaliString } = require('../../../utils/jalali');
 const { DATE_RE, STATUSES, scopedUserIds, visibleUsers, canAccessUser, parseRange, isoOrNull, enrichRecord, requireReason, audit, auditChange } = require('./common');
 const { attendanceRecordView, breakView } = require('../../../utils/auditViews');
 const monthLock = require('./monthLock'); // S5-3c: قفل ماه بسته
+const remoteRepo = require('../../../repositories/remoteWorkRepository');
 
 // ---------- اصلاح دستی رکورد تردد (فقط ادمین کل) ----------
 
@@ -102,12 +103,49 @@ function filteredAttendance(req) {
   return { from, to, records, userMap };
 }
 
+// نمایش ساعت‌های دورکاری در ردیف همان روز: هر رکورد فیلد remoteSessions می‌گیرد (بدون IP).
+// روزی که فقط نشست دورکاری دارد (مثلاً هنوز در انتظار تأیید یا ردشده) یک ردیف «فقط دورکاری» (id = null، remoteOnly = true) می‌سازد.
+// با فیلتر وضعیت، ردیف‌های فقط‌دورکاری نمی‌آیند (وضعیت ندارند). رکورد رسمی و محاسبات تغییر نمی‌کنند.
+function remoteSessionView(s) {
+  return {
+    id: s.id, status: s.status, autoClosed: s.auto_closed === 1,
+    startAt: s.approved_start_at || s.start_at, endAt: s.approved_end_at || s.end_at,
+    open: !s.end_at,
+  };
+}
+
 router.get('/admin/attendance', requirePermission('attendance.read'), (req, res) => {
   const { from, to, records, userMap } = filteredAttendance(req);
-  res.json({ from, to, count: records.length, records: records.map((r) => {
+  const userIds = [...userMap.keys()];
+  const byDay = new Map();
+  for (const s of remoteRepo.listInRangeForRecords(userIds, from, to)) {
+    const key = `${s.user_id}|${s.work_date}`;
+    if (!byDay.has(key)) byDay.set(key, []);
+    byDay.get(key).push(remoteSessionView(s));
+  }
+  const used = new Set();
+  const rows = records.map((r) => {
     const segments = attendanceRepository.listSegments(r.id);
-    return { ...enrichRecord(r, userMap), segments, segmentCount: segments.length };
-  }) });
+    const key = `${r.user_id}|${r.record_date}`;
+    used.add(key);
+    return { ...enrichRecord(r, userMap), segments, segmentCount: segments.length, remoteSessions: byDay.get(key) || [] };
+  });
+  if (!req.query.status) {
+    for (const [key, sessions] of byDay) {
+      if (used.has(key)) continue;
+      const [uid, date] = key.split('|');
+      const u = userMap.get(Number(uid));
+      rows.push({
+        id: null, remoteOnly: true, user_id: Number(uid), record_date: date,
+        check_in_time: null, check_out_time: null, check_in_ip: null, status: null, via_remote: 0,
+        user: u ? { id: u.id, fullName: u.full_name, department: u.department || '', personnelCode: u.personnel_code || '' } : null,
+        breaks: [], segments: [], segmentCount: 0, breakMinutes: 0, summary: { effectiveMinutes: null, lateMinutes: 0 },
+        remoteSessions: sessions,
+      });
+    }
+    rows.sort((a, b) => (a.record_date < b.record_date ? 1 : a.record_date > b.record_date ? -1 : 0));
+  }
+  res.json({ from, to, count: rows.length, records: rows });
 });
 
 router.get('/admin/attendance/export', requirePermission('attendance.read'), (req, res) => {
