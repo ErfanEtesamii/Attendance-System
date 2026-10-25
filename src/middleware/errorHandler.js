@@ -7,7 +7,7 @@ function notFoundHandler(req, res) {
 
 // eslint-disable-next-line no-unused-vars
 function errorHandler(err, req, res, next) {
-  console.error('[خطای سرور]', err);
+  require('../utils/logger').error('server_error', { requestId: req.id, error: err && err.message });
   res.status(err.statusCode || 500).json({
     error: err.publicMessage || 'خطای داخلی سرور رخ داده است.',
   });

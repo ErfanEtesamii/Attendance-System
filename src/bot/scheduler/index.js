@@ -29,6 +29,7 @@ const { isFirstDayOfJalaliMonth } = require('../../utils/jalali');
 const { wrapJob, runAll } = require('../../utils/jobRunner');
 const jobRunsRepository = require('../../repositories/jobRunsRepository');
 const settingsRepository = require('../../repositories/settingsRepository');
+const logger = require('../../utils/logger');
 
 // فهرست Jobها. name = کلید config.cron / نام اجرا در job_runs / کلید settingsRepository.getCronExpressions().
 // بخش ۲-ج۱: هر Job از طریق wrapJob اجرا می‌شود تا شروع/موفقیت/خطا/مدتش در job_runs ثبت شود.
@@ -72,7 +73,7 @@ function stopTask(entry) {
   try {
     entry.task.stop();
   } catch (err) {
-    console.error('[scheduler] توقف زمان‌بندی ناموفق:', err.message);
+    logger.error('scheduler_stop_failed', { error: err.message });
   }
 }
 
@@ -86,7 +87,7 @@ function sync() {
   } catch (err) {
     // خطای DB: زمان‌بندی فعلی دست‌نخورده می‌ماند
     errors.push({ job: '*', cron: null, error: `خواندن تنظیمات ناموفق: ${err.message}` });
-    console.error(`[scheduler] ${errors[0].error}`);
+    logger.error('scheduler_sync_failed', { error: errors[0].error });
     return { changed, errors };
   }
 
@@ -101,7 +102,7 @@ function sync() {
     if (typeof expr !== 'string' || !cron.validate(expr)) {
       const error = `عبارت cron نامعتبر است («${expr}»)`;
       errors.push({ job: job.name, cron: expr, error });
-      console.error(`[scheduler] ${job.name}: ${error}؛ ${existing ? 'زمان‌بندی قبلی حفظ شد.' : 'Job فعال نشد.'}`);
+      logger.error('scheduler_invalid_cron', { job: job.name, error, hadPrevious: !!existing });
       continue;
     }
     let task;
@@ -109,7 +110,7 @@ function sync() {
       task = cron.schedule(expr, wrapJob(job.name, job.run, job.opts));
     } catch (err) {
       errors.push({ job: job.name, cron: expr, error: err.message });
-      console.error(`[scheduler] ${job.name}: ساخت زمان‌بندی ناموفق: ${err.message}`);
+      logger.error('scheduler_create_failed', { job: job.name, error: err.message });
       continue;
     }
     if (existing) stopTask(existing); // اول جدید، بعد قدیمی
@@ -123,22 +124,22 @@ function startSchedulers(bot) {
   // اجراهای نیمه‌تمامِ پروسه‌ی قبلی (ری‌استارت/crash) «interrupted» می‌شوند، نه خطا
   try {
     const n = jobRunsRepository.markInterrupted();
-    if (n) console.log(`[scheduler] ${n} اجرای نیمه‌تمام از پروسه‌ی قبلی به «interrupted» علامت خورد.`);
+    if (n) logger.info('scheduler_interrupted_marked', { count: n });
   } catch (err) {
-    console.error('[scheduler] markInterrupted ناموفق:', err.message);
+    logger.error('scheduler_interrupted_mark_failed', { error: err.message });
   }
 
   if (state) stopSchedulers(); // فراخوانی دوباره: زمان‌بندی‌های قبلی نباید دوبار اجرا شوند
   state = { bot, jobs: buildJobs(bot), tasks: new Map() };
   sync();
-  console.log('[bot] تمام Jobهای زمان‌بندی‌شده فعال شدند.');
+  logger.info('schedulers_started');
 }
 
 // بعد از ذخیره‌ی تنظیمات cron صدا زده می‌شود (routes/admin/settings.js). قبل از startSchedulers (مثلاً فقط API) ⇒ کاری نمی‌کند.
 function reload() {
   if (!state) return { reloaded: false, reason: 'scheduler_not_started', changed: [], errors: [] };
   const { changed, errors } = sync();
-  if (changed.length) console.log(`[scheduler] reload: ${changed.map((c) => `${c.job} (${c.from || '—'} → ${c.to})`).join('، ')}`);
+  if (changed.length) logger.info('schedulers_reloaded', { changed: changed.map((c) => ({ job: c.job, from: c.from, to: c.to })) });
   return { reloaded: true, changed, errors };
 }
 

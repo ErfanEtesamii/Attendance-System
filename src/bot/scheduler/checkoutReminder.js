@@ -7,6 +7,7 @@ const holidaysRepository = require('../../repositories/holidaysRepository');
 const { getCalendarDay } = require('../../engine/calendarService');
 const { hhmmToMinutes } = require('../../engine/computeDay');
 const { minutesSinceMidnight } = require('../../utils/time');
+const logger = require('../../utils/logger');
 
 const remindedToday = new Set(); // key: `${date}:${userId}`
 
@@ -38,7 +39,7 @@ async function checkCheckoutReminders(bot, { now = new Date() } = {}) {
         `⏰ یادآوری: پایان ساعت کاری نزدیک است. فراموش نکنید خروج خود را ثبت کنید.`
       );
     } catch (err) {
-      console.error('[bot][scheduler] خطا در ارسال یادآوری خروج:', err.message);
+      logger.error('checkout_reminder_failed', { error: err.message });
     }
   }
 }

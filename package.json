@@ -17,10 +17,13 @@
     "create-admin": "node src/scripts/createAdmin.js",
     "dev": "node --watch src/index.js",
     "secret-scan": "node scripts/secret-scan.js",
-    "package": "node scripts/package-release.js"
+    "package": "node scripts/package-release.js",
+    "lint": "eslint src scripts test public public-admin",
+    "check:contrast": "node scripts/check-contrast.js",
+    "check": "npm run lint && npm run check:contrast && npm test && npm run secret-scan && npm audit --omit=dev --audit-level=high"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
@@ -28,9 +31,11 @@
     "express": "^4.19.2",
     "jalaali-js": "^1.2.8",
     "node-cron": "^3.0.3",
-    "node-telegram-bot-api": "^0.66.0"
-  },
-  "optionalDependencies": {
+    "node-telegram-bot-api": "^0.66.0",
     "exceljs": "^4.4.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0"
   }
 }

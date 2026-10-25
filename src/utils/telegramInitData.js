@@ -9,7 +9,7 @@ const crypto = require('crypto');
 
 // initData حداکثر تا این مدت (بر حسب ثانیه) از لحظه صدور معتبر شمرده می‌شود
 // تا جلوی حملات replay (استفاده مجدد از یک initData قدیمی/افشاشده) گرفته شود.
-const DEFAULT_MAX_AGE_SECONDS = 24 * 60 * 60; // ۲۴ ساعت
+const DEFAULT_MAX_AGE_SECONDS = 6 * 60 * 60;
 
 /**
  * @param {string} initData رشته خام initData (فرمت query-string) که Telegram.WebApp.initData برمی‌گرداند
@@ -59,7 +59,8 @@ function verifyInitData(initData, botToken, maxAgeSeconds = DEFAULT_MAX_AGE_SECO
 
   const ageSeconds = Math.floor(Date.now() / 1000) - authDate;
   // اجازه کمی چرخش ساعت به جلو (clock skew) هم داده می‌شود
-  if (ageSeconds > maxAgeSeconds || ageSeconds < -60) return null;
+  if (ageSeconds > maxAgeSeconds) return { expired: true };
+  if (ageSeconds < -60) return null;
 
   let telegramUser = null;
   const userJson = params.get('user');

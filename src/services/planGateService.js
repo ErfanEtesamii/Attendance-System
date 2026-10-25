@@ -15,6 +15,8 @@ const attendanceRepository = require('../repositories/attendanceRepository');
 const auditRepository = require('../repositories/auditRepository');
 const calendarService = require('../engine/calendarService');
 const { addDays } = require('../utils/shiftDay');
+const { report } = require('../utils/degradedEvents');
+const logger = require('../utils/logger');
 
 function planSatisfied(userId, weekStart, minTasks) {
   const plan = plansRepo.findByUserWeek(userId, weekStart);
@@ -61,7 +63,8 @@ function check(user, recordDate) {
     if (info.exemption) return { action: 'allow', exemptionId: info.exemption.id, info };
     return { action: info.mode === 'enforce' ? 'block' : 'remind', info };
   } catch (err) {
-    console.error('[planGate] خطا (نادیده گرفته شد، خروج مجاز):', err && err.message ? err.message : err);
+    report('plan_gate', err);
+    logger.error('plan_gate_check_failed', { error: err && err.message ? err.message : String(err) });
     return { action: 'allow', info: null };
   }
 }
@@ -74,7 +77,8 @@ function consumeExemption(user, gate, record, ip) {
     if (used) auditRepository.logEvent({ userId: user.id, action: 'plan_gate_exemption_used', ipAddress: ip, details: { exemptionId: gate.exemptionId, recordId: record.id, weekStart: gate.info && gate.info.weekStart } });
     return used;
   } catch (err) {
-    console.error('[planGate] مصرف معافیت ناموفق:', err.message);
+    report('plan_gate', err);
+    logger.error('plan_gate_exemption_failed', { error: err.message });
     return false;
   }
 }
@@ -109,7 +113,10 @@ function status(user, today) {
           .some((r) => r.check_in_time && !r.check_out_time);
       }
     }
-  } catch (err) { console.error('[planGate] بنر:', err.message); }
+  } catch (err) {
+    report('plan_gate', err);
+    logger.error('plan_gate_status_failed', { error: err.message });
+  }
   return {
     mode: info.mode, applies: info.applies, warn: info.warn, satisfied: info.satisfied, exempt: !!info.exemption,
     weekStart: info.weekStart, planDay: info.planDay, banner,

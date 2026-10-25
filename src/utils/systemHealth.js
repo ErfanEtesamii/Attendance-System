@@ -8,6 +8,7 @@ const monitorRepository = require('../repositories/monitorRepository');
 const jobRunsRepository = require('../repositories/jobRunsRepository');
 const { getPollingStatus } = require('./botHealth');
 const { sanitizeText } = require('./sanitize');
+const { snapshot: degradedSnapshot } = require('./degradedEvents');
 
 const HOUR_MS = 3600 * 1000;
 
@@ -101,6 +102,21 @@ function checkBackup(now) {
   return { ...base, stale, ok: !stale && !unresolved };
 }
 
+function checkBackupCopy(now) {
+  if (!config.backup.copyDir) return { applicable: false, ok: true, status: 'disabled' };
+  const source = latestBackup();
+  if (!source) return { applicable: true, ok: false, status: 'failed', detail: 'بک‌آپ محلی برای کپی‌کردن وجود ندارد.' };
+  try {
+    const target = path.join(config.backup.copyDir, source.name);
+    const stat = fs.statSync(target);
+    const stale = now - stat.mtimeMs > config.monitor.backupMaxAgeHours * HOUR_MS;
+    const ok = !stale && stat.size === source.sizeBytes;
+    return { applicable: true, ok, status: ok ? 'ok' : 'failed', ageHours: Math.round(((now - stat.mtimeMs) / HOUR_MS) * 10) / 10, detail: ok ? undefined : 'کپی مقصد وجود ندارد، قدیمی است یا اندازه‌اش متفاوت است.' };
+  } catch (_) {
+    return { applicable: true, ok: false, status: 'failed', detail: 'کپی مقصد پیدا نشد یا قابل خواندن نیست.' };
+  }
+}
+
 function checkJobs(now) {
   const windowMs = config.monitor.jobFailureWindowHours * HOUR_MS;
   const results = jobRunsRepository.latestResultPerJob();
@@ -116,10 +132,11 @@ function checkJobs(now) {
  */
 function collect({ now = Date.now(), deep = false } = {}) {
   const db = checkDb({ deep });
-  const checks = { db, bot: checkBot(now), disk: checkDisk(), backup: checkBackup(now) };
+  const checks = { db, bot: checkBot(now), disk: checkDisk(), backup: checkBackup(now), backupCopy: checkBackupCopy(now) };
   // اگر دیتابیس خراب است، خواندن job_runs هم خطا می‌دهد؛ آن را «خطای دیتابیس» حساب می‌کنیم نه Jobها
   checks.jobs = db.ok ? safeJobs(now) : { ok: true, failing: [], latest: [], skipped: true };
-  const degraded = Object.values(checks).some((c) => c.ok === false);
+  checks.degraded = { ok: true, events: degradedSnapshot() };
+  const degraded = Object.values(checks).some((c) => c.ok === false) || checks.degraded.events.length > 0;
   return { status: degraded ? 'degraded' : 'ok', checkedAt: new Date(now).toISOString(), checks };
 }
 
@@ -131,4 +148,4 @@ function safeJobs(now) {
   }
 }
 
-module.exports = { collect, latestBackup, latestSuspect, checkDisk };
+module.exports = { collect, latestBackup, latestSuspect, checkDisk, checkBackupCopy };

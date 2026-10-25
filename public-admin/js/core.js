@@ -209,7 +209,7 @@
       method: options.method || 'GET',
       credentials: 'include',
       // X-Requested-With: لایه‌ی دوم محافظت CSRF (سرور برای متدهای نوشتنی آن را الزام می‌کند)
-      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'AttendancePanel' },
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'AttendancePanel', ...(options.headers || {}) },
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
     });
     const data = await res.json().catch(() => ({}));
@@ -917,10 +917,10 @@
     // ورود تازه از بات همیشه بر کوکی قدیمی ارجح است (مثلاً حساب تلگرام دیگری روی همین دستگاه کوکی گذاشته)
     const viaBot = launch.token
       ? ['/admin/auth/token', { token: launch.token }]
-      : launch.initData ? ['/admin/auth/webapp', { initData: launch.initData }] : null;
+      : launch.initData ? ['/admin/auth/webapp', null, { 'X-Telegram-Init-Data': launch.initData }] : null;
     if (viaBot) {
       try {
-        const result = await AP.api(viaBot[0], { method: 'POST', body: viaBot[1] });
+        const result = await AP.api(viaBot[0], { method: 'POST', body: viaBot[1], headers: viaBot[2] });
         AP.state.me = result.user;
         return enterApp();
       } catch (err) {

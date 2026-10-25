@@ -16,6 +16,7 @@ const monitorRepository = require('../../repositories/monitorRepository');
 const usersRepository = require('../../repositories/usersRepository');
 const notificationEvents = require('../../services/notificationEvents');
 const { sanitizeText } = require('../../utils/sanitize');
+const logger = require('../../utils/logger');
 
 // فاصله‌ی یادآوری برای هشدارهایی که فقط با اجرای بعدیِ یک Job رفع می‌شوند (job_failed:*، backup_suspect)
 const JOB_REMINDER_MS = 24 * 3600 * 1000;
@@ -122,6 +123,15 @@ function evaluate(report) {
       detail: `فایل ${s.file} مشکوک تشخیص داده شد و کنار گذاشته شد. ${c.backup.lastBackupAt ? `آخرین بک‌آپ سالم: ${c.backup.lastBackupFile} (${Math.round(c.backup.ageHours)} ساعت پیش)` : 'هیچ بک‌آپ سالمی وجود ندارد'}. فایل .suspect را بررسی و دستی پاک کنید.`,
     });
   }
+  if (c.backupCopy && c.backupCopy.applicable && !c.backupCopy.ok) {
+    out.set('backup_copy_failed', { title: 'کپی دوم بک‌آپ ناموفق است', detail: c.backupCopy.detail || 'مقصد دوم بک‌آپ در دسترس نیست.' });
+  }
+  for (const event of (c.degraded && c.degraded.events) || []) {
+    out.set(`degraded:${event.kind}`, {
+      title: `حالت کاهش‌یافته: ${event.kind}`,
+      detail: `${event.count} خطا ثبت شده؛ آخرین رخداد: ${event.lastAt}`,
+    });
+  }
   for (const f of c.jobs.failing || []) {
     out.set(`job_failed:${f.job}`, { title: `Job «${f.job}» شکست خورد`, detail: sanitizeText(f.error || 'بدون جزئیات', 300) });
   }
@@ -134,6 +144,8 @@ function titleForRecovered(key) {
   if (key === 'disk_low') return 'فضای دیسک';
   if (key === 'backup_stale') return 'بک‌آپ دیتابیس';
   if (key === 'backup_suspect') return 'سلامت فایل بک‌آپ';
+  if (key === 'backup_copy_failed') return 'کپی دوم بک‌آپ';
+  if (key.startsWith('degraded:')) return `حالت کاهش‌یافته: ${key.slice('degraded:'.length)}`;
   if (key.startsWith('job_failed:')) return `Job «${key.slice('job_failed:'.length)}»`;
   return key;
 }
@@ -146,7 +158,7 @@ async function broadcast(bot, text) {
       await bot.sendMessage(chatId, text);
       delivered += 1;
     } catch (err) {
-      console.error('[watchdog] ارسال هشدار ناموفق:', sanitizeText(err.message, 200));
+      logger.error('watchdog_alert_delivery_failed', { error: sanitizeText(err.message, 200) });
     }
   }
   return delivered;

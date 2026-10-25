@@ -6,6 +6,8 @@
 
 const MIN_SECRET_LENGTH = 32;
 const MIN_UNIQUE_CHARS = 8;
+const fs = require('fs');
+const path = require('path');
 
 // مقدارهای نمونه/پیش‌فرض شناخته‌شده و الگوهای «placeholder»
 const SAMPLE_SECRET_RE = /change[-_ ]?me|changeme|your[-_ ]|example|placeholder|sample|dummy|insecure|dev-only|replace[-_ ]?me|secret[-_ ]?here|xxxx|<[^>]+>|^test/i;
@@ -39,6 +41,9 @@ function checkConfig(cfg) {
 
   if (isProd && !cfg.telegramBotToken) {
     warnings.push('TELEGRAM_BOT_TOKEN تنظیم نشده؛ بات اجرا نمی‌شود و احراز Mini App/ورود پنل هم کار نمی‌کند.');
+  }
+  if (isProd && fs.existsSync(path.resolve(process.cwd(), 'data', 'hourly-rates.json'))) {
+    warnings.push('فایل حساس data/hourly-rates.json هنوز روی سرور است؛ پس از ثبت در دیتابیس آن را حذف یا منتقل کنید.');
   }
 
   return { errors, warnings };

@@ -9,6 +9,7 @@
 // Mini App (/api/miniapp) کوکی ندارد و با هدر X-Telegram-Init-Data احراز می‌شود؛ مشمول CSRF نیست.
 
 const config = require('../config');
+const logger = require('../utils/logger');
 
 const CSRF_HEADER = 'x-requested-with';
 const CSRF_HEADER_VALUE = 'AttendancePanel';
@@ -19,7 +20,7 @@ function warnThrottled(req, reason) {
   const now = Date.now();
   if (now - lastWarnAt < 10000) return; // حداکثر یک لاگ در هر ۱۰ ثانیه تا لاگ پر نشود
   lastWarnAt = now;
-  console.warn(`[CSRF] رد شد (${reason}): ${req.method} ${req.originalUrl} ip=${req.ip} origin=${req.headers.origin || '-'}`);
+  logger.warn('csrf_rejected', { reason, method: req.method, path: req.path, ip: req.ip, origin: req.headers.origin || '-' });
 }
 
 function parseOrigin(value) {

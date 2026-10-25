@@ -28,6 +28,7 @@
   // تا سرور خودش اعتبارش را تأیید کند؛ کلاینت هیچ داده‌ی هویتی را «ادعا» نمی‌کند.
   const initData = tg ? tg.initData : '';
   const initDataUnsafe = tg ? tg.initDataUnsafe : {};
+  const escapeHtml = window.SafeHtml ? window.SafeHtml.esc : (value) => String(value == null ? '' : value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   const state = {
     me: null,
@@ -447,12 +448,12 @@
     function addTile({ title, sub, color, icon, wide, primary, handler, locked }) {
       const b = document.createElement('button');
       b.className = 'action-tile t-' + color + (wide ? ' wide' : '') + (primary ? ' is-primary' : '');
-      b.innerHTML = `
-        <span class="tile-icon">${ICONS[icon]}</span>
-        <span class="tile-text">
-          <span class="tile-title">${title}</span>
-          <span class="tile-sub">${sub}</span>
-        </span>`;
+      const iconEl = document.createElement('span');
+      iconEl.className = 'tile-icon'; iconEl.textContent = ICONS[icon] || '';
+      const text = document.createElement('span'); text.className = 'tile-text';
+      const titleEl = document.createElement('span'); titleEl.className = 'tile-title'; titleEl.textContent = title;
+      const subEl = document.createElement('span'); subEl.className = 'tile-sub'; subEl.textContent = sub;
+      text.append(titleEl, subEl); b.append(iconEl, text);
       if (locked) { b.disabled = true; b.setAttribute('aria-disabled', 'true'); b.dataset.locked = '1'; }
       else b.addEventListener('click', handler);
       box.appendChild(b);
@@ -1352,14 +1353,18 @@
       items.forEach((it) => {
         const el = document.createElement('div');
         el.className = 'list-item';
-        el.innerHTML = `
-          <div class="li-top">
-            <span>${it.kind === 'mission' ? 'مأموریت' : 'مرخصی'}</span>
-            <span class="badge ${it.status}">${LEAVE_STATUS_LABELS[it.status] || it.status}</span>
-          </div>
-          <div class="li-bottom">
-            <span>${leaveWhenText(it)}</span>
-          </div>`;
+        const top = document.createElement('div');
+        top.className = 'li-top';
+        const kind = document.createElement('span');
+        kind.textContent = it.kind === 'mission' ? 'مأموریت' : 'مرخصی';
+        const badge = document.createElement('span');
+        badge.className = `badge ${['pending', 'approved', 'rejected'].includes(it.status) ? it.status : ''}`;
+        badge.textContent = LEAVE_STATUS_LABELS[it.status] || String(it.status || '');
+        const bottom = document.createElement('div');
+        bottom.className = 'li-bottom';
+        const when = document.createElement('span');
+        when.textContent = leaveWhenText(it);
+        top.append(kind, badge); bottom.appendChild(when); el.append(top, bottom);
         list.appendChild(el);
       });
     } catch (err) {
@@ -3271,12 +3276,12 @@
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'action-tile t-' + color + (wide ? ' wide' : '');
-    b.innerHTML = `
-      <span class="tile-icon">${ICONS[icon]}</span>
-      <span class="tile-text">
-        <span class="tile-title">${title}</span>
-        <span class="tile-sub">${sub}</span>
-      </span>`;
+    const iconEl = document.createElement('span');
+    iconEl.className = 'tile-icon'; iconEl.textContent = ICONS[icon] || '';
+    const text = document.createElement('span'); text.className = 'tile-text';
+    const titleEl = document.createElement('span'); titleEl.className = 'tile-title'; titleEl.textContent = title;
+    const subEl = document.createElement('span'); subEl.className = 'tile-sub'; subEl.textContent = sub;
+    text.append(titleEl, subEl); b.append(iconEl, text);
     b.addEventListener('click', handler);
     box.appendChild(b);
   }

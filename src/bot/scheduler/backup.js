@@ -17,6 +17,7 @@ const { applyRetention } = require('../../utils/backupRetention');
 const { integrityCheckFile } = require('../../repositories/monitorRepository');
 const settingsRepository = require('../../repositories/settingsRepository');
 const { mirrorAttachments } = require('../../utils/attachmentsBackup');
+const logger = require('../../utils/logger');
 
 const pad = (n) => String(n).padStart(2, '0');
 
@@ -45,6 +46,7 @@ async function runDailyBackup({
   keepDaily = config.backup.keepDaily,
   keepMonthly = config.backup.keepMonthly,
   attachmentsDir = config.attachmentsDir,
+  copyDir = config.backup.copyDir,
 } = {}) {
   fs.mkdirSync(dir, { recursive: true });
   const file = `daily-${backupStamp(now)}.db`;
@@ -70,27 +72,41 @@ async function runDailyBackup({
       try { fs.rmSync(tmp, { force: true }); } catch (_) { /* وجود ندارد */ }
       throw new Error(`integrity_check بک‌آپ ${file} ناموفق بود (${check.result}) و جداسازی فایل هم شکست خورد: ${err.message}`);
     }
-    console.error(`[backup] ${file} سالم نیست (${check.result}) ⇒ ${file}.suspect`);
+    logger.error('backup_integrity_failed', { file, result: check.result });
     throw new Error(`integrity_check بک‌آپ ${file} ناموفق بود (${check.result}). فایل به ${file}.suspect منتقل شد.`);
   }
   fs.renameSync(tmp, dest); // روی ویندوز هم فایل مقصد قبلی (اجرای دوباره در همان دقیقه) را جایگزین می‌کند
 
   const sizeBytes = fs.statSync(dest).size;
-  console.log(`[backup] ${file} ساخته و integrity_check سالم بود (${Math.round(sizeBytes / 1024)} KB).`);
+  logger.info('backup_created', { file, sizeKb: Math.round(sizeBytes / 1024) });
 
   // خطای نگهداری، بک‌آپ تازه را بی‌اعتبار نمی‌کند (فایل ساخته شده)، ولی Job را «خطا» می‌کند تا دیده شود
   const { monthlyCreated, removed } = applyRetention(dir, { justCreated: file, keepDaily, keepMonthly });
   const n = removed.daily.length + removed.monthly.length;
-  if (monthlyCreated || n) console.log(`[backup] نگهداری: کپی ماهانه=${monthlyCreated || '-'}، پاک‌شده=${n}`);
+  if (monthlyCreated || n) logger.info('backup_retention_applied', { monthlyCreated, removed: n });
 
   // پیوست‌های مرخصی (S4-12c؛ تنظیم backupIncludeAttachments، پیش‌فرض روشن). خطای کپی پیوست بک‌آپ دیتابیس را بی‌اعتبار نمی‌کند ولی Job را «خطا» می‌کند تا دیده شود.
   let attachments = null;
   if (settingsRepository.getAll().backupIncludeAttachments) {
     attachments = mirrorAttachments(attachmentsDir, dir);
-    if (attachments.copied) console.log(`[backup] پیوست‌ها: ${attachments.copied} فایل تازه کپی شد (${attachments.skipped} قبلاً بود).`);
+    if (attachments.copied) logger.info('backup_attachments_mirrored', { copied: attachments.copied, skipped: attachments.skipped });
     if (attachments.errors.length) throw new Error(`بک‌آپ دیتابیس سالم است ولی کپی پیوست‌ها ناقص ماند (${attachments.errors.length} خطا): ${attachments.errors.slice(0, 3).join(' | ')}`);
   }
-  return { file, path: dest, sizeBytes, integrity: 'ok', monthlyCreated, removed, attachments };
+  let backupCopy = 'disabled';
+  if (copyDir) {
+    try {
+      fs.mkdirSync(copyDir, { recursive: true });
+      const copyPath = path.join(copyDir, file);
+      fs.copyFileSync(dest, copyPath);
+      if (fs.statSync(copyPath).size !== sizeBytes) throw new Error('اندازه فایل کپی‌شده متفاوت است');
+      applyRetention(copyDir, { justCreated: file, keepDaily, keepMonthly });
+      backupCopy = 'ok';
+    } catch (err) {
+      backupCopy = 'failed';
+      logger.warn('backup_copy_failed', { error: err.message });
+    }
+  }
+  return { file, path: dest, sizeBytes, integrity: 'ok', monthlyCreated, removed, attachments, backupCopy };
 }
 
 /**

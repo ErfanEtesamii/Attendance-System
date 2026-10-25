@@ -16,7 +16,7 @@ class HistoryPurgeError extends Error {
   }
 }
 
-const CONFIRM_WORD = 'حذف';
+const CONFIRM_WORD = 'حذف تاریخچه';
 
 const ENTRIES = Object.freeze([
   { table: 'break_records', label: 'استراحت‌های رکوردهای تردد', where: 'attendance_record_id IN (SELECT id FROM attendance_records WHERE record_date BETWEEN ? AND ?)' },
@@ -103,7 +103,7 @@ function checkRequest(body, adminUser) {
     throw err;
   }
   if (String((body || {}).confirmText || '').trim() !== CONFIRM_WORD) {
-    return { ok: false, status: 400, code: 'confirm_required', error: 'برای تأیید باید عبارت «حذف» را دقیقاً بنویسید.' };
+    return { ok: false, status: 400, code: 'confirm_required', error: 'برای تأیید باید عبارت «حذف تاریخچه» را دقیقاً بنویسید.' };
   }
   return { ok: true, range };
 }

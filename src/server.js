@@ -9,6 +9,9 @@ const apiRoutes = require('./api/routes');
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
 const { securityHeaders } = require('./middleware/securityHeaders');
 const { runStartupChecks } = require('./utils/startupChecks');
+const { requestLogger } = require('./middleware/requestLogger');
+const logger = require('./utils/logger');
+const { shutdown: shutdownLifecycle } = require('./utils/lifecycle');
 
 function createApp() {
   // بخش ۲-ب۱: بررسی رازها هنگام بالا آمدن. در production اگر ADMIN_SESSION_SECRET خالی، کوتاه‌تر از ۳۲ نویسه،
@@ -33,10 +36,7 @@ function createApp() {
   app.use(securityHeaders);
 
   app.use(express.json());
-  app.use((req, res, next) => {
-  console.log(new Date().toISOString(), req.ip, req.method, req.originalUrl);
-  next();
-  });
+  app.use(requestLogger);
   // فاز ۴: فایل‌های استاتیک Telegram Mini App (public/index.html و ...).
   // این پوشه از ریشه‌ی همین دامنه/ساب‌دامنه سرو می‌شود، مثلاً https://attendance.farazhonar.com/
   app.use(express.static(path.join(__dirname, '..', 'public')));
@@ -54,7 +54,7 @@ function createApp() {
   return app;
 }
 
-function start() {
+function start({ manageSignals = true } = {}) {
   const app = createApp();
 
   // اگر مسیر گواهی SSL تنظیم شده باشد، مستقیماً HTTPS بالا می‌آید (بدون IIS/nginx جلوی آن)؛
@@ -72,27 +72,35 @@ function start() {
       key: fs.readFileSync(config.sslKeyPath, 'utf8'),
     };
     server = https.createServer(credentials, app).listen(config.port, () => {
-      console.log(`سرور بک‌اند حضور و غیاب با HTTPS روی پورت ${config.port} در حال اجراست (env: ${config.nodeEnv})`);
+      logger.info('server_started', { protocol: 'https', port: config.port, env: config.nodeEnv });
     });
   } else {
     if (config.nodeEnv === 'production') {
-      console.warn(
+      logger.warn(
         '⚠️ SSL_CERT_PATH/SSL_KEY_PATH تنظیم نشده‌اند - سرور با HTTP ساده بالا می‌آید. ' +
           'Telegram Mini App و Login Widget بدون HTTPS معتبر کار نخواهند کرد.'
       );
     }
     server = http.createServer(app).listen(config.port, () => {
-      console.log(`سرور بک‌اند حضور و غیاب روی پورت ${config.port} در حال اجراست (env: ${config.nodeEnv})`);
+      logger.info('server_started', { protocol: 'http', port: config.port, env: config.nodeEnv });
     });
   }
 
   // خاموشی مرتب (graceful shutdown) - مهم برای اجرا زیر NSSM در فاز ۹
+  let closing = false;
   const shutdown = () => {
-    console.log('در حال خاموش کردن سرور...');
-    server.close(() => process.exit(0));
+    if (closing) return;
+    closing = true;
+    logger.info('server_shutdown_started');
+    shutdownLifecycle({ server }).catch((err) => logger.error('server_shutdown_failed', { error: err.message }));
   };
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+  if (manageSignals) {
+    process.on('SIGINT', shutdown);
+    process.on('SIGTERM', shutdown);
+    process.on('unhandledRejection', (err) => logger.error('unhandled_rejection', { error: err && err.message }));
+    process.on('uncaughtException', (err) => { logger.error('uncaught_exception', { error: err && err.message }); shutdown(); });
+  }
+  return server;
 }
 
 if (require.main === module) {

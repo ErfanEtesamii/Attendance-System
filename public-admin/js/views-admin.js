@@ -896,10 +896,10 @@
       const rows = preview.tables.map((t) => `<tr><td>${esc(t.label)}</td><td class="ltr">${esc(t.table)}</td><td>${fmt.num(t.count)}</td></tr>`).join('');
       result.innerHTML = `<h4>داده‌های قابل حذف در بازهٔ ${esc(preview.fromDate)} تا ${esc(preview.toDate)}</h4>
         <div class="table-wrap"><table><thead><tr><th>داده</th><th>جدول</th><th>تعداد</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><th colspan="2">جمع</th><th>${fmt.num(preview.total)}</th></tr></tfoot></table></div>
-        <label class="field"><span>برای فعال‌شدن حذف، عبارت «حذف» را بنویسید</span><input type="text" id="hp-confirm" autocomplete="off" aria-label="عبارت تأیید حذف"></label>
+        <label class="field"><span>برای فعال‌شدن حذف، عبارت «حذف تاریخچه» را بنویسید</span><input type="text" id="hp-confirm" autocomplete="off" aria-label="عبارت تأیید حذف"></label>
         <div class="rz-actions"><button type="button" class="btn danger" id="hp-run" disabled>حذف نهایی داده‌های این بازه</button></div><div id="hp-done" aria-live="polite"></div>`;
       const confirm = $('#hp-confirm', result); const run = $('#hp-run', result);
-      const ready = () => { run.disabled = confirm.value.trim() !== 'حذف'; };
+      const ready = () => { run.disabled = confirm.value.trim() !== 'حذف تاریخچه'; };
       confirm.addEventListener('input', ready);
       run.addEventListener('click', async () => {
         const yes = await AP.confirmBox({

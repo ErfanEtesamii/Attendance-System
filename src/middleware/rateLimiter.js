@@ -19,6 +19,8 @@
 const config = require('../config');
 const rateLimitRepository = require('../repositories/rateLimitRepository');
 const auditRepository = require('../repositories/auditRepository');
+const crypto = require('crypto');
+const logger = require('../utils/logger');
 
 const AUDIT_ACTION = 'rate_limit_exceeded';
 const AUDIT_GLOBAL_MAX_PER_MINUTE = 30; // سقف سراسری رکورد audit ناشی از ۴۲۹ در هر دقیقه
@@ -50,9 +52,10 @@ const defaultStore = {
     try {
       return rateLimitRepository.hit(limiter, key, windowMs, now);
     } catch (err) {
+      require('../utils/degradedEvents').report('rate_limiter_store', err);
       if (now - dbErrorLoggedAt > 60 * 1000) {
         dbErrorLoggedAt = now;
-        console.error(`[rate-limit] خطای دیتابیس؛ موقتاً از شمارنده‌ی حافظه استفاده می‌شود: ${err.message}`);
+        logger.error('rate_limiter_store_failed', { error: err.message });
       }
       return memHit(limiter, key, windowMs, now);
     }
@@ -66,7 +69,7 @@ function runCleanup(now = Date.now()) {
   try {
     return rateLimitRepository.purgeExpired(now);
   } catch (err) {
-    console.error(`[rate-limit] پاک‌سازی ناموفق: ${err.message}`);
+    logger.error('rate_limiter_cleanup_failed', { error: err.message });
     return 0;
   }
 }
@@ -108,7 +111,7 @@ function maybeAudit({ limiter, key, req, resetAt, count, now }) {
       },
     });
   } catch (err) {
-    console.error(`[rate-limit] ثبت audit ناموفق: ${err.message}`);
+    logger.error('rate_limiter_audit_failed', { error: err.message });
   }
 }
 
@@ -165,6 +168,26 @@ const adminLoginLimiter = createRateLimiter({
   message: 'تعداد تلاش‌های ورود بیش از حد مجاز است. لطفاً ۱۵ دقیقه دیگر دوباره تلاش کنید.',
 });
 
+function loginKey(value) {
+  return crypto.createHash('sha256').update(String(value || 'missing')).digest('hex').slice(0, 16);
+}
+
+function failedLoginLimiter(req, res, claimedIdentity) {
+  const now = Date.now();
+  ensureCleanupTimer();
+  const key = loginKey(claimedIdentity);
+  const identityHit = defaultStore.hit('admin-login-identity', key, 15 * 60 * 1000, now);
+  const ipKey = String(req.ip || 'unknown');
+  const ipHit = defaultStore.hit('admin-login-ip', ipKey, 15 * 60 * 1000, now);
+  const blocked = identityHit.count >= 5 ? { hit: identityHit, name: 'admin-login-identity', key } : ipHit.count >= 10 ? { hit: ipHit, name: 'admin-login-ip', key: ipKey } : null;
+  if (!blocked) return false;
+  const retryAfterSeconds = Math.max(1, Math.ceil((blocked.hit.resetAt - now) / 1000));
+  if (blocked.hit.count === (blocked.name === 'admin-login-identity' ? 5 : 10)) maybeAudit({ limiter: blocked.name, key: blocked.key, req, resetAt: blocked.hit.resetAt, count: blocked.hit.count, now });
+  res.set('Retry-After', String(retryAfterSeconds));
+  res.status(429).json({ error: 'تعداد تلاش‌های ورود بیش از حد مجاز است. لطفاً ۱۵ دقیقه دیگر دوباره تلاش کنید.' });
+  return true;
+}
+
 // ورود خودکار از دکمه‌ی «پنل» بات (initData امضاشده / لینک یک‌بارمصرف ۱۹۲ بیتی): قابل حدس‌زدن نیست،
 // ولی چون همه‌ی کارمندان یک شرکت ممکن است پشت یک IP باشند، سقف باید سخاوتمندانه‌تر از کد/ویجت باشد.
 const panelAutoLoginLimiter = createRateLimiter({
@@ -179,6 +202,7 @@ module.exports = {
   attendanceActionLimiter,
   adminLoginLimiter,
   panelAutoLoginLimiter,
+  failedLoginLimiter,
   runCleanup,
   AUDIT_ACTION,
 };

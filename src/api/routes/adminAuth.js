@@ -18,7 +18,7 @@ const { requireAdminAuth } = require('../../middleware/adminAuth');
 const { ROLES } = require('../../middleware/permissions');
 const settingsRepository = require('../../repositories/settingsRepository');
 const { buildSessionCookie, buildClearCookie } = require('../../utils/sessionCookie');
-const { adminLoginLimiter, panelAutoLoginLimiter } = require('../../middleware/rateLimiter');
+const { panelAutoLoginLimiter, failedLoginLimiter } = require('../../middleware/rateLimiter');
 
 // sv = نسخه‌ی نشست کاربر، ge = epoch سراسری (بخش ۲-الف: امکان باطل‌کردن نشست‌ها)
 function startSession(req, res, user) {
@@ -54,7 +54,7 @@ router.post('/admin/auth/webapp', panelAutoLoginLimiter, (req, res) => {
   if (!config.telegramBotToken) {
     return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN روی سرور تنظیم نشده است.' });
   }
-  const verified = verifyInitData(req.body && req.body.initData, config.telegramBotToken);
+  const verified = verifyInitData(req.get('X-Telegram-Init-Data'), config.telegramBotToken, config.initDataMaxAgeSeconds);
   if (!verified) {
     return res.status(401).json({ error: 'اطلاعات ورود تلگرام نامعتبر یا منقضی‌شده است. دکمه‌ی «پنل» را دوباره بزنید.' });
   }
@@ -77,10 +77,11 @@ router.post('/admin/auth/token', panelAutoLoginLimiter, (req, res) => {
 });
 
 // ورود با کد ۸ رقمی (منوی بات ← «🖥 پنل»)
-router.post('/admin/auth/code', adminLoginLimiter, (req, res) => {
+router.post('/admin/auth/code', (req, res) => {
   const userId = consumeCode(req.body && req.body.code);
   const user = userId ? usersRepository.findById(userId) : null;
   if (!usableUser(user)) {
+    if (failedLoginLimiter(req, res, req.body && req.body.code)) return;
     return res.status(401).json({ error: 'کد نامعتبر یا منقضی شده است. در بات از «📂 منو» گزینه‌ی «🖥 پنل» را بزنید و کد تازه بگیرید.' });
   }
   finishLogin(req, res, user, 'bot_one_time_code');
@@ -91,17 +92,19 @@ router.get('/admin/public-config', (req, res) => {
 });
 
 // فاز ۹: rate limiting روی لاگین (ضد brute-force)
-router.post('/admin/auth/telegram', adminLoginLimiter, (req, res) => {
+router.post('/admin/auth/telegram', (req, res) => {
   if (!config.telegramBotToken) {
     return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN روی سرور تنظیم نشده است.' });
   }
   const verified = verifyLoginWidgetData(req.body, config.telegramBotToken);
   if (!verified) {
+    if (failedLoginLimiter(req, res, req.body && req.body.id)) return;
     return res.status(401).json({ error: 'اطلاعات ورود تلگرام نامعتبر یا منقضی‌شده است.' });
   }
   const telegramUserId = String(verified.id);
   const user = usersRepository.findByTelegramId(telegramUserId);
   if (!usableUser(user)) {
+    if (failedLoginLimiter(req, res, verified.id)) return;
     return res.status(403).json({ error: 'این حساب تلگرام در سیستم ثبت نیست.', telegramUserId });
   }
   finishLogin(req, res, user, 'telegram_login_widget');

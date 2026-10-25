@@ -8,6 +8,7 @@ const auditRepository = require('../../repositories/auditRepository');
 const shiftsRepository = require('../../repositories/shiftsRepository');
 const { todayDateString } = require('../../utils/serverTime');
 const { isOvernightShift, addDays } = require('../../utils/shiftDay');
+const logger = require('../../utils/logger');
 
 async function autoCloseIncompleteRecords() {
   const today = todayDateString();
@@ -30,8 +31,8 @@ async function autoCloseIncompleteRecords() {
     });
   }
 
-  try { require('../../services/missionNowService').autoCloseOpen(); } catch (err) { console.error('[autoClose] پایان خودکار ماموریت ناموفق:', err.message); } // C6
-  try { require('../../services/remoteWorkService').autoCloseStale(); } catch (err) { console.error('[autoClose] بستن نشست‌های باز دورکاری ناموفق:', err.message); } // R3 (فاز ۱۴)
+  try { require('../../services/missionNowService').autoCloseOpen(); } catch (err) { logger.error('mission_auto_close_failed', { error: err.message }); } // C6
+  try { require('../../services/remoteWorkService').autoCloseStale(); } catch (err) { logger.error('remote_auto_close_failed', { error: err.message }); } // R3 (فاز ۱۴)
 
   return openRecords.length;
 }

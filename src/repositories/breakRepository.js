@@ -1,5 +1,6 @@
 const { getDb } = require('../db/connection');
 const { nowIso } = require('../utils/serverTime');
+const { assertSafeIdentifier } = require('../utils/safeIdentifier');
 
 function listByAttendanceRecord(attendanceRecordId) {
   const db = getDb();
@@ -65,7 +66,7 @@ function updateManual(id, fields) {
   const allowed = ['break_type', 'start_time', 'end_time'];
   const keys = Object.keys(fields).filter((k) => allowed.includes(k) && fields[k] !== undefined);
   if (!keys.length) return findById(id);
-  db.prepare(`UPDATE break_records SET ${keys.map((k) => `${k} = ?`).join(', ')} WHERE id = ?`).run(
+  db.prepare(`UPDATE break_records SET ${keys.map((k) => `${assertSafeIdentifier(k)} = ?`).join(', ')} WHERE id = ?`).run(
     ...keys.map((k) => fields[k]),
     id
   );

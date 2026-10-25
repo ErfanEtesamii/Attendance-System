@@ -13,6 +13,7 @@ const auditRepository = require('../../repositories/auditRepository');
 const { hhmmToMinutes } = require('../../engine/computeDay');
 const { summarizeRange } = require('../../engine/dayService');
 const { minutesSinceMidnight } = require('../../utils/time');
+const logger = require('../../utils/logger');
 
 // جلوگیری از ارسال چندباره یادآوری برای یک کارمند در همان روز (فقط در حافظه)
 const remindedToday = new Set(); // key: `${date}:${userId}`
@@ -53,7 +54,7 @@ async function checkLateCheckins(bot, { now = new Date() } = {}) {
         `⏰ یادآوری: هنوز ورود امروز خود را ثبت نکرده‌اید. لطفاً در اولین فرصت ثبت کنید.`
       );
     } catch (err) {
-      console.error('[bot][scheduler] خطا در ارسال یادآوری ورود:', err.message);
+      logger.error('checkin_reminder_failed', { error: err.message });
     }
   }
 }
@@ -92,7 +93,7 @@ async function checkRepeatedLateness(bot, { now = new Date() } = {}) {
           `⚠️ کارمند ${user.full_name} در ۳۰ روز اخیر ${summary.lateCount} بار تأخیر داشته است.`
         );
       } catch (err) {
-        console.error('[bot][scheduler] خطا در ارسال هشدار تأخیر مکرر:', err.message);
+        logger.error('repeated_lateness_alert_failed', { error: err.message });
       }
     }
   }

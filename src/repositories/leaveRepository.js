@@ -1,4 +1,5 @@
 const { getDb } = require('../db/connection');
+const { assertSafeIdentifier } = require('../utils/safeIdentifier');
 const leaveTypesRepository = require('./leaveTypesRepository');
 
 // S4-7b: هر درخواست به یک «نوع» (leave_types) وصل است. کانال‌های فعلی هنوز فقط 'leave' | 'mission' می‌فرستند؛ نگاشت:
@@ -219,6 +220,7 @@ function updateManual(id, fields, approverId) {
   const sets = [];
   const values = [];
   keys.forEach((k) => {
+    assertSafeIdentifier(k);
     if (k === 'leave_type') {
       // همان kind قبلی دوباره فرستاده شد ⇒ نوع دقیق (مثلاً استعلاجی) نباید به annual برگردد
       if (existing && fields.leave_type === existing.kind) return;

@@ -3,20 +3,32 @@
 // اگر فقط API لازم است (بدون بات)، می‌توانید مستقیماً src/server.js را اجرا کنید.
 
 const { start: startApiServer } = require('./server');
-const { startBot } = require('./bot');
+const { startBot, stopBot } = require('./bot');
 const config = require('./config');
+const logger = require('./utils/logger');
+const { shutdown: shutdownLifecycle } = require('./utils/lifecycle');
 
 function main() {
-  startApiServer();
+  const server = startApiServer({ manageSignals: false });
+  let bot = null;
 
   if (!config.telegramBotToken) {
-    console.warn(
+    logger.warn(
       '[main] TELEGRAM_BOT_TOKEN تنظیم نشده؛ بات تلگرام راه‌اندازی نشد (فقط API در حال اجراست).'
     );
-    return;
+  } else {
+    bot = startBot();
   }
-
-  startBot();
+  let closing = false;
+  const shutdown = async () => {
+    if (closing) return;
+    closing = true;
+    logger.info('application_shutdown_started');
+    await shutdownLifecycle({ server, stopBot: () => stopBot(bot) });
+  };
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
+  return { server, bot };
 }
 
 main();

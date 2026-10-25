@@ -80,6 +80,9 @@ function main() {
   list('تطبیق‌نخورده (کاربری با این نام کامل نیست؛ نام کامل نمایشی را در فایل بنویسید)', result.unmatched);
   list('مبهم (چند کاربر هم‌نام یا نام تکراری در فایل؛ آپدیت نشد)', result.ambiguous);
   list('نامعتبر (نام خالی یا نرخ غیر از عدد صحیح ۰ تا ۱۰۰۰۰۰)', result.invalid);
+  if (apply && path.resolve(file) === path.resolve(DEFAULT_FILE)) {
+    console.warn('هشدار: فایل data/hourly-rates.json شامل دادهٔ حقوق است؛ پس از تأیید نتیجه آن را حذف یا به محل امن خارج از پروژه منتقل کنید.');
+  }
 }
 
 if (require.main === module) main();

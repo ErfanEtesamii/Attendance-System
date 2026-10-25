@@ -4,7 +4,7 @@ const session = require('./session');
 const { routeMenuText, handleMenuCallback } = require('./menu/menuRouter');
 const { isPickerCallback, handlePickerCallback } = require('./ui/pickerRouter');
 const ui = require('./ui/pickers');
-const { startSchedulers } = require('./scheduler');
+const { startSchedulers, stopSchedulers } = require('./scheduler');
 const panelLinks = require('./panelLinks');
 const { instrumentBot } = require('../utils/botHealth');
 
@@ -192,4 +192,9 @@ function startBot() {
   return bot;
 }
 
-module.exports = { startBot };
+async function stopBot(bot) {
+  stopSchedulers();
+  if (bot && typeof bot.stopPolling === 'function') await bot.stopPolling();
+}
+
+module.exports = { startBot, stopBot };

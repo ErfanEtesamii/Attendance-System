@@ -41,6 +41,10 @@ const config = {
   // بخش ۲-ب۲: محل نگهداری شمارنده‌های rate limit. sqlite (پیش‌فرض) = ماندگار و بدون صفر شدن با ری‌استارت؛
   // memory = فقط حافظه‌ی پروسه (رفتار قبلی). اگر دیتابیس خطا بدهد، limiter موقتاً به حافظه برمی‌گردد (fail-open).
   rateLimitStore: enumEnv(process.env.RATE_LIMIT_STORE, ['sqlite', 'memory'], 'sqlite'),
+  initDataMaxAgeSeconds: positiveIntEnv(process.env.INITDATA_MAX_AGE_SECONDS, 21600),
+  logLevel: enumEnv(process.env.LOG_LEVEL, ['debug', 'info', 'warn', 'error'], 'info'),
+  logDir: path.resolve(process.cwd(), process.env.LOG_DIR || './logs'),
+  logKeepDays: positiveIntEnv(process.env.LOG_KEEP_DAYS, 14),
 
   // S5-6c: عمر کش پاسخ تحلیل‌ها (ثانیه). ۰ = خاموش. با هر نوشتن موفق در /api/admin/* کش کلاً پاک می‌شود؛ تغییرهای بات/Mini App (مثل ثبت ورود) حداکثر تا این مدت دیرتر دیده می‌شوند.
   analyticsCacheTtlSeconds: nonNegativeIntEnv(process.env.ANALYTICS_CACHE_TTL_SECONDS, 60),
@@ -74,6 +78,7 @@ const config = {
     // تعداد بک‌آپ روزانه‌ی نگه‌داشته‌شده (جدیدترین‌ها) و تعداد کپی ماهانه (اولین بک‌آپ هر ماه میلادی)
     keepDaily: positiveIntEnv(process.env.BACKUP_KEEP_DAILY, 14),
     keepMonthly: positiveIntEnv(process.env.BACKUP_KEEP_MONTHLY, 6),
+    copyDir: process.env.BACKUP_COPY_DIR ? path.resolve(process.env.BACKUP_COPY_DIR) : '',
   },
 
   // ===== بخش ۲-د: تشخیص موارد مشکوک (S2-4) =====

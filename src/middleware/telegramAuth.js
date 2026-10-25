@@ -10,7 +10,7 @@ const { verifyInitData } = require('../utils/telegramInitData');
 const INIT_DATA_HEADER = 'x-telegram-init-data';
 
 function telegramAuth(req, res, next) {
-  const initData = req.get(INIT_DATA_HEADER) || req.body?.initData || req.query.initData;
+  const initData = req.get(INIT_DATA_HEADER);
 
   if (!initData) {
     return res.status(401).json({ error: 'initData تلگرام ارسال نشده است.' });
@@ -20,9 +20,12 @@ function telegramAuth(req, res, next) {
     return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN روی سرور تنظیم نشده است.' });
   }
 
-  const verified = verifyInitData(initData, config.telegramBotToken);
+  const verified = verifyInitData(initData, config.telegramBotToken, config.initDataMaxAgeSeconds);
   if (!verified) {
     return res.status(401).json({ error: 'initData نامعتبر یا منقضی‌شده است. لطفاً Mini App را دوباره باز کنید.' });
+  }
+  if (verified.expired) {
+    return res.status(401).json({ error: 'initData نامعتبر یا منقضی‌شده است. لطفاً Mini App را دوباره باز کنید.', code: 'INIT_DATA_EXPIRED' });
   }
 
   const telegramUserId = String(verified.telegramUser.id);

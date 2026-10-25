@@ -10,6 +10,7 @@ const path = require('path');
 const Database = require('better-sqlite3');
 const config = require('../config');
 const { migrate } = require('./migrator');
+const logger = require('../utils/logger');
 
 let dbInstance = null;
 
@@ -35,10 +36,10 @@ function getDb() {
   try {
     const { applied, backupPath } = migrate(db, {
       backupDir,
-      log: (msg) => console.log(`[migrate] ${msg}`),
+      log: (msg) => logger.info('migration', { message: msg }),
     });
     if (applied.length) {
-      console.log(`[migrate] ${applied.length} migration اعمال شد: ${applied.join(', ')}${backupPath ? ` (بک‌آپ: ${backupPath})` : ''}`);
+      logger.info('migrations_applied', { count: applied.length, migrations: applied, backupCreated: !!backupPath });
     }
   } catch (err) {
     // سرور با ساختار نیمه‌کاره بالا نمی‌آید؛ migration خودش rollback شده است.
