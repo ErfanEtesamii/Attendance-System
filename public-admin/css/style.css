@@ -1786,3 +1786,82 @@ body[data-density="compact"] tbody td { padding-block: 7px; }
 /* گروه دکمه‌های خروجی (Excel/CSV) بیرون از .header-actions: فاصله‌ی بین دکمه‌ها */
 .export-group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .u-m-0 { margin: 0; }
+
+/* ============================================================
+   صفحه‌ی «گزارش‌های تیم» — عنوان بولد بالای هر جدول، تب‌های قرصی، کاشی‌های خلاصه
+   فقط با توکن‌ها (هر دو تم روشن/تیره)؛ همه‌چیز زیر .tr-page تا جای دیگر اثر نگذارد.
+   ============================================================ */
+.tr-page { display: flex; flex-direction: column; gap: var(--space-6); }
+.tr-section { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.tr-section-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--space-3); }
+.tr-title {
+  position: relative; margin: 0; padding-inline-start: 14px;
+  font-size: var(--fs-md); font-weight: 800; color: var(--text); line-height: 1.5;
+}
+.tr-title::before {
+  content: ""; position: absolute; inset-inline-start: 0; top: 50%; transform: translateY(-50%);
+  width: 4px; height: 18px; border-radius: 4px; background: var(--accent);
+}
+.tr-hint { color: var(--hint); font-size: var(--fs-xs); }
+.tr-section.tr-sub .tr-title { font-size: var(--fs-sm); }
+.tr-section.tr-sub .tr-title::before { height: 14px; background: var(--brand); }
+
+/* شاخص‌ها: دو جدول کنار هم، روی عرض کم زیر هم */
+.tr-kpis-section { gap: var(--space-4); }
+.tr-kpi-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); align-items: start; }
+.tr-callouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-3); }
+.tr-callout {
+  display: flex; flex-direction: column; gap: 4px; padding: var(--space-3) var(--space-4);
+  background: var(--brand-soft); border-radius: var(--r-md); border-inline-start: 3px solid var(--brand);
+  font-size: var(--fs-sm); line-height: 1.8;
+}
+.tr-callout .muted { font-size: var(--fs-xs); }
+
+/* تب‌ها: نوار قرصی یکپارچه */
+.tr-tabs {
+  display: inline-flex; flex-wrap: wrap; gap: 4px; align-self: flex-start; max-width: 100%; padding: 4px;
+  background: var(--card-2); border-radius: 999px;
+}
+.tr-tab {
+  border: 0; background: transparent; color: var(--hint); cursor: pointer;
+  padding: 9px 20px; border-radius: 999px; min-height: 40px;
+  font-family: inherit; font-size: var(--fs-sm); font-weight: 600;
+  transition: background .15s, color .15s, box-shadow .15s;
+}
+.tr-tab:hover { color: var(--text); }
+.tr-tab.active { background: var(--card); color: var(--brand); font-weight: 800; box-shadow: var(--shadow); }
+.tr-tab:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* فیلترها: کارت تمیز با فیلدهای هم‌اندازه */
+.tr-filters { margin-bottom: 0; padding: var(--space-4) var(--space-5); gap: var(--space-4); align-items: flex-end; }
+.tr-filters .field { flex: 1 1 170px; min-width: 150px; max-width: 280px; }
+.tr-filters .field > span { font-size: var(--fs-xs); font-weight: 600; }
+.tr-filters .export-group { margin-inline-start: auto; }
+.tr-filters .jdp-input { text-align: center; }
+
+/* کاشی‌های خلاصه */
+.tr-stats { margin-bottom: 0; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.tr-stats .stat { flex-direction: row; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--r-lg); }
+.tr-stats .stat-icon { flex: none; width: 38px; height: 38px; }
+.tr-stats .stat-value { font-size: var(--fs-lg); }
+.tr-stats .stat-label { margin-inline-start: auto; }
+.tr-note { margin: 0; }
+
+/* جدول‌ها: نام پررنگ، عملیات جمع‌وجور و کنار هم */
+.tr-page .card.flush { border-radius: var(--r-lg); }
+.tr-page tbody td { vertical-align: middle; padding-block: var(--space-3); }
+.tr-page td.wrap { white-space: normal; min-width: 200px; line-height: 1.8; }
+.tr-page ul.plain { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.tr-name { font-weight: 700; color: var(--text); white-space: nowrap; min-width: 120px; }
+.tr-name .muted { font-weight: 400; font-size: var(--fs-xs); }
+.tr-actions { white-space: nowrap; }
+.tr-actions .btn { margin-inline-end: 6px; }
+.tr-actions .btn:last-child { margin-inline-end: 0; }
+
+@media (max-width: 900px) {
+  .tr-kpi-grid { grid-template-columns: minmax(0, 1fr); }
+  .tr-tabs { display: flex; width: 100%; border-radius: var(--r-lg); }
+  .tr-tab { flex: 1 1 calc(50% - 4px); padding-inline: 12px; }
+  .tr-filters .field { max-width: none; }
+  .tr-filters .export-group { margin-inline-start: 0; width: 100%; }
+}

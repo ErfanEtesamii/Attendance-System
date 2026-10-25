@@ -27,9 +27,9 @@
         : '';
       const act = `${seenBtn} ${urgentBtn(m.userId, m.fullName)}`.trim();
       const comment = m.comment ? `<div class="muted">💬 ${esc(m.comment)}</div>` : '';
-      return `<tr><td>${esc(m.fullName)}<div class="muted">${esc(m.department || '')}</div></td><td>${AP.badge(cls, label, true)}</td>
-        <td>${s ? `${fmt.num(s.done)} از ${fmt.num(s.total)} (${pct(s)})` : '—'}</td>
-        <td>${notDone ? `<ul class="plain">${notDone}</ul>` : '—'}${extras}</td><td>${comment || '—'}</td><td>${act}</td></tr>`;
+      return `<tr><td class="tr-name">${esc(m.fullName)}<div class="muted">${esc(m.department || '')}</div></td><td>${AP.badge(cls, label, true)}</td>
+        <td class="num">${s ? `${fmt.num(s.done)} از ${fmt.num(s.total)} <span class="muted">(${pct(s)})</span>` : '—'}</td>
+        <td class="wrap">${notDone ? `<ul class="plain">${notDone}</ul>` : '—'}${extras}</td><td class="wrap">${comment || '—'}</td><td class="tr-actions">${act}</td></tr>`;
     }).join('');
   }
 
@@ -72,33 +72,49 @@
     return `<div class="card flush"><div class="table-wrap"><table><thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div></div>`;
   }
 
+  // عنوان بولد بالای هر جدول: <section> = عنوان (+ توضیح کوتاه کنارش) + محتوا
+  function section(title, hint, inner, cls = '') {
+    return `<section class="tr-section ${cls}"><div class="tr-section-head"><h3 class="tr-title">${title}</h3>${hint ? `<span class="tr-hint">${hint}</span>` : ''}</div>${inner}</section>`;
+  }
+
+  // کاشی‌های خلاصه (به‌جای یک خط متن بلند)
+  function stat(tone, icon, value, label) {
+    return `<div class="stat"><div class="stat-icon ${tone}">${AP.icon(icon)}</div><div class="stat-value u-stat-value-sm">${value}</div><div class="stat-label">${label}</div></div>`;
+  }
+
   function renderResult(r) {
     const canWrite = !r.readOnly && AP.can('reviews.write');
     if (r.tab === 'plan') {
       const body = r.members.map((m) => {
         const [cls, label] = PLAN_STATUS[m.status] || PLAN_STATUS.none;
         const tasks = m.tasks.length ? `<ul class="plain">${m.tasks.map((t) => `<li>${esc(t.title)}${t.plannedDate ? ` <span class="muted">(${esc(fmt.date(t.plannedDate))})</span>` : ''}</li>`).join('')}</ul>` : '—';
-        return `<tr><td>${esc(m.fullName)}</td><td>${AP.badge(cls, label, true)}</td><td>${tasks}</td><td>${urgentBtn(m.userId, m.fullName)}</td></tr>`;
+        return `<tr><td class="tr-name">${esc(m.fullName)}</td><td>${AP.badge(cls, label, true)}</td><td class="wrap">${tasks}</td><td class="tr-actions">${urgentBtn(m.userId, m.fullName)}</td></tr>`;
       }).join('') || '<tr><td colspan="4" class="muted">موردی برای نمایش نیست.</td></tr>';
-      return `<p class="sub">هفته‌ی شروع ${esc(fmt.date(r.weekStart))} — ${fmt.num(r.summary.submitted)} برنامه ثبت‌شده، ${fmt.num(r.summary.missing)} ثبت‌نشده</p>${table(['نام', 'وضعیت', 'تسک‌ها', ''], body)}`;
+      const stats = `<div class="stat-grid tr-stats">${stat('g-green', 'check', fmt.num(r.summary.submitted), 'برنامه ثبت‌شده')}${stat('g-red', 'alert', fmt.num(r.summary.missing), 'برنامه ثبت‌نشده')}</div>`;
+      return section('برنامه‌ی هفتگی', `هفته‌ی شروع ${esc(fmt.date(r.weekStart))}`, stats + table(['نام', 'وضعیت', 'تسک‌ها', 'عملیات'], body));
     }
     if (r.tab === 'stuck') {
-      const body = r.members.map((m) => `<tr><td>${esc(m.fullName)}<div>${urgentBtn(m.userId, m.fullName)}</div></td><td><ul class="plain">${m.tasks.map((t) => `<li>🔴 ${esc(t.title)} — ${fmt.num(t.carriedCount)} بار منتقل‌شده${t.lastReason ? ` <span class="muted">(${esc(REASONS[t.lastReason] || t.lastReason)})</span>` : ''}</li>`).join('')}</ul></td></tr>`).join('') || '<tr><td colspan="2" class="muted">تسک معطل‌مانده‌ای نیست.</td></tr>';
-      return table(['نام', 'تسک‌های معطل‌مانده'], body);
+      const body = r.members.map((m) => `<tr><td class="tr-name">${esc(m.fullName)}</td><td class="wrap"><ul class="plain">${m.tasks.map((t) => `<li>🔴 ${esc(t.title)} — ${fmt.num(t.carriedCount)} بار منتقل‌شده${t.lastReason ? ` <span class="muted">(${esc(REASONS[t.lastReason] || t.lastReason)})</span>` : ''}</li>`).join('')}</ul></td><td class="tr-actions">${urgentBtn(m.userId, m.fullName)}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">تسک معطل‌مانده‌ای نیست.</td></tr>';
+      return section('معطل‌مانده‌ها', 'تسک‌هایی که چند بار به روز بعد منتقل شده‌اند', table(['نام', 'تسک‌های معطل‌مانده', 'عملیات'], body));
     }
     const s = r.summary || {};
-    const head = `<p class="sub">گزارش روز ${esc(r.date ? fmt.date(r.date) : '—')} — میانگین انجام: ${s.percent != null ? `${fmt.num(s.percent)}٪` : '—'} · ${fmt.num(s.reports || 0)} گزارش · ${fmt.num(s.noReport || 0)} بدون گزارش · ${fmt.num(s.unreviewed || 0)} مشاهده‌نشده</p>`;
-    const note = r.readOnly ? '<p class="muted">این صفحه برای شما فقط‌خواندنی است.</p>' : '';
-    return `${head}${note}${table(['نام', 'وضعیت', 'انجام', 'انجام‌نشده‌ها / خارج از برنامه', 'کامنت', ''], dailyRows(r, canWrite))}`;
+    const stats = `<div class="stat-grid tr-stats">${stat('g-blue', 'reports', s.percent != null ? `${fmt.num(s.percent)}٪` : '—', 'میانگین انجام')}${stat('g-green', 'check', fmt.num(s.reports || 0), 'گزارش ثبت‌شده')}${stat('g-red', 'alert', fmt.num(s.noReport || 0), 'بدون گزارش')}${stat('g-orange', 'clock', fmt.num(s.unreviewed || 0), 'مشاهده‌نشده')}</div>`;
+    const note = r.readOnly ? '<p class="muted tr-note">این صفحه برای شما فقط‌خواندنی است.</p>' : '';
+    const title = r.tab === 'unreviewed' ? 'بررسی‌نشده‌ها' : 'گزارش روزانه';
+    return section(title, `گزارش روز ${esc(r.date ? fmt.date(r.date) : '—')}`, `${stats}${note}${table(['نام', 'وضعیت', 'انجام', 'انجام‌نشده‌ها / خارج از برنامه', 'کامنت', 'عملیات'], dailyRows(r, canWrite))}`);
   }
 
-  async function load(page) {
+  async function load(page, getPickers) {
     const box = $('#tr-result', page);
     box.innerHTML = '<div class="loading"><div class="spinner"></div>در حال بارگذاری…</div>';
     try {
       const q = new URLSearchParams(Object.entries({ tab: ui.tab, date: ui.date, weekStart: ui.weekStart, userId: ui.userId }).filter(([, v]) => v)).toString();
       const r = await AP.api(`/admin/team-reports?${q}`);
       box.innerHTML = renderResult(r);
+      // مقدار پیش‌فرضِ سرور (روز کاریِ قبل / هفته‌ی جاری) در تقویم نشان داده شود، نه placeholder
+      const form = $('#tr-filters', page);
+      const setDef = (name, iso) => { const h = form && form.querySelector(`input[type="hidden"][name="${name}"]`); const dp = getPickers && getPickers()[0]; if (h && dp && !h.value && iso) dp.setValue(iso); };
+      if (ui.tab === 'plan') setDef('weekStart', r.weekStart); else setDef('date', r.date);
       $$('[data-act="seen"]', box).forEach((b) => b.addEventListener('click', () => seen(page, r, Number(b.dataset.uid))));
       $$('[data-act="urgent"]', box).forEach((b) => b.addEventListener('click', () => openUrgentForm(Number(b.dataset.uid), b.dataset.name, () => load(page))));
     } catch (err) {
@@ -115,11 +131,15 @@
       const rate = (v) => (v == null ? '—' : `${fmt.num(v)}٪`);
       const teams = k.teams.map((t) => `<tr><td>${esc(t.managerName)}</td><td>${fmt.num(t.members)}</td><td>${fmt.num(t.done)} از ${fmt.num(t.planned)}</td><td>${rate(t.completionRate)}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">داده‌ای نیست.</td></tr>';
       const revs = k.reviewers.map((r) => `<tr><td>${esc(r.reviewerName)}</td><td>${fmt.num(r.reports)}</td><td>${fmt.num(r.onTime)}</td><td>${rate(r.onTimeRate)}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">داده‌ای نیست.</td></tr>';
-      box.innerHTML = `<h3 class="u-m-0">شاخص‌ها (۳۰ روز اخیر)</h3>
-        <section class="card"><h4>نرخ انجام تیم‌ها</h4><div class="table-wrap"><table><thead><tr><th>تیم</th><th>اعضا</th><th>انجام‌شده</th><th>نرخ انجام</th></tr></thead><tbody>${teams}</tbody></table></div></section>
-        <section class="card"><h4>بررسی به‌موقع سرپرست‌ها</h4><div class="table-wrap"><table><thead><tr><th>سرپرست</th><th>گزارش‌ها</th><th>بررسی به‌موقع</th><th>نرخ</th></tr></thead><tbody>${revs}</tbody></table></div></section>
-        <p class="sub">برنامه‌ی هفته‌ی بعدِ برآورده‌نشده: ${fmt.num(k.unplanned.count)} نفر${k.unplanned.users.length ? ` — ${k.unplanned.users.slice(0, 10).map((u) => esc(u.fullName)).join('، ')}` : ''}</p>
-        <p class="sub">تنظیم‌شده توسط سرپرست (ارسال نهایی نشده): ${fmt.num(k.managerConfiguredNotSubmitted.count)} نفر${k.managerConfiguredNotSubmitted.users.length ? ` — ${k.managerConfiguredNotSubmitted.users.slice(0, 10).map((u) => esc(u.fullName)).join('، ')}` : ''}</p>`;
+      const names = (list) => (list.length ? ` — ${list.slice(0, 10).map((u) => esc(u.fullName)).join('، ')}` : '');
+      box.innerHTML = section('شاخص‌های ۳۰ روز اخیر', 'نمای کلی عملکرد تیم‌ها و سرپرست‌ها', `<div class="tr-kpi-grid">
+        ${section('نرخ انجام تیم‌ها', '', `<div class="card flush"><div class="table-wrap"><table><thead><tr><th>تیم</th><th>اعضا</th><th>انجام‌شده</th><th>نرخ انجام</th></tr></thead><tbody>${teams}</tbody></table></div></div>`, 'tr-sub')}
+        ${section('بررسی به‌موقع سرپرست‌ها', '', `<div class="card flush"><div class="table-wrap"><table><thead><tr><th>سرپرست</th><th>گزارش‌ها</th><th>بررسی به‌موقع</th><th>نرخ</th></tr></thead><tbody>${revs}</tbody></table></div></div>`, 'tr-sub')}
+      </div>
+      <div class="tr-callouts">
+        <div class="tr-callout"><strong>برنامه‌ی هفته‌ی بعدِ برآورده‌نشده: ${fmt.num(k.unplanned.count)} نفر</strong>${names(k.unplanned.users) ? `<span class="muted">${names(k.unplanned.users).slice(3)}</span>` : ''}</div>
+        <div class="tr-callout"><strong>تنظیم‌شده توسط سرپرست، ارسال نهایی نشده: ${fmt.num(k.managerConfiguredNotSubmitted.count)} نفر</strong>${names(k.managerConfiguredNotSubmitted.users) ? `<span class="muted">${names(k.managerConfiguredNotSubmitted.users).slice(3)}</span>` : ''}</div>
+      </div>`, 'tr-kpis-section');
     } catch (err) {
       box.innerHTML = ui.empty(err.message);
     }
@@ -151,26 +171,35 @@
       const html = `
         <div class="view-header"><div><h2>گزارش‌های تیم</h2><div class="sub">برنامه‌ی هفتگی و گزارش روزانه‌ی تسک‌ها؛ پیش‌فرض «روز کاریِ قبل».</div></div>
           <div class="header-actions">${AP.exportBar({ path: '/api/admin/team-reports/export', params: { userId: ui.userId }, print: false })}</div></div>
-        <form class="filters card" id="tr-export" aria-label="خروجی کامل تسک‌ها">
-          <strong>خروجی Excel تسک‌ها</strong>
-          <label class="field"><span>از تاریخ</span><input type="date" name="from" value="${esc(ui.expFrom || fmt.daysAgo(29))}" /></label>
-          <label class="field"><span>تا تاریخ</span><input type="date" name="to" value="${esc(ui.expTo || fmt.today())}" /></label>
-          ${managers.length ? `<label class="field"><span>تیم</span><select name="managerId"><option value="">کل مجموعه</option>${managers.map((m) => `<option value="${m.id}" ${String(m.id) === String(ui.expManager) ? 'selected' : ''}>${esc(m.fullName)}</option>`).join('')}</select></label>` : ''}
-          ${users.length ? `<label class="field"><span>فرد</span><select name="expUserId"><option value="">همه</option>${users.map((u) => `<option value="${u.id}" ${String(u.id) === String(ui.expUser) ? 'selected' : ''}>${esc(u.fullName || u.full_name)}</option>`).join('')}</select></label>` : ''}
-          <span id="tr-export-bar" class="export-group">${expBar()}</span>
-        </form>
-        ${AP.can('analytics.read') ? '<div id="tr-kpis" class="stack" aria-live="polite"></div>' : ''}
-        <div class="filters" role="tablist">${TABS.map(([k, l]) => `<button type="button" class="btn ${k === ui.tab ? 'primary' : 'ghost'}" data-tab="${k}" role="tab" aria-selected="${k === ui.tab}">${l}</button>`).join('')}</div>
-        <form class="filters" id="tr-filters">
-          <label class="field"><span>تاریخ گزارش</span><input type="date" name="date" value="${esc(ui.date)}" /></label>
-          <label class="field"><span>هفته (هر روزِ آن)</span><input type="date" name="weekStart" value="${esc(ui.weekStart)}" /></label>
-          ${users.length ? `<label class="field"><span>فرد</span><select name="userId"><option value="">همه</option>${users.map((u) => `<option value="${u.id}" ${String(u.id) === String(ui.userId) ? 'selected' : ''}>${esc(u.full_name)}</option>`).join('')}</select></label>` : ''}
-        </form>
-        <div id="tr-result" aria-live="polite"></div>`;
+        <div class="tr-page">
+          ${AP.can('analytics.read') ? '<div id="tr-kpis" aria-live="polite"></div>' : ''}
+          <section class="tr-section tr-report">
+            <div class="tr-tabs" role="tablist" aria-label="نوع گزارش">${TABS.map(([k, l]) => `<button type="button" class="tr-tab${k === ui.tab ? ' active' : ''}" data-tab="${k}" role="tab" aria-selected="${k === ui.tab}">${l}</button>`).join('')}</div>
+            <form class="filters card tr-filters" id="tr-filters" aria-label="فیلتر گزارش">
+              ${ui.tab === 'plan' ? `<label class="field"><span>هفته (هر روزِ آن)</span><input type="date" name="weekStart" value="${esc(ui.weekStart)}" /></label>` : ''}
+              ${ui.tab === 'daily' || ui.tab === 'unreviewed' ? `<label class="field"><span>تاریخ گزارش</span><input type="date" name="date" value="${esc(ui.date)}" /></label>` : ''}
+              ${users.length ? `<label class="field"><span>فرد</span><select name="userId"><option value="">همه</option>${users.map((u) => `<option value="${u.id}" ${String(u.id) === String(ui.userId) ? 'selected' : ''}>${esc(u.full_name)}</option>`).join('')}</select></label>` : ''}
+            </form>
+            <div id="tr-result" aria-live="polite"></div>
+          </section>
+          <section class="tr-section tr-export-section">
+            <div class="tr-section-head"><h3 class="tr-title">خروجی Excel تسک‌ها</h3><span class="tr-hint">بازه‌ی دلخواه را انتخاب و دانلود کنید</span></div>
+            <form class="filters card tr-filters" id="tr-export" aria-label="خروجی کامل تسک‌ها">
+              <label class="field"><span>از تاریخ</span><input type="date" name="from" value="${esc(ui.expFrom || fmt.daysAgo(29))}" /></label>
+              <label class="field"><span>تا تاریخ</span><input type="date" name="to" value="${esc(ui.expTo || fmt.today())}" /></label>
+              ${managers.length ? `<label class="field"><span>تیم</span><select name="managerId"><option value="">کل مجموعه</option>${managers.map((m) => `<option value="${m.id}" ${String(m.id) === String(ui.expManager) ? 'selected' : ''}>${esc(m.fullName)}</option>`).join('')}</select></label>` : ''}
+              ${users.length ? `<label class="field"><span>فرد</span><select name="expUserId"><option value="">همه</option>${users.map((u) => `<option value="${u.id}" ${String(u.id) === String(ui.expUser) ? 'selected' : ''}>${esc(u.fullName || u.full_name)}</option>`).join('')}</select></label>` : ''}
+              <span id="tr-export-bar" class="export-group">${expBar()}</span>
+            </form>
+          </section>
+        </div>`;
       return {
         html,
         mount: (page) => {
+          let pickers = [];
           $$('[data-tab]', page).forEach((b) => b.addEventListener('click', () => { ui.tab = b.dataset.tab; AP.refresh(); }));
+          // تاریخ‌ها همان تقویم شمسیِ بقیه‌ی پنل؛ قبل از listenerهای صفحه mount می‌شود (قرارداد AP.dates)
+          pickers = AP.dates.mount($('#tr-filters', page));
           const exp = $('#tr-export', page);
           AP.dates.mount(exp);
           exp.addEventListener('submit', (e) => e.preventDefault());
@@ -181,8 +210,8 @@
           }));
           const form = $('#tr-filters', page);
           form.addEventListener('submit', (e) => e.preventDefault());
-          $$('input, select', form).forEach((el) => el.addEventListener('change', () => { Object.assign(ui, AP.formData(form)); load(page); }));
-          load(page);
+          $$('input, select', form).forEach((el) => el.addEventListener('change', () => { Object.assign(ui, AP.formData(form)); load(page, () => pickers); }));
+          load(page, () => pickers);
           loadKpis(page);
         },
       };
