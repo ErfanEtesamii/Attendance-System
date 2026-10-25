@@ -129,8 +129,8 @@ router.get('/admin/system', requirePermission('system.read'), (req, res) => {
       },
     },
     integration: {
-      botConfigured: !!config.telegramBotToken,
-      botUsername: config.telegramBotUsername || null,
+      botConfigured: !!config.baleBotToken,
+      botUsername: config.baleBotUsername || null,
       miniAppUrl: config.miniAppUrl || null,
       httpsDirect: !!(config.sslCertPath && config.sslKeyPath),
       allowedNetworkCidr: config.allowedNetworkCidr,

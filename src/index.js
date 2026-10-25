@@ -12,10 +12,8 @@ function main() {
   const server = startApiServer({ manageSignals: false });
   let bot = null;
 
-  if (!config.telegramBotToken) {
-    logger.warn(
-      '[main] TELEGRAM_BOT_TOKEN تنظیم نشده؛ بات تلگرام راه‌اندازی نشد (فقط API در حال اجراست).'
-    );
+  if (!config.baleBotToken) {
+    logger.warn('[main] BALE_BOT_TOKEN تنظیم نشده؛ بازوی بله راه‌اندازی نشد (فقط API در حال اجراست).');
   } else {
     bot = startBot();
   }

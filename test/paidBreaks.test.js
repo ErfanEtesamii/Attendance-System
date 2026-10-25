@@ -1,4 +1,4 @@
-// C1 (فاز ۱۲): استراحت کوتاهِ با حقوق — موتور خالص computeDay + تنظیمات + فیلد روی شیفت + migration ۰۳۰.
+﻿// C1 (فاز ۱۲): استراحت کوتاهِ با حقوق — موتور خالص computeDay + تنظیمات + فیلد روی شیفت + migration ۰۳۰.
 // قانون: i‌امین استراحت کوتاه (به ترتیب شروع) با i ≤ paidBreakCount تا سقف paidBreakMinutes با حقوق است؛ مازاد و استراحت‌های بعدی و ناهار بدون حقوق.
 const { resetDb, cleanup } = require('./helpers/testEnv');
 const { test, describe, before, after } = require('node:test');

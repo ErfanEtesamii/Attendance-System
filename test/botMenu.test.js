@@ -1,4 +1,4 @@
-// E1/E2: منوی دکمه‌ایِ نقش‌محور بات — نرمال‌سازی متن دکمه، ماتریس نقش × دکمه، اتصال به handlerها، چک نقش سمت سرور.
+﻿// E1/E2: منوی دکمه‌ایِ نقش‌محور بات — نرمال‌سازی متن دکمه، ماتریس نقش × دکمه، اتصال به handlerها، چک نقش سمت سرور.
 const { resetDb, cleanup } = require('./helpers/testEnv');
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,4 +1,4 @@
-const TelegramBot = require('node-telegram-bot-api');
+﻿const BaleBot = require('./baleBot');
 const config = require('../config');
 const session = require('./session');
 const { routeMenuText, handleMenuCallback } = require('./menu/menuRouter');
@@ -36,13 +36,13 @@ const {
 } = require('./commands/fixRecord');
 
 function createBot() {
-  if (!config.telegramBotToken) {
+  if (!config.baleBotToken) {
     throw new Error(
-      'TELEGRAM_BOT_TOKEN تنظیم نشده است. مقدار آن را در .env قرار دهید (از BotFather بگیرید).'
+      'BALE_BOT_TOKEN تنظیم نشده است. مقدار آن را در .env قرار دهید (از @botfather بله بگیرید).'
     );
   }
 
-  const bot = new TelegramBot(config.telegramBotToken, { polling: true });
+  const bot = new BaleBot(config.baleBotToken, { polling: true });
   // بخش ۲-ج۱: نبض واقعی polling برای /api/health و watchdog (متد getUpdates پیچیده می‌شود)
   instrumentBot(bot);
 
@@ -172,39 +172,26 @@ function missionRequestOf(data) {
 
 async function configureBotUi(bot) {
   // E5/H2: همه‌ی کارها از «📂 منو» (تنها دکمه‌ی کیبورد پایین) انجام می‌شود؛ منوی «/» تلگرام خالی می‌شود (/start همچنان کار می‌کند)
-  await bot.setMyCommands([]);
+  await bot.setMyCommands([]); // سازگاری با راه‌اندازی قبلی؛ در بله no-op است.
   panelLinks.warnInsecureMiniAppUrl('راه‌اندازی بات'); // H3: MINI_APP_URL بدون https ⇒ هشدار در لاگ
 
   // دکمه منو برای باز کردن Mini App - فقط اگر آدرس واقعی در .env تنظیم شده باشد.
   // Mini App واقعی در فاز ۴ ساخته می‌شود؛ تا آن زمان این دکمه عمداً تنظیم نمی‌شود.
-  if (config.miniAppUrl) {
-    try {
-      // توجه: node-telegram-bot-api فقط reply_markup را خودکار JSON.stringify می‌کند،
-      // نه menu_button را - باید دستی تبدیلش کنیم وگرنه تلگرام این فیلد را نادیده می‌گیرد.
-      await bot.setChatMenuButton({
-        menu_button: JSON.stringify({
-          type: 'web_app',
-          text: 'حضور و غیاب',
-          web_app: { url: config.miniAppUrl },
-        }),
-      });
-    } catch (err) {
-      console.error('[bot] خطا در تنظیم دکمه منو:', err.message);
-    }
-  }
+  // API بله معادل setMyCommands / setChatMenuButton و Web App را ندارد.
 }
 
 function startBot() {
   const bot = createBot();
   configureBotUi(bot).catch((err) => console.error('[bot] خطا در تنظیم اولیه بات:', err.message));
   startSchedulers(bot);
-  console.log('[bot] بات تلگرام در حالت polling راه‌اندازی شد.');
+  console.log('[bot] بازوی بله در حالت polling راه‌اندازی شد.');
   return bot;
 }
 
 async function stopBot(bot) {
   stopSchedulers();
-  if (bot && typeof bot.stopPolling === 'function') await bot.stopPolling();
+  if (!bot) return;
+  if (typeof bot.stopPolling === 'function') await bot.stopPolling();
 }
 
 module.exports = { startBot, stopBot };

@@ -5,6 +5,7 @@
   'use strict';
 
   const tg = window.Telegram ? window.Telegram.WebApp : null;
+  const bale = window.Bale ? window.Bale.WebApp : null;
   const TGI = window.MiniAppTelegram && window.MiniAppTelegram.create
     ? window.MiniAppTelegram.create(tg, document)
     : {
@@ -26,9 +27,17 @@
 
   // initData خام (امضاشده توسط تلگرام) - همین رشته مستقیم برای سرور فرستاده می‌شود
   // تا سرور خودش اعتبارش را تأیید کند؛ کلاینت هیچ داده‌ی هویتی را «ادعا» نمی‌کند.
-  const initData = tg ? tg.initData : '';
-  const initDataUnsafe = tg ? tg.initDataUnsafe : {};
+  const initData = tg ? tg.initData : (bale ? bale.initData : '');
   const escapeHtml = window.SafeHtml ? window.SafeHtml.esc : (value) => String(value == null ? '' : value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  // محیط‌های قدیمی/تست ممکن است URLSearchParams یا location کامل نداشته باشند.
+  // در مرورگرهای واقعی مسیر استاندارد URLSearchParams استفاده می‌شود.
+  const locationSearch = window.location && typeof window.location.search === 'string' ? window.location.search : '';
+  const baleLinkToken = typeof URLSearchParams === 'function'
+    ? new URLSearchParams(locationSearch).get('bale_token')
+    : ((locationSearch.match(/[?&]bale_token=([^&]*)/) || [])[1] || null);
+  let baleSession = (() => { try { return window.sessionStorage.getItem('bale_miniapp_session') || ''; } catch (_) { return ''; } })();
+  const initDataUnsafe = tg ? tg.initDataUnsafe : (bale ? bale.initDataUnsafe : {});
+  try { if (bale && typeof bale.ready === 'function') bale.ready(); } catch (_) { /* SDK اختیاری است */ }
 
   const state = {
     me: null,
@@ -228,6 +237,8 @@
       headers: {
         'Content-Type': 'application/json',
         'X-Telegram-Init-Data': initData,
+        ...(bale ? { 'X-Bale-Init-Data': initData } : {}),
+        ...(baleSession ? { 'X-MiniApp-Session': baleSession } : {}),
       },
         body: options.body ? JSON.stringify(options.body) : undefined, signal: controller ? controller.signal : undefined,
       });
@@ -292,6 +303,48 @@
     });
   }
 
+  async function authenticateBaleMiniApp() {
+    if (!baleLinkToken) return false;
+    const res = await fetch('/api/miniapp/auth/bale', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: baleLinkToken }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.session) throw new Error(data.error || 'ورود به مینی‌اپ بله ناموفق بود.');
+    baleSession = data.session;
+    try { window.sessionStorage.setItem('bale_miniapp_session', baleSession); } catch (_) { /* نشست همان تب همچنان کار می‌کند */ }
+    history.replaceState(null, '', window.location.pathname + window.location.hash);
+    return true;
+  }
+
+  // «۱ ساعت و ۱۰ دقیقه» / «۲۵ دقیقه» (بدون «۰ ساعت»)
+  function fmtDurationCompact(totalMinutes) {
+    const abs = Math.max(0, Math.round(totalMinutes));
+    const h = Math.floor(abs / 60);
+    const m = abs % 60;
+    const fa = (n) => n.toLocaleString('fa-IR');
+    if (h > 0 && m > 0) return `${fa(h)} ساعت و ${fa(m)} دقیقه`;
+    if (h > 0) return `${fa(h)} ساعت`;
+    return `${fa(m)} دقیقه`;
+  }
+
+  // سلول «استراحت» کارت امروز: دو خط جدا (کوتاه / ناهار)؛ خطِ بدون مقدار نمایش داده نمی‌شود؛ هیچ‌کدام ⇒ «—». فقط با textContent
+  function renderBreakBreakdown(el, totals) {
+    if (!el) return;
+    el.textContent = '';
+    const rows = [['کوتاه', totals.short], ['ناهار', totals.lunch]].filter(([, v]) => v > 0);
+    if (!rows.length) { el.textContent = '—'; return; }
+    rows.forEach(([label, minutes]) => {
+      const line = document.createElement('span');
+      line.className = 'break-split-line';
+      const name = document.createElement('span');
+      name.className = 'break-split-label';
+      name.textContent = label;
+      const val = document.createElement('span');
+      val.textContent = fmtDurationCompact(minutes);
+      line.append(name, val);
+      el.appendChild(line);
+    });
+  }
   function fmtDuration(totalMinutes) {
     if (totalMinutes == null) return '—';
     const sign = totalMinutes < 0 ? '-' : '';
@@ -1682,7 +1735,13 @@
   async function uploadMissionAttachment(id, file) {
     const res = await fetch('/api/miniapp/missions/' + id + '/attachment', {
       method: 'POST',
-      headers: { 'Content-Type': file.type, 'X-Telegram-Init-Data': initData, 'X-File-Name': encodeURIComponent(file.name || '') },
+      headers: {
+        'Content-Type': file.type,
+        'X-Telegram-Init-Data': initData,
+        ...(bale ? { 'X-Bale-Init-Data': initData } : {}),
+        ...(baleSession ? { 'X-MiniApp-Session': baleSession } : {}),
+        'X-File-Name': encodeURIComponent(file.name || ''),
+      },
       body: file,
     });
     const data = await res.json().catch(() => ({}));
@@ -4144,7 +4203,15 @@
     getDeviceId(); // S2-3: از همین ابتدا آماده شود تا لمس «ثبت ورود» معطل نماند
     const errBox = $('#app-error');
     errBox.classList.add('hidden');
-    if (!initData) {
+    try {
+      if (baleLinkToken && !baleSession) await authenticateBaleMiniApp();
+    } catch (err) {
+      errBox.innerHTML = '<div class="card center-card"><h2>ورود به مینی‌اپ ناموفق بود</h2><p id="app-error-msg"></p></div>';
+      $('#app-error-msg').textContent = err.message;
+      errBox.classList.remove('hidden');
+      return;
+    }
+    if (!initData && !baleSession) {
       // اجرای خارج از تلگرام (مثلاً باز کردن مستقیم در مرورگر) - initData وجود ندارد
       $('#not-registered').classList.remove('hidden');
       $('#not-registered .card').innerHTML =

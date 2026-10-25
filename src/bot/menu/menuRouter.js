@@ -31,12 +31,12 @@ const MENU_GROUPS = [
 // roles = null ⇒ هر کاربر ثبت‌شده. url = تابعِ آدرسِ web_app (دکمه‌ی web_app، نه متنی).
 // ترتیب آرایه همان ترتیب نمایش است: کارمند، سپس افزوده‌های سرپرست، سپس افزوده‌های ادمین (ادمین همه را دارد).
 const ITEMS = [
-  { id: 'checkin', label: '🕒 ثبت تردد', roles: null, url: () => panelLinks.miniAppLink() },
+  { id: 'checkin', label: '🕒 ثبت تردد', roles: null, url: () => panelLinks.miniAppLink(), handler: 'miniApp' },
   { id: 'remote_work', label: '🏠 ثبت دورکاری', roles: null, handler: 'remoteWork' },
   { id: 'status', label: '📊 وضعیت من', roles: null, handler: 'status' },
   { id: 'report', label: '📈 گزارش من', roles: null, handler: 'report' },
   { id: 'leave', label: '🏖 مرخصی / 🚗 ماموریت', roles: null, handler: 'leave' },
-  { id: 'plan', label: '📋 برنامه هفتگی', roles: null, url: () => panelLinks.miniAppLink({ view: 'plan' }) },
+  { id: 'plan', label: '📋 برنامه هفتگی', roles: null, url: () => panelLinks.miniAppLink({ view: 'plan' }), handler: 'miniApp' },
   { id: 'panel', label: '🖥 پنل', roles: null, handler: 'panel' },
   { id: 'help', label: '❓ راهنما', roles: null, handler: 'help' },
 
@@ -51,7 +51,7 @@ const ITEMS = [
 
   { id: 'add_employee', label: '➕ افزودن کارمند', roles: ADMIN_ONLY, handler: 'addEmployee' },
   { id: 'fix_record', label: '🛠 اصلاح رکورد', roles: ADMIN_ONLY, handler: 'fixRecord' },
-  { id: 'admin_panel', label: '⚙️ پنل مدیریت', roles: ADMIN_ONLY, url: () => panelLinks.panelUrl() },
+  { id: 'admin_panel', label: '⚙️ پنل مدیریت', roles: ADMIN_ONLY, url: () => panelLinks.panelUrl(), handler: 'panel' },
 ];
 
 const EMOJI_RE = /[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji_Modifier}\u20E3\uFE00-\uFE0F\u200D]/gu;
@@ -197,6 +197,7 @@ function defaultHandlers() {
     report: require('../commands/report').handleReport,
     leave: require('../commands/leave').handleLeaveCommand,
     panel: require('../commands/panelLogin').handlePanelLogin,
+    miniApp: require('../commands/miniAppLogin').handleMiniAppLogin,
     help: require('../commands/help').handleHelp,
     teamReport: require('../commands/teamReport').handleTeamReport,
     pendingLeaves: require('../commands/pendingLeaves').handlePendingLeaves,
@@ -257,7 +258,8 @@ async function routeMenuText(bot, msg, handlers) {
   session.clear(chatId); // دکمه‌ی منو = شروع تازه؛ مکالمه‌ی قبلی (مثلاً ثبت مرخصیِ نیمه‌کاره) لغو می‌شود
   // متنِ دکمه‌ی عادی فقط از کیبورد قدیمی می‌آید (کیبورد جدید فقط «📂 منو» می‌فرستد)؛ کیبورد جدید را پیش از handler می‌فرستیم تا پیام خودِ handler آخرین پیام چت بماند
   await replaceLegacyKeyboard(bot, chatId, user);
-  if (item.url) {
+  // بله برای ورود امن، لینک یک‌بارمصرف خودش را می‌فرستد؛ تلگرام همان web_app استاندارد را دریافت می‌کند.
+  if (item.url && bot.platform !== 'bale') {
     await sendWebAppLink(bot, chatId, item);
     return true;
   }
@@ -300,7 +302,8 @@ async function handleMenuCallback(bot, query, handlers) {
   await bot.answerCallbackQuery(query.id);
   session.clear(chat.id);
   if (isMenuMessage(query.message)) await deleteMenuMessage(bot, query.message); // H2: بعد از انتخاب، پیام منو پاک می‌شود
-  if (item.url) {
+  // در بله به‌جای web_app خام، handler لینک امضاشده‌ی مخصوص همان پلتفرم را می‌فرستد.
+  if (item.url && bot.platform !== 'bale') {
     // H3: آیتم web_app که به‌جای دکمه‌ی web_app callback شده (MINI_APP_URL بدون https) یا دکمه‌ی قدیمی: https ⇒ دکمه‌ی inline web_app؛ وگرنه راهنمای ادمین
     await sendWebAppLink(bot, chat.id, item);
     return;

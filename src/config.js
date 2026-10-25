@@ -93,6 +93,9 @@ const config = {
 
   // ===== فاز ۳: تنظیمات بات تلگرام =====
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || '',
+  // توکن بازوی بله از @botfather در بله. در صورت تنظیم، کانال عملیاتی سیستم بله است.
+  baleBotToken: process.env.BALE_BOT_TOKEN || '',
+  baleBotUsername: process.env.BALE_BOT_USERNAME || '',
 
   // آدرس Mini App برای دکمه منوی بات (فعلاً placeholder - Mini App واقعی در فاز ۴ ساخته می‌شود).
   // اگر خالی باشد، دکمه Menu تنظیم نمی‌شود.

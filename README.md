@@ -1,6 +1,10 @@
-# Farahonar Telegram Attendance System
+# Farahonar Bale Attendance System
 
-Employee check-in / check-out / break tracking through a **Telegram bot** and a **Telegram Mini App**, with useful-working-hours calculation, leave / mission / remote work, weekly plans and daily task reports, periodic reports, and a **web admin panel**. On-site attendance can only be recorded from inside the company network (outside the network only with an approved mission or approved remote work).
+Employee operations, leave/mission flows, reports, reminders, approvals, inline keyboards and document delivery run through a **Bale bot**, alongside the web admin panel. On-site attendance can only be recorded from inside the company network (outside the network only with an approved mission or approved remote work).
+
+> Set `BALE_BOT_TOKEN` in `.env` (create the bot with `@botfather` in Bale), then run `npm start`. The Bale Mini App uses the official `Bale.WebApp.initData` signature; browser fallback links use a short-lived one-time token and signed session. Telegram `initData` is not required on Bale.
+
+For the employee Mini App on Bale, set `MINI_APP_URL` to the public HTTPS address and configure the same address as the main Mini App in Bale `@botfather`. Inline menu buttons open it with the official Bale WebApp SDK and verified `initData`; the short-lived one-time link is retained only as a browser fallback.
 
 > Note: the bot, Mini App and admin panel UI are in Persian (Farsi), and `docs/DOCUMENTATION.md` is also written in Persian. Section names and UI labels quoted below are translated into English.
 
@@ -85,7 +89,7 @@ SQLite means no separate database service; the whole database is a single file (
 npm install
 copy .env.example .env      # Windows (Linux/macOS: cp .env.example .env), then fill in the values
 npm run migrate             # create/update the database (or npm run init-db for an empty database)
-npm run create-admin -- <telegram_id> "Full Name"   # only once: the first admin
+npm run create-admin -- <bale_id> "Full Name"       # only once: the first admin
 npm start                   # API + bot in one process
 ```
 
@@ -94,7 +98,7 @@ npm start                   # API + bot in one process
 - Health check: `GET /api/health` → `{"status":"ok", ...}`
 
 ### First admin
-The database starts with no users. Send a message to the bot (`/start`); it tells you your numeric Telegram ID. Then run `npm run create-admin -- <id> "Name"` and send `/start` again.
+The database starts with no users. Send `/start` to the Bale bot; it tells you your numeric Bale ID. Then run `npm run create-admin -- <id> "Name"` and send `/start` again.
 
 ### npm scripts
 
@@ -117,7 +121,7 @@ The full reference is in [`PROJECT_STATUS.md`](PROJECT_STATUS.md) (section 7), a
 
 | Variable | Description |
 |---|---|
-| `TELEGRAM_BOT_TOKEN` | Bot token from BotFather |
+| `BALE_BOT_TOKEN` | Bot token from `@botfather` in Bale |
 | `TELEGRAM_BOT_USERNAME` | Bot username without `@` (used for panel login) |
 | `ADMIN_SESSION_SECRET` | **Required in production**; a long random string (`openssl rand -hex 32`) |
 | `ADMIN_SESSION_MAX_AGE_DAYS` | Panel session lifetime |

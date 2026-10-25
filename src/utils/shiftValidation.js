@@ -1,4 +1,4 @@
-// اعتبارسنجی خالص ورودی شیفت (S3-6a) — بدون دیتابیس. خروجی: { ok:true, value } یا { ok:false, error }.
+﻿// اعتبارسنجی خالص ورودی شیفت (S3-6a) — بدون دیتابیس. خروجی: { ok:true, value } یا { ok:false, error }.
 // value با نام‌های camelCase و مقادیر نرمال‌شده است (HH:MM دو رقمی، workDays مرتب و یکتا، overnight بولین).
 
 const FIELDS = ['name', 'startTime', 'endTime', 'graceLateMinutes', 'graceEarlyMinutes', 'workDays', 'overnight', 'maxLunchMinutes', 'fixedLunchDeductMinutes', 'paidBreakCount', 'paidBreakMinutes', 'isUntimed', 'weekdayHours'];

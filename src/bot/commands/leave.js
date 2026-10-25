@@ -275,7 +275,7 @@ async function handleLeaveAttachment(bot, msg, sess) {
   }
   let saved;
   try {
-    saved = await attachmentService.saveStream(bot.getFileStream(meta.fileId), { mime: meta.mime, size: meta.size, originalName: meta.name });
+    saved = await attachmentService.saveStream(await bot.getFileStream(meta.fileId), { mime: meta.mime, size: meta.size, originalName: meta.name });
   } catch (err) {
     saved = { ok: false, error: 'دریافت فایل ناموفق بود. دوباره تلاش کنید.' };
   }

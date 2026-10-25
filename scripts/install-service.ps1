@@ -11,7 +11,7 @@
        دانلود: https://nssm.cc/download
     3. `npm install` در پوشه‌ی پروژه اجرا شده باشد (node_modules ساخته شده باشد).
     4. فایل .env کامل و صحیح پر شده باشد (به‌خصوص ADMIN_SESSION_SECRET,
-       TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_USERNAME, SSL_CERT_PATH/SSL_KEY_PATH).
+       BALE_BOT_TOKEN, BALE_BOT_USERNAME, SSL_CERT_PATH/SSL_KEY_PATH).
     5. این اسکریپت باید با دسترسی Administrator اجرا شود (نصب/راه‌اندازی سرویس ویندوز
        نیاز به دسترسی ادمین دارد).
 

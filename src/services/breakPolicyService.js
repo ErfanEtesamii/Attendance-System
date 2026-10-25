@@ -1,4 +1,4 @@
-// C1 (فاز ۱۲): سیاست «استراحت کوتاه با حقوق» برای نمایش در Mini App (محاسبه‌ی اصلی در engine/computeDay است؛ اینجا فقط خواندن سیاست و
+﻿// C1 (فاز ۱۲): سیاست «استراحت کوتاه با حقوق» برای نمایش در Mini App (محاسبه‌ی اصلی در engine/computeDay است؛ اینجا فقط خواندن سیاست و
 // شماره‌ی استراحت جاری). مقدار شیفتِ مؤثر آن روز (paidBreakCount/paidBreakMinutes؛ null = سراسری) بر تنظیمات سراسری غالب است.
 // پیش‌فرض هر دو ۰ ⇒ enabled=false و UI چیزی نشان نمی‌دهد (رفتار قبلی).
 const settingsRepository = require('../repositories/settingsRepository');

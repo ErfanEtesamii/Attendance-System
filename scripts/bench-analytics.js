@@ -33,6 +33,7 @@ Object.assign(process.env, {
   DB_PATH: path.join(tmp, 'bench.db'),
   ADMIN_SESSION_SECRET: 'bench-session-secret-0123456789abcdef0123456789abcdef', // secret-scan:allow (مقدار ساختگی)
   TELEGRAM_BOT_TOKEN: '',
+  BALE_BOT_TOKEN: '',
   TELEGRAM_BOT_USERNAME: 'bench_bot',
   ALLOWED_NETWORK_CIDR: '127.0.0.0/8,::1/128,192.168.10.0/24',
   TRUST_PROXY: 'false',

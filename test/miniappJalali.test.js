@@ -197,7 +197,8 @@ describe('ساختار صفحه و فایل‌های مشترک (S3-11d)', () =>
     assert.ok(at('/admin/js/jalali.js') > 0);
     assert.ok(at('/admin/js/jalali.js') < at('/admin/js/datepicker.js'));
     assert.ok(at('/admin/js/datepicker.js') < at('/js/app.js'));
-    assert.ok(!/https?:\/\//.test(html.replace(/xmlns="[^"]*"/g, '')), 'بدون CDN/آدرس بیرونی');
+    const htmlWithoutApprovedSdk = html.replace(/xmlns="[^"]*"/g, '').replace('https://tapi.bale.ai/miniapp.js', '');
+    assert.ok(!/https?:\/\//.test(htmlWithoutApprovedSdk), 'بدون CDN/آدرس بیرونی');
   });
 
   test('app.js دیگر به ICU پیش‌فرض fa-IR برای تاریخ تکیه نمی‌کند', () => {

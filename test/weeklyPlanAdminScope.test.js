@@ -1,4 +1,4 @@
-// A1-۱ (فاز ۱۳): مجوز plan.edit_team، اسکوپ نقش، تعیین هفته و قفل در weeklyPlanAdminService + validateTask مشترک.
+﻿// A1-۱ (فاز ۱۳): مجوز plan.edit_team، اسکوپ نقش، تعیین هفته و قفل در weeklyPlanAdminService + validateTask مشترک.
 const { resetDb, cleanup } = require('./helpers/testEnv');
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');

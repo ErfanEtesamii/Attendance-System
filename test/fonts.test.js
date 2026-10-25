@@ -38,7 +38,7 @@ describe('فونت self-hosted (S5-8b)', () => {
     const BAD = /fonts\.googleapis|fonts\.gstatic|cdnjs|jsdelivr|unpkg|cdn\.[a-z]|@import\s+url\(\s*['"]?https?:/i;
     for (const f of files) assert.doesNotMatch(read(f), BAD, f);
     // هر URL مطلق http(s) باید در فهرست مجاز باشد (ویجت ورود تلگرام و پیوندهای مستند داخل متن)
-    const ALLOWED = [/^https:\/\/telegram\.org\//, /^https:\/\/oauth\.telegram\.org/, /^https:\/\/t\.me\//, /^http:\/\/www\.w3\.org\/2000\/svg$/];
+    const ALLOWED = [/^https:\/\/telegram\.org\//, /^https:\/\/oauth\.telegram\.org/, /^https:\/\/t\.me\//, /^https:\/\/tapi\.bale\.ai\/miniapp\.js$/, /^http:\/\/www\.w3\.org\/2000\/svg$/];
     // اسکریپت رسمی تلگرام (self-hosted، vendor) خودش URLهای تلگرام را داخل کد دارد؛ فقط از «بررسی URL مطلق» مستثنا می‌شود (بررسی CDN/فونت بالا روی آن هم اعمال می‌شود)
     const VENDOR = [path.join('public', 'js', 'telegram-web-app.js')];
     for (const f of files.filter((x) => !VENDOR.some((v) => path.normalize(x).endsWith(v)))) {

@@ -21,6 +21,7 @@ const config = require('../config');
 
 const CSP_REPORT_PATH = '/api/csp-report';
 const TELEGRAM_ANCESTORS = ['https://web.telegram.org', 'https://*.telegram.org'];
+const BALE_ANCESTORS = ['https://*.bale.ai'];
 
 function classifyPath(pathname) {
   if (pathname === '/api' || pathname.startsWith('/api/')) return 'api';
@@ -29,7 +30,7 @@ function classifyPath(pathname) {
 }
 
 function frameAncestors(kind) {
-  return kind === 'api' ? "'none'" : ["'self'", ...TELEGRAM_ANCESTORS].join(' ');
+  return kind === 'api' ? "'none'" : ["'self'", ...TELEGRAM_ANCESTORS, ...BALE_ANCESTORS].join(' ');
 }
 
 // بخش‌های کم‌ریسک که همیشه اجباری‌اند (حتی در report-only)
@@ -41,7 +42,7 @@ function buildBaselineCsp(kind) {
 function buildFullCsp(kind, { unsafeEval = false, reportUri = CSP_REPORT_PATH } = {}) {
   if (kind === 'api') return buildBaselineCsp('api');
   const panel = kind === 'panel';
-  const scriptSrc = ["'self'", 'https://telegram.org'];
+  const scriptSrc = ["'self'", 'https://telegram.org', 'https://tapi.bale.ai'];
   if (panel && unsafeEval) scriptSrc.push("'unsafe-eval'");
   const directives = [
     "default-src 'self'",

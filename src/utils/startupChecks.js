@@ -39,8 +39,8 @@ function checkConfig(cfg) {
     );
   }
 
-  if (isProd && !cfg.telegramBotToken) {
-    warnings.push('TELEGRAM_BOT_TOKEN تنظیم نشده؛ بات اجرا نمی‌شود و احراز Mini App/ورود پنل هم کار نمی‌کند.');
+  if (isProd && !cfg.baleBotToken) {
+    warnings.push('BALE_BOT_TOKEN تنظیم نشده؛ بازوی بله اجرا نمی‌شود و احراز Mini App کار نمی‌کند.');
   }
   if (isProd && fs.existsSync(path.resolve(process.cwd(), 'data', 'hourly-rates.json'))) {
     warnings.push('فایل حساس data/hourly-rates.json هنوز روی سرور است؛ پس از ثبت در دیتابیس آن را حذف یا منتقل کنید.');
