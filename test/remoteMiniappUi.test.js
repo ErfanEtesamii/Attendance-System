@@ -65,7 +65,7 @@ describe('کد app.js (R4)', () => {
     assert.doesNotMatch(mod, /(^|[^\w.])(alert|confirm|prompt)\s*\(|window\.(alert|confirm|prompt)/m);
     assert.doesNotMatch(mod, /\.style\b|\son(click|change|submit)\s*=/);
     const assigns = [...mod.matchAll(/innerHTML\s*=/g)].length;
-    assert.equal(assigns, 4, 'فقط کاشی (رشته‌های ثابت) و سه پاک‌سازی: اقدام‌ها، فهرست امروز، فهرست تاریخچه');
+    assert.equal(assigns, 3, 'فقط سه پاک‌سازی: اقدام‌ها، فهرست امروز، فهرست تاریخچه');
     assert.equal((mod.match(/innerHTML = '';/g) || []).length, 3);
   });
   test('متن‌های سرور (یادداشت سرپرست) با textContent درج می‌شوند و کدهای REMOTE_NOT_ALLOWED/OUT_OF_NETWORK از حالت دورکاری بیرون می‌آورند', () => {

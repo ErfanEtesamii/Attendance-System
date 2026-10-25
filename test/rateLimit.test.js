@@ -208,7 +208,7 @@ describe('خطای دیتابیس → fallback به حافظه (نه بازگذ�
       rateLimitRepository.hit = original;
       console.error = origError;
     }
-    assert.ok(logged.some((m) => /rate-limit/.test(String(m))), 'خطا لاگ می‌شود');
+    assert.ok(logged.some((m) => /rate_limiter/.test(String(m))), 'خطا لاگ می‌شود');
   });
 });
 
@@ -228,8 +228,8 @@ describe('HTTP واقعی: لاگین پنل بعد از ۱۰ تلاش ۴۲۹ و
   after(() => { if (server) server.close(); cleanup(); });
 
   test('۱۰ تلاش ناموفق = ۴۰۱ و تلاش یازدهم = ۴۲۹ + audit؛ بعد از بستن/باز کردن دیتابیس هنوز ۴۲۹', async () => {
-    for (let i = 0; i < 10; i += 1) assert.equal((await post('00000000')).status, 401);
-    const blocked = await post('00000000');
+    for (let i = 0; i < 10; i += 1) assert.equal((await post(`1000000${i}`)).status, 401); // هر بار کد متفاوت: فقط سقف IP
+    const blocked = await post('20000000');
     assert.equal(blocked.status, 429);
     assert.ok(blocked.headers.get('retry-after'));
     assert.equal(auditRows().length, 1);
@@ -238,8 +238,8 @@ describe('HTTP واقعی: لاگین پنل بعد از ۱۰ تلاش ۴۲۹ و
     await new Promise((r) => server.close(r));
     closeDb();
     await start();
-    assert.equal((await post('00000000')).status, 429, 'شمارنده بعد از ری‌استارت صفر نشده');
-    assert.equal((await post('00000000')).status, 429);
+    assert.equal((await post('30000000')).status, 429, 'شمارنده بعد از ری‌استارت صفر نشده');
+    assert.equal((await post('40000000')).status, 429);
     assert.equal(auditRows().length, 1, 'ری‌استارت نباید رکورد audit تکراریِ همان پنجره بسازد');
   });
 });

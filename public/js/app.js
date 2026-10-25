@@ -157,7 +157,7 @@
 
   function arrangeToday() {
     const view = $('#view-today'); const actions = $('#today-actions'); const times = $('#today-times-card');
-    if (!view || !actions || !times) return;
+    if (!view || !actions || !times || typeof view.insertBefore !== 'function') return;
     const warnings = ['#late-limit-card', '#plan-gate-banner', '#report-banner', '#urgent-card', '#missing-checkout-card'];
     view.insertBefore(actions, view.querySelector('.earnings-card'));
     warnings.forEach((selector) => { const el = $(selector); if (el) view.insertBefore(el, times); });
@@ -206,7 +206,7 @@
   function renderError(el, err, retry, retryId) {
     el.removeAttribute('aria-busy');
     el.innerHTML = U ? U.errorHtml(err.message, { retryId }) : '<div class="list-item"></div>';
-    if (!U) { el.firstChild.textContent = err.message; return; }
+    if (!U) { if (el.firstChild) el.firstChild.textContent = err.message; return; }
     const b = el.querySelector('#' + retryId);
     if (b) b.addEventListener('click', retry);
   }
@@ -220,17 +220,19 @@
     const method = options.method || 'GET';
     const retries = method === 'GET' ? 2 : 0;
     for (let attempt = 0; ; attempt += 1) try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), Number(options.timeoutMs) || 15000);
-      const res = await fetch('/api/miniapp' + path, {
+      const controller = typeof AbortController === 'function' ? new AbortController() : null;
+      const timer = controller ? setTimeout(() => controller.abort(), Number(options.timeoutMs) || 15000) : null;
+      let res;
+      try {
+        res = await fetch('/api/miniapp' + path, {
       method: options.method || 'GET',
       headers: {
         'Content-Type': 'application/json',
         'X-Telegram-Init-Data': initData,
       },
-        body: options.body ? JSON.stringify(options.body) : undefined, signal: controller.signal,
+        body: options.body ? JSON.stringify(options.body) : undefined, signal: controller ? controller.signal : undefined,
       });
-      clearTimeout(timer);
+      } finally { if (timer) clearTimeout(timer); }
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       if ((options.method || 'GET') !== 'GET') TGI.notify(res.status === 409 ? 'warning' : 'error');
@@ -243,7 +245,8 @@
       return data;
     } catch (cause) {
       const timeout = cause && cause.name === 'AbortError';
-      if (attempt < retries) { await new Promise((resolve) => setTimeout(resolve, attempt ? 3000 : 1000)); continue; }
+      // فقط خطای شبکه/تایم‌اوت تکرار می‌شود؛ پاسخ خطای سرور (۴xx/۵xx) هرگز دوباره پرسیده نمی‌شود
+      if (attempt < retries && !(cause && cause.status)) { await new Promise((resolve) => setTimeout(resolve, attempt ? 3000 : 1000)); continue; }
       if (timeout) { const err = new Error('اتصال ضعیف است. دوباره تلاش کنید.'); err.code = 'TIMEOUT'; throw err; }
       throw cause;
     }
@@ -253,9 +256,12 @@
     const bar = $('#offline-bar'); if (bar) bar.classList.toggle('hidden', !offline);
     $all('#today-actions button, #remote-actions button').forEach((button) => { button.setAttribute('aria-disabled', String(offline)); });
   }
-  window.addEventListener('offline', () => setOffline(true));
-  window.addEventListener('online', () => { setOffline(false); loadToday().catch(() => {}); });
-  setOffline(!navigator.onLine);
+  // محیط‌های embed/test ممکن است رویدادهای پنجره را پیاده‌سازی نکرده باشند.
+  if (typeof window.addEventListener === 'function') {
+    window.addEventListener('offline', () => setOffline(true));
+    window.addEventListener('online', () => { setOffline(false); loadToday().catch(() => {}); });
+  }
+  setOffline(typeof navigator !== 'undefined' && navigator.onLine === false);
 
   // «۱ ساعت و ۱۰ دقیقه» / «۲۵ دقیقه» (بدون «۰ ساعت»)
   function fmtDurationCompact(totalMinutes) {
@@ -611,6 +617,37 @@
       actions.appendChild(no); actions.appendChild(yes); box.appendChild(titleEl); box.appendChild(text); box.appendChild(actions); backdrop.appendChild(box);
       backdrop.addEventListener('click', (event) => { if (event.target === backdrop) finish(false); });
       document.body.appendChild(backdrop); yes.focus();
+    });
+  }
+
+  // فرم کوتاه (جایگزین prompt): فیلدها با label، Esc/انصراف ⇒ null، تأیید ⇒ { [name]: value }
+  function formSheet({ title, message, fields, confirmLabel, cancelLabel = 'انصراف' }) {
+    return new Promise((resolve) => {
+      const backdrop = rEl('div', 'remote-backdrop');
+      const box = rEl('div', 'remote-dialog');
+      box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
+      const titleEl = rEl('h2', 'remote-dialog-title', title);
+      const text = rEl('p', 'remote-dialog-text', message);
+      box.append(titleEl, text);
+      const inputs = {};
+      fields.forEach((f, i) => {
+        const id = `form-sheet-${i}`;
+        const label = rEl('label', 'form-sheet-label', f.label); label.setAttribute('for', id);
+        const input = document.createElement('input');
+        input.id = id; input.type = 'text'; input.value = f.value || ''; input.dir = f.ltr ? 'ltr' : 'auto';
+        if (f.inputmode) input.setAttribute('inputmode', f.inputmode);
+        inputs[f.name] = input; box.append(label, input);
+      });
+      const actions = rEl('div', 'remote-dialog-actions');
+      const finish = (answer) => { document.removeEventListener('keydown', onKey); if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop); resolve(answer); };
+      const yes = rEl('button', 'btn primary', confirmLabel); yes.type = 'button';
+      yes.addEventListener('click', () => finish(Object.fromEntries(Object.entries(inputs).map(([k, el]) => [k, el.value]))));
+      const no = rEl('button', 'btn secondary', cancelLabel); no.type = 'button'; no.addEventListener('click', () => finish(null));
+      const onKey = (event) => { if (event.key === 'Escape') finish(null); }; document.addEventListener('keydown', onKey);
+      actions.append(no, yes); box.appendChild(actions); backdrop.appendChild(box);
+      backdrop.addEventListener('click', (event) => { if (event.target === backdrop) finish(null); });
+      document.body.appendChild(backdrop);
+      const first = Object.values(inputs)[0]; (first || yes).focus();
     });
   }
 
@@ -1106,11 +1143,14 @@
       button.textContent = item.canRequest ? 'اصلاح خروج' : 'درخواست در حال بررسی است';
       button.disabled = !item.canRequest;
       button.addEventListener('click', async () => {
-        const time = window.prompt('ساعت خروج را وارد کنید (مثلاً ۱۷:۳۰):', '17:30');
-        if (time === null) return;
-        const normalized = String(time).replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+        const form = await formSheet({
+          title: 'اصلاح ساعت خروج', message: `ساعت خروج روز ${fmtDate(item.record.record_date)} را وارد کنید.`, confirmLabel: 'ارسال درخواست',
+          fields: [{ name: 'time', label: 'ساعت خروج (مثلاً ۱۷:۳۰)', value: '17:30', ltr: true, inputmode: 'numeric' }, { name: 'note', label: 'توضیح کوتاه (اختیاری)' }],
+        });
+        if (!form) return;
+        const normalized = String(form.time).trim().replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
         if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(normalized)) { showToast('ساعت خروج را به شکل ۱۷:۳۰ وارد کنید.', true); return; }
-        const note = window.prompt('توضیح کوتاه (اختیاری):', '') || '';
+        const note = String(form.note || '').trim();
         try {
           await api(`/missing-checkout/${item.record.id}`, { method: 'POST', body: { checkoutTime: normalized, note } });
           showToast('درخواست اصلاح خروج برای مدیر ارسال شد.');
@@ -1264,7 +1304,7 @@
     renderLoading(list, 'list');
     try {
       const records = await api('/history?days=30');
-      const oldLegend = $('#view-history .history-legend'); if (oldLegend) oldLegend.remove();
+      const oldLegend = $('#view-history .history-legend'); if (oldLegend && typeof oldLegend.remove === 'function') oldLegend.remove();
       list.removeAttribute('aria-busy');
       list.innerHTML = '';
       const byDate = new Map(records.map((r) => [r.record_date, r]));
@@ -1288,7 +1328,7 @@
         day.addEventListener('click', () => renderHistoryDetail(record, date));
         list.appendChild(day);
       }
-      const legend = document.createElement('div'); legend.className = 'history-legend'; legend.textContent = 'شدت رنگ = ساعت مفید'; list.parentNode.insertBefore(legend, list.nextSibling);
+      const legend = document.createElement('div'); legend.className = 'history-legend'; legend.textContent = 'شدت رنگ = ساعت مفید'; if (list.parentNode && typeof list.parentNode.insertBefore === 'function') list.parentNode.insertBefore(legend, list.nextSibling);
       const detail = $('#history-detail');
       if (detail) detail.classList.add('hidden');
     } catch (err) {
@@ -1500,7 +1540,7 @@
         bottom.className = 'li-bottom';
         const when = document.createElement('span');
         when.textContent = leaveWhenText(it);
-        top.append(kind, badge); bottom.appendChild(when); el.append(top, bottom);
+        top.appendChild(kind); top.appendChild(badge); bottom.appendChild(when); el.appendChild(top); el.appendChild(bottom);
         list.appendChild(el);
       });
     } catch (err) {

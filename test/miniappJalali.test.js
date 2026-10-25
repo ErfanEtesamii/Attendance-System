@@ -101,7 +101,8 @@ describe('نمایش شمسی در Mini App (S3-11d)', () => {
     });
     click(env.navBtns[1]);
     await flush();
-    const html1 = env.$('#leave-list').children.map((c) => c.innerHTML).join('');
+    const allText = (node) => `${node.innerHTML || ''}${node.textContent || ''}${(node.children || []).map(allText).join('')}`; // DOM ساختگی متن عنصرهای تو در تو را جمع نمی‌کند
+    const html1 = env.$('#leave-list').children.map(allText).join('');
     assert.match(html1, /۱۵ مهر ۱۴۰۵ تا ۱۷ مهر ۱۴۰۵/);
     assert.match(html1, /مأموریت/);
   });

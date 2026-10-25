@@ -202,7 +202,9 @@ describe('گیت خروجِ گزارش روزانه — API (D7-الف)', { skip
     assert.ok(ok.json.check_out_time);
     assert.deepEqual(ok.json.reportSaved, { date: todayDateString(), answers: 2, extra: 1 });
     assert.equal(logCount(u), 3);
-    assert.equal((await S.call(u, 'POST', 'check-out', body)).status, 400);
+    const dup = await S.call(u, 'POST', 'check-out', body);
+    assert.equal(dup.status, 200);
+    assert.equal(dup.json.alreadyDone, true);
     assert.equal(logCount(u), 3);
   });
 

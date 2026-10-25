@@ -162,7 +162,7 @@ describe('S2-1b — سیاست نگهداری بک‌آپ', () => {
       cwd: path.join(__dirname, '..'), encoding: 'utf8',
       env: { ...process.env, NODE_ENV: 'test', BACKUP_KEEP_DAILY: '0', BACKUP_KEEP_MONTHLY: 'abc' },
     });
-    assert.deepEqual(JSON.parse(out.stdout), { keepDaily: 14, keepMonthly: 6 });
+    assert.deepEqual(JSON.parse(out.stdout), { keepDaily: 14, keepMonthly: 6, copyDir: '' });
   });
 
   test('یکپارچه با Job: runDailyBackup کپی ماهانه می‌سازد و قدیمی‌ها را پاک می‌کند', async () => {

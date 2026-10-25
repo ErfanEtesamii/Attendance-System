@@ -87,7 +87,7 @@ describe('کارت کارکرد ماهانه — API Mini App', { skip: hasDeps 
 
     settingsRepository.update({ showEarningsCard: true });
     const enabled = (await S.call(userA, 'GET', 'today')).json.earnings;
-    assert.deepEqual(Object.keys(enabled).sort(), ['amountToman', 'enabled', 'monthLabel', 'usefulMinutes']);
+    assert.deepEqual(Object.keys(enabled).sort(), ['amountToman', 'enabled', 'excludedDays', 'monthLabel', 'usefulMinutes']);
     assert.equal(enabled.enabled, true);
     assert.equal(enabled.usefulMinutes, 0);
     assert.equal(enabled.amountToman, 0);
@@ -104,7 +104,7 @@ test('رابط: کارت با مقدار نمایش داده می‌شود و ح
   const app = fs.readFileSync(path.join(root, 'public', 'js', 'app.js'), 'utf8');
   const css = fs.readFileSync(path.join(root, 'public', 'css', 'style.css'), 'utf8');
   assert.match(html, /id="earnings-card"/);
-  assert.match(html, /💰 کارکرد این ماه/);
+  assert.match(html, /کارکرد این ماه/);
   assert.match(app, /function renderEarnings\(earnings\)/);
   assert.match(app, /card\.classList\.add\('hidden'\)/);
   assert.match(app, /toLocaleString\('fa-IR'\)/);

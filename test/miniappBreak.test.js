@@ -56,6 +56,11 @@ describe('Mini App ثبت استراحت (A2) — سرور', { skip: hasDeps ? f
   test('شروع دوم هنگام استراحت باز ⇒ ۴۰۰؛ بدون ورود ⇒ ۴۰۰', async () => {
     const { u } = await checkedIn();
     await S.call(u, 'POST', 'break/start', { breakType: 'lunch' });
+    const dup = await S.call(u, 'POST', 'break/start', { breakType: 'short_break' });
+    assert.equal(dup.status, 200);
+    assert.equal(dup.json.alreadyDone, true);
+    assert.equal(dup.json.break_type, 'lunch', 'استراحت تکراری ساخته نمی‌شود');
+    require('../src/db/connection').getDb().prepare('UPDATE break_records SET start_time = ? WHERE user_id = ?').run(new Date(Date.now() - 5 * 60 * 1000).toISOString(), u.id);
     assert.equal((await S.call(u, 'POST', 'break/start', { breakType: 'short_break' })).status, 400);
     const other = F.makeUser();
     assert.equal((await S.call(other, 'POST', 'break/start', { breakType: 'lunch' })).status, 400);

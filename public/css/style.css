@@ -1111,3 +1111,6 @@ body { padding-bottom: max(env(safe-area-inset-bottom, 0px), var(--tg-safe-botto
 .card { padding: var(--space-4); }
 .status-card, .earnings-card { border-radius: var(--radius); }
 .action-tile { box-shadow: var(--shadow); }
+
+.form-sheet-label { display: block; margin-block: var(--space-2) 4px; font-size: var(--fs-sm, 14px); color: var(--hint); }
+.remote-dialog input[type="text"] { width: 100%; min-height: 48px; padding-inline: var(--space-3, 12px); border: 1px solid var(--border); border-radius: 12px; background: var(--field); color: var(--text); font: inherit; }

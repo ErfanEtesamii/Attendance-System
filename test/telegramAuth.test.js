@@ -53,7 +53,7 @@ describe('initData (Mini App)', () => {
     assert.equal(verifyInitData(signInitData({ auth_date: 'abc', user }), TOKEN), null);
   });
   test('منقضی (بیش از ۲۴ ساعت) و تاریخ آینده‌ی دور رد می‌شود؛ حاشیه ۶۰ ثانیه ساعت مجاز', () => {
-    assert.equal(verifyInitData(signInitData({ auth_date: String(nowSec() - 25 * 3600), user }), TOKEN), null);
+    assert.deepEqual(verifyInitData(signInitData({ auth_date: String(nowSec() - 25 * 3600), user }), TOKEN), { expired: true });
     assert.equal(verifyInitData(signInitData({ auth_date: String(nowSec() + 600), user }), TOKEN), null);
     assert.ok(verifyInitData(signInitData({ auth_date: String(nowSec() + 20), user }), TOKEN));
   });

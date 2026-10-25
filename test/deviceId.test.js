@@ -177,8 +177,13 @@ describe('ورود/خروج Mini App با device_id (HTTP)', { skip: hasDeps ? f
     assert.ok(t >= before - 1000 && t <= after + 1000, 'زمان ورود باید زمان سرور باشد');
     assert.notEqual(row(u.id).check_in_ip, '1.2.3.4');
     assert.equal(row(u.id).status, 'normal');
+    const dupQuick = await post(u, 'check-in', { deviceId: DEV_B });
+    assert.equal(dupQuick.status, 200, 'دبل‌کلیک تا ۲ دقیقه idempotent است');
+    assert.equal(dupQuick.json.alreadyDone, true);
+    assert.equal(row(u.id).check_in_device, DEV_A, 'ثبت تکراری device را عوض نمی‌کند');
+    require('../src/db/connection').getDb().prepare('UPDATE attendance_records SET check_in_time = ? WHERE user_id = ?').run(new Date(Date.now() - 5 * 60 * 1000).toISOString(), u.id);
     const dup = await post(u, 'check-in', { deviceId: DEV_B });
-    assert.equal(dup.status, 400, 'ورود دوم همان روز مثل قبل رد می‌شود');
+    assert.equal(dup.status, 400, 'ورود دوم همان روز بعد از ۲ دقیقه مثل قبل رد می‌شود');
     assert.equal(row(u.id).check_in_device, DEV_A, 'ورود رد‌شده device را عوض نمی‌کند');
   });
 

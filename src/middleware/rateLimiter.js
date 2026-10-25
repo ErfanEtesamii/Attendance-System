@@ -172,6 +172,7 @@ function loginKey(value) {
   return crypto.createHash('sha256').update(String(value || 'missing')).digest('hex').slice(0, 16);
 }
 
+// فقط تلاش‌های ناموفق شمرده می‌شوند؛ تلاش پنجم (هر کد) و دهم (هر IP) هنوز ۴۰۱ می‌گیرد و بعد از آن ۴۲۹.
 function failedLoginLimiter(req, res, claimedIdentity) {
   const now = Date.now();
   ensureCleanupTimer();
@@ -179,10 +180,10 @@ function failedLoginLimiter(req, res, claimedIdentity) {
   const identityHit = defaultStore.hit('admin-login-identity', key, 15 * 60 * 1000, now);
   const ipKey = String(req.ip || 'unknown');
   const ipHit = defaultStore.hit('admin-login-ip', ipKey, 15 * 60 * 1000, now);
-  const blocked = identityHit.count >= 5 ? { hit: identityHit, name: 'admin-login-identity', key } : ipHit.count >= 10 ? { hit: ipHit, name: 'admin-login-ip', key: ipKey } : null;
+  const blocked = identityHit.count > 5 ? { hit: identityHit, name: 'admin-login-identity', key } : ipHit.count > 10 ? { hit: ipHit, name: 'admin-login-ip', key: ipKey } : null;
   if (!blocked) return false;
   const retryAfterSeconds = Math.max(1, Math.ceil((blocked.hit.resetAt - now) / 1000));
-  if (blocked.hit.count === (blocked.name === 'admin-login-identity' ? 5 : 10)) maybeAudit({ limiter: blocked.name, key: blocked.key, req, resetAt: blocked.hit.resetAt, count: blocked.hit.count, now });
+  if (blocked.hit.count === (blocked.name === 'admin-login-identity' ? 6 : 11)) maybeAudit({ limiter: blocked.name, key: blocked.key, req, resetAt: blocked.hit.resetAt, count: blocked.hit.count, now });
   res.set('Retry-After', String(retryAfterSeconds));
   res.status(429).json({ error: 'تعداد تلاش‌های ورود بیش از حد مجاز است. لطفاً ۱۵ دقیقه دیگر دوباره تلاش کنید.' });
   return true;

@@ -190,7 +190,9 @@ describe('گیت برنامه‌ی هفتگی — API (D5)', { skip: hasDeps ? f
     assert.equal(ok.status, 200, JSON.stringify(ok.json));
     assert.ok(ok.json.check_out_time);
     assert.equal(ok.json.planReminder, undefined);
-    assert.equal((await S.call(u, 'POST', 'check-out', {})).status, 400); // دبل‌کلیک
+    const again = await S.call(u, 'POST', 'check-out', {}); // دبل‌کلیک: ثبت مجدد نمی‌شود، پاسخ idempotent است
+    assert.equal(again.status, 200);
+    assert.equal(again.json.alreadyDone, true);
   });
 
   test('enforce: پیش‌نویس با تسک سرپرست خروج را ثبت می‌کند، بدون ارسال نهایی کارمند', async () => {

@@ -25,6 +25,7 @@ describe('reportExportService: شکل شیت‌ها (با موتور/مخزن س
       { id: 11, user_id: 1, record_date: '2026-08-03', check_in_time: null, check_out_time: null, status: 'leave' },
     ];
     stub('src/repositories/attendanceRepository.js', { listByUserIdsAndRange: (ids) => records.filter((r) => ids.includes(r.user_id)) });
+    stub('src/repositories/remoteWorkRepository.js', { listClosedInRange: () => [] });
     stub('src/repositories/breakRepository.js', { totalBreakMinutes: (id) => (id === 12 ? 30 : 0) });
     stub('src/repositories/leaveRepository.js', {
       listInRangeWithType: (ids) => [
@@ -60,9 +61,9 @@ describe('reportExportService: شکل شیت‌ها (با موتور/مخزن س
 
   const users = [{ id: 1, full_name: 'الف', personnel_code: 'P1', department: 'فنی' }, { id: 2, full_name: 'ب', personnel_code: null, department: null }];
 
-  test('چهار شیت با نام ثابت و ترتیب مشخص؛ هر ردیف به‌اندازه‌ی سرستون', () => {
+  test('پنج شیت با نام ثابت و ترتیب مشخص؛ هر ردیف به‌اندازه‌ی سرستون', () => {
     const sheets = svc.buildEmployeeReportSheets({ users, from: '2026-08-01', to: '2026-08-31' });
-    assert.deepEqual(sheets.map((s) => s.name), ['خلاصه کارمند', 'ریز روزانه', 'مرخصی و مأموریت', 'اضافه‌کاری']);
+    assert.deepEqual(sheets.map((s) => s.name), ['خلاصه کارمند', 'ریز روزانه', 'مرخصی و مأموریت', 'اضافه‌کاری', 'دورکاری']);
     for (const s of sheets) {
       assert.ok(s.headers.length > 3);
       for (const r of s.rows) assert.equal(r.length, s.headers.length, `${s.name}: ${JSON.stringify(r)}`);
@@ -135,9 +136,9 @@ describe('reportExportService: شکل شیت‌ها (با موتور/مخزن س
     assert.equal(forUser1[1][h.indexOf('اضافه‌کاری (ساعت:دقیقه)')], '01:00');
   });
 
-  test('بدون کارمند ⇒ چهار شیت خالی (فقط سرستون)', () => {
+  test('بدون کارمند ⇒ پنج شیت خالی (فقط سرستون)', () => {
     const sheets = svc.buildEmployeeReportSheets({ users: [], from: '2026-08-01', to: '2026-08-31' });
-    assert.equal(sheets.length, 4);
+    assert.equal(sheets.length, 5);
     assert.ok(sheets.every((s) => s.rows.length === 0));
   });
 });
@@ -196,7 +197,7 @@ describe('route گزارش و خروجی‌ها: اسکوپ، CSV قدیمی، a
     assert.equal((await get(`/api/admin/reports/export?${RANGE}&format=xlsx`, employeeCookie)).status, 403);
   });
 
-  test('?format=xlsx: چهار شیت (یا fallback CSV بدون exceljs) و audit با قالب واقعاً تحویل‌شده', async () => {
+  test('?format=xlsx: پنج شیت (یا fallback CSV بدون exceljs) و audit با قالب واقعاً تحویل‌شده', async () => {
     const before = auditRows('report_exported').length;
     const res = await get(`/api/admin/reports/export?${RANGE}&format=xlsx`, managerCookie);
     assert.equal(res.status, 200);
@@ -209,13 +210,13 @@ describe('route گزارش و خروجی‌ها: اسکوپ، CSV قدیمی، a
       const ExcelJS = require('exceljs');
       const wb = new ExcelJS.Workbook();
       await wb.xlsx.load(Buffer.from(await res.arrayBuffer()));
-      assert.deepEqual(wb.worksheets.map((s) => s.name), ['خلاصه کارمند', 'ریز روزانه', 'مرخصی و مأموریت', 'اضافه‌کاری']);
+      assert.deepEqual(wb.worksheets.map((s) => s.name), ['خلاصه کارمند', 'ریز روزانه', 'مرخصی و مأموریت', 'اضافه‌کاری', 'دورکاری']);
       const summary = wb.worksheets[0];
       assert.equal(summary.rowCount, 2, 'سرستون + فقط کارمند تیم سرپرست');
       assert.equal(summary.getCell(2, 1).value, "'=cmd|calc");
       assert.equal(wb.worksheets[2].getCell(2, wb.worksheets[2].columnCount).value, "'@evil");
       assert.equal(details.format, 'xlsx');
-      assert.equal(details.sheets.length, 4);
+      assert.equal(details.sheets.length, 5);
     } else {
       assert.equal(res.headers.get('x-export-fallback'), 'csv');
       assert.equal(details.format, 'csv');
