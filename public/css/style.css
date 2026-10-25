@@ -101,7 +101,7 @@ button[aria-disabled="true"] { opacity: .55; pointer-events: none; }
 }
 .view { animation: view-in .15s ease-out; }.view.hidden { animation: none; }
 @keyframes view-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-.sticky-status { position: sticky; top: 0; z-index: 30; min-height: 40px; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 7px 12px; background: var(--card-bg); border-bottom: 1px solid var(--border); color: var(--text); font-size: var(--fs-xs); box-shadow: var(--shadow-1); }
+.sticky-status { position: sticky; top: 0; z-index: 30; min-height: 40px; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 7px 12px; background: var(--card-bg); border-bottom: 1px solid var(--border); color: var(--text); font-size: var(--fs-xs); box-shadow: var(--shadow-1); box-sizing: border-box; height: 40px; min-height: 0; margin-bottom: -40px; /* بدون فضای چیدمانی: ظاهر/پنهان شدنش ارتفاع صفحه را عوض نکند (حلقه‌ی لرزش اسکرول) */ }
 .sticky-status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--green-deco, var(--green)); }
 .actions .action-tile { min-height: 48px; }.action-tile.is-primary { min-height: 56px; }
 .action-tile[aria-busy="true"] .tile-icon { animation: button-spin .7s linear infinite; } @keyframes button-spin { to { transform: rotate(360deg); } }
