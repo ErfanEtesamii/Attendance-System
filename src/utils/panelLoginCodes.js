@@ -9,6 +9,7 @@ const CODE_TTL_MS = 3 * 60 * 1000;
 const LINK_TTL_MS = 5 * 60 * 1000;
 const codes = new Map(); // sha256(code)  -> { userId, expiresAt }
 const links = new Map(); // sha256(token) -> { userId, expiresAt }
+const miniAppLinks = new Map(); // لینک یک‌بارمصرف بله برای ایجاد نشست Mini App
 
 const hash = (v) => crypto.createHash('sha256').update(String(v)).digest('hex');
 
@@ -65,4 +66,17 @@ function consumeLinkToken(token) {
   return /^[A-Za-z0-9_-]{20,64}$/.test(t) ? consume(links, t) : null;
 }
 
-module.exports = { issueCode, consumeCode, consumeCodeForUser, issueLinkToken, consumeLinkToken };
+function issueMiniAppToken(userId) {
+  const now = Date.now();
+  cleanup(miniAppLinks, now);
+  const token = crypto.randomBytes(24).toString('base64url');
+  miniAppLinks.set(hash(token), { userId, expiresAt: now + LINK_TTL_MS });
+  return { token, expiresInSeconds: LINK_TTL_MS / 1000 };
+}
+
+function consumeMiniAppToken(token) {
+  const t = String(token || '').trim();
+  return /^[A-Za-z0-9_-]{20,64}$/.test(t) ? consume(miniAppLinks, t) : null;
+}
+
+module.exports = { issueCode, consumeCode, consumeCodeForUser, issueLinkToken, consumeLinkToken, issueMiniAppToken, consumeMiniAppToken };

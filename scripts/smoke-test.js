@@ -19,6 +19,7 @@ const env = {
   DB_PATH: path.join(tmp, 'smoke.db'),
   ADMIN_SESSION_SECRET: SECRET,
   TELEGRAM_BOT_TOKEN: '',
+  BALE_BOT_TOKEN: '',
   SSL_CERT_PATH: '',
   SSL_KEY_PATH: '',
 };

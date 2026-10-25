@@ -1,4 +1,4 @@
-// S3-2b: موتور خالص محاسبه‌ی یک روز کاری.
+﻿// S3-2b: موتور خالص محاسبه‌ی یک روز کاری.
 // computeDay({ record, breaks, settings, now, timezone }) دقیقاً همان منطق فعلی workHours.summarizeRecord را می‌دهد
 // (بدون تغییر عددی)، با این تفاوت که «ساعت دیواری» با timezone صریح (src/utils/time.js) حساب می‌شود، نه ساعت سیستم‌عامل.
 //

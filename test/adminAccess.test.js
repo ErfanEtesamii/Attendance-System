@@ -1,4 +1,4 @@
-// ماتریس دسترسی سطح middleware (بدون نیاز به express): requireAdminAuth / requireStaff / requireFullAdmin / لیست سفید کارمند.
+﻿// ماتریس دسترسی سطح middleware (بدون نیاز به express): requireAdminAuth / requireStaff / requireFullAdmin / لیست سفید کارمند.
 // ماتریس سطح route واقعی در test/routesAccess.test.js است (نیاز به express نصب‌شده).
 const { resetDb, cleanup } = require('./helpers/testEnv');
 const { test, describe, beforeEach, after } = require('node:test');

@@ -1,4 +1,4 @@
-// شیفت‌های کاری (S3-6a: ساختار و CRUD). موتور محاسبه از S3-6b شیفت کاربر را با findByUserId می‌خواند (dayService).
+﻿// شیفت‌های کاری (S3-6a: ساختار و CRUD). موتور محاسبه از S3-6b شیفت کاربر را با findByUserId می‌خواند (dayService).
 // خروجی همه‌ی توابع «شیء نرمال‌شده‌ی camelCase» است؛ work_days ذخیره‌شده‌ی خراب (JSON نامعتبر) ⇒ آرایه‌ی خالی، نه exception.
 
 const { getDb } = require('../db/connection');

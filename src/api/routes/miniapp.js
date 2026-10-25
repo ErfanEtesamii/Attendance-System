@@ -1,4 +1,4 @@
-// مسیرهای API مخصوص Telegram Mini App (فاز ۴ سند پروژه).
+﻿// مسیرهای API مخصوص Telegram Mini App (فاز ۴ سند پروژه).
 //
 // تفاوت کلیدی با مسیرهای قدیمی /api/attendance/*: در آنجا userId مستقیم از body خوانده می‌شد
 // (بدون اثبات هویت واقعی). اینجا تمام مسیرها ابتدا از middleware `telegramAuth` عبور می‌کنند که
@@ -9,6 +9,12 @@ const express = require('express');
 const router = express.Router();
 
 const { telegramAuth } = require('../../middleware/telegramAuth');
+const { miniAppAuth } = require('../../middleware/miniAppAuth');
+const { baleMiniAppAuth } = require('../../middleware/baleMiniAppAuth');
+const { consumeMiniAppToken } = require('../../utils/panelLoginCodes');
+const { createSessionToken } = require('../../utils/session');
+const usersRepository = require('../../repositories/usersRepository');
+const config = require('../../config');
 const { networkRestriction, getRemoteAccess } = require('../../middleware/networkRestriction');
 const missionNowService = require('../../services/missionNowService');
 const pendingMissionService = require('../../services/pendingMissionService');
@@ -55,7 +61,24 @@ const justHappened = (value) => {
 };
 
 // همه مسیرهای زیر /miniapp ابتدا باید هویت تلگرام معتبر داشته باشند
-router.use('/miniapp', telegramAuth);
+const baleMiniAppLoginLimiter = createRateLimiter({
+  name: 'bale-miniapp-login', windowMs: 60 * 1000, max: 10,
+  message: 'تعداد تلاش‌های ورود زیاد است. کمی بعد دوباره تلاش کنید.',
+});
+
+router.post('/miniapp/auth/bale', baleMiniAppLoginLimiter, (req, res) => {
+  const userId = consumeMiniAppToken(req.body?.token);
+  const user = userId ? usersRepository.findById(userId) : null;
+  if (!user || !user.is_active) return res.status(401).json({ error: 'لینک مینی‌اپ نامعتبر یا منقضی شده است. از بات بله دوباره وارد شوید.' });
+  const session = createSessionToken({ userId: user.id, kind: 'bale_miniapp' }, config.adminSessionSecret, 8 * 60 * 60);
+  res.json({ session, user: { id: user.id, fullName: user.full_name } });
+});
+
+router.use('/miniapp', (req, res, next) => {
+  if (req.get('x-bale-init-data')) return baleMiniAppAuth(req, res, next);
+  if (req.get('x-miniapp-session')) return miniAppAuth(req, res, next);
+  return telegramAuth(req, res, next);
+});
 
 // ریست برنامه (B2): هنگام نگهداری، ثبت تردد 503 می‌گیرد (قبل از چک شبکه/rate limit)
 router.use('/miniapp/check-in', maintenanceGate);

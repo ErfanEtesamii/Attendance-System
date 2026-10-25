@@ -5,13 +5,13 @@
 const config = require('../config');
 
 let botInstance;
-let TelegramBot;
+let BaleBot;
 
 function getNotifierBot() {
-  if (!config.telegramBotToken) return null;
+  if (!config.baleBotToken) return null;
   if (!botInstance) {
-    TelegramBot = TelegramBot || require('node-telegram-bot-api');
-    botInstance = new TelegramBot(config.telegramBotToken, { polling: false });
+    BaleBot = BaleBot || require('./baleBot');
+    botInstance = new BaleBot(config.baleBotToken, { polling: false });
   }
   return botInstance;
 }

@@ -29,7 +29,7 @@ describe('CSP — ساخت سیاست (تابع خالص)', () => {
     for (const kind of ['panel', 'miniapp']) {
       const csp = buildFullCsp(kind);
       const script = csp.split('; ').find((d) => d.startsWith('script-src '));
-      assert.equal(script, "script-src 'self' https://telegram.org", kind);
+      assert.equal(script, "script-src 'self' https://telegram.org https://tapi.bale.ai", kind);
       assert.ok(!csp.includes("'unsafe-eval'"));
       assert.ok(csp.includes("object-src 'none'"));
       assert.ok(csp.includes("base-uri 'self'"));
@@ -38,7 +38,7 @@ describe('CSP — ساخت سیاست (تابع خالص)', () => {
   });
 
   test('unsafe-eval فقط برای پنل و فقط با پرچم صریح', () => {
-    assert.ok(buildFullCsp('panel', { unsafeEval: true }).includes("script-src 'self' https://telegram.org 'unsafe-eval'"));
+    assert.ok(buildFullCsp('panel', { unsafeEval: true }).includes("script-src 'self' https://telegram.org https://tapi.bale.ai 'unsafe-eval'"));
     assert.ok(!buildFullCsp('miniapp', { unsafeEval: true }).includes('unsafe-eval'));
   });
 

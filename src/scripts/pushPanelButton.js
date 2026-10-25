@@ -6,7 +6,7 @@
 //   node src/scripts/pushPanelButton.js            # فقط فهرست گیرنده‌ها (چیزی ارسال نمی‌شود)
 //   node src/scripts/pushPanelButton.js --apply    # ارسال واقعی
 
-const TelegramBot = require('node-telegram-bot-api');
+const BaleBot = require('../bot/baleBot');
 const config = require('../config');
 const usersRepository = require('../repositories/usersRepository');
 const { persistentKeyboard } = require('../bot/panelLinks');
@@ -26,12 +26,12 @@ async function main() {
     console.log('\n(پیش‌نمایش) چیزی ارسال نشد. برای ارسال: node src/scripts/pushPanelButton.js --apply');
     return;
   }
-  if (!config.telegramBotToken) {
-    console.error('❌ TELEGRAM_BOT_TOKEN تنظیم نشده است.');
+  if (!config.baleBotToken) {
+    console.error('❌ BALE_BOT_TOKEN تنظیم نشده است.');
     process.exit(1);
   }
 
-  const bot = new TelegramBot(config.telegramBotToken, { polling: false });
+  const bot = new BaleBot(config.baleBotToken, { polling: false });
   let sent = 0;
   let failed = 0;
   for (const u of users) {
