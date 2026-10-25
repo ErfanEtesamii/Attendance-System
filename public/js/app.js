@@ -168,7 +168,7 @@
     const source = $('#today-status-card'); const target = $('#sticky-status'); if (!source || !target || !window.IntersectionObserver) return;
     const update = () => { const label = $('#status-label'); const timer = $('#timer'); target.textContent = `${label ? label.textContent : 'وضعیت'} · ${timer ? timer.textContent : ''}`; };
     new MutationObserver(update).observe(source, { childList: true, subtree: true, characterData: true }); update();
-    new IntersectionObserver(([entry]) => target.classList.toggle('hidden', entry.isIntersecting), { threshold: .1 }).observe(source);
+    new IntersectionObserver(([entry]) => target.classList.toggle('hidden', entry.isIntersecting || state.currentView !== 'today'), { threshold: .1 }).observe(source); // فقط در نمای «امروز» (در نماهای دیگر کارت وضعیت پنهان است و نوار روی محتوا می‌افتاد)
   }
 
   function applyAccessibility() {
