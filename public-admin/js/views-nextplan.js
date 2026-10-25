@@ -48,6 +48,7 @@
     const managerConfigured = e.managerConfigured ? AP.badge('approved', 'تنظیم‌شده توسط سرپرست', true) : '';
     const warn = e.needsAttention ? '<span class="np-warn"><span aria-hidden="true">⚠</span><span class="sr-only">نیازمند توجه</span></span>' : '';
     return `<li><button type="button" class="np-emp${e.id === selectedId ? ' is-active' : ''}" data-np-user="${esc(e.id)}"${e.id === selectedId ? ' aria-current="true"' : ''}>
+      ${AP.avatar ? AP.avatar(e.fullName, 'sm') : ''}
       <span class="np-emp-name">${esc(e.fullName)}</span>
       <span class="np-emp-dep muted">${esc(e.department || 'بدون دپارتمان')}</span>
       <span class="np-emp-tags">${AP.badge(cls, label, true)}${managerConfigured}${warn}</span>
@@ -61,7 +62,11 @@
   }
 
   function sideHtml(ov, selectedId) {
+    const cnt = (k) => ov.employees.filter((e) => e.planStatus === k).length;
+    const fa = (n) => String(n).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]);
+    const stats = `<div class="np-stats" aria-label="خلاصه‌ی وضعیت برنامه‌ها"><span class="np-stat is-ok"><b>${fa(cnt('submitted'))}</b>ثبت‌شده</span><span class="np-stat is-draft"><b>${fa(cnt('draft'))}</b>پیش‌نویس</span><span class="np-stat is-none"><b>${fa(cnt('none'))}</b>ثبت نشده</span></div>`;
     return `<aside class="card np-side" aria-label="انتخاب کارمند">
+      ${stats}
       <label class="sr-only" for="np-search">جست‌وجوی کارمند</label>
       <input id="np-search" type="search" aria-label="جست‌وجوی کارمند" placeholder="جست‌وجوی نام یا دپارتمان…" value="${esc(ui.search)}" autocomplete="off" />
       <label class="check np-only"><input type="checkbox" id="np-only-none"${ui.onlyNone ? ' checked' : ''} /> فقط بدون برنامه</label>
@@ -77,7 +82,7 @@
     </div>`;
   }
 
-  const emptyBox = (msg) => `<div class="card"><div class="empty" role="status">${icon('employees')}${esc(msg)}</div></div>`;
+  const emptyBox = (msg) => `<div class="card np-placeholder"><div class="empty" role="status">${icon('employees')}<strong>برنامه‌ای انتخاب نشده</strong><span>${esc(msg)}</span></div></div>`;
 
   function mainHtml(ov, userId, r, err) {
     if (!userId) return emptyBox('برای دیدن برنامه‌ی هفته، یک کارمند را از فهرست انتخاب کنید.');
