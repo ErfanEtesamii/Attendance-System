@@ -27,7 +27,8 @@
       && (!q || `${e.fullName} ${e.department || ''}`.toLowerCase().includes(q)));
   }
 
-  function editBadge(plan) {
+  function editBadge(plan, isSelf) {
+    if (isSelf) return AP.badge('', 'فقط‌خواندنی (برنامه‌ی خودتان؛ از Mini App ویرایش کنید)', true);
     if (plan.editable) return AP.badge('approved', '✎ قابل ویرایش', true);
     const label = LOCK_LABEL[plan.lockReason] || 'فقط‌خواندنی (بدون مجوز ویرایش)';
     return AP.badge('', label, true);
@@ -49,7 +50,7 @@
     const warn = e.needsAttention ? '<span class="np-warn"><span aria-hidden="true">⚠</span><span class="sr-only">نیازمند توجه</span></span>' : '';
     return `<li><button type="button" class="np-emp${e.id === selectedId ? ' is-active' : ''}" data-np-user="${esc(e.id)}"${e.id === selectedId ? ' aria-current="true"' : ''}>
       ${AP.avatar ? AP.avatar(e.fullName, 'sm') : ''}
-      <span class="np-emp-name">${esc(e.fullName)}</span>
+      <span class="np-emp-name">${esc(e.fullName)}${e.isSelf ? ' <span class="np-self">شما</span>' : ''}</span>
       <span class="np-emp-dep muted">${esc(e.department || 'بدون دپارتمان')}</span>
       <span class="np-emp-tags">${AP.badge(cls, label, true)}${managerConfigured}${warn}</span>
     </button></li>`;
@@ -104,7 +105,7 @@
             ${AP.badge('', me.department || 'بدون دپارتمان')}
             ${AP.badge(cls, label, true)}
             ${plan.managerConfigured ? AP.badge('approved', 'تنظیم‌شده توسط سرپرست', true) : ''}
-            ${editBadge(plan)}
+            ${editBadge(plan, !!me.isSelf)}
           </div>
           <div class="muted np-shift">شیفت مؤثر: ${esc(shiftText(r.days)).replace(/\((\d{1,2}:\d{2})–(\d{1,2}:\d{2})\)/, '(<bdi dir="ltr">$1–$2</bdi>)')}</div>
         </div>

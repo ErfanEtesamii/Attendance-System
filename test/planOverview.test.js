@@ -50,7 +50,11 @@ describe('فهرست کارمندان با وضعیت برنامه‌ی هفته
     assert.equal(r.isNextWeek, true);
     assert.equal(r.weekEnd, '2026-10-02');
     assert.match(r.jalaliStart, /^\d{4}\/\d{2}\/\d{2}$/);
-    assert.ok(r.employees.every((e) => e.id !== admin.id && e.id !== inactive.id));
+    assert.ok(r.employees.every((e) => e.id !== inactive.id));
+    const self = r.employees.find((e) => e.id === admin.id); // خودِ ادمین در فهرست است، اول، فقط‌خواندنی و بدون ⚠
+    assert.ok(self && self.isSelf === true && self.needsAttention === false);
+    assert.equal(r.employees[0].id, admin.id);
+    assert.ok(r.employees.filter((e) => e.id !== admin.id).every((e) => e.isSelf === false));
     const m = byName(r);
     assert.deepEqual([m['الف'].planStatus, m['الف'].taskCount, m['الف'].needsAttention], ['submitted', 2, false]);
     assert.deepEqual([m['ب'].planStatus, m['ب'].taskCount, m['ب'].managerConfigured, m['ب'].needsAttention], ['draft', 1, true, false]);

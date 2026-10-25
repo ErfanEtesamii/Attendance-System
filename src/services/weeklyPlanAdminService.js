@@ -363,7 +363,7 @@ function listPlanOverview(actor, startInput, { now } = {}) {
   if (!wk.ok) return wk;
   const { weekStart } = wk;
 
-  const users = usersRepository.listUsers({ onlyActive: true }).filter((u) => u.id !== actor.id && employeeWeek.canView(actor, u));
+  const users = usersRepository.listUsers({ onlyActive: true }).filter((u) => employeeWeek.canView(actor, u)); // خودِ ادمین/HR هم در فهرست است (فقط‌خواندنی؛ ویرایش برنامه‌ی خود در scopeFailure بسته است)
   const plans = new Map(plansRepo.listByWeek(weekStart, users.map((u) => u.id)).map((p) => [p.user_id, p]));
   const planIds = [...plans.values()].map((p) => p.id);
   const counts = plansRepo.countOrdinaryByPlanIds(planIds);
@@ -378,9 +378,10 @@ function listPlanOverview(actor, startInput, { now } = {}) {
     return {
       id: u.id, fullName: u.full_name, department: u.department || null, role: u.role,
       planStatus, taskCount, managerConfigured,
-      needsAttention: !managerConfigured && (planStatus !== 'submitted' || (min > 0 && taskCount < min)),
+      isSelf: u.id === actor.id,
+      needsAttention: u.id !== actor.id && !managerConfigured && (planStatus !== 'submitted' || (min > 0 && taskCount < min)),
     };
-  });
+  }).sort((x, y) => Number(y.isSelf) - Number(x.isSelf)); // خودِ کاربر اول فهرست (sort پایدار)
   return {
     ok: true, weekStart, weekEnd: addDays(weekStart, 6),
     jalaliStart: isoDateToJalaliString(weekStart), jalaliEnd: isoDateToJalaliString(addDays(weekStart, 6)),
