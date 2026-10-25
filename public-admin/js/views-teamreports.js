@@ -179,7 +179,7 @@
               <form class="filters tr-filters" id="tr-filters" aria-label="فیلتر گزارش">
               ${ui.tab === 'plan' ? `<label class="field"><span>هفته (هر روزِ آن)</span><input type="date" name="weekStart" value="${esc(ui.weekStart)}" /></label>` : ''}
               ${ui.tab === 'daily' || ui.tab === 'unreviewed' ? `<label class="field"><span>تاریخ گزارش</span><input type="date" name="date" value="${esc(ui.date)}" /></label>` : ''}
-              ${users.length ? `<label class="field"><span>فرد</span><select name="userId"><option value="">همه</option>${users.map((u) => `<option value="${u.id}" ${String(u.id) === String(ui.userId) ? 'selected' : ''}>${esc(u.full_name)}</option>`).join('')}</select></label>` : ''}
+              ${users.length ? `<label class="field"><span>فرد</span><select name="userId"><option value="">همه</option>${users.map((u) => `<option value="${u.id}" ${String(u.id) === String(ui.userId) ? 'selected' : ''}>${esc(u.fullName || u.full_name)}</option>`).join('')}</select></label>` : ''}
               </form>
             </div>
             <div id="tr-result" aria-live="polite"></div>
