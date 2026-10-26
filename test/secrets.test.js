@@ -56,7 +56,7 @@ describe('startupChecks — ADMIN_SESSION_SECRET', () => {
 });
 
 describe('startupChecks — رفتار بر اساس محیط', () => {
-  const base = { adminSessionSecret: GOOD_SECRET, telegramBotUsername: 'my_bot', telegramBotToken: 'x' };
+  const base = { adminSessionSecret: GOOD_SECRET, baleBotUsername: 'my_bale_bot', baleBotToken: 'x' };
 
   test('production + راز ضعیف → خطا (throw)', () => {
     assert.throws(
@@ -72,11 +72,11 @@ describe('startupChecks — رفتار بر اساس محیط', () => {
     assert.ok(logs.some((l) => l.includes('ADMIN_SESSION_SECRET')));
   });
 
-  test('TELEGRAM_BOT_USERNAME خالی → هشدار (نه خطا) حتی در production', () => {
+  test('BALE_BOT_USERNAME خالی → هشدار (نه خطا) حتی در production', () => {
     const logs = [];
-    const r = runStartupChecks({ ...base, nodeEnv: 'production', telegramBotUsername: '' }, { warn: (m) => logs.push(m) });
+    const r = runStartupChecks({ ...base, nodeEnv: 'production', baleBotUsername: '' }, { warn: (m) => logs.push(m) });
     assert.equal(r.errors.length, 0);
-    assert.ok(logs.some((l) => l.includes('TELEGRAM_BOT_USERNAME')));
+    assert.ok(logs.some((l) => l.includes('BALE_BOT_USERNAME')));
   });
 
   test('پیکربندی سالم → بدون خطا و هشدار', () => {

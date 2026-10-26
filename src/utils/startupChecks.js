@@ -33,9 +33,9 @@ function checkConfig(cfg) {
     else warnings.push(`${msg} (در production سرور با این وضعیت بالا نمی‌آید.)`);
   }
 
-  if (!cfg.telegramBotUsername) {
+  if (!cfg.baleBotUsername) {
     warnings.push(
-      'TELEGRAM_BOT_USERNAME خالی است؛ دکمه‌ی «ورود با تلگرام» (Login Widget) در صفحه‌ی ورود پنل کار نخواهد کرد. یوزرنیم بات را بدون @ در .env بگذارید.'
+      'BALE_BOT_USERNAME خالی است؛ بازوی بله و پیوندهای Mini App کامل کار نخواهند کرد. یوزرنیم بات را بدون @ در .env بگذارید.'
     );
   }
 
