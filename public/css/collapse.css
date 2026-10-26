@@ -1,0 +1,12 @@
+/* UX v2: native, keyboard-safe disclosure for secondary guidance. */
+.ux-collapse { border-top: 1px solid var(--border); color: var(--hint); font-size: var(--fs-xs); }
+.ux-collapse > summary { display: flex; align-items: center; min-height: var(--control-min-height, 44px); cursor: pointer; list-style: none; color: var(--text); font-weight: var(--fw-title); }
+.ux-collapse > summary::-webkit-details-marker { display: none; }
+.ux-collapse > summary::before { content: "+"; width: 1.4em; color: var(--hint); font-size: 1.25em; }
+.ux-collapse[open] > summary::before { content: "?"; }
+.ux-collapse > :not(summary) { margin-bottom: var(--space-3); }
+.ux-collapse:focus-within { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: var(--radius-sm, 10px); }
+.cal-legend-panel { margin-bottom: var(--space-3); }
+.cal-legend-panel .cal-legend { margin-bottom: var(--space-3); }
+@media (prefers-reduced-motion: reduce) { .ux-collapse * { transition: none !important; } }
+@media print { .ux-collapse:not([open]) > summary ~ * { display: block !important; } .ux-collapse > summary::before { display: none; } }

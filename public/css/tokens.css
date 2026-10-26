@@ -17,6 +17,15 @@
   --space-4: 16px;
   --space-5: 24px;
   --space-6: 32px;
+  /* UX v2: shared rhythm and motion for both employee and admin panels. */
+  --motion-fast: 160ms;
+  --motion-normal: 300ms;
+  --motion-enter: 340ms;
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+  --control-min-height: 44px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
 }
 
 :root,
@@ -35,6 +44,15 @@
   --shadow-2: 0 1px 2px rgba(0, 0, 0, 0.32), 0 10px 28px rgba(0, 0, 0, 0.28);
   --shadow: var(--shadow-1);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.32);
+  --knob: #fff;
+  --lift-sm: 0 12px 26px -18px rgba(0, 0, 0, 0.55);
+  --lift-md: 0 18px 36px -28px rgba(0, 0, 0, 0.5);
+  --lift-lg: 0 18px 40px -28px rgba(0, 0, 0, 0.45);
+  --lift-xl: 0 22px 44px -30px rgba(0, 0, 0, 0.55);
+  --lift-up: 0 -14px 28px -18px rgba(0, 0, 0, 0.6);
+  --lift-side: -12px 0 16px -14px rgba(0, 0, 0, 0.55);
+  --lift-pop: 0 6px 14px -6px rgba(0, 0, 0, 0.55);
+  --lift-knob: 0 2px 5px rgba(0, 0, 0, 0.35);
   --ov-04: rgba(255, 255, 255, 0.04);
   --ov-05: rgba(255, 255, 255, 0.05);
   --ov-06: rgba(255, 255, 255, 0.06);
@@ -71,6 +89,10 @@
   --rail: #100e2b;
   --rail-text: #d6d3f2;
   --rail-active-text: #f1f0fb;
+  --surface-raised: var(--card-2);
+  --status-success: var(--green);
+  --status-warning: var(--orange);
+  --status-danger: var(--red);
   color-scheme: dark;
 }
 
@@ -89,6 +111,15 @@
   --shadow-2: 0 1px 2px rgba(43, 37, 96, 0.08), 0 8px 24px rgba(43, 37, 96, 0.10);
   --shadow: var(--shadow-1);
   --shadow-sm: 0 1px 2px rgba(43, 37, 96, 0.08);
+  --knob: #fff;
+  --lift-sm: 0 12px 26px -18px rgba(43, 37, 96, 0.18);
+  --lift-md: 0 18px 36px -28px rgba(43, 37, 96, 0.18);
+  --lift-lg: 0 18px 40px -28px rgba(43, 37, 96, 0.18);
+  --lift-xl: 0 22px 44px -30px rgba(43, 37, 96, 0.18);
+  --lift-up: 0 -14px 28px -18px rgba(43, 37, 96, 0.2);
+  --lift-side: -12px 0 16px -14px rgba(43, 37, 96, 0.18);
+  --lift-pop: 0 6px 14px -6px rgba(43, 37, 96, 0.2);
+  --lift-knob: 0 2px 5px rgba(43, 37, 96, 0.25);
   --ov-04: rgba(43, 37, 96, 0.04);
   --ov-05: rgba(43, 37, 96, 0.05);
   --ov-06: rgba(43, 37, 96, 0.06);
@@ -125,6 +156,10 @@
   --rail: #322c79;
   --rail-text: #d6d3f2;
   --rail-active-text: #322c79;
+  --surface-raised: var(--card-2);
+  --status-success: var(--green);
+  --status-warning: var(--orange);
+  --status-danger: var(--red);
   color-scheme: light;
 }
 
@@ -144,6 +179,15 @@
     --shadow-2: 0 1px 2px rgba(43, 37, 96, 0.08), 0 8px 24px rgba(43, 37, 96, 0.10);
     --shadow: var(--shadow-1);
     --shadow-sm: 0 1px 2px rgba(43, 37, 96, 0.08);
+    --knob: #fff;
+    --lift-sm: 0 12px 26px -18px rgba(43, 37, 96, 0.18);
+    --lift-md: 0 18px 36px -28px rgba(43, 37, 96, 0.18);
+    --lift-lg: 0 18px 40px -28px rgba(43, 37, 96, 0.18);
+    --lift-xl: 0 22px 44px -30px rgba(43, 37, 96, 0.18);
+    --lift-up: 0 -14px 28px -18px rgba(43, 37, 96, 0.2);
+    --lift-side: -12px 0 16px -14px rgba(43, 37, 96, 0.18);
+    --lift-pop: 0 6px 14px -6px rgba(43, 37, 96, 0.2);
+    --lift-knob: 0 2px 5px rgba(43, 37, 96, 0.25);
     --ov-04: rgba(43, 37, 96, 0.04);
     --ov-05: rgba(43, 37, 96, 0.05);
     --ov-06: rgba(43, 37, 96, 0.06);
@@ -180,6 +224,10 @@
     --rail: #322c79;
     --rail-text: #d6d3f2;
     --rail-active-text: #322c79;
+    --surface-raised: var(--card-2);
+    --status-success: var(--green);
+    --status-warning: var(--orange);
+    --status-danger: var(--red);
     color-scheme: light;
   }
 }

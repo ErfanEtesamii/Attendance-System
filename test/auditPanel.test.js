@@ -55,7 +55,8 @@ describe('صفحه‌ی گزارش رویدادها (S4-2b)', () => {
     const { html } = await AP.views.audit.render();
     assert.equal((html.match(/class="diff"/g) || []).length, 1, 'فقط ردیف جدید diff می‌شود');
     assert.ok(html.includes('<div class="details-box">متن ساده</div>'));
-    assert.ok(html.includes('<div class="details-box">{&quot;source&quot;:&quot;admin_panel&quot;,&quot;targetUserId&quot;:5}</div>'));
+    // JSON تخت قدیمی (بدون changes) حالا چیپ کلید/مقدار می‌شود (au-chips)؛ مقدارها escape شده‌اند
+    assert.match(html, /<div class="au-chips">.*<span class="au-v">admin_panel<\/span>.*<span class="au-v">5<\/span>/s);
     assert.ok(html.includes('<div class="details-box">{&quot;entityType&quot;:&quot;user&quot;,&quot;changes&quot;:</div>'));
     assert.match(html, /تنظیمات.*بدون تغییر در فیلدها/s);
   });

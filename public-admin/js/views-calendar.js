@@ -132,10 +132,10 @@
     return `<div class="cal-warn" role="alert">${icon('alert')}<div>هشدار هم‌زمانی: در ${fmt.num(vm.over.length)} روز بیش از ${fmt.num(vm.max)} نفر هم‌زمان مرخصی یا مأموریت دارند (روزهای ${days}).</div></div>`;
   }
 
-  const legendHtml = () => `<div class="cal-legend" aria-label="راهنمای نمادها">${LEGEND.map((k) => {
+  const legendHtml = () => `<details id="calendar-legend" class="ux-collapse cal-legend-panel" data-ux-collapse="calendar-legend"><summary>راهنمای وضعیت‌ها</summary><div class="cal-legend" aria-label="راهنمای نمادها">${LEGEND.map((k) => {
     const s = STATUS[k];
     return `<span><i class="cal-swatch cal-${esc(s.cls)}">${esc(s.sym)}</i>${esc(s.label)}</span>`;
-  }).join('')}<span><i class="cal-swatch cal-leave cal-part"></i>مرخصی نیم‌روز/ساعتی (نقطه‌ی گوشه)</span></div>`;
+  }).join('')}<span><i class="cal-swatch cal-leave cal-part"></i>مرخصی نیم‌روز/ساعتی (نقطه‌ی گوشه)</span></div></details>`;
 
   const optionsHtml = (items, selected, allLabel) => `${allLabel == null ? '' : `<option value="">${esc(allLabel)}</option>`}${items.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(selected) ? 'selected' : ''}>${esc(l)}</option>`).join('')}`;
   const peopleOptions = (vm) => optionsHtml(vm.inDept.map((r) => [r.user.id, r.user.fullName]), calUi.userId, 'همه');

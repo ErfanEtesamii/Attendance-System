@@ -104,7 +104,7 @@ describe('اتصال شمسی به بقیه‌ی صفحه‌ها (S3-11b)', () =
     }
     const adm = read('js', 'views-admin.js');
     assert.match(adm, /AP\.dates\.mount\(form\)[^\n]*\n\s*(let t;|\$\$\('input, select', form\))/);
-    assert.equal((adm.match(/AP\.dates\.mount\(/g) || []).length, 4, 'گزارش‌ها، تنظیمات (H4: ساعت‌های قابل‌تایپ)، تعطیلات، audit');
+    assert.equal((adm.match(/AP\.dates\.mount\(/g) || []).length, 6, 'گزارش‌ها، تنظیمات (H4: ساعت‌های قابل‌تایپ)، تعطیلات، audit، و دو ناحیه‌ی تاریخ (mountResetZone: قبل از تاریخ / از-تا)');
     const ops = read('js', 'views-ops.js');
     assert.match(ops, /name="ntDate"/);
     assert.match(ops, /input\[name="ntDate"\][^\n]*addEventListener\('change'/, 'مرور شبانه ISO را از input مخفی می‌خواند');

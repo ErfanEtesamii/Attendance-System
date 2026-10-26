@@ -11,6 +11,8 @@
 <link rel="stylesheet" href="/css/tokens.css" />
 <link rel="stylesheet" href="/css/style.css" />
 <link rel="stylesheet" href="/css/planner.css" />
+<link rel="stylesheet" href="/css/reveal.css" />
+<link rel="stylesheet" href="/css/collapse.css" />
 <script src="/js/telegram-web-app.js"></script>
 <script src="/js/telegramIntegration.js"></script>
 <script src="/js/celebrate.js"></script>
@@ -103,7 +105,7 @@
           <p class="earnings-amount" id="earnings-amount-row"><span id="earnings-amount">۰</span><small>تومان</small><span class="earnings-spark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.7 1.8L21.5 17.5l-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg></span></p>
           <div class="earnings-foot">
             <span class="earnings-useful" id="earnings-useful"></span>
-            <span class="earnings-note"><span class="earnings-info" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg></span> تخمینی؛ حقوق نهایی بر اساس تایید حسابداری است</span>
+            <details id="earnings-help" class="ux-collapse" data-ux-collapse="earnings-help"><summary>راهنمای محاسبه</summary><span class="earnings-note"><span class="earnings-info" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg></span> تخمینی؛ حقوق نهایی بر اساس تایید حسابداری است</span></details>
           </div>
           <p class="earnings-excluded hidden" id="earnings-excluded"></p>
         </section>
@@ -397,6 +399,7 @@
   <div id="pl-undo" class="pl-undo-bar pl-undo-float hidden" role="status" aria-live="polite"></div>
 
   <div id="toast" class="toast hidden" role="status" aria-live="polite" aria-atomic="true"></div>
+  <button id="ux-back-to-top" class="ux-back-to-top" type="button" aria-label="بازگشت به بالای صفحه" hidden>بازگشت به بالا</button>
 
   <!-- تاریخ شمسی (S3-11d): همان jalali.js/datepicker.js پنل؛ یک منبع واحد تا تاریخ Mini App و پنل هیچ‌وقت اختلاف نداشته باشند -->
   <script src="/admin/js/jalali.js"></script>
@@ -406,5 +409,7 @@
   <script src="/js/dailyReport.js"></script>
   <script src="/js/planner.js"></script>
   <script src="/js/app.js"></script>
+  <script src="/js/reveal.js"></script>
+  <script src="/js/collapse.js"></script>
 </body>
 </html>

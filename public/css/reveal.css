@@ -1,0 +1,54 @@
+/* UX v2 progressive enhancement. Content remains visible until reveal.js opts in. */
+.ux-reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity var(--motion-enter, 340ms) var(--ease-out, ease), transform var(--motion-enter, 340ms) var(--ease-out, ease);
+}
+
+.ux-reveal.is-revealed {
+  opacity: 1;
+  transform: none;
+}
+
+.ux-back-to-top {
+  position: fixed;
+  z-index: 80;
+  inset-inline-end: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  min-height: var(--control-min-height, 44px);
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: var(--shadow-2);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-heading);
+  cursor: pointer;
+}
+
+.ux-back-to-top:focus-visible {
+  outline: 3px solid var(--brand);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ux-reveal,
+  .ux-reveal.is-revealed {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+@media print {
+  .ux-reveal,
+  .ux-reveal.is-revealed {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .ux-back-to-top { display: none !important; }
+}
