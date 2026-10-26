@@ -40,6 +40,7 @@ async function checkLateCheckins(bot, { now = new Date() } = {}) {
 
     const calendar = getCalendarDay(user, today, { settings, holidays });
     if (!calendar.isWorkingDay) continue; // آخر هفته/تعطیل برای همین کاربر
+    if (!calendar.expectedStart) continue; // شیفت بدون ساعت (isUntimed): ساعت شروع ندارد؛ نباید کل Job را بشکند
     const graceLine = hhmmToMinutes(calendar.expectedStart, 'expectedStart') + settings.lateCheckinGraceMinutes;
     if (nowMinutes < graceLine) continue;
 
