@@ -1203,3 +1203,27 @@ textarea.dr-extra-input { min-height: 72px; }
 @keyframes pl-day-pulse { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--pl-c) 55%, transparent); } to { box-shadow: 0 0 0 12px transparent; } }
 @keyframes pl-step-in { from { opacity: 0; transform: translateY(14px); } }
 @media (prefers-reduced-motion: reduce) { .day-task-edit.is-entering, .day-task-edit.is-leaving, .pl-day.is-pulse, #plan-body.pl-step-anim > * { animation: none; } .plan-steps span, .plan-chip, .plan-carry { transition: none; } }
+
+/* صفحه‌ی اختصاصیِ هر تسک: عنوان جدا و درشت + انتخاب اولویت */
+.pl-task-focus { --pl-c: var(--pl-accent); display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); background: var(--plan-card); color: var(--plan-ink); border: 1px solid var(--plan-field-border); border-inline-start: 5px solid var(--pl-c); border-radius: 18px; box-shadow: 0 8px 22px rgba(10, 107, 75, 0.14); }
+.pl-task-focus.pl-day-1 { --pl-c: var(--pl-day-1); }
+.pl-task-focus.pl-day-2 { --pl-c: var(--pl-day-2); }
+.pl-task-focus.pl-day-3 { --pl-c: var(--pl-day-3); }
+.pl-task-focus.pl-day-4 { --pl-c: var(--pl-day-4); }
+.pl-task-focus.pl-day-5 { --pl-c: var(--pl-day-5); }
+.pl-task-focus.pl-day-6 { --pl-c: var(--pl-day-6); }
+.pl-task-focus.pl-day-7 { --pl-c: var(--pl-day-7); }
+.pl-focus-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding-block-end: var(--space-2); border-block-end: 2px dashed var(--plan-line); }
+.pl-focus-title { margin: 0; font-size: var(--fs-md); font-weight: 800; color: var(--plan-title); }
+.pl-focus-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pl-focus-label { padding: 0; font-size: var(--fs-xs); font-weight: 700; color: var(--plan-hint); }
+.pl-focus-input { width: 100%; box-sizing: border-box; min-width: 0; min-height: 48px; padding: var(--space-2) var(--space-3); font: inherit; color: var(--plan-ink); background: var(--plan-field); border: 2px solid var(--plan-field-border); border-radius: 14px; transition: border-color .15s ease, box-shadow .15s ease; }
+.pl-focus-name { min-height: 56px; font-size: var(--fs-md); font-weight: 800; }
+textarea.pl-focus-input { resize: vertical; min-height: 72px; }
+.pl-focus-input:focus-visible { border-color: var(--plan-title); box-shadow: 0 0 0 3px rgba(10, 107, 75, 0.22); }
+.pl-focus-prio .prio-opt { min-height: 52px; font-size: var(--fs-md); }
+.pl-focus-nav { display: flex; gap: var(--space-2); }
+.pl-focus-nav .btn { flex: 1; margin-top: 0; }
+#plan-body.pl-step-anim > .pl-task-focus { animation: pl-focus-pop .5s cubic-bezier(.2, .9, .3, 1.15) backwards .05s; }
+@keyframes pl-focus-pop { from { opacity: 0; transform: translateY(24px) scale(.94); } }
+@media (prefers-reduced-motion: reduce) { #plan-body.pl-step-anim > .pl-task-focus { animation: none; } .pl-focus-input { transition: none; } }

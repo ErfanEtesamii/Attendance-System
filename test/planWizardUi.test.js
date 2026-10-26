@@ -62,6 +62,8 @@ const addIn = async (env, i, title) => {
   await type(walk(card).find((n) => n.tag === 'input' && n.placeholder === 'تسک جدید…'), title);
   await walk(card).find((n) => n.tag === 'button' && n.textContent === '+ افزودن').fire('click');
   await flush();
+  const ok = btn(env, 'ثبت تسک'); // صفحه‌ی اختصاصی تسک: با «ثبت تسک» به تخته برمی‌گردد (بعد از خطای سقف/عنوان، صفحه باز نمی‌شود)
+  if (ok) { await ok.fire('click'); await flush(); }
 };
 const WEEK = [ // ۱۴۰۶-۰۲-۱۱ (شنبه) ... : ۵ کاری، پنجشنبه نیم‌روز، جمعه آخر هفته
   ['2027-05-01', 'working'], ['2027-05-02', 'working'], ['2027-05-03', 'working'], ['2027-05-04', 'working'],
@@ -246,6 +248,7 @@ describe('کارت‌های روزانه (C1)', () => {
     await type(field, 'با اینتر');
     await field.fire('keydown', { key: 'Enter' });
     await flush();
+    await click(env, 'ثبت تسک');
     assert.equal(inputs(env, 'input', 'عنوان تسک').length, 1);
     await addIn(env, 2, 'دومی');
     assert.match(env.body().textContent, /حداکثر 1 تسک مجاز است/);
@@ -483,5 +486,42 @@ describe('حالت‌ها، فوکوس و label (C3)', () => {
     await click(env, 'ثبت برنامه');
     const alert = walk(env.body()).find((n) => n.role === 'alert');
     assert.match(alert.textContent, /خطای سرور/);
+  });
+});
+
+describe('صفحه‌ی اختصاصی هر تسک', () => {
+  test('افزودن از کارت ⇒ صفحه‌ی تسک با عنوان و اولویت؛ تا «ثبت تسک» به تخته اضافه‌ی قطعی نمی‌شود', async () => {
+    const env = makeEnv({ plan: { days: WEEK } });
+    await open(env);
+    const card = cards(env)[2];
+    await type(walk(card).find((n) => n.tag === 'input' && n.placeholder === 'تسک جدید…'), 'گزارش فروش');
+    await walk(card).find((n) => n.tag === 'button' && n.textContent === '+ افزودن').fire('click');
+    await flush();
+    assert.equal(cards(env).length, 0); // به‌جای تخته، صفحه‌ی تک‌تسک
+    assert.equal(inputs(env, 'input', 'عنوان تسک')[0].value, 'گزارش فروش');
+    const r = walk(env.body()).filter((n) => n.tag === 'input' && n.type === 'radio');
+    assert.deepEqual(r.map((x) => x.value), ['high', 'normal', 'low']);
+    r[0].checked = true;
+    await r[0].fire('change', { target: r[0] });
+    await click(env, 'ثبت تسک');
+    assert.equal(cards(env).length > 0, true);
+    await click(env, 'مرور');
+    await click(env, 'ثبت برنامه');
+    const put = JSON.parse(env.calls.find((c) => c.init.method === 'PUT').init.body);
+    assert.deepEqual(put.tasks.map((t) => [t.title, t.priority]), [['گزارش فروش', 'high']]);
+  });
+
+  test('انصراف تسک را برمی‌دارد؛ عنوان خالی در صفحه‌ی تسک خطا می‌دهد', async () => {
+    const env = makeEnv({ plan: { days: WEEK } });
+    await open(env);
+    const card = cards(env)[1];
+    await type(walk(card).find((n) => n.tag === 'input' && n.placeholder === 'تسک جدید…'), 'موقت');
+    await walk(card).find((n) => n.tag === 'button' && n.textContent === '+ افزودن').fire('click');
+    await flush();
+    await type(inputs(env, 'input', 'عنوان تسک')[0], '   ');
+    await click(env, 'ثبت تسک');
+    assert.match(env.body().textContent, /عنوان تسک را بنویسید/);
+    await click(env, 'انصراف');
+    assert.equal(inputs(env, 'input', 'عنوان تسک').length, 0);
   });
 });

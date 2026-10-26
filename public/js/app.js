@@ -1749,7 +1749,7 @@
   const PLAN_LOCKED_MSG = 'هفته شروع شده و برنامه‌اش قابل ویرایش نیست.';
   const PLAN_MONTH_CLOSED_MSG = 'این هفته در ماهِ بسته‌شده است و فقط قابل مشاهده است.';
   const planPrio = (p) => (PLAN_PRIORITY[p] ? p : 'normal');
-  const planUi = { data: null, tasks: [], carry: new Set(), step: 'tasks', week: 'next', msg: '', busy: false, drafts: {}, focus: null, focusTop: false, board: null, boardMsg: '', boardErr: false, boardBusy: new Set(), collapsed: new Map(), focusCheck: null, rowEls: new Map(), sheet: null, fresh: new Set(), shown: '' };
+  const planUi = { data: null, tasks: [], carry: new Set(), step: 'tasks', week: 'next', msg: '', busy: false, drafts: {}, focus: null, focusTop: false, board: null, boardMsg: '', boardErr: false, boardBusy: new Set(), collapsed: new Map(), focusCheck: null, rowEls: new Map(), sheet: null, fresh: new Set(), shown: '', editing: null };
 
   function planEl(tag, props, ...kids) {
     const e = document.createElement(tag);
@@ -2680,7 +2680,7 @@
     planUi.msg = '';
     planUi.drafts = {};
     planUi.focus = null;
-    planUi.fresh.clear(); planUi.shown = '';
+    planUi.fresh.clear(); planUi.shown = ''; planUi.editing = null;
     planUi.board = null; planUi.boardMsg = ''; planUi.boardErr = false;
     renderLoading(body, 'plan');
     try {
@@ -2733,7 +2733,8 @@
     heading.setAttribute('tabindex', '-1'); // با تغییر مرحله فوکوس به عنوان می‌رود تا خوانشگر مرحله‌ی تازه را اعلام کند
     if (planUi.focusTop) { planUi.focusTop = false; setTimeout(() => { if (typeof heading.focus === 'function') heading.focus(); }, 0); }
     body.appendChild(planEl('div', { class: 'plan-meta', text: `هفته‌ی ${fmtDate(data.weekStart)} تا ${fmtDate(data.weekEnd)}${data.planDay ? ' · روز ثبت برنامه: ' + fmtDate(data.planDay) : ''}` }));
-    if (planUi.step !== 'done') body.appendChild(planEl('div', { class: 'plan-steps' }, steps.map(([k, l], i) => { const sp = planEl('span', { class: planUi.step === k ? 'on' : (i < steps.findIndex(([sk]) => sk === planUi.step) ? 'past' : ''), text: `${i + 1}. ${l}` }); if (planUi.step === k) sp.setAttribute('aria-current', 'step'); return sp; })));
+    const navKey = planUi.step === 'task' ? 'tasks' : planUi.step; // صفحه‌ی تک‌تسک زیرمجموعه‌ی مرحله‌ی «تسک‌ها» است
+    if (planUi.step !== 'done') body.appendChild(planEl('div', { class: 'plan-steps' }, steps.map(([k, l], i) => { const sp = planEl('span', { class: navKey === k ? 'on' : (i < steps.findIndex(([sk]) => sk === navKey) ? 'past' : ''), text: `${i + 1}. ${l}` }); if (navKey === k) sp.setAttribute('aria-current', 'step'); return sp; })));
     const mBanner = managerBanner(data);
     if (mBanner) body.appendChild(mBanner);
     if (data.managerConfigured && data.status !== 'submitted') {
@@ -2771,6 +2772,51 @@
       return;
     }
 
+    if (planUi.step === 'task' && planUi.editing) {
+      const { t } = planUi.editing;
+      const days = planDays(data);
+      const dayText = t.plannedDate ? fmtPlanDay(t.plannedDate) : 'هر روز / بدون روز مشخص';
+      const hueAt = t.plannedDate ? days.findIndex((d) => d.date === t.plannedDate) : -1;
+      const card = planEl('div', { class: `card pl-task-focus ${dayHueCls(hueAt < 0 ? null : hueAt)}` });
+      card.appendChild(planEl('div', { class: 'pl-focus-head' }, planEl('h4', { class: 'pl-focus-title', text: 'تسک جدید' }), planEl('span', { class: 'day-badge', text: dayText })));
+      const field = (text, control) => planEl('label', { class: 'pl-focus-field' }, planEl('span', { class: 'pl-focus-label', text }), control);
+      card.appendChild(field('عنوان تسک', planEl('input', { type: 'text', dir: 'auto', class: 'pl-focus-input pl-focus-name', maxLength: 120, value: t.title, placeholder: 'عنوان تسک', on: { input: (e) => { t.title = e.target.value; } } })));
+      const help = planEl('p', { class: 'prio-help', text: PLAN_PRIORITY_HELP[planPrio(t.priority)] });
+      help.setAttribute('aria-live', 'polite');
+      const opts = PLAN_PRIORITY_ORDER.map((v) => {
+        const input = planEl('input', { type: 'radio', name: 'plan-focus-prio', value: v, checked: planPrio(t.priority) === v });
+        return { v, input, opt: planEl('label', { class: `prio-opt prio-${v}${planPrio(t.priority) === v ? ' on' : ''}` }, input, planEl('span', { text: PLAN_PRIORITY[v] })) };
+      });
+      opts.forEach(({ v, input }) => input.addEventListener('change', () => {
+        t.priority = v;
+        opts.forEach((o) => { o.opt.className = `prio-opt prio-${o.v}${o.v === v ? ' on' : ''}`; });
+        help.textContent = PLAN_PRIORITY_HELP[v];
+      }));
+      card.appendChild(planEl('fieldset', { class: 'prio-group pl-focus-prio' }, planEl('legend', { class: 'pl-focus-label', text: 'اولویت این تسک را مشخص کنید' }), planEl('div', { class: 'prio-opts' }, opts.map((o) => o.opt)), help));
+      card.appendChild(field('توضیح (اختیاری)', planEl('textarea', { dir: 'auto', rows: 2, class: 'pl-focus-input', maxLength: 500, value: t.description || '', placeholder: 'توضیح (اختیاری)', on: { input: (e) => { t.description = e.target.value; } } })));
+      card.appendChild(field('روز', planEl('select', { class: 'pl-focus-input', on: { change: (e) => { t.plannedDate = e.target.value || null; renderPlan(); } } },
+        [planEl('option', { value: '', text: 'بدون روز مشخص', selected: !t.plannedDate }), ...days.map((d) => planEl('option', { value: d.date, text: fmtPlanDay(d.date), selected: t.plannedDate === d.date }))])));
+      card.appendChild(msg);
+      const leave = (keep) => {
+        if (!keep) { const at = planUi.tasks.indexOf(t); if (at >= 0) planUi.tasks.splice(at, 1); } else planUi.fresh.add(t);
+        planUi.editing = null; planUi.step = 'tasks'; planUi.msg = '';
+        planUi.focus = t.plannedDate && days.some((d) => d.date === t.plannedDate) ? t.plannedDate : 'any';
+        renderPlan();
+      };
+      const nav = planEl('div', { class: 'pl-focus-nav' });
+      nav.appendChild(planEl('button', { type: 'button', class: 'btn secondary', text: 'انصراف', on: { click: () => leave(false) } }));
+      nav.appendChild(planEl('button', { type: 'button', class: 'btn primary', text: 'ثبت تسک', on: { click: () => {
+        const title = String(t.title || '').trim();
+        if (!title) { planUi.msg = 'عنوان تسک را بنویسید.'; renderPlan(); return; }
+        if (title.length > 120) { planUi.msg = 'عنوان تسک حداکثر ۱۲۰ نویسه است.'; renderPlan(); return; }
+        t.title = title;
+        leave(true);
+      } } }));
+      card.appendChild(nav);
+      body.appendChild(card);
+      return;
+    }
+
     if (planUi.step === 'tasks') {
       const days = planDays(data);
       const dayDates = new Set(days.map((d) => d.date));
@@ -2798,9 +2844,10 @@
         if (title.length > 120) { planUi.msg = 'عنوان تسک حداکثر ۱۲۰ نویسه است.'; renderPlan(); return; }
         if (data.maxTasks != null && mine().length + lockedCount() >= data.maxTasks) { planUi.msg = `حداکثر ${data.maxTasks} تسک مجاز است.`; renderPlan(); return; }
         planUi.drafts[key] = '';
-        planUi.msg = '';
-        pushFresh({ title, description: '', plannedDate, priority: 'normal' });
-        renderPlan();
+        const t = { title, description: '', plannedDate, priority: 'normal' };
+        planUi.tasks.push(t);
+        planUi.editing = { t, key };
+        go('task'); // صفحه‌ی همین تسک: عنوان جدا و واضح + انتخاب اولویت
       };
 
       const taskRow = (t, idx, key, pos, dayText) => {

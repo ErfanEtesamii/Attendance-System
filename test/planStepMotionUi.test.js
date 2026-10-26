@@ -29,9 +29,9 @@ describe('حرکت و جداسازی برنامه‌ی هفتگی', () => {
     assert.match(css, /\.day-task-del \{[^}]*min-height: 44px/);
   });
 
-  test('JS: تسک تازه (افزودن، چیپ، کپی هفته‌ی قبل) علامت می‌خورد و بعد از ساخت کارت‌ها مصرف می‌شود', () => {
+  test('JS: تسک تازه (چیپ، کپی هفته‌ی قبل، بازگشت از صفحه‌ی تسک) علامت می‌خورد و بعد از ساخت کارت‌ها مصرف می‌شود', () => {
     assert.match(render, /const pushFresh = \(t\) => \{ planUi\.tasks\.push\(t\); planUi\.fresh\.add\(t\);/);
-    assert.equal((render.match(/pushFresh\(/g) || []).length, 3);
+    assert.equal((render.match(/pushFresh\(/g) || []).length, 2); // چیپ + کپی هفته‌ی قبل؛ افزودن از فیلد به صفحه‌ی تک‌تسک می‌رود
     assert.match(render, /planUi\.fresh\.clear\(\);[^\n]*\n\s*body\.appendChild\(planEl\('div', \{ class: 'pl-board' \}/);
     assert.match(render, /is-entering/);
     assert.match(render, /is-pulse/);
