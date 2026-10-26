@@ -41,7 +41,14 @@ async function checkLateCheckins(bot, { now = new Date() } = {}) {
     const calendar = getCalendarDay(user, today, { settings, holidays });
     if (!calendar.isWorkingDay) continue; // آخر هفته/تعطیل برای همین کاربر
     if (!calendar.expectedStart) continue; // شیفت بدون ساعت (isUntimed): ساعت شروع ندارد؛ نباید کل Job را بشکند
-    const graceLine = hhmmToMinutes(calendar.expectedStart, 'expectedStart') + settings.lateCheckinGraceMinutes;
+    let startMinutes;
+    try {
+      startMinutes = hhmmToMinutes(calendar.expectedStart, 'expectedStart', 'calendar.');
+    } catch (err) { // ساعت نامعتبر در تقویمِ یک کاربر نباید کل Job را برای همه بشکند
+      logger.error('checkin_reminder_bad_time', { userId: user.id, date: today, kind: calendar.kind, value: calendar.expectedStart, error: err.message });
+      continue;
+    }
+    const graceLine = startMinutes + settings.lateCheckinGraceMinutes;
     if (nowMinutes < graceLine) continue;
 
     const record = attendanceRepository.findTodayRecord(user.id);

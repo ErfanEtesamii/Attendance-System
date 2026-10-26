@@ -26,7 +26,14 @@ async function checkCheckoutReminders(bot, { now = new Date() } = {}) {
     const calendar = getCalendarDay(user, today, { settings, holidays });
     if (!calendar.isWorkingDay) continue; // آخر هفته/تعطیل برای همین کاربر
     if (!calendar.expectedEnd) continue; // شیفت بدون ساعت (isUntimed): ساعت پایان ندارد؛ نباید کل Job را بشکند
-    const workEndMinutes = hhmmToMinutes(calendar.expectedEnd, 'expectedEnd');
+    // ساعت نامعتبر در تقویمِ «یک» کاربر (شیفت/برنامه‌ی ویژه/تعطیلی نیم‌روز) نباید کل Job را برای همه بشکند
+    let workEndMinutes;
+    try {
+      workEndMinutes = hhmmToMinutes(calendar.expectedEnd, 'expectedEnd', 'calendar.');
+    } catch (err) {
+      logger.error('checkout_reminder_bad_time', { userId: user.id, date: today, kind: calendar.kind, value: calendar.expectedEnd, error: err.message });
+      continue;
+    }
     const reminderLine = workEndMinutes - settings.checkoutReminderMinutesBefore;
     if (nowMinutes < reminderLine || nowMinutes > workEndMinutes) continue;
 

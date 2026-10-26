@@ -983,7 +983,7 @@
       }).join('');
 
       const errRows = s.recentErrors.length
-        ? s.recentErrors.map((e) => `<tr><td class="ltr">${esc(e.job_name)}</td><td>${esc(fmt.dateTime(e.finished_at || e.started_at))}</td><td class="ltr u-break-word">${esc(e.error || '—')}</td></tr>`).join('')
+        ? s.recentErrors.map((e) => `<tr><td class="ltr">${esc(e.job_name)}</td><td>${esc(fmt.dateTime(e.finished_at || e.started_at))}</td><td class="u-break-word" dir="auto">${esc(e.error || '—')}</td></tr>`).join('')
         : '<tr><td colspan="3" class="muted u-center-pad">خطایی ثبت نشده است.</td></tr>';
 
       const alertsHtml = s.activeAlerts.length
