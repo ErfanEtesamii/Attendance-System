@@ -2075,3 +2075,74 @@ td .btn.small, td .btn.ghost.small { white-space: nowrap; min-width: max-content
 @media (prefers-reduced-motion: reduce) {
   #au-filters .field input, #au-filters .field select { transition: none; }
 }
+
+/* ======================================================================
+   رکوردهای تردد — ظاهر جدید (محدود به #att-filters و کارت جدول بعد از آن)
+   ====================================================================== */
+#att-filters {
+  padding: 18px 20px; gap: 14px; align-items: flex-end;
+  border: 1px solid var(--border); border-radius: 22px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 5%, var(--card)), var(--card));
+  box-shadow: var(--shadow-1), 0 18px 36px -28px rgba(0, 0, 0, .5);
+}
+#att-filters .field > span { font-size: var(--fs-xs); font-weight: 700; color: var(--hint); }
+#att-filters .field input, #att-filters .field select {
+  min-height: 44px; border: 1px solid var(--border); border-radius: 14px; background: var(--card-2);
+  transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+#att-filters .field input:hover, #att-filters .field select:hover { border-color: color-mix(in srgb, var(--brand) 50%, var(--border)); }
+#att-filters .field input:focus, #att-filters .field select:focus {
+  outline: none; border-color: var(--brand); background: var(--card);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 20%, transparent);
+}
+/* دکمه‌های بازه‌ی سریع: چیپ‌های گرد */
+#att-filters [data-range] {
+  min-height: 44px; padding-inline: 18px; border-radius: 999px; font-weight: 700;
+  background: var(--card-2); border: 1px solid var(--border);
+  transition: background-color .15s ease, border-color .15s ease, transform .1s ease;
+}
+#att-filters [data-range]:hover { border-color: var(--brand); background: var(--brand-soft); color: var(--brand); }
+#att-filters [data-range]:active { transform: scale(.96); }
+
+/* کارت جدول */
+#att-filters + .card.flush {
+  margin-top: var(--space-4); border-radius: 24px; border: 1px solid var(--border);
+  box-shadow: var(--shadow-1), 0 22px 44px -30px rgba(0, 0, 0, .55);
+}
+#att-filters + .card.flush .table-wrap { max-height: min(72vh, 820px); overflow: auto; scrollbar-width: thin; }
+#att-filters + .card.flush table { border-collapse: separate; border-spacing: 0; width: 100%; }
+#att-filters + .card.flush thead th {
+  position: sticky; top: 0; z-index: 2; padding-block: 15px;
+  font-size: var(--fs-xs); font-weight: 800; letter-spacing: .3px; color: var(--hint);
+  background: color-mix(in srgb, var(--brand) 9%, var(--card)); border-bottom: 1px solid var(--border);
+}
+#att-filters + .card.flush tbody td { padding-block: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+#att-filters + .card.flush tbody tr:last-child td { border-bottom: 0; }
+#att-filters + .card.flush tbody tr:nth-child(even) { background: color-mix(in srgb, var(--brand) 3%, transparent); }
+#att-filters + .card.flush tbody tr:hover { background: color-mix(in srgb, var(--brand) 9%, transparent); }
+#att-filters + .card.flush tbody tr.clickable { cursor: pointer; }
+#att-filters + .card.flush tbody tr.clickable:active { background: color-mix(in srgb, var(--brand) 14%, transparent); }
+
+/* ستون کارمند */
+#att-filters + .card.flush .cell-user { gap: 12px; }
+#att-filters + .card.flush .cell-user .avatar { box-shadow: 0 0 0 2px var(--card), 0 0 0 3px color-mix(in srgb, var(--brand) 35%, transparent); }
+#att-filters + .card.flush .cell-user b { font-size: var(--fs-sm); }
+#att-filters + .card.flush .cell-user small { font-size: 12px; }
+
+/* اعداد: ورود/خروج برجسته، ساعت مفید پررنگ، تأخیر هشداری */
+#att-filters + .card.flush td.num { font-variant-numeric: tabular-nums; }
+#att-filters + .card.flush td.att-eff { font-weight: 800; color: var(--green); }
+#att-filters + .card.flush td.att-late { font-weight: 800; color: var(--red); }
+#att-filters + .card.flush td .ltr.muted { font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; padding: 2px 9px; border-radius: 999px; background: var(--card-2); }
+#att-filters + .card.flush td .badge { border-radius: 999px; padding-inline: 12px; font-weight: 700; }
+#att-filters + .card.flush .remote-times { margin-top: 4px; }
+
+@media (max-width: 760px) {
+  #att-filters { padding: 14px; border-radius: 18px; }
+  #att-filters [data-range] { flex: 1 1 30%; padding-inline: 8px; }
+  #att-filters + .card.flush { border-radius: 18px; }
+  #att-filters + .card.flush .table-wrap { max-height: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #att-filters .field input, #att-filters .field select, #att-filters [data-range] { transition: none; }
+}

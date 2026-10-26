@@ -279,9 +279,9 @@
             <td><div class="cell-user">${AP.avatar(r.user ? r.user.fullName : '?', 'sm')}<span><b>${esc(r.user ? r.user.fullName : '—')}</b><small>${esc(r.user ? r.user.department || '' : '')}</small></span></div></td>
             <td>${esc(fmt.date(r.record_date))}</td><td class="num">${r.remoteOnly ? '—' : fmt.clock(r.check_in_time)}${remoteCell(r.remoteSessions)}</td><td class="num">${r.remoteOnly ? '—' : fmt.clock(r.check_out_time)}</td>
             <td class="num">${r.breakMinutes ? fmt.min(r.breakMinutes) : '—'}</td>
-            <td class="num">${r.summary.effectiveMinutes != null ? fmt.min(r.summary.effectiveMinutes) : '—'}</td>
-            <td class="num">${r.summary.lateMinutes ? fmt.min(r.summary.lateMinutes) : '—'}</td>
-            <td><span class="ltr muted">${esc(r.check_in_ip || '—')}</span></td><td>${r.remoteOnly ? AP.badge('purple', 'فقط دورکاری') : AP.statusBadge(r.status)}${r.via_remote ? ` ${AP.badge('purple', 'دورکاری')}` : ''}</td></tr>`).join('')
+            <td class="num${r.summary.effectiveMinutes != null ? ' att-eff' : ''}">${r.summary.effectiveMinutes != null ? fmt.min(r.summary.effectiveMinutes) : '—'}</td>
+            <td class="num${r.summary.lateMinutes ? ' att-late' : ''}">${r.summary.lateMinutes ? fmt.min(r.summary.lateMinutes) : '—'}</td>
+            <td><span class="ltr muted">${esc(String(r.check_in_ip || '—').replace(/^::ffff:/i, ''))}</span></td><td>${r.remoteOnly ? AP.badge('purple', 'فقط دورکاری') : AP.statusBadge(r.status)}${r.via_remote ? ` ${AP.badge('purple', 'دورکاری')}` : ''}</td></tr>`).join('')
             : `<tr><td colspan="9">${emptyBox('رکوردی با این فیلتر پیدا نشد.')}</td></tr>`}
           </tbody></table></div></div>`;
       return {
