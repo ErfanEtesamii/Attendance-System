@@ -1749,7 +1749,7 @@
   const PLAN_LOCKED_MSG = 'هفته شروع شده و برنامه‌اش قابل ویرایش نیست.';
   const PLAN_MONTH_CLOSED_MSG = 'این هفته در ماهِ بسته‌شده است و فقط قابل مشاهده است.';
   const planPrio = (p) => (PLAN_PRIORITY[p] ? p : 'normal');
-  const planUi = { data: null, tasks: [], carry: new Set(), step: 'tasks', week: 'next', msg: '', busy: false, drafts: {}, focus: null, focusTop: false, board: null, boardMsg: '', boardErr: false, boardBusy: new Set(), collapsed: new Map(), focusCheck: null, rowEls: new Map(), sheet: null };
+  const planUi = { data: null, tasks: [], carry: new Set(), step: 'tasks', week: 'next', msg: '', busy: false, drafts: {}, focus: null, focusTop: false, board: null, boardMsg: '', boardErr: false, boardBusy: new Set(), collapsed: new Map(), focusCheck: null, rowEls: new Map(), sheet: null, fresh: new Set(), shown: '' };
 
   function planEl(tag, props, ...kids) {
     const e = document.createElement(tag);
@@ -2680,6 +2680,7 @@
     planUi.msg = '';
     planUi.drafts = {};
     planUi.focus = null;
+    planUi.fresh.clear(); planUi.shown = '';
     planUi.board = null; planUi.boardMsg = ''; planUi.boardErr = false;
     renderLoading(body, 'plan');
     try {
@@ -2720,6 +2721,9 @@
     if (!body || !data) return;
     body.removeAttribute('aria-busy');
     body.innerHTML = '';
+    const stageKey = `${planUi.week}:${planUi.step}`; // ورود نرم محتوا فقط با تغییر مرحله/هفته (نه با هر افزودن تسک)
+    body.classList.toggle('pl-step-anim', planUi.shown !== stageKey);
+    planUi.shown = stageKey;
     const mine = () => planUi.tasks.filter((t) => !t.isSystem && !t.isUrgent && !t.managerLocked);
     const lockedCount = () => planUi.tasks.filter(isManagerTask).length; // در سقفِ مجموع می‌آید
     const steps = [['carry', 'انتقال'], ['tasks', 'تسک‌ها'], ['review', 'مرور']];
@@ -2729,7 +2733,7 @@
     heading.setAttribute('tabindex', '-1'); // با تغییر مرحله فوکوس به عنوان می‌رود تا خوانشگر مرحله‌ی تازه را اعلام کند
     if (planUi.focusTop) { planUi.focusTop = false; setTimeout(() => { if (typeof heading.focus === 'function') heading.focus(); }, 0); }
     body.appendChild(planEl('div', { class: 'plan-meta', text: `هفته‌ی ${fmtDate(data.weekStart)} تا ${fmtDate(data.weekEnd)}${data.planDay ? ' · روز ثبت برنامه: ' + fmtDate(data.planDay) : ''}` }));
-    if (planUi.step !== 'done') body.appendChild(planEl('div', { class: 'plan-steps' }, steps.map(([k, l], i) => { const sp = planEl('span', { class: planUi.step === k ? 'on' : '', text: `${i + 1}. ${l}` }); if (planUi.step === k) sp.setAttribute('aria-current', 'step'); return sp; })));
+    if (planUi.step !== 'done') body.appendChild(planEl('div', { class: 'plan-steps' }, steps.map(([k, l], i) => { const sp = planEl('span', { class: planUi.step === k ? 'on' : (i < steps.findIndex(([sk]) => sk === planUi.step) ? 'past' : ''), text: `${i + 1}. ${l}` }); if (planUi.step === k) sp.setAttribute('aria-current', 'step'); return sp; })));
     const mBanner = managerBanner(data);
     if (mBanner) body.appendChild(mBanner);
     if (data.managerConfigured && data.status !== 'submitted') {
@@ -2771,11 +2775,12 @@
       const days = planDays(data);
       const dayDates = new Set(days.map((d) => d.date));
       const label = (el, text) => { el.setAttribute('aria-label', text); return el; };
-      const addTask = (init) => { planUi.tasks.push({ title: '', description: '', plannedDate: null, priority: 'normal', ...init }); renderPlan(); };
+      const pushFresh = (t) => { planUi.tasks.push(t); planUi.fresh.add(t); }; // تسک تازه: انیمیشن ورود + تپش کارت روز
+      const addTask = (init) => { pushFresh({ title: '', description: '', plannedDate: null, priority: 'normal', ...init }); renderPlan(); };
       const tools = planEl('div', { class: 'plan-chips' });
       if (data.previousWeekTasks.length) {
         tools.appendChild(planEl('button', { type: 'button', class: 'plan-chip', text: 'کپی از هفته‌ی قبل', on: { click: () => {
-          data.previousWeekTasks.forEach((t) => { if (!mine().some((x) => x.title === t.title)) planUi.tasks.push({ title: t.title, description: t.description, plannedDate: null, priority: t.priority }); });
+          data.previousWeekTasks.forEach((t) => { if (!mine().some((x) => x.title === t.title)) pushFresh({ title: t.title, description: t.description, plannedDate: null, priority: t.priority }); });
           renderPlan();
         } } }));
       }
@@ -2794,7 +2799,7 @@
         if (data.maxTasks != null && mine().length + lockedCount() >= data.maxTasks) { planUi.msg = `حداکثر ${data.maxTasks} تسک مجاز است.`; renderPlan(); return; }
         planUi.drafts[key] = '';
         planUi.msg = '';
-        planUi.tasks.push({ title, description: '', plannedDate, priority: 'normal' });
+        pushFresh({ title, description: '', plannedDate, priority: 'normal' });
         renderPlan();
       };
 
@@ -2802,7 +2807,9 @@
         const where = `${pos} — ${dayText}`;
         const badge = prioBadge(t.priority);
         const title = label(planEl('input', { type: 'text', dir: 'auto', class: 'day-task-title', maxLength: 120, value: t.title, placeholder: 'عنوان تسک', on: { input: (e) => { t.title = e.target.value; } } }), `عنوان تسک ${where}`);
-        const rm = label(planEl('button', { type: 'button', class: 'day-task-del', text: 'حذف', on: { click: () => { planUi.tasks.splice(idx, 1); planUi.focus = key; renderPlan(); } } }), `حذف تسک ${where}`);
+        const fresh = planUi.fresh.has(t);
+        let leaving = false;
+        const rm = label(planEl('button', { type: 'button', class: 'day-task-del', text: 'حذف', on: { click: () => removeTask(t, key, () => row, () => { leaving = true; }, () => leaving) } }), `حذف تسک ${where}`);
         const desc = label(planEl('textarea', { dir: 'auto', rows: 2, maxLength: 500, value: t.description || '', placeholder: 'توضیح (اختیاری)', on: { input: (e) => { t.description = e.target.value; } } }), `توضیح تسک ${where}`);
         // انتخاب اولویت: سه گزینه‌ی رادیویی (بالا/عادی/کم)؛ تغییر در همان‌جا اعمال می‌شود تا فوکوس کیبورد نپرد
         const help = planEl('p', { class: 'prio-help', text: PLAN_PRIORITY_HELP[planPrio(t.priority)] });
@@ -2824,20 +2831,40 @@
         const day = label(planEl('select', { on: { change: (e) => { t.plannedDate = e.target.value || null; renderPlan(); } } },
           [planEl('option', { value: '', text: 'بدون روز مشخص', selected: !t.plannedDate }), ...days.map((d) => planEl('option', { value: d.date, text: fmtPlanDay(d.date), selected: t.plannedDate === d.date }))]), `روز تسک ${where}`);
         const more = planEl('details', { class: 'day-task-more' }, planEl('summary', { text: 'توضیح و جابه‌جایی روز' }), desc, planEl('div', { class: 'row' }, day));
-        return planEl('li', { class: 'day-task' }, planEl('div', { class: 'day-task-main' }, badge, title, rm), group, more);
+        const num = planEl('span', { class: 'day-task-num', text: faDigits(pos) });
+        num.setAttribute('aria-hidden', 'true');
+        const row = planEl('li', { class: 'day-task day-task-edit' + (fresh ? ' is-entering' : '') }, planEl('div', { class: 'day-task-main day-task-head' }, num, badge, rm), title, group, more);
+        return row;
+      };
+
+      // حذفِ نرم: اول انیمیشن خروج، بعد حذف از فهرست؛ بدون پشتیبانی انیمیشن یا با کاهش حرکت، همان لحظه
+      const removeTask = (t, key, getRow, markLeaving, isLeaving) => {
+        const finish = () => { const at = planUi.tasks.indexOf(t); if (at >= 0) planUi.tasks.splice(at, 1); planUi.focus = key; renderPlan(); };
+        const row = getRow();
+        const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (still || !row || typeof row.getAnimations !== 'function') { finish(); return; }
+        if (isLeaving()) return;
+        markLeaving();
+        if (row.offsetHeight) row.style.maxHeight = row.offsetHeight + 'px'; // نقطه‌ی شروعِ فروریختن ارتفاع
+        row.classList.add('is-leaving');
+        let done = false;
+        const once = () => { if (done) return; done = true; finish(); };
+        row.addEventListener('animationend', once);
+        setTimeout(once, 360); // اگر animationend نیامد
       };
 
       const dayCard = (key, titleText, badge, plannedDate, matches, extra, hue) => {
         const items = planUi.tasks.map((t, idx) => [t, idx]).filter(([t]) => !t.isSystem && !t.isUrgent && !t.managerLocked && matches(t));
         const urgentRows = [...planUi.tasks.filter((t) => t.isUrgent && matches(t)).map(urgentRow), ...planUi.tasks.filter((t) => isManagerTask(t) && matches(t)).map(managerRow)]; // E2 + A3-۲: بالای کارت، فقط‌خواندنی
-        const list = planEl('ul', { class: 'day-list' }, urgentRows, (extra || []), items.map(([t, idx], pos) => taskRow(t, idx, key, pos + 1, titleText)));
+        const pulse = items.some(([t]) => planUi.fresh.has(t));
+        const list = planEl('ul', { class: 'day-list day-list-edit' }, urgentRows, (extra || []), items.map(([t, idx], pos) => taskRow(t, idx, key, pos + 1, titleText)));
         const add = label(planEl('input', {
           type: 'text', dir: 'auto', class: 'day-add-input', maxLength: 120, value: planUi.drafts[key] || '', placeholder: 'تسک جدید…',
           on: { input: (e) => { planUi.drafts[key] = e.target.value; }, keydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); addFromDraft(key, plannedDate); } } },
         }), `تسک جدید برای ${titleText}`);
         if (planUi.focus === key) { planUi.focus = null; setTimeout(() => { if (typeof add.focus === 'function') add.focus(); }, 0); }
         const head = planEl('div', { class: 'day-card-head' }, planEl('h4', { class: 'day-card-title pl-day-title', id: 'plan-card-' + key, text: titleText }), badge ? planEl('span', { class: 'day-badge', text: badge }) : null);
-        const section = planEl('section', { class: `day-card pl-day ${dayHueCls(hue)}` }, head,
+        const section = planEl('section', { class: `day-card pl-day ${dayHueCls(hue)}${pulse ? ' is-pulse' : ''}` }, head,
           planEl('div', { class: 'day-add' }, add, planEl('button', { type: 'button', class: 'btn primary day-add-btn', text: '+ افزودن', on: { click: () => addFromDraft(key, plannedDate) } })),
           items.length || urgentRows.length || (extra || []).length ? list : planEl('p', { class: 'day-empty', text: 'هنوز تسکی ندارد.' }));
         section.setAttribute('aria-labelledby', 'plan-card-' + key);
@@ -2855,6 +2882,7 @@
         if ((d.kind === 'weekend' || d.kind === 'holiday') && !has && !sysHere.length) return; // روز تعطیلِ بدون تسک کارت ندارد
         cards.push(dayCard(d.date, fmtPlanDay(d.date), PLAN_DAY_BADGE[d.kind] || '', d.date, (t) => t.plannedDate === d.date, sysHere, di));
       });
+      planUi.fresh.clear(); // انیمیشن ورود فقط یک‌بار
       body.appendChild(planEl('div', { class: 'pl-board' }, cards));
       body.appendChild(msg);
       body.appendChild(planEl('button', {
@@ -2866,7 +2894,13 @@
 
     // review
     body.appendChild(planEl('div', { class: 'card' }, planEl('div', { text: `${mine().length} تسک برای این هفته ثبت می‌شود:` })));
-    mine().forEach((t) => body.appendChild(planEl('div', { class: 'list-item' }, planEl('div', { class: 'day-task-main' }, prioBadge(t.priority), planEl('span', { text: t.title })), planEl('div', { class: 'plan-meta', text: t.plannedDate ? fmtDate(t.plannedDate) : 'هر روز' }))));
+    const rvDays = planDays(data);
+    mine().forEach((t, i) => {
+      const at = t.plannedDate ? rvDays.findIndex((d) => d.date === t.plannedDate) : -1;
+      const num = planEl('span', { class: 'day-task-num', text: faDigits(i + 1) });
+      num.setAttribute('aria-hidden', 'true');
+      body.appendChild(planEl('div', { class: `list-item plan-review-item ${dayHueCls(at < 0 ? null : at)}` }, planEl('div', { class: 'day-task-main' }, num, prioBadge(t.priority), planEl('span', { class: 'plan-review-title', text: t.title })), planEl('div', { class: 'plan-meta', text: t.plannedDate ? fmtDate(t.plannedDate) : 'هر روز' })));
+    });
     const submitBtn = planEl('button', { type: 'button', class: 'btn primary', text: 'ثبت برنامه' });
     submitBtn.addEventListener('click', async () => {
       try {

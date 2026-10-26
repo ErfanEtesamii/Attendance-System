@@ -1146,3 +1146,60 @@ textarea.dr-extra-input { min-height: 72px; }
 @keyframes dr-extra-in { from { opacity: 0; transform: translateY(-14px) scale(.96); max-height: 0; } 60% { max-height: 400px; } to { opacity: 1; transform: none; max-height: 400px; } }
 @keyframes dr-extra-out { to { opacity: 0; transform: translateX(-24px) scale(.96); } }
 @media (prefers-reduced-motion: reduce) { .dr-extra.is-entering, .dr-extra.is-leaving { animation: none; } }
+
+/* برنامه‌ی هفتگی: هر تسک یک کارت مستقل، نشانگر مراحل، و حرکت ورود/خروج (هم‌خانواده‌ی «کار خارج از برنامه») */
+.plan-steps { gap: var(--space-2); }
+.plan-steps span { flex: 1 1 0; min-width: 0; display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 4px var(--space-2); border: 1px solid var(--border); border-radius: 999px; background: var(--card-bg-2); text-align: center; transition: background-color .2s ease, border-color .2s ease; }
+.plan-steps span.past { color: var(--text); }
+.plan-steps span.on { background: var(--brand-soft); border-color: var(--brand); }
+#plan-body .plan-empty { border: 1.5px dashed var(--border); border-radius: var(--radius-inner); background: var(--card-bg-2); text-align: center; }
+.plan-chip { transition: background-color .15s ease, transform .15s ease; }
+.plan-chip:hover, .plan-chip:focus-visible { background: var(--brand-soft); }
+.plan-chip:active { transform: scale(.97); }
+
+.day-list-edit { gap: var(--space-3); }
+.day-list-edit > .day-task { position: relative; padding: var(--space-3); border: 1px solid var(--plan-field-border); border-inline-start: 4px solid var(--plan-field-border); border-radius: 14px; background: color-mix(in srgb, var(--plan-field) 55%, var(--plan-card)); box-shadow: 0 4px 12px rgba(10, 107, 75, 0.10); transform-origin: top center; }
+.day-list-edit > .day-task-edit { border-inline-start-color: var(--pl-c, var(--plan-title)); background: color-mix(in srgb, var(--pl-c, var(--plan-title)) 6%, var(--plan-card)); }
+.day-list-edit > .day-task-urgent { border-inline-start-color: var(--urgent-plan-line); }
+.day-list-edit > .day-task-mandatory { border-inline-start-color: rgba(10, 107, 75, 0.7); }
+.day-list-edit > .day-task-manager { border-inline-start-color: rgba(37, 99, 235, 0.7); }
+.day-task-head { gap: var(--space-2); }
+.day-task-num { display: grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: 50%; background: rgba(10, 107, 75, 0.14); color: var(--plan-title); font-size: var(--fs-xs); font-weight: 800; }
+.day-task-edit .day-task-title { width: 100%; box-sizing: border-box; min-height: 44px; font-weight: 700; }
+.day-task-edit .day-task-del { display: inline-flex; align-items: center; gap: 6px; margin-inline-start: auto; padding: 6px 14px; border-radius: 999px; transition: background-color .15s ease; }
+.day-task-edit .day-task-del::before { content: "✕"; font-size: var(--fs-xs); }
+.day-task-edit .day-task-del:hover, .day-task-edit .day-task-del:focus-visible { background: rgba(161, 43, 43, 0.12); }
+.day-card .day-add-input { border: 1.5px dashed var(--plan-field-border); transition: border-color .15s ease, box-shadow .15s ease; }
+.day-card .day-add-input:focus-visible, .day-task-edit .day-task-title:focus-visible, .day-card textarea:focus-visible, .day-card select:focus-visible { border-style: solid; border-color: var(--plan-title); box-shadow: 0 0 0 3px rgba(10, 107, 75, 0.22); }
+.day-card .day-empty { padding: var(--space-3); border: 1.5px dashed var(--plan-line); border-radius: 12px; text-align: center; line-height: 1.8; }
+
+.plan-review-item { --pl-c: var(--pl-accent); border-inline-start: 4px solid var(--pl-c); box-shadow: 0 4px 12px rgba(10, 107, 75, 0.10); }
+.plan-review-item.pl-day-1 { --pl-c: var(--pl-day-1); }
+.plan-review-item.pl-day-2 { --pl-c: var(--pl-day-2); }
+.plan-review-item.pl-day-3 { --pl-c: var(--pl-day-3); }
+.plan-review-item.pl-day-4 { --pl-c: var(--pl-day-4); }
+.plan-review-item.pl-day-5 { --pl-c: var(--pl-day-5); }
+.plan-review-item.pl-day-6 { --pl-c: var(--pl-day-6); }
+.plan-review-item.pl-day-7 { --pl-c: var(--pl-day-7); }
+.plan-review-item .day-task-main { gap: var(--space-2); }
+.plan-review-item .day-task-num { background: var(--brand-soft); color: var(--brand); }
+.plan-review-title { min-width: 0; overflow-wrap: anywhere; font-weight: 700; }
+.plan-review-item .plan-meta { margin-top: var(--space-1); }
+.plan-carry { border-inline-start: 4px solid var(--accent); transition: background-color .15s ease; }
+.plan-carry:hover { background: var(--brand-soft); }
+
+.day-task-edit.is-entering { overflow: hidden; animation: pl-task-in .38s cubic-bezier(.2, .8, .2, 1) backwards; }
+.day-task-edit.is-leaving { overflow: hidden; animation: pl-task-out .24s ease-in forwards; pointer-events: none; }
+.pl-day.is-pulse { animation: pl-day-pulse .8s ease-out; }
+#plan-body.pl-step-anim > * { animation: pl-step-in .36s cubic-bezier(.2, .8, .2, 1) backwards; }
+#plan-body.pl-step-anim > :nth-child(2) { animation-delay: .04s; }
+#plan-body.pl-step-anim > :nth-child(3) { animation-delay: .08s; }
+#plan-body.pl-step-anim > :nth-child(4) { animation-delay: .12s; }
+#plan-body.pl-step-anim > :nth-child(5) { animation-delay: .16s; }
+#plan-body.pl-step-anim > :nth-child(6) { animation-delay: .2s; }
+#plan-body.pl-step-anim > :nth-child(n+7) { animation-delay: .24s; }
+@keyframes pl-task-in { from { opacity: 0; transform: translateY(-14px) scale(.96); max-height: 0; padding-block: 0; } to { opacity: 1; transform: none; max-height: 640px; } }
+@keyframes pl-task-out { to { opacity: 0; transform: translateX(-24px) scale(.96); max-height: 0; padding-block: 0; margin-block-end: calc(var(--space-3) * -1); border-width: 0; } }
+@keyframes pl-day-pulse { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--pl-c) 55%, transparent); } to { box-shadow: 0 0 0 12px transparent; } }
+@keyframes pl-step-in { from { opacity: 0; transform: translateY(14px); } }
+@media (prefers-reduced-motion: reduce) { .day-task-edit.is-entering, .day-task-edit.is-leaving, .pl-day.is-pulse, #plan-body.pl-step-anim > * { animation: none; } .plan-steps span, .plan-chip, .plan-carry { transition: none; } }
