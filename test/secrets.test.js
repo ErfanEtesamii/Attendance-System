@@ -99,7 +99,7 @@ describe('startupChecks — اجرای واقعی createApp در پروسه‌ی
   }
 
   test('راز خالی → خروج با خطا، بدون ساخت اپ', () => {
-    const r = runCreateApp({ ADMIN_SESSION_SECRET: '', TELEGRAM_BOT_USERNAME: 'b' });
+    const r = runCreateApp({ ADMIN_SESSION_SECRET: '', BALE_BOT_USERNAME: 'b' });
     assert.notEqual(r.status, 0);
     assert.match(r.stderr, /ADMIN_SESSION_SECRET/);
     assert.ok(!r.stdout.includes('CREATED'));
@@ -107,16 +107,16 @@ describe('startupChecks — اجرای واقعی createApp در پروسه‌ی
   });
 
   test('راز کوتاه → خروج با خطا', () => {
-    const r = runCreateApp({ ADMIN_SESSION_SECRET: 'tooshort', TELEGRAM_BOT_USERNAME: 'b' });
+    const r = runCreateApp({ ADMIN_SESSION_SECRET: 'tooshort', BALE_BOT_USERNAME: 'b' });
     assert.notEqual(r.status, 0);
     assert.ok(!r.stdout.includes('CREATED'));
   });
 
   test('راز قوی + username خالی → بالا می‌آید و هشدار می‌دهد', () => {
-    const r = runCreateApp({ ADMIN_SESSION_SECRET: GOOD_SECRET, TELEGRAM_BOT_USERNAME: '' });
+    const r = runCreateApp({ ADMIN_SESSION_SECRET: GOOD_SECRET, BALE_BOT_USERNAME: '' });
     assert.equal(r.status, 0, r.stderr);
     assert.ok(r.stdout.includes('CREATED'));
-    assert.match(r.stderr + r.stdout, /TELEGRAM_BOT_USERNAME/);
+    assert.match(r.stderr + r.stdout, /BALE_BOT_USERNAME/);
   });
 });
 
