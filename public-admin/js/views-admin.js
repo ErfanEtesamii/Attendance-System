@@ -682,9 +682,36 @@
     if (s.length > 200) s = `${s.slice(0, 200)}…`;
     return esc(s);
   }
+  // نمایش خوانای JSON ساده‌ی بدون ساختار diff (مثل هشدارهای سیستمی): هر کلید یک «چیپ». ورودی‌های دیگر همان جعبه‌ی متنی می‌مانند.
+  const AU_KEY = { employeeId: 'کارمند', userId: 'کاربر', lateCount: 'تعداد تأخیر', count: 'تعداد', days: 'روز', minutes: 'دقیقه', date: 'تاریخ', month: 'ماه', year: 'سال', reason: 'دلیل' };
+  function auFlat(raw) {
+    if (typeof raw !== 'string' || raw.charAt(0) !== '{') return null;
+    try {
+      const d = JSON.parse(raw);
+      if (!d || typeof d !== 'object' || Array.isArray(d)) return null;
+      const keys = Object.keys(d);
+      if (!keys.length || keys.length > 12) return null;
+      return keys.every((k) => d[k] === null || ['string', 'number', 'boolean'].includes(typeof d[k])) ? d : null;
+    } catch (_) { return null; }
+  }
+  // رنگ نشان رویداد بر اساس معنای نام (فقط ظاهر؛ مقدار ذخیره‌شده تغییری نمی‌کند)
+  function auTone(action) {
+    const a = String(action || '').toLowerCase();
+    if (/delet|remov|reject|revok|reset|purge|fail|denied|block|lock/.test(a)) return 'red';
+    if (/alert|late|warn|suspic|overtime|expire/.test(a)) return 'yellow';
+    if (/creat|add|approv|import|grant|restor|login|open/.test(a)) return 'green';
+    if (/updat|chang|edit|set|assign|move|sync|export/.test(a)) return 'blue';
+    return 'gray';
+  }
   function auDetailsHtml(raw) {
     const d = auParse(raw);
-    if (!d) return `<div class="details-box">${esc(raw || '')}</div>`;
+    if (!d) {
+      const f = auFlat(raw);
+      if (f) {
+        return `<div class="au-chips">${Object.keys(f).map((k) => `<span class="au-chip"><span class="au-k">${esc(AU_KEY[k] || AU_FIELD[k] || k)}</span><span class="au-v">${f[k] === null ? '—' : esc(String(f[k]))}</span></span>`).join('')}</div>`;
+      }
+      return `<div class="details-box">${esc(raw || '')}</div>`;
+    }
     const keys = Object.keys(d.changes);
     const rows = keys.map((k) => {
       const c = d.changes[k] || {};
@@ -721,7 +748,7 @@
         <div class="card flush"><div class="table-wrap"><table>
           <thead><tr><th>زمان</th><th>کاربر</th><th>رویداد</th><th>IP</th><th>جزئیات</th></tr></thead><tbody>
           ${rows.length ? rows.map((r) => `<tr><td class="num">${esc(fmt.dateTime(r.occurred_at))}</td><td>${esc(r.userFullName || '—')}</td>
-            <td>${esc(r.action)}</td><td><span class="ltr muted">${esc(r.ip_address || '—')}</span></td>
+            <td><span class="au-act au-act--${auTone(r.action)}">${esc(r.action)}</span></td><td><span class="ltr muted">${esc(r.ip_address || '—')}</span></td>
             <td class="wrap">${auDetailsHtml(r.details)}</td></tr>`).join('') : `<tr><td colspan="5">${emptyBox('رویدادی پیدا نشد.')}</td></tr>`}
           </tbody></table></div></div>`;
       return {

@@ -1993,3 +1993,85 @@ td .btn.small, td .btn.ghost.small { white-space: nowrap; min-width: max-content
   .st-panel { animation: none; }
   .st-field, .st-field:hover, .st-nav-item, .st-nav-item:hover, .st-pill span, .st-ctl input, .st-ctl select { transition: none; transform: none; }
 }
+
+/* ======================================================================
+   گزارش رویدادها (Audit) — ظاهر جدید. محدود به #au-filters و کارت جدول بعد از آن.
+   ====================================================================== */
+#au-filters {
+  padding: 18px 20px;
+  gap: 14px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 5%, var(--card)), var(--card));
+  box-shadow: var(--shadow-1), 0 18px 36px -28px rgba(0, 0, 0, .5);
+}
+#au-filters .field > span { font-size: var(--fs-xs); font-weight: 700; color: var(--hint); letter-spacing: .1px; }
+#au-filters .field input, #au-filters .field select {
+  min-height: 44px; border: 1px solid var(--border); border-radius: 14px; background: var(--card-2);
+  transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+#au-filters .field input:hover, #au-filters .field select:hover { border-color: color-mix(in srgb, var(--brand) 50%, var(--border)); }
+#au-filters .field input:focus, #au-filters .field select:focus {
+  outline: none; border-color: var(--brand); background: var(--card);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 20%, transparent);
+}
+#au-filters input[type="search"] { padding-inline: 14px; }
+
+/* کارت جدول */
+#au-filters + .card.flush {
+  margin-top: var(--space-4);
+  border-radius: 24px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-1), 0 22px 44px -30px rgba(0, 0, 0, .55);
+}
+#au-filters + .card.flush .table-wrap { max-height: min(70vh, 760px); overflow: auto; scrollbar-width: thin; }
+#au-filters + .card.flush table { border-collapse: separate; border-spacing: 0; width: 100%; }
+#au-filters + .card.flush thead th {
+  position: sticky; top: 0; z-index: 2;
+  padding-block: 15px; font-size: var(--fs-xs); font-weight: 800; letter-spacing: .3px; color: var(--hint);
+  background: color-mix(in srgb, var(--brand) 9%, var(--card));
+  border-bottom: 1px solid var(--border);
+}
+#au-filters + .card.flush tbody td { padding-block: 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+#au-filters + .card.flush tbody tr:last-child td { border-bottom: 0; }
+#au-filters + .card.flush tbody tr:nth-child(even) { background: color-mix(in srgb, var(--brand) 3%, transparent); }
+#au-filters + .card.flush tbody tr:hover { background: color-mix(in srgb, var(--brand) 8%, transparent); }
+#au-filters + .card.flush td.num { color: var(--hint); font-size: var(--fs-xs); }
+#au-filters + .card.flush td:nth-child(2) { font-weight: 700; }
+#au-filters + .card.flush td.wrap { min-width: 280px; white-space: normal; }
+
+/* نشان نوع رویداد */
+.au-act {
+  display: inline-flex; align-items: center; gap: 8px; max-width: 100%;
+  padding: 4px 12px 4px 10px; border-radius: 999px;
+  font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; direction: ltr; unicode-bidi: isolate;
+  background: var(--card-2); color: var(--text); border: 1px solid var(--border);
+}
+.au-act::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--hint); }
+.au-act--red    { background: color-mix(in srgb, var(--red) 12%, transparent);    border-color: color-mix(in srgb, var(--red) 35%, transparent); }
+.au-act--red::before    { background: var(--red); }
+.au-act--yellow { background: var(--yellow-soft);                                 border-color: color-mix(in srgb, var(--yellow) 35%, transparent); }
+.au-act--yellow::before { background: var(--yellow); }
+.au-act--green  { background: var(--green-soft);                                  border-color: color-mix(in srgb, var(--green) 35%, transparent); }
+.au-act--green::before  { background: var(--green); }
+.au-act--blue   { background: var(--blue-soft);                                   border-color: color-mix(in srgb, var(--blue) 35%, transparent); }
+.au-act--blue::before   { background: var(--blue); }
+
+/* جزئیات به‌صورت چیپ کلید/مقدار */
+.au-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.au-chip { display: inline-flex; align-items: stretch; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); font-size: var(--fs-xs); }
+.au-k { padding: 5px 10px; color: var(--hint); background: color-mix(in srgb, var(--brand) 8%, transparent); }
+.au-v { padding: 5px 12px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; unicode-bidi: isolate; }
+
+/* باکس متن خام و diff داخل جدول */
+#au-filters + .card.flush .details-box { border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); }
+#au-filters + .card.flush .diff { border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; background: color-mix(in srgb, var(--brand) 3%, var(--card)); }
+
+@media (max-width: 760px) {
+  #au-filters { padding: 14px; border-radius: 18px; }
+  #au-filters + .card.flush { border-radius: 18px; }
+  #au-filters + .card.flush .table-wrap { max-height: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #au-filters .field input, #au-filters .field select { transition: none; }
+}
