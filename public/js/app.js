@@ -2949,7 +2949,7 @@
     const optIdx = reportUi.tasks.findIndex((t) => DR.isOptional(t) && !reportUi.answers.has(t.id));
     const firstOpen = blockIdx >= 0 ? blockIdx : optIdx;
     reportUi.idx = firstOpen < 0 ? 0 : firstOpen;
-    reportUi.step = !reportUi.tasks.length ? 'extra' : (firstOpen < 0 ? 'review' : 'q');
+    reportUi.step = !reportUi.tasks.length ? 'extra' : (firstOpen < 0 ? (mode === 'checkout' ? 'extra' : 'review') : 'q'); // خروج: وقتی همه پاسخ داده‌اند هم مرحله‌ی «کار خارج از برنامه» نشان داده شود
     switchView('dreport');
     renderReport();
   }
@@ -2980,8 +2980,10 @@
     } catch (_) { /* پیش‌بررسی فقط برای تجربهٔ کاربر است؛ سرور در /check-out مرجع نهایی می‌ماند. */ }
     try {
       const d = await api('/daily-tasks');
-      if (d && d.mode === 'soft' && !d.fullDayOff && d.tasks && d.tasks.length) {
-        openReportWizard({ mode: 'checkout', date: d.date, today: d.today, tasks: d.tasks, body: null, allowLater: true, teamReview: d.teamReview });
+      // ویزارد هر بار که گزارش فعال است باز می‌شود (حتی بدون تسک یا وقتی همه پاسخ داده‌اند) تا «کار خارج از برنامه» همیشه در دسترس باشد؛
+      // «بعداً پر می‌کنم» فقط در حالت soft است (در enforce سرور خروجِ بدون پاسخ را رد می‌کند).
+      if (d && d.mode && d.mode !== 'off' && !d.fullDayOff) {
+        openReportWizard({ mode: 'checkout', date: d.date, today: d.today, tasks: d.tasks || [], body: null, allowLater: d.mode === 'soft', teamReview: d.teamReview });
         return;
       }
     } catch (_) { /* پیش‌بررسی اختیاری است؛ تصمیم نهایی با /check-out */ }
