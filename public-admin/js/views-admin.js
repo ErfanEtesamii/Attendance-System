@@ -835,6 +835,9 @@
   const STATUS_CLS = { success: 'green', error: 'red', running: 'blue', interrupted: 'orange' };
   const healthBadge = (ok, yes, no) => AP.badge(ok ? 'green' : 'red', ok ? yes : no);
 
+  // تاریخ میلادیِ سرور (YYYY-MM-DD) → نمایش شمسی؛ اگر jalali.js بارگذاری نشده بود همان مقدار
+  const faIso = (iso) => (iso && window.Jalali && window.Jalali.formatIso ? window.Jalali.formatIso(iso) : iso);
+
   // ---- ناحیه‌ی خطر: ریست برنامه (B4) — فقط system.manage؛ همه‌ی گیت‌ها سمت سرور اعمال می‌شوند ----
   function resetZoneHtml(o) {
     const groups = o.groups.map((g) => `<label class="check"><input type="checkbox" name="rz-group" value="${esc(g.key)}" ${g.defaultSelected ? 'checked' : ''}> <span>${esc(g.label)}</span></label>`).join('');
@@ -849,11 +852,13 @@
 
   function mountResetZone(root, o) {
     const zone = $('#reset-zone', root);
-    if (!zone || o.locked) return;
+    if (!zone) return;
+    const dps = AP.dates.mount(zone); // «قبل از تاریخ» با تقویم شمسی؛ مقدار میلادی از dp.getValue() خوانده می‌شود
+    if (o.locked) return;
     const result = $('#rz-result', zone);
     const words = o.confirmWords || ['RESET', 'ریست'];
     const selected = () => $$('input[name=rz-group]:checked', zone).map((i) => i.value);
-    const beforeDate = () => { const v = $('#rz-before', zone); return v && v.value ? v.value : undefined; };
+    const beforeDate = () => { const v = dps[0] ? dps[0].getValue() : ($('#rz-before', zone) || {}).value; return v || undefined; };
     const body = () => ({ groups: selected(), beforeDate: beforeDate() });
 
     $('#rz-preview', zone).addEventListener('click', async () => {
@@ -866,7 +871,7 @@
         return;
       } finally { btn.disabled = false; btn.removeAttribute('aria-busy'); }
       const rows = p.tables.map((t) => `<tr><td>${esc(t.label)}</td><td class="ltr">${esc(t.table)}</td><td>${fmt.num(t.count)}</td></tr>`).join('');
-      result.innerHTML = `<h4>این‌ها حذف می‌شود${p.beforeDate ? ` (قبل از ${esc(p.beforeDate)})` : ''}</h4>
+      result.innerHTML = `<h4>این‌ها حذف می‌شود${p.beforeDate ? ` (قبل از ${esc(faIso(p.beforeDate))})` : ''}</h4>
         <div class="table-wrap"><table><thead><tr><th>داده</th><th>جدول</th><th>تعداد</th></tr></thead><tbody>${rows}</tbody>
         <tfoot><tr><th colspan="2">جمع</th><th>${fmt.num(p.total)}</th></tr></tfoot></table></div>
         <label class="field"><span>برای تأیید عبارت RESET (یا «ریست») را بنویسید</span><input type="text" id="rz-confirm" autocomplete="off" dir="ltr" aria-label="عبارت تأیید"></label>
@@ -909,9 +914,13 @@
     const zone = $('#history-purge-zone', root);
     if (!zone) return;
     const from = $('#hp-from', zone); const to = $('#hp-to', zone); const result = $('#hp-result', zone);
-    const body = () => ({ fromDate: from.value, toDate: to.value });
+    const dps = AP.dates.mount(zone); // از/تا با تقویم شمسی؛ مقدار میلادی از dp.getValue() خوانده می‌شود (ترتیب = ترتیب DOM)
+    const fromVal = () => (dps[0] ? dps[0].getValue() : from.value);
+    const toVal = () => (dps[1] ? dps[1].getValue() : to.value);
+    const body = () => ({ fromDate: fromVal(), toDate: toVal() });
     $('#hp-preview', zone).addEventListener('click', async () => {
-      if (!from.value || !to.value) { AP.toast('ابتدا و انتهای بازه را انتخاب کنید.', true); return; }
+      if (!fromVal() || !toVal()) { AP.toast('ابتدا و انتهای بازه را انتخاب کنید.', true); return; }
+      if (fromVal() > toVal()) { AP.toast('تاریخ شروع نباید بعد از تاریخ پایان باشد.', true); return; }
       const button = $('#hp-preview', zone);
       button.disabled = true; button.setAttribute('aria-busy', 'true');
       result.innerHTML = '<div class="muted">در حال محاسبه…</div>';
@@ -921,7 +930,7 @@
         return;
       } finally { button.disabled = false; button.removeAttribute('aria-busy'); }
       const rows = preview.tables.map((t) => `<tr><td>${esc(t.label)}</td><td class="ltr">${esc(t.table)}</td><td>${fmt.num(t.count)}</td></tr>`).join('');
-      result.innerHTML = `<h4>داده‌های قابل حذف در بازهٔ ${esc(preview.fromDate)} تا ${esc(preview.toDate)}</h4>
+      result.innerHTML = `<h4>داده‌های قابل حذف در بازهٔ ${esc(faIso(preview.fromDate))} تا ${esc(faIso(preview.toDate))}</h4>
         <div class="table-wrap"><table><thead><tr><th>داده</th><th>جدول</th><th>تعداد</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><th colspan="2">جمع</th><th>${fmt.num(preview.total)}</th></tr></tfoot></table></div>
         <label class="field"><span>برای فعال‌شدن حذف، عبارت «حذف تاریخچه» را بنویسید</span><input type="text" id="hp-confirm" autocomplete="off" aria-label="عبارت تأیید حذف"></label>
         <div class="rz-actions"><button type="button" class="btn danger" id="hp-run" disabled>حذف نهایی داده‌های این بازه</button></div><div id="hp-done" aria-live="polite"></div>`;
@@ -931,7 +940,7 @@
       run.addEventListener('click', async () => {
         const yes = await AP.confirmBox({
           title: 'تأیید پاک‌سازی داده‌ها',
-          message: `مطمئنی می‌خواهید کل رکوردهای تردد و برنامه‌های هفتگیِ بازهٔ ${preview.fromDate} تا ${preview.toDate} حذف شوند؟ این عمل قابل بازگشت نیست.`,
+          message: `مطمئنی می‌خواهید کل رکوردهای تردد و برنامه‌های هفتگیِ بازهٔ ${faIso(preview.fromDate)} تا ${faIso(preview.toDate)} حذف شوند؟ این عمل قابل بازگشت نیست.`,
           confirmText: 'بله، حذف کن', danger: true,
         });
         if (!yes) return;
