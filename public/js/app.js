@@ -3213,16 +3213,26 @@
 
     if (ui.step === 'extra') {
       const card = dEl('div', { class: 'card dr-card' });
+      card.classList.add('dr-extra-card');
       card.appendChild(heading('کار خارج از برنامه'));
-      card.appendChild(dEl('div', { class: 'plan-meta', text: 'کاری انجام دادید که در برنامه نبود؟ (اختیاری)' }));
+      card.appendChild(dEl('div', { class: 'plan-meta dr-extra-intro', text: 'کاری انجام دادید که در برنامه نبود؟ (اختیاری)' }));
+      let freshInput = null; // ردیفی که همین حالا اضافه شد: انیمیشن ورود + فوکوس
       ui.extras.forEach((x, i) => {
-        const row = dEl('div', { class: 'plan-task' });
-        row.appendChild(dEl('input', { type: 'text', value: x.title, maxLength: DR.LIMITS.extraTitle, placeholder: 'عنوان کار', on: { input: (e) => { x.title = e.target.value; } }, attrs: { 'aria-label': `عنوان کار خارج از برنامه ${i + 1}` } }));
-        row.appendChild(dEl('textarea', { rows: 2, value: x.description, maxLength: DR.LIMITS.extraDesc, placeholder: 'توضیح (اختیاری)', on: { input: (e) => { x.description = e.target.value; } }, attrs: { 'aria-label': `توضیح کار خارج از برنامه ${i + 1}` } }));
-        row.appendChild(dEl('button', { type: 'button', class: 'btn secondary', text: 'حذف', on: { click: () => { ui.extras.splice(i, 1); renderReport(); } } }));
+        const fresh = i === ui.extraFresh;
+        const row = dEl('div', { class: 'dr-extra' + (fresh ? ' is-entering' : '') });
+        const head = dEl('div', { class: 'dr-extra-head' });
+        head.appendChild(dEl('span', { class: 'dr-extra-num', text: (i + 1).toLocaleString('fa-IR') }));
+        head.appendChild(dEl('span', { class: 'dr-extra-label', text: 'کار خارج از برنامه' }));
+        head.appendChild(dEl('button', { type: 'button', class: 'dr-extra-del', text: '✕', on: { click: () => { if (row.classList.contains('is-leaving')) return; row.classList.add('is-leaving'); const wait = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 220; setTimeout(() => { ui.extras.splice(i, 1); ui.extraFresh = -1; renderReport(); }, wait); } }, attrs: { 'aria-label': `حذف کار خارج از برنامه ${i + 1}`, title: 'حذف' } }));
+        row.appendChild(head);
+        const titleInput = dEl('input', { type: 'text', class: 'dr-extra-input', value: x.title, maxLength: DR.LIMITS.extraTitle, placeholder: 'عنوان کار، مثلاً «پیگیری مشتری»', on: { input: (e) => { x.title = e.target.value; } }, attrs: { 'aria-label': `عنوان کار خارج از برنامه ${i + 1}` } });
+        if (fresh) freshInput = titleInput;
+        row.appendChild(titleInput);
+        row.appendChild(dEl('textarea', { class: 'dr-extra-input', rows: 2, value: x.description, maxLength: DR.LIMITS.extraDesc, placeholder: 'توضیح (اختیاری)', on: { input: (e) => { x.description = e.target.value; } }, attrs: { 'aria-label': `توضیح کار خارج از برنامه ${i + 1}` } }));
         card.appendChild(row);
       });
-      if (ui.extras.length < DR.LIMITS.maxExtra) card.appendChild(dEl('button', { type: 'button', class: 'btn secondary', text: '+ افزودن کار', on: { click: () => { ui.extras.push({ title: '', description: '' }); renderReport(); } } }));
+      if (!ui.extras.length) card.appendChild(dEl('div', { class: 'dr-extra-empty', text: 'کار اضافه‌ای نداشتید؟ مستقیم «مرور» را بزنید.' }));
+      if (ui.extras.length < DR.LIMITS.maxExtra) card.appendChild(dEl('button', { type: 'button', class: 'dr-extra-add', text: '+ افزودن کار', on: { click: () => { ui.extras.push({ title: '', description: '' }); ui.extraFresh = ui.extras.length - 1; renderReport(); } } }));
       card.appendChild(msg);
       const nav = dEl('div', { class: 'dr-nav' });
       if (total) nav.appendChild(dEl('button', { type: 'button', class: 'btn secondary', text: 'قبلی', on: { click: () => { ui.step = 'q'; ui.idx = total - 1; ui.msg = ''; renderReport(); } } }));
@@ -3238,7 +3248,7 @@
       if (ui.allowLater) nav.appendChild(laterBtn());
       card.appendChild(nav);
       body.appendChild(card);
-      focusHeading();
+      if (freshInput) { ui.extraFresh = -1; freshInput.focus({ preventScroll: true }); freshInput.scrollIntoView({ block: 'center', behavior: 'smooth' }); } else focusHeading();
       return;
     }
 

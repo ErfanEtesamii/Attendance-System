@@ -1118,3 +1118,31 @@ body { padding-bottom: max(env(safe-area-inset-bottom, 0px), var(--tg-safe-botto
 /* UX v2: existing request locks also state progress in words. */
 .btn[aria-busy="true"] { cursor: progress; opacity: .82; }
 .btn[aria-busy="true"]::after { content: "در حال انجام…"; margin-inline-start: 8px; font-size: var(--fs-xs); font-weight: var(--fw-body); }
+
+/* مرحله‌ی «کار خارج از برنامه» در ویزارد خروج: کارت‌های مرتب به‌جای فیلدهای خام مرورگر */
+.dr-extra-card { gap: var(--space-3); }
+.dr-extra-intro { margin-top: calc(var(--space-1) * -1); }
+.dr-extra { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-inner); background: var(--card-bg-2); }
+.dr-extra-head { display: flex; align-items: center; gap: var(--space-2); }
+.dr-extra-num { display: grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--brand-soft); color: var(--brand); font-size: var(--fs-xs); font-weight: 800; }
+.dr-extra-label { flex: 1; min-width: 0; font-size: var(--fs-sm); font-weight: 700; color: var(--hint); }
+.dr-extra-del { flex: none; width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--hint); font: inherit; font-size: var(--fs-md); cursor: pointer; }
+.dr-extra-del:hover, .dr-extra-del:focus-visible { background: var(--red-soft, rgba(240, 80, 110, .15)); color: var(--red, #d6334f); }
+.dr-extra-input { width: 100%; box-sizing: border-box; padding: 12px var(--space-3); border: 1px solid var(--border); border-radius: 12px; background: var(--card-bg); color: var(--text); font: inherit; font-size: var(--fs-sm); line-height: 1.7; outline: none; resize: vertical; transition: border-color .15s ease, box-shadow .15s ease; }
+textarea.dr-extra-input { min-height: 72px; }
+.dr-extra-input::placeholder { color: var(--hint); opacity: .8; }
+.dr-extra-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.dr-extra-add { min-height: 48px; padding: var(--space-2) var(--space-4); border: 1.5px dashed color-mix(in srgb, var(--brand) 40%, var(--border)); border-radius: var(--radius-inner); background: transparent; color: var(--brand); font: inherit; font-weight: 700; cursor: pointer; transition: background .15s ease; }
+.dr-extra-add:hover, .dr-extra-add:focus-visible { background: var(--brand-soft); }
+.dr-extra-empty { padding: var(--space-3); border-radius: var(--radius-inner); background: var(--card-bg-2); color: var(--hint); font-size: var(--fs-sm); text-align: center; line-height: 1.8; }
+.dr-extra-card .dr-nav { margin-top: var(--space-2); }
+
+/* جداسازی و حرکت کارت‌های «کار خارج از برنامه» */
+.dr-extra-card { gap: var(--space-4); }
+.dr-extra { border-inline-start: 4px solid var(--accent); box-shadow: 0 6px 16px color-mix(in srgb, var(--brand) 10%, transparent); transform-origin: top center; }
+.dr-extra.is-entering { animation: dr-extra-in .38s cubic-bezier(.2, .8, .2, 1) both; }
+.dr-extra.is-leaving { animation: dr-extra-out .22s ease-in both; pointer-events: none; }
+.dr-extra-add { animation: none; }
+@keyframes dr-extra-in { from { opacity: 0; transform: translateY(-14px) scale(.96); max-height: 0; } 60% { max-height: 400px; } to { opacity: 1; transform: none; max-height: 400px; } }
+@keyframes dr-extra-out { to { opacity: 0; transform: translateX(-24px) scale(.96); } }
+@media (prefers-reduced-motion: reduce) { .dr-extra.is-entering, .dr-extra.is-leaving { animation: none; } }
