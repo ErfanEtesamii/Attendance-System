@@ -1,0 +1,53 @@
+diff -ruN --strip-trailing-cr a/public/css/style.css b/public/css/style.css
+--- a/public/css/style.css	2026-10-26 19:51:46.675889602 +0000
++++ b/public/css/style.css	2026-10-26 19:51:46.677487334 +0000
+@@ -1227,3 +1227,11 @@
+ #plan-body.pl-step-anim > .pl-task-focus { animation: pl-focus-pop .5s cubic-bezier(.2, .9, .3, 1.15) backwards .05s; }
+ @keyframes pl-focus-pop { from { opacity: 0; transform: translateY(24px) scale(.94); } }
+ @media (prefers-reduced-motion: reduce) { #plan-body.pl-step-anim > .pl-task-focus { animation: none; } .pl-focus-input { transition: none; } }
++
++/* پنل افزودنِ مجزا از تسک‌های ثبت‌شده‌ی همان روز */
++.day-add-panel { display: flex; flex-direction: column; gap: 6px; padding: var(--space-3); border: 1.5px dashed color-mix(in srgb, var(--pl-c, var(--plan-title)) 70%, var(--plan-field-border)); border-radius: 14px; background: color-mix(in srgb, var(--pl-c, var(--plan-title)) 10%, var(--plan-card)); }
++.day-add-label { font-size: var(--fs-xs); font-weight: 800; color: var(--plan-title); }
++.day-card .day-add-panel .day-add-input { border-style: solid; }
++.pl-day.day-card > .day-list-head { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-4); font-size: var(--fs-xs); font-weight: 800; color: var(--plan-hint); }
++.day-list-head::after { content: ""; flex: 1; border-block-start: 1px dashed var(--plan-line); }
++.day-list-count { min-width: 22px; padding: 0 7px; border-radius: 999px; background: rgba(10, 107, 75, 0.14); color: var(--plan-title); text-align: center; }
+diff -ruN --strip-trailing-cr a/public/js/app.js b/public/js/app.js
+--- a/public/js/app.js	2026-10-26 19:51:46.683368141 +0000
++++ b/public/js/app.js	2026-10-26 19:51:46.685044947 +0000
+@@ -2904,6 +2904,7 @@
+         const items = planUi.tasks.map((t, idx) => [t, idx]).filter(([t]) => !t.isSystem && !t.isUrgent && !t.managerLocked && matches(t));
+         const urgentRows = [...planUi.tasks.filter((t) => t.isUrgent && matches(t)).map(urgentRow), ...planUi.tasks.filter((t) => isManagerTask(t) && matches(t)).map(managerRow)]; // E2 + A3-۲: بالای کارت، فقط‌خواندنی
+         const pulse = items.some(([t]) => planUi.fresh.has(t));
++        const listCount = items.length + urgentRows.length + (extra || []).length;
+         const list = planEl('ul', { class: 'day-list day-list-edit' }, urgentRows, (extra || []), items.map(([t, idx], pos) => taskRow(t, idx, key, pos + 1, titleText)));
+         const add = label(planEl('input', {
+           type: 'text', dir: 'auto', class: 'day-add-input', maxLength: 120, value: planUi.drafts[key] || '', placeholder: 'تسک جدید…',
+@@ -2912,8 +2913,10 @@
+         if (planUi.focus === key) { planUi.focus = null; setTimeout(() => { if (typeof add.focus === 'function') add.focus(); }, 0); }
+         const head = planEl('div', { class: 'day-card-head' }, planEl('h4', { class: 'day-card-title pl-day-title', id: 'plan-card-' + key, text: titleText }), badge ? planEl('span', { class: 'day-badge', text: badge }) : null);
+         const section = planEl('section', { class: `day-card pl-day ${dayHueCls(hue)}${pulse ? ' is-pulse' : ''}` }, head,
+-          planEl('div', { class: 'day-add' }, add, planEl('button', { type: 'button', class: 'btn primary day-add-btn', text: '+ افزودن', on: { click: () => addFromDraft(key, plannedDate) } })),
+-          items.length || urgentRows.length || (extra || []).length ? list : planEl('p', { class: 'day-empty', text: 'هنوز تسکی ندارد.' }));
++          planEl('div', { class: 'day-add-panel' }, planEl('span', { class: 'day-add-label', text: 'افزودن تسک جدید' }),
++            planEl('div', { class: 'day-add' }, add, planEl('button', { type: 'button', class: 'btn primary day-add-btn', text: '+ افزودن', on: { click: () => addFromDraft(key, plannedDate) } }))),
++          listCount ? planEl('div', { class: 'day-list-head' }, planEl('span', { text: 'تسک‌های ثبت‌شده' }), planEl('span', { class: 'day-list-count', text: faDigits(listCount) })) : null,
++          listCount ? list : planEl('p', { class: 'day-empty', text: 'هنوز تسکی ندارد.' }));
+         section.setAttribute('aria-labelledby', 'plan-card-' + key);
+         return section;
+       };
+diff -ruN --strip-trailing-cr a/test/planStepMotionUi.test.js b/test/planStepMotionUi.test.js
+--- a/test/planStepMotionUi.test.js	2026-10-26 19:51:46.691550304 +0000
++++ b/test/planStepMotionUi.test.js	2026-10-26 19:51:46.693785001 +0000
+@@ -50,4 +50,10 @@
+     const open = app.slice(app.indexOf('async function openPlanWizard('), app.indexOf('function renderPlan()'));
+     assert.match(open, /planUi\.fresh\.clear\(\); planUi\.shown = '';/);
+   });
++  test('پنل افزودن از لیست تسک‌های ثبت‌شده جداست: برچسب، سرتیتر شمارش‌دار', () => {
++    assert.match(render, /class: 'day-add-panel'/);
++    assert.match(render, /text: 'افزودن تسک جدید'/);
++    assert.match(render, /class: 'day-list-head'/);
++    assert.match(block, /\.day-add-panel \{[^}]*dashed/);
++  });
+ });
