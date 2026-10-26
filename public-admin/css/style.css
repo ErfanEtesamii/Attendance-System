@@ -2146,3 +2146,131 @@ td .btn.small, td .btn.ghost.small { white-space: nowrap; min-width: max-content
 @media (prefers-reduced-motion: reduce) {
   #att-filters .field input, #att-filters .field select, #att-filters [data-range] { transition: none; }
 }
+
+/* ======================================================================
+   تقویم تیم — ظاهر جدید (فقط CSS؛ کلاس‌های .cal-* و #cal-filters)
+   ====================================================================== */
+/* نوار ماه: کنترل یک‌پارچه‌ی گرد */
+.cal-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: fit-content; max-width: 100%;
+  margin-bottom: var(--space-4); padding: 8px;
+  border: 1px solid var(--border); border-radius: 20px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 5%, var(--card)), var(--card));
+  box-shadow: var(--shadow-1), 0 16px 32px -26px rgba(0, 0, 0, .5);
+}
+.cal-bar .btn { min-height: 40px; padding-inline: 16px; border-radius: 999px; font-weight: 700; background: var(--card-2); border: 1px solid transparent; transition: background-color .15s ease, border-color .15s ease, transform .1s ease; }
+.cal-bar .btn:hover { border-color: var(--brand); background: var(--brand-soft); color: var(--brand); }
+.cal-bar .btn[data-nav="today"] { background: var(--accent); color: var(--on-accent); }
+.cal-bar .btn[data-nav="today"]:hover { background: var(--accent-dark); border-color: transparent; color: var(--on-accent); }
+.cal-bar .btn:active { transform: scale(.96); }
+.cal-bar select { min-height: 40px; border: 1px solid var(--border); border-radius: 999px; background: var(--card-2); padding-inline: 16px; font-weight: 700; }
+.cal-bar select:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 20%, transparent); }
+
+/* فیلترها */
+#cal-filters {
+  padding: 16px 20px; gap: 14px; margin-bottom: var(--space-4);
+  border: 1px solid var(--border); border-radius: 22px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 5%, var(--card)), var(--card));
+  box-shadow: var(--shadow-1), 0 16px 32px -26px rgba(0, 0, 0, .5);
+}
+#cal-filters .field > span { font-size: var(--fs-xs); font-weight: 700; color: var(--hint); }
+#cal-filters .field select { min-height: 44px; border: 1px solid var(--border); border-radius: 14px; background: var(--card-2); transition: border-color .15s ease, box-shadow .15s ease; }
+#cal-filters .field select:hover { border-color: color-mix(in srgb, var(--brand) 50%, var(--border)); }
+#cal-filters .field select:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 20%, transparent); }
+
+/* راهنما: چیپ‌های جدا */
+.cal-legend { gap: 8px; margin-bottom: var(--space-4); }
+.cal-legend > span { padding: 5px 12px 5px 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--card); color: var(--text); font-weight: 600; box-shadow: var(--shadow-1); }
+.cal-swatch { width: 26px; height: 24px; border-radius: 8px; box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 22%, transparent); }
+
+/* هشدار هم‌زمانی */
+.cal-warn { border-radius: 18px; padding: 14px 18px; background: color-mix(in srgb, var(--red) 10%, var(--card)); border: 1px solid color-mix(in srgb, var(--red) 45%, transparent); box-shadow: 0 14px 28px -22px var(--red); }
+
+/* شبکه */
+.cal-wrap {
+  max-height: min(74vh, 900px); overflow: auto; scrollbar-width: thin;
+  border-radius: 24px; border: 1px solid var(--border); background: var(--card);
+  box-shadow: var(--shadow-1), 0 22px 44px -30px rgba(0, 0, 0, .55);
+}
+.cal-table { border-collapse: separate; border-spacing: 0; }
+.cal-table th, .cal-table td { padding: 5px 3px; }
+.cal-table thead th {
+  position: sticky; top: 0; z-index: 2; padding-block: 12px;
+  background: color-mix(in srgb, var(--brand) 9%, var(--card)); border-bottom: 1px solid var(--border);
+}
+.cal-table thead th.cal-name { z-index: 4; font-weight: 800; letter-spacing: .3px; background: color-mix(in srgb, var(--brand) 12%, var(--card)); }
+.cal-table .cal-name { box-shadow: -12px 0 16px -14px rgba(0, 0, 0, .55); border-left: 1px solid var(--border); }
+.cal-day .cal-d { font-size: var(--fs-sm); font-weight: 800; color: var(--text); }
+.cal-day .cal-w { font-size: 11px; color: var(--hint); }
+.cal-day.cal-today { box-shadow: none; background: color-mix(in srgb, var(--accent) 24%, var(--card)); border-radius: 14px 14px 0 0; position: sticky; }
+.cal-day.cal-today .cal-d { color: var(--accent); }
+.cal-day.cal-today::after { content: ""; position: absolute; inset-inline: 22%; bottom: 0; height: 3px; border-radius: 3px 3px 0 0; background: var(--accent); }
+
+.cal-table tbody tr { transition: background-color .12s ease; }
+.cal-table tbody tr:nth-child(even) { background: color-mix(in srgb, var(--brand) 3%, transparent); }
+.cal-table tbody tr:nth-child(even) .cal-name { background: color-mix(in srgb, var(--brand) 3%, var(--card)); }
+.cal-table tbody tr:hover { background: color-mix(in srgb, var(--brand) 8%, transparent); }
+.cal-table tbody tr:hover .cal-name { background: color-mix(in srgb, var(--brand) 8%, var(--card)); }
+.cal-table tbody td { border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+.cal-table tbody tr:last-child td { border-bottom: 0; }
+.cal-table .cal-name .cell-user { gap: 12px; }
+.cal-table .cal-name .avatar { box-shadow: 0 0 0 2px var(--card), 0 0 0 3px color-mix(in srgb, var(--brand) 35%, transparent); }
+.cal-table .cal-name b { font-size: var(--fs-sm); }
+.cal-table .cal-name small { font-size: 12px; }
+
+/* خانه‌ها */
+.cal-cell { width: 32px; height: 30px; border-radius: 10px; transition: transform .12s ease, box-shadow .12s ease; }
+.cal-cell:hover { filter: none; transform: scale(1.14); box-shadow: 0 6px 14px -6px rgba(0, 0, 0, .55); z-index: 1; }
+.cal-present, .cal-late, .cal-incomplete, .cal-absent, .cal-leave, .cal-mission { box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 22%, transparent); }
+.cal-future { border-color: color-mix(in srgb, var(--border) 70%, transparent); background: color-mix(in srgb, var(--brand) 2%, transparent); }
+.cal-weekend, .cal-holiday { opacity: .85; }
+.cal-sum td { padding-block: 10px; background: color-mix(in srgb, var(--brand) 6%, var(--card)); }
+.cal-sum td.cal-over { border-radius: 10px; }
+
+@media (max-width: 760px) {
+  .cal-bar { width: 100%; justify-content: center; border-radius: 18px; }
+  #cal-filters { padding: 14px; border-radius: 18px; }
+  .cal-wrap { border-radius: 18px; max-height: none; }
+  .cal-legend > span { padding: 4px 10px 4px 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cal-cell, .cal-cell:hover, .cal-bar .btn, .cal-table tbody tr { transition: none; transform: none; }
+}
+
+/* ======================================================================
+   داشبورد — «آخرین رویدادها» به‌صورت تایم‌لاین
+   ====================================================================== */
+.act-list { position: relative; display: flex; flex-direction: column; gap: 4px; }
+.act-item {
+  position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px;
+  padding: 10px 12px; border-radius: 14px;
+  transition: background-color .15s ease;
+}
+.act-item:hover { background: color-mix(in srgb, var(--brand) 7%, transparent); }
+.act-item + .act-item::before {
+  content: ""; position: absolute; inset-inline-start: 18px; top: -8px; height: 12px; width: 2px; border-radius: 2px;
+  background: var(--border);
+}
+.act-dot {
+  flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--hint);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--hint) 18%, transparent);
+}
+.act-item--green  .act-dot { background: var(--green);  box-shadow: 0 0 0 4px color-mix(in srgb, var(--green) 20%, transparent); }
+.act-item--yellow .act-dot { background: var(--yellow); box-shadow: 0 0 0 4px color-mix(in srgb, var(--yellow) 22%, transparent); }
+.act-item--red    .act-dot { background: var(--red);    box-shadow: 0 0 0 4px color-mix(in srgb, var(--red) 20%, transparent); }
+.act-item--blue   .act-dot { background: var(--blue);   box-shadow: 0 0 0 4px color-mix(in srgb, var(--blue) 20%, transparent); }
+.act-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.act-user { font-size: var(--fs-sm); font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.act-text { font-size: var(--fs-xs); color: var(--hint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.act-time {
+  flex: none; padding: 3px 10px; border-radius: 999px; background: var(--card-2);
+  font-size: 12px; font-weight: 700; color: var(--hint); font-variant-numeric: tabular-nums; unicode-bidi: isolate; white-space: nowrap;
+}
+.act-list + .mt { margin-top: var(--space-4); }
+.act-list + .mt .btn { border-radius: 999px; padding-inline: 18px; font-weight: 700; }
+
+@media (max-width: 480px) {
+  .act-item { grid-template-columns: auto minmax(0, 1fr); }
+  .act-time { grid-column: 2; justify-self: start; }
+}
+@media (prefers-reduced-motion: reduce) { .act-item { transition: none; } }

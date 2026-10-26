@@ -52,6 +52,21 @@
   // ======================================================
   // داشبورد
   // ======================================================
+  // «آخرین رویدادها» در داشبورد: برچسب فارسی برای رویدادهای رایج (بقیه با نام خودشان) و رنگ نشان؛ فقط نمایشی
+  const ACT_LABEL = {
+    admin_panel_login: 'ورود به پنل مدیریت', admin_panel_code_issued: 'صدور کد ورود پنل', admin_panel_logout: 'خروج از پنل مدیریت',
+    remote_break_start: 'شروع استراحت دورکاری', remote_break_end: 'پایان استراحت دورکاری',
+    manager_alerted_repeated_lateness: 'هشدار تأخیر مکرر به مدیر',
+  };
+  function actTone(action) {
+    const a = String(action || '').toLowerCase();
+    if (/delet|remov|reject|revok|reset|purge|fail|denied|block|lock/.test(a)) return 'red';
+    if (/alert|late|warn|suspic|overtime|expire/.test(a)) return 'yellow';
+    if (/creat|add|approv|import|grant|restor|login|open|issued|start/.test(a)) return 'green';
+    if (/updat|chang|edit|set|assign|move|sync|export|end/.test(a)) return 'blue';
+    return 'gray';
+  }
+
   AP.view('dashboard', {
     skeleton: 'page', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'dashboard.read',
@@ -118,8 +133,10 @@
           </div>
 
           <div class="card"><h3>${AP.can('audit.read') ? 'آخرین رویدادها' : 'ساعت کاری'}</h3>
-            ${AP.can('audit.read') ? ((d.recentActivity || []).length ? `<div class="kv">${(d.recentActivity || []).map((r) => `
-              <div class="kv-row"><span>${esc(r.userFullName || '—')} · ${esc(r.action)}</span><span class="muted">${esc(fmt.dateTime(r.occurred_at))}</span></div>`).join('')}</div>
+            ${AP.can('audit.read') ? ((d.recentActivity || []).length ? `<div class="act-list">${(d.recentActivity || []).map((r) => `
+              <div class="act-item act-item--${actTone(r.action)}"><span class="act-dot" aria-hidden="true"></span>
+                <div class="act-main"><b class="act-user">${esc(r.userFullName || '—')}</b><span class="act-text" title="${esc(r.action)}">${esc(ACT_LABEL[r.action] || r.action)}</span></div>
+                <time class="act-time">${esc(fmt.dateTime(r.occurred_at))}</time></div>`).join('')}</div>
               <div class="mt"><button class="btn ghost small" data-go="audit">مشاهده‌ی همه</button></div>` : emptyBox('رویدادی ثبت نشده است.'))
               : `<div class="kv"><div class="kv-row"><span>شروع کار</span><span class="ltr">${esc(d.settings.workDayStart)}</span></div>
                  <div class="kv-row"><span>پایان کار</span><span class="ltr">${esc(d.settings.workDayEnd)}</span></div>
