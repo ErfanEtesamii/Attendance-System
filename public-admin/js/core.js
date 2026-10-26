@@ -486,6 +486,7 @@
   };
 
   let routeToken = 0;
+  let pageObserver = null; // MutationObserver محتوای صفحه برای برچسب‌گذاری جدول‌ها (موبایل)
   AP.currentRoute = { id: null, param: null };
 
   AP.go = function go(id, param) {
@@ -553,6 +554,7 @@
     if (AP.selfOnly() && id === 'profile') param = AP.state.me.id; // بدون users.read فقط پروفایل خودش
     if (AP.onLeave) { try { AP.onLeave(); } catch (_) {} AP.onLeave = null; }
     AP.currentRoute = { id, param };
+    if (pageObserver) { pageObserver.disconnect(); pageObserver = null; }
     const token = ++routeToken;
 
     // وضعیت فعال ناوبری
@@ -574,7 +576,11 @@
       const routeKey = `${id}:${param == null ? '' : param}`;
       if (routeKey !== lastRouteKey) countUp(page); // فقط هنگام ورود به صفحه، نه در رفرش‌های خودکار
       lastRouteKey = routeKey;
-      if (window.A11y) window.A11y.enhance(page); // ردیف‌های کلیک‌پذیر/سرستون‌های مرتب‌سازی با کیبورد (S5-9a)
+      if (window.A11y) {
+        window.A11y.enhance(page); // ردیف‌های کلیک‌پذیر/سرستون‌های مرتب‌سازی با کیبورد (S5-9a)
+        if (pageObserver) pageObserver.disconnect();
+        pageObserver = window.A11y.observe ? window.A11y.observe(page) : null; // محتوای دیرتر رسیده/بازسازی‌شده هم برچسب ستون بگیرد
+      }
     } catch (err) {
       if (token !== routeToken) return;
       page.removeAttribute('aria-busy');

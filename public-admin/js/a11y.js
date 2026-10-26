@@ -42,28 +42,36 @@
   function stackTable(table) {
     if (!table || !table.querySelectorAll || table.hasAttribute('data-stack') || table.hasAttribute('data-nostack')) return false;
     if (String(table.className || '').includes('cal-table')) return false;
-    if (table.querySelectorAll('th.sortable, th[data-sort]').length) return false;
+    if (table.querySelectorAll('th.sortable, th[data-sort]').length && !table.hasAttribute('data-stack-sort')) return false; // data-stack-sort: جدول مرتب‌سازی که صفحه‌اش در موبایل کنترل مرتب‌سازیِ جدا دارد
     const heads = Array.from(table.querySelectorAll('thead th')).map((th) => String(th.textContent || '').replace(/[▲▼]/g, '').trim());
     if (!heads.length) return false;
     table.setAttribute('data-stack', '');
     table.setAttribute('role', 'table');
     table.querySelectorAll('thead, tbody').forEach((g) => g.setAttribute('role', 'rowgroup'));
     table.querySelectorAll('th').forEach((th) => th.setAttribute('role', 'columnheader'));
+    labelRows(table, heads);
+    return true;
+  }
+
+  // برچسب ستون و نقش ARIA برای ردیف‌هایی که هنوز ندارند (idempotent). ردیف‌هایی که بعد از اولین enhance
+  // دوباره ساخته می‌شوند (فیلتر/جستجوی تابلوی زنده، بارگذاری ناهمزمان گزارش‌های تیم) بدون این برچسب‌ها در موبایل بی‌برچسب می‌ماندند.
+  function labelRows(table, knownHeads) {
+    const heads = knownHeads || Array.from(table.querySelectorAll('thead th')).map((th) => String(th.textContent || '').replace(/[▲▼]/g, '').trim());
+    table.querySelectorAll('tbody').forEach((g) => { if (!g.hasAttribute('role')) g.setAttribute('role', 'rowgroup'); });
     table.querySelectorAll('tr').forEach((tr) => {
-      tr.setAttribute('role', 'row');
+      if (!tr.hasAttribute('role')) tr.setAttribute('role', 'row');
       const cells = Array.from(tr.children).filter((c) => c.tagName === 'TD');
-      cells.forEach((td) => td.setAttribute('role', 'cell'));
+      cells.forEach((td) => { if (!td.hasAttribute('role')) td.setAttribute('role', 'cell'); });
       if (cells.some((c) => Number(c.getAttribute('colspan')) > 1)) return; // ردیف پیام خالی/تجمیعی: برچسب ندارد
       cells.forEach((td, i) => { if (heads[i] && !td.hasAttribute('data-label')) td.setAttribute('data-label', heads[i]); });
     });
-    return true;
   }
 
   // ردیف‌های کلیک‌پذیر و سرستون‌های مرتب‌سازی را با کیبورد قابل‌دسترس می‌کند (idempotent)
   function enhance(scope) {
     const rootEl = scope || (root && root.document);
     if (!rootEl || !rootEl.querySelectorAll) return;
-    rootEl.querySelectorAll('.table-wrap table').forEach(stackTable);
+    rootEl.querySelectorAll('.table-wrap table').forEach((t) => { if (!stackTable(t) && t.hasAttribute && t.hasAttribute('data-stack')) labelRows(t); });
     // ناحیه‌ی اسکرول افقی جدول: اگر سرریز دارد با کیبورد هم قابل‌اسکرول باشد
     rootEl.querySelectorAll('.table-wrap').forEach((el) => {
       if (el.scrollWidth > el.clientWidth && !el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
@@ -75,7 +83,21 @@
     });
   }
 
-  const api = { FOCUSABLE, nextIndex, sortState, focusables, trapTab, enhance, stackTable };
+  // محتوای صفحه بعد از رندر اولیه عوض می‌شود (فیلتر، بارگذاری ناهمزمان، رفرش خودکار)؛ با هر تغییرِ فرزندان دوباره enhance می‌کنیم.
+  // enhance فقط attribute می‌گذارد (نه فرزند)، پس حلقه‌ی بی‌پایان نمی‌سازد.
+  function observe(el) {
+    if (!el || !root || typeof root.MutationObserver !== 'function') return null;
+    let queued = false;
+    const mo = new root.MutationObserver(() => {
+      if (queued) return;
+      queued = true;
+      (root.requestAnimationFrame || ((f) => setTimeout(f, 16)))(() => { queued = false; enhance(el); });
+    });
+    mo.observe(el, { childList: true, subtree: true });
+    return mo;
+  }
+
+  const api = { FOCUSABLE, nextIndex, sortState, focusables, trapTab, enhance, stackTable, labelRows, observe };
 
   if (root && root.document) {
     // Enter/Space روی عنصر قابل‌فوکوسِ کلیک‌پذیر = کلیک (فقط وقتی خودِ آن عنصر فوکوس دارد، نه کنترل داخلش)

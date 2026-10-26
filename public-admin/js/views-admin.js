@@ -86,7 +86,8 @@
         <div class="card flush mt"><div class="u-panel-head"><h3>دپارتمان‌ها</h3></div><div class="table-wrap"><table>
           <thead><tr><th>دپارتمان</th><th>کارمند</th><th>روز-نفر حضور</th><th>ساعت مفید</th><th>تأخیر</th><th>ناقص</th><th>مرخصی</th></tr></thead><tbody>
           ${d.departments.map((x) => `<tr><td>${esc(x.name)}</td><td>${fmt.num(x.employees)}</td><td>${fmt.num(x.presentDays)}</td><td>${fmt.min(x.totalEffective)}</td><td>${fmt.num(x.lateCount)}</td><td>${fmt.num(x.incompleteCount)}</td><td>${fmt.num(x.leaveDays)}</td></tr>`).join('') || `<tr><td colspan="7">${emptyBox('داده‌ای نیست.')}</td></tr>`}</tbody></table></div>${d.departments.length ? '' : emptyBox('دپارتمانی برای نمایش نیست.')}</div>
-        <div class="card flush mt"><div class="u-panel-head"><h3>جزئیات هر کارمند <span class="muted table-hint">(برای مرتب‌سازی روی عنوان ستون کلیک کنید)</span></h3></div><div class="table-wrap"><table id="rep-table">
+        <div class="card flush mt"><div class="u-panel-head"><h3>جزئیات هر کارمند <span class="muted table-hint">(برای مرتب‌سازی روی عنوان ستون کلیک کنید)</span></h3>
+          <label class="field rep-sort-m"><span>مرتب‌سازی بر اساس</span><select id="rep-sort-m" aria-label="مرتب‌سازی کارمندان">${[['name', 'کارمند'], ['presentDays', 'روز حضور'], ['totalEffective', 'مجموع مفید'], ['avgEffective', 'میانگین روزانه'], ['lateCount', 'تأخیر'], ['earlyLeaveCount', 'خروج زودهنگام'], ['overtimeMinutes', 'اضافه‌کاری'], ['incompleteCount', 'ناقص'], ['leaveDays', 'مرخصی']].map(([k, l]) => `<option value="${k}" ${repUi.sort === k ? 'selected' : ''}>${l}${repUi.sort === k ? (repUi.dir > 0 ? ' ▲' : ' ▼') : ''}</option>`).join('')}</select></label></div><div class="table-wrap"><table id="rep-table" data-stack-sort>
           <thead><tr>${th('name', 'کارمند')}${th('presentDays', 'روز حضور')}${th('totalEffective', 'مجموع مفید')}${th('avgEffective', 'میانگین روزانه')}${th('lateCount', 'تأخیر')}${th('earlyLeaveCount', 'خروج زودهنگام')}${th('overtimeMinutes', 'اضافه‌کاری')}${th('incompleteCount', 'ناقص')}${th('leaveDays', 'مرخصی')}<th>میانگین ورود</th></tr></thead><tbody>
           ${[...d.rows].sort((a, b) => {
             const f = sortKeys[repUi.sort] || sortKeys.totalEffective;
@@ -116,6 +117,8 @@
             if (repUi.sort === h.dataset.sort) repUi.dir *= -1; else { repUi.sort = h.dataset.sort; repUi.dir = h.dataset.sort === 'name' ? 1 : -1; }
             AP.refresh();
           }));
+          const sm = $('#rep-sort-m', page);
+          if (sm) sm.addEventListener('change', () => { repUi.sort = sm.value; repUi.dir = sm.value === 'name' ? 1 : -1; AP.refresh(); }); // موبایل: سرستون‌ها پنهان‌اند
           $$('tr[data-id]', page).forEach((tr) => tr.addEventListener('click', () => AP.go('profile', tr.dataset.id)));
         },
       };

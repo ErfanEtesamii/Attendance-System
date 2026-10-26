@@ -2305,3 +2305,50 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
   .st-actionbar .btn { min-width: 0; white-space: normal; text-align: center; line-height: 1.5; padding-inline: 12px; }
   .st-actionbar .btn.primary { flex: 1 1 100%; }
 }
+
+/* ======================================================================
+   رفع بهم‌ریختگی موبایل (≤۶۰۰px): جزئیات کارمند در گزارش تحلیلی، گزارش روزانه‌ی تیم،
+   کاشی‌های «وضعیت امروز» داشبورد و گزارش رویدادها. دسکتاپ دست‌نخورده می‌ماند.
+   ====================================================================== */
+.rep-sort-m { display: none; }
+@media (min-width: 601px) and (max-width: 760px) {
+  /* جدول data-stack-sort در تبلت مثل بقیه‌ی جدول‌های عریض: ستون هویتی چسبان */
+  .table-wrap table[data-stack-sort] th:first-child,
+  .table-wrap table[data-stack-sort] td:first-child { position: sticky; inset-inline-start: 0; z-index: 2; background: var(--card); white-space: normal; min-width: 112px; max-width: 46vw; }
+  .table-wrap table[data-stack-sort] thead th:first-child { z-index: 4; background: var(--card-2); }
+}
+@media (max-width: 600px) {
+  /* ۱) کاشی آماری با نمودار روند: عنصر روند در ستون آیکون جا می‌گرفت و کلمه‌به‌کلمه می‌شکست */
+  .stat > .stat-trend { grid-area: auto; grid-column: 1 / -1; margin-top: var(--space-2); }
+  .stat-trend .sparkline { width: 64px; flex: none; }
+
+  /* ۲) جزئیات هر کارمند (گزارش تحلیلی): کارت + کنترل مرتب‌سازی */
+  .u-panel-head { display: flex; flex-direction: column; gap: var(--space-2); }
+  .rep-sort-m { display: flex; }
+  .rep-sort-m select { width: 100%; min-width: 0; }
+  #rep-table[data-stack] td:first-child .cell-user { min-width: 0; }
+  #rep-table[data-stack] td { white-space: normal; }
+  #rep-table[data-stack] td:last-child:not(:first-child)::before { content: attr(data-label); }
+
+  /* ۳) گزارش روزانه/برنامه‌ی تیم: سلول‌های طولانی تمام‌عرض، بدون min-width که روی هم می‌افتادند */
+  .tr-page table[data-stack] td.wrap { min-width: 0; grid-column: 1 / -1; }
+  .tr-page table[data-stack] tbody td { padding-block: 0; }
+  .tr-page table[data-stack] td.tr-name { min-width: 0; white-space: normal; }
+  .tr-page table[data-stack] td.tr-actions { white-space: normal; flex-direction: row; flex-wrap: wrap; gap: 6px; }
+  .tr-page table[data-stack] td.tr-actions::before { flex: 0 0 100%; }
+  .tr-actions .btn { margin-inline-end: 0; }
+
+  /* ۴) گزارش رویدادها: کارت‌های جدا به‌جای یک کارتِ تودرتو با ردیف‌های راه‌راه و اسکرول داخلی */
+  #au-filters + .card.flush { border: 0; box-shadow: none; border-radius: 0; background: transparent; overflow: visible; }
+  #au-filters + .card.flush .table-wrap { max-height: none; overflow: visible; }
+  #au-filters + .card.flush table[data-stack] tbody tr { background: var(--card); border: 1px solid var(--border); }
+  #au-filters + .card.flush table[data-stack] tbody tr:nth-child(even),
+  #au-filters + .card.flush table[data-stack] tbody tr:hover { background: var(--card); }
+  #au-filters + .card.flush table[data-stack] tbody td { padding-block: 0; border-bottom: 0; }
+  #au-filters + .card.flush table[data-stack] td:first-child { border-bottom: 1px solid var(--border); padding-bottom: var(--space-2); }
+  #au-filters + .card.flush table[data-stack] td:last-child:not(:first-child) { border-top: 1px solid var(--border); }
+  #au-filters + .card.flush td.wrap { min-width: 0; }
+  .au-chips { min-width: 0; }
+  .au-chip { flex-wrap: wrap; }
+  .au-k { flex: none; white-space: nowrap; overflow-wrap: normal; }
+}
