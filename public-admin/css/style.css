@@ -1864,3 +1864,11 @@ select option:hover {
   background-color: var(--brand);
   color: var(--on-brand);
 }
+
+/* اصلاح جدول‌ها: دکمه‌های ستون عملیات داخل سلول جدول نباید حرف‌به‌حرف بشکنند.
+   قاعده‌های عمومیِ «.btn{min-width:0}» و «.row-actions .btn{white-space:normal}» باعث می‌شد سلول تا کمترین عرض جمع شود.
+   در سلول جدول: یک ردیف، بدون شکستن خط، و عرض ستون به اندازه‌ی محتوا. (موبایل با data-stack جدا مدیریت می‌شود.) */
+td .row-actions { flex-wrap: nowrap; width: auto; }
+td .row-actions .btn { white-space: nowrap; min-width: max-content; flex: 0 0 auto; }
+td:has(> .row-actions) { width: 1%; }
+td .btn.small, td .btn.ghost.small { white-space: nowrap; min-width: max-content; }
