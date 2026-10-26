@@ -55,7 +55,7 @@ async function checkLateCheckins(bot, { now = new Date() } = {}) {
         `⏰ یادآوری: هنوز ورود امروز خود را ثبت نکرده‌اید. لطفاً در اولین فرصت ثبت کنید.`
       );
     } catch (err) {
-      logger.error('checkin_reminder_failed', { error: err.message });
+      logger.error('checkin_reminder_failed', { userId: user.id, error: err.message });
     }
   }
 }

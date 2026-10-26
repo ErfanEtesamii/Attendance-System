@@ -5,7 +5,7 @@ const router = express.Router();
 const { createRateLimiter } = require('../../middleware/rateLimiter');
 
 const limiter = createRateLimiter({ name: 'csp-report', windowMs: 60 * 1000, max: 30, message: 'rate limited', audit: false });
-const parser = express.json({ limit: '16kb', type: ['application/csp-report', 'application/reports+json', 'application/json'] });
+const parser = express.json({ limit: '16kb', strict: false, type: ['application/csp-report', 'application/reports+json', 'application/json'] });
 
 const seen = new Set();
 const MAX_SEEN = 200;
@@ -26,6 +26,8 @@ router.post('/csp-report', limiter, parser, (req, res) => {
       const directive = clip(r['violated-directive'] || r.effectiveDirective || r['effective-directive']);
       const blocked = clip(r['blocked-uri'] || r.blockedURL);
       const source = clip(r['source-file'] || r.sourceFile);
+      // نویز افزونه‌ها/اسکریپت‌های کاربر مرورگر (نه کد ما)؛ هیچ اقدامی ندارد
+      if (/^(?:chrome|moz|safari-web)-extension|^user-script/i.test(source)) continue;
       const key = `${directive}|${blocked}|${source}`;
       if (seen.has(key) || seen.size >= MAX_SEEN) continue;
       seen.add(key);

@@ -35,7 +35,9 @@ function createApp() {
   app.disable('x-powered-by');
   app.use(securityHeaders);
 
-  app.use(express.json());
+  // /api/csp-report parser اختصاصی خودش را دارد (بدنه‌ی `null` مرورگرها با parser سخت‌گیر خطای JSON می‌داد)
+  const jsonParser = express.json();
+  app.use((req, res, next) => (req.path === '/api/csp-report' ? next() : jsonParser(req, res, next)));
   app.use(requestLogger);
   // فاز ۴: فایل‌های استاتیک Telegram Mini App (public/index.html و ...).
   // این پوشه از ریشه‌ی همین دامنه/ساب‌دامنه سرو می‌شود، مثلاً https://attendance.farazhonar.com/

@@ -149,7 +149,17 @@ function createBot() {
     }
   });
 
-  bot.on('polling_error', (err) => console.error('[bot] polling error:', err.message));
+  // خطای polling (مثلاً قطعی تلگرام/DNS) چند بار در دقیقه تکرار می‌شود؛ هر پیام یکسان فقط یک‌بار در ۵ دقیقه (با تعداد تکرار) لاگ می‌شود
+  const pollingErrors = new Map(); // message -> { last, suppressed }
+  bot.on('polling_error', (err) => {
+    const msg = err.message;
+    const now = Date.now();
+    const s = pollingErrors.get(msg);
+    if (s && now - s.last < 5 * 60 * 1000) { s.suppressed += 1; return; }
+    console.error(`[bot] polling error: ${msg}${s && s.suppressed ? ` (+${s.suppressed} تکرار مشابه در ۵ دقیقه‌ی اخیر)` : ''}`);
+    pollingErrors.set(msg, { last: now, suppressed: 0 });
+    if (pollingErrors.size > 50) pollingErrors.clear();
+  });
 
   return bot;
 }

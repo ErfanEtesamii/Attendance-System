@@ -40,7 +40,7 @@ async function checkCheckoutReminders(bot, { now = new Date() } = {}) {
         `⏰ یادآوری: پایان ساعت کاری نزدیک است. فراموش نکنید خروج خود را ثبت کنید.`
       );
     } catch (err) {
-      logger.error('checkout_reminder_failed', { error: err.message });
+      logger.error('checkout_reminder_failed', { userId: user.id, error: err.message });
     }
   }
 }
