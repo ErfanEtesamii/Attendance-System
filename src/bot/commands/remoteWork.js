@@ -12,7 +12,8 @@ const { formatMinutes } = require('../../utils/workHours');
 const line = '━━━━━━━━━━━━━━';
 const time = (iso) => new Date(iso).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
 const button = (text, data, style) => ({ text, callback_data: cb(data), ...(style ? { style } : {}) });
-const duration = (from, now) => Math.max(0, Math.floor((now - new Date(from)) / 60000));
+const duration = (from, now) => Math.max(0, Math.floor((new Date(now) - new Date(from)) / 60000));
+const sessionBreakMinutes = (s) => (s.breaks || []).reduce((n, b) => (b.end_at ? n + duration(b.start_at, b.end_at) : n), 0);
 
 function buildView(state, access, now = new Date()) {
   const open = state.openSession;
@@ -26,8 +27,16 @@ function buildView(state, access, now = new Date()) {
   }
   if (!open) {
     const closed = state.sessions.filter((s) => s.end_at);
-    const total = closed.reduce((n, s) => n + duration(s.start_at, s.end_at), 0);
-    return { text: ['🏠 دورکاری', line, 'وضعیت: ⚪️ دورکاری شروع نشده', ...(closed.length ? [`امروز: ${closed.length.toLocaleString('fa-IR')} ثبت | مجموع: ${formatMinutes(total)}`] : []), line, 'ساعت‌های دورکاری پس از بررسی سرپرست در آخر هفته لحاظ می‌شود.'].join('\n'), reply_markup: { inline_keyboard: [[button('🟢 شروع دورکاری', 'rw:s', 'success')], [button('📋 سوابق من', 'rw:h'), button('🔄 به‌روزرسانی', 'rw:o')], [button('🏠 منوی اصلی', 'rw:m')]] } };
+    const fa = (n) => n.toLocaleString('fa-IR');
+    const dur = (mins) => { const h = Math.floor(mins / 60); const m = mins % 60; return h && m ? `${fa(h)} ساعت و ${fa(m)} دقیقه` : h ? `${fa(h)} ساعت` : `${fa(m)} دقیقه`; };
+    const net = (s) => { const g = duration(s.start_at, s.end_at); const b = Math.min(g, sessionBreakMinutes(s)); return { g, b, u: g - b }; };
+    const blocks = closed.map((s, i) => {
+      const { b, u } = net(s);
+      return [`🔹 ثبت ${fa(i + 1)}`, `   🟢 شروع: ${time(s.start_at)}`, `   🔴 پایان: ${time(s.end_at)}`, `   ☕ استراحت: ${b ? dur(b) : 'بدون استراحت'}`, `   ✅ مفید: ${dur(u)}`].join('\n');
+    });
+    const tot = closed.reduce((t, s) => { const n = net(s); return { g: t.g + n.g, b: t.b + n.b, u: t.u + n.u }; }, { g: 0, b: 0, u: 0 });
+    const summary = closed.length ? [line, `📊 مجموع امروز (${fa(closed.length)} ثبت)`, `   ⏱ کل: ${dur(tot.g)}`, `   ☕ استراحت: ${tot.b ? dur(tot.b) : 'بدون استراحت'}`, `   ✅ مفید: ${dur(tot.u)}`] : [];
+    return { text: ['🏠 دورکاری', line, 'وضعیت: ⚪️ دورکاری شروع نشده', ...(blocks.length ? ['', blocks.join('\n\n')] : []), ...summary, line, '⏳ تأییدنشده — پس از بررسی و تأیید سرپرست در حساب شما لحاظ می‌شود.'].join('\n'), reply_markup: { inline_keyboard: [[button('🟢 شروع دورکاری', 'rw:s', 'success')], [button('📋 سوابق من', 'rw:h'), button('🔄 به‌روزرسانی', 'rw:o')], [button('🏠 منوی اصلی', 'rw:m')]] } };
   }
   const openBreak = state.openBreak;
   const breaks = open.breaks || [];
