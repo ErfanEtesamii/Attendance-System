@@ -2275,3 +2275,33 @@ td .btn.small, td .btn.ghost.small { white-space: nowrap; min-width: max-content
 
 /* Keep the shared keyboard focus ring after every local outline reset. */
 input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+
+/* ======================================================================
+   رفع مشکلات موبایل: ستون هویتی جدول، کارت‌های جدولِ stack، کاشی‌های «وضعیت من»،
+   نوار ذخیره‌ی تنظیمات و نشان رویداد audit. فقط با توکن‌ها.
+   ====================================================================== */
+@media (max-width: 760px) {
+  /* ستون هویتیِ چسبان نباید تا یک حرف جمع شود */
+  .table-wrap table:not([data-stack]) th:first-child,
+  .table-wrap table:not([data-stack]) td:first-child { min-width: 112px; max-width: 46vw; overflow-wrap: anywhere; }
+}
+@media (max-width: 600px) {
+  /* جدول → کارت: قاعده‌ی سراسری th,td{nowrap} و دکمه‌های max-content باعث بیرون‌زدن کارت می‌شد */
+  table[data-stack], table[data-stack] tbody { width: 100%; max-width: 100%; }
+  table[data-stack] tr { max-width: 100%; box-sizing: border-box; }
+  table[data-stack] td { white-space: normal; width: auto; max-width: 100%; }
+  table[data-stack] td:has(> .row-actions) { width: auto; }
+  table[data-stack] td .row-actions { flex-wrap: wrap; width: 100%; }
+  table[data-stack] td .row-actions .btn, table[data-stack] td .btn.small, table[data-stack] td .btn.ghost.small { white-space: normal; min-width: 0; flex: 0 1 auto; }
+  /* کاشی‌های «وضعیت من»: زمان طولانی در کاشی دو‌ستونه بشکند، نه سرریز */
+  .ms-stats .stat-value { white-space: normal; overflow-wrap: anywhere; line-height: 1.3; }
+  /* نشان نوع رویداد audit */
+  .au-act { white-space: normal; overflow-wrap: anywhere; word-break: break-all; min-width: 0; }
+  .au-chip { max-width: 100%; }
+  .au-v, .au-k { overflow-wrap: anywhere; min-width: 0; }
+}
+@media (max-width: 480px) {
+  /* دکمه‌ی ذخیره‌ی تنظیمات: تمام‌عرض و بدون سرریز متن */
+  .st-actionbar .btn { min-width: 0; white-space: normal; text-align: center; line-height: 1.5; padding-inline: 12px; }
+  .st-actionbar .btn.primary { flex: 1 1 100%; }
+}
