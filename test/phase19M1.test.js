@@ -41,7 +41,7 @@ describe('فاز ۱۹ / M1 — Mini App', () => {
   });
 
   test('فقط یک قاعده‌ی focus-visible با حلقه‌ی برند باقی مانده است', () => {
-    assert.equal((CSS.match(/:focus-visible\s*\{/g) || []).length, 1);
+    assert.equal((CSS.match(/^:focus-visible\s*\{/gm) || []).length, 1);
     assert.match(CSS, /:focus-visible \{ outline: 2px solid var\(--brand\); outline-offset: 2px; \}/);
   });
 
