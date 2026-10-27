@@ -176,11 +176,11 @@
       const years = [];
       for (let y = Math.max(YEAR_MIN, calUi.year - 3); y <= Math.min(YEAR_MAX, calUi.year + 3); y += 1) years.push([y, fa(y)]);
       const sub = vm.max > 0
-        ? `هشدار هم‌زمانی: بیش از ${fmt.num(vm.max)} نفر`
-        : 'هشدار هم‌زمانی خاموش است (تنظیم <span class="ltr">teamCalendarMaxConcurrent</span>)';
+        ? `<span class="cal-chip">هشدار هم‌زمانی: بیش از ${fmt.num(vm.max)} نفر</span>`
+        : '<span class="cal-chip cal-chip-off" title="تنظیم teamCalendarMaxConcurrent">هشدار هم‌زمانی خاموش است</span>';
 
       const html = `
-        <div class="view-header"><div><h2>تقویم تیم</h2><div class="sub">${esc(label)} · ${fmt.num(vm.rows.length)} نفر · ${sub}</div></div></div>
+        <div class="view-header"><div><h2>تقویم تیم</h2><div class="sub cal-sub"><span class="cal-chip">${esc(label)}</span><span class="cal-chip">${fmt.num(vm.rows.length)} نفر</span>${sub}</div></div></div>
         <div class="cal-bar" id="cal-nav">
           <button type="button" class="btn ghost small" data-nav="-1">ماه قبل</button>
           <select id="cal-month" aria-label="ماه">${optionsHtml(monthSel, calUi.month)}</select>

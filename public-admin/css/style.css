@@ -2362,3 +2362,18 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
   .cal-table .cal-name b { font-size: 13px; line-height: 1.6; }
   .cal-table .cal-name small { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 100%; }
 }
+
+/* تقویم تیم: چیپ‌های خلاصه‌ی بالای صفحه (به‌جای یک کپسول بلند)، و نوار ماه منظم در موبایل */
+.view-header .sub.cal-sub { display: flex; flex-wrap: wrap; gap: 6px; background: none; padding: 0; border-radius: 0; font-weight: 400; }
+.cal-chip { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 999px; background: var(--brand-soft); color: var(--text); font-size: var(--fs-xs); font-weight: 700; white-space: nowrap; }
+.cal-chip-off { background: var(--card-2); color: var(--hint); font-weight: 600; }
+@media (max-width: 600px) {
+  .cal-bar { display: grid; grid-template-columns: 1fr 1fr; width: 100%; gap: 8px; padding: 10px; }
+  .cal-bar select { width: 100%; min-width: 0; }
+  .cal-bar .btn { width: 100%; padding-inline: 8px; }
+  .cal-bar .btn[data-nav="-1"] { grid-column: 1; grid-row: 2; }
+  .cal-bar .btn[data-nav="1"] { grid-column: 2; grid-row: 2; }
+  .cal-bar .btn[data-nav="today"] { grid-column: 1 / -1; grid-row: 3; }
+  #cal-filters { padding: 12px 14px; gap: 10px; }
+  #cal-filters .field { flex: 1 1 calc(50% - 5px); }
+}
