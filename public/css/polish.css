@@ -658,3 +658,26 @@ body {
 :root[data-theme="light"] #view-profile .pf-hero .profile-name { margin: 0; font-size: 17px; line-height: 1.6; }
 :root[data-theme="light"] #view-profile .pf-hero .pf-chips { margin-top: 8px; gap: 6px; }
 :root[data-theme="light"] #view-profile .pf-hero .pf-chip { padding: 3px 12px; }
+
+/* پروفایل مینی‌اپ: هارمونی با پنل هیرو (تم روشن)
+   پالت از خود تصویر: کرم #fcf7eb، قهوه‌ای #5a1e12، زرشکی #7a1f1a، لاجوردی #24356b، زیتونی #4f6b3a، طلایی #b8862e */
+:root[data-theme="light"] #view-profile { --pf-line: rgba(176, 128, 60, .30); --pf-ink: #4a1f14; --pf-ink-soft: #7d5636; }
+:root[data-theme="light"] #view-profile .view-title { color: #5a1e12; }
+:root[data-theme="light"] #view-profile .view-title::before { background: linear-gradient(180deg, #b8862e, #7a1f1a); }
+:root[data-theme="light"] #view-profile .card:not(.pf-hero) { background-color: #fffaf0; background-image: linear-gradient(180deg, #fffdf8, #fcf7eb); border-color: var(--pf-line); box-shadow: 0 10px 24px rgba(92, 52, 24, .10); }
+:root[data-theme="light"] #view-profile .pf-row { border-color: rgba(176, 128, 60, .22); }
+:root[data-theme="light"] #view-profile .pf-row .row-label { color: var(--pf-ink-soft); }
+:root[data-theme="light"] #view-profile .pf-row .row-value { color: var(--pf-ink); }
+:root[data-theme="light"] #view-profile .pf-ico.is-blue { background: rgba(36, 53, 107, .12); color: #24356b; }
+:root[data-theme="light"] #view-profile .pf-ico.is-purple { background: rgba(122, 31, 26, .11); color: #7a1f1a; }
+:root[data-theme="light"] #view-profile .pf-ico.is-teal { background: rgba(79, 107, 58, .15); color: #4f6b3a; }
+:root[data-theme="light"] #view-profile .pf-ico.is-amber { background: rgba(184, 134, 46, .20); color: #8f6416; }
+:root[data-theme="light"] #dispute-form { background-image: linear-gradient(90deg, #b8862e, rgba(184, 134, 46, .25)), linear-gradient(180deg, #fffdf8, #fcf7eb); background-size: 100% 4px, 100% 100%; background-repeat: no-repeat; background-position: top, center; }
+:root[data-theme="light"] #dispute-form label { color: #5a1e12; }
+:root[data-theme="light"] #dispute-form textarea { background: #fbf3e2; border-color: rgba(176, 128, 60, .38); color: var(--pf-ink); }
+:root[data-theme="light"] #dispute-form textarea::placeholder { color: #a58662; }
+:root[data-theme="light"] #dispute-form textarea:focus { border-color: #b8862e; box-shadow: 0 0 0 3px rgba(184, 134, 46, .25); }
+:root[data-theme="light"] #dispute-form .btn { background: linear-gradient(135deg, #6b1f1a, #9a3a26); box-shadow: 0 10px 22px rgba(107, 31, 26, .28); }
+:root[data-theme="light"] #dispute-list .dispute-item { background: #fffaf0; border-color: color-mix(in srgb, var(--dsp-c) 30%, rgba(176, 128, 60, .30)); box-shadow: 0 8px 20px rgba(92, 52, 24, .08); }
+:root[data-theme="light"] #dispute-list .dsp-title { color: #5a1e12; }
+:root[data-theme="light"] #dispute-list .dispute-item .li-bottom { border-top-color: rgba(176, 128, 60, .35); color: var(--pf-ink-soft); }
