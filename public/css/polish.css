@@ -648,9 +648,9 @@ body {
    --pf-crop-top از بالای تصویر بریده می‌شود؛ padding-top = قله − برش − نصف آواتار تا آواتار روی قله بماند.
    برای کوچک/بزرگ‌کردن: فقط --pf-crop-top را عوض کنید و padding-top را به همان اندازه کم/زیاد کنید (مثلاً برش 130 ← padding 68). */
 :root[data-theme="light"] #view-profile .pf-hero {
-  --pf-crop-top: 105px;
+  --pf-crop-top: 130px;
   min-height: 0;
-  padding: 93px var(--space-4) 14px;
+  padding: 68px var(--space-4) 8px;
   background-size: max(100%, 640px) auto;
   background-position: 50% calc(var(--pf-crop-top) * -1);
 }
