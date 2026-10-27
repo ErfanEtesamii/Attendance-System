@@ -281,15 +281,20 @@
       </section>
 
       <section id="view-profile" class="view hidden">
-        <div class="card profile-card">
-          <div class="avatar" id="pf-avatar">؟</div>
+        <div class="card profile-card pf-hero">
+          <div class="pf-cover" aria-hidden="true"></div>
+          <div class="avatar pf-avatar" id="pf-avatar">؟</div>
           <div class="profile-name" id="pf-name-big">—</div>
+          <div class="pf-chips">
+            <span class="pf-chip" id="pf-role-chip">—</span>
+            <span class="pf-chip pf-chip-soft" id="pf-dept-chip">—</span>
+          </div>
         </div>
-        <div class="card">
-          <div class="row"><span class="row-label">نام</span><span class="row-value" id="pf-name">—</span></div>
-          <div class="row"><span class="row-label">کد پرسنلی</span><span class="row-value" id="pf-code">—</span></div>
-          <div class="row"><span class="row-label">دپارتمان</span><span class="row-value" id="pf-dept">—</span></div>
-          <div class="row"><span class="row-label">نقش</span><span class="row-value" id="pf-role">—</span></div>
+        <div class="card pf-info">
+          <div class="row pf-row"><span class="row-label"><i class="pf-ico is-blue"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></i>نام</span><span class="row-value" id="pf-name">—</span></div>
+          <div class="row pf-row"><span class="row-label"><i class="pf-ico is-purple"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg></i>کد پرسنلی</span><span class="row-value" id="pf-code">—</span></div>
+          <div class="row pf-row"><span class="row-label"><i class="pf-ico is-teal"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M14 9h1M9 13h1M14 13h1M9 17h1M14 17h1"/></svg></i>دپارتمان</span><span class="row-value" id="pf-dept">—</span></div>
+          <div class="row pf-row"><span class="row-label"><i class="pf-ico is-amber"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.4 8.5 8 9 4.6-.5 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg></i>نقش</span><span class="row-value" id="pf-role">—</span></div>
         </div>
 
         <h3 class="view-title">اعتراض به یک رکورد</h3>

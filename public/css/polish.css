@@ -192,3 +192,29 @@ html[data-contrast="high"] .status-card::after,
 html[data-contrast="high"] .action-tile.is-primary::after { display: none; }
 html[data-contrast="high"] .timer,
 html[data-contrast="high"] .earnings-amount { background: none; -webkit-text-fill-color: currentColor; }
+
+/* پروفایل مینی‌اپ: هیرو با کاور گرادیان، چیپ نقش/دپارتمان، ردیف‌های اطلاعات با آیکن */
+.pf-hero { position: relative; overflow: hidden; padding: 0 var(--space-4) 20px; text-align: center; }
+.pf-cover { height: 84px; margin: 0 calc(var(--space-4) * -1); background:
+  radial-gradient(120px 80px at 85% 0, color-mix(in srgb, var(--accent) 38%, transparent), transparent 70%),
+  radial-gradient(160px 90px at 10% 100%, color-mix(in srgb, var(--accent-2, var(--brand)) 30%, transparent), transparent 70%),
+  linear-gradient(135deg, color-mix(in srgb, var(--brand) 55%, var(--card-bg)), color-mix(in srgb, var(--brand) 18%, var(--card-bg))); }
+.pf-hero .pf-avatar { width: 84px; height: 84px; margin: -42px auto 10px; position: relative; border: 4px solid var(--card-bg); font-size: 32px;
+  background: linear-gradient(135deg, var(--brand), color-mix(in srgb, var(--brand) 55%, var(--accent))); box-shadow: 0 10px 24px color-mix(in srgb, var(--brand) 30%, transparent); }
+.pf-hero .profile-name { font-size: var(--fs-lg); line-height: 1.5; }
+.pf-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 10px; }
+.pf-chip { padding: 4px 14px; border-radius: 999px; font-size: var(--fs-xs); font-weight: 700; background: var(--brand-soft); color: var(--brand); }
+.pf-chip-soft { background: var(--ov-06, rgba(127, 127, 127, .12)); color: var(--hint); }
+.pf-info { padding-block: 6px; }
+.pf-row { padding: 12px 0; }
+.pf-row .row-label { font-weight: 600; }
+.pf-ico { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 11px; flex: none; }
+.pf-ico.is-blue { background: color-mix(in srgb, var(--blue, #3b82f6) 14%, transparent); color: var(--blue, #3b82f6); }
+.pf-ico.is-purple { background: color-mix(in srgb, var(--purple, #8b5cf6) 14%, transparent); color: var(--purple, #8b5cf6); }
+.pf-ico.is-teal { background: var(--accent-2-soft, rgba(63, 208, 217, .15)); color: var(--accent-2, #2bb5be); }
+.pf-ico.is-amber { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+#view-profile .view-title { margin-top: 22px; }
+#dispute-form { border-radius: var(--radius); }
+#dispute-form textarea { min-height: 96px; resize: vertical; line-height: 1.8; background: var(--field, var(--bg-2)); }
+#dispute-form textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+#dispute-form .btn { width: 100%; }

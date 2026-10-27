@@ -3730,6 +3730,8 @@
     $('#pf-dept').textContent = state.me.department || '—';
     const roleLabels = { employee: 'کارمند', manager: 'سرپرست', admin: 'ادمین کل' };
     $('#pf-role').textContent = roleLabels[state.me.role] || state.me.role;
+    $('#pf-role-chip').textContent = $('#pf-role').textContent;
+    $('#pf-dept-chip').textContent = state.me.department || 'بدون دپارتمان';
   }
 
   $('#dispute-form').addEventListener('submit', async (e) => {
