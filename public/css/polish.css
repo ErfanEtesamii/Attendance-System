@@ -614,28 +614,23 @@ body {
 }
 
 /* پروفایل: فرش بالا، پنل کرم موج‌دار پایین، آواتار روی لبهٔ موج */
+/* پروفایل: تصویر کامل (فرش + پنل کرم موج‌دار + تزئینات) پس‌زمینهٔ کارت است؛ آواتار روی قلهٔ موج می‌نشیند.
+   تصویر ۱۴۵۶×۸۱۹ است؛ عرض تصویر حداقل ۵۸۷px است (ارتفاع ۳۳۰px) و از بالا لنگر می‌شود؛ پس قلهٔ موج همیشه حدود ۲۱۲px از بالاست و ارتفاع محتوا روی آن اثر ندارد. */
 :root[data-theme="light"] #view-profile .pf-hero {
   position: relative;
   isolation: isolate;
-  padding: 104px var(--space-4) 18px;
+  min-height: 330px;
+  padding: 170px var(--space-4) 18px;
   color: #4a1f14;
-  background-color: #f6ecd9;
-  background-image: url('/images/profile-persian-carpet.webp');
-  background-size: auto 170px;
+  background-color: #fcf7eb;
+  background-image: url('/images/profile-hero.webp');
+  background-size: max(100%, 587px) auto;
   background-repeat: no-repeat;
-  background-position: center top;
+  background-position: 50% 0;
   border-color: rgba(176,128,60,.30);
   box-shadow: 0 14px 30px rgba(92,52,24,.18);
 }
-:root[data-theme="light"] #view-profile .pf-hero::before {
-  content: '';
-  position: absolute;
-  inset-inline: 0; bottom: 0;
-  height: calc(100% - 118px);
-  z-index: 0;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 100' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23fffaf0'/%3E%3Cstop offset='1' stop-color='%23f1e2c4'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M0 26 C70 40 120 2 200 3 C285 4 330 42 400 22 L400 100 L0 100 Z' fill='url(%23g)'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
-  pointer-events: none;
-}
+:root[data-theme="light"] #view-profile .pf-hero::before { content: none; }
 :root[data-theme="light"] #view-profile .pf-hero > * { position: relative; z-index: 1; }
 :root[data-theme="light"] #view-profile .pf-hero .pf-avatar {
   margin: 0 auto 10px;
