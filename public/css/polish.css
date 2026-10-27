@@ -248,3 +248,25 @@ html[data-contrast="high"] .earnings-amount { background: none; -webkit-text-fil
 .pf-hero .profile-name { color: #fff; }
 .pf-hero .pf-chip { background: rgba(255, 255, 255, .2); color: #fff; }
 .pf-hero .pf-chip-soft { background: rgba(255, 255, 255, .1); color: rgba(255, 255, 255, .88); }
+
+/* مرخصی در مینی‌اپ: فرم دو‌ستونه با نوار رنگی، پیام مانده‌ی مرخصی به‌صورت بنر، فهرست درخواست‌ها با رنگ وضعیت */
+#leave-form [hidden] { display: none !important; } /* برچسب‌های hidden (بخش روز، ساعت‌ها) به‌خاطر display:flex فرم دیده می‌شدند */
+#leave-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 12px; padding-top: 20px; background-color: var(--card-bg); background-image: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 30%, transparent)); background-size: 100% 4px; background-repeat: no-repeat; background-position: top; }
+#leave-form > * { grid-column: 1 / -1; min-width: 0; }
+#leave-form #leave-start-row, #leave-form #leave-end-row, #leave-form #leave-starttime-row, #leave-form #leave-endtime-row { grid-column: span 1; }
+#leave-form label { font-weight: 700; color: var(--text); font-size: var(--fs-sm); }
+#leave-form select, #leave-form input, #leave-form textarea { font-weight: 500; }
+#leave-form textarea { min-height: 84px; resize: vertical; line-height: 1.8; }
+#leave-form select:focus, #leave-form input:focus, #leave-form textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+#leave-balance:empty, #leave-msg:empty { display: none; }
+#leave-balance:not(:empty) { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 14px; background: var(--brand-soft); color: var(--text); font-size: var(--fs-sm); font-weight: 700; }
+#leave-balance:not(:empty)::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
+#leave-form .btn.primary { width: 100%; background: linear-gradient(135deg, #322c79, #4b3fc0); color: #fff; font-weight: 800; border: 0; box-shadow: 0 10px 22px rgba(50, 44, 121, .28); }
+#leave-form .btn.primary:active { transform: scale(.98); }
+#leave-list { display: flex; flex-direction: column; gap: 10px; }
+#leave-list .list-item { --lv-c: var(--border); margin: 0; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--lv-c) 30%, var(--border)); border-inline-start: 4px solid var(--lv-c); border-radius: var(--radius); background: var(--card-bg); box-shadow: var(--shadow-1); }
+#leave-list .list-item:has(.badge.pending) { --lv-c: var(--yellow); }
+#leave-list .list-item:has(.badge.approved) { --lv-c: var(--green); }
+#leave-list .list-item:has(.badge.rejected) { --lv-c: var(--red); }
+#leave-list .li-top { font-size: var(--fs-sm); font-weight: 800; }
+#leave-list .li-bottom { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border); font-size: var(--fs-xs); font-weight: 600; }
