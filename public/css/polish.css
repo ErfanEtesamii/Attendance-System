@@ -591,3 +591,52 @@ body {
 :root[data-theme="light"] .earnings-excluded { background: rgba(255,255,255,.84); border-top-color: var(--border); color: var(--text); }
 :root[data-theme="light"] .earnings-excluded .btn-link { color: var(--brand); }
 :root[data-theme="light"] .earnings-live { color: var(--accent-dark); background: color-mix(in srgb, var(--accent) 14%, #fff); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+
+/* Faraz Honar handicraft visual refresh — 2026-10-27 (تم روشن، هم‌راستا با کارت حقوق) */
+:root[data-theme="light"] #today-status-card.status-card {
+  background-color: #f5f9ff;
+  background-image:
+    linear-gradient(90deg, #f5f9ff 0%, rgba(245,249,255,.97) 40%, rgba(245,249,255,.55) 64%, rgba(245,249,255,.04) 100%),
+    url('/images/attendance-blue-handicraft.webp');
+  background-size: cover, auto 118%;
+  background-repeat: no-repeat;
+  background-position: center, right center;
+  border-color: rgba(41,112,190,.20);
+  box-shadow: 0 16px 34px rgba(35,76,133,.13);
+}
+:root[data-theme="light"] #today-status-card.status-card::before {
+  border-color: rgba(43,112,191,.07);
+}
+:root[data-theme="light"] #today-status-card.status-card::after {
+  background: radial-gradient(circle, rgba(38,151,224,.16), transparent 70%);
+}
+
+/* Persian carpet profile hero (تم روشن) */
+:root[data-theme="light"] #view-profile .pf-hero {
+  position: relative;
+  isolation: isolate;
+  color: #fff;
+  background-image:
+    linear-gradient(180deg, rgba(24,35,82,.18) 0%, rgba(26,31,73,.48) 52%, rgba(22,27,65,.82) 100%),
+    url('/images/profile-persian-carpet.webp');
+  background-size: cover;
+  background-position: center top;
+  border-color: rgba(218,174,91,.28);
+  box-shadow: 0 14px 30px rgba(38,31,58,.24);
+}
+:root[data-theme="light"] #view-profile .pf-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(240px 130px at 50% 100%, rgba(255,255,255,.12), transparent 70%);
+  pointer-events: none;
+}
+:root[data-theme="light"] #view-profile .pf-hero .pf-avatar {
+  background: rgba(255,255,255,.96);
+  color: #243b7a;
+  border-color: rgba(255,255,255,.72);
+}
+:root[data-theme="light"] #view-profile .pf-hero .profile-name { color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,.28); }
+:root[data-theme="light"] #view-profile .pf-hero .pf-chip { background: rgba(255,255,255,.20); color: #fff; backdrop-filter: blur(5px); }
+:root[data-theme="light"] #view-profile .pf-hero .pf-chip-soft { background: rgba(255,255,255,.13); color: rgba(255,255,255,.94); backdrop-filter: blur(5px); }
