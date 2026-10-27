@@ -597,12 +597,13 @@ body {
 :root[data-theme="light"] #today-status-card.status-card {
   background-color: #f7faff;
   background-image:
-    linear-gradient(90deg, #f7faff 0%, rgba(247,250,255,.97) 30%, rgba(247,250,255,.72) 52%, rgba(247,250,255,.28) 76%, rgba(247,250,255,.06) 100%),
-    linear-gradient(180deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 28%, rgba(255,255,255,0) 68%, rgba(255,255,255,.88) 100%),
+    linear-gradient(180deg, rgba(247,250,255,0) 78%, rgba(247,250,255,.55) 100%),
+    linear-gradient(90deg, #f7faff 0%, rgba(247,250,255,.85) 18%, rgba(247,250,255,.4) 42%, rgba(247,250,255,0) 70%),
+    linear-gradient(180deg, #f7faff 0%, rgba(247,250,255,.7) 14%, rgba(247,250,255,0) 42%),
     url('/images/attendance-blue-handicraft.webp');
-  background-size: 100% 100%, 100% 100%, auto 100%;
+  background-size: 100% 100%, 66% 68%, 66% 68%, auto 64%;
   background-repeat: no-repeat;
-  background-position: center, center, right center;
+  background-position: center, right bottom, right bottom, right bottom;
   border-color: rgba(41,112,190,.20);
   box-shadow: 0 16px 34px rgba(35,76,133,.13);
 }
