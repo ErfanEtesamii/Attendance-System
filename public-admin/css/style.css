@@ -2398,3 +2398,26 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
   .nt-stat { grid-column: span 2; padding: 8px 4px; }
   .nt-stat:nth-child(n+4) { grid-column: span 3; }
 }
+
+/* رکوردها در موبایل: کارت‌های جدا با رنگ وضعیت (نوار کنار + پس‌زمینه‌ی ملایم) به‌جای کارت‌های سفید/راه‌راه */
+@media (max-width: 600px) {
+  #att-filters + .card.flush { border: 0; box-shadow: none; border-radius: 0; background: transparent; overflow: visible; }
+  #att-filters + .card.flush .table-wrap { max-height: none; overflow: visible; }
+  #att-filters + .card.flush table[data-stack] tbody tr,
+  #att-filters + .card.flush table[data-stack] tbody tr:nth-child(even),
+  #att-filters + .card.flush table[data-stack] tbody tr:hover {
+    --row-bar: var(--border);
+    background: color-mix(in srgb, var(--row-bar) 8%, var(--card));
+    border: 1px solid color-mix(in srgb, var(--row-bar) 28%, var(--border));
+    border-inline-start: 4px solid var(--row-bar);
+    box-shadow: var(--shadow-1);
+    transform: none;
+  }
+  #att-filters + .card.flush table[data-stack] tbody tr:has(.badge.normal, .badge.present) { --row-bar: var(--green); }
+  #att-filters + .card.flush table[data-stack] tbody tr:has(.badge.late, .badge.on_break) { --row-bar: var(--yellow); }
+  #att-filters + .card.flush table[data-stack] tbody tr:has(.badge.leave, .badge.mission) { --row-bar: var(--purple-text); }
+  #att-filters + .card.flush table[data-stack] tbody tr:has(.badge.incomplete, .badge.absent) { --row-bar: var(--red-text); }
+  #att-filters + .card.flush table[data-stack] tbody tr:has(.badge.holiday) { --row-bar: var(--hint); }
+  #att-filters + .card.flush table[data-stack] tbody td { padding-block: 0; border-bottom: 0; }
+  #att-filters + .card.flush table[data-stack] td:first-child { border-bottom: 1px solid color-mix(in srgb, var(--row-bar) 22%, var(--border)); padding-bottom: var(--space-2); }
+}
