@@ -488,7 +488,7 @@ body {
   color: #f8f4e9;
   background:
     linear-gradient(90deg, rgba(31, 26, 92, 1) 0%, rgba(34, 28, 100, .96) 40%, rgba(40, 33, 110, .5) 64%, rgba(40, 33, 110, .06) 100%),
-    url("/images/earnings-handicrafts.webp") right center / auto 118% no-repeat,
+    url("/images/earnings-handicrafts-fade.webp") right center / auto 118% no-repeat,
     #241e66;
   box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 10%, transparent), 0 22px 44px -26px rgba(34, 28, 100, .75), inset 0 1px 0 rgba(255,255,255,.1);
 }
@@ -575,7 +575,7 @@ body {
   border-color: var(--border);
   background:
     linear-gradient(90deg, #fff 0%, rgba(255,255,255,.97) 40%, rgba(255,255,255,.55) 64%, rgba(255,255,255,.04) 100%),
-    url("/images/earnings-handicrafts.webp") right center / auto 118% no-repeat,
+    url("/images/earnings-handicrafts-fade.webp") right center / auto 118% no-repeat,
     var(--card-bg);
   box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 8%, transparent), 0 18px 34px -24px color-mix(in srgb, var(--brand) 45%, transparent);
 }
@@ -702,3 +702,50 @@ body {
   background: linear-gradient(135deg, #1d74bd, #3a9be0);
   box-shadow: 0 8px 18px rgba(35, 110, 180, .28);
 }
+
+/* ===== تم تیره: همان تصاویر صنایع دستی، با لایهٔ تیرهٔ نیلی روی آن‌ها =====
+   تصاویر مینا/پروفایل پس‌زمینهٔ روشن دارند؛ در تم تیره یک گرادیان تیره روی تصویر می‌نشیند
+   (اولین لایه = بالاترین لایه) تا نقش‌ها دیده شوند ولی متن خوانا بماند. */
+:root[data-theme="dark"] #today-status-card.status-card,
+:root[data-theme="dark"] .rp-hero {
+  background-color: #0d1530;
+  background-image:
+    linear-gradient(90deg, rgba(10,16,38,.66) 0%, rgba(10,16,38,.90) 30%, rgba(10,16,38,.90) 70%, rgba(10,16,38,.66) 100%),
+    url('/images/mina-wall-left.webp'),
+    url('/images/mina-wall-right.webp');
+  background-size: 100% 100%, auto 100%, auto 100%;
+  background-repeat: no-repeat;
+  background-position: 0 0, left center, right center;
+  border: 1px solid rgba(110,160,230,.20);
+  box-shadow: 0 16px 34px rgba(0,0,0,.40);
+}
+:root[data-theme="dark"] #today-status-card.status-card::before { border-color: rgba(120,170,240,.07); }
+:root[data-theme="dark"] #today-status-card.status-card::after { content: none; }
+:root[data-theme="dark"] .rp-hero { color: #eaf1ff; }
+
+/* پروفایل: فرش بالا؛ پنل کرمِ پایین (زیر قلهٔ موج) تیره می‌شود */
+:root[data-theme="dark"] #view-profile .pf-hero {
+  --pf-crop-top: 130px;
+  position: relative;
+  isolation: isolate;
+  min-height: 0;
+  padding: 68px var(--space-4) 8px;
+  color: #f3e9d6;
+  background-color: #14122b;
+  background-image:
+    linear-gradient(180deg, rgba(14,12,34,0) 0, rgba(14,12,34,0) 84px, rgba(14,12,34,.86) 112px, rgba(14,12,34,.94) 100%),
+    linear-gradient(180deg, rgba(14,12,34,.30), rgba(14,12,34,.30)),
+    url('/images/profile-hero.webp');
+  background-size: 100% 100%, 100% 100%, max(100%, 640px) auto;
+  background-repeat: no-repeat;
+  background-position: 0 0, 0 0, 50% calc(var(--pf-crop-top) * -1);
+  border-color: rgba(200,160,90,.28);
+  box-shadow: 0 14px 30px rgba(0,0,0,.45);
+}
+:root[data-theme="dark"] #view-profile .pf-hero::before { content: none; }
+:root[data-theme="dark"] #view-profile .pf-hero > * { position: relative; z-index: 1; }
+:root[data-theme="dark"] #view-profile .pf-hero .pf-avatar { width: 72px; height: 72px; font-size: 28px; margin: 0 auto 8px; background: #fff; color: #322c79; border: 4px solid rgba(255,255,255,.55); box-shadow: 0 8px 20px rgba(0,0,0,.45); }
+:root[data-theme="dark"] #view-profile .pf-hero .profile-name { margin: 0; font-size: 17px; line-height: 1.6; color: #fff; }
+:root[data-theme="dark"] #view-profile .pf-hero .pf-chips { margin-top: 8px; gap: 6px; }
+:root[data-theme="dark"] #view-profile .pf-hero .pf-chip { padding: 3px 12px; background: rgba(255,255,255,.16); color: #fff; }
+:root[data-theme="dark"] #view-profile .pf-hero .pf-chip-soft { background: rgba(255,255,255,.09); color: rgba(255,255,255,.88); }
