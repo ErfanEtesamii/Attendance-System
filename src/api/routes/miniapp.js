@@ -294,7 +294,7 @@ router.get('/miniapp/checkout-readiness', (req, res) => {
     : { key: 'open_break', status: 'ok', title: 'استراحت', hint: '', actionView: 'today' });
   const reportGate = taskReportService.checkoutGate(req.miniAppUser, record.record_date, {});
   items.push(reportGate.action === 'block'
-    ? { key: 'daily_report', status: 'blocked', title: 'گزارش روزانه', hint: taskReportService.blockMessage(reportGate.pendingTasks), actionView: 'dreport' }
+    ? { key: 'daily_report', status: 'blocked', title: 'گزارش روزانه', hint: 'چند تسک امروز هنوز بدون وضعیت است؛ در مرحلهٔ بعد مشخص می‌کنید.', actionView: 'dreport' }
     : { key: 'daily_report', status: 'ok', title: 'گزارش روزانه', hint: '', actionView: 'dreport' });
   const planGate = planGateService.evaluate(req.miniAppUser, record.record_date);
   const planBlocked = planGate.applies && !planGate.satisfied && !planGate.exemption && planGate.mode === 'enforce';

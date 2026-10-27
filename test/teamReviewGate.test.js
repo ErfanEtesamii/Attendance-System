@@ -218,6 +218,15 @@ describe('منطق خالصِ UI ویزارد برای تسک سیستمی (dail
   const normal = { id: 8, systemKey: null };
   const nd = { status: 'not_done', reasonCode: 'no_time', reasonText: '', resType: 'tomorrow', resDate: '' };
 
+  test('پیش‌بررسی خروج فقط مانع‌های بیرون از ویزارد را برمی‌گزیند', () => {
+    const daily = { key: 'daily_report', status: 'blocked' };
+    const weekly = { key: 'weekly_plan', status: 'blocked' };
+    const breakItem = { key: 'open_break', status: 'blocked' };
+    assert.equal(DR.pickCheckoutBlocker([daily]), null);
+    assert.equal(DR.pickCheckoutBlocker([daily, weekly]), weekly);
+    assert.equal(DR.pickCheckoutBlocker([breakItem, daily, weekly]), breakItem);
+  });
+
   test('تسک سیستمی: فقط «انجام نشد + علت»؛ بدون reschedule در بدنه؛ تسک عادی دست‌نخورده', () => {
     assert.equal(DR.isReviewTask(sys), true);
     assert.equal(DR.isReviewTask(normal), false);
@@ -273,6 +282,23 @@ describe('UI ویزارد خروج سرپرست — بررسی ساختاری (D
     assert.equal((js.match(/teamReview: (err\.data|d)\.teamReview/g) || []).length, 4);
     // برای تسک سیستمی گزینه‌ی انتقال/حذف نمایش داده نمی‌شود
     assert.ok(/if \(!isReview\) \{[^]*?این تسک چه شود؟/.test(js));
+  });
+
+  test('خروج و بررسی تیم درون Mini App با بازگشت به نمای درست', () => {
+    const js = read('public/js/app.js');
+    const checkout = js.slice(js.indexOf('async function startCheckout()'), js.indexOf('async function openLateReport'));
+    const row = js.slice(js.indexOf('function mandatoryTaskRow('), js.indexOf('function planReadonlyBoard'));
+    const review = js.slice(js.indexOf('async function openReviewInApp('), js.indexOf('async function openTeamStep'));
+    const refresh = js.slice(js.indexOf('async function refreshAfterReview()'), js.indexOf('function setTeamReview'));
+    assert.ok(checkout.includes('DR.pickCheckoutBlocker(readiness)'));
+    assert.ok(checkout.includes("api('/daily-tasks')") && checkout.includes("openReportWizard({ mode: 'checkout'"));
+    assert.match(row, /text: 'مشاهده‌ی گزارش‌ها'[^\n]*openReviewInApp\(r\.reviewDate\)/);
+    assert.match(row, /text: 'بازکردن در پنل'[^\n]*openTeamReportsPanel\(r\.reviewDate\)/);
+    assert.ok(review.includes("api('/team-review?detail=1&date='"));
+    assert.ok(!review.includes('openReportWizard('));
+    assert.ok(refresh.includes('if (ui.reviewOnly)') && refresh.includes('leaveReportView()'));
+    assert.ok(js.includes("reportUi.reviewOnly ? reportUi.returnView : 'today'"));
+    assert.ok(js.includes("addEventListener('click', leaveReportView)"));
   });
 
   test('CSS کلاس‌های جدید را دارد و dailyReport.js قبل از app.js بارگذاری می‌شود', () => {
@@ -358,9 +384,16 @@ describe('API پنل و Mini App — مشاهده‌ی گزارش تیم (D9-ب)
     settings.setValue('planSubmissionWeekday', String(cal.weekdayOf(TODAY)));
 
     assert.equal((await S.call(gateBoss, 'POST', 'check-in', {})).status, 201);
+    const readiness = await S.call(gateBoss, 'GET', 'checkout-readiness');
+    assert.equal(readiness.status, 200);
+    const reportItem = readiness.json.find((item) => item.key === 'daily_report');
+    assert.equal(reportItem.status, 'blocked');
+    assert.ok(reportItem.hint.length < 100);
     const r1 = await S.call(gateBoss, 'POST', 'check-out', {});
     assert.equal(r1.status, 409);
     assert.equal(r1.json.code, 'daily_report_required'); // گزارش قبل از برنامه‌ی هفته‌ی بعد
+    assert.equal(r1.json.error, require('../src/services/taskReportService').blockMessage(r1.json.pendingTasks));
+    assert.notEqual(reportItem.hint, r1.json.error);
     assert.deepEqual(r1.json.teamReview.unreviewed.map((m) => m.userId), [m1.id]);
     assert.deepEqual(r1.json.teamReview.noReport.map((m) => m.userId), [m2.id]);
     const rv = await S.call(gateBoss, 'POST', 'report-reviews', { subjectUserId: m1.id, reportDate: prev, comment: 'دستتان درد نکند' });

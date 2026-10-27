@@ -104,7 +104,7 @@ test('رابط: کارت با مقدار نمایش داده می‌شود و ح
   const app = fs.readFileSync(path.join(root, 'public', 'js', 'app.js'), 'utf8');
   const css = fs.readFileSync(path.join(root, 'public', 'css', 'style.css'), 'utf8');
   assert.match(html, /id="earnings-card"/);
-  assert.match(html, /کارکرد این ماه/);
+  assert.match(html, /حقوق این ماه/);
   assert.match(app, /function renderEarnings\(earnings\)/);
   assert.match(app, /card\.classList\.add\('hidden'\)/);
   assert.match(app, /toLocaleString\('en-US'\)/);

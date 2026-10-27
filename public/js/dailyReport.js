@@ -190,7 +190,9 @@
     return body;
   }
 
-  const api = { STATUS, REASONS, RESCHEDULE, LIMITS, REVIEW_KEY, REVIEW_REACTIONS, isReviewTask, isOptional, isUrgent, rescheduleOptionsFor, skippedOptional, taskOpts, reportLine, validateReview, buildReviewBody, emptyAnswer, validateAnswer, toApiAnswer, validateExtra, buildBody, unanswered, summarize, seedFromBody, futureDates, encouragementOf };
+  const pickCheckoutBlocker = (readiness) => (readiness || []).find((item) => item.status === 'blocked' && item.key !== 'daily_report') || null;
+
+  const api = { STATUS, REASONS, RESCHEDULE, LIMITS, REVIEW_KEY, REVIEW_REACTIONS, isReviewTask, isOptional, isUrgent, rescheduleOptionsFor, skippedOptional, taskOpts, reportLine, validateReview, buildReviewBody, pickCheckoutBlocker, emptyAnswer, validateAnswer, toApiAnswer, validateExtra, buildBody, unanswered, summarize, seedFromBody, futureDates, encouragementOf };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (root) root.DailyReport = api;
 }(typeof window !== 'undefined' ? window : undefined));

@@ -368,7 +368,7 @@
     $all('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.view === (navName === 'myday' ? 'today' : navName))); // «امروزِ من» زیرمجموعه‌ی «امروز» است
     state.currentView = name;
     const backTargets = { myday: 'today', leave: 'today', mission: 'today', plan: 'today', dreport: 'today', dispute: 'profile', 'remote-history': 'remote' };
-    TGI.setBackHandler(backTargets[name] ? () => switchView(backTargets[name]) : null);
+    TGI.setBackHandler(backTargets[name] ? () => name === 'dreport' ? leaveReportView() : switchView(backTargets[name]) : null);
 
     hideUndoBar(); // نوار «واگرد» انتقال فقط روی همان صفحه معتبر است
     if (name === 'myday') loadMyDay();
@@ -1883,7 +1883,7 @@
   // پیشرفت زنده‌ی «۳ از ۴ گزارش مشاهده شد» (محاسبه‌ی سرور در هر بار دریافت برنامه) و دکمه‌ی «مشاهده‌ی گزارش‌ها» که صفحه‌ی teamreports پنل را برای همان روز باز می‌کند.
   const MANDATORY_LABEL = '🔒 واجب';
   const isReviewSysTask = (t) => !!t && t.isSystem && t.systemKey === ((window.DailyReport && window.DailyReport.REVIEW_KEY) || 'review_team_reports');
-  const faDigits = (n) => (J ? J.toFaDigits(String(n)) : Number(n).toLocaleString('en-US'));
+  const faDigits = (n) => (J ? J.toFaDigits(String(n)) : String(n == null ? '' : n).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]));
   function reviewProgressText(r) {
     if (!r) return '';
     if (r.notYet) return `گزارش‌های ${fmtDate(r.reviewDate)} هنوز ثبت نشده‌اند.`;
@@ -1914,7 +1914,10 @@
         bar.setAttribute('aria-label', 'پیشرفت مشاهده‌ی گزارش‌ها');
         kids.push(bar);
       }
-      if (!r.notYet) kids.push(planEl('button', { type: 'button', class: 'btn secondary rv-open', text: 'مشاهده‌ی گزارش‌ها', on: { click: () => openTeamReportsPanel(r.reviewDate) } }));
+      if (!r.notYet) {
+        kids.push(planEl('button', { type: 'button', class: 'btn primary rv-open', text: 'مشاهده‌ی گزارش‌ها', on: { click: () => openReviewInApp(r.reviewDate) } }));
+        kids.push(planEl('button', { type: 'button', class: 'btn secondary rv-open', text: 'بازکردن در پنل', on: { click: () => openTeamReportsPanel(r.reviewDate) } }));
+      }
     }
     return planEl('li', { class: 'day-task day-task-ro day-task-mandatory' }, kids);
   }
@@ -3013,7 +3016,14 @@
   // دو حالت: checkout (قبل از خروج؛ پاسخ‌ها همراه /check-out می‌روند) و late (بعد از خروج/backfill؛ /daily-report با date).
   // سرور تا رد شدن همه‌ی گیت‌ها چیزی ذخیره نمی‌کند ⇒ UI پاسخ‌ها را در حافظه نگه می‌دارد و همان بدنه را دوباره می‌فرستد.
   const DR = window.DailyReport;
-  const reportUi = { mode: 'checkout', date: '', today: '', tasks: [], answers: new Map(), extras: [], step: 'q', idx: 0, allowLater: false, body: null, msg: '', busy: false, teamReview: null, team: null, reviewDraft: new Map() };
+  const reportUi = { mode: 'checkout', date: '', today: '', tasks: [], answers: new Map(), extras: [], step: 'q', idx: 0, allowLater: false, body: null, msg: '', busy: false, teamReview: null, team: null, reviewDraft: new Map(), reviewOnly: false, returnView: 'today' };
+
+  function leaveReportView() {
+    const target = reportUi.reviewOnly ? reportUi.returnView : 'today';
+    reportUi.reviewOnly = false;
+    reportUi.team = null;
+    switchView(target);
+  }
 
   function dEl(tag, props, ...kids) {
     const e = planEl(tag, props, ...kids);
@@ -3029,6 +3039,7 @@
   function hasReportBody(body) { return !!body && (Array.isArray(body.answers) && body.answers.length > 0 || Array.isArray(body.extra) && body.extra.length > 0); }
 
   function openReportWizard({ mode, date, today, tasks, body, allowLater, teamReview }) {
+    reportUi.reviewOnly = false; reportUi.returnView = 'today';
     const same = reportUi.date === date && reportUi.mode === mode;
     const kept = same ? reportUi.answers : new Map();
     reportUi.mode = mode; reportUi.date = date; reportUi.today = today || date;
@@ -3067,7 +3078,7 @@
   async function startCheckout() {
     try {
       const readiness = await api('/checkout-readiness');
-      const blocked = (readiness || []).find((item) => item.status === 'blocked');
+      const blocked = DR.pickCheckoutBlocker(readiness);
       const confirm = (readiness || []).find((item) => item.status === 'confirm');
       if (blocked) {
         showToast(`${blocked.title}: ${blocked.hint}`, true);
@@ -3124,10 +3135,37 @@
   // بعد از مشاهده‌ی همه: سرور تسک را done کرده؛ فهرست تازه می‌گیریم و ویزارد را با همان پاسخ‌های قبلی دوباره باز می‌کنیم
   async function refreshAfterReview() {
     const ui = reportUi;
+    if (ui.reviewOnly) {
+      showToast('گزارش همه‌ی اعضای دارای گزارش مشاهده شد.');
+      leaveReportView();
+      return;
+    }
     const q = ui.mode === 'late' ? '?date=' + encodeURIComponent(ui.date) : '';
     const d = await api('/daily-tasks' + q);
     showToast('گزارش همه‌ی اعضای دارای گزارش مشاهده شد.');
     openReportWizard({ mode: ui.mode, date: d.date, today: d.today, tasks: d.tasks || [], body: null, allowLater: ui.allowLater, teamReview: d.teamReview });
+  }
+
+  function setTeamReview(r) {
+    const members = r.members || [];
+    reportUi.team = { reviewDate: r.reviewDate, unreviewed: members.filter((m) => m.status === 'unreviewed'), noReport: members.filter((m) => m.status === 'no_report') };
+  }
+
+  async function openReviewInApp(reviewDate) {
+    if (!reviewDate) return;
+    try {
+      const r = await api('/team-review?detail=1&date=' + encodeURIComponent(reviewDate));
+      setTeamReview(r);
+      if (!r.reviewDate || !reportUi.team.unreviewed.length) {
+        showToast('گزارش مشاهده‌نشده‌ای نمانده است.');
+        switchView('myday');
+        return;
+      }
+      reportUi.reviewOnly = true; reportUi.returnView = 'myday';
+      reportUi.step = 'team'; reportUi.msg = '';
+      switchView('dreport');
+      renderReport();
+    } catch (err) { showToast(err.message, true); }
   }
 
   // «الان بررسی می‌کنم»: وضعیت تازه‌ی تیم را (با خلاصه‌ی گزارش‌ها) می‌گیرد؛ چیزی برای بررسی نمانده ⇒ مستقیم ادامه‌ی ویزارد
@@ -3136,8 +3174,7 @@
     try {
       const q = ui.teamReview && ui.teamReview.reviewDate ? '&date=' + encodeURIComponent(ui.teamReview.reviewDate) : '';
       const r = await api('/team-review?detail=1' + q);
-      const members = r.members || [];
-      ui.team = { reviewDate: r.reviewDate, unreviewed: members.filter((m) => m.status === 'unreviewed'), noReport: members.filter((m) => m.status === 'no_report') };
+      setTeamReview(r);
       if (!r.reviewDate || !ui.team.unreviewed.length) { await refreshAfterReview(); return; }
       ui.step = 'team'; ui.msg = '';
       renderReport();
@@ -3158,7 +3195,7 @@
     const total = ui.tasks.length;
     const heading = (text) => dEl('h4', { class: 'dr-q', id: 'dr-heading', text, attrs: { tabindex: '-1' } });
     const msg = dEl('div', { class: 'form-msg' + (ui.msg ? ' err' : ''), text: ui.msg, attrs: { role: 'status', 'aria-live': 'polite' } });
-    $('#dreport-title').textContent = ui.mode === 'late' ? `تکمیل گزارش ${fmtDate(ui.date)}` : 'گزارش تسک‌های امروز';
+    $('#dreport-title').textContent = ui.reviewOnly ? 'بررسی گزارش تیم' : ui.mode === 'late' ? `تکمیل گزارش ${fmtDate(ui.date)}` : 'گزارش تسک‌های امروز';
     const focusHeading = () => { const h = $('#dr-heading'); if (h && h.focus) h.focus(); };
     const fail = (m) => { ui.msg = m; renderReport(); };
     // R1: راهنمای صریح هنگام خروج (فقط در حالت checkout؛ در مرحله‌ی تأیید نهایی تکرار نمی‌شود)
@@ -3302,7 +3339,7 @@
       if (team.noReport.length) card.appendChild(dEl('div', { class: 'plan-meta', text: `گزارش نداده‌اند (شرط تکمیل نیست): ${team.noReport.map((m) => m.fullName).join('، ')}` }));
       card.appendChild(msg);
       const nav = dEl('div', { class: 'dr-nav' });
-      nav.appendChild(dEl('button', { type: 'button', class: 'btn secondary', text: 'بازگشت', on: { click: () => { ui.step = 'q'; ui.msg = ''; renderReport(); } } }));
+      nav.appendChild(dEl('button', { type: 'button', class: 'btn secondary', text: 'بازگشت', on: { click: () => { if (ui.reviewOnly) { leaveReportView(); return; } ui.step = 'q'; ui.msg = ''; renderReport(); } } }));
       card.appendChild(nav);
       body.appendChild(card);
       focusHeading();
@@ -3418,7 +3455,7 @@
   }
 
   const dreportBack = $('#dreport-back');
-  if (dreportBack && typeof dreportBack.addEventListener === 'function') dreportBack.addEventListener('click', () => switchView('today'));
+  if (dreportBack && typeof dreportBack.addEventListener === 'function') dreportBack.addEventListener('click', leaveReportView);
 
   // ---------- دورکاری (R4، فاز ۱۴) ----------
   // «داخل/خارج شبکه» را فقط سرور از req.ip تعیین می‌کند (GET /network-state)؛ کلاینت هیچ پرچمی نمی‌فرستد و فقط نتیجه را نشان می‌دهد.
@@ -3800,7 +3837,7 @@
     b.addEventListener('click', onClick);
     return b;
   }
-  const faNum = (n) => Number(n || 0).toLocaleString('en-US');
+  const faNum = (n) => faDigits(Number(n || 0));
 
   // «YYYY-MM-DD HH:MM:SS» (UTC دیتابیس) ⇒ «۱۵ مهر ۱۴۰۵ ۱۴:۳۰» به وقت دستگاه
   function fmtDateTime(s) {
