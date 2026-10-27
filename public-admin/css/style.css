@@ -2324,7 +2324,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
 
   /* ۲) جزئیات هر کارمند (گزارش تحلیلی): کارت + کنترل مرتب‌سازی */
   .u-panel-head { display: flex; flex-direction: column; gap: var(--space-2); }
-  .rep-sort-m { display: flex; }
+  .rep-sort-m { display: flex; margin-block-end: var(--space-4); }
   .rep-sort-m select { width: 100%; min-width: 0; }
   #rep-table[data-stack] td:first-child .cell-user { min-width: 0; }
   #rep-table[data-stack] td { white-space: normal; }
