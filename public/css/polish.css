@@ -597,9 +597,9 @@ body {
 :root[data-theme="light"] #today-status-card.status-card {
   background-color: #f7faff;
   background-image: url('/images/attendance-mina-corners.webp');
-  background-size: cover;
+  background-size: 100% 100%;
   background-repeat: no-repeat;
-  background-position: center;
+  background-position: center center;
   border-color: rgba(41,112,190,.16);
   box-shadow: 0 16px 34px rgba(35,76,133,.10);
 }
