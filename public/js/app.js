@@ -180,7 +180,6 @@
   function initAppearance() {
     const sheet = $('#appearance-sheet'); const toggle = $('[data-theme-toggle]'); if (!sheet || !toggle) return;
     const close = () => sheet.classList.add('hidden');
-    toggle.addEventListener('click', (event) => { event.preventDefault(); event.stopPropagation(); $('#appearance-theme').value = window.Theme ? window.Theme.get() : 'auto'; try { $('#appearance-text').value = localStorage.getItem('textSize') || 'normal'; $('#appearance-contrast').checked = localStorage.getItem('contrast') === 'high'; } catch (_) {} sheet.classList.remove('hidden'); sheet.querySelector('.sheet').focus(); });
     $('#appearance-close').addEventListener('click', close); sheet.addEventListener('click', (event) => { if (event.target === sheet) close(); });
     $('#appearance-theme').addEventListener('change', (event) => { if (window.Theme) window.Theme.set(event.target.value); });
     $('#appearance-text').addEventListener('change', (event) => { try { localStorage.setItem('textSize', event.target.value); } catch (_) {} applyAccessibility(); });

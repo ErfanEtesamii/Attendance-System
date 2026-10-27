@@ -568,3 +568,26 @@ body {
   .earnings-body { width: 72%; }
   .earnings-useful { font-size: 10px; padding: 6px 9px; }
 }
+
+/* تم روشن: کارت حقوق هم روشن می‌شود (همان چیدمان، رنگ‌های روشن پنل) */
+:root[data-theme="light"] .earnings-card {
+  color: var(--text);
+  border-color: var(--border);
+  background:
+    linear-gradient(90deg, #fff 0%, rgba(255,255,255,.97) 40%, rgba(255,255,255,.55) 64%, rgba(255,255,255,.04) 100%),
+    url("/images/earnings-handicrafts.webp") right center / auto 118% no-repeat,
+    var(--card-bg);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 8%, transparent), 0 18px 34px -24px color-mix(in srgb, var(--brand) 45%, transparent);
+}
+:root[data-theme="light"] .earnings-heading h3 { color: var(--brand); background: color-mix(in srgb, var(--accent) 12%, #fff); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+:root[data-theme="light"] .earnings-bolt { fill: var(--accent-dark); }
+:root[data-theme="light"] .earnings-wallet { color: var(--brand); }
+:root[data-theme="light"] .earnings-intro { color: var(--text); opacity: .78; }
+:root[data-theme="light"] .earnings-amount,
+:root[data-theme="light"] .earnings-amount small { color: var(--accent-dark); -webkit-text-fill-color: var(--accent-dark); filter: none; }
+:root[data-theme="light"] .earnings-useful { color: var(--brand); background: var(--brand-soft); border-color: color-mix(in srgb, var(--brand) 18%, transparent); }
+:root[data-theme="light"] .earnings-card .ux-collapse > summary { color: var(--hint); }
+:root[data-theme="light"] .earnings-card .ux-collapse .earnings-note { background: var(--card-bg); color: var(--text); border-color: var(--border); box-shadow: var(--shadow-2); }
+:root[data-theme="light"] .earnings-excluded { background: rgba(255,255,255,.84); border-top-color: var(--border); color: var(--text); }
+:root[data-theme="light"] .earnings-excluded .btn-link { color: var(--brand); }
+:root[data-theme="light"] .earnings-live { color: var(--accent-dark); background: color-mix(in srgb, var(--accent) 14%, #fff); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }

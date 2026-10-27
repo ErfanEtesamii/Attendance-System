@@ -70,12 +70,13 @@
     api.effective = effective;
     api.apply = apply;
     api.set = set;
+    api.toggle = () => set(effective() === 'dark' ? 'light' : 'dark'); // دکمه‌ی هدر: فقط روشن ⇄ تیره
     api.cycle = () => set(pref === 'auto' && fixedDefault() ? 'dark' : NEXT[pref]);
 
     apply();
     if (mq && mq.addEventListener) mq.addEventListener('change', () => { if (pref === 'auto') apply(); });
     if (tg && tg.onEvent) tg.onEvent('themeChanged', () => { if (pref === 'auto') apply(); });
-    doc.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-theme-toggle]'); if (b) api.cycle(); });
+    doc.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-theme-toggle]'); if (b) api.toggle(); });
     doc.addEventListener('DOMContentLoaded', apply); // دکمه‌هایی که بعد از head ساخته می‌شوند برچسب بگیرند
   }
 
