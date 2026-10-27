@@ -681,3 +681,19 @@ body {
 :root[data-theme="light"] #dispute-list .dispute-item { background: #fffaf0; border-color: color-mix(in srgb, var(--dsp-c) 30%, rgba(176, 128, 60, .30)); box-shadow: 0 8px 20px rgba(92, 52, 24, .08); }
 :root[data-theme="light"] #dispute-list .dsp-title { color: #5a1e12; }
 :root[data-theme="light"] #dispute-list .dispute-item .li-bottom { border-top-color: rgba(176, 128, 60, .35); color: var(--pf-ink-soft); }
+
+/* گزارش هفتگی/ماهانه (تم روشن): هیروی بنفش-آبی تیره ← آبی آسمانی ملایم، هماهنگ با کارت وضعیت امروز */
+:root[data-theme="light"] .rp-hero {
+  background:
+    radial-gradient(150px 110px at 90% 0, rgba(255, 255, 255, .30), transparent 70%),
+    radial-gradient(170px 130px at 5% 100%, rgba(120, 205, 250, .45), transparent 70%),
+    linear-gradient(160deg, #1d74bd 0%, #2f93d8 58%, #4aa9e6 100%);
+  box-shadow: 0 14px 30px rgba(35, 110, 180, .26);
+}
+:root[data-theme="light"] .rp-hero-label { opacity: .95; }
+:root[data-theme="light"] .rp-hero-sub span { background: rgba(255, 255, 255, .22); }
+:root[data-theme="light"] .rp-hero-sub .rp-good { background: rgba(255, 255, 255, .34); }
+:root[data-theme="light"] .tabs-inline .tab-btn.active {
+  background: linear-gradient(135deg, #1d74bd, #3a9be0);
+  box-shadow: 0 8px 18px rgba(35, 110, 180, .28);
+}
