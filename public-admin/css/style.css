@@ -2377,3 +2377,24 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
   #cal-filters { padding: 12px 14px; gap: 10px; }
   #cal-filters .field { flex: 1 1 calc(50% - 5px); }
 }
+
+/* مرور شبانه: خلاصه‌ی وضعیت به‌صورت کاشی‌های رنگی، فیلترها بدون کشیده‌شدن */
+.nt-chip-warn { background: var(--red-soft); color: var(--red); }
+#nt-chips { align-items: center; }
+#nt-chips .chip { align-self: center; }
+.nt-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; margin-bottom: var(--space-4); }
+.nt-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 6px; border: 1px solid var(--border); border-radius: 16px; background: var(--card); box-shadow: var(--shadow-1); text-align: center; }
+.nt-stat b { font-size: var(--fs-lg); font-weight: 800; line-height: 1.4; unicode-bidi: isolate; }
+.nt-stat span { font-size: var(--fs-xs); color: var(--hint); font-weight: 600; white-space: nowrap; }
+.nt-present { background: color-mix(in srgb, var(--green) 9%, var(--card)); } .nt-present b { color: var(--green); }
+.nt-late { background: color-mix(in srgb, var(--yellow) 10%, var(--card)); } .nt-late b { color: var(--yellow); }
+.nt-noCheckout { background: color-mix(in srgb, var(--orange) 10%, var(--card)); } .nt-noCheckout b { color: var(--orange); }
+.nt-absent { background: color-mix(in srgb, var(--red) 9%, var(--card)); } .nt-absent b { color: var(--red); }
+.nt-leave { background: color-mix(in srgb, var(--purple) 9%, var(--card)); } .nt-leave b { color: var(--purple-text); }
+@media (max-width: 600px) {
+  #nt-chips { display: grid; grid-template-columns: 1fr 1fr; overflow: visible; margin: 0 0 var(--space-3); padding: 0; gap: 8px; }
+  #nt-chips .chip { width: 100%; justify-content: center; min-height: 44px; }
+  .nt-stats { grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .nt-stat { grid-column: span 2; padding: 8px 4px; }
+  .nt-stat:nth-child(n+4) { grid-column: span 3; }
+}

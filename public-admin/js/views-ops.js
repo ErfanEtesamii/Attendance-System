@@ -970,13 +970,13 @@
       const html = `
         <div class="view-header">
           <div><h2>مرور شبانه</h2>
-            <div class="sub">${esc(fmt.dateLong(data.date))}${data.holiday ? ' · تعطیل رسمی' : ''} · ${fmt.num(t.total)} نفر · ${fmt.num(t.attention)} مورد نیازمند بررسی</div></div>
+            <div class="sub cal-sub"><span class="cal-chip">${esc(fmt.dateLong(data.date))}</span>${data.holiday ? '<span class="cal-chip cal-chip-off">تعطیل رسمی</span>' : ''}<span class="cal-chip">${fmt.num(t.total)} نفر</span><span class="cal-chip nt-chip-warn">${fmt.num(t.attention)} مورد نیازمند بررسی</span></div></div>
           <div class="header-actions">
             <label class="field u-m0"><input type="date" id="nt-date" name="ntDate" value="${esc(data.date)}" max="${esc(data.today)}" /></label>
           </div>
         </div>
-        <div class="chips" id="nt-chips">${chips.map(([k, l, c]) => `<button class="chip ${k === nightUi.filter ? 'active' : ''}" data-f="${k}">${esc(l)}<b>${fmt.num(c)}</b></button>`).join('')}
-          <span class="muted night-summary">حاضر: ${fmt.num(t.present)} · متأخر: ${fmt.num(t.late)} · بدون خروج: ${fmt.num(t.noCheckout)} · غایب: ${fmt.num(t.absent)} · مرخصی: ${fmt.num(t.leave)}</span></div>
+        <div class="chips" id="nt-chips">${chips.map(([k, l, c]) => `<button class="chip ${k === nightUi.filter ? 'active' : ''}" data-f="${k}">${esc(l)}<b>${fmt.num(c)}</b></button>`).join('')}</div>
+        <div class="nt-stats"><div class="nt-stat nt-present"><b>${fmt.num(t.present)}</b><span>حاضر</span></div><div class="nt-stat nt-late"><b>${fmt.num(t.late)}</b><span>متأخر</span></div><div class="nt-stat nt-noCheckout"><b>${fmt.num(t.noCheckout)}</b><span>بدون خروج</span></div><div class="nt-stat nt-absent"><b>${fmt.num(t.absent)}</b><span>غایب</span></div><div class="nt-stat nt-leave"><b>${fmt.num(t.leave)}</b><span>مرخصی</span></div></div>
         <div class="card card--primary flush"><div class="table-wrap"><table>
           <thead><tr><th>کارمند</th><th>وضعیت</th><th>ورود</th><th>خروج</th><th>ساعت مفید</th><th>نکات</th><th>عملیات</th></tr></thead>
           <tbody id="nt-body"></tbody></table></div></div>
