@@ -237,3 +237,14 @@ html[data-contrast="high"] .earnings-amount { background: none; -webkit-text-fil
 #dispute-list .dsp-preview { margin-top: 10px; padding: 8px 12px; border-radius: 12px; background: color-mix(in srgb, var(--dsp-c) 8%, transparent); color: var(--text); font-size: var(--fs-sm); }
 #dispute-list .dispute-item .li-bottom { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border); font-size: var(--fs-xs); font-weight: 600; }
 #dispute-list .dispute-item .li-bottom > span:first-child::before { content: "💬 "; filter: grayscale(.3); }
+
+/* پروفایل مینی‌اپ: هیرو تمام‌رنگ (کل کارت گرادیان، متن روشن) */
+.pf-hero { padding: 30px var(--space-4) 24px; border-color: transparent; color: #fff; background:
+  radial-gradient(130px 110px at 88% 6%, rgba(247, 160, 29, .5), transparent 70%),
+  radial-gradient(180px 140px at 8% 100%, rgba(122, 103, 238, .55), transparent 70%),
+  linear-gradient(160deg, #322c79 0%, #4b3fc0 62%, #6c5ce0 100%); box-shadow: 0 14px 30px rgba(50, 44, 121, .28); }
+.pf-hero .pf-cover { display: none; }
+.pf-hero .pf-avatar { margin: 0 auto 12px; background: #fff; color: #322c79; border: 4px solid rgba(255, 255, 255, .45); box-shadow: 0 10px 24px rgba(0, 0, 0, .25); }
+.pf-hero .profile-name { color: #fff; }
+.pf-hero .pf-chip { background: rgba(255, 255, 255, .2); color: #fff; }
+.pf-hero .pf-chip-soft { background: rgba(255, 255, 255, .1); color: rgba(255, 255, 255, .88); }
