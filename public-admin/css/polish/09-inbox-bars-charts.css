@@ -1,0 +1,12 @@
+/* ---------- ۸) صندوق تصمیم، نوار پیشرفت، رویدادها ---------- */
+.inbox-group { border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border)); border-radius: var(--r-lg); background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 7%, var(--card)), var(--card)); }
+.inbox-group.is-empty { border-color: var(--border); background: var(--card); opacity: .8; }
+.inbox-count { background: linear-gradient(145deg, var(--accent-hi), var(--accent)); color: var(--on-accent); font-weight: 800; box-shadow: 0 6px 12px -6px color-mix(in srgb, var(--accent) 80%, transparent); }
+.inbox-group.is-empty .inbox-count { background: var(--card-2); color: var(--hint); box-shadow: none; }
+.hbar-track { height: 10px; background: color-mix(in srgb, var(--brand) 12%, transparent); box-shadow: inset 0 1px 2px color-mix(in srgb, var(--brand) 14%, transparent); }
+.hbar-fill { background: linear-gradient(90deg, var(--accent-2), var(--green)); box-shadow: 0 0 10px color-mix(in srgb, var(--green) 50%, transparent); }
+.act-item { border-radius: var(--r-md); transition: background-color var(--motion-fast); }
+.act-item:hover { background: color-mix(in srgb, var(--brand) 8%, transparent); }
+.act-dot { box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 18%, transparent); }
+.chart .bar-a { fill: var(--accent-2); filter: drop-shadow(0 4px 6px color-mix(in srgb, var(--accent-2) 40%, transparent)); }
+.chart .grid { stroke-dasharray: 3 5; }

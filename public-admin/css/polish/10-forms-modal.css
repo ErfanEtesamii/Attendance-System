@@ -1,0 +1,13 @@
+/* ---------- ۹) فرم‌ها و مودال ---------- */
+.card :where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="hidden"]), select, textarea):focus-visible,
+.modal :where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="hidden"]), select, textarea):focus-visible {
+  outline: none; box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 24%, transparent); border-color: var(--brand);
+}
+.modal-backdrop { -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.modal {
+  border: 1px solid color-mix(in srgb, var(--brand) 20%, var(--border));
+  background: linear-gradient(180deg, var(--card), color-mix(in srgb, var(--card) 93%, var(--brand)));
+  box-shadow: 0 40px 80px -30px rgba(0, 0, 0, .55);
+  animation: ap-pop var(--motion-normal) var(--ease-out) both;
+}
+@keyframes ap-pop { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }

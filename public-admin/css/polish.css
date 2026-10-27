@@ -1,8 +1,8 @@
 /* Visual finish for the administration panel.  This layer deliberately uses
    only the shared design tokens so that light and dark themes stay paired. */
 :root {
-  --admin-surface: color-mix(in srgb, var(--card) 92%, var(--brand-soft));
-  --admin-raised: color-mix(in srgb, var(--card) 86%, var(--brand-soft));
+  --admin-surface: color-mix(in srgb, var(--card) 96%, var(--brand));
+  --admin-raised: color-mix(in srgb, var(--card) 94%, var(--brand));
   --admin-line: color-mix(in srgb, var(--border) 72%, var(--brand-soft));
   --admin-focus: color-mix(in srgb, var(--brand) 72%, var(--accent));
 }
@@ -29,17 +29,16 @@ body {
 }
 
 /* Shared depth for all generated views, including loading and empty screens. */
-.view-header, .page-head, .filters, .emp-filters, #an-filters,
-.card, .stat, .emp-stat, .nt-stat, .chart-fig, .week-card,
-.day-card, .np-card, .ms-card, .cal-card, .settings-card {
+.view-header, .filters, .emp-filters, #an-filters,
+.card, .stat, .emp-stat, .nt-stat, .chart-fig,
+.day-card {
   border-color: var(--admin-line);
 }
-.card, .stat, .emp-stat, .nt-stat, .chart-fig, .week-card, .day-card,
-.np-card, .ms-card, .cal-card, .settings-card {
+.card, .stat, .emp-stat, .nt-stat, .chart-fig, .day-card {
   background: linear-gradient(145deg, var(--admin-surface), var(--card));
   box-shadow: var(--lift-sm), var(--shadow-1);
 }
-.card:not(.flush), .chart-fig, .week-card, .day-card { position: relative; }
+.card:not(.flush), .chart-fig, .day-card { position: relative; }
 
 .stat, .emp-stat, .nt-stat { transition: transform var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out); }
 .stat:hover, .emp-stat:hover, .nt-stat:hover { transform: translateY(-2px); box-shadow: var(--lift-md), var(--shadow-1); }
@@ -49,7 +48,7 @@ body {
 /* Tables gain hierarchy without changing their compact data density. */
 .table-wrap { border: 1px solid var(--admin-line); background: var(--card); box-shadow: var(--shadow-1); }
 .table-wrap table { background: transparent; }
-.table-wrap thead th { background: color-mix(in srgb, var(--brand-soft) 64%, var(--card)); color: var(--text); }
+.table-wrap thead th { background: color-mix(in srgb, var(--brand) 10%, var(--card)); color: var(--text); }
 .table-wrap tbody tr { transition: background-color var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out); }
 .table-wrap tbody tr:nth-child(even) { background: color-mix(in srgb, var(--card) 94%, var(--brand-soft)); }
 .table-wrap tbody tr:hover { background: color-mix(in srgb, var(--brand-soft) 52%, var(--card)); box-shadow: inset -3px 0 var(--accent); }
@@ -125,10 +124,10 @@ body {
 .np-stat { background: var(--brand-soft); color: var(--text); border: 1px solid var(--admin-line); }
 .np-emp { background: var(--card); border-color: var(--admin-line); }
 .np-emp:hover { box-shadow: var(--lift-sm), var(--shadow-1); }
-.st-panel-head { background: color-mix(in srgb, var(--brand-soft) 42%, var(--card)); border-bottom-color: var(--admin-line); }
+.st-panel-head { background: color-mix(in srgb, var(--brand) 6%, var(--card)); border-bottom-color: var(--admin-line); }
 .st-field { border-color: var(--admin-line); background: var(--admin-surface); }
 .st-actionbar.dirty { background: var(--card); box-shadow: var(--lift-up); }
-.bell-head, .bell-foot, .employee-drawer-head { background: color-mix(in srgb, var(--brand-soft) 40%, var(--card)); }
+.bell-head, .bell-foot, .employee-drawer-head { background: color-mix(in srgb, var(--brand) 6%, var(--card)); }
 .bell-main:hover, .search-item:hover { background: var(--brand-soft); }
 .employee-drawer-body .kv, .modal-body .form { border-color: var(--admin-line); }
 

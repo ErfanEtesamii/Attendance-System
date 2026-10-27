@@ -1,0 +1,10 @@
+/* ---------- ۳) سرتیتر صفحه ---------- */
+.view-header h2 {
+  background: linear-gradient(100deg, var(--brand), color-mix(in srgb, var(--accent-2) 70%, var(--brand)));
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+}
+.view-header .sub {
+  display: inline-block; padding: 4px 12px; border-radius: 999px;
+  background: color-mix(in srgb, var(--brand) 11%, transparent);
+  border: 1px solid color-mix(in srgb, var(--brand) 16%, transparent);
+}

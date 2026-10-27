@@ -1,0 +1,7 @@
+/* ---------- ۷) جدول‌ها ---------- */
+.table-wrap { border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--card); }
+thead th { background: color-mix(in srgb, var(--brand) 12%, var(--card)); border-bottom: 1px solid color-mix(in srgb, var(--brand) 20%, transparent); }
+tbody tr { transition: background-color var(--motion-fast); }
+tbody tr:hover { background: color-mix(in srgb, var(--brand) 8%, transparent); }
+tbody tr:nth-child(even) { background: color-mix(in srgb, var(--brand) 3.5%, transparent); }
+tbody tr:nth-child(even):hover { background: color-mix(in srgb, var(--brand) 8%, transparent); }

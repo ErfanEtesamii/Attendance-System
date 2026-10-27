@@ -1,0 +1,11 @@
+/* ---------- ۰) زمینه: هاله‌های رنگیِ محو پشت صفحه ---------- */
+body {
+  background:
+    radial-gradient(900px 520px at 8% -8%, color-mix(in srgb, var(--accent-2) 13%, transparent), transparent 70%),
+    radial-gradient(900px 560px at 100% 0%, color-mix(in srgb, var(--brand) 20%, transparent), transparent 70%),
+    radial-gradient(700px 480px at 50% 108%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
+}
+::selection { background: color-mix(in srgb, var(--accent) 35%, transparent); }
+* { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--brand) 35%, transparent) transparent; }

@@ -1,0 +1,39 @@
+/* ---------- ۵) کاشی‌های آمار (رنگ بر اساس وضعیت) ---------- */
+.stat-grid { grid-template-columns: repeat(auto-fit, minmax(136px, 1fr)); align-items: stretch; }
+.stat {
+  --tone: var(--brand);
+  overflow: hidden; isolation: isolate;
+  border: 1px solid color-mix(in srgb, var(--tone) 22%, var(--border));
+  background:
+    radial-gradient(150px 110px at 100% 0%, color-mix(in srgb, var(--tone) 20%, transparent), transparent 72%),
+    linear-gradient(180deg, var(--card), color-mix(in srgb, var(--card) 93%, var(--tone)));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--tone) 12%, transparent), 0 18px 34px -24px color-mix(in srgb, var(--tone) 60%, transparent);
+  transition: transform var(--motion-normal) var(--ease-out), box-shadow var(--motion-normal) var(--ease-out);
+  animation: ap-rise var(--motion-enter) var(--ease-out) both;
+}
+.stat::before {
+  content: ""; position: absolute; inset-inline: 0; top: 0; height: 3px;
+  background: linear-gradient(90deg, transparent, var(--tone), transparent); opacity: .85;
+}
+.stat:has(.g-green)  { --tone: var(--green); }
+.stat:has(.g-orange) { --tone: var(--orange); }
+.stat:has(.g-red)    { --tone: var(--red); }
+.stat:has(.g-purple) { --tone: var(--purple); }
+.stat:has(.g-blue)   { --tone: var(--blue); }
+.stat:has(.g-gray)   { --tone: var(--hint); }
+button.stat { cursor: pointer; }
+button.stat:hover { transform: translateY(-4px); box-shadow: 0 2px 4px color-mix(in srgb, var(--tone) 16%, transparent), 0 26px 40px -22px color-mix(in srgb, var(--tone) 75%, transparent); }
+button.stat:active { transform: translateY(-1px) scale(.99); }
+.stat-icon {
+  width: 46px; height: 46px; border-radius: 16px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--tone) 30%, transparent), color-mix(in srgb, var(--tone) 12%, transparent));
+  border: 1px solid color-mix(in srgb, var(--tone) 30%, transparent);
+  box-shadow: 0 10px 18px -10px color-mix(in srgb, var(--tone) 70%, transparent), inset 0 1px 0 rgba(255, 255, 255, .22);
+}
+.stat-value { font-size: 32px; letter-spacing: -.5px; }
+.stat-grid > .stat:nth-child(2) { animation-delay: 30ms; } .stat-grid > .stat:nth-child(3) { animation-delay: 60ms; }
+.stat-grid > .stat:nth-child(4) { animation-delay: 90ms; } .stat-grid > .stat:nth-child(5) { animation-delay: 120ms; }
+.stat-grid > .stat:nth-child(6) { animation-delay: 150ms; } .stat-grid > .stat:nth-child(7) { animation-delay: 180ms; }
+.stat-trend { grid-template-columns: minmax(0, 1fr) 52px; padding: 6px 8px; border-radius: 12px; background: color-mix(in srgb, currentColor 9%, transparent); font-size: 11px; line-height: 1.5; }
+.stat-trend .sparkline { width: 52px; }
+.stat-value { margin-top: 2px; }

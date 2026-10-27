@@ -1,0 +1,15 @@
+/* ---------- ۶) دکمه‌ها و چیپ‌ها ---------- */
+.btn { transition: transform var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out), background-color var(--motion-fast); }
+.btn.primary {
+  background: linear-gradient(145deg, var(--accent-hi), var(--accent));
+  box-shadow: 0 12px 22px -12px color-mix(in srgb, var(--accent) 85%, transparent), inset 0 1px 0 rgba(255, 255, 255, .35);
+}
+.btn.primary:hover { background: linear-gradient(145deg, var(--accent-hi), var(--accent-dark)); transform: translateY(-1px); box-shadow: 0 16px 26px -12px color-mix(in srgb, var(--accent) 90%, transparent), inset 0 1px 0 rgba(255, 255, 255, .35); }
+.btn.ghost { background: color-mix(in srgb, var(--brand) 11%, var(--card)); border: 1px solid color-mix(in srgb, var(--brand) 16%, transparent); }
+.btn.ghost:hover { transform: translateY(-1px); }
+.btn.success { border: 1px solid color-mix(in srgb, var(--green) 30%, transparent); }
+.btn.danger { border: 1px solid color-mix(in srgb, var(--red) 30%, transparent); }
+.icon-btn { transition: transform var(--motion-fast) var(--ease-out), background-color var(--motion-fast); }
+.chip { transition: all var(--motion-fast) var(--ease-out); }
+.chip.active { background: linear-gradient(145deg, color-mix(in srgb, var(--brand) 26%, transparent), color-mix(in srgb, var(--brand) 12%, transparent)); box-shadow: 0 8px 16px -10px color-mix(in srgb, var(--brand) 70%, transparent); }
+.badge { border: 1px solid color-mix(in srgb, currentColor 22%, transparent); }

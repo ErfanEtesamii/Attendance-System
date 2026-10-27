@@ -1,0 +1,11 @@
+/* ---------- ۱۰) صفحه‌ی ورود ---------- */
+.login-screen {
+  background:
+    radial-gradient(700px 460px at 15% 10%, color-mix(in srgb, var(--accent-2) 22%, transparent), transparent 70%),
+    radial-gradient(700px 500px at 90% 90%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%);
+}
+.login-card { border-color: color-mix(in srgb, var(--brand) 20%, var(--border)); box-shadow: 0 40px 90px -40px color-mix(in srgb, var(--brand) 70%, transparent); animation: ap-pop var(--motion-enter) var(--ease-out) both; }
+.login-brand-art svg { filter: drop-shadow(0 14px 24px rgba(0, 0, 0, .35)); }
+.login-card .brand-mark { background: linear-gradient(145deg, var(--accent-hi), var(--accent)); color: var(--on-accent); width: 56px; height: 56px; border-radius: 18px; box-shadow: 0 14px 26px -12px color-mix(in srgb, var(--accent) 80%, transparent); }
+.code-login #code-login-btn { background: linear-gradient(145deg, var(--accent-hi), var(--accent)); box-shadow: 0 14px 24px -12px color-mix(in srgb, var(--accent) 85%, transparent); transition: transform var(--motion-fast); }
+.code-login #code-login-btn:hover { transform: translateY(-1px); }

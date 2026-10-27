@@ -1,0 +1,5 @@
+@media (prefers-reduced-motion: reduce) {
+  .card, .stat, .modal, .login-card { animation: none !important; }
+  .stat, .btn, .nav-item, .icon-btn { transition: none !important; }
+  button.stat:hover, .btn:hover, .nav-item:hover { transform: none !important; }
+}
