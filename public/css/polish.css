@@ -596,14 +596,14 @@ body {
 /* کارت وضعیت امروز: تصویر کاشی/گلدان سمت راست، محو شدن مه‌آلود به سفید سمت چپ */
 :root[data-theme="light"] #today-status-card.status-card {
   background-color: #f7faff;
-  /* نسبت تصویر حفظ می‌شود (بدون کشیدگی)؛ یک لایه به گوشهٔ بالا و یک لایه به گوشهٔ پایین می‌چسبد.
-     ۱۰۶٪ عرض: قاب گرد داخلی تصویر بیرون از کارت می‌افتد و لبهٔ روشن کنار کارت دیده نمی‌شود. */
+  /* نسبت تصویر حفظ می‌شود (بدون کشیدگی و بدون برش از چپ/راست)؛
+     یک لایه گوشهٔ بالا-چپ را کامل نشان می‌دهد و یک لایه گوشهٔ پایین-راست را. */
   background-image:
     url('/images/attendance-mina-corners.webp'),
     url('/images/attendance-mina-corners.webp');
-  background-size: 106% auto, 106% auto;
+  background-size: 100% auto, 100% auto;
   background-repeat: no-repeat;
-  background-position: 50% 0, 50% 100%;
+  background-position: left top, right bottom;
   border-color: rgba(41,112,190,.16);
   box-shadow: 0 16px 34px rgba(35,76,133,.10);
 }
