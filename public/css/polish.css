@@ -596,24 +596,17 @@ body {
 /* کارت وضعیت امروز: تصویر کاشی/گلدان سمت راست، محو شدن مه‌آلود به سفید سمت چپ */
 :root[data-theme="light"] #today-status-card.status-card {
   background-color: #f7faff;
-  background-image:
-    linear-gradient(180deg, rgba(247,250,255,0) 78%, rgba(247,250,255,.55) 100%),
-    linear-gradient(90deg, #f7faff 0%, rgba(247,250,255,.85) 18%, rgba(247,250,255,.4) 42%, rgba(247,250,255,0) 70%),
-    linear-gradient(180deg, #f7faff 0%, rgba(247,250,255,.7) 14%, rgba(247,250,255,0) 42%),
-    url('/images/attendance-blue-handicraft.webp');
-  background-size: 100% 100%, 66% 68%, 66% 68%, auto 64%;
+  background-image: url('/images/attendance-mina-corners.webp');
+  background-size: cover;
   background-repeat: no-repeat;
-  background-position: center, right bottom, right bottom, right bottom;
-  border-color: rgba(41,112,190,.20);
-  box-shadow: 0 16px 34px rgba(35,76,133,.13);
+  background-position: center;
+  border-color: rgba(41,112,190,.16);
+  box-shadow: 0 16px 34px rgba(35,76,133,.10);
 }
 :root[data-theme="light"] #today-status-card.status-card::before { border-color: rgba(43,112,191,.06); }
 /* هالهٔ نور مه‌آلود پشت حلقه */
 :root[data-theme="light"] #today-status-card.status-card::after {
-  inset: auto;
-  width: 100%; height: 100%; top: 0; left: 0; bottom: auto; border-radius: 0;
-  background: radial-gradient(60% 42% at 50% 46%, rgba(255,255,255,.62), rgba(255,255,255,0) 100%);
-  pointer-events: none;
+  content: none;
 }
 
 /* پروفایل: فرش بالا، پنل کرم موج‌دار پایین، آواتار روی لبهٔ موج */
