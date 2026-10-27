@@ -191,7 +191,7 @@ html[data-contrast="high"] .status-card::before,
 html[data-contrast="high"] .status-card::after,
 html[data-contrast="high"] .action-tile.is-primary::after { display: none; }
 html[data-contrast="high"] .timer,
-html[data-contrast="high"] .earnings-amount { background: none; -webkit-text-fill-color: currentColor; }
+html[data-contrast="high"] .earnings-amount { background: none; -webkit-text-fill-color: #fff; color: #fff; }
 
 /* پروفایل مینی‌اپ: هیرو با کاور گرادیان، چیپ نقش/دپارتمان، ردیف‌های اطلاعات با آیکن */
 .pf-hero { position: relative; overflow: hidden; padding: 0 var(--space-4) 20px; text-align: center; }
@@ -431,3 +431,46 @@ body {
 /* نوار پایین شناورتر */
 .bottom-nav { backdrop-filter: blur(12px); background: color-mix(in srgb, var(--rail) 92%, transparent); }
 .nav-btn.active { color: #fff; }
+
+/* ===== نسخه ۳ ===== */
+/* کاشی‌ها: همیشه دو ستون (مربع‌های کنار هم)، حتی روی گوشی‌های باریک */
+.actions, .actions.single { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+.action-tile.is-primary { grid-column: 1 / -1; }
+.action-tile.wide:not(.is-primary) { flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px 10px 16px; gap: 10px; }
+.action-tile.wide:not(.is-primary) .tile-text { align-items: center; }
+.action-tile.wide:not(.is-primary) .tile-title { font-size: 16px; }
+.action-tile.wide:not(.is-primary) .tile-sub { font-size: 12px; }
+
+/* کارت کارکرد این ماه: کارت «بانکی» نیلی-طلایی */
+.earnings-card {
+  border: 1px solid rgba(255, 210, 120, .28); color: #f4f1ff; padding: 22px 20px 18px;
+  background:
+    radial-gradient(200px 140px at 100% 0%, rgba(247, 160, 29, .38), transparent 70%),
+    radial-gradient(240px 180px at 0% 100%, rgba(123, 104, 238, .45), transparent 70%),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, .035) 0 2px, transparent 2px 14px),
+    linear-gradient(145deg, #1d1850 0%, #2a2272 55%, #3b2f9a 100%);
+  box-shadow: 0 24px 44px -20px rgba(43, 34, 120, .8), inset 0 1px 0 rgba(255, 255, 255, .22);
+}
+.earnings-card::before { width: 200px; height: 200px; inset-inline-end: -70px; top: -90px; border: 1px solid rgba(255, 210, 120, .25); box-shadow: 0 0 0 26px rgba(255, 210, 120, .05), 0 0 0 54px rgba(255, 210, 120, .03); background: none; }
+.earnings-card::after { content: ""; position: absolute; z-index: -1; inset-inline-start: 18px; bottom: 16px; width: 38px; height: 28px; border-radius: 7px; opacity: .0; }
+.earnings-heading h3, .earnings-intro { color: #fff; }
+.earnings-intro { opacity: .72; }
+.earnings-heading .icon-chip { background: linear-gradient(145deg, #ffd27a, #f7a01d); color: #2a2272; box-shadow: 0 8px 16px -8px #f7a01d; }
+.earnings-live { background: rgba(255, 210, 120, .16); color: #ffd27a; border: 1px solid rgba(255, 210, 120, .35); box-shadow: none; }
+.earnings-live i { background: #ffd27a; }
+.earnings-amount {
+  background: linear-gradient(180deg, #fff6d9 0%, #ffd27a 55%, #f7a01d 100%); -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent; filter: drop-shadow(0 6px 16px rgba(247, 160, 29, .35));
+  font-size: clamp(36px, 12vw, 50px);
+}
+.earnings-amount small { -webkit-text-fill-color: rgba(255, 255, 255, .75); color: rgba(255, 255, 255, .75); }
+.earnings-spark { color: #ffd27a; -webkit-text-fill-color: #ffd27a; }
+.earnings-useful { background: rgba(255, 255, 255, .09); color: #fff; border: 1px solid rgba(255, 255, 255, .2); backdrop-filter: blur(4px); }
+.earnings-foot { border-top: 1px dashed rgba(255, 210, 120, .35); }
+.earnings-foot summary, .earnings-note, .earnings-excluded, .earnings-info { color: rgba(255, 255, 255, .85); }
+.earnings-excluded .btn-link { color: #ffd27a; }
+
+/* ساعت کاری: چیپ فقط وقتی مقدار دارد */
+.work-hours-card .row-value { font-size: 13.5px; white-space: nowrap; direction: rtl; unicode-bidi: plaintext; }
+.earnings-amount { flex-wrap: nowrap; }
+.earnings-spark { font-size: .55em; flex: none; }

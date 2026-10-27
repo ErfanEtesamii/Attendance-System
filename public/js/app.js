@@ -1179,7 +1179,7 @@
         const value = document.createElement('span');
         value.className = 'row-value';
         value.textContent = d.isWorkingDay
-          ? `${fa(d.expectedStart)} تا ${fa(d.expectedEnd)}`
+          ? ((d.expectedStart && d.expectedEnd) ? `${fa(d.expectedStart)} تا ${fa(d.expectedEnd)}` : 'ساعت مشخص نشده')
           : (d.special === 'off' ? 'آف' : (d.holidayTitle ? `تعطیل — ${d.holidayTitle}` : 'روز غیرکاری'));
         if (d.special) {
           const badge = document.createElement('span');
