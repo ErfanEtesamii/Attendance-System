@@ -938,7 +938,7 @@
     excludedEl.classList.toggle('hidden', excluded.length === 0);
     excludedEl.textContent = '';
     if (excluded.length) {
-      excludedEl.append(document.createTextNode(`${faNumber(excluded.length)} روز هنوز در برآورد لحاظ نشده است. `));
+      excludedEl.append(document.createTextNode(`${faNumber(excluded.length)} روز هنوز در بازه لحاظ نشده است. `));
       const details = document.createElement('button');
       details.type = 'button'; details.className = 'btn-link'; details.textContent = 'جزئیات';
       details.addEventListener('click', async () => {

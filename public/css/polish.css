@@ -474,3 +474,97 @@ body {
 .work-hours-card .row-value { font-size: 13.5px; white-space: nowrap; direction: rtl; unicode-bidi: plaintext; }
 .earnings-amount { flex-wrap: nowrap; }
 .earnings-spark { font-size: .55em; flex: none; }
+
+
+/* ===== فراز هنر: کارت حقوق با هویت صنایع دستی ===== */
+.earnings-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: block;
+  padding: 16px 16px 0;
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, rgba(255,255,255,.1));
+  border-radius: var(--radius);
+  color: #f8f4e9;
+  background:
+    linear-gradient(90deg, rgba(31, 26, 92, 1) 0%, rgba(34, 28, 100, .96) 40%, rgba(40, 33, 110, .5) 64%, rgba(40, 33, 110, .06) 100%),
+    url("/images/earnings-handicrafts.webp") right center / auto 118% no-repeat,
+    #241e66;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 10%, transparent), 0 22px 44px -26px rgba(34, 28, 100, .75), inset 0 1px 0 rgba(255,255,255,.1);
+}
+.earnings-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 9px;
+  width: 66%;
+  margin-inline-start: auto;
+  padding-bottom: 14px;
+}
+.earnings-heading { display: flex; align-items: center; gap: 8px; max-width: 100%; }
+.earnings-heading h3 {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin: 0; padding: 5px 12px;
+  border: 1px solid rgba(247, 160, 29, .42);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .08);
+  color: #ffd9a0;
+  font-size: 12.5px; font-weight: 800;
+}
+.earnings-bolt { width: 13px; height: 13px; fill: var(--accent-hi); }
+.earnings-wallet { width: 15px; height: 15px; color: var(--accent-hi); stroke: currentColor; }
+.earnings-intro { opacity: 1; margin: 0; color: rgba(255, 250, 240, .86); font-size: 11.5px; line-height: 1.6; text-align: left; }
+.earnings-amount {
+  display: flex; flex-direction: row-reverse; justify-content: flex-end; align-items: baseline;
+  flex-wrap: nowrap; gap: 6px; margin: 0; direction: ltr;
+  font-size: clamp(28px, 9vw, 40px); font-weight: 900; letter-spacing: -1px; line-height: 1.2;
+  white-space: nowrap; background: none;
+  color: var(--accent-hi); -webkit-text-fill-color: var(--accent-hi);
+  filter: drop-shadow(0 3px 9px rgba(0,0,0,.2));
+}
+.earnings-amount small { color: var(--accent-hi); -webkit-text-fill-color: var(--accent-hi); font-size: 12px; font-weight: 800; letter-spacing: 0; }
+.earnings-live { color: var(--accent-hi); background: rgba(247, 160, 29, .14); border: 1px solid rgba(247, 160, 29, .35); }
+.earnings-live i { background: var(--accent); }
+.earnings-foot { border-top: 0; padding-top: 0; width: auto; position: relative; display: flex; flex-direction: row; align-items: center; gap: 8px; max-width: 100%; }
+.earnings-useful {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid rgba(255, 255, 255, .22); border-radius: 999px;
+  background: rgba(255, 255, 255, .09); color: #f6f8ed;
+  font-size: 11px; font-weight: 700; white-space: nowrap;
+}
+.earnings-useful::before {
+  content: ""; width: 13px; height: 13px; flex: none; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='16' rx='3'/%3E%3Cpath d='M8 3v4M16 3v4M3 10h18'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='16' rx='3'/%3E%3Cpath d='M8 3v4M16 3v4M3 10h18'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+/* راهنمای محاسبه: فقط آیکون، متن در پاپ‌اور */
+.earnings-card .ux-collapse { border: 0; }
+.earnings-card .ux-collapse > summary { min-height: 0; width: 26px; height: 26px; justify-content: center; border-radius: 50%; color: rgba(255,250,240,.8); }
+.earnings-card .ux-collapse > summary::before { content: none; }
+.earnings-card .ux-collapse > summary svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.earnings-card .ux-collapse .earnings-note {
+  position: absolute; z-index: 3; inset-inline-end: 0; top: calc(100% + 6px);
+  width: max-content; max-width: 230px; margin: 0; padding: 8px 10px;
+  border-radius: 10px; background: #161246; border: 1px solid rgba(255,255,255,.18);
+  color: #f6f8ed; font-size: 11px; line-height: 1.6;
+}
+/* نوار پایین */
+.earnings-excluded {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0 -16px; padding: 11px 16px;
+  background: rgba(18, 14, 60, .62); border-top: 1px solid rgba(255,255,255,.14);
+  color: rgba(255, 250, 240, .9); font-size: 11.5px; backdrop-filter: blur(4px);
+}
+.earnings-excluded::before {
+  content: ""; width: 15px; height: 15px; flex: none; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 11v5M12 8h.01'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 11v5M12 8h.01'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.earnings-excluded .btn-link { margin-inline-start: auto; color: var(--accent-hi); text-decoration: none; font-weight: 700; }
+.earnings-excluded .btn-link::before { content: "‹ "; }
+.earnings-card:not(:has(.earnings-excluded:not(.hidden))) { padding-bottom: 0; }
+@media (max-width: 360px) {
+  .earnings-body { width: 72%; }
+  .earnings-useful { font-size: 10px; padding: 6px 9px; }
+}
