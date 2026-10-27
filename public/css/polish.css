@@ -642,3 +642,19 @@ body {
 :root[data-theme="light"] #view-profile .pf-hero .profile-name { color: #5a1e12; text-shadow: none; }
 :root[data-theme="light"] #view-profile .pf-hero .pf-chip { background: rgba(122,64,30,.12); color: #6b3a1f; backdrop-filter: none; }
 :root[data-theme="light"] #view-profile .pf-hero .pf-chip-soft { background: rgba(122,64,30,.07); color: #7d5636; backdrop-filter: none; }
+
+/* پروفایل مینی‌اپ: هیرو جمع‌وجور (تم روشن)
+   تصویر 1456×819 با عرض 640px نمایش داده می‌شود (ارتفاع 360px) و قله‌ی موج در 65٪ ارتفاع تصویر (≈234px) است.
+   --pf-crop-top از بالای تصویر بریده می‌شود؛ padding-top = قله − برش − نصف آواتار تا آواتار روی قله بماند.
+   برای کوچک/بزرگ‌کردن: فقط --pf-crop-top را عوض کنید و padding-top را به همان اندازه کم/زیاد کنید (مثلاً برش 130 ← padding 68). */
+:root[data-theme="light"] #view-profile .pf-hero {
+  --pf-crop-top: 105px;
+  min-height: 0;
+  padding: 93px var(--space-4) 14px;
+  background-size: max(100%, 640px) auto;
+  background-position: 50% calc(var(--pf-crop-top) * -1);
+}
+:root[data-theme="light"] #view-profile .pf-hero .pf-avatar { width: 72px; height: 72px; font-size: 28px; margin: 0 auto 8px; }
+:root[data-theme="light"] #view-profile .pf-hero .profile-name { margin: 0; font-size: 17px; line-height: 1.6; }
+:root[data-theme="light"] #view-profile .pf-hero .pf-chips { margin-top: 8px; gap: 6px; }
+:root[data-theme="light"] #view-profile .pf-hero .pf-chip { padding: 3px 12px; }
