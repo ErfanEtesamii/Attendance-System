@@ -1,0 +1,72 @@
+/* ---------- گزارش‌های تحلیلی · جدول‌های «دپارتمان‌ها» و «جزئیات هر کارمند» ---------- */
+/* مکمل 23-reports.css؛ فقط CSS. جدول دپارتمان‌ها id ندارد و با :not(:has(#rep-table)) از جدول کارمندان جدا می‌شود. رنگ‌ها فقط از tokens.css. */
+
+/* ===== دپارتمان‌ها: هر ستون یک رنگ هویتی (نقطه‌ی سرستون + سایه‌ی ملایم سلول، کاملاً مات) ===== */
+#rep-filters ~ .card.flush:not(:has(#rep-table)) table thead th:nth-child(2) { --c: var(--blue); }
+#rep-filters ~ .card.flush:not(:has(#rep-table)) table tbody > tr > td:nth-child(2):not([colspan]) { --c: var(--blue); }
+#rep-filters ~ .card.flush:not(:has(#rep-table)) table thead th:nth-child(3) { --c: var(--green-deco); }
+#rep-filters ~ .card.flush:not(:has(#rep-table)) table tbody > tr > td:nth-child(3):not([colspan]) { --c: var(--green-deco); }
+#rep-filters ~ .card.flush:not(:has(#rep-table)) table thead th:nth-child(4) { --c: var(--accent-2); }
+#rep-filters ~ .card.flush:not(:has(#rep-table)) table tbody > tr > td:nth-child(4):not([colspan]) { --c: var(--accent-2); }
+#rep-filters ~ .card.flush:not(:has(#rep-table)) table thead th:nth-child(5) { --c: var(--orange); }
+#rep-filters ~ .card.flush:not(:has(#rep-table)) table tbody > tr > td:nth-child(5):not([colspan]) { --c: var(--orange); }
+#rep-filters ~ .card.flush:not(:has(#rep-table)) table thead th:nth-child(6) { --c: var(--red-solid); }
+#rep-filters ~ .card.flush:not(:has(#rep-table)) table tbody > tr > td:nth-child(6):not([colspan]) { --c: var(--red-solid); }
+#rep-filters ~ .card.flush:not(:has(#rep-table)) table thead th:nth-child(7) { --c: var(--purple); }
+#rep-filters ~ .card.flush:not(:has(#rep-table)) table tbody > tr > td:nth-child(7):not([colspan]) { --c: var(--purple); }
+
+
+@media (min-width: 601px) {
+  #rep-filters ~ .card.flush:not(:has(#rep-table)) table thead th:not(:first-child), #rep-filters ~ .card.flush:not(:has(#rep-table)) table tbody > tr > td:not(:first-child):not([colspan]) { text-align: center; }
+  #rep-filters ~ .card.flush:not(:has(#rep-table)) table thead th:not(:first-child)::before {
+    content: ""; display: inline-block; width: 8px; height: 8px; margin-inline-end: 8px; border-radius: 50%; vertical-align: middle;
+    background: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 22%, transparent);
+  }
+  #rep-filters ~ .card.flush:not(:has(#rep-table)) table tbody > tr > td:not(:first-child):not([colspan]) {
+    color: var(--text); font-weight: 700; background: color-mix(in srgb, var(--c) 7%, var(--row-bg));
+    border-inline-start: 1px solid color-mix(in srgb, var(--hint) 10%, transparent);
+  }
+}
+/* ردیف دپارتمان‌ها: رنگ نوار به‌ترتیب می‌چرخد تا ردیف‌ها قابل‌تفکیک باشند */
+#rep-filters ~ .card.flush:not(:has(#rep-table)) table tbody > tr:nth-child(6n+1) { --tone: var(--blue); }
+#rep-filters ~ .card.flush:not(:has(#rep-table)) table tbody > tr:nth-child(6n+2) { --tone: var(--green-deco); }
+#rep-filters ~ .card.flush:not(:has(#rep-table)) table tbody > tr:nth-child(6n+3) { --tone: var(--purple); }
+#rep-filters ~ .card.flush:not(:has(#rep-table)) table tbody > tr:nth-child(6n+4) { --tone: var(--orange); }
+#rep-filters ~ .card.flush:not(:has(#rep-table)) table tbody > tr:nth-child(6n+5) { --tone: var(--accent-2); }
+#rep-filters ~ .card.flush:not(:has(#rep-table)) table tbody > tr:nth-child(6n) { --tone: var(--red-solid); }
+#rep-filters ~ .card.flush:not(:has(#rep-table)) table tbody > tr:has(> td[colspan]) { --tone: var(--hint); }
+#rep-filters ~ .card.flush:not(:has(#rep-table)) table tbody > tr:hover { --row-bg: color-mix(in srgb, var(--tone) 9%, var(--card)); }
+#rep-filters ~ .card.flush:not(:has(#rep-table)) table tbody > tr:hover > td:first-child::before { width: 7px; }
+
+/* ===== جزئیات هر کارمند: هر ستون یک رنگ هویتی (نقطه‌ی سرستون + سایه‌ی ملایم سلول، کاملاً مات) ===== */
+#rep-table thead th:nth-child(2) { --c: var(--green-deco); }
+#rep-table tbody > tr > td:nth-child(2):not([colspan]) { --c: var(--green-deco); }
+#rep-table thead th:nth-child(3) { --c: var(--blue); }
+#rep-table tbody > tr > td:nth-child(3):not([colspan]) { --c: var(--blue); }
+#rep-table thead th:nth-child(4) { --c: var(--accent-2); }
+#rep-table tbody > tr > td:nth-child(4):not([colspan]) { --c: var(--accent-2); }
+#rep-table thead th:nth-child(5) { --c: var(--orange); }
+#rep-table tbody > tr > td:nth-child(5):not([colspan]) { --c: var(--orange); }
+#rep-table thead th:nth-child(6) { --c: var(--red-solid); }
+#rep-table tbody > tr > td:nth-child(6):not([colspan]) { --c: var(--red-solid); }
+#rep-table thead th:nth-child(7) { --c: var(--purple); }
+#rep-table tbody > tr > td:nth-child(7):not([colspan]) { --c: var(--purple); }
+#rep-table thead th:nth-child(8) { --c: var(--hint); }
+#rep-table tbody > tr > td:nth-child(8):not([colspan]) { --c: var(--hint); }
+#rep-table thead th:nth-child(9) { --c: var(--brand); }
+#rep-table tbody > tr > td:nth-child(9):not([colspan]) { --c: var(--brand); }
+#rep-table thead th:nth-child(10) { --c: var(--hint); }
+#rep-table tbody > tr > td:nth-child(10):not([colspan]) { --c: var(--hint); }
+
+
+@media (min-width: 601px) {
+  #rep-table thead th:not(:first-child):not(:last-child), #rep-table tbody > tr > td:not(:first-child):not(:last-child):not([colspan]) { text-align: center; }
+  #rep-table thead th:not(:first-child):not(:last-child)::before {
+    content: ""; display: inline-block; width: 8px; height: 8px; margin-inline-end: 8px; border-radius: 50%; vertical-align: middle;
+    background: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 22%, transparent);
+  }
+  #rep-table tbody > tr > td:not(:first-child):not([colspan]) {
+    color: var(--text); font-weight: 700; background: color-mix(in srgb, var(--c) 6%, var(--row-bg));
+    border-inline-start: 1px solid color-mix(in srgb, var(--hint) 10%, transparent);
+  }
+}
