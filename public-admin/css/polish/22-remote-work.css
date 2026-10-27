@@ -1,0 +1,161 @@
+/* ---------- دورکاری (#rw-chips، #rw-filters، #rw-result، #rw-add، #rw-batch) ---------- */
+/* فقط CSS؛ سلکتورها به idهای همین صفحه محدودند. رنگ‌ها فقط از tokens.css. */
+
+/* ===== عنوان: توضیح و دکمه‌ها ===== */
+.view-header:has(+ #rw-chips) .sub { display: block; max-width: 70ch; padding: 10px 16px; border-radius: var(--r-lg); color: var(--text); line-height: 1.9; }
+.view-header:has(+ #rw-chips) .header-actions .btn { border-radius: 999px; font-weight: 700; white-space: nowrap; }
+.view-header:has(+ #rw-chips) .header-actions .btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+#rw-add:disabled, #rw-add[aria-disabled="true"], #rw-batch:disabled, #rw-batch[aria-disabled="true"] {
+  background: color-mix(in srgb, var(--accent) 35%, var(--card)); color: var(--text); opacity: .65; box-shadow: none; transform: none; cursor: not-allowed;
+}
+@media (max-width: 600px) { .view-header:has(+ #rw-chips) .header-actions { width: 100%; } .view-header:has(+ #rw-chips) .header-actions .btn { flex: 1 1 100%; justify-content: center; } }
+
+/* ===== چیپ‌های وضعیت: قرص با نقطه‌ی رنگی ===== */
+#rw-chips .chip {
+  gap: 8px; padding: 8px 16px; border-radius: 999px; background: var(--card); color: var(--hint);
+  border: 1px solid color-mix(in srgb, var(--brand) 14%, var(--border));
+}
+#rw-chips .chip::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent); }
+#rw-chips .chip[data-s="pending"]::before  { background: var(--yellow); box-shadow: 0 0 0 3px var(--yellow-soft); }
+#rw-chips .chip[data-s="approved"]::before { background: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
+#rw-chips .chip[data-s="rejected"]::before { background: var(--red-solid); box-shadow: 0 0 0 3px var(--red-soft); }
+#rw-chips .chip:hover { transform: translateY(-1px); color: var(--text); }
+#rw-chips .chip.active { color: var(--brand); border-color: var(--brand); transform: translateY(-1px); }
+#rw-chips .chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+#rw-chips .chip:disabled { opacity: .55; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* ===== فیلترها: کارت نرم با هاله ===== */
+#rw-filters {
+  position: relative; overflow: hidden; isolation: isolate; border-radius: var(--r-xl); padding: 16px 20px; gap: 14px;
+  border: 1px solid color-mix(in srgb, var(--brand) 14%, var(--border));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--card) 94%, var(--accent-2)), var(--card));
+  box-shadow: 0 16px 30px -24px color-mix(in srgb, var(--brand) 55%, transparent);
+}
+#rw-filters::after {
+  content: ""; position: absolute; z-index: -1; pointer-events: none; width: 170px; height: 170px; border-radius: 50%;
+  top: -85px; inset-inline-end: -60px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%);
+}
+#rw-filters .field > span { color: var(--brand); font-size: var(--fs-xs); font-weight: 700; }
+#rw-filters :where(input, select) {
+  border: 1px solid color-mix(in srgb, var(--brand) 12%, transparent);
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
+}
+#rw-filters :where(input, select):hover { border-color: color-mix(in srgb, var(--brand) 32%, transparent); }
+#rw-filters :where(input, select):focus-visible { outline: none; border-color: var(--brand); box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 24%, transparent); }
+#rw-filters :where(input, select):disabled { opacity: .55; cursor: not-allowed; }
+
+/* ===== نتیجه: کارت جدول ===== */
+#rw-result { margin-top: var(--space-4); }
+#rw-result > p.muted {
+  display: inline-block; margin: 0 0 var(--space-3); padding: 6px 14px; border-radius: 999px; color: var(--text); font-weight: 600;
+  background: color-mix(in srgb, var(--brand) 9%, var(--card)); border: 1px solid color-mix(in srgb, var(--brand) 16%, transparent);
+}
+#rw-result > .card.flush {
+  border-radius: var(--r-xl);
+  border-color: color-mix(in srgb, var(--brand) 16%, var(--border));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 10%, transparent), 0 24px 44px -30px color-mix(in srgb, var(--brand) 55%, transparent);
+}
+#rw-result .table-wrap { container-type: inline-size; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+#rw-result .table-wrap:focus-visible { outline: 2px solid var(--brand); outline-offset: -3px; }
+#rw-result thead th {
+  z-index: 3; color: var(--text); font-weight: 800;
+  background: color-mix(in srgb, var(--brand) 12%, var(--card));
+  border-bottom: 1px solid color-mix(in srgb, var(--brand) 20%, transparent);
+}
+#rw-result thead th:first-child { z-index: 4; inset-inline-start: 0; background: color-mix(in srgb, var(--brand) 12%, var(--card)); }
+
+/* وضعیت هر ردیف ⇒ رنگ نوار. بج وضعیت .dot دارد؛ بج «هم‌پوشانی» ندارد و رنگ هشدار می‌دهد */
+#rw-result tbody > tr { --row-bg: var(--card); --tone: var(--yellow); background: var(--row-bg); }
+#rw-result tbody > tr:nth-child(even) { --row-bg: color-mix(in srgb, var(--brand) 4%, var(--card)); }
+#rw-result tbody > tr:has(.badge.dot.approved) { --tone: var(--green); }
+#rw-result tbody > tr:has(.badge.dot.rejected) { --tone: var(--red-solid); }
+#rw-result tbody > tr:has(.badge.rejected:not(.dot)) { --tone: var(--red-solid); }
+#rw-result tbody > tr:has(td[colspan]) { background: transparent; }
+#rw-result tbody > tr { transition: background-color var(--motion-fast) var(--ease-out); }
+#rw-result tbody > tr:hover, #rw-result tbody > tr:focus-within { --row-bg: color-mix(in srgb, var(--tone) 9%, var(--card)); }
+#rw-result tbody td { padding-block: 16px; border-bottom: 1px solid color-mix(in srgb, var(--hint) 12%, transparent); vertical-align: middle; }
+#rw-result tbody > tr > td:first-child:not([colspan]) {
+  position: sticky; inset-inline-start: 0; z-index: 2; color: var(--text); font-weight: 800; white-space: normal; min-width: 140px;
+  background: linear-gradient(to left, color-mix(in srgb, var(--tone) 12%, var(--row-bg)), var(--row-bg) 65%);
+  border-inline-end: 1px solid color-mix(in srgb, var(--brand) 10%, transparent);
+}
+#rw-result tbody > tr > td:first-child:not([colspan])::before {
+  content: ""; position: absolute; inset-block: 0; inset-inline-start: 0; width: 4px;
+  background: var(--tone); border-start-end-radius: 4px; border-end-end-radius: 4px;
+  transition: width var(--motion-fast) var(--ease-out);
+}
+#rw-result tbody > tr:hover > td:first-child::before, #rw-result tbody > tr:focus-within > td:first-child::before { width: 7px; }
+#rw-result td .muted { color: var(--hint); font-weight: 600; }
+#rw-result td:nth-child(4) { font-weight: 700; font-variant-numeric: tabular-nums; }
+#rw-result td:nth-child(3) { font-variant-numeric: tabular-nums; }
+
+/* ===== ستون عملیات: td خودش .row-actions است و flex می‌شد؛ سلول جدولی بماند تا خط ردیف قطع نشود و دکمه‌ها همیشه خوانا باشند ===== */
+#rw-result tbody td.row-actions { display: table-cell; width: 1%; white-space: nowrap; opacity: 1; transition: none; }
+#rw-result tbody td.row-actions .btn { margin-inline-end: 6px; border-radius: 999px; font-weight: 700; white-space: nowrap; vertical-align: middle; }
+#rw-result tbody td.row-actions .btn:last-child { margin-inline-end: 0; }
+#rw-result tbody td.row-actions .btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+#rw-result tbody td.row-actions .btn:disabled, #rw-result tbody td.row-actions .btn[aria-busy="true"] { opacity: .55; box-shadow: none; transform: none; cursor: not-allowed; }
+#rw-result tbody td.row-actions .btn.ghost[data-act="reject"] { color: var(--red-text); border-color: color-mix(in srgb, var(--red) 30%, transparent); background: color-mix(in srgb, var(--red) 8%, var(--card)); }
+
+/* ===== صفحه‌بندی ===== */
+#rw-result > .row-actions { justify-content: center; align-items: center; gap: 12px; margin-top: var(--space-4); }
+#rw-result > .row-actions .btn { border-radius: 999px; font-weight: 700; }
+#rw-result > .row-actions .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
+#rw-result > .row-actions .btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+#rw-result > .row-actions .muted { color: var(--hint); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ===== حالت خالی و خطا ===== */
+#rw-result td[colspan] { padding: 0; }
+#rw-result td[colspan] .empty {
+  position: sticky; inset-inline-start: 0; box-sizing: border-box; width: 100cqw; max-width: 100%;
+  padding: 48px var(--space-4); color: var(--hint); font-weight: 700;
+  background: radial-gradient(18rem 10rem at 50% 0%, color-mix(in srgb, var(--brand) 9%, transparent), transparent 75%);
+}
+#rw-result > .empty { border-radius: var(--r-xl); border: 1px dashed color-mix(in srgb, var(--brand) 25%, var(--border)); background: var(--card); font-weight: 700; }
+#rw-result .empty svg {
+  width: 36px; height: 36px; padding: 18px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--brand) 22%, var(--card)), color-mix(in srgb, var(--brand) 8%, var(--card)));
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--brand) 8%, transparent), 0 14px 24px -14px color-mix(in srgb, var(--brand) 60%, transparent);
+}
+
+/* ===== لودینگ ===== */
+#rw-result .loading {
+  padding: 56px var(--space-4); border-radius: var(--r-xl); font-weight: 700; color: var(--hint);
+  border: 1px solid color-mix(in srgb, var(--brand) 16%, var(--border));
+  background: radial-gradient(18rem 10rem at 50% 0%, color-mix(in srgb, var(--brand) 9%, transparent), transparent 75%), var(--card);
+}
+#rw-result .loading .spinner { border-color: color-mix(in srgb, var(--brand) 18%, transparent); border-top-color: var(--brand); }
+/* اسکلت جدول با ناوبری فعال «دورکاری» */
+body:has(.nav-item.active[data-view="remote"]) #page[aria-busy="true"] .skeleton > [aria-hidden="true"] > .sk-box:only-child {
+  border-radius: var(--r-xl); padding: 14px 20px; gap: 0;
+  border: 1px solid color-mix(in srgb, var(--brand) 16%, var(--border));
+  background: linear-gradient(180deg, var(--card), color-mix(in srgb, var(--card) 96%, var(--brand)));
+  box-shadow: 0 24px 44px -30px color-mix(in srgb, var(--brand) 55%, transparent);
+}
+body:has(.nav-item.active[data-view="remote"]) #page[aria-busy="true"] .skeleton .sk-box:only-child .sk-row { padding: 14px 0; gap: 16px; border-bottom: 1px solid color-mix(in srgb, var(--hint) 12%, transparent); }
+body:has(.nav-item.active[data-view="remote"]) #page[aria-busy="true"] .skeleton .sk-box:only-child .sk-row:last-child { border-bottom: 0; }
+body:has(.nav-item.active[data-view="remote"]) #page[aria-busy="true"] .skeleton .sk-box:only-child .sk-row:first-child {
+  margin-inline: -20px; padding-inline: 20px; margin-top: -14px;
+  background: color-mix(in srgb, var(--brand) 12%, var(--card));
+  border-start-start-radius: var(--r-xl); border-start-end-radius: var(--r-xl);
+}
+
+/* ===== واکنش‌گرا (جدول داخل .table-wrap افقی پیمایش می‌شود؛ صفحه نه) ===== */
+@media (max-width: 768px) {
+  #rw-filters { padding: 14px; border-radius: var(--r-lg); }
+  #rw-result > .card.flush { border-radius: var(--r-lg); }
+  .view-header:has(+ #rw-chips) .sub { border-radius: var(--r-md); }
+}
+@media (max-width: 600px) {
+  #rw-result tbody > tr > td:first-child:not([colspan]) { min-width: 120px; background: color-mix(in srgb, var(--tone) 10%, var(--row-bg)); }
+  #rw-result td[colspan] .empty { padding-block: 36px; }
+  #rw-result tbody td.row-actions { width: 1%; }
+}
+
+/* ===== کاهش حرکت ===== */
+@media (prefers-reduced-motion: reduce) {
+  #rw-chips .chip, #rw-chips .chip:hover, #rw-chips .chip.active { transition: none; transform: none; }
+  #rw-filters :where(input, select), #rw-result tbody > tr, #rw-result tbody > tr > td:first-child::before { transition: none; }
+  #rw-result .loading .spinner { animation: none; }
+}

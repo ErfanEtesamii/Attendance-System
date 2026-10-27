@@ -1,0 +1,107 @@
+/* ---------- تعطیلات (#hol-filters، #hol-add، #hol-import و کارت جدول بعد از فیلتر) ---------- */
+/* فقط CSS؛ سلکتورها به idهای همین صفحه محدودند. رنگ‌ها فقط از tokens.css. */
+
+/* ===== عنوان ===== */
+.view-header:has(+ #hol-filters) .sub { display: block; max-width: 78ch; padding: 10px 16px; border-radius: var(--r-lg); color: var(--text); line-height: 1.9; }
+.view-header:has(+ #hol-filters) .header-actions .btn { border-radius: 999px; font-weight: 700; white-space: nowrap; }
+.view-header:has(+ #hol-filters) .header-actions .btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+#hol-add:disabled, #hol-add[aria-disabled="true"], #hol-import:disabled, #hol-import[aria-disabled="true"] {
+  background: color-mix(in srgb, var(--accent) 35%, var(--card)); color: var(--text); opacity: .65; box-shadow: none; transform: none; cursor: not-allowed;
+}
+@media (max-width: 600px) { .view-header:has(+ #hol-filters) .header-actions { width: 100%; } .view-header:has(+ #hol-filters) .header-actions .btn { flex: 1 1 100%; justify-content: center; } }
+
+/* ===== فیلتر ===== */
+#hol-filters {
+  position: relative; overflow: hidden; isolation: isolate; border-radius: var(--r-xl); padding: 16px 20px; gap: 14px;
+  border: 1px solid color-mix(in srgb, var(--brand) 14%, var(--border));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--card) 94%, var(--accent-2)), var(--card));
+  box-shadow: 0 16px 30px -24px color-mix(in srgb, var(--brand) 55%, transparent);
+}
+#hol-filters::after {
+  content: ""; position: absolute; z-index: -1; pointer-events: none; width: 170px; height: 170px; border-radius: 50%;
+  top: -85px; inset-inline-end: -60px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%);
+}
+#hol-filters .field > span { color: var(--brand); font-size: var(--fs-xs); font-weight: 700; }
+#hol-filters select { border: 1px solid color-mix(in srgb, var(--brand) 12%, transparent); transition: border-color var(--motion-fast), box-shadow var(--motion-fast); }
+#hol-filters select:hover { border-color: color-mix(in srgb, var(--brand) 32%, transparent); }
+#hol-filters select:focus-visible { outline: none; border-color: var(--brand); box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 24%, transparent); }
+#hol-filters select:disabled { opacity: .55; cursor: not-allowed; }
+
+/* ===== کارت جدول ===== */
+#hol-filters + .card.flush {
+  border-radius: var(--r-xl);
+  border-color: color-mix(in srgb, var(--brand) 16%, var(--border));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 10%, transparent), 0 24px 44px -30px color-mix(in srgb, var(--brand) 55%, transparent);
+}
+#hol-filters + .card.flush .table-wrap { container-type: inline-size; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+#hol-filters + .card.flush .table-wrap:focus-visible { outline: 2px solid var(--brand); outline-offset: -3px; }
+#hol-filters + .card.flush thead th {
+  z-index: 3; color: var(--text); font-weight: 800;
+  background: color-mix(in srgb, var(--brand) 12%, var(--card));
+  border-bottom: 1px solid color-mix(in srgb, var(--brand) 20%, transparent);
+}
+#hol-filters + .card.flush thead th:first-child { inset-inline-start: 0; z-index: 4; background: color-mix(in srgb, var(--brand) 12%, var(--card)); }
+/* نوع تعطیلی ⇒ رنگ نوار: کامل = قرمز، نیم‌روز = نارنجی */
+#hol-filters + .card.flush tbody > tr { --row-bg: var(--card); --tone: var(--brand); background: var(--row-bg); transition: background-color var(--motion-fast) var(--ease-out); }
+#hol-filters + .card.flush tbody > tr:nth-child(even) { --row-bg: color-mix(in srgb, var(--brand) 4%, var(--card)); }
+#hol-filters + .card.flush tbody > tr:has(.badge.red)    { --tone: var(--red-solid); }
+#hol-filters + .card.flush tbody > tr:has(.badge.orange) { --tone: var(--orange); }
+#hol-filters + .card.flush tbody > tr:hover, #hol-filters + .card.flush tbody > tr:focus-within { --row-bg: color-mix(in srgb, var(--tone) 9%, var(--card)); }
+#hol-filters + .card.flush tbody td { padding-block: 16px; border-bottom: 1px solid color-mix(in srgb, var(--hint) 12%, transparent); vertical-align: middle; }
+#hol-filters + .card.flush tbody > tr > td:first-child {
+  position: sticky; inset-inline-start: 0; z-index: 2; color: var(--text); font-weight: 800;
+  background: linear-gradient(to left, color-mix(in srgb, var(--tone) 11%, var(--row-bg)), var(--row-bg) 65%);
+  border-inline-end: 1px solid color-mix(in srgb, var(--brand) 10%, transparent);
+}
+#hol-filters + .card.flush tbody > tr > td:first-child::before {
+  content: ""; position: absolute; inset-block: 0; inset-inline-start: 0; width: 4px;
+  background: var(--tone); border-start-end-radius: 4px; border-end-end-radius: 4px;
+  transition: width var(--motion-fast) var(--ease-out);
+}
+#hol-filters + .card.flush tbody > tr:hover > td:first-child::before, #hol-filters + .card.flush tbody > tr:focus-within > td:first-child::before { width: 7px; }
+#hol-filters + .card.flush td .muted { color: var(--hint); font-weight: 600; }
+#hol-filters + .card.flush td .ltr.muted { color: var(--text); background: var(--ov-06); border-radius: 8px; padding-inline: 8px; }
+
+/* دکمه‌های ویرایش/حذف: همیشه دیده می‌شوند (نه کم‌رنگ تا هاور) و گرد */
+#hol-filters + .card.flush tbody .row-actions { opacity: 1; transition: none; gap: 8px; }
+#hol-filters + .card.flush .row-actions .btn { width: 40px; min-width: 40px; padding: 0; justify-content: center; border-radius: 50%; }
+#hol-filters + .card.flush .row-actions .btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+#hol-filters + .card.flush .row-actions .btn:disabled, #hol-filters + .card.flush .row-actions .btn[aria-busy="true"] { opacity: .55; box-shadow: none; transform: none; cursor: not-allowed; }
+#hol-filters + .card.flush .row-actions .btn.danger { color: var(--red-text); background: color-mix(in srgb, var(--red) 8%, var(--card)); }
+
+/* ===== حالت خالی ===== */
+#hol-filters + .card.flush > .empty {
+  padding: 56px var(--space-4); color: var(--hint); font-weight: 700;
+  background: radial-gradient(18rem 10rem at 50% 0%, color-mix(in srgb, var(--brand) 9%, transparent), transparent 75%);
+}
+#hol-filters + .card.flush > .empty svg {
+  width: 36px; height: 36px; padding: 18px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--brand) 22%, var(--card)), color-mix(in srgb, var(--brand) 8%, var(--card)));
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--brand) 8%, transparent), 0 14px 24px -14px color-mix(in srgb, var(--brand) 60%, transparent);
+}
+
+/* ===== لودینگ (اسکلت جدول؛ با ناوبری فعال «تعطیلات») ===== */
+body:has(.nav-item.active[data-view="holidays"]) #page[aria-busy="true"] .skeleton > [aria-hidden="true"] > .sk-box:only-child {
+  border-radius: var(--r-xl); padding: 14px 20px; gap: 0;
+  border: 1px solid color-mix(in srgb, var(--brand) 16%, var(--border));
+  background: linear-gradient(180deg, var(--card), color-mix(in srgb, var(--card) 96%, var(--brand)));
+  box-shadow: 0 24px 44px -30px color-mix(in srgb, var(--brand) 55%, transparent);
+}
+body:has(.nav-item.active[data-view="holidays"]) #page[aria-busy="true"] .skeleton .sk-box:only-child .sk-row { padding: 14px 0; border-bottom: 1px solid color-mix(in srgb, var(--hint) 12%, transparent); }
+body:has(.nav-item.active[data-view="holidays"]) #page[aria-busy="true"] .skeleton .sk-box:only-child .sk-row:last-child { border-bottom: 0; }
+
+/* ===== واکنش‌گرا ===== */
+@media (max-width: 768px) {
+  #hol-filters { padding: 14px; border-radius: var(--r-lg); }
+  #hol-filters + .card.flush { border-radius: var(--r-lg); }
+  .view-header:has(+ #hol-filters) .sub { border-radius: var(--r-md); }
+}
+@media (max-width: 600px) {
+  #hol-filters + .card.flush tbody > tr > td:first-child { background: color-mix(in srgb, var(--tone) 10%, var(--row-bg)); white-space: normal; min-width: 120px; }
+}
+
+/* ===== کاهش حرکت ===== */
+@media (prefers-reduced-motion: reduce) {
+  #hol-filters select, #hol-filters + .card.flush tbody > tr, #hol-filters + .card.flush tbody > tr > td:first-child::before { transition: none; }
+}

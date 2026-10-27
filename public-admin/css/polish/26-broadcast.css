@@ -1,0 +1,75 @@
+/* ---------- ارسال پیام گروهی (#bc-form، #bc-scope، #bc-dept-wrap، #bc-users) ---------- */
+/* فقط CSS؛ سلکتورها به #bc-form و کارت دربرگیرنده‌اش محدودند. رنگ‌ها فقط از tokens.css. */
+
+/* ===== عنوان ===== */
+.view-header:has(+ .card > #bc-form) .sub { display: block; max-width: 78ch; padding: 10px 16px; border-radius: var(--r-lg); color: var(--text); line-height: 1.9; }
+
+/* ===== کارت فرم ===== */
+.card:has(> #bc-form) {
+  max-width: 880px; padding: 24px; border-radius: var(--r-xl);
+  border-color: color-mix(in srgb, var(--brand) 16%, var(--border));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 10%, transparent), 0 24px 44px -30px color-mix(in srgb, var(--brand) 55%, transparent);
+}
+.card:has(> #bc-form)::before {
+  content: ""; position: absolute; inset-inline: 0; top: 0; height: 4px; pointer-events: none;
+  background: linear-gradient(90deg, var(--brand), var(--accent-2), var(--accent)); opacity: .85;
+}
+#bc-form { gap: 18px; }
+#bc-form .field > span { color: var(--brand); font-size: var(--fs-xs); font-weight: 700; }
+#bc-form :where(select, textarea) {
+  border: 1px solid color-mix(in srgb, var(--brand) 14%, transparent); border-radius: var(--r-md);
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
+}
+#bc-form :where(select, textarea):hover { border-color: color-mix(in srgb, var(--brand) 32%, transparent); }
+#bc-form :where(select, textarea):focus-visible { outline: none; border-color: var(--brand); box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 24%, transparent); }
+#bc-form :where(select, textarea):disabled { opacity: .55; cursor: not-allowed; }
+#bc-form textarea { min-height: 140px; line-height: 1.9; }
+#bc-form textarea::placeholder { color: var(--hint); }
+#bc-form [aria-invalid="true"] { border-color: var(--red-solid); box-shadow: 0 0 0 3px var(--red-soft); }
+
+/* ===== انتخاب دستی گیرندگان: قرص‌های انتخابی ===== */
+#bc-users {
+  padding: 14px; gap: 10px; border-radius: var(--r-lg);
+  border: 1px solid color-mix(in srgb, var(--brand) 14%, var(--border));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--card) 94%, var(--accent-2)), var(--card));
+}
+#bc-users .check-row {
+  min-height: 44px; padding-inline: 14px; border-radius: 999px; font-weight: 600;
+  background: color-mix(in srgb, var(--brand) 9%, var(--card)); border: 1px solid color-mix(in srgb, var(--brand) 14%, transparent);
+  transition: background-color var(--motion-fast), border-color var(--motion-fast), transform var(--motion-fast) var(--ease-out);
+}
+#bc-users .check-row:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--brand) 40%, transparent); }
+#bc-users .check-row:has(input:checked) { border-color: var(--brand); background: var(--brand-soft); }
+#bc-users .check-row:has(input:focus-visible) { outline: 2px solid var(--brand); outline-offset: 2px; }
+#bc-users .check-row input { width: 18px; height: 18px; accent-color: var(--brand); cursor: pointer; }
+
+/* ===== پیام وضعیت و دکمه‌ی ارسال ===== */
+#bc-form .form-msg:not(:empty) { min-height: 0; padding: 8px 14px; border-radius: var(--r-md); font-weight: 700; color: var(--text); background: var(--ov-06); }
+#bc-form .form-msg.ok:not(:empty) { color: var(--green); background: var(--green-soft); border: 1px solid color-mix(in srgb, var(--green) 30%, transparent); }
+#bc-form .form-msg.err:not(:empty) { color: var(--red-text); background: var(--red-soft); border: 1px solid color-mix(in srgb, var(--red) 30%, transparent); }
+#bc-form .modal-actions { justify-content: flex-start; }
+#bc-form .modal-actions .btn { border-radius: 999px; font-weight: 800; padding-inline: 24px; }
+#bc-form .modal-actions .btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+#bc-form .modal-actions .btn:disabled, #bc-form .modal-actions .btn[aria-busy="true"] { opacity: .6; box-shadow: none; transform: none; cursor: not-allowed; }
+
+/* ===== لودینگ (اسکلت لیست؛ با ناوبری فعال «ارسال پیام گروهی») ===== */
+body:has(.nav-item.active[data-view="broadcast"]) #page[aria-busy="true"] .skeleton .sk-box {
+  border-radius: var(--r-xl); padding: 20px; border: 1px solid color-mix(in srgb, var(--brand) 16%, var(--border));
+  background: linear-gradient(180deg, var(--card), color-mix(in srgb, var(--card) 96%, var(--brand)));
+  box-shadow: 0 24px 44px -30px color-mix(in srgb, var(--brand) 55%, transparent);
+}
+
+/* ===== واکنش‌گرا ===== */
+@media (max-width: 768px) {
+  .card:has(> #bc-form) { padding: 16px; border-radius: var(--r-lg); }
+  .view-header:has(+ .card > #bc-form) .sub { border-radius: var(--r-md); }
+}
+@media (max-width: 600px) {
+  #bc-form .modal-actions .btn { flex: 1 1 100%; justify-content: center; }
+  #bc-users { padding: 10px; }
+}
+
+/* ===== کاهش حرکت ===== */
+@media (prefers-reduced-motion: reduce) {
+  #bc-form :where(select, textarea), #bc-users .check-row, #bc-users .check-row:hover { transition: none; transform: none; }
+}

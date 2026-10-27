@@ -1,0 +1,134 @@
+/* ---------- نمودارها (#an-filters، #an-charts، کارت‌های .chart-fig، نقشه‌ی حرارتی و هشدار الگوها) ---------- */
+/* فقط CSS؛ سلکتورها به idهای همین صفحه محدودند. رنگ‌ها فقط از tokens.css. */
+
+/* ===== عنوان ===== */
+.view-header:has(+ #an-filters) .sub { display: block; max-width: 78ch; padding: 10px 16px; border-radius: var(--r-lg); color: var(--text); line-height: 1.9; }
+
+/* ===== فیلترها: کارت نرم با هاله ===== */
+#an-filters {
+  position: relative; overflow: hidden; isolation: isolate; border-radius: var(--r-xl); padding: 16px 20px; gap: 14px;
+  border-color: color-mix(in srgb, var(--brand) 14%, var(--border));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--card) 94%, var(--accent-2)), var(--card));
+  box-shadow: 0 16px 30px -24px color-mix(in srgb, var(--brand) 55%, transparent);
+}
+#an-filters::after {
+  content: ""; position: absolute; z-index: -1; pointer-events: none; width: 170px; height: 170px; border-radius: 50%;
+  top: -85px; inset-inline-end: -60px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%);
+}
+#an-filters .field > span { color: var(--brand); font-size: var(--fs-xs); font-weight: 700; }
+#an-filters :where(input, select) { border: 1px solid color-mix(in srgb, var(--brand) 12%, transparent); transition: border-color var(--motion-fast), box-shadow var(--motion-fast); }
+#an-filters :where(input, select):hover { border-color: color-mix(in srgb, var(--brand) 32%, transparent); }
+#an-filters :where(input, select):focus-visible { outline: none; border-color: var(--brand); box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 24%, transparent); }
+#an-filters :where(input, select):disabled { opacity: .55; cursor: not-allowed; }
+
+/* ===== کارت‌های نمودار ===== */
+#an-charts .chart-fig {
+  --tone: var(--brand);
+  border-radius: var(--r-xl); padding: 22px 22px 18px;
+  border: 1px solid color-mix(in srgb, var(--tone) 18%, var(--border));
+  background:
+    radial-gradient(260px 160px at 100% 0%, color-mix(in srgb, var(--accent-2) 10%, transparent), transparent 72%),
+    linear-gradient(180deg, var(--card), color-mix(in srgb, var(--card) 96%, var(--brand)));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 10%, transparent), 0 22px 40px -30px color-mix(in srgb, var(--brand) 50%, transparent);
+  animation: an-rise var(--motion-enter) var(--ease-out) both;
+}
+#an-charts .chart-fig::before { background: linear-gradient(90deg, var(--brand), var(--accent-2), var(--accent)); }
+#an-charts .chart-fig:hover { box-shadow: 0 2px 4px color-mix(in srgb, var(--brand) 14%, transparent), 0 28px 44px -28px color-mix(in srgb, var(--brand) 60%, transparent); }
+@keyframes an-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+#an-charts .chart-fig figcaption { font-weight: 800; color: var(--text); }
+#an-charts .chart-fig figcaption::before { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
+#an-charts .chart .grid { stroke: color-mix(in srgb, var(--hint) 22%, transparent); stroke-dasharray: 3 5; }
+#an-charts .chart .bar { rx: 5px; transition: opacity var(--motion-fast); }
+#an-charts .chart .bar:hover { opacity: .78; }
+#an-charts .chart .ln { stroke-width: 2.6; filter: drop-shadow(0 6px 8px color-mix(in srgb, currentColor 22%, transparent)); }
+#an-charts .chart .mk { stroke: var(--card); stroke-width: 2; }
+#an-charts .chart-legend { gap: 8px; margin-bottom: var(--space-3); }
+#an-charts .chart-legend button, #an-charts .chart-legend li {
+  padding: 4px 12px; border-radius: 999px; color: var(--text); font-weight: 600;
+  background: color-mix(in srgb, var(--brand) 8%, var(--card)); border: 1px solid color-mix(in srgb, var(--brand) 14%, transparent);
+}
+#an-charts .chart-legend button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+#an-charts .chart-note { margin-top: var(--space-3); color: var(--text); background: color-mix(in srgb, var(--brand) 7%, var(--card)); border-inline-start: 3px solid color-mix(in srgb, var(--brand) 40%, transparent); border-radius: var(--r-sm); }
+#an-charts .chart-data summary {
+  display: inline-block; padding: 6px 14px; border-radius: 999px; color: var(--text); font-weight: 700;
+  background: color-mix(in srgb, var(--brand) 9%, var(--card)); border: 1px solid color-mix(in srgb, var(--brand) 16%, transparent);
+}
+#an-charts .chart-data summary:hover { background: color-mix(in srgb, var(--brand) 16%, var(--card)); }
+#an-charts .chart-data summary:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+#an-charts .chart-data .table-wrap { margin-top: var(--space-2); border-radius: var(--r-md); border: 1px solid color-mix(in srgb, var(--brand) 14%, var(--border)); }
+#an-charts .chart-table thead th { background: color-mix(in srgb, var(--brand) 12%, var(--card)); color: var(--text); font-weight: 800; }
+#an-charts .chart-table tbody tr:nth-child(even) { background: color-mix(in srgb, var(--brand) 4%, var(--card)); }
+#an-charts .chart-table td { font-variant-numeric: tabular-nums; }
+
+/* حالت خالی و خطای هر نمودار */
+#an-charts .chart-fig .empty {
+  padding: 36px var(--space-4); border-radius: var(--r-lg); color: var(--hint); font-weight: 700;
+  background: radial-gradient(18rem 10rem at 50% 0%, color-mix(in srgb, var(--brand) 9%, transparent), transparent 75%);
+}
+#an-charts .chart-fig .empty svg {
+  width: 32px; height: 32px; padding: 16px;
+  box-shadow: 0 0 0 8px color-mix(in srgb, currentColor 7%, transparent), 0 14px 24px -14px color-mix(in srgb, var(--brand) 60%, transparent);
+}
+
+/* لودینگ هر اسلات */
+#an-charts .chart-slot .skeleton :where(.sk-card, .sk-box) {
+  border-radius: var(--r-xl); border: 1px solid color-mix(in srgb, var(--brand) 16%, var(--border));
+  background: linear-gradient(180deg, var(--card), color-mix(in srgb, var(--card) 96%, var(--brand)));
+}
+
+/* ===== نقشه‌ی حرارتی ===== */
+#an-charts .heat-pill { border: 1px solid color-mix(in srgb, var(--brand) 16%, transparent); font-weight: 600; }
+#an-charts .heat-scroll { border-radius: var(--r-md); }
+#an-charts .heat-scroll:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+#an-charts .heat-day b { color: var(--text); font-weight: 800; }
+#an-charts .heat-legend { font-weight: 600; }
+
+/* ===== هشدار الگوها: هر فرد یک کارت با نوار رنگ شدت ===== */
+#an-charts .pattern-fig { --tone: var(--yellow); display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 14px; align-content: start; }
+#an-charts .pattern-fig > :where(figcaption, p, .empty) { grid-column: 1 / -1; margin: 0; }
+#an-charts .pattern-fig > figcaption { margin-bottom: 0; }
+#an-charts .pattern-fig figcaption .badge { margin-inline-start: auto; font-weight: 700; }
+#an-charts .pattern-disclaimer {
+  margin-top: 0; padding: 12px 16px; color: var(--text); font-weight: 600; line-height: 1.9;
+  background: color-mix(in srgb, var(--blue) 9%, var(--card)); border-inline-start: 4px solid var(--blue); border-radius: var(--r-md);
+}
+#an-charts .pattern-fig > p.chart-note:not(.pattern-disclaimer) { margin-top: 0; }
+#an-charts .pattern-user {
+  --tone: var(--blue); position: relative; isolation: isolate; padding: 16px 18px; border-radius: var(--r-lg);
+  border: 1px solid color-mix(in srgb, var(--tone) 22%, var(--border));
+  border-inline-start: 5px solid var(--tone);
+  background:
+    radial-gradient(200px 120px at 100% 0%, color-mix(in srgb, var(--tone) 12%, transparent), transparent 72%),
+    linear-gradient(180deg, var(--card), color-mix(in srgb, var(--card) 95%, var(--tone)));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--tone) 10%, transparent), 0 16px 30px -24px color-mix(in srgb, var(--tone) 60%, transparent);
+  transition: transform var(--motion-normal) var(--ease-out), box-shadow var(--motion-normal) var(--ease-out);
+}
+#an-charts .pattern-user:has(.badge.orange) { --tone: var(--orange); }
+#an-charts .pattern-user:has(.badge.purple) { --tone: var(--purple); }
+#an-charts .pattern-user:has(.badge.red)    { --tone: var(--red-solid); }
+#an-charts .pattern-user:hover { transform: translateY(-2px); box-shadow: 0 2px 4px color-mix(in srgb, var(--tone) 14%, transparent), 0 22px 36px -22px color-mix(in srgb, var(--tone) 65%, transparent); }
+#an-charts .pattern-user h4 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0 0 10px; font-size: var(--fs-md); font-weight: 800; color: var(--text); }
+#an-charts .pattern-user h4 .sub { color: var(--hint); font-size: var(--fs-xs); font-weight: 600; }
+#an-charts .pattern-list { gap: 12px; }
+#an-charts .pattern-item { padding: 10px 12px; border-radius: var(--r-md); background: color-mix(in srgb, var(--tone) 7%, var(--card)); border: 1px solid color-mix(in srgb, var(--tone) 14%, transparent); }
+#an-charts .pattern-item .badge { font-weight: 700; }
+#an-charts .pattern-reason { margin-top: 8px; color: var(--text); font-size: var(--fs-sm); line-height: 1.9; overflow-wrap: anywhere; }
+
+/* ===== واکنش‌گرا ===== */
+@media (max-width: 768px) {
+  #an-filters { padding: 14px; border-radius: var(--r-lg); }
+  #an-charts .chart-fig { border-radius: var(--r-lg); padding: 18px 16px 14px; }
+  .view-header:has(+ #an-filters) .sub { border-radius: var(--r-md); }
+  #an-charts .pattern-user:hover { transform: none; }
+}
+@media (max-width: 600px) {
+  #an-charts .pattern-fig { grid-template-columns: minmax(0, 1fr); }
+  #an-charts .pattern-user { padding: 14px; }
+}
+
+/* ===== کاهش حرکت ===== */
+@media (prefers-reduced-motion: reduce) {
+  #an-charts .chart-fig, #an-charts .chart-fig:hover, #an-charts .pattern-user, #an-charts .pattern-user:hover { animation: none; transition: none; transform: none; }
+  #an-charts .chart .bar, #an-filters :where(input, select) { transition: none; }
+}
