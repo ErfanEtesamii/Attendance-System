@@ -2352,3 +2352,13 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
   .au-chip { flex-wrap: wrap; }
   .au-k { flex: none; white-space: nowrap; overflow-wrap: normal; }
 }
+
+/* تقویم تیم در موبایل: ستون نام فشرده؛ شکستن فقط سر فاصله (نه وسط کلمه)، بدون آواتار */
+.cal-table .cal-name { overflow-wrap: normal; word-break: normal; }
+@media (max-width: 600px) {
+  .cal-table .cal-name { min-width: 92px; max-width: 108px; padding-inline: var(--space-2); }
+  .cal-table .cal-name .avatar { display: none; }
+  .cal-table .cal-name .cell-user { gap: 0; }
+  .cal-table .cal-name b { font-size: 13px; line-height: 1.6; }
+  .cal-table .cal-name small { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 100%; }
+}
