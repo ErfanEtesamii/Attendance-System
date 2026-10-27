@@ -107,7 +107,7 @@ test('رابط: کارت با مقدار نمایش داده می‌شود و ح
   assert.match(html, /کارکرد این ماه/);
   assert.match(app, /function renderEarnings\(earnings\)/);
   assert.match(app, /card\.classList\.add\('hidden'\)/);
-  assert.match(app, /toLocaleString\('fa-IR'\)/);
+  assert.match(app, /toLocaleString\('en-US'\)/);
   assert.match(app, /prefers-reduced-motion: reduce/);
   assert.match(css, /\.earnings-card/);
 });

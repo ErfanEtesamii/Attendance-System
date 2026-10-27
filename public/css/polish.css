@@ -312,3 +312,122 @@ html[data-contrast="high"] .earnings-amount { background: none; -webkit-text-fil
 .rp-donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; }
 .rp-donut-center b { font-size: var(--fs-lg); font-weight: 800; }
 .rp-donut-center span { font-size: var(--fs-xs); color: var(--hint); font-weight: 600; }
+
+/* ===== بازطراحی کارت‌های صفحه «امروز» + ارقام لاتین ===== */
+#view-today, .status-card, .today-times, .earnings-card, .work-hours-card { font-variant-numeric: tabular-nums lining-nums; }
+#view-today:not(.hidden) { display: flex; flex-direction: column; gap: 14px; }
+
+/* نوار ورود / استراحت / خروج */
+.today-times {
+  border: 1px solid color-mix(in srgb, var(--brand) 14%, var(--border));
+  background: linear-gradient(180deg, var(--card-bg), color-mix(in srgb, var(--card-bg) 94%, var(--brand)));
+}
+.time-stat { padding: 18px 6px 16px; gap: 10px; transition: background var(--motion-fast) var(--ease-out); }
+.time-stat:active { background: var(--brand-soft); }
+.time-stat-label { font-weight: 600; letter-spacing: .2px; }
+.time-stat-label .icon-chip { width: 30px; height: 30px; border-radius: 11px; box-shadow: 0 6px 14px -8px currentColor; }
+.time-stat .row-value {
+  direction: ltr; unicode-bidi: isolate;
+  font-family: "Inter", "SF Pro Display", system-ui, "Vazirmatn", sans-serif;
+  font-size: 22px; font-weight: 800; letter-spacing: .4px; line-height: 1.1;
+}
+
+/* کارت کارکرد این ماه */
+.earnings-card {
+  position: relative; overflow: hidden; isolation: isolate; padding: 20px 18px 16px; gap: 12px;
+  border: 1px solid color-mix(in srgb, var(--green) 22%, var(--border));
+  background:
+    radial-gradient(220px 150px at 0% 0%, color-mix(in srgb, var(--green) 16%, transparent), transparent 72%),
+    radial-gradient(200px 140px at 100% 100%, color-mix(in srgb, var(--accent-2) 12%, transparent), transparent 72%),
+    var(--card-bg);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--green) 10%, transparent), 0 22px 40px -26px color-mix(in srgb, var(--green) 45%, transparent);
+}
+.earnings-card::before {
+  content: ""; position: absolute; z-index: -1; width: 170px; height: 170px; inset-inline-end: -60px; top: -70px;
+  border-radius: 50%; border: 22px solid color-mix(in srgb, var(--green) 7%, transparent); pointer-events: none;
+}
+.earnings-heading h3 { display: inline-flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 800; }
+.earnings-intro { margin: 0; font-size: var(--fs-sm); line-height: 1.7; }
+.earnings-amount {
+  direction: ltr; justify-content: flex-end; flex-direction: row-reverse; align-items: center; gap: 10px;
+  font-family: "Inter", "SF Pro Display", system-ui, "Vazirmatn", sans-serif;
+  font-size: clamp(34px, 11vw, 46px); font-weight: 800; letter-spacing: -1px; line-height: 1.1; padding-block: 4px;
+  filter: drop-shadow(0 8px 14px color-mix(in srgb, var(--green) 25%, transparent));
+}
+.earnings-amount small { font-family: "Vazirmatn", system-ui, sans-serif; font-size: var(--fs-sm); font-weight: 700; letter-spacing: 0; }
+.earnings-spark { color: var(--accent); -webkit-text-fill-color: currentColor; }
+.earnings-useful {
+  padding: 7px 16px; font-weight: 800; font-size: var(--fs-sm);
+  border: 1px solid color-mix(in srgb, var(--green) 25%, transparent);
+  background: linear-gradient(135deg, var(--green-soft), color-mix(in srgb, var(--accent-2) 14%, transparent));
+}
+.earnings-foot { padding-top: 12px; border-top: 1px dashed color-mix(in srgb, var(--green) 25%, var(--border)); width: 100%; }
+.earnings-live { box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 14%, transparent); }
+
+/* ساعت کاری امروز / فردا */
+.work-hours-card { padding: 6px 18px; }
+.work-hours-card .row { padding: 15px 0; align-items: center; }
+.work-hours-card .row + .row { border-top: 1px solid var(--border); }
+.work-hours-card .row-label { color: var(--hint); font-weight: 600; }
+.work-hours-card .row-value {
+  direction: ltr; unicode-bidi: isolate; padding: 5px 14px; border-radius: 999px; font-size: var(--fs-sm); font-weight: 800;
+  font-family: "Inter", system-ui, "Vazirmatn", sans-serif;
+  background: var(--brand-soft); color: var(--brand);
+}
+:root[data-theme="light"] .work-hours-card .row-value { color: #4b3fc0; }
+
+/* نوار پایین: فاصله از محتوا */
+#views { padding-bottom: 104px; }
+
+/* ===== نسخه ۲: کاشی‌های عملیات، هدر، پس‌زمینه، نوار پایین ===== */
+body {
+  background:
+    radial-gradient(420px 300px at 100% -5%, color-mix(in srgb, var(--brand) 14%, transparent), transparent 70%),
+    radial-gradient(380px 280px at 0% 30%, color-mix(in srgb, var(--accent-2) 9%, transparent), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+/* هدر */
+.app-header { border-radius: 0 0 26px 26px; border-bottom: 1px solid color-mix(in srgb, var(--brand) 14%, var(--border)); backdrop-filter: blur(8px); }
+.brand-logo { background: linear-gradient(145deg, #4b3fc0, #322c79); box-shadow: 0 10px 20px -10px #4b3fc0; color: #fff; }
+.app-title { font-weight: 800; }
+
+/* نوار وضعیت ثابت */
+.sticky-status { background: color-mix(in srgb, var(--card-bg) 88%, transparent); backdrop-filter: blur(10px); font-weight: 700; font-variant-numeric: tabular-nums; border-radius: 0 0 18px 18px; }
+
+/* کاشی‌ها */
+.actions { gap: 14px; }
+.action-tile:not(.is-primary) {
+  position: relative; overflow: hidden; padding: 18px 14px; gap: 10px;
+  --tc: var(--brand);
+  border: 1px solid color-mix(in srgb, var(--tc) 22%, var(--border));
+  background:
+    radial-gradient(130px 90px at 100% 0%, color-mix(in srgb, var(--tc) 14%, transparent), transparent 75%),
+    linear-gradient(180deg, var(--card-bg), color-mix(in srgb, var(--card-bg) 95%, var(--tc)));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--tc) 10%, transparent), 0 16px 28px -22px color-mix(in srgb, var(--tc) 60%, transparent);
+}
+.action-tile:not(.is-primary)::before { content: ""; position: absolute; inset-inline: 22% ; top: 0; height: 3px; border-radius: 0 0 6px 6px; background: var(--tc); opacity: .75; }
+.action-tile.t-green { --tc: var(--green); } .action-tile.t-orange { --tc: var(--orange); } .action-tile.t-red { --tc: var(--red); }
+.action-tile.t-purple { --tc: var(--purple); } .action-tile.t-blue { --tc: var(--blue); }
+.action-tile:not(.is-primary) .tile-icon {
+  width: 52px; height: 52px; border-radius: 17px; color: #fff;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--tc) 80%, #fff), var(--tc));
+  box-shadow: 0 12px 18px -10px var(--tc), inset 0 1px 0 rgba(255, 255, 255, .35);
+}
+.action-tile:not(.is-primary) .tile-icon svg { width: 26px; height: 26px; }
+.action-tile .tile-title { font-size: 17px; }
+.action-tile .tile-sub { font-size: 12.5px; line-height: 1.6; }
+
+/* دکمهٔ اصلی ثبت ورود/خروج */
+.action-tile.is-primary { min-height: 92px; gap: 16px; padding: 16px 20px; }
+.action-tile.is-primary .tile-icon { width: 54px; height: 54px; border-radius: 18px; background: rgba(255, 255, 255, .28); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5); }
+.action-tile.is-primary .tile-title { font-size: 20px; font-weight: 900; }
+
+/* کارت‌ها: ظاهر کلی */
+.view-title { font-weight: 800; }
+.card { border: 1px solid color-mix(in srgb, var(--brand) 12%, var(--border)); }
+
+/* نوار پایین شناورتر */
+.bottom-nav { backdrop-filter: blur(12px); background: color-mix(in srgb, var(--rail) 92%, transparent); }
+.nav-btn.active { color: #fff; }

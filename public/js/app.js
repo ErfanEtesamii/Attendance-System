@@ -268,7 +268,7 @@
     const abs = Math.max(0, Math.round(totalMinutes));
     const h = Math.floor(abs / 60);
     const m = abs % 60;
-    const fa = (n) => n.toLocaleString('fa-IR');
+    const fa = (n) => n.toLocaleString('en-US');
     if (h > 0 && m > 0) return `${fa(h)} ساعت و ${fa(m)} دقیقه`;
     if (h > 0) return `${fa(h)} ساعت`;
     return `${fa(m)} دقیقه`;
@@ -305,7 +305,7 @@
   function fmtClock(iso) {
     if (!iso) return '—';
     const d = new Date(iso);
-    return d.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
   }
 
   // ---------- تاریخ شمسی (S3-11d) ----------
@@ -464,7 +464,7 @@
       b.addEventListener('click', () => pollLateGate(true));
       card.appendChild(b);
     } else if (status === 'approved') {
-      const until = p.expiresAt ? new Date(p.expiresAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }) : '';
+      const until = p.expiresAt ? new Date(p.expiresAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
       card.appendChild(el('p', 'late-limit-status is-approved', `اجازه تأیید شد${until ? ` — تا ساعت ${until} معتبر است` : ''}.`));
       const b = el('button', 'btn primary', 'ثبت ورود');
       b.addEventListener('click', async () => { b.disabled = true; const ok = await doAction('/check-in', {}, 'ورود ثبت شد (با اجازه‌ی سرپرست).'); if (!ok) b.disabled = false; });
@@ -563,7 +563,7 @@
       box.classList.add('single');
       if (state.today && state.today.canReEnter) {
         addTile({
-          title: 'ورود مجدد', sub: `امروز هنوز ${(state.today.reEntriesMax - state.today.reEntriesUsed).toLocaleString('fa-IR')} بار می‌توانید برگردید`, color: 'green', icon: 'in', wide: true,
+          title: 'ورود مجدد', sub: `امروز هنوز ${(state.today.reEntriesMax - state.today.reEntriesUsed).toLocaleString('en-US')} بار می‌توانید برگردید`, color: 'green', icon: 'in', wide: true,
           primary: true, handler: async () => { if (await confirmReEntry()) doAction('/re-check-in', {}, 'ورود مجدد ثبت شد.'); },
         });
       }
@@ -769,7 +769,7 @@
     const cheer = window.DailyReport ? window.DailyReport.encouragementOf(res) : '';
     if (cheer) parts.push(cheer);
     if (res && res.reportReminder && res.reportReminder.pendingTasks && res.reportReminder.pendingTasks.length) {
-      parts.push(`${res.reportReminder.pendingTasks.length.toLocaleString('fa-IR')} تسک بدون پاسخ ماند؛ تا ۲۴ ساعت می‌توانید گزارش را تکمیل کنید.`);
+      parts.push(`${res.reportReminder.pendingTasks.length.toLocaleString('en-US')} تسک بدون پاسخ ماند؛ تا ۲۴ ساعت می‌توانید گزارش را تکمیل کنید.`);
     }
     if (res && res.planReminder) parts.push('فراموش نکنید برنامه‌ی هفته‌ی بعد را ثبت کنید.');
     return parts.length > 1 ? parts.join(' ') : fallback;
@@ -930,7 +930,7 @@
     card.classList.remove('hidden');
     const usefulMinutes = Math.max(0, Number(earnings.usefulMinutes) || 0);
     const amount = Math.max(0, Number(earnings.amountToman) || 0);
-    const faNumber = (value) => Number(value).toLocaleString('fa-IR');
+    const faNumber = (value) => Number(value).toLocaleString('en-US');
     $('#earnings-intro').textContent = `تا امروز در ${earnings.monthLabel} کار کرده‌ای`;
     $('#earnings-useful').textContent = `${faNumber(Math.floor(usefulMinutes / 60))} ساعت و ${faNumber(usefulMinutes % 60)} دقیقه ساعت مفید`;
     const excluded = Array.isArray(earnings.excludedDays) ? earnings.excludedDays : [];
@@ -1050,7 +1050,7 @@
     const segments = Array.isArray(data.segments) ? data.segments : [];
     const segmentBadge = $('#ti-segments');
     if (segmentBadge) {
-      segmentBadge.textContent = segments.length > 1 ? `${segments.length.toLocaleString('fa-IR')} نوبت کاری` : '';
+      segmentBadge.textContent = segments.length > 1 ? `${segments.length.toLocaleString('en-US')} نوبت کاری` : '';
       segmentBadge.classList.toggle('hidden', segments.length <= 1);
     }
 
@@ -1103,9 +1103,9 @@
     const progress = $('#today-progress');
     if (progress) {
       progress.setAttribute('aria-valuenow', String(pct));
-      progress.setAttribute('aria-label', `${pct.toLocaleString('fa-IR')} درصد از هدف روزانه`);
+      progress.setAttribute('aria-label', `${pct.toLocaleString('en-US')} درصد از هدف روزانه`);
     }
-    $('#progress-text').textContent = pct.toLocaleString('fa-IR') + '٪ از ۸ ساعت';
+    $('#progress-text').textContent = pct.toLocaleString('en-US') + '% از 8 ساعت';
 
     renderTodayActions();
     if (!(data && data.record)) syncLateGate();
@@ -1168,7 +1168,7 @@
     if (!card) return;
     try {
       const { days } = await api('/schedule/upcoming');
-      const fa = (t) => (J ? J.toFaDigits(t) : t);
+      const fa = (t) => String(t == null ? '' : t);
       card.textContent = '';
       days.forEach((d, i) => {
         const row = document.createElement('div');
@@ -1215,7 +1215,7 @@
     const seen = readUrgentSeen();
     const fresh = list.filter((t) => !seen.has(t.id));
     box.appendChild(planEl('h4', { class: 'urgent-card-title', id: 'urgent-card-title', text: '⚡ تسک فوری امروز' }));
-    if (fresh.length) box.appendChild(planEl('div', { class: 'urgent-new', role: 'status', text: `${fresh.length.toLocaleString('fa-IR')} تسک فوری جدید` }));
+    if (fresh.length) box.appendChild(planEl('div', { class: 'urgent-new', role: 'status', text: `${fresh.length.toLocaleString('en-US')} تسک فوری جدید` }));
     box.appendChild(planEl('ul', { class: 'urgent-list' }, list.map((t) => planEl('li', { class: 'urgent-item' },
       planEl('div', { class: 'day-task-main' }, urgentBadge(), planEl('strong', { class: 'urgent-title', text: t.title }), !seen.has(t.id) ? planEl('span', { class: 'urgent-fresh', text: 'جدید' }) : null),
       planEl('div', { class: 'plan-meta', text: urgentMetaText(t) }),
@@ -1345,8 +1345,9 @@
       loadReport(btn.dataset.period);
     });
   });
-
-  const nfa = (v) => Number(v || 0).toLocaleString("fa-IR");
+
+
+  const nfa = (v) => Number(v || 0).toLocaleString("en-US");
   async function loadReport(period) {
     const card = $('#report-card');
     renderLoading(card, 'table');
@@ -1373,7 +1374,7 @@
       let offset = 0;
       const rings = Object.entries(counts).map(([key, count]) => {
         const pct = (count / total) * 100;
-        const ring = `<circle class="report-ring status-${key}" cx="60" cy="60" r="46" pathLength="100" stroke-dasharray="${pct} ${100 - pct}" stroke-dashoffset="${-offset}"><title>${STATUS_LABELS[key] || key}: ${count.toLocaleString('fa-IR')}</title></circle>`;
+        const ring = `<circle class="report-ring status-${key}" cx="60" cy="60" r="46" pathLength="100" stroke-dasharray="${pct} ${100 - pct}" stroke-dashoffset="${-offset}"><title>${STATUS_LABELS[key] || key}: ${count.toLocaleString('en-US')}</title></circle>`;
         offset += pct;
         return ring;
       }).join('');
@@ -1868,7 +1869,7 @@
       } catch (err) { planUi.msg = err.message; renderPlan(); }
     });
     return planEl('div', { class: 'card manager-banner', role: 'status' },
-      planEl('div', { class: 'manager-banner-text' }, planEl('strong', { text: '🔔 ' + MANAGER_CHANGED_MSG }), planEl('span', { text: ` (${(mc.count || 0).toLocaleString('fa-IR')} تغییر؛ تسک‌های سرپرست با برچسب «${MANAGER_LABEL}» مشخص شده‌اند)` })), btn);
+      planEl('div', { class: 'manager-banner-text' }, planEl('strong', { text: '🔔 ' + MANAGER_CHANGED_MSG }), planEl('span', { text: ` (${(mc.count || 0).toLocaleString('en-US')} تغییر؛ تسک‌های سرپرست با برچسب «${MANAGER_LABEL}» مشخص شده‌اند)` })), btn);
   }
   const urgentFirst = (list) => [...list].sort((a, b) => Number(!!b.isUrgent) - Number(!!a.isUrgent)); // مرتب‌سازی پایدار؛ فوری بالا
   // ردیف فقط‌خواندنیِ تسک فوری (کارمند نمی‌تواند ویرایش/حذف کند)
@@ -1883,7 +1884,7 @@
   // پیشرفت زنده‌ی «۳ از ۴ گزارش مشاهده شد» (محاسبه‌ی سرور در هر بار دریافت برنامه) و دکمه‌ی «مشاهده‌ی گزارش‌ها» که صفحه‌ی teamreports پنل را برای همان روز باز می‌کند.
   const MANDATORY_LABEL = '🔒 واجب';
   const isReviewSysTask = (t) => !!t && t.isSystem && t.systemKey === ((window.DailyReport && window.DailyReport.REVIEW_KEY) || 'review_team_reports');
-  const faDigits = (n) => (J ? J.toFaDigits(String(n)) : Number(n).toLocaleString('fa-IR'));
+  const faDigits = (n) => (J ? J.toFaDigits(String(n)) : Number(n).toLocaleString('en-US'));
   function reviewProgressText(r) {
     if (!r) return '';
     if (r.notYet) return `گزارش‌های ${fmtDate(r.reviewDate)} هنوز ثبت نشده‌اند.`;
@@ -3106,8 +3107,8 @@
       if (!g || !g.days || !g.days.length) { box.classList.add('hidden'); return; }
       g.days.forEach((d) => {
         const msg = d.source === 'backfill'
-          ? `خروج ${fmtDate(d.date)} به‌صورت خودکار بسته شد و گزارش ${d.pendingCount.toLocaleString('fa-IR')} تسک ثبت نشده است. تا ${(g.backfillDays || 0).toLocaleString('fa-IR')} روز می‌توانید تکمیل کنید.`
-          : `گزارش ${d.pendingCount.toLocaleString('fa-IR')} تسکِ ${fmtDate(d.date)} هنوز ثبت نشده است؛ تا ۲۴ ساعت بعد از خروج می‌توانید تکمیل کنید.`;
+          ? `خروج ${fmtDate(d.date)} به‌صورت خودکار بسته شد و گزارش ${d.pendingCount.toLocaleString('en-US')} تسک ثبت نشده است. تا ${(g.backfillDays || 0).toLocaleString('en-US')} روز می‌توانید تکمیل کنید.`
+          : `گزارش ${d.pendingCount.toLocaleString('en-US')} تسکِ ${fmtDate(d.date)} هنوز ثبت نشده است؛ تا ۲۴ ساعت بعد از خروج می‌توانید تکمیل کنید.`;
         box.appendChild(dEl('div', { text: msg }));
         box.appendChild(dEl('button', { type: 'button', class: 'btn primary', text: 'تکمیل گزارش', on: { click: () => openLateReport(d.date) } }));
       });
@@ -3175,7 +3176,7 @@
       const a = reportAnswer(t.id);
       const urgent = DR.isUrgent(t); // E2: تسک فوری (سرور آن‌ها را بالای فهرست می‌دهد)
       const card = dEl('div', { class: 'card dr-card' + (urgent ? ' dr-card-urgent' : '') });
-      card.appendChild(dEl('div', { class: 'dr-progress', text: `سؤال ${(ui.idx + 1).toLocaleString('fa-IR')} از ${total.toLocaleString('fa-IR')}`, attrs: { role: 'status' } }));
+      card.appendChild(dEl('div', { class: 'dr-progress', text: `سؤال ${(ui.idx + 1).toLocaleString('en-US')} از ${total.toLocaleString('en-US')}`, attrs: { role: 'status' } }));
       const isReview = DR.isReviewTask(t); // D9: تسک سیستمیِ سرپرست؛ «انجام شد» فقط با مشاهده‌ی واقعی گزارش‌ها
       const optional = DR.isOptional(t); // A2: تسک اولویت کم؛ مانع خروج نیست و جدا از الزامی‌ها (آخر فهرست) می‌آید
       if (optional && !(ui.idx > 0 && DR.isOptional(ui.tasks[ui.idx - 1]))) card.appendChild(dEl('div', { class: 'dr-sep', text: 'تسک‌های اختیاری (جدا از الزامی‌ها)' }));
@@ -3198,7 +3199,7 @@
           const nr = info.noReport || [];
           card.appendChild(dEl('div', { class: 'plan-meta' }, dEl('span', { class: 'mandatory-badge', text: MANDATORY_LABEL }), ` گزارش‌های ${fmtDate(info.reviewDate)}`));
           if (typeof info.reportCount === 'number' && info.reportCount > 0) card.appendChild(dEl('div', { class: 'plan-meta rv-progress-text', text: `${faNum(info.reviewedCount || 0)} از ${faNum(info.reportCount)} گزارش مشاهده شد`, attrs: { role: 'status' } }));
-          card.appendChild(dEl('div', { class: 'rv-group', text: `مشاهده‌نشده (${un.length.toLocaleString('fa-IR')}): ${un.map((m) => m.fullName).join('، ') || '—'}` }));
+          card.appendChild(dEl('div', { class: 'rv-group', text: `مشاهده‌نشده (${un.length.toLocaleString('en-US')}): ${un.map((m) => m.fullName).join('، ') || '—'}` }));
           if (nr.length) card.appendChild(dEl('div', { class: 'plan-meta', text: `گزارش نداده‌اند (شرط تکمیل نیست): ${nr.map((m) => m.fullName).join('، ')}` }));
         }
         const choice = dEl('div', { class: 'dr-nav' });
@@ -3218,7 +3219,7 @@
         rs.appendChild(chips);
         card.appendChild(rs);
         const otherNeeded = a.reasonCode === 'other';
-        card.appendChild(dEl('label', { class: 'dr-label', htmlFor: 'dr-reason-text', text: otherNeeded ? `توضیح علت (الزامی، حداقل ${DR.LIMITS.otherMin.toLocaleString('fa-IR')} نویسه)` : 'توضیح بیشتر (اختیاری)' }));
+        card.appendChild(dEl('label', { class: 'dr-label', htmlFor: 'dr-reason-text', text: otherNeeded ? `توضیح علت (الزامی، حداقل ${DR.LIMITS.otherMin.toLocaleString('en-US')} نویسه)` : 'توضیح بیشتر (اختیاری)' }));
         card.appendChild(dEl('textarea', {
           id: 'dr-reason-text', rows: 3, maxLength: DR.LIMITS.reasonText, value: a.reasonText,
           on: { input: (e) => { a.reasonText = e.target.value; } },
@@ -3257,7 +3258,7 @@
       const team = ui.team || { reviewDate: '', unreviewed: [], noReport: [] };
       const card = dEl('div', { class: 'card dr-card' });
       card.appendChild(heading(`گزارش‌های ${fmtDate(team.reviewDate)} تیم`));
-      card.appendChild(dEl('div', { class: 'plan-meta', text: `${team.unreviewed.length.toLocaleString('fa-IR')} گزارش مشاهده‌نشده · کامنت و واکنش اختیاری است.` }));
+      card.appendChild(dEl('div', { class: 'plan-meta', text: `${team.unreviewed.length.toLocaleString('en-US')} گزارش مشاهده‌نشده · کامنت و واکنش اختیاری است.` }));
       team.unreviewed.forEach((m) => {
         const draft = reviewDraftOf(m.userId);
         const row = dEl('div', { class: 'list-item rv-member' });
@@ -3319,7 +3320,7 @@
         const fresh = i === ui.extraFresh;
         const row = dEl('div', { class: 'dr-extra' + (fresh ? ' is-entering' : '') });
         const head = dEl('div', { class: 'dr-extra-head' });
-        head.appendChild(dEl('span', { class: 'dr-extra-num', text: (i + 1).toLocaleString('fa-IR') }));
+        head.appendChild(dEl('span', { class: 'dr-extra-num', text: (i + 1).toLocaleString('en-US') }));
         head.appendChild(dEl('span', { class: 'dr-extra-label', text: 'کار خارج از برنامه' }));
         head.appendChild(dEl('button', { type: 'button', class: 'dr-extra-del', text: '✕', on: { click: () => { if (row.classList.contains('is-leaving')) return; row.classList.add('is-leaving'); const wait = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 220; setTimeout(() => { ui.extras.splice(i, 1); ui.extraFresh = -1; renderReport(); }, wait); } }, attrs: { 'aria-label': `حذف کار خارج از برنامه ${i + 1}`, title: 'حذف' } }));
         row.appendChild(head);
@@ -3372,7 +3373,7 @@
     const card = dEl('div', { class: 'card dr-card' });
     card.appendChild(heading('مرور گزارش'));
     const skippedOpt = DR.skippedOptional(ui.tasks, ui.answers);
-    card.appendChild(dEl('div', { class: 'plan-meta', text: `${sum.done.toLocaleString('fa-IR')} انجام شد · ${sum.partial.toLocaleString('fa-IR')} نیمه‌کاره · ${sum.not_done.toLocaleString('fa-IR')} انجام نشد${sum.missing ? ' · ' + sum.missing.toLocaleString('fa-IR') + ' بدون پاسخ' : ''}${skippedOpt ? ' · ' + skippedOpt.toLocaleString('fa-IR') + ' اختیاری رد شد' : ''}` }));
+    card.appendChild(dEl('div', { class: 'plan-meta', text: `${sum.done.toLocaleString('en-US')} انجام شد · ${sum.partial.toLocaleString('en-US')} نیمه‌کاره · ${sum.not_done.toLocaleString('en-US')} انجام نشد${sum.missing ? ' · ' + sum.missing.toLocaleString('en-US') + ' بدون پاسخ' : ''}${skippedOpt ? ' · ' + skippedOpt.toLocaleString('en-US') + ' اختیاری رد شد' : ''}` }));
     ui.tasks.forEach((t, i) => {
       const a = ui.answers.get(t.id);
       const s = a && DR.STATUS.find((x) => x.value === a.status);
@@ -3386,7 +3387,7 @@
       row.appendChild(dEl('button', { type: 'button', class: 'btn secondary', text: 'ویرایش', on: { click: () => { ui.step = 'q'; ui.idx = i; ui.msg = ''; renderReport(); } } }));
       card.appendChild(row);
     });
-    if (ui.extras.length) card.appendChild(dEl('div', { class: 'plan-meta', text: `${ui.extras.length.toLocaleString('fa-IR')} کار خارج از برنامه` }));
+    if (ui.extras.length) card.appendChild(dEl('div', { class: 'plan-meta', text: `${ui.extras.length.toLocaleString('en-US')} کار خارج از برنامه` }));
     card.appendChild(msg);
     const nav = dEl('div', { class: 'dr-nav' });
     nav.appendChild(dEl('button', { type: 'button', class: 'btn secondary', text: 'قبلی', on: { click: () => { ui.step = 'extra'; ui.msg = ''; renderReport(); } } }));
@@ -3404,7 +3405,7 @@
           const res = await api('/daily-report', { method: 'POST', body: bodyOf() });
           const cheer = DR.encouragementOf(res);
           const left = res && res.tasks ? res.tasks.filter((t) => !t.optional).length : 0; // A2: اختیاری‌ها «هنوز بدون پاسخ» حساب نمی‌شوند
-          showToast([left ? `گزارش ثبت شد؛ ${left.toLocaleString('fa-IR')} تسک هنوز بدون پاسخ است.` : 'گزارش ثبت شد.', cheer].filter(Boolean).join(' '));
+          showToast([left ? `گزارش ثبت شد؛ ${left.toLocaleString('en-US')} تسک هنوز بدون پاسخ است.` : 'گزارش ثبت شد.', cheer].filter(Boolean).join(' '));
           reportUi.answers = new Map(); reportUi.extras = [];
           switchView('today');
           loadReportBanner();
@@ -3800,7 +3801,7 @@
     b.addEventListener('click', onClick);
     return b;
   }
-  const faNum = (n) => Number(n || 0).toLocaleString('fa-IR');
+  const faNum = (n) => Number(n || 0).toLocaleString('en-US');
 
   // «YYYY-MM-DD HH:MM:SS» (UTC دیتابیس) ⇒ «۱۵ مهر ۱۴۰۵ ۱۴:۳۰» به وقت دستگاه
   function fmtDateTime(s) {
