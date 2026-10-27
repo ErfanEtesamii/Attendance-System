@@ -1,0 +1,62 @@
+/* ---------- گزارش‌های تیم · تب «شاخص‌ها» (#tr-kpis: .tr-kpis-section، .tr-kpi-grid، .tr-callouts) ---------- */
+/* مکمل 25-team-reports.css؛ فقط CSS و فقط داخل #tr-kpis. رنگ‌ها فقط از tokens.css. */
+
+/* ===== پوسته‌ی بخش شاخص‌ها: هاله‌ی نرم پشت جدول‌ها ===== */
+#tr-kpis .tr-kpis-section {
+  position: relative; overflow: hidden; isolation: isolate; padding: 20px; border-radius: var(--r-xl);
+  border: 1px solid color-mix(in srgb, var(--brand) 14%, var(--border));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--card) 94%, var(--accent-2)), var(--card));
+  box-shadow: 0 16px 30px -24px color-mix(in srgb, var(--brand) 55%, transparent);
+}
+#tr-kpis .tr-kpis-section::after {
+  content: ""; position: absolute; z-index: -1; pointer-events: none; width: 220px; height: 220px; border-radius: 50%;
+  top: -110px; inset-inline-end: -70px; background: radial-gradient(circle, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%);
+}
+#tr-kpis .tr-kpis-section > .tr-section-head .tr-hint {
+  padding: 3px 12px; border-radius: 999px; color: var(--text); background: color-mix(in srgb, var(--brand) 9%, var(--card));
+}
+
+/* ===== دو جدول: هر کدام یک رنگ هویتی (تیم‌ها آبی، سرپرست‌ها سبز) ===== */
+#tr-kpis .tr-kpi-grid > .tr-section:nth-child(1) { --kpi: var(--blue); }
+#tr-kpis .tr-kpi-grid > .tr-section:nth-child(2) { --kpi: var(--green-deco); }
+#tr-kpis .tr-kpi-grid > .tr-section { --kpi: var(--brand); }
+#tr-kpis .tr-kpi-grid .tr-title::before { background: linear-gradient(180deg, var(--kpi), color-mix(in srgb, var(--kpi) 45%, var(--card))); box-shadow: none; }
+#tr-kpis .tr-kpi-grid .card.flush {
+  border-color: color-mix(in srgb, var(--kpi) 22%, var(--border));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--kpi) 12%, transparent), 0 24px 44px -30px color-mix(in srgb, var(--kpi) 55%, transparent);
+}
+#tr-kpis .tr-kpi-grid thead th { background: color-mix(in srgb, var(--kpi) 10%, var(--card)); border-bottom-color: color-mix(in srgb, var(--kpi) 22%, transparent); }
+#tr-kpis .tr-kpi-grid thead th:first-child { background: color-mix(in srgb, var(--kpi) 10%, var(--card)); }
+#tr-kpis .tr-kpi-grid tbody > tr { --tone: var(--kpi); }
+#tr-kpis .tr-kpi-grid tbody > tr:nth-child(even) { --row-bg: color-mix(in srgb, var(--kpi) 4%, var(--card)); }
+#tr-kpis .tr-kpi-grid tbody > tr:has(> td[colspan]) { --tone: var(--hint); }
+
+/* ستون آخر (نرخ): قرص رنگی؛ ستون‌های عددی هم‌تراز */
+#tr-kpis .tr-kpi-grid tbody > tr > td:not(:first-child):not([colspan]) { font-weight: 700; color: var(--text); }
+#tr-kpis .tr-kpi-grid tbody > tr > td:last-child:not([colspan]) > :only-child,
+#tr-kpis .tr-kpi-grid tbody > tr > td:last-child:not([colspan]):not(:has(*)) { unicode-bidi: isolate; }
+#tr-kpis .tr-kpi-grid tbody > tr > td:last-child:not([colspan]) {
+  font-weight: 800; font-variant-numeric: tabular-nums;
+  background: linear-gradient(to left, color-mix(in srgb, var(--kpi) 12%, var(--row-bg)), var(--row-bg) 70%);
+}
+
+/* ===== کالاوت‌ها ===== */
+#tr-kpis .tr-callouts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+#tr-kpis .tr-callout { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 14px 18px; line-height: 1.9; transition: transform var(--motion-fast) var(--ease-out); }
+#tr-kpis .tr-callout:hover { transform: translateY(-2px); }
+#tr-kpis .tr-callout:nth-child(2) {
+  border-color: color-mix(in srgb, var(--orange) 26%, var(--border)); border-inline-start-color: var(--orange);
+  background: radial-gradient(220px 120px at 100% 0%, color-mix(in srgb, var(--orange) 12%, transparent), transparent 72%), linear-gradient(180deg, var(--card), color-mix(in srgb, var(--card) 95%, var(--orange)));
+  box-shadow: 0 16px 28px -24px color-mix(in srgb, var(--orange) 60%, transparent);
+}
+#tr-kpis .tr-callout > .muted { display: block; color: var(--text); font-weight: 600; opacity: .9; }
+
+/* ===== واکنش‌گرا ===== */
+@media (max-width: 900px) { #tr-kpis .tr-callouts { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 768px) { #tr-kpis .tr-kpis-section { padding: 14px; border-radius: var(--r-lg); } }
+
+/* ===== کاهش حرکت ===== */
+@media (prefers-reduced-motion: reduce) {
+  #tr-kpis .tr-callout { transition: none; }
+  #tr-kpis .tr-callout:hover { transform: none; }
+}

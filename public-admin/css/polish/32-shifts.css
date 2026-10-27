@@ -1,0 +1,108 @@
+/* ---------- شیفت‌ها (#shift-add و کارت جدول بعد از عنوان؛ ردیف‌ها tr[data-id]) ---------- */
+/* فقط CSS؛ سلکتورها با :has(#shift-add) به همین صفحه محدودند. رنگ‌ها فقط از tokens.css. */
+
+/* ===== عنوان ===== */
+.view-header:has(#shift-add) .sub { display: block; max-width: 78ch; padding: 10px 16px; border-radius: var(--r-lg); color: var(--text); line-height: 1.9; }
+#shift-add { border-radius: 999px; font-weight: 700; white-space: nowrap; transition: transform var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast); }
+#shift-add:hover { transform: translateY(-2px); }
+#shift-add:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+#shift-add:disabled, #shift-add[aria-disabled="true"], #shift-add[aria-busy="true"] {
+  background: color-mix(in srgb, var(--accent) 35%, var(--card)); color: var(--text); opacity: .65; box-shadow: none; transform: none; cursor: not-allowed;
+}
+@media (max-width: 600px) { .view-header:has(#shift-add) .header-actions { width: 100%; } #shift-add { width: 100%; justify-content: center; } }
+
+/* ===== کارت جدول ===== */
+.view-header:has(#shift-add) + .card.flush {
+  border-radius: var(--r-xl); border-color: color-mix(in srgb, var(--brand) 16%, var(--border));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 10%, transparent), 0 24px 44px -30px color-mix(in srgb, var(--brand) 55%, transparent);
+}
+.view-header:has(#shift-add) + .card.flush .table-wrap { container-type: inline-size; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.view-header:has(#shift-add) + .card.flush .table-wrap:focus-visible { outline: 2px solid var(--brand); outline-offset: -3px; }
+.view-header:has(#shift-add) + .card.flush thead th {
+  z-index: 3; color: var(--text); font-weight: 800;
+  background: color-mix(in srgb, var(--brand) 12%, var(--card)); border-bottom: 1px solid color-mix(in srgb, var(--brand) 20%, transparent);
+}
+.view-header:has(#shift-add) + .card.flush thead th:first-child { inset-inline-start: 0; z-index: 4; background: color-mix(in srgb, var(--brand) 12%, var(--card)); }
+
+/* نوع شیفت ⇒ رنگ نوار: چرخشی بدون ساعت = آبی، شبانه = بنفش، ثابت = برند */
+.view-header:has(#shift-add) + .card.flush tbody > tr { --row-bg: var(--card); --tone: var(--brand); background: var(--row-bg); transition: background-color var(--motion-fast) var(--ease-out); }
+.view-header:has(#shift-add) + .card.flush tbody > tr:nth-child(even) { --row-bg: color-mix(in srgb, var(--brand) 4%, var(--card)); }
+.view-header:has(#shift-add) + .card.flush tbody > tr:has(.badge.blue)   { --tone: var(--blue); }
+.view-header:has(#shift-add) + .card.flush tbody > tr:has(.badge.purple) { --tone: var(--purple); }
+.view-header:has(#shift-add) + .card.flush tbody > tr:hover, .view-header:has(#shift-add) + .card.flush tbody > tr:focus-within { --row-bg: color-mix(in srgb, var(--tone) 9%, var(--card)); }
+.view-header:has(#shift-add) + .card.flush tbody td { padding-block: 16px; border-bottom: 1px solid color-mix(in srgb, var(--hint) 12%, transparent); vertical-align: middle; }
+.view-header:has(#shift-add) + .card.flush tbody tr:last-child td { border-bottom: 0; }
+.view-header:has(#shift-add) + .card.flush tbody > tr > td:first-child {
+  position: sticky; inset-inline-start: 0; z-index: 2; color: var(--text); font-weight: 800;
+  background: linear-gradient(to left, color-mix(in srgb, var(--tone) 11%, var(--row-bg)), var(--row-bg) 65%);
+  border-inline-end: 1px solid color-mix(in srgb, var(--brand) 10%, transparent);
+}
+/* ساعت کار: قرص LTR */
+.view-header:has(#shift-add) + .card.flush td > .ltr:not(.muted) {
+  display: inline-block; padding: 2px 12px; border-radius: 999px; color: var(--text); font-weight: 700; unicode-bidi: isolate;
+  background: color-mix(in srgb, var(--tone) 10%, var(--card)); border: 1px solid color-mix(in srgb, var(--tone) 18%, transparent);
+}
+.view-header:has(#shift-add) + .card.flush td .badge { font-weight: 800; }
+.view-header:has(#shift-add) + .card.flush td .muted { color: var(--hint); font-weight: 600; }
+.view-header:has(#shift-add) + .card.flush td .muted.small { display: block; margin-top: 6px; line-height: 1.8; }
+.view-header:has(#shift-add) + .card.flush td .muted .ltr { color: var(--text); unicode-bidi: isolate; }
+
+/* دکمه‌های ردیف: همیشه دیده می‌شوند؛ انتساب/تعداد قرص، ویرایش/حذف گرد */
+.view-header:has(#shift-add) + .card.flush tbody .row-actions { opacity: 1; transition: none; gap: 8px; flex-wrap: wrap; }
+.view-header:has(#shift-add) + .card.flush td .btn.small { border-radius: 999px; font-weight: 700; }
+.view-header:has(#shift-add) + .card.flush td .btn:hover:not(:disabled) { transform: translateY(-1px); }
+.view-header:has(#shift-add) + .card.flush td [data-users] { color: var(--text); background: color-mix(in srgb, var(--blue) 10%, var(--card)); border-color: color-mix(in srgb, var(--blue) 25%, transparent); }
+.view-header:has(#shift-add) + .card.flush .row-actions [data-edit], .view-header:has(#shift-add) + .card.flush .row-actions [data-del] { width: 40px; min-width: 40px; padding: 0; justify-content: center; border-radius: 50%; }
+.view-header:has(#shift-add) + .card.flush .btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+.view-header:has(#shift-add) + .card.flush .btn:disabled, .view-header:has(#shift-add) + .card.flush .btn[aria-busy="true"] { opacity: .55; box-shadow: none; transform: none; cursor: not-allowed; }
+.view-header:has(#shift-add) + .card.flush .btn.danger { color: var(--red-text); background: color-mix(in srgb, var(--red) 8%, var(--card)); }
+
+/* ===== حالت خالی ===== */
+.view-header:has(#shift-add) + .card.flush > .empty {
+  padding: 56px var(--space-4); color: var(--hint); font-weight: 700;
+  background: radial-gradient(18rem 10rem at 50% 0%, color-mix(in srgb, var(--brand) 9%, transparent), transparent 75%);
+}
+.view-header:has(#shift-add) + .card.flush > .empty p { color: var(--text); margin: 0 auto var(--space-3); max-width: 46ch; line-height: 1.9; }
+.view-header:has(#shift-add) + .card.flush > .empty svg {
+  width: 36px; height: 36px; padding: 18px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--brand) 22%, var(--card)), color-mix(in srgb, var(--brand) 8%, var(--card)));
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--brand) 8%, transparent), 0 14px 24px -14px color-mix(in srgb, var(--brand) 60%, transparent);
+}
+.view-header:has(#shift-add) + .card.flush > .empty .btn svg { width: 18px; height: 18px; padding: 0; background: none; box-shadow: none; display: inline-block; margin: 0; }
+.view-header:has(#shift-add) + .card.flush > .empty .btn { border-radius: 999px; font-weight: 700; }
+
+/* ===== لودینگ (skeleton «table»؛ با ناوبری فعال «شیفت‌ها») ===== */
+body:has(.nav-item.active[data-view="shifts"]) #page[aria-busy="true"] .skeleton > [aria-hidden="true"] > .sk-box:only-child {
+  border-radius: var(--r-xl); padding: 14px 20px; gap: 0;
+  border: 1px solid color-mix(in srgb, var(--brand) 16%, var(--border));
+  background: linear-gradient(180deg, var(--card), color-mix(in srgb, var(--card) 96%, var(--brand)));
+  box-shadow: 0 24px 44px -30px color-mix(in srgb, var(--brand) 55%, transparent);
+}
+body:has(.nav-item.active[data-view="shifts"]) #page[aria-busy="true"] .skeleton .sk-box:only-child .sk-row { padding: 14px 0; border-bottom: 1px solid color-mix(in srgb, var(--hint) 12%, transparent); }
+body:has(.nav-item.active[data-view="shifts"]) #page[aria-busy="true"] .skeleton .sk-box:only-child .sk-row:last-child { border-bottom: 0; }
+
+/* ===== دسکتاپ/تبلت: نوار رنگی ردیف (در موبایل ::before برای برچسب ستون است) ===== */
+@media (min-width: 601px) {
+  .view-header:has(#shift-add) + .card.flush tbody > tr > td:first-child::before {
+    content: ""; position: absolute; inset-block: 0; inset-inline-start: 0; width: 4px;
+    background: var(--tone); border-start-end-radius: 4px; border-end-end-radius: 4px; transition: width var(--motion-fast) var(--ease-out);
+  }
+  .view-header:has(#shift-add) + .card.flush tbody > tr:hover > td:first-child::before, .view-header:has(#shift-add) + .card.flush tbody > tr:focus-within > td:first-child::before { width: 7px; }
+}
+
+/* ===== واکنش‌گرا ===== */
+@media (max-width: 768px) {
+  .view-header:has(#shift-add) + .card.flush { border-radius: var(--r-lg); }
+  .view-header:has(#shift-add) .sub { border-radius: var(--r-md); }
+}
+@media (max-width: 600px) {
+  .view-header:has(#shift-add) + .card.flush table[data-stack] tbody > tr { border-inline-start: 4px solid var(--tone); border-radius: var(--r-lg); overflow: hidden; }
+  .view-header:has(#shift-add) + .card.flush table[data-stack] tbody > tr > td:first-child { position: static; background: transparent; border-inline-end: 0; }
+  .view-header:has(#shift-add) + .card.flush td .muted.small { display: inline-block; }
+}
+
+/* ===== کاهش حرکت ===== */
+@media (prefers-reduced-motion: reduce) {
+  #shift-add, .view-header:has(#shift-add) + .card.flush tbody > tr, .view-header:has(#shift-add) + .card.flush tbody > tr > td:first-child::before { transition: none; }
+  #shift-add:hover, .view-header:has(#shift-add) + .card.flush td .btn:hover:not(:disabled) { transform: none; }
+}

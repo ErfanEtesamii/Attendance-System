@@ -1,0 +1,186 @@
+/* ---------- گزارش رویدادها (#au-filters و کارت جدولِ بعد از آن) ---------- */
+/* فقط CSS؛ سلکتورها به #au-filters و ساختار همین صفحه محدودند. رنگ‌ها فقط از tokens.css. */
+
+/* ===== عنوان و دکمه‌های خروجی ===== */
+.view-header:has(+ #au-filters) .sub {
+  display: block; max-width: 78ch; padding: 10px 16px; border-radius: var(--r-lg); color: var(--text); line-height: 1.9;
+}
+.view-header:has(+ #au-filters) .header-actions { gap: 8px; flex-wrap: wrap; }
+.view-header:has(+ #au-filters) .header-actions .btn { border-radius: 999px; font-weight: 700; white-space: nowrap; }
+.view-header:has(+ #au-filters) .header-actions .btn:hover { transform: translateY(-1px); }
+.view-header:has(+ #au-filters) .header-actions .btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+.view-header:has(+ #au-filters) .header-actions .btn:disabled,
+.view-header:has(+ #au-filters) .header-actions .btn[aria-disabled="true"],
+.view-header:has(+ #au-filters) .header-actions .btn[aria-busy="true"] {
+  background: color-mix(in srgb, var(--brand) 8%, var(--card)); color: var(--text); opacity: .65; box-shadow: none; transform: none; cursor: not-allowed;
+}
+@media (max-width: 600px) {
+  .view-header:has(+ #au-filters) .header-actions { width: 100%; }
+  .view-header:has(+ #au-filters) .header-actions .btn { flex: 1 1 calc(50% - 4px); justify-content: center; }
+}
+
+/* ===== فیلترها: کارت نرم با هاله ===== */
+#au-filters {
+  position: relative; overflow: hidden; isolation: isolate; border-radius: var(--r-xl); padding: 18px 20px; gap: 14px;
+  border: 1px solid color-mix(in srgb, var(--brand) 14%, var(--border));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--card) 94%, var(--accent-2)), var(--card));
+  box-shadow: 0 16px 30px -24px color-mix(in srgb, var(--brand) 55%, transparent);
+}
+#au-filters::after {
+  content: ""; position: absolute; z-index: -1; pointer-events: none; width: 190px; height: 190px; border-radius: 50%;
+  top: -95px; inset-inline-end: -65px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 15%, transparent), transparent 70%);
+}
+#au-filters .field > span { color: var(--brand); font-size: var(--fs-xs); font-weight: 700; }
+#au-filters .field input, #au-filters .field select {
+  border: 1px solid color-mix(in srgb, var(--brand) 12%, transparent); background: var(--field);
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast), background-color var(--motion-fast);
+}
+#au-filters .field input:hover, #au-filters .field select:hover { border-color: color-mix(in srgb, var(--brand) 34%, transparent); }
+#au-filters .field input:focus-visible, #au-filters .field select:focus-visible {
+  outline: none; border-color: var(--brand); background: var(--card); box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 24%, transparent);
+}
+#au-filters :where(input, select):disabled { opacity: .55; cursor: not-allowed; }
+#au-filters input[type="search"] { padding-inline: 16px; border-radius: 999px; }
+
+/* ===== کارت جدول ===== */
+#au-filters + .card.flush {
+  border-radius: var(--r-xl);
+  border-color: color-mix(in srgb, var(--brand) 16%, var(--border));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 10%, transparent), 0 24px 44px -30px color-mix(in srgb, var(--brand) 55%, transparent);
+}
+#au-filters + .card.flush .table-wrap { container-type: inline-size; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+#au-filters + .card.flush .table-wrap:focus-visible { outline: 2px solid var(--brand); outline-offset: -3px; }
+#au-filters + .card.flush thead th {
+  z-index: 3; color: var(--text); font-weight: 800;
+  background: color-mix(in srgb, var(--brand) 12%, var(--card));
+  border-bottom: 1px solid color-mix(in srgb, var(--brand) 20%, transparent);
+}
+#au-filters + .card.flush thead th:first-child { inset-inline-start: 0; z-index: 4; background: color-mix(in srgb, var(--brand) 12%, var(--card)); }
+
+/* نوع رویداد ⇒ رنگ نوار ردیف */
+#au-filters + .card.flush tbody > tr { --row-bg: var(--card); --tone: var(--hint); background: var(--row-bg); transition: background-color var(--motion-fast) var(--ease-out); }
+#au-filters + .card.flush tbody > tr:nth-child(even) { --row-bg: color-mix(in srgb, var(--brand) 4%, var(--card)); }
+#au-filters + .card.flush tbody > tr:has(.au-act--red)    { --tone: var(--red-solid); }
+#au-filters + .card.flush tbody > tr:has(.au-act--yellow) { --tone: var(--yellow); }
+#au-filters + .card.flush tbody > tr:has(.au-act--green)  { --tone: var(--green-deco); }
+#au-filters + .card.flush tbody > tr:has(.au-act--blue)   { --tone: var(--blue); }
+#au-filters + .card.flush tbody > tr:hover, #au-filters + .card.flush tbody > tr:focus-within { --row-bg: color-mix(in srgb, var(--tone) 9%, var(--card)); }
+#au-filters + .card.flush tbody td { padding-block: 15px; border-bottom: 1px solid color-mix(in srgb, var(--hint) 12%, transparent); vertical-align: middle; }
+#au-filters + .card.flush tbody tr:last-child td { border-bottom: 0; }
+#au-filters + .card.flush td.num { color: var(--text); font-size: var(--fs-xs); font-weight: 700; }
+#au-filters + .card.flush td:nth-child(2) { color: var(--text); font-weight: 800; }
+#au-filters + .card.flush td .muted { color: var(--hint); font-weight: 600; }
+#au-filters + .card.flush td .ltr.muted { color: var(--text); background: var(--ov-06); border-radius: 8px; padding-inline: 8px; }
+
+/* ستون زمان: چسبیده و کاملاً مات (بدون --brand-soft) */
+#au-filters + .card.flush tbody > tr > td:first-child {
+  position: sticky; inset-inline-start: 0; z-index: 2;
+  background: linear-gradient(to left, color-mix(in srgb, var(--tone) 11%, var(--row-bg)), var(--row-bg) 65%);
+  border-inline-end: 1px solid color-mix(in srgb, var(--brand) 10%, transparent);
+}
+
+/* ===== نشان نوع رویداد ===== */
+.au-act {
+  color: var(--text); font-weight: 700; padding-block: 5px;
+  box-shadow: 0 8px 16px -12px color-mix(in srgb, var(--hint) 70%, transparent);
+}
+.au-act::before { width: 9px; height: 9px; }
+.au-act--red::before    { box-shadow: 0 0 0 3px color-mix(in srgb, var(--red-solid) 22%, transparent); }
+.au-act--yellow::before { box-shadow: 0 0 0 3px color-mix(in srgb, var(--yellow) 22%, transparent); }
+.au-act--green::before  { box-shadow: 0 0 0 3px color-mix(in srgb, var(--green-deco) 22%, transparent); }
+.au-act--blue::before   { box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 22%, transparent); }
+
+/* ===== جزئیات: چیپ کلید/مقدار ===== */
+.au-chip {
+  border-color: color-mix(in srgb, var(--brand) 16%, var(--border)); background: var(--card);
+  transition: transform var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast);
+}
+.au-chip:hover { transform: translateY(-1px); box-shadow: 0 10px 18px -14px color-mix(in srgb, var(--brand) 60%, transparent); }
+.au-k { color: var(--text); background: color-mix(in srgb, var(--brand) 12%, var(--card)); font-weight: 600; }
+
+/* ===== جزئیات: diff قبل/بعد و متن خام ===== */
+#au-filters + .card.flush .diff {
+  gap: 8px; padding: 12px 14px; border-radius: var(--r-lg);
+  border: 1px solid color-mix(in srgb, var(--brand) 16%, var(--border));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--brand) 5%, var(--card)), var(--card));
+}
+#au-filters + .card.flush .diff-head {
+  align-self: flex-start; padding: 2px 12px; border-radius: 999px; color: var(--text); font-weight: 800;
+  background: color-mix(in srgb, var(--brand) 14%, var(--card));
+}
+#au-filters + .card.flush .diff-field { color: var(--text); font-weight: 700; }
+#au-filters + .card.flush .diff-before, #au-filters + .card.flush .diff-after { padding: 2px 10px; border-radius: 999px; font-weight: 700; }
+#au-filters + .card.flush .diff-before { color: var(--red-text); }
+#au-filters + .card.flush .diff-reason {
+  align-self: flex-start; padding: 3px 12px; border-radius: var(--r-md); color: var(--text); font-weight: 600;
+  background: color-mix(in srgb, var(--yellow) 14%, var(--card)); border-inline-start: 3px solid var(--yellow);
+}
+#au-filters + .card.flush .diff-note { color: var(--text); }
+#au-filters + .card.flush .diff-raw summary { color: var(--brand); font-weight: 700; border-radius: 8px; padding: 2px 6px; }
+#au-filters + .card.flush .diff-raw summary:hover { background: var(--ov-06); }
+#au-filters + .card.flush .diff-raw summary:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+#au-filters + .card.flush .details-box { border: 1px solid color-mix(in srgb, var(--brand) 14%, var(--border)); border-radius: var(--r-md); background: color-mix(in srgb, var(--brand) 5%, var(--card)); color: var(--text); }
+
+/* ===== حالت خالی (داخل td[colspan]) ===== */
+#au-filters + .card.flush tbody > tr:has(> td[colspan]) { --row-bg: var(--card); }
+#au-filters + .card.flush td[colspan] { padding: 0; border-bottom: 0; }
+#au-filters + .card.flush td[colspan] > .empty {
+  padding: 56px var(--space-4); color: var(--hint); font-weight: 700;
+  background: radial-gradient(18rem 10rem at 50% 0%, color-mix(in srgb, var(--brand) 9%, transparent), transparent 75%);
+}
+#au-filters + .card.flush td[colspan] > .empty svg {
+  width: 36px; height: 36px; padding: 18px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--brand) 22%, var(--card)), color-mix(in srgb, var(--brand) 8%, var(--card)));
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--brand) 8%, transparent), 0 14px 24px -14px color-mix(in srgb, var(--brand) 60%, transparent);
+}
+
+/* ===== لودینگ (اسکلت جدول؛ با ناوبری فعال «گزارش رویدادها») ===== */
+body:has(.nav-item.active[data-view="audit"]) #page[aria-busy="true"] .skeleton > [aria-hidden="true"] > .sk-box:only-child {
+  border-radius: var(--r-xl); padding: 14px 20px; gap: 0;
+  border: 1px solid color-mix(in srgb, var(--brand) 16%, var(--border));
+  background: linear-gradient(180deg, var(--card), color-mix(in srgb, var(--card) 96%, var(--brand)));
+  box-shadow: 0 24px 44px -30px color-mix(in srgb, var(--brand) 55%, transparent);
+}
+body:has(.nav-item.active[data-view="audit"]) #page[aria-busy="true"] .skeleton .sk-box:only-child .sk-row { padding: 14px 0; border-bottom: 1px solid color-mix(in srgb, var(--hint) 12%, transparent); }
+body:has(.nav-item.active[data-view="audit"]) #page[aria-busy="true"] .skeleton .sk-box:only-child .sk-row:last-child { border-bottom: 0; }
+
+/* ===== دسکتاپ/تبلت: نوار رنگی و آواتار گرادیانی (در موبایل ::before برای برچسب ستون است) ===== */
+@media (min-width: 601px) {
+  #au-filters + .card.flush tbody > tr > td:first-child::before {
+    content: ""; position: absolute; inset-block: 0; inset-inline-start: 0; width: 4px;
+    background: var(--tone); border-start-end-radius: 4px; border-end-end-radius: 4px;
+    transition: width var(--motion-fast) var(--ease-out);
+  }
+  #au-filters + .card.flush tbody > tr:hover > td:first-child::before, #au-filters + .card.flush tbody > tr:focus-within > td:first-child::before { width: 7px; }
+  #au-filters + .card.flush tbody > tr:has(> td[colspan]) > td::before { content: none; }
+  #au-filters + .card.flush tbody > tr:not(:has(> td[colspan])) > td:nth-child(2)::before {
+    content: ""; display: inline-block; vertical-align: middle; width: 22px; height: 22px; border-radius: 50%; margin-inline-end: 10px;
+    background: linear-gradient(135deg, var(--brand), var(--accent-2));
+    box-shadow: 0 6px 12px -6px color-mix(in srgb, var(--brand) 70%, transparent);
+  }
+}
+
+/* ===== واکنش‌گرا ===== */
+@media (max-width: 768px) {
+  #au-filters { padding: 14px; border-radius: var(--r-lg); }
+  #au-filters + .card.flush { border-radius: var(--r-lg); }
+  .view-header:has(+ #au-filters) .sub { border-radius: var(--r-md); }
+}
+@media (max-width: 600px) {
+  /* کارت‌های جدا: نوار رنگی کنار کارت؛ ستون زمان دیگر چسبان نیست */
+  #au-filters + .card.flush table[data-stack] tbody > tr {
+    border-radius: var(--r-lg); border-inline-start: 4px solid var(--tone); overflow: hidden;
+    box-shadow: 0 14px 24px -20px color-mix(in srgb, var(--brand) 50%, transparent);
+  }
+  #au-filters + .card.flush table[data-stack] tbody > tr > td:first-child { position: static; background: transparent; border-inline-end: 0; }
+  #au-filters + .card.flush table[data-stack] tbody > tr:has(> td[colspan]) { border-inline-start-width: 1px; }
+  #au-filters + .card.flush table[data-stack] tbody > tr:hover { --row-bg: var(--card); }
+}
+
+/* ===== کاهش حرکت ===== */
+@media (prefers-reduced-motion: reduce) {
+  #au-filters .field input, #au-filters .field select, #au-filters + .card.flush tbody > tr, #au-filters + .card.flush tbody > tr > td:first-child::before,
+  .au-chip, .view-header:has(+ #au-filters) .header-actions .btn { transition: none; }
+  .au-chip:hover, .view-header:has(+ #au-filters) .header-actions .btn:hover { transform: none; }
+}

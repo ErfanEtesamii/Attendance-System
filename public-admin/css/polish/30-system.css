@@ -1,0 +1,107 @@
+/* ---------- سیستم و پشتیبان‌گیری (view «system»: .grid-2 با کارت‌های .kv، #sys-revoke-all و لینک دانلود بک‌آپ) ---------- */
+/* فقط CSS. این صفحه id ندارد (جز #sys-revoke-all که فقط برای system.manage هست)، پس همه‌ی سلکتورها با ناوبری فعال «system» محدود شده‌اند. */
+/* رنگ‌ها فقط از tokens.css. */
+
+/* ===== عنوان و دکمه‌ها ===== */
+body:has(.nav-item.active[data-view="system"]) #page .view-header .sub {
+  display: block; max-width: 78ch; padding: 10px 16px; border-radius: var(--r-lg); color: var(--text); line-height: 1.9;
+}
+body:has(.nav-item.active[data-view="system"]) #page .view-header .header-actions { gap: 10px; flex-wrap: wrap; }
+body:has(.nav-item.active[data-view="system"]) #page .view-header .header-actions .btn {
+  border-radius: 999px; font-weight: 700; white-space: nowrap;
+  transition: transform var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast), background-color var(--motion-fast);
+}
+body:has(.nav-item.active[data-view="system"]) #page .view-header .header-actions .btn:hover { transform: translateY(-2px); }
+body:has(.nav-item.active[data-view="system"]) #page .view-header .header-actions .btn.primary {
+  box-shadow: 0 14px 26px -14px color-mix(in srgb, var(--accent) 80%, transparent);
+}
+body:has(.nav-item.active[data-view="system"]) #page .view-header .header-actions .btn.danger {
+  color: var(--red-text); background: color-mix(in srgb, var(--red-solid) 10%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--red-solid) 32%, transparent);
+  box-shadow: 0 12px 22px -16px color-mix(in srgb, var(--red-solid) 70%, transparent);
+}
+body:has(.nav-item.active[data-view="system"]) #page .view-header .header-actions .btn.danger:hover { background: color-mix(in srgb, var(--red-solid) 17%, var(--card)); }
+body:has(.nav-item.active[data-view="system"]) #page .view-header .header-actions .btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+body:has(.nav-item.active[data-view="system"]) #page .view-header .header-actions .btn:disabled,
+body:has(.nav-item.active[data-view="system"]) #page .view-header .header-actions .btn[aria-disabled="true"],
+body:has(.nav-item.active[data-view="system"]) #page .view-header .header-actions .btn[aria-busy="true"] {
+  opacity: .65; box-shadow: none; transform: none; cursor: not-allowed;
+}
+
+/* ===== کارت‌ها: هر کارت یک رنگ هویتی (سرور، اتصال‌ها، دیتابیس، Cron) ===== */
+body:has(.nav-item.active[data-view="system"]) #page .grid-2 > .card {
+  --tone: var(--brand);
+  position: relative; overflow: hidden; isolation: isolate; border-radius: var(--r-xl);
+  border: 1px solid color-mix(in srgb, var(--tone) 18%, var(--border));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--tone) 6%, var(--card)), var(--card) 60%);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--tone) 10%, transparent), 0 24px 44px -30px color-mix(in srgb, var(--tone) 55%, transparent);
+  transition: transform var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast);
+}
+body:has(.nav-item.active[data-view="system"]) #page .grid-2 > .card::after {
+  content: ""; position: absolute; z-index: -1; pointer-events: none; width: 190px; height: 190px; border-radius: 50%;
+  top: -95px; inset-inline-end: -65px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--tone) 18%, transparent), transparent 70%);
+}
+body:has(.nav-item.active[data-view="system"]) #page .grid-2 > .card:hover { transform: translateY(-2px); }
+body:has(.nav-item.active[data-view="system"]) #page .grid-2:not(.mt) > .card:nth-child(1) { --tone: var(--blue); }
+body:has(.nav-item.active[data-view="system"]) #page .grid-2:not(.mt) > .card:nth-child(2) { --tone: var(--green-deco); }
+body:has(.nav-item.active[data-view="system"]) #page .grid-2.mt > .card:nth-child(1) { --tone: var(--purple); }
+body:has(.nav-item.active[data-view="system"]) #page .grid-2.mt > .card:nth-child(2) { --tone: var(--accent); }
+body:has(.nav-item.active[data-view="system"]) #page .grid-2 > .card h3 { color: var(--text); font-weight: 800; }
+
+/* ===== ردیف‌های کلید/مقدار ===== */
+body:has(.nav-item.active[data-view="system"]) #page .kv-row {
+  align-items: center; padding: 11px 10px; margin-inline: -10px; border-radius: var(--r-md);
+  border-bottom: 1px solid color-mix(in srgb, var(--hint) 12%, transparent);
+  transition: background-color var(--motion-fast) var(--ease-out);
+}
+body:has(.nav-item.active[data-view="system"]) #page .kv-row:last-child { border-bottom: 0; }
+body:has(.nav-item.active[data-view="system"]) #page .kv-row:hover { background: color-mix(in srgb, var(--tone, var(--brand)) 8%, var(--card)); }
+body:has(.nav-item.active[data-view="system"]) #page .kv-row > span:first-child { color: var(--hint); font-weight: 600; }
+body:has(.nav-item.active[data-view="system"]) #page .kv-row > span:last-child { color: var(--text); font-weight: 800; font-variant-numeric: tabular-nums; }
+/* مقدارهای فنی (LTR): قرص تیره‌ی ملایم */
+body:has(.nav-item.active[data-view="system"]) #page .kv-row > span.ltr:last-child {
+  padding: 2px 10px; border-radius: 999px; background: color-mix(in srgb, var(--tone, var(--brand)) 10%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--tone, var(--brand)) 16%, transparent); unicode-bidi: isolate;
+}
+/* کلید Cron: چیپ تکنیکی (کلاس .ltr.muted روی span اول) */
+body:has(.nav-item.active[data-view="system"]) #page .kv-row > span.ltr.muted:first-child { color: var(--text); font-weight: 700; }
+/* شمارنده‌ی جدول‌های دیتابیس: عدد با چیپ رنگی */
+body:has(.nav-item.active[data-view="system"]) #page .grid-2.mt > .card:nth-child(1) .kv-row > span:last-child {
+  min-width: 2.4em; padding: 1px 10px; border-radius: 999px; text-align: center;
+  background: color-mix(in srgb, var(--purple) 12%, var(--card));
+}
+body:has(.nav-item.active[data-view="system"]) #page .kv-row .badge { font-weight: 800; }
+/* لیست خالی (مثلاً Cron بدون آیتم) */
+body:has(.nav-item.active[data-view="system"]) #page .grid-2 .kv:not(:has(.kv-row))::after {
+  content: "موردی برای نمایش نیست."; padding: 22px 0; text-align: center; color: var(--hint); font-weight: 700;
+}
+
+/* ===== لودینگ (skeleton «list»؛ با ناوبری فعال «system») ===== */
+body:has(.nav-item.active[data-view="system"]) #page[aria-busy="true"] .skeleton .sk-box {
+  border-radius: var(--r-xl); padding: 18px 20px;
+  border: 1px solid color-mix(in srgb, var(--brand) 16%, var(--border));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--brand) 6%, var(--card)), var(--card) 60%);
+  box-shadow: 0 24px 44px -30px color-mix(in srgb, var(--brand) 55%, transparent);
+}
+
+/* ===== واکنش‌گرا ===== */
+@media (max-width: 768px) {
+  body:has(.nav-item.active[data-view="system"]) #page .grid-2 > .card { border-radius: var(--r-lg); }
+  body:has(.nav-item.active[data-view="system"]) #page .view-header .sub { border-radius: var(--r-md); }
+}
+@media (max-width: 600px) {
+  body:has(.nav-item.active[data-view="system"]) #page .view-header .header-actions { width: 100%; }
+  body:has(.nav-item.active[data-view="system"]) #page .view-header .header-actions .btn { flex: 1 1 100%; justify-content: center; white-space: normal; }
+  body:has(.nav-item.active[data-view="system"]) #page .kv-row { flex-wrap: wrap; row-gap: 4px; }
+  body:has(.nav-item.active[data-view="system"]) #page .kv-row > span.ltr:last-child { max-width: 100%; border-radius: var(--r-md); }
+}
+
+/* ===== کاهش حرکت ===== */
+@media (prefers-reduced-motion: reduce) {
+  body:has(.nav-item.active[data-view="system"]) #page .grid-2 > .card,
+  body:has(.nav-item.active[data-view="system"]) #page .kv-row,
+  body:has(.nav-item.active[data-view="system"]) #page .view-header .header-actions .btn { transition: none; }
+  body:has(.nav-item.active[data-view="system"]) #page .grid-2 > .card:hover,
+  body:has(.nav-item.active[data-view="system"]) #page .view-header .header-actions .btn:hover { transform: none; }
+}

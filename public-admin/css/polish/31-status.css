@@ -1,0 +1,192 @@
+/* ---------- وضعیت سیستم (view «status»: #st-refresh، کارت‌های سلامت/هشدار، جدول Jobها و خطاها، #history-purge-zone و #reset-zone) ---------- */
+/* فقط CSS. سلکتورها با #page:has(#st-refresh) به همین صفحه محدودند (دکمه‌ی تازه‌سازی همیشه رندر می‌شود). رنگ‌ها فقط از tokens.css. */
+
+/* ===== عنوان ===== */
+#page:has(#st-refresh) .view-header .sub { display: block; max-width: 78ch; padding: 10px 16px; border-radius: var(--r-lg); color: var(--text); line-height: 1.9; }
+#page:has(#st-refresh) .view-header .header-actions { gap: 10px; flex-wrap: wrap; align-items: center; }
+#page:has(#st-refresh) .view-header .header-actions > .badge { padding: 7px 16px; font-size: var(--fs-sm); font-weight: 800; box-shadow: 0 10px 20px -14px currentColor; }
+#page:has(#st-refresh) #st-refresh { border-radius: 999px; font-weight: 700; transition: transform var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast); }
+#page:has(#st-refresh) #st-refresh:hover { transform: translateY(-2px); }
+#page:has(#st-refresh) #st-refresh:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+#page:has(#st-refresh) #st-refresh:disabled, #page:has(#st-refresh) #st-refresh[aria-busy="true"] { opacity: .65; box-shadow: none; transform: none; cursor: not-allowed; }
+
+/* ===== کارت‌های سلامت و هشدار ===== */
+#page:has(#st-refresh) .grid-2 > .card {
+  --tone: var(--brand);
+  position: relative; overflow: hidden; isolation: isolate; border-radius: var(--r-xl);
+  border: 1px solid color-mix(in srgb, var(--tone) 18%, var(--border));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--tone) 6%, var(--card)), var(--card) 60%);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--tone) 10%, transparent), 0 24px 44px -30px color-mix(in srgb, var(--tone) 55%, transparent);
+  transition: transform var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast);
+}
+#page:has(#st-refresh) .grid-2 > .card::after {
+  content: ""; position: absolute; z-index: -1; pointer-events: none; width: 190px; height: 190px; border-radius: 50%;
+  top: -95px; inset-inline-end: -65px; background: radial-gradient(circle, color-mix(in srgb, var(--tone) 18%, transparent), transparent 70%);
+}
+#page:has(#st-refresh) .grid-2 > .card:hover { transform: translateY(-2px); }
+#page:has(#st-refresh) .grid-2 > .card:nth-child(1) { --tone: var(--green-deco); }
+#page:has(#st-refresh) .grid-2 > .card:nth-child(2) { --tone: var(--orange); }
+#page:has(#st-refresh) .grid-2 > .card:nth-child(2):not(:has(.kv-row)) { --tone: var(--green-deco); }
+#page:has(#st-refresh) .grid-2 > .card:has(.badge.red) { --tone: var(--red-solid); }
+#page:has(#st-refresh) .grid-2 > .card h3 { color: var(--text); font-weight: 800; }
+
+#page:has(#st-refresh) .kv-row {
+  align-items: center; padding: 11px 10px; margin-inline: -10px; border-radius: var(--r-md);
+  border-bottom: 1px solid color-mix(in srgb, var(--hint) 12%, transparent); transition: background-color var(--motion-fast) var(--ease-out);
+}
+#page:has(#st-refresh) .kv-row:last-child { border-bottom: 0; }
+#page:has(#st-refresh) .kv-row:hover { background: color-mix(in srgb, var(--tone, var(--brand)) 8%, var(--card)); }
+#page:has(#st-refresh) .kv-row > span:first-child { color: var(--hint); font-weight: 600; }
+#page:has(#st-refresh) .kv-row > span:last-child { color: var(--text); font-weight: 800; display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; min-width: 0; }
+#page:has(#st-refresh) .kv-row .badge { font-weight: 800; }
+#page:has(#st-refresh) .kv-row .ltr { unicode-bidi: isolate; }
+#page:has(#st-refresh) .kv-row .ltr.muted { color: var(--text); background: var(--ov-06); border-radius: 8px; padding-inline: 8px; font-weight: 600; }
+/* کلید هشدار: چیپ فنی */
+#page:has(#st-refresh) .grid-2 > .card:nth-child(2) .kv-row > span.ltr:first-child {
+  color: var(--text); font-weight: 700; padding: 2px 10px; border-radius: 999px;
+  background: color-mix(in srgb, var(--tone) 12%, var(--card)); border: 1px solid color-mix(in srgb, var(--tone) 22%, transparent);
+}
+#page:has(#st-refresh) .health-empty {
+  padding: 14px 16px; border-radius: var(--r-lg); text-align: center; color: var(--text); font-weight: 700;
+  background: color-mix(in srgb, var(--green-deco) 12%, var(--card)); border: 1px dashed color-mix(in srgb, var(--green-deco) 40%, transparent);
+}
+#page:has(#st-refresh) .u-section-note {
+  padding: 10px 14px; border-radius: var(--r-md); color: var(--text);
+  background: color-mix(in srgb, var(--tone, var(--brand)) 8%, var(--card)); border-inline-start: 3px solid var(--tone, var(--brand));
+}
+
+/* ===== کارت جدول‌ها: Jobها و خطاها ===== */
+#page:has(#st-refresh) .card.flush.mt {
+  border-radius: var(--r-xl); border-color: color-mix(in srgb, var(--brand) 16%, var(--border));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 10%, transparent), 0 24px 44px -30px color-mix(in srgb, var(--brand) 55%, transparent);
+}
+#page:has(#st-refresh) .card.flush.mt .u-panel-head { padding: 18px 20px 6px; }
+#page:has(#st-refresh) .card.flush.mt .table-wrap { container-type: inline-size; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+#page:has(#st-refresh) .card.flush.mt .table-wrap:focus-visible { outline: 2px solid var(--brand); outline-offset: -3px; }
+#page:has(#st-refresh) .card.flush.mt thead th {
+  z-index: 3; color: var(--text); font-weight: 800;
+  background: color-mix(in srgb, var(--brand) 12%, var(--card)); border-bottom: 1px solid color-mix(in srgb, var(--brand) 20%, transparent);
+}
+#page:has(#st-refresh) .card.flush.mt thead th:first-child { inset-inline-start: 0; z-index: 4; background: color-mix(in srgb, var(--brand) 12%, var(--card)); }
+/* نتیجه‌ی Job ⇒ رنگ نوار */
+#page:has(#st-refresh) .card.flush.mt tbody > tr { --row-bg: var(--card); --tone: var(--hint); background: var(--row-bg); transition: background-color var(--motion-fast) var(--ease-out); }
+#page:has(#st-refresh) .card.flush.mt tbody > tr:nth-child(even) { --row-bg: color-mix(in srgb, var(--brand) 4%, var(--card)); }
+#page:has(#st-refresh) .card.flush.mt tbody > tr:has(.badge.green)  { --tone: var(--green-deco); }
+#page:has(#st-refresh) .card.flush.mt tbody > tr:has(.badge.red)    { --tone: var(--red-solid); }
+#page:has(#st-refresh) .card.flush.mt tbody > tr:has(.badge.blue)   { --tone: var(--blue); }
+#page:has(#st-refresh) .card.flush.mt tbody > tr:has(.badge.orange) { --tone: var(--orange); }
+#page:has(#st-refresh) .card.flush.mt + .card.flush.mt tbody > tr { --tone: var(--red-solid); }
+#page:has(#st-refresh) .card.flush.mt tbody > tr:hover, #page:has(#st-refresh) .card.flush.mt tbody > tr:focus-within { --row-bg: color-mix(in srgb, var(--tone) 9%, var(--card)); }
+#page:has(#st-refresh) .card.flush.mt tbody td { padding-block: 15px; border-bottom: 1px solid color-mix(in srgb, var(--hint) 12%, transparent); vertical-align: middle; }
+#page:has(#st-refresh) .card.flush.mt tbody tr:last-child td { border-bottom: 0; }
+#page:has(#st-refresh) .card.flush.mt tbody > tr > td:first-child {
+  position: sticky; inset-inline-start: 0; z-index: 2; color: var(--text); font-weight: 800; unicode-bidi: isolate;
+  background: linear-gradient(to left, color-mix(in srgb, var(--tone) 11%, var(--row-bg)), var(--row-bg) 65%);
+  border-inline-end: 1px solid color-mix(in srgb, var(--brand) 10%, transparent);
+}
+#page:has(#st-refresh) .card.flush.mt td .muted { color: var(--hint); font-weight: 600; }
+#page:has(#st-refresh) .card.flush.mt td.ltr.muted { color: var(--text); font-weight: 600; }
+#page:has(#st-refresh) .card.flush.mt td .badge { font-weight: 800; }
+/* متن خطا: جعبه‌ی خوانا */
+#page:has(#st-refresh) .card.flush.mt td.u-break-word { color: var(--text); min-width: 260px; }
+/* حالت خالی (خطایی ثبت نشده) */
+#page:has(#st-refresh) .card.flush.mt tbody > tr:has(> td[colspan]) { --tone: var(--green-deco); --row-bg: var(--card); }
+#page:has(#st-refresh) .card.flush.mt td[colspan].u-center-pad {
+  padding: 40px var(--space-4); color: var(--text); font-weight: 700;
+  background: radial-gradient(18rem 8rem at 50% 0%, color-mix(in srgb, var(--green-deco) 12%, transparent), transparent 75%);
+}
+
+/* ===== ناحیه‌های خطر: پاک‌سازی تاریخچه و ریست ===== */
+#page:has(#st-refresh) :is(#history-purge-zone, #reset-zone) {
+  --tone: var(--red-solid);
+  position: relative; overflow: hidden; isolation: isolate; border-radius: var(--r-xl);
+  border: 1px solid color-mix(in srgb, var(--red-solid) 38%, var(--border));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--red-solid) 7%, var(--card)), var(--card) 60%);
+  box-shadow: 0 24px 44px -32px color-mix(in srgb, var(--red-solid) 60%, transparent);
+}
+#page:has(#st-refresh) :is(#history-purge-zone, #reset-zone)::after {
+  content: ""; position: absolute; z-index: -1; pointer-events: none; width: 200px; height: 200px; border-radius: 50%;
+  top: -100px; inset-inline-end: -70px; background: radial-gradient(circle, color-mix(in srgb, var(--red-solid) 16%, transparent), transparent 70%);
+}
+#page:has(#st-refresh) :is(#history-purge-zone, #reset-zone) h3 { color: var(--red-text); font-weight: 800; }
+#page:has(#st-refresh) :is(#history-purge-zone, #reset-zone) h4 { color: var(--text); font-weight: 800; margin-block: var(--space-4) var(--space-2); }
+#page:has(#st-refresh) :is(#history-purge-zone, #reset-zone) > p.muted { color: var(--text); line-height: 1.9; }
+#page:has(#st-refresh) :is(#history-purge-zone, #reset-zone) .rz-groups {
+  border: 1px solid color-mix(in srgb, var(--red-solid) 22%, var(--border)); border-radius: var(--r-lg); padding: 12px 16px;
+  background: color-mix(in srgb, var(--red-solid) 4%, var(--card)); display: flex; flex-wrap: wrap; gap: 8px;
+}
+#page:has(#st-refresh) #reset-zone .rz-groups legend { color: var(--text); font-weight: 800; padding-inline: 8px; }
+#page:has(#st-refresh) #reset-zone .rz-groups .check {
+  padding: 6px 14px; min-height: 40px; border-radius: 999px; cursor: pointer; color: var(--text);
+  background: color-mix(in srgb, var(--red-solid) 7%, var(--card)); border: 1px solid color-mix(in srgb, var(--red-solid) 18%, transparent);
+  transition: border-color var(--motion-fast), background-color var(--motion-fast);
+}
+#page:has(#st-refresh) #reset-zone .rz-groups .check:hover { border-color: color-mix(in srgb, var(--red-solid) 45%, transparent); }
+#page:has(#st-refresh) #reset-zone .rz-groups .check:has(input:checked) { border-color: var(--red-solid); background: color-mix(in srgb, var(--red-solid) 14%, var(--card)); }
+#page:has(#st-refresh) #reset-zone .rz-groups .check:has(input:focus-visible) { outline: 2px solid var(--brand); outline-offset: 2px; }
+#page:has(#st-refresh) #reset-zone .rz-groups .check input { width: 18px; height: 18px; accent-color: var(--red-solid); cursor: pointer; }
+#page:has(#st-refresh) :is(#history-purge-zone, #reset-zone) .field > span { color: var(--text); font-size: var(--fs-xs); font-weight: 700; }
+#page:has(#st-refresh) :is(#history-purge-zone, #reset-zone) .field :where(input, select) {
+  border: 1px solid color-mix(in srgb, var(--red-solid) 18%, transparent); transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
+}
+#page:has(#st-refresh) :is(#history-purge-zone, #reset-zone) .field :where(input, select):hover { border-color: color-mix(in srgb, var(--red-solid) 40%, transparent); }
+#page:has(#st-refresh) :is(#history-purge-zone, #reset-zone) .field :where(input, select):focus-visible {
+  outline: none; border-color: var(--red-solid); box-shadow: 0 0 0 4px color-mix(in srgb, var(--red-solid) 22%, transparent);
+}
+#page:has(#st-refresh) :is(#history-purge-zone, #reset-zone) .field :where(input, select):disabled { opacity: .55; cursor: not-allowed; }
+#page:has(#st-refresh) :is(#history-purge-zone, #reset-zone) .rz-actions .btn { border-radius: 999px; font-weight: 700; transition: transform var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast); }
+#page:has(#st-refresh) :is(#history-purge-zone, #reset-zone) .rz-actions .btn:hover:not(:disabled) { transform: translateY(-2px); }
+#page:has(#st-refresh) :is(#history-purge-zone, #reset-zone) .rz-actions .btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+#page:has(#st-refresh) :is(#history-purge-zone, #reset-zone) .rz-actions .btn.danger { color: var(--red-text); background: color-mix(in srgb, var(--red-solid) 12%, var(--card)); border: 1px solid color-mix(in srgb, var(--red-solid) 35%, transparent); }
+#page:has(#st-refresh) :is(#history-purge-zone, #reset-zone) .rz-actions .btn:disabled,
+#page:has(#st-refresh) :is(#history-purge-zone, #reset-zone) .rz-actions .btn[aria-busy="true"] { opacity: .55; box-shadow: none; transform: none; cursor: not-allowed; }
+#page:has(#st-refresh) :is(#history-purge-zone, #reset-zone) .table-wrap { border-radius: var(--r-lg); border: 1px solid color-mix(in srgb, var(--red-solid) 18%, var(--border)); }
+#page:has(#st-refresh) :is(#history-purge-zone, #reset-zone) tfoot th { color: var(--text); font-weight: 800; background: color-mix(in srgb, var(--red-solid) 8%, var(--card)); }
+#page:has(#st-refresh) :is(#history-purge-zone, #reset-zone) .notice { border-radius: var(--r-md); border-inline-start: 4px solid var(--tone); color: var(--text); font-weight: 600; }
+#page:has(#st-refresh) :is(#history-purge-zone, #reset-zone) .notice.danger { background: color-mix(in srgb, var(--red-solid) 10%, var(--card)); }
+#page:has(#st-refresh) :is(#history-purge-zone, #reset-zone) .notice.ok { --tone: var(--green-deco); background: color-mix(in srgb, var(--green-deco) 12%, var(--card)); }
+
+/* ===== لودینگ (skeleton «table»؛ با ناوبری فعال «status») ===== */
+body:has(.nav-item.active[data-view="status"]) #page[aria-busy="true"] .skeleton > [aria-hidden="true"] > .sk-box:only-child {
+  border-radius: var(--r-xl); padding: 14px 20px; gap: 0;
+  border: 1px solid color-mix(in srgb, var(--brand) 16%, var(--border));
+  background: linear-gradient(180deg, var(--card), color-mix(in srgb, var(--card) 96%, var(--brand)));
+  box-shadow: 0 24px 44px -30px color-mix(in srgb, var(--brand) 55%, transparent);
+}
+body:has(.nav-item.active[data-view="status"]) #page[aria-busy="true"] .skeleton .sk-box:only-child .sk-row { padding: 14px 0; border-bottom: 1px solid color-mix(in srgb, var(--hint) 12%, transparent); }
+body:has(.nav-item.active[data-view="status"]) #page[aria-busy="true"] .skeleton .sk-box:only-child .sk-row:last-child { border-bottom: 0; }
+
+/* ===== دسکتاپ/تبلت: نوار رنگی ردیف (در موبایل ::before برای برچسب ستون است) ===== */
+@media (min-width: 601px) {
+  #page:has(#st-refresh) .card.flush.mt tbody > tr > td:first-child::before {
+    content: ""; position: absolute; inset-block: 0; inset-inline-start: 0; width: 4px;
+    background: var(--tone); border-start-end-radius: 4px; border-end-end-radius: 4px; transition: width var(--motion-fast) var(--ease-out);
+  }
+  #page:has(#st-refresh) .card.flush.mt tbody > tr:hover > td:first-child::before, #page:has(#st-refresh) .card.flush.mt tbody > tr:focus-within > td:first-child::before { width: 7px; }
+  #page:has(#st-refresh) .card.flush.mt tbody > tr:has(> td[colspan]) > td::before { content: none; }
+}
+
+/* ===== واکنش‌گرا ===== */
+@media (max-width: 768px) {
+  #page:has(#st-refresh) .grid-2 > .card, #page:has(#st-refresh) .card.flush.mt, #page:has(#st-refresh) :is(#history-purge-zone, #reset-zone) { border-radius: var(--r-lg); }
+  #page:has(#st-refresh) .view-header .sub { border-radius: var(--r-md); }
+}
+@media (max-width: 600px) {
+  #page:has(#st-refresh) .view-header .header-actions > .badge { flex: 1 1 100%; justify-content: center; }
+  #page:has(#st-refresh) #st-refresh { flex: 1 1 100%; justify-content: center; }
+  #page:has(#st-refresh) .kv-row { flex-wrap: wrap; row-gap: 4px; }
+  #page:has(#st-refresh) .kv-row > span:last-child { max-width: 100%; justify-content: flex-start; }
+  #page:has(#st-refresh) .card.flush.mt .u-panel-head { padding: 16px 16px 4px; }
+  #page:has(#st-refresh) .card.flush.mt table[data-stack] tbody > tr { border-inline-start: 4px solid var(--tone); }
+  #page:has(#st-refresh) .card.flush.mt table[data-stack] tbody > tr:has(> td[colspan]) { border-inline-start-width: 1px; }
+  #page:has(#st-refresh) .card.flush.mt table[data-stack] tbody > tr > td:first-child { position: static; background: transparent; border-inline-end: 0; }
+  #page:has(#st-refresh) .card.flush.mt td.u-break-word { min-width: 0; }
+  #page:has(#st-refresh) :is(#history-purge-zone, #reset-zone) .rz-actions .btn { width: 100%; justify-content: center; white-space: normal; }
+}
+
+/* ===== کاهش حرکت ===== */
+@media (prefers-reduced-motion: reduce) {
+  #page:has(#st-refresh) #st-refresh, #page:has(#st-refresh) .grid-2 > .card, #page:has(#st-refresh) .kv-row, #page:has(#st-refresh) .card.flush.mt tbody > tr, #page:has(#st-refresh) .card.flush.mt tbody > tr > td:first-child::before,
+  #page:has(#st-refresh) #reset-zone .rz-groups .check, #page:has(#st-refresh) :is(#history-purge-zone, #reset-zone) .field :where(input, select), #page:has(#st-refresh) :is(#history-purge-zone, #reset-zone) .rz-actions .btn { transition: none; }
+  #page:has(#st-refresh) #st-refresh:hover, #page:has(#st-refresh) .grid-2 > .card:hover, #page:has(#st-refresh) :is(#history-purge-zone, #reset-zone) .rz-actions .btn:hover:not(:disabled) { transform: none; }
+}
