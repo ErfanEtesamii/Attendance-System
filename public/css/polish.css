@@ -218,3 +218,22 @@ html[data-contrast="high"] .earnings-amount { background: none; -webkit-text-fil
 #dispute-form textarea { min-height: 96px; resize: vertical; line-height: 1.8; background: var(--field, var(--bg-2)); }
 #dispute-form textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
 #dispute-form .btn { width: 100%; }
+
+/* اعتراض‌ها در مینی‌اپ: فرم با نوار رنگی و دکمه‌ی اصلی، کارت‌های فهرست با رنگ وضعیت */
+#dispute-form { padding-top: 20px; background-image: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 30%, transparent)); background-size: 100% 4px; background-repeat: no-repeat; background-position: top; background-color: var(--card-bg); }
+#dispute-form label { font-weight: 700; color: var(--text); font-size: var(--fs-sm); }
+#dispute-form textarea { font-weight: 400; font-size: var(--fs-sm); }
+#dispute-form .btn { background: linear-gradient(135deg, #322c79, #4b3fc0); color: #fff; font-weight: 800; border: 0; box-shadow: 0 10px 22px rgba(50, 44, 121, .28); }
+#dispute-form .btn:active { transform: scale(.98); }
+#dispute-form .form-msg:empty { display: none; }
+#dispute-list { display: flex; flex-direction: column; gap: 10px; }
+#dispute-list .dispute-item { --dsp-c: var(--border); position: relative; margin: 0; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--dsp-c) 30%, var(--border)); border-inline-start: 4px solid var(--dsp-c); border-radius: var(--radius); background: var(--card-bg); box-shadow: var(--shadow-1); transition: transform var(--motion-fast, .16s), box-shadow var(--motion-fast, .16s); }
+#dispute-list .dispute-item:active { transform: scale(.985); }
+#dispute-list .dispute-item:has(.badge.dsp-open) { --dsp-c: var(--yellow); }
+#dispute-list .dispute-item:has(.badge.dsp-answered) { --dsp-c: var(--green); }
+#dispute-list .dispute-item:has(.badge.dsp-resolved) { --dsp-c: var(--purple-text); }
+#dispute-list .dispute-item:has(.badge.dsp-closed) { --dsp-c: var(--hint); }
+#dispute-list .dsp-title { font-size: var(--fs-sm); font-weight: 800; }
+#dispute-list .dsp-preview { margin-top: 10px; padding: 8px 12px; border-radius: 12px; background: color-mix(in srgb, var(--dsp-c) 8%, transparent); color: var(--text); font-size: var(--fs-sm); }
+#dispute-list .dispute-item .li-bottom { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border); font-size: var(--fs-xs); font-weight: 600; }
+#dispute-list .dispute-item .li-bottom > span:first-child::before { content: "💬 "; filter: grayscale(.3); }
