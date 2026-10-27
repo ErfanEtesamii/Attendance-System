@@ -682,17 +682,22 @@ body {
 :root[data-theme="light"] #dispute-list .dsp-title { color: #5a1e12; }
 :root[data-theme="light"] #dispute-list .dispute-item .li-bottom { border-top-color: rgba(176, 128, 60, .35); color: var(--pf-ink-soft); }
 
-/* گزارش هفتگی/ماهانه (تم روشن): هیروی بنفش-آبی تیره ← آبی آسمانی ملایم، هماهنگ با کارت وضعیت امروز */
+/* گزارش هفتگی/ماهانه (تم روشن): هیروی روشن هماهنگ با کارت وضعیت امروز و پالت پنل (نیلی برند + مینای پریوینکل + فیروزه‌ای)؛
+   به‌جای بلوک تیرهٔ پررنگ، همان زمینهٔ #f7faff و نوارهای مینای دیوارهٔ چپ/راست، با متن نیلی. */
 :root[data-theme="light"] .rp-hero {
-  background:
-    radial-gradient(150px 110px at 90% 0, rgba(255, 255, 255, .30), transparent 70%),
-    radial-gradient(170px 130px at 5% 100%, rgba(120, 205, 250, .45), transparent 70%),
-    linear-gradient(160deg, #1d74bd 0%, #2f93d8 58%, #4aa9e6 100%);
-  box-shadow: 0 14px 30px rgba(35, 110, 180, .26);
+  color: var(--brand);
+  background-color: #f7faff;
+  background-image: url('/images/mina-wall-left.webp'), url('/images/mina-wall-right.webp');
+  background-size: auto 100%, auto 100%;
+  background-repeat: no-repeat;
+  background-position: left center, right center;
+  border: 1px solid rgba(41, 112, 190, .16);
+  box-shadow: 0 16px 34px rgba(35, 76, 133, .10);
 }
-:root[data-theme="light"] .rp-hero-label { opacity: .95; }
-:root[data-theme="light"] .rp-hero-sub span { background: rgba(255, 255, 255, .22); }
-:root[data-theme="light"] .rp-hero-sub .rp-good { background: rgba(255, 255, 255, .34); }
+:root[data-theme="light"] .rp-hero-label { color: var(--hint); opacity: 1; }
+:root[data-theme="light"] .rp-hero-value { color: var(--brand); }
+:root[data-theme="light"] .rp-hero-sub span { background: var(--brand-soft); color: var(--brand); }
+:root[data-theme="light"] .rp-hero-sub .rp-good { background: var(--green-soft); color: var(--green); }
 :root[data-theme="light"] .tabs-inline .tab-btn.active {
   background: linear-gradient(135deg, #1d74bd, #3a9be0);
   box-shadow: 0 8px 18px rgba(35, 110, 180, .28);
