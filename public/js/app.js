@@ -1345,7 +1345,8 @@
       loadReport(btn.dataset.period);
     });
   });
-
+
+  const nfa = (v) => Number(v || 0).toLocaleString("fa-IR");
   async function loadReport(period) {
     const card = $('#report-card');
     renderLoading(card, 'table');
@@ -1361,10 +1362,11 @@
       const barWidth = Math.max(3, (296 - barGap * Math.max(0, recent.length - 1)) / Math.max(recent.length, 1));
       const bars = recent.map((x, i) => {
         const minutes = Math.max(0, Number(x.summary?.effectiveMinutes) || 0);
-        const height = Math.round((minutes / maxMinutes) * 96);
+        const height = Math.round((minutes / maxMinutes) * 92);
         const xPos = 12 + i * (barWidth + barGap);
-        return `<rect class="report-bar status-${x.status || 'normal'}" x="${xPos}" y="${112 - height}" width="${barWidth}" height="${height}" rx="3"><title>${fmtDate(x.record_date)}: ${fmtDuration(minutes)}</title></rect>`;
-      }).join('');
+        const label = recent.length <= 16 ? `<text class="report-bar-label" x="${xPos + barWidth / 2}" y="132" text-anchor="middle">${String(fmtDate(x.record_date)).split(" ")[0]}</text>` : "";
+        return `<rect class="report-bar status-${x.status || "normal"}" x="${xPos}" y="${112 - height}" width="${barWidth}" height="${Math.max(height, 3)}" rx="4"><title>${fmtDate(x.record_date)}: ${fmtDuration(minutes)}</title></rect>${label}`;
+      }).join("");
       const counts = { normal: 0, late: 0, incomplete: 0, leave: 0 };
       records.forEach((x) => { if (Object.prototype.hasOwnProperty.call(counts, x.status)) counts[x.status] += 1; });
       const total = Math.max(1, Object.values(counts).reduce((sum, n) => sum + n, 0));
@@ -1377,14 +1379,29 @@
       }).join('');
       card.removeAttribute('aria-busy');
       card.innerHTML = `
-        <section class="report-chart"><h3>وضعیت من</h3><div class="report-legend"><span>ساعت مفید ${fmtDuration(r.totalEffective)}</span><span>روز بدون تأخیر ${(counts.normal || 0).toLocaleString('fa-IR')}</span><span>تسک تکمیل‌شده —</span></div>${counts.normal ? `<p class="plan-meta">این هفته ${counts.normal.toLocaleString('fa-IR')} روز سر ساعت رسیدی.</p>` : ''}</section>
-        <section class="report-chart" aria-labelledby="hours-chart-title"><h3 id="hours-chart-title">ساعت مفید روزانه</h3><svg class="report-bars" viewBox="0 0 320 124" role="img" aria-label="نمودار ساعت مفید روزانه">${bars}</svg></section>
-        <section class="report-chart report-donut-wrap" aria-labelledby="status-chart-title"><div><h3 id="status-chart-title">ترکیب وضعیت روزها</h3><div class="report-legend"><span>عادی ${counts.normal.toLocaleString('fa-IR')}</span><span>تأخیر ${counts.late.toLocaleString('fa-IR')}</span><span>ناقص ${counts.incomplete.toLocaleString('fa-IR')}</span><span>مرخصی ${counts.leave.toLocaleString('fa-IR')}</span></div></div><svg class="report-donut" viewBox="0 0 120 120" role="img" aria-label="نمودار ترکیب وضعیت روزها">${rings}<circle class="report-donut-hole" cx="60" cy="60" r="31"/></svg></section>
-        <div class="row"><span class="row-label">مجموع ساعت مفید</span><span class="row-value">${fmtDuration(r.totalEffective)}</span></div>
-        <div class="row"><span class="row-label">تعداد روزهای کاری</span><span class="row-value">${r.dayCount}</span></div>
-        <div class="row"><span class="row-label">تعداد تأخیر</span><span class="row-value">${r.lateCount}</span></div>
-        <div class="row"><span class="row-label">تعداد خروج زودهنگام</span><span class="row-value">${r.earlyLeaveCount}</span></div>
-        <div class="row"><span class="row-label">رکوردهای ناقص</span><span class="row-value">${r.incompleteCount}</span></div>`;
+        <section class="rp-hero">
+          <div class="rp-hero-label">ساعت مفید ${period === "month" ? "این ماه" : "این هفته"}</div>
+          <div class="rp-hero-value">${fmtDuration(r.totalEffective)}</div>
+          <div class="rp-hero-sub"><span>${nfa(r.dayCount)} روز کاری</span>${counts.normal ? `<span class="rp-good">${nfa(counts.normal)} روز سر ساعت</span>` : ""}</div>
+        </section>
+        <section class="rp-kpis" aria-label="خلاصه‌ی شاخص‌ها">
+          <div class="rp-kpi is-good"><b>${nfa(counts.normal)}</b><span>روز بدون تأخیر</span></div>
+          <div class="rp-kpi ${Number(r.lateCount) > 0 ? "is-warn" : "is-zero"}"><b>${nfa(r.lateCount)}</b><span>تأخیر</span></div>
+          <div class="rp-kpi ${Number(r.earlyLeaveCount) > 0 ? "is-warn" : "is-zero"}"><b>${nfa(r.earlyLeaveCount)}</b><span>خروج زودهنگام</span></div>
+          <div class="rp-kpi ${Number(r.incompleteCount) > 0 ? "is-bad" : "is-zero"}"><b>${nfa(r.incompleteCount)}</b><span>رکورد ناقص</span></div>
+        </section>
+        <section class="report-chart rp-section" aria-labelledby="hours-chart-title"><h3 id="hours-chart-title">ساعت مفید روزانه</h3><svg class="report-bars" viewBox="0 0 320 140" role="img" aria-label="نمودار ساعت مفید روزانه">${bars}</svg></section>
+        <section class="report-chart rp-section report-donut-wrap" aria-labelledby="status-chart-title">
+          <div class="rp-donut-info"><h3 id="status-chart-title">ترکیب وضعیت روزها</h3>
+            <div class="rp-legend">
+              <span class="rp-leg status-normal"><i></i>عادی <b>${nfa(counts.normal)}</b></span>
+              <span class="rp-leg status-late"><i></i>تأخیر <b>${nfa(counts.late)}</b></span>
+              <span class="rp-leg status-incomplete"><i></i>ناقص <b>${nfa(counts.incomplete)}</b></span>
+              <span class="rp-leg status-leave"><i></i>مرخصی <b>${nfa(counts.leave)}</b></span>
+            </div>
+          </div>
+          <div class="rp-donut-box"><svg class="report-donut" viewBox="0 0 120 120" role="img" aria-label="نمودار ترکیب وضعیت روزها">${rings}<circle class="report-donut-hole" cx="60" cy="60" r="34"/></svg><div class="rp-donut-center"><b>${nfa(records.length)}</b><span>روز</span></div></div>
+        </section>`;
     } catch (err) {
       renderError(card, err, () => loadReport(period), 'retry-report');
     }

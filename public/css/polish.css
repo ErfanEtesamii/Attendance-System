@@ -270,3 +270,45 @@ html[data-contrast="high"] .earnings-amount { background: none; -webkit-text-fil
 #leave-list .list-item:has(.badge.rejected) { --lv-c: var(--red); }
 #leave-list .li-top { font-size: var(--fs-sm); font-weight: 800; }
 #leave-list .li-bottom { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border); font-size: var(--fs-xs); font-weight: 600; }
+
+/* گزارش در مینی‌اپ: کارت هیرو برای عدد اصلی، کاشی‌های شاخص رنگی، نمودارهای خواناتر */
+.tabs-inline { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 5px; border: 1px solid var(--border); border-radius: 16px; background: var(--card-bg); box-shadow: var(--shadow-1); }
+.tabs-inline .tab-btn { border: 0; border-bottom: 0; border-radius: 12px; min-height: 42px; background: transparent; color: var(--hint); font-weight: 700; }
+.tabs-inline .tab-btn.active { background: linear-gradient(135deg, #322c79, #4b3fc0); color: #fff; font-weight: 800; box-shadow: 0 8px 18px rgba(50, 44, 121, .28); }
+#report-card { background: transparent; border: 0; box-shadow: none; padding: 0; }
+.rp-hero { position: relative; overflow: hidden; margin-bottom: 12px; padding: 20px 20px 18px; border-radius: 24px; color: #fff; text-align: center; background: radial-gradient(130px 100px at 90% 0, rgba(247, 160, 29, .5), transparent 70%), radial-gradient(160px 120px at 5% 100%, rgba(122, 103, 238, .55), transparent 70%), linear-gradient(160deg, #322c79 0%, #4b3fc0 62%, #6c5ce0 100%); box-shadow: 0 14px 30px rgba(50, 44, 121, .28); }
+.rp-hero-label { font-size: var(--fs-sm); font-weight: 600; opacity: .85; }
+.rp-hero-value { margin: 6px 0 10px; font-size: 30px; font-weight: 800; line-height: 1.4; font-variant-numeric: tabular-nums; }
+.rp-hero-sub { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.rp-hero-sub span { padding: 4px 12px; border-radius: 999px; background: rgba(255, 255, 255, .18); font-size: var(--fs-xs); font-weight: 700; }
+.rp-hero-sub .rp-good { background: rgba(52, 211, 153, .28); }
+.rp-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.rp-kpi { --k: var(--hint); display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; border-radius: 18px; border: 1px solid color-mix(in srgb, var(--k) 28%, var(--border)); border-inline-start: 4px solid var(--k); background: color-mix(in srgb, var(--k) 9%, var(--card-bg)); box-shadow: var(--shadow-1); }
+.rp-kpi b { font-size: 26px; font-weight: 800; line-height: 1.3; color: var(--k); font-variant-numeric: tabular-nums; }
+.rp-kpi span { font-size: var(--fs-xs); font-weight: 700; color: var(--hint); }
+.rp-kpi.is-good { --k: var(--green); }
+.rp-kpi.is-warn { --k: var(--orange); }
+.rp-kpi.is-bad { --k: var(--red-text, var(--red)); }
+.rp-kpi.is-zero { --k: var(--hint); background: var(--card-bg); }
+.rp-kpi.is-zero b { opacity: .55; }
+.rp-section { margin-bottom: 12px; padding: 16px; border: 1px solid var(--border); border-radius: 20px; background: var(--card-bg); box-shadow: var(--shadow-1); }
+.rp-section h3 { margin: 0 0 12px; font-size: var(--fs-sm); font-weight: 800; }
+.report-bars { border-bottom: 0; }
+.report-bar { fill: var(--brand); }
+.report-bar.status-normal { fill: var(--green); }
+.report-bar-label { fill: var(--hint); font-size: 9px; font-weight: 600; }
+.rp-donut-wrap, .report-donut-wrap.rp-section { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.rp-donut-info { flex: 1; min-width: 0; }
+.rp-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+.rp-leg { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs); font-weight: 600; color: var(--hint); }
+.rp-leg b { margin-inline-start: auto; color: var(--text); font-size: var(--fs-sm); }
+.rp-leg i { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--hint); }
+.rp-leg.status-normal i { background: var(--green); }
+.rp-leg.status-late i { background: var(--orange); }
+.rp-leg.status-incomplete i { background: var(--red); }
+.rp-leg.status-leave i { background: var(--blue); }
+.rp-donut-box { position: relative; width: 116px; height: 116px; flex: 0 0 116px; }
+.rp-donut-box .report-donut { width: 100%; height: 100%; }
+.rp-donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; }
+.rp-donut-center b { font-size: var(--fs-lg); font-weight: 800; }
+.rp-donut-center span { font-size: var(--fs-xs); color: var(--hint); font-weight: 600; }
