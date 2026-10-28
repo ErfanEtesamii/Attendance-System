@@ -748,3 +748,45 @@ body {
 :root[data-theme="dark"] #view-profile .pf-hero .pf-chips { margin-top: 8px; gap: 6px; }
 :root[data-theme="dark"] #view-profile .pf-hero .pf-chip { padding: 3px 12px; background: rgba(255,255,255,.16); color: #fff; }
 :root[data-theme="dark"] #view-profile .pf-hero .pf-chip-soft { background: rgba(255,255,255,.09); color: rgba(255,255,255,.88); }
+
+/* ===== تم تیره — کارت وضعیت امروز با حاشیهٔ مینای شبانه (mina-dark.webp) =====
+   جایگزین نقش‌های قبلی این کارت؛ تصویر یک‌بار در ::before (راست) و قرینه‌اش در ::after (چپ) می‌آید. */
+:root[data-theme="dark"] #today-status-card.status-card {
+  --mina-bg: #10162e;
+  --mina-image: url('/images/mina-dark.webp');
+  --mina-ratio: 291 / 1112; /* دقیقاً نسبت نوار مینای تم روشن (ارتفاع = ارتفاع کارت) */
+  --mina-opacity: .65;
+  background-color: var(--mina-bg);
+  background-image: none;
+  border: 1px solid rgba(157, 154, 220, .16);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, .40);
+}
+:root[data-theme="dark"] #today-status-card.status-card::before,
+:root[data-theme="dark"] #today-status-card.status-card::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  top: 0;
+  bottom: 0;
+  width: auto;
+  height: auto;
+  aspect-ratio: var(--mina-ratio);
+  z-index: -1;
+  pointer-events: none;
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+  background-image: var(--mina-image);
+  background-repeat: no-repeat;
+  background-position: right center;
+  background-size: cover; /* همان عرض/ارتفاع تم روشن، بدون کشیدگی؛ از سمت داخلی (محوشونده) کراپ می‌شود */
+  opacity: var(--mina-opacity);
+  -webkit-mask-image: linear-gradient(to left, #000 72%, transparent 100%);
+  mask-image: linear-gradient(to left, #000 72%, transparent 100%);
+}
+:root[data-theme="dark"] #today-status-card.status-card::before { right: 0; left: auto; inset-inline-start: auto; }
+:root[data-theme="dark"] #today-status-card.status-card::after { left: 0; right: auto; inset-inline-end: auto; transform: scaleX(-1); }
+@media print {
+  :root[data-theme="dark"] #today-status-card.status-card::before,
+  :root[data-theme="dark"] #today-status-card.status-card::after { display: none; }
+}
