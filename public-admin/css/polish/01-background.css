@@ -15,40 +15,26 @@ body {
   background-repeat: no-repeat;
   background-attachment: fixed;
 }
-/* موبایل (زیر ۹۰۰px = نقطهٔ شکست پنل): تصویر عمودی ۸۴۱×۱۸۷۰.
-   background-attachment:fixed در iOS Safari کار نمی‌کند، پس تصویر روی یک لایهٔ fixed (html::before؛ چون body::before قبلاً برای هالهٔ رنگی استفاده شده) پشت محتوا می‌نشیند. */
+/* موبایل (زیر ۹۰۰px = نقطهٔ شکست پنل): دو گوشهٔ اسلیمی (بالا و پایین).
+   تصویرها از قبل با کانال آلفا ساخته شده‌اند (لبه‌ها محو) و mask/ترکیب CSS ندارند تا در کروم موبایل
+   گاهی رسم نشدن لایه پیش نیاید. background-attachment:fixed در iOS کار نمی‌کند، پس لایه‌ها fixed هستند.
+   --bg-m-scale: عرض هر گوشه (کوچک‌تر = طرح ریزتر). ارتفاع = عرض × ۱٫۱۱۲ (نسبت ۹۳۵/۸۴۱). */
 :root,
-:root[data-theme="dark"] { --admin-bg-image-m: url('/images/admin-bg-dark-m.webp'); }
-:root[data-theme="light"] { --admin-bg-image-m: url('/images/admin-bg-light-m.webp'); }
+:root[data-theme="dark"] { --bg-m-top: url('/images/admin-bg-dark-m-top.webp'); --bg-m-bottom: url('/images/admin-bg-dark-m-bottom.webp'); }
+:root[data-theme="light"] { --bg-m-top: url('/images/admin-bg-light-m-top.webp'); --bg-m-bottom: url('/images/admin-bg-light-m-bottom.webp'); }
 @media (prefers-color-scheme: light) {
-  :root:not([data-theme]) { --admin-bg-image-m: url('/images/admin-bg-light-m.webp'); }
+  :root:not([data-theme]) { --bg-m-top: url('/images/admin-bg-light-m-top.webp'); --bg-m-bottom: url('/images/admin-bg-light-m-bottom.webp'); }
 }
 @media (max-width: 900px) {
   body { background-image: none; }
-  /* تصویر عمودی (۸۴۱×۱۸۷۰) دو نیمه می‌شود: نیمهٔ بالا (گل بالا) و نیمهٔ پایین (گل پایین).
-     هر نیمه فقط ۶۴٪ عرض صفحه را می‌گیرد (قبلاً cover = ۱۰۰٪) تا طرح اسلیمی کوچک‌تر شود؛
-     --bg-m-scale برای تنظیم اندازه: کوچک‌تر = طرح ریزتر. لبه‌ها با mask محو می‌شوند تا مرز دیده نشود. */
   html { --bg-m-scale: 64vw; }
   html::before, html::after {
     content: ""; position: fixed; left: 0; z-index: -1; pointer-events: none;
-    width: var(--bg-m-scale);
-    /* ارتفاع هر نیمه = نصف ارتفاع تصویر در این عرض (۱۸۷۰/۸۴۱/۲ ≈ ۱٫۱۱۲) */
-    height: calc(var(--bg-m-scale) * 1.112);
-    background-image: var(--admin-bg-image-m);
-    background-size: 100% 200%;
-    background-repeat: no-repeat;
-    -webkit-mask-composite: source-in; mask-composite: intersect;
+    width: var(--bg-m-scale); height: calc(var(--bg-m-scale) * 1.112);
+    background-size: 100% 100%; background-repeat: no-repeat;
   }
-  html::before {
-    top: 0; background-position: left top;
-    -webkit-mask-image: linear-gradient(to right, #000 45%, transparent), linear-gradient(to bottom, #000 45%, transparent);
-    mask-image: linear-gradient(to right, #000 45%, transparent), linear-gradient(to bottom, #000 45%, transparent);
-  }
-  html::after {
-    bottom: 0; background-position: left bottom;
-    -webkit-mask-image: linear-gradient(to right, #000 45%, transparent), linear-gradient(to top, #000 45%, transparent);
-    mask-image: linear-gradient(to right, #000 45%, transparent), linear-gradient(to top, #000 45%, transparent);
-  }
+  html::before { top: 0; background-image: var(--bg-m-top); }
+  html::after { bottom: 0; background-image: var(--bg-m-bottom); }
 }
 ::selection { background: color-mix(in srgb, var(--accent) 35%, transparent); }
 * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--brand) 35%, transparent) transparent; }
