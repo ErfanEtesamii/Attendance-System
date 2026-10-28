@@ -25,9 +25,29 @@ body {
 }
 @media (max-width: 900px) {
   body { background-image: none; }
+  /* تصویر عمودی (۸۴۱×۱۸۷۰) دو نیمه می‌شود: نیمهٔ بالا (گل بالا) و نیمهٔ پایین (گل پایین).
+     هر نیمه فقط ۶۴٪ عرض صفحه را می‌گیرد (قبلاً cover = ۱۰۰٪) تا طرح اسلیمی کوچک‌تر شود؛
+     --bg-m-scale برای تنظیم اندازه: کوچک‌تر = طرح ریزتر. لبه‌ها با mask محو می‌شوند تا مرز دیده نشود. */
+  html { --bg-m-scale: 64vw; }
+  html::before, html::after {
+    content: ""; position: fixed; left: 0; z-index: -1; pointer-events: none;
+    width: var(--bg-m-scale);
+    /* ارتفاع هر نیمه = نصف ارتفاع تصویر در این عرض (۱۸۷۰/۸۴۱/۲ ≈ ۱٫۱۱۲) */
+    height: calc(var(--bg-m-scale) * 1.112);
+    background-image: var(--admin-bg-image-m);
+    background-size: 100% 200%;
+    background-repeat: no-repeat;
+    -webkit-mask-composite: source-in; mask-composite: intersect;
+  }
   html::before {
-    content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
-    background: var(--admin-bg-image-m) center top / cover no-repeat;
+    top: 0; background-position: left top;
+    -webkit-mask-image: linear-gradient(to right, #000 45%, transparent), linear-gradient(to bottom, #000 45%, transparent);
+    mask-image: linear-gradient(to right, #000 45%, transparent), linear-gradient(to bottom, #000 45%, transparent);
+  }
+  html::after {
+    bottom: 0; background-position: left bottom;
+    -webkit-mask-image: linear-gradient(to right, #000 45%, transparent), linear-gradient(to top, #000 45%, transparent);
+    mask-image: linear-gradient(to right, #000 45%, transparent), linear-gradient(to top, #000 45%, transparent);
   }
 }
 ::selection { background: color-mix(in srgb, var(--accent) 35%, transparent); }
