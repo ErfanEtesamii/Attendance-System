@@ -15,5 +15,20 @@ body {
   background-repeat: no-repeat;
   background-attachment: fixed;
 }
+/* موبایل (زیر ۹۰۰px = نقطهٔ شکست پنل): تصویر عمودی ۸۴۱×۱۸۷۰.
+   background-attachment:fixed در iOS Safari کار نمی‌کند، پس تصویر روی یک لایهٔ fixed (html::before؛ چون body::before قبلاً برای هالهٔ رنگی استفاده شده) پشت محتوا می‌نشیند. */
+:root,
+:root[data-theme="dark"] { --admin-bg-image-m: url('/images/admin-bg-dark-m.webp'); }
+:root[data-theme="light"] { --admin-bg-image-m: url('/images/admin-bg-light-m.webp'); }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) { --admin-bg-image-m: url('/images/admin-bg-light-m.webp'); }
+}
+@media (max-width: 900px) {
+  body { background-image: none; }
+  html::before {
+    content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background: var(--admin-bg-image-m) center top / cover no-repeat;
+  }
+}
 ::selection { background: color-mix(in srgb, var(--accent) 35%, transparent); }
 * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--brand) 35%, transparent) transparent; }
