@@ -2,7 +2,8 @@
 .card {
   position: relative; overflow: hidden; isolation: isolate;
   border: 1px solid color-mix(in srgb, var(--brand) 13%, var(--border));
-  background: linear-gradient(180deg, var(--card), color-mix(in srgb, var(--card) 94%, var(--brand)));
+  /* نیمه‌شفاف تا الگوی زمینه کمی از زیر کارت دیده شود (blur از قبل روی .card هست) */
+  background: linear-gradient(180deg, color-mix(in srgb, var(--card) 82%, transparent), color-mix(in srgb, color-mix(in srgb, var(--card) 94%, var(--brand)) 78%, transparent));
   box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 10%, transparent), 0 20px 40px -28px color-mix(in srgb, var(--brand) 45%, transparent);
   animation: ap-rise var(--motion-enter) var(--ease-out) both;
 }
@@ -14,3 +15,5 @@
 .card--primary::after { background: radial-gradient(circle, color-mix(in srgb, var(--accent) 20%, transparent), transparent 70%); width: 240px; height: 240px; }
 .card h3::before { width: 5px; height: 18px; background: linear-gradient(180deg, var(--accent-hi), var(--accent)); box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 60%, transparent); }
 @keyframes ap-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+/* کارتِ داخل کارت دوباره شفاف/بلور نشود (عمق و کارایی) */
+.card .card { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--card); }

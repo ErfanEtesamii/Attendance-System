@@ -1,10 +1,18 @@
-/* ---------- ۰) زمینه: هاله‌های رنگیِ محو پشت صفحه ---------- */
+/* ---------- ۰) زمینه: تصویر اسلیمی تمام‌صفحه (۱۶۷۲×۹۴۱) برای هر تم ----------
+   fixed: با اسکرول ثابت می‌ماند؛ cover: روی هر نسبت صفحه پر می‌شود و کشیده نمی‌شود.
+   رنگ --bg زیر تصویر می‌ماند تا قبل از لود شدن تصویر فلش سفید/سیاه نباشد. */
+:root,
+:root[data-theme="dark"] { --admin-bg-image: url('/images/admin-bg-dark.webp'); }
+:root[data-theme="light"] { --admin-bg-image: url('/images/admin-bg-light.webp'); }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) { --admin-bg-image: url('/images/admin-bg-light.webp'); }
+}
 body {
-  background:
-    radial-gradient(900px 520px at 8% -8%, color-mix(in srgb, var(--accent-2) 13%, transparent), transparent 70%),
-    radial-gradient(900px 560px at 100% 0%, color-mix(in srgb, var(--brand) 20%, transparent), transparent 70%),
-    radial-gradient(700px 480px at 50% 108%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 70%),
-    var(--bg);
+  background-color: var(--bg);
+  background-image: var(--admin-bg-image);
+  background-size: cover;
+  background-position: left top;
+  background-repeat: no-repeat;
   background-attachment: fixed;
 }
 ::selection { background: color-mix(in srgb, var(--accent) 35%, transparent); }
