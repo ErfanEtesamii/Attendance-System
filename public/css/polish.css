@@ -794,39 +794,22 @@ body {
   :root[data-theme="dark"] #today-status-card.status-card::after { display: none; }
 }
 
-/* ===== تم تیره — هیروی گزارش هفتگی/ماهانه (.rp-hero) با همان حاشیهٔ مینای شبانه =====
-   کارت کوتاه‌تر است، پس عرض نوارها کوچک‌تر و تصویر با ارتفاع کارت (auto 100%) بدون کشیدگی. */
+/* ===== هیروی گزارش هفتگی/ماهانه (.rp-hero) — پس‌زمینهٔ تمام‌کارت برای هر دو تم =====
+   تصاویر ۱۸۹۹×۸۲۹ (نسبت ≈۲٫۳) هم‌نسبت کارت موبایل (≈۴۲۴×۱۸۵)؛ وسط خالی برای متن.
+   cover: روی کارت‌های بلندتر فقط از بالا/پایین بریده می‌شود، کشیده نمی‌شود. */
+:root[data-theme="light"] .rp-hero {
+  background-color: #f7faff;
+  background-image: url('/images/rp-hero-light.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
 :root[data-theme="dark"] .rp-hero {
-  --mina-bg: #10162e;
-  --mina-image: url('/images/mina-dark.webp');
-  --mina-width: clamp(52px, 17%, 84px);
-  --mina-opacity: .85;
-  isolation: isolate;
-  background-color: var(--mina-bg);
-  background-image: none;
+  background-color: #10162e;
+  background-image: url('/images/rp-hero-dark.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   border: 1px solid rgba(157, 154, 220, .16);
   box-shadow: 0 16px 34px rgba(0, 0, 0, .40);
-}
-:root[data-theme="dark"] .rp-hero::before,
-:root[data-theme="dark"] .rp-hero::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: var(--mina-width);
-  z-index: -1;
-  pointer-events: none;
-  background-image: var(--mina-image);
-  background-repeat: no-repeat;
-  background-position: right center;
-  background-size: auto 100%;
-  opacity: var(--mina-opacity);
-  -webkit-mask-image: linear-gradient(to left, #000 0%, #000 38%, rgba(0,0,0,.55) 68%, transparent 100%);
-  mask-image: linear-gradient(to left, #000 0%, #000 38%, rgba(0,0,0,.55) 68%, transparent 100%);
-}
-:root[data-theme="dark"] .rp-hero::before { left: auto; right: 0; }
-:root[data-theme="dark"] .rp-hero::after { right: auto; left: 0; transform: scaleX(-1); }
-@media print {
-  :root[data-theme="dark"] .rp-hero::before,
-  :root[data-theme="dark"] .rp-hero::after { display: none; }
 }
