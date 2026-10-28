@@ -85,6 +85,9 @@
   }
   #page table[data-stack] tbody > tr > td:first-child:not([colspan]):has(.cell-user) { flex-direction: row; align-items: center; }
   #page table[data-stack] tbody > tr > td:first-child:not([colspan])::before { content: none; }
+  /* بج‌های بلند (مثل «هم‌پوشانی با حضور حضوری») داخل ستون بمانند و بشکنند، نه بیرون بزنند */
+  #page table[data-stack] td .badge { max-width: 100%; white-space: normal; overflow-wrap: anywhere; text-align: start; line-height: 1.6; padding-block: 3px; }
+  #page table[data-stack] td:has(.badge) { gap: 4px; }
   #page table[data-stack] td .muted { font-size: 11.5px; line-height: 1.6; }
   #page table[data-stack] tbody > tr > td.tr-actions, #page table[data-stack] tbody > tr > td.actions, #page table[data-stack] tbody > tr > td.row-actions,
   #rw-result tbody > tr > td.row-actions {
