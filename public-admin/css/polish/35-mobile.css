@@ -32,10 +32,10 @@
 
 /* ---------- فیلترها: دو ستون، نه یک ستون بلند ---------- */
 @media (max-width: 600px) {
-  .filters, .emp-filters, #an-filters, #att-filters {
+  .filters, .emp-filters, #an-filters, #att-filters, #rw-filters {
     display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; padding: 10px; margin-bottom: 10px; border-radius: 16px;
   }
-  .filters .field, .emp-filters .field, #an-filters .field { flex: 1 1 calc(50% - 4px); min-width: 0; gap: 3px; margin: 0; }
+  #rw-filters .field, .filters .field, .emp-filters .field, #an-filters .field { flex: 1 1 calc(50% - 4px); min-width: 0; gap: 3px; margin: 0; }
   .filters .field > span, .emp-filters .field > span, #an-filters .field > span { font-size: 11px; line-height: 1.4; }
   .filters .field input, .filters .field select, .emp-filters .field input, .emp-filters .field select, #an-filters .field input, #an-filters .field select {
     height: 38px; min-height: 38px; padding-block: 0; font-size: 13px; border-radius: 10px; min-width: 0; width: 100%;
@@ -78,14 +78,26 @@
   #page table[data-stack] td::before { font-size: 10.5px; font-weight: 600; line-height: 1.4; }
   #page table[data-stack] tbody > tr > td:first-child:not([colspan]),
   #page table[data-stack] td.wrap, #page table[data-stack] td.tr-actions, #page table[data-stack] td[colspan] { grid-column: 1 / -1; }
-  /* ستون اول (نام): بدون مستطیل/نوار چسبان دسکتاپ، فقط سرِ کارت */
+  /* ستون اول (نام): بدون مستطیل/نوار چسبان دسکتاپ، فقط سرِ کارت؛ نام بالا و دپارتمان زیرش */
   #page table[data-stack] tbody > tr > td:first-child:not([colspan]) {
-    position: static; flex-direction: row; align-items: center; background: none; border: 0;
+    position: static; flex-direction: column; align-items: flex-start; gap: 0; min-width: 0; background: none; border: 0;
     padding: 0 0 8px; margin-bottom: 4px; border-bottom: 1px solid color-mix(in srgb, var(--hint) 18%, transparent);
   }
+  #page table[data-stack] tbody > tr > td:first-child:not([colspan]):has(.cell-user) { flex-direction: row; align-items: center; }
   #page table[data-stack] tbody > tr > td:first-child:not([colspan])::before { content: none; }
-  #page table[data-stack] td.tr-actions, #page table[data-stack] td.actions { flex-direction: row; flex-wrap: wrap; gap: 8px; padding-top: 8px; }
-  #page table[data-stack] td.tr-actions .btn, #page table[data-stack] td.actions .btn { flex: 1 1 auto; min-height: 38px; }
+  #page table[data-stack] td .muted { font-size: 11.5px; line-height: 1.6; }
+  #page table[data-stack] tbody > tr > td.tr-actions, #page table[data-stack] tbody > tr > td.actions, #page table[data-stack] tbody > tr > td.row-actions,
+  #rw-result tbody > tr > td.row-actions {
+    display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 8px;
+    grid-column: 1 / -1; width: auto; white-space: normal; padding: 10px 0 2px; margin-top: 4px;
+    border-top: 1px dashed color-mix(in srgb, var(--hint) 22%, transparent);
+  }
+  #page table[data-stack] tbody > tr > td.row-actions:empty, #page table[data-stack] tbody > tr > td.actions:empty, #rw-result tbody > tr > td.row-actions:empty { display: none; }
+  #page table[data-stack] td.row-actions::before, #page table[data-stack] td.actions::before, #page table[data-stack] td.tr-actions::before { content: none; }
+  #page table[data-stack] td.row-actions .btn, #page table[data-stack] td.actions .btn, #page table[data-stack] td.tr-actions .btn,
+  #rw-result tbody > tr > td.row-actions .btn {
+    flex: 1 1 auto; min-width: 0; min-height: 40px; margin: 0; padding: 0 14px; justify-content: center; white-space: nowrap; font-size: 13px;
+  }
   #page table[data-stack] .cell-user { gap: 10px; min-width: 0; }
   #page table[data-stack] .cell-user .avatar { width: 38px; height: 38px; flex: none; }
   #page table[data-stack] .cell-user b { font-size: 14px; }
