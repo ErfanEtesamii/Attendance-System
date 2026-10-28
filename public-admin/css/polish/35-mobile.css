@@ -160,3 +160,33 @@
   .modal-actions { flex-wrap: wrap; gap: 8px; }
   .modal-actions .btn { flex: 1 1 calc(50% - 4px); min-height: 42px; }
 }
+
+/* ---------- گزارش‌های تحلیلی: دپارتمان‌ها و جزئیات کارمند به‌صورت کاشی‌های رنگی ---------- */
+@media (max-width: 600px) {
+  #page :is(#rep-dept-table, #rep-table) tbody > tr { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; padding: 12px; }
+  #page :is(#rep-dept-table, #rep-table) tbody > tr > td:first-child:not([colspan]) { grid-column: 1 / -1; order: -9; }
+  #page :is(#rep-dept-table, #rep-table) tbody > tr > td:not(:first-child) {
+    --tone: var(--brand);
+    grid-column: span 2; align-items: center; justify-content: center; text-align: center; gap: 2px; padding: 8px 6px 9px;
+    border-radius: 12px; font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.4;
+    background: color-mix(in srgb, var(--tone) 10%, var(--card));
+    border: 1px solid color-mix(in srgb, var(--tone) 22%, transparent);
+  }
+  #page :is(#rep-dept-table, #rep-table) tbody > tr > td:not(:first-child)::before { order: -1; font-size: 10.5px; font-weight: 600; color: var(--hint); }
+  #page :is(#rep-dept-table, #rep-table) tbody > tr > td:not(:first-child):last-child::before { content: attr(data-label); }
+  /* دپارتمان‌ها: ۱ نام | ۲ کارمند | ۳ روز-نفر | ۴ ساعت مفید | ۵ تأخیر | ۶ ناقص | ۷ مرخصی */
+  #page #rep-dept-table tbody > tr > td:nth-child(4) { grid-column: 1 / -1; order: -8; --tone: var(--green); font-size: 16px; }
+  #page #rep-dept-table tbody > tr > td:nth-child(5) { --tone: var(--orange); }
+  #page #rep-dept-table tbody > tr > td:nth-child(6) { grid-column: span 3; --tone: var(--red); }
+  #page #rep-dept-table tbody > tr > td:nth-child(7) { grid-column: span 3; --tone: var(--blue); }
+  /* کارمندان: ۲ روز حضور | ۳ مجموع مفید | ۴ میانگین روزانه | ۵ تأخیر | ۶ خروج زودهنگام | ۷ اضافه‌کاری | ۸ ناقص | ۹ مرخصی | ۱۰ میانگین ورود */
+  #page #rep-table tbody > tr > td:nth-child(3) { grid-column: span 3; order: -8; --tone: var(--green); }
+  #page #rep-table tbody > tr > td:nth-child(4) { grid-column: span 3; order: -8; --tone: var(--green); }
+  #page #rep-table tbody > tr > td:nth-child(5) { --tone: var(--orange); }
+  #page #rep-table tbody > tr > td:nth-child(6) { --tone: var(--red); }
+  #page #rep-table tbody > tr > td:nth-child(7) { --tone: var(--purple); }
+  #page #rep-table tbody > tr > td:nth-child(8) { --tone: var(--red); }
+  #page #rep-table tbody > tr > td:nth-child(9) { --tone: var(--blue); }
+  #page #rep-table tbody > tr > td:nth-child(10) { grid-column: 1 / -1; order: 9; flex-direction: row; justify-content: space-between; padding: 7px 12px; font-size: 13px; }
+  #page #rep-table tbody > tr > td:nth-child(10)::before { order: 0; }
+}
