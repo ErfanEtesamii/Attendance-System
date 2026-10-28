@@ -1,0 +1,147 @@
+/* ===== ۳۵) اصلاح یکپارچهٔ موبایل پنل ادمین =====
+   هدف: در گوشی، هر صفحه اول «کار اصلی» (فهرست و گزارش) را نشان بدهد، نه چند صفحه فیلتر و کاشی.
+   این فایل آخر از همهٔ لایه‌های polish بارگذاری می‌شود (قبل از 12-reduced-motion) و فقط زیر ۹۰۰px اثر دارد؛
+   دسکتاپ دست‌نخورده می‌ماند. تم روشن/تیره هر دو از توکن‌های مشترک می‌آیند. */
+
+/* ---------- نوار بالا: دکمه‌های کوچک‌تر، جستجو جا بگیرد ---------- */
+@media (max-width: 900px) {
+  .topbar { gap: 8px; padding: 8px 12px; }
+  .topbar .icon-btn { width: 40px; height: 40px; flex: none; border-radius: 12px; }
+  .topbar .icon-btn svg { width: 19px; height: 19px; }
+  .search-box { flex: 1 1 0; min-width: 0; max-width: none; }
+  .search-box input { height: 40px; min-width: 0; padding: 0 38px 0 10px; font-size: 13px; text-overflow: ellipsis; }
+  .search-box > svg { right: 12px; width: 17px; height: 17px; }
+  .search-box input::placeholder { font-size: 12.5px; text-overflow: ellipsis; }
+  .page { padding: 12px 12px 88px; }
+}
+@media (max-width: 600px) {
+  .density-btn { display: none; }
+}
+
+/* ---------- سرتیتر صفحه: فشرده، دکمه‌ها در یک ردیف ---------- */
+@media (max-width: 600px) {
+  .view-header { gap: 8px; margin-bottom: 12px; }
+  .view-header h2 { margin: 0; font-size: 20px; line-height: 1.5; }
+  .view-header .sub { padding: 3px 10px; font-size: 11.5px; line-height: 1.7; border-radius: 12px; }
+  .header-actions { width: 100%; gap: 8px; }
+  .header-actions .btn { min-height: 40px; padding: 0 12px; font-size: 13px; flex: 1 1 0; justify-content: center; white-space: nowrap; }
+  .header-actions .btn.primary { flex: 1 1 100%; }
+  .header-actions > * { min-width: 0; }
+  .header-actions .export-bar, .header-actions [class*="export"] { display: flex; gap: 8px; flex: 1 1 100%; }
+}
+
+/* ---------- فیلترها: دو ستون، نه یک ستون بلند ---------- */
+@media (max-width: 600px) {
+  .filters, .emp-filters, #an-filters, #att-filters {
+    display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; padding: 10px; margin-bottom: 10px; border-radius: 16px;
+  }
+  .filters .field, .emp-filters .field, #an-filters .field { flex: 1 1 calc(50% - 4px); min-width: 0; gap: 3px; margin: 0; }
+  .filters .field > span, .emp-filters .field > span, #an-filters .field > span { font-size: 11px; line-height: 1.4; }
+  .filters .field input, .filters .field select, .emp-filters .field input, .emp-filters .field select, #an-filters .field input, #an-filters .field select {
+    height: 38px; min-height: 38px; padding-block: 0; font-size: 13px; border-radius: 10px; min-width: 0; width: 100%;
+  }
+  .filters .field:has(+ .btn), .filters .field:last-of-type:nth-of-type(odd):not(:has(~ .field)) { flex-basis: 100%; }
+  .filters .field.full, .filters .field:has(input[type="search"]), .filters .field:has(textarea) { flex-basis: 100%; }
+  .filters > .btn, .filters > button { flex: 1 1 0; min-height: 36px; padding: 0 8px; font-size: 12.5px; }
+}
+
+/* ---------- کاشی‌های آمار: افقی و کوتاه ---------- */
+@media (max-width: 600px) {
+  .stat-grid { gap: 8px; }
+  .stat { padding: 10px 12px; min-height: 0; border-radius: 16px; }
+  .stat > .stat-value { font-size: 21px; line-height: 1.25; }
+  .stat > .stat-label { font-size: 11.5px; }
+  #page .emp-stats { gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 10px; }
+  #page .emp-stat { min-height: 58px; padding: 9px 56px 9px 12px; border-radius: 14px; flex-direction: column; justify-content: center; gap: 0; }
+  #page .emp-stat::before { inset-block-start: 50%; inset-inline-start: 11px; width: 34px; height: 34px; transform: translateY(-50%); border-radius: 11px; }
+  #page .emp-stat::after { inset-block-start: 50%; inset-inline-start: 19px; width: 18px; height: 18px; transform: translateY(-50%); }
+  #page .emp-stat-n { font-size: 21px; line-height: 1.25; }
+  #page .emp-stat-l { font-size: 11.5px; line-height: 1.4; }
+  .emp-stats .emp-stat:first-child { grid-column: 1 / -1; }
+}
+
+/* ---------- صندوق «منتظر تصمیم شما»: گروه‌های خالی فشرده ---------- */
+@media (max-width: 600px) {
+  .inbox-group { padding: 10px 12px; border-radius: 14px; }
+  #page .inbox-group.is-empty { padding: 6px 12px; min-height: 0; opacity: .75; }
+  #page .inbox-group.is-empty .inbox-item { padding-block: 4px; min-height: 0; }
+}
+
+/* ---------- جدول → کارت (فشرده): برچسب بالا، مقدار پایین، دو ستون ---------- */
+@media (max-width: 600px) {
+  #page table[data-stack] tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; margin: 8px; padding: 10px 12px; border-radius: 16px; }
+  #page table[data-stack] td {
+    display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 1px;
+    min-width: 0; padding: 5px 0; border: 0; text-align: start; font-size: 13px; overflow-wrap: anywhere;
+  }
+  #page table[data-stack] tbody > tr > td { border-top: 0; }
+  #page table[data-stack] td::before { font-size: 10.5px; font-weight: 600; line-height: 1.4; }
+  #page table[data-stack] tbody > tr > td:first-child:not([colspan]),
+  #page table[data-stack] td.wrap, #page table[data-stack] td.tr-actions, #page table[data-stack] td[colspan] { grid-column: 1 / -1; }
+  /* ستون اول (نام): بدون مستطیل/نوار چسبان دسکتاپ، فقط سرِ کارت */
+  #page table[data-stack] tbody > tr > td:first-child:not([colspan]) {
+    position: static; flex-direction: row; align-items: center; background: none; border: 0;
+    padding: 0 0 8px; margin-bottom: 4px; border-bottom: 1px solid color-mix(in srgb, var(--hint) 18%, transparent);
+  }
+  #page table[data-stack] tbody > tr > td:first-child:not([colspan])::before { content: none; }
+  #page table[data-stack] td.tr-actions, #page table[data-stack] td.actions { flex-direction: row; flex-wrap: wrap; gap: 8px; padding-top: 8px; }
+  #page table[data-stack] td.tr-actions .btn, #page table[data-stack] td.actions .btn { flex: 1 1 auto; min-height: 38px; }
+  #page table[data-stack] .cell-user { gap: 10px; min-width: 0; }
+  #page table[data-stack] .cell-user .avatar { width: 38px; height: 38px; flex: none; }
+  #page table[data-stack] .cell-user b { font-size: 14px; }
+  #page table[data-stack] .cell-user small { font-size: 11.5px; }
+  #page table[data-stack] ul.plain { margin: 0; padding: 0; list-style: none; }
+  #page table[data-stack] ul.plain li { padding: 2px 0; font-size: 12.5px; line-height: 1.8; }
+}
+
+/* ---------- رکوردهای تردد: کارت سه‌ستونه (حدود ۱۷۰px به‌جای ۳۶۰px) ---------- */
+@media (max-width: 600px) {
+  #att-filters + .card.flush table[data-stack] tbody > tr { grid-template-columns: minmax(0, 1.3fr) repeat(2, minmax(0, 1fr)); gap: 0 10px; }
+  #att-filters + .card.flush table[data-stack] tbody > tr > td.num, #att-filters + .card.flush table[data-stack] tbody > tr > td { white-space: normal; }
+  #att-filters + .card.flush table[data-stack] tbody > tr > td.att-eff, #att-filters + .card.flush table[data-stack] tbody > tr > td.att-late { font-size: 12.5px; }
+  #att-filters + .card.flush .remote-times .muted { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 11px; }
+  #att-filters + .card.flush table[data-stack] tbody > tr > td { grid-column: auto; }
+  /* ۱ نام+آواتار | ۹ وضعیت  (بالا) */
+  #att-filters + .card.flush table[data-stack] tbody > tr > td:nth-child(1) { grid-column: 1 / 3; grid-row: 1; border-bottom: 0; margin: 0; padding-bottom: 6px; }
+  #att-filters + .card.flush table[data-stack] tbody > tr > td:nth-child(9) { grid-column: 3; grid-row: 1; align-items: flex-end; justify-content: center; padding-bottom: 6px; flex-wrap: wrap; }
+  #att-filters + .card.flush table[data-stack] tbody > tr > td:nth-child(9)::before { content: none; }
+  /* ۲ تاریخ: ردیف جدا زیر نام */
+  #att-filters + .card.flush table[data-stack] tbody > tr > td:nth-child(2) { grid-column: 1 / -1; grid-row: 2; flex-direction: row; gap: 6px; padding: 0 0 6px; color: var(--hint); font-size: 12px; border-bottom: 1px dashed color-mix(in srgb, var(--hint) 22%, transparent); margin-bottom: 4px; }
+  #att-filters + .card.flush table[data-stack] tbody > tr > td:nth-child(2)::before { content: none; }
+  /* ورود | خروج | استراحت */
+  #att-filters + .card.flush table[data-stack] tbody > tr > td:nth-child(3) { grid-row: 3; }
+  #att-filters + .card.flush table[data-stack] tbody > tr > td:nth-child(4) { grid-row: 3; }
+  #att-filters + .card.flush table[data-stack] tbody > tr > td:nth-child(5) { grid-row: 3; }
+  /* ساعت مفید | تأخیر | IP */
+  #att-filters + .card.flush table[data-stack] tbody > tr > td:nth-child(6) { grid-row: 4; }
+  #att-filters + .card.flush table[data-stack] tbody > tr > td:nth-child(7) { grid-row: 4; }
+  #att-filters + .card.flush table[data-stack] tbody > tr > td:nth-child(8) { grid-row: 4; }
+  #att-filters + .card.flush table[data-stack] td .ltr.muted { font-size: 10.5px; padding: 1px 6px; }
+  #att-filters + .card.flush table[data-stack] tbody > tr > td.num { font-size: 13px; }
+}
+
+/* ---------- گزارش‌های تیم: گزارش اصلی اول، شاخص‌ها بعدش ---------- */
+@media (max-width: 600px) {
+  .tr-page { display: flex; flex-direction: column; gap: 12px; }
+  .tr-page > .tr-report { order: 1; }
+  .tr-page > #tr-kpis { order: 2; }
+  .tr-page > .tr-export-section { order: 3; }
+  #page table[data-stack] tbody > tr > td.tr-name:first-child:not([colspan]) { flex-direction: column; align-items: flex-start; gap: 0; }
+  td.tr-name .muted { font-size: 11.5px; }
+  .tr-page .tr-controls { padding: 10px; gap: 10px; }
+  .tr-page .tr-controls .tab { flex: 1 1 calc(50% - 6px); padding: 8px 10px; font-size: 12.5px; }
+  .tr-page .tr-filters { margin: 0; padding: 0; border: 0; background: none; box-shadow: none; }
+  .tr-page .tr-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tr-page .tr-callout { padding: 10px 12px; font-size: 12.5px; }
+  .tr-page #page table[data-stack] tbody > tr > td:first-child:not([colspan])::before { content: none; }
+  /* ردیف گزارش: نام | وضعیت در یک خط، انجام کنارش */
+  .tr-page .card.flush #page table[data-stack] tbody > tr { border-inline-start: 4px solid var(--tone, var(--brand)); }
+}
+
+/* ---------- کارت‌ها و مودال‌ها ---------- */
+@media (max-width: 600px) {
+  .card { padding: 12px; border-radius: 16px; }
+  .card.flush { padding: 0; }
+  .modal-actions { flex-wrap: wrap; gap: 8px; }
+  .modal-actions .btn { flex: 1 1 calc(50% - 4px); min-height: 42px; }
+}
