@@ -35,7 +35,8 @@ body {
     background-size: 100% 100%; background-repeat: no-repeat;
   }
   html::before { top: 0; background-image: var(--bg-m-top); }
-  html::after { bottom: 0; background-image: var(--bg-m-bottom); }
+  /* --bg-m-bottom-shift: چند درصد از ارتفاع طرح به بیرون از لبهٔ پایین رانده شود (بیشتر = طرح پایین‌تر). */
+  html::after { bottom: calc(var(--bg-m-scale) * 1.112 * var(--bg-m-bottom-shift, -0.22)); background-image: var(--bg-m-bottom); }
 }
 ::selection { background: color-mix(in srgb, var(--accent) 35%, transparent); }
 * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--brand) 35%, transparent) transparent; }
