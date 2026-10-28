@@ -26,8 +26,9 @@ body {
   :root:not([data-theme]) { --bg-m-top: url('/images/admin-bg-light-m-top.webp'); --bg-m-bottom: url('/images/admin-bg-light-m-bottom.webp'); }
 }
 @media (max-width: 900px) {
-  body { background-image: none; }
-  html { --bg-m-scale: 64vw; }
+  /* html خودش رنگ --bg را دارد؛ پس‌زمینهٔ body شفاف می‌شود تا لایه‌های z-index:-1 زیر آن پنهان نشوند. */
+  html { --bg-m-scale: 64vw; background: var(--bg); }
+  body { background: transparent; }
   html::before, html::after {
     content: ""; position: fixed; left: 0; z-index: -1; pointer-events: none;
     width: var(--bg-m-scale); height: calc(var(--bg-m-scale) * 1.112);
