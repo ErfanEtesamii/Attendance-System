@@ -190,3 +190,17 @@
   #page #rep-table tbody > tr > td:nth-child(10) { grid-column: 1 / -1; order: 9; flex-direction: row; justify-content: space-between; padding: 7px 12px; font-size: 13px; }
   #page #rep-table tbody > tr > td:nth-child(10)::before { order: 0; }
 }
+
+/* ---------- پروفایل کارمند: دکمه‌های عملیات در شبکه‌ی دوستونه، بدون روی‌هم‌افتادگی ---------- */
+@media (max-width: 600px) {
+  .profile-head > .header-actions {
+    flex: 1 1 100%; width: 100%;
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
+  }
+  .profile-head > .header-actions .btn {
+    width: 100%; min-width: 0; height: auto; min-height: 42px; padding: 8px 10px;
+    white-space: normal; text-align: center; line-height: 1.5; justify-content: center;
+  }
+  /* دکمه‌ی تکِ آخر (حذف کارمند) تمام عرض شود تا ستون خالی نماند */
+  .profile-head > .header-actions .btn:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
