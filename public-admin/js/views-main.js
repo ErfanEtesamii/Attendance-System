@@ -369,7 +369,25 @@
   // ======================================================
   // پرونده‌ی کارمند
   // ======================================================
-  const profileUi = { days: 30, tab: 'attendance' };
+  const profileUi = { days: 30, month: null, tab: 'attendance' }; // month: { jy, jm } ⇒ بازه‌ی کل یک ماه شمسی؛ وگرنه «N روز اخیر»
+  const PF_MONTHS_BACK = 6; // ماه جاری + ۵ ماه قبل
+  const pfMonthList = () => {
+    const J = window.Jalali;
+    const cur = J.isoToJalali(fmt.today());
+    const out = [];
+    let { jy, jm } = { jy: cur.jy, jm: cur.jm };
+    for (let i = 0; i < PF_MONTHS_BACK; i += 1) { out.push({ jy, jm }); jm -= 1; if (jm < 1) { jm = 12; jy -= 1; } }
+    return out;
+  };
+  // بازه‌ی انتخاب‌شده ⇒ { from, to } (ماه جاری تا امروز بریده می‌شود)
+  const pfRange = () => {
+    if (!profileUi.month) return { from: fmt.daysAgo(profileUi.days - 1), to: fmt.today() };
+    const J = window.Jalali;
+    const { jy, jm } = profileUi.month;
+    const to = J.jalaliToIso(jy, jm, J.monthLength(jy, jm));
+    const today = fmt.today();
+    return { from: J.jalaliToIso(jy, jm, 1), to: to > today ? today : to };
+  };
 
   AP.view('profile', {
     skeleton: 'page', // شکل skeleton هنگام بارگذاری (S5-9c)
@@ -377,8 +395,7 @@
     navId: 'employees',
     async render(param) {
       if (!param) throw new Error('کارمندی انتخاب نشده است.');
-      const from = fmt.daysAgo(profileUi.days - 1);
-      const to = fmt.today();
+      const { from, to } = pfRange();
       const [d, users, shiftList] = await Promise.all([
         AP.api(`/admin/users/${param}/details?from=${from}&to=${to}`),
         AP.loadUsers(),
@@ -431,7 +448,12 @@
 
         <div class="filters u-mb-12">
           <label class="field"><span>بازه‌ی آمار</span><select id="pf-days">
-            ${[7, 14, 30, 60, 90, 180].map((n) => `<option value="${n}" ${n === profileUi.days ? 'selected' : ''}>${fmt.num(n)} روز اخیر</option>`).join('')}</select></label>
+            <optgroup label="روزهای اخیر">
+              ${[7, 14, 30, 60, 90, 180].map((n) => `<option value="d:${n}" ${!profileUi.month && n === profileUi.days ? 'selected' : ''}>${fmt.num(n)} روز اخیر</option>`).join('')}
+            </optgroup>
+            <optgroup label="ماه کامل">
+              ${pfMonthList().map(({ jy, jm }) => `<option value="m:${jy}-${jm}" ${profileUi.month && profileUi.month.jy === jy && profileUi.month.jm === jm ? 'selected' : ''}>${esc(window.Jalali.MONTH_NAMES[jm - 1])} ${fmt.num(jy)}</option>`).join('')}
+            </optgroup></select></label>
           <div class="muted filter-range">${esc(fmt.dateLong(d.range.from))} تا ${esc(fmt.dateLong(d.range.to))}</div>
         </div>
 
@@ -545,7 +567,11 @@
           };
           drawTab();
           $('#pf-tabs', page).addEventListener('click', (e) => { const t = e.target.closest('[data-tab]'); if (t) { profileUi.tab = t.dataset.tab; drawTab(); } });
-          $('#pf-days', page).addEventListener('change', (e) => { profileUi.days = Number(e.target.value); AP.refresh(); });
+          $('#pf-days', page).addEventListener('change', (e) => {
+            const [kind, val] = String(e.target.value).split(':');
+            if (kind === 'm') { const [jy, jm] = val.split('-').map(Number); profileUi.month = { jy, jm }; } else { profileUi.month = null; profileUi.days = Number(val); }
+            AP.refresh();
+          });
           $$('[data-go]', page).forEach((b) => b.addEventListener('click', () => AP.go(b.dataset.go)));
           const week = $('#pf-week', page); if (week) week.addEventListener('click', () => AP.go('weekly', u.id));
           const msg = $('#pf-msg', page); if (msg) msg.addEventListener('click', () => AP.openMessage(u.id));
