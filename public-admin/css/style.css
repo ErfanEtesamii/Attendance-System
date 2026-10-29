@@ -1304,6 +1304,10 @@ button.sch-cell { cursor: pointer; }
 .sch-off { background: var(--ov-08); opacity: .75; }
 .sch-sp-work { background: var(--orange-soft); border-color: var(--orange); }
 .sch-sp-off { background: var(--red-soft); border-color: var(--red); }
+.sch-grid { -webkit-user-select: none; user-select: none; }
+.sch-dragging { user-select: none; -webkit-user-select: none; cursor: grabbing; }
+.sch-dragging .sch-cell { cursor: grabbing; }
+button.sch-cell.sch-sel { outline: 2px solid var(--brand); outline-offset: -2px; background: var(--brand-soft); }
 .sch-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin-top: 10px; }
 .sch-key { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--hint); }
 @media (max-width: 520px) { .sch-cell { min-height: 46px; } .sch-t { font-size: 9px; } }
