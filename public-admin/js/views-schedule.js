@@ -108,16 +108,24 @@
     });
   }
 
-  // انتخاب دسته‌ای با کشیدن موس: بازه‌ی پیوسته‌ی روزها (از روز شروع تا روز فعلی، به ترتیب تاریخ) ⇒ یک تغییر برای همه.
+  // انتخاب دسته‌ای: روزها با کشیدن موس رنگ می‌شوند (هر روزی که موس رویش می‌رود، بدون نیاز به ترتیب/پیوستگی) ⇒ یک تغییر برای همه.
   // work/off از POST /admin/schedule/bulk (قواعد و قفل ماه بسته سمت سرور)؛ «برگشت به شیفت» با DELETE روزهای دارای برنامه‌ی ویژه.
+  const dayDiff = (a, b) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86400000);
   function bulkModal(u, dates, days, done) {
     const fmtD = (d) => (J.format ? J.format(J.isoToJalali(d)) : d);
-    const from = dates[0];
-    const to = dates[dates.length - 1];
+    const sorted = [...dates].sort();
+    const from = sorted[0];
+    const to = sorted[sorted.length - 1];
+    // روزهای پیوسته یک بازه‌اند؛ هر بازه یک درخواست گروهی
+    const runs = [];
+    sorted.forEach((d) => {
+      const last = runs[runs.length - 1];
+      if (last && dayDiff(last[1], d) === 1) last[1] = d; else runs.push([d, d]);
+    });
     AP.modal({
       title: `تغییر گروهی برنامه — ${u.fullName}`,
       body: `<form class="form" id="sch-bulk-form">
-        <p class="muted">${fa(dates.length)} روز انتخاب شده: ${esc(fmtD(from))} تا ${esc(fmtD(to))}</p>
+        <p class="muted">${fa(dates.length)} روز انتخاب شده${dates.length <= 8 ? ': ' + sorted.map((d) => fa(J.isoToJalali(d).jd)).join('، ') : ` (از ${esc(fmtD(from))} تا ${esc(fmtD(to))})`}</p>
         <label class="field"><span>نوع روز</span><select name="kind">
           <option value="off" selected>آف / غیرکاری</option>
           <option value="work">روز کاری با ساعت دلخواه</option>
@@ -150,7 +158,7 @@
           try {
             let failed = [];
             if (f.kind === 'default') {
-              const withSp = dates.filter((d) => { const day = days.find((x) => x.date === d); return day && day.schedule; });
+              const withSp = sorted.filter((d) => { const day = days.find((x) => x.date === d); return day && day.schedule; });
               if (!withSp.length) { m.close(); AP.toast('روز انتخاب‌شده برنامه‌ی ویژه نداشت.'); return; }
               const sure = await AP.confirmBox({ title: 'حذف برنامه‌ی ویژه‌ی روزهای انتخاب‌شده', message: `${fa(withSp.length)} روز به شیفت/تنظیمات سراسری برمی‌گردد.`, confirmText: 'حذف', danger: true });
               if (!sure) return;
@@ -158,8 +166,10 @@
                 try { await AP.api(`/admin/users/${u.id}/schedule/${d}`, { method: 'DELETE' }); } catch (err) { failed.push({ date: d, error: err.message }); }
               }
             } else {
-              const r = await AP.api('/admin/schedule/bulk', { method: 'POST', body: { userIds: [u.id], from, to, kind: f.kind, startTime: f.kind === 'work' ? f.startTime : undefined, endTime: f.kind === 'work' ? f.endTime : undefined, note: f.note || undefined } });
-              failed = (r.results || []).filter((x) => !x.ok);
+              for (const [a, b] of runs) {
+                const r = await AP.api('/admin/schedule/bulk', { method: 'POST', body: { userIds: [u.id], from: a, to: b, kind: f.kind, startTime: f.kind === 'work' ? f.startTime : undefined, endTime: f.kind === 'work' ? f.endTime : undefined, note: f.note || undefined } });
+                failed.push(...(r.results || []).filter((x) => !x.ok));
+              }
             }
             if (failed.length) {
               msg.textContent = `${fa(failed.length)} روز اعمال نشد: ${failed[0].error}`;
@@ -206,65 +216,79 @@
             : `<p class="form-msg err" role="alert">${esc(err.message)}</p>`);
         }
         root.removeAttribute('aria-busy');
+        paintSel();
       }
 
-      // کشیدن موس روی روزها ⇒ انتخاب بازه‌ی پیوسته؛ رها کردن ⇒ مودال تغییر گروهی. کلیک ساده همان ویرایش تک‌روز است.
-      let drag = null; // { anchor, cur }
+      // انتخاب با کشیدن: هر روزی که موس رویش می‌رود به انتخاب اضافه می‌شود (غیرپیوسته هم می‌شود)؛ انتخاب پس از رها کردن می‌ماند
+      // و نوار «تغییر وضعیت» ظاهر می‌شود. وقتی انتخابی هست، کلیک روی روز آن را اضافه/کم می‌کند. Esc انتخاب را پاک می‌کند.
+      const sel = new Set();
+      let painting = false;
+      let startDate = null;
       let suppressClick = false;
       const cellOf = (el) => (el && el.closest ? el.closest('button.sch-cell[data-date]') : null);
-      const dragDates = () => {
-        if (!drag) return [];
-        const a = drag.anchor < drag.cur ? drag.anchor : drag.cur;
-        const b = drag.anchor < drag.cur ? drag.cur : drag.anchor;
-        return days.map((d) => d.date).filter((d) => d >= a && d <= b);
-      };
       const paintSel = () => {
-        const set = new Set(drag && drag.cur !== drag.anchor ? dragDates() : []);
-        $$('button.sch-cell[data-date]', root).forEach((c) => c.classList.toggle('sch-sel', set.has(c.dataset.date)));
-        root.classList.toggle('sch-dragging', set.size > 0);
+        $$('button.sch-cell[data-date]', root).forEach((c) => c.classList.toggle('sch-sel', sel.has(c.dataset.date)));
+        root.classList.toggle('sch-dragging', painting);
+        let bar = $('#sch-selbar', root);
+        if (!sel.size) { if (bar) bar.remove(); return; }
+        if (!bar) {
+          bar = document.createElement('div');
+          bar.id = 'sch-selbar';
+          bar.className = 'sch-selbar';
+          const grid = $('.sch-grid', root);
+          if (grid) grid.parentNode.insertBefore(bar, grid); else root.appendChild(bar);
+        }
+        bar.innerHTML = `<strong>${fa(sel.size)} روز انتخاب شده</strong>
+          <button type="button" class="btn primary small" data-sel-apply>تغییر وضعیت</button>
+          <button type="button" class="btn ghost small" data-sel-clear>لغو انتخاب</button>`;
       };
-      const endDrag = () => {
-        document.removeEventListener('pointermove', onMove);
-        document.removeEventListener('pointerup', onUp);
-        document.removeEventListener('pointercancel', onCancel);
-        drag = null;
-        paintSel();
-      };
+      const clearSel = () => { sel.clear(); painting = false; paintSel(); };
       function onMove(e) {
-        if (!drag) return;
+        if (!painting) return;
         const c = cellOf(document.elementFromPoint(e.clientX, e.clientY));
-        if (c && c.dataset.date !== drag.cur) { drag.cur = c.dataset.date; paintSel(); }
-      }
-      function onUp() {
-        const dates = dragDates();
-        const multi = drag && drag.cur !== drag.anchor && dates.length > 1;
-        endDrag();
-        if (multi) {
-          suppressClick = true; // کلیکِ پس از رها کردن، مودال تک‌روز را باز نکند
-          setTimeout(() => { suppressClick = false; }, 0);
-          bulkModal(u, dates, days, load);
+        if (!c) return;
+        if (c.dataset.date !== startDate || suppressClick) {
+          if (startDate) { sel.add(startDate); startDate = null; } // روز شروع با اولین حرکت به روز دیگر وارد انتخاب می‌شود
+          sel.add(c.dataset.date);
+          suppressClick = true;
+          paintSel();
         }
       }
-      function onCancel() { endDrag(); }
+      function onUp() {
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        document.removeEventListener('pointercancel', onUp);
+        painting = false;
+        if (suppressClick) setTimeout(() => { suppressClick = false; }, 0); // کلیکِ بعد از رها کردن نباید انتخاب را برعکس کند
+        paintSel();
+      }
       if (canManage) {
         root.addEventListener('pointerdown', (e) => {
           if (e.pointerType !== 'mouse' || e.button !== 0) return; // لمس: اسکرول صفحه حفظ می‌شود
           const c = cellOf(e.target);
           if (!c) return;
-          drag = { anchor: c.dataset.date, cur: c.dataset.date };
+          painting = true;
+          suppressClick = false;
+          startDate = c.dataset.date;
           document.addEventListener('pointermove', onMove);
           document.addEventListener('pointerup', onUp);
-          document.addEventListener('pointercancel', onCancel);
+          document.addEventListener('pointercancel', onUp);
         });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sel.size && root.isConnected) clearSel(); });
       }
       root.addEventListener('click', (e) => {
         if (suppressClick) { suppressClick = false; return; }
+        if (e.target.closest('[data-sel-clear]')) { clearSel(); return; }
+        if (e.target.closest('[data-sel-apply]')) { if (sel.size) bulkModal(u, [...sel], days, () => { clearSel(); load(); }); return; }
         const nav = e.target.closest('[data-step]');
-        if (nav) { if (step(Number(nav.dataset.step))) load(); return; }
+        if (nav) { if (step(Number(nav.dataset.step))) { sel.clear(); load(); } return; }
         if (e.target.closest('#sch-retry')) { load(); return; }
         const cell = e.target.closest('[data-date]');
         if (cell && canManage) {
-          const day = days.find((d) => d.date === cell.dataset.date);
+          const date = cell.dataset.date;
+          // کلیک ساده: بدون انتخاب ⇒ ویرایش تک‌روز؛ با انتخاب فعال ⇒ اضافه/کم‌کردن همان روز
+          if (sel.size) { if (sel.has(date)) sel.delete(date); else sel.add(date); paintSel(); return; }
+          const day = days.find((d) => d.date === date);
           if (day) editModal(u, day, load);
         }
       });
