@@ -8,3 +8,6 @@
   background: color-mix(in srgb, var(--brand) 11%, transparent);
   border: 1px solid color-mix(in srgb, var(--brand) 16%, transparent);
 }
+
+/* عنوان گرادیانی (background-clip:text) ایموجی را یک لکه‌ی تک‌رنگ می‌کرد؛ ایموجی از برش گرادیان بیرون می‌آید تا رنگی دیده شود */
+.view-header h2 .hello-emoji { display: inline-block; -webkit-text-fill-color: initial; color: initial; background: none; -webkit-background-clip: border-box; background-clip: border-box; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }

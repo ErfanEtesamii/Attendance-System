@@ -94,7 +94,7 @@
       const inboxTotal = Object.keys(inboxMeta).reduce((s, k) => s + Number((inbox[k] || {}).count || 0), 0);
       const html = `
         <div class="view-header">
-          <div><h2>سلام ${esc(AP.state.me.fullName)} 😊</h2>
+          <div><h2>سلام ${esc(AP.state.me.fullName)} <span class="hello-emoji" aria-hidden="true">😊</span></h2>
             <div class="sub">وضعیت امروز، ${esc(fmt.dateFull(d.date))}${t.holiday ? ' — امروز تعطیل رسمی است' : ''}</div></div>
           <div class="header-actions">
             ${d.pending.leave ? `<button class="btn ghost" data-go="leave">${icon('leave')} ${fmt.num(d.pending.leave)} درخواست در انتظار</button>` : ''}
