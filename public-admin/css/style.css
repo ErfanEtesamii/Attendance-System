@@ -2438,3 +2438,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
 .dt-mark.is-partial { color: var(--orange); }
 .dt-mark.is-none { color: var(--hint); }
 @media print { .day-task.dt-row { border-top: 1px dashed #999; } }
+
+/* برنامه‌ی هفتگی: ۴ ستون در ردیف (به‌جای ۵) ⇒ کارت‌ها پهن‌تر؛ ردیف دوم ۳ روز باقی‌مانده */
+.week-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); }
+@media (max-width: 1180px) { .week-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .week-grid { grid-template-columns: minmax(0, 1fr); } }
