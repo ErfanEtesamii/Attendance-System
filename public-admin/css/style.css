@@ -2426,3 +2426,15 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
   #att-filters + .card.flush table[data-stack] tbody td { padding-block: 0; border-bottom: 0; }
   #att-filters + .card.flush table[data-stack] td:first-child { border-bottom: 1px solid color-mix(in srgb, var(--row-bar) 22%, var(--border)); padding-bottom: var(--space-2); }
 }
+
+/* برنامه‌ی هفتگی: هر تسک = دو ستون (ستون وضعیت ✓/✗/◐/○ + ستون عنوان و جزئیات)، با خط‌چینِ کم‌رنگ بین تسک‌ها */
+.day-task.dt-row { display: grid; grid-template-columns: 30px minmax(0, 1fr); column-gap: var(--space-2); align-items: start; border-top: 1px dashed var(--border); opacity: 1; }
+.day-task.dt-row:first-child { border-top: 0; }
+.dt-body { min-width: 0; }
+.dt-status { display: flex; justify-content: center; padding-top: 1px; }
+.dt-mark { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; font-size: 14px; font-weight: 800; line-height: 1; background: var(--card-2); color: var(--hint); border: 1.5px solid currentColor; }
+.dt-mark.is-done { color: var(--green); background: var(--green-soft); }
+.dt-mark.is-not-done { color: var(--red); background: var(--red-soft); }
+.dt-mark.is-partial { color: var(--orange); }
+.dt-mark.is-none { color: var(--hint); }
+@media print { .day-task.dt-row { border-top: 1px dashed #999; } }

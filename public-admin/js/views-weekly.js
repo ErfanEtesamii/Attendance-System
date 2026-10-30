@@ -82,6 +82,13 @@
     return AP.badge(cls, `${TASK_ICON[status] ? `${TASK_ICON[status]} ` : ''}${label}`);
   }
 
+  // ستون وضعیت: فقط دایره‌ی رنگیِ ✓ / ✗ / ◐ / ○ (متن وضعیت برای صفحه‌خوان و tooltip)
+  const STATUS_CLS = { done: 'is-done', not_done: 'is-not-done', partial: 'is-partial', no_answer: 'is-none' };
+  function taskStatusCell(status) {
+    const label = (TASK_STATUS[status] || ['', status])[1];
+    return `<div class="dt-status"><span class="dt-mark ${STATUS_CLS[status] || 'is-none'}" title="${esc(label)}" aria-hidden="true">${TASK_ICON[status] || '○'}</span><span class="sr-only">${esc(label)}</span></div>`;
+  }
+
   function dayChips(d) {
     const att = d.attendance;
     const kindDef = KIND_BADGE[d.kind];
@@ -122,12 +129,14 @@
   function mandatoryTaskRow(t, isSelf) {
     const r = t.review || null;
     const pct = r && !r.notYet && r.reportCount > 0 ? Math.round((r.reviewedCount / r.reportCount) * 100) : null;
-    return `<li class="day-task is-mandatory">
+    return `<li class="day-task dt-row is-mandatory">
+      ${taskStatusCell(t.status)}
+      <div class="dt-body">
       <div class="title">${AP.badge('blue', '🔒 واجب', true)}${esc(t.title)}<span class="sr-only">تسک سیستمی؛ فقط‌خواندنی</span></div>
-      <div class="day-task-meta">${taskStatusBadge(t.status)}</div>
       ${r ? `<div class="rv-progress-text" role="status">${esc(reviewProgressText(r))}</div>` : ''}
       ${pct == null ? '' : `<div class="rv-progress" role="progressbar" aria-label="پیشرفت مشاهده‌ی گزارش‌ها" aria-valuemin="0" aria-valuemax="${r.reportCount}" aria-valuenow="${r.reviewedCount}"><div class="rv-progress-fill" data-progress="${pct}"></div></div>`}
       ${r && !r.notYet && isSelf && AP.can('taskreports.read') ? `<button type="button" class="btn ghost small rv-open" data-act="open-reviews" data-date="${esc(r.reviewDate)}">مشاهده‌ی گزارش‌ها</button>` : ''}
+      </div>
     </li>`;
   }
 
@@ -135,19 +144,21 @@
     if (t.isSystem && t.systemKey === REVIEW_KEY) return mandatoryTaskRow(t, isSelf);
     const reasonText = t.reasonText || (t.reasonCode ? REASONS[t.reasonCode] || t.reasonCode : '');
     const meta = [
-      taskStatusBadge(t.status),
       t.rescheduleTo ? AP.badge('', `منتقل به ${esc(fmt.date(t.rescheduleTo))}`) : '',
       t.dropped ? AP.badge('', 'کنارگذاشته‌شده') : '',
       t.answeredLate ? AP.badge('orange', 'پاسخ دیرهنگام') : '',
       t.outOfPlan ? AP.badge('', 'خارج از برنامه') : '',
     ].filter(Boolean).join('');
-    return `<li class="day-task${t.isUrgent ? ' is-urgent' : ''}">
+    return `<li class="day-task dt-row${t.isUrgent ? ' is-urgent' : ''}">
+      ${taskStatusCell(t.status)}
+      <div class="dt-body">
       <div class="title">${t.isUrgent ? AP.badge('red', t.selfAssigned ? '⚡ فوری (خودش)' : '⚡ فوری', true) : ''}${t.priority === 'high' && !t.isUrgent ? AP.badge('late', 'اولویت بالا') : ''}${esc(t.title)}</div>
       ${t.isUrgent && ((t.selfAssigned && t.scheduledStartTime && t.urgentDeadlineTime) || (!t.selfAssigned && t.assignedBy)) ? `<div class="muted text-xs">${t.selfAssigned ? `زمان: ${esc(t.scheduledStartTime)} تا ${esc(t.urgentDeadlineTime)}` : `از طرف: ${esc(t.assignedBy)}${t.urgentDeadlineTime ? ` · مهلت ${esc(t.urgentDeadlineTime)}` : ''}`}</div>` : ''}
-      <div class="day-task-meta">${meta}</div>
+      ${meta ? `<div class="day-task-meta">${meta}</div>` : ''}
       ${reasonText ? `<div class="reason">${esc(reasonText)}</div>` : ''}
       ${t.note ? `<div class="reason">توضیح انجام: ${esc(t.note)}</div>` : ''}
       ${selfUrgentTaskActions(t, opts)}
+      </div>
     </li>`;
   }
 
