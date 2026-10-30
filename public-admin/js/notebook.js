@@ -149,14 +149,20 @@
   }
 
   // یک منوی سه‌نقطه‌ی باز در هر لحظه؛ کلیک بیرون از آن (یا Escape) آن را می‌بندد.
+  // شنونده‌ی document فقط تا وقتی منو باز است ثبت می‌ماند (تا حالت استراحت هیچ شنونده‌ی سراسری‌ای نباشد).
   let openKebab = null;
-  if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
-    document.addEventListener('click', (e) => {
-      if (!openKebab) return;
-      const wrap = openKebab.menuEl.parentNode;
-      if (wrap && e && e.target && typeof wrap.contains === 'function' && wrap.contains(e.target)) return;
-      openKebab.close(false);
-    });
+  const hasDoc = () => typeof document !== 'undefined' && typeof document.addEventListener === 'function' && typeof document.removeEventListener === 'function';
+  const outsideClick = (e) => {
+    if (!openKebab) return;
+    const wrap = openKebab.menuEl.parentNode;
+    if (wrap && e && e.target && typeof wrap.contains === 'function' && wrap.contains(e.target)) return;
+    openKebab.close(false);
+  };
+  function setOpenKebab(v) {
+    const was = !!openKebab; openKebab = v;
+    if (!hasDoc()) return;
+    if (v && !was) document.addEventListener('click', outsideClick);
+    else if (!v && was) document.removeEventListener('click', outsideClick);
   }
 
   function taskRow(t, edit, group = [], zone = null, num = 0) {
@@ -192,7 +198,7 @@
         kebab.setAttribute('aria-expanded', 'false');
         const menuEl = h('div', { class: 'nb-task__menu', attrs: { role: 'group', 'aria-label': `گزینه‌های تسک «${t.title}»` } });
         menuEl.hidden = true;
-        const closeMenu = (refocus) => { menuEl.hidden = true; kebab.setAttribute('aria-expanded', 'false'); if (openKebab && openKebab.menuEl === menuEl) openKebab = null; if (refocus && kebab.focus) kebab.focus(); };
+        const closeMenu = (refocus) => { menuEl.hidden = true; kebab.setAttribute('aria-expanded', 'false'); if (openKebab && openKebab.menuEl === menuEl) setOpenKebab(null); if (refocus && kebab.focus) kebab.focus(); };
         const wrapAction = (fn) => (e) => { closeMenu(false); return fn(e); };
         const addItem = (b) => { b.className += ' nb-menu__item'; items.push(b); return b; };
         if (edit.onShift && movable.length > 1 && idx >= 0) {
@@ -213,7 +219,7 @@
           if (openKebab && openKebab.menuEl !== menuEl) openKebab.close(false);
           menuEl.hidden = !open;
           kebab.setAttribute('aria-expanded', String(open));
-          openKebab = open ? { menuEl, kebab, close: closeMenu } : null;
+          setOpenKebab(open ? { menuEl, kebab, close: closeMenu } : null);
           if (open) { const f = items.find((b) => !b.disabled); if (f && f.focus) f.focus(); }
         });
         menuEl.addEventListener('keydown', (e) => { if (e && e.key === 'Escape') { if (e.stopPropagation) e.stopPropagation(); closeMenu(true); } });
