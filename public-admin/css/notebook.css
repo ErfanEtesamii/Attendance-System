@@ -5,23 +5,23 @@
 /* ---------- توکن‌ها: تم تیره (پیش‌فرض پنل) = «کاغذ شب»؛ تم روشن زیر ---------- */
 .nb,
 :root[data-theme="dark"] .nb {
-  --nb-paper: #2a2127;
-  --nb-paper-2: #31262d;
-  --nb-card: #3a2e36;
-  --nb-ink: #f7edf0;
-  --nb-ink-soft: #d3bfc8;
-  --nb-rose: #7d3d57;
-  --nb-rose-strong: #f4a9c0;
-  --nb-on-strong: #2a1019;
-  --nb-focus: #f4a9c0;
-  --nb-line: rgba(244, 169, 192, 0.22);
-  --nb-spring: #a89098;
-  --nb-spring-hole: #1d1519;
+  --nb-paper: #1f1b4a;
+  --nb-paper-2: #26225a;
+  --nb-card: #2a2660;
+  --nb-ink: #eeedfb;
+  --nb-ink-soft: #c3c0e6;
+  --nb-rose: #3d3894;
+  --nb-rose-strong: #b7b2f5;
+  --nb-on-strong: #17143a;
+  --nb-focus: #b7b2f5;
+  --nb-line: rgba(183, 178, 245, 0.22);
+  --nb-spring: #8e8ac4;
+  --nb-spring-hole: #17143a;
   --nb-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
   --nb-flower-opacity: 0.07;
 
   --nb-tape-ink: #ffffff;
-  --nb-tape-rose: #7d3d57;
+  --nb-tape-rose: #3d3894;
   --nb-tape-sage: #3f6a4b;
   --nb-tape-sand: #7a6234;
   --nb-tape-lilac: #5d4a8e;
@@ -38,23 +38,23 @@
   --nb-chip-locked-bg: #4a3b30; --nb-chip-locked-fg: #e6d3c2;
 }
 :root[data-theme="light"] .nb {
-  --nb-paper: #fdf6f1;
-  --nb-paper-2: #f7ebe3;
-  --nb-card: #fffaf8;
-  --nb-ink: #3b2a31;
-  --nb-ink-soft: #6a5360;
-  --nb-rose: #f2b8c8;
-  --nb-rose-strong: #a8325f;
+  --nb-paper: #f4f3fb;
+  --nb-paper-2: #ebe9f8;
+  --nb-card: #ffffff;
+  --nb-ink: #1d1a45;
+  --nb-ink-soft: #4f4b80;
+  --nb-rose: #dcd9fa;
+  --nb-rose-strong: #322c79;
   --nb-on-strong: #ffffff;
-  --nb-focus: #a8325f;
-  --nb-line: rgba(168, 50, 95, 0.2);
-  --nb-spring: #b7a595;
-  --nb-spring-hole: #d9c9bb;
-  --nb-shadow: 0 10px 28px rgba(90, 50, 62, 0.18);
+  --nb-focus: #322c79;
+  --nb-line: rgba(50, 44, 121, 0.2);
+  --nb-spring: #a29ecb;
+  --nb-spring-hole: #cfcdea;
+  --nb-shadow: 0 10px 28px rgba(35, 30, 90, 0.16);
   --nb-flower-opacity: 0.1;
 
-  --nb-tape-ink: #3b2a31;
-  --nb-tape-rose: #f2b8c8;
+  --nb-tape-ink: #1d1a45;
+  --nb-tape-rose: #dcd9fa;
   --nb-tape-sage: #c5e0c9;
   --nb-tape-sand: #ecd9b8;
   --nb-tape-lilac: #d9cdf3;
@@ -72,11 +72,11 @@
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) .nb {
-    --nb-paper: #fdf6f1; --nb-paper-2: #f7ebe3; --nb-card: #fffaf8; --nb-ink: #3b2a31; --nb-ink-soft: #6a5360;
-    --nb-rose: #f2b8c8; --nb-rose-strong: #a8325f; --nb-on-strong: #ffffff; --nb-focus: #a8325f;
-    --nb-line: rgba(168, 50, 95, 0.2); --nb-spring: #b7a595; --nb-spring-hole: #d9c9bb;
-    --nb-shadow: 0 10px 28px rgba(90, 50, 62, 0.18); --nb-flower-opacity: 0.1;
-    --nb-tape-ink: #3b2a31; --nb-tape-rose: #f2b8c8; --nb-tape-sage: #c5e0c9; --nb-tape-sand: #ecd9b8; --nb-tape-lilac: #d9cdf3; --nb-tape-sky: #c4dcf3;
+    --nb-paper: #f4f3fb; --nb-paper-2: #ebe9f8; --nb-card: #ffffff; --nb-ink: #1d1a45; --nb-ink-soft: #4f4b80;
+    --nb-rose: #dcd9fa; --nb-rose-strong: #322c79; --nb-on-strong: #ffffff; --nb-focus: #322c79;
+    --nb-line: rgba(50, 44, 121, 0.2); --nb-spring: #a29ecb; --nb-spring-hole: #cfcdea;
+    --nb-shadow: 0 10px 28px rgba(35, 30, 90, 0.16); --nb-flower-opacity: 0.1;
+    --nb-tape-ink: #1d1a45; --nb-tape-rose: #dcd9fa; --nb-tape-sage: #c5e0c9; --nb-tape-sand: #ecd9b8; --nb-tape-lilac: #d9cdf3; --nb-tape-sky: #c4dcf3;
     --nb-chip-work-bg: #e3f1e6;   --nb-chip-work-fg: #1f5a33;
     --nb-chip-half-bg: #fdf0d2;   --nb-chip-half-fg: #6b4a00;
     --nb-chip-off-bg: #ece6ea;    --nb-chip-off-fg: #4f4350;
@@ -312,23 +312,23 @@
   .nb,
   :root[data-theme="dark"] .nb,
   :root[data-theme="light"] .nb {
-  --nb-paper: #fdf6f1;
-  --nb-paper-2: #f7ebe3;
-  --nb-card: #fffaf8;
-  --nb-ink: #3b2a31;
-  --nb-ink-soft: #6a5360;
-  --nb-rose: #f2b8c8;
-  --nb-rose-strong: #a8325f;
+  --nb-paper: #f4f3fb;
+  --nb-paper-2: #ebe9f8;
+  --nb-card: #ffffff;
+  --nb-ink: #1d1a45;
+  --nb-ink-soft: #4f4b80;
+  --nb-rose: #dcd9fa;
+  --nb-rose-strong: #322c79;
   --nb-on-strong: #ffffff;
-  --nb-focus: #a8325f;
-  --nb-line: rgba(168, 50, 95, 0.2);
-  --nb-spring: #b7a595;
-  --nb-spring-hole: #d9c9bb;
-  --nb-shadow: 0 10px 28px rgba(90, 50, 62, 0.18);
+  --nb-focus: #322c79;
+  --nb-line: rgba(50, 44, 121, 0.2);
+  --nb-spring: #a29ecb;
+  --nb-spring-hole: #cfcdea;
+  --nb-shadow: 0 10px 28px rgba(35, 30, 90, 0.16);
   --nb-flower-opacity: 0.1;
 
-  --nb-tape-ink: #3b2a31;
-  --nb-tape-rose: #f2b8c8;
+  --nb-tape-ink: #1d1a45;
+  --nb-tape-rose: #dcd9fa;
   --nb-tape-sage: #c5e0c9;
   --nb-tape-sand: #ecd9b8;
   --nb-tape-lilac: #d9cdf3;
@@ -447,8 +447,8 @@
   /* ۳) شماره‌ی تسک (SVG وکتور؛ پشت‌سرهم در هر روز) + چیدمان مرتب ردیف: [شماره] [عنوان و برچسب‌ها] [⋮] */
   .nb .nb-task { flex-wrap: wrap; align-items: center; gap: 10px; }
   .nb .nb-task__num { flex: none; width: 28px; height: 28px; display: block; }
-  .nb .nb-num__bg { fill: var(--nb-rose); stroke: color-mix(in srgb, var(--nb-rose-strong) 55%, transparent); stroke-width: 1.2; }
-  .nb .nb-num__txt { fill: color-mix(in srgb, var(--nb-rose-strong) 55%, #000); paint-order: stroke; stroke: color-mix(in srgb, var(--nb-rose-strong) 55%, #000); stroke-width: 0.6px; font-weight: 800; font-family: inherit; }
+  .nb .nb-num__bg { fill: var(--nb-rose); stroke: var(--nb-rose-strong); stroke-width: 1; }
+  .nb .nb-num__txt { fill: var(--nb-ink); font-weight: 900; font-family: inherit; }
   .nb .nb-task__main { flex: 1 1 0; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
   .nb .nb-task__title { min-width: 0; overflow-wrap: anywhere; line-height: 1.6; }
   .nb .nb-task > .nb-why { flex: none; }

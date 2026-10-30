@@ -284,7 +284,7 @@
     if (ord.length || (!mgr.length && !sys.length)) out.push(box('ord', 'تسک‌ها', '📝', lines(rowsOf(ord, false), { emptyText: 'تسکی ثبت نشده' })));
     if (sys.length) out.push(box('sys', 'تسک‌های سیستمی', '⚙', lines(rowsOf(sys, false))));
     const rt = (routines || []).map((t, i) => taskRow(t, null, [], null, i + 1, false, true)); // نمای تکراریِ فقط‌خواندنی؛ شناسه‌ی تسک فقط روی ردیف اصلی (کارت «هر روز») می‌ماند
-    out.push(box('routine', 'روتین‌های روزانه', '🔁', rt.length ? lines(rt) : h('p', { class: 'nb-box__empty', text: 'روتینی ثبت نشده' }))); // افزودن روتین فقط یک‌جا: کارت «هر روز» // تسک بدون تاریخ = روتین روزانه (همان «هر روز»)
+    if (d.kind === 'working' || d.kind === 'half') out.push(box('routine', 'روتین‌های روزانه', '🔁', rt.length ? lines(rt) : h('p', { class: 'nb-box__empty', text: 'روتینی ثبت نشده' }))); // افزودن روتین فقط یک‌جا: کارت «هر روز» // تسک بدون تاریخ = روتین روزانه (همان «هر روز»)
     return out;
   }
 
