@@ -66,13 +66,29 @@
       };
       f.title.value = init.title; f.description.value = init.description; f.priority.value = init.priority; f.day.value = init.day;
 
+      // تسک چند‌روزه: فقط هنگام افزودنِ تسک روزدار؛ برای هر روزِ کاریِ بازه یک تسک ساخته می‌شود
+      const dayOpts = () => (model.days || []).map((d) => h('option', { attrs: { value: d.date }, text: nb.dayTitle(d) }));
+      f.multi = h('input', { attrs: { type: 'checkbox', id: `${uid}-multi` } });
+      f.from = h('select', { class: 'nb-input' }, ...dayOpts());
+      f.to = h('select', { class: 'nb-input' }, ...dayOpts());
+      f.from.value = date || ((model.days || [])[0] || {}).date || '';
+      f.to.value = f.from.value;
+      const range = h('div', { class: 'nb-multi__range', attrs: { hidden: true } },
+        h('label', { class: 'nb-field' }, h('span', { class: 'nb-field-label', text: 'از روز' }), f.from),
+        h('label', { class: 'nb-field' }, h('span', { class: 'nb-field-label', text: 'تا روز' }), f.to),
+        h('p', { class: 'nb-multi__hint', text: 'برای هر روزِ کاری و نیم‌روزِ این بازه یک تسک ساخته می‌شود (آف، تعطیل و مرخصی رد می‌شود).' }));
+      f.multi.addEventListener('change', () => { if (f.multi.checked) range.removeAttribute('hidden'); else range.setAttribute('hidden', ''); });
+      const multiBlock = (mode === 'add' && date)
+        ? h('div', { class: 'nb-multi' }, h('label', { class: 'nb-multi__check', attrs: { for: `${uid}-multi` } }, f.multi, 'تسک چند روزه'), range)
+        : null;
+
       const general = h('p', { class: 'nb-form-error', attrs: { role: 'alert' } });
       if (note) general.textContent = note;
       const saveBtn = nb.btn(mode === 'add' ? 'افزودن' : 'ذخیره', { type: 'submit' });
       const cancelBtn = nb.btn('انصراف', { variant: 'ghost', onClick: () => closeActive() });
       const form = h('form', { class: 'nb-form', attrs: { novalidate: true, 'aria-label': mode === 'add' ? (date ? 'افزودن تسک' : 'افزودن روتین') : 'ویرایش تسک' } },
         field('title', 'عنوان', f.title), field('description', 'توضیح (اختیاری)', f.description),
-        field('priority', 'اولویت', f.priority), (mode === 'add' && !date) ? null : field('day', 'روز', f.day), general, // روتین جدید: فقط اولویت؛ خودکار برای همه‌ی روزها
+        field('priority', 'اولویت', f.priority), (mode === 'add' && !date) ? null : field('day', 'روز', f.day), multiBlock, general, // روتین جدید: فقط اولویت؛ خودکار برای همه‌ی روزها
         h('div', { class: 'nb-form-actions' }, saveBtn, cancelBtn));
 
       const ctx = { mode, task, date, f, errs, general, saveBtn, cancelBtn };
@@ -131,6 +147,7 @@
       const v = read(ctx.f);
       if (!v.title.trim()) { showFieldError(ctx, 'title', 'عنوان تسک الزامی است.'); return; }
       const model = getModel();
+      if (ctx.mode === 'add' && ctx.f.multi && ctx.f.multi.checked) return submitMulti(ctx, v);
       const body = { title: v.title, description: v.description, plannedDate: v.day || null, priority: v.priority, expectedVersion: model.plan.version };
       busy = true; setBusy(ctx, true); setStatus('در حال ذخیره…');
       try {
@@ -146,6 +163,31 @@
           if (code === 'PLAN_CONFLICT') draft = { mode: ctx.mode, taskId: ctx.task ? ctx.task.id : null, date: ctx.date, values: v }; // فرم باز می‌ماند و داده حفظ می‌شود
           showConflict(err.message);
         } else if (FIELD_OF[code] && ctx.errs[FIELD_OF[code]]) showFieldError(ctx, FIELD_OF[code], err.message);
+        else { ctx.general.textContent = err.message; AP.toast(err.message, true); }
+      } finally { busy = false; setBusy(ctx, false); setStatus(''); }
+    }
+
+    // تسک چند‌روزه: برای هر روزِ کاری/نیم‌روزِ بازه‌ی [از، تا] یک تسک (پشت‌سرهم؛ نسخه‌ی برنامه بعد از هر افزودن تازه می‌شود)
+    async function submitMulti(ctx, v) {
+      const model = getModel();
+      const from = ctx.f.from.value; const to = ctx.f.to.value;
+      if (!from || !to || from > to) { ctx.general.textContent = 'بازه نامعتبر است: «تا روز» باید بعد از «از روز» (یا همان روز) باشد.'; return; }
+      const dates = (model.days || []).filter((d) => d.date >= from && d.date <= to && (d.kind === 'working' || d.kind === 'half')).map((d) => d.date);
+      if (!dates.length) { ctx.general.textContent = 'در این بازه روز کاری وجود ندارد.'; return; }
+      busy = true; setBusy(ctx, true); setStatus('در حال ذخیره…');
+      let done = 0;
+      try {
+        for (const date of dates) {
+          const res = await AP.api(`/admin/users/${userId}/plan/tasks`, { method: 'POST', body: { weekStart: model.weekStart, title: v.title, description: v.description, plannedDate: date, priority: v.priority, expectedVersion: getModel().plan.version } });
+          done += 1;
+          draft = null; active = null;
+          applyModel(res);
+        }
+        AP.toast(`تسک برای ${done} روز اضافه شد.`);
+      } catch (err) {
+        const code = err.data && err.data.code;
+        if (done) { AP.toast(`فقط ${done} از ${dates.length} روز ثبت شد: ${err.message}`, true); }
+        else if (STALE_CODES.has(code)) showConflict(err.message);
         else { ctx.general.textContent = err.message; AP.toast(err.message, true); }
       } finally { busy = false; setBusy(ctx, false); setStatus(''); }
     }
