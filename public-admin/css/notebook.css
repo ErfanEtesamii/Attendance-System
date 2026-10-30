@@ -345,7 +345,7 @@
   --nb-chip-locked-bg: #eadfd6; --nb-chip-locked-fg: #5b4636;
   }
   .nb .nb-spread { display: block; box-shadow: none; border-radius: 0; background: transparent; overflow: visible; }
-  .nb .nb-spring, .nb .nb-pager, .nb .nb-card__toggle, .nb .nb-task__actions, .nb .nb-task__handle, .nb .nb-edit-slot { display: none !important; }
+  .nb .nb-spring, .nb .nb-pager, .nb .nb-card__toggle, .nb .nb-task__actions, .nb .nb-task__handle, .nb .nb-edit-slot, .nb .nb-routine-add { display: none !important; }
   .nb .nb-day-actions, .nb .nb-note__body .nb-btn, .nb .nb-note__body .nb-form { display: none !important; }
   .nb .nb-spread > .nb-page { display: flex !important; box-shadow: none; break-inside: auto; }
   .nb .nb-page::before { display: none; }
@@ -431,14 +431,13 @@
 
   /* ۲) کادر = همان لعاب و رنگ .card سایت (polish/05-cards.css)؛ قاب بیرونی شفاف تا کارت‌داخل‌کارت نشود.
      overflow باز می‌ماند تا منوی سه‌نقطه بریده نشود؛ درخشش گوشه با لایه‌ی پس‌زمینه ساخته می‌شود. */
-  .nb .nb-spread { background: transparent; border: 0; border-radius: 0; gap: 16px; }
-  .nb .nb-page { padding: 0; gap: 16px; }
+  .nb .nb-spread { background: transparent; border: 0; border-radius: 0; box-shadow: none; gap: 8px; }
+  .nb .nb-page { padding: 0; gap: 10px; }
   .nb .nb-card {
     border: 1px solid color-mix(in srgb, var(--brand) 13%, var(--border));
     border-radius: var(--radius);
     padding: 18px 20px;
     background:
-      radial-gradient(circle 110px at 0 0, color-mix(in srgb, var(--accent-2, var(--brand)) 14%, transparent), transparent 70%),
       linear-gradient(180deg, color-mix(in srgb, var(--card) 82%, transparent), color-mix(in srgb, color-mix(in srgb, var(--card) 94%, var(--brand)) 78%, transparent));
     box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 10%, transparent), 0 20px 40px -28px color-mix(in srgb, var(--brand) 45%, transparent);
   }
@@ -472,15 +471,30 @@
 
   /* ۴) منوی سه‌نقطه */
   .nb .nb-task__actions { position: relative; display: inline-flex; margin-inline-start: auto; }
-  .nb .nb-task__kebab { min-width: 34px; padding: 0; font-size: 1.15rem; line-height: 1; }
+  .nb .nb-task__kebab {
+    width: 32px; height: 32px; min-height: 0; padding: 0; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 1.25rem; font-weight: 900; line-height: 1; letter-spacing: 0;
+    background: var(--card-2); color: var(--hint); border: 1px solid transparent;
+  }
+  .nb .nb-task__kebab:hover:not([disabled]), .nb .nb-task__kebab[aria-expanded="true"] { background: var(--brand-soft); color: var(--brand); border-color: color-mix(in srgb, var(--brand) 30%, transparent); filter: none; }
   .nb .nb-task__menu {
-    position: absolute; z-index: 30; top: calc(100% + 4px); inset-inline-end: 0;
-    display: flex; flex-direction: column; gap: 2px; min-width: 150px; padding: 6px;
-    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-    box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.45);
+    position: absolute; z-index: 30; top: calc(100% + 6px); inset-inline-end: 0;
+    display: flex; flex-direction: column; gap: 2px; min-width: 168px; padding: 6px;
+    background: var(--card); border: 1px solid color-mix(in srgb, var(--brand) 16%, var(--border)); border-radius: 14px;
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 10%, transparent), 0 16px 34px -10px rgba(23, 20, 58, 0.35);
   }
   .nb .nb-task__menu[hidden] { display: none; }
-  .nb .nb-menu__item { width: 100%; justify-content: flex-start; text-align: start; background: transparent; border-color: transparent; }
-  .nb .nb-menu__item:hover:not([disabled]) { background: var(--card-2); filter: none; }
-  .nb .nb-task__menu .nb-menu__item:last-child { color: var(--red-text); }
+  .nb .nb-menu__item { width: 100%; min-height: 36px; justify-content: flex-start; gap: 8px; text-align: start; padding: 4px 10px; border-radius: 10px; font-size: 0.85rem; background: transparent; border-color: transparent; color: var(--text); }
+  .nb .nb-menu__item:hover:not([disabled]), .nb .nb-menu__item:focus-visible { background: var(--brand-soft); color: var(--brand); filter: none; }
+  .nb .nb-menu__item--edit::before { content: "✎"; }
+  .nb .nb-menu__item--move::before { content: "⇄"; }
+  .nb .nb-menu__item--del::before { content: "🗑"; font-size: 0.8rem; }
+  .nb .nb-menu__item--edit::before, .nb .nb-menu__item--move::before, .nb .nb-menu__item--del::before { display: inline-block; width: 1.2em; text-align: center; color: var(--hint); }
+  .nb .nb-menu__item--del { color: var(--red-text); }
+  .nb .nb-menu__item--del:hover:not([disabled]) { background: var(--red-soft); color: var(--red-text); }
+  .nb .nb-menu__item--del::before { color: inherit; }
+  .nb .nb-menu__item--del, .nb .nb-menu__item--move { margin-top: 0; }
+  .nb .nb-menu__item--edit { border-top: 1px dashed var(--nb-line); border-radius: 0 0 10px 10px; }
+  .nb .nb-routine-add { margin: 4px 0 6px; }
 }

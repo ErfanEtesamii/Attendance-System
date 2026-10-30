@@ -215,18 +215,18 @@
         menuEl.hidden = true;
         const closeMenu = (refocus) => { menuEl.hidden = true; kebab.setAttribute('aria-expanded', 'false'); if (openKebab && openKebab.menuEl === menuEl) setOpenKebab(null); if (refocus && kebab.focus) kebab.focus(); };
         const wrapAction = (fn) => (e) => { closeMenu(false); return fn(e); };
-        const addItem = (b) => { b.className += ' nb-menu__item'; items.push(b); return b; };
+        const addItem = (b, kind) => { b.className += ` nb-menu__item${kind ? ` nb-menu__item--${kind}` : ''}`; items.push(b); return b; };
         if (edit.onShift && movable.length > 1 && idx >= 0) {
-          ctrls.up = addItem(btn('▲', { variant: 'ghost', small: true, label: `بردن تسک «${t.title}» یک جایگاه بالاتر`, disabled: idx === 0, onClick: wrapAction(() => edit.onShift(t, -1, row)) }));
-          ctrls.down = addItem(btn('▼', { variant: 'ghost', small: true, label: `بردن تسک «${t.title}» یک جایگاه پایین‌تر`, disabled: idx === movable.length - 1, onClick: wrapAction(() => edit.onShift(t, 1, row)) }));
+          ctrls.up = addItem(btn('▲ بردن بالا', { variant: 'ghost', small: true, label: `بردن تسک «${t.title}» یک جایگاه بالاتر`, disabled: idx === 0, onClick: wrapAction(() => edit.onShift(t, -1, row)) }), 'up');
+          ctrls.down = addItem(btn('▼ بردن پایین', { variant: 'ghost', small: true, label: `بردن تسک «${t.title}» یک جایگاه پایین‌تر`, disabled: idx === movable.length - 1, onClick: wrapAction(() => edit.onShift(t, 1, row)) }), 'down');
         }
         let menu = null;
         if (edit.onMove && edit.days && edit.days.length) {
-          menu = moveMenu(t, edit, row); ctrls.move = menu.toggle; addItem(menu.toggle);
+          menu = moveMenu(t, edit, row); ctrls.move = menu.toggle; addItem(menu.toggle, 'move');
           menu.toggle.addEventListener('click', () => closeMenu(false)); // پنل انتقال زیر ردیف باز می‌شود؛ منوی سه‌نقطه بسته می‌شود
         }
-        addItem(btn('ویرایش', { variant: 'ghost', small: true, label: `ویرایش تسک «${t.title}»`, onClick: wrapAction(() => edit.onEdit(t, row)) }));
-        addItem(btn('حذف', { variant: 'ghost', small: true, label: `حذف تسک «${t.title}»`, onClick: wrapAction(() => edit.onDelete(t, row)) }));
+        addItem(btn('ویرایش', { variant: 'ghost', small: true, label: `ویرایش تسک «${t.title}»`, onClick: wrapAction(() => edit.onEdit(t, row)) }), 'edit');
+        addItem(btn('حذف', { variant: 'ghost', small: true, label: `حذف تسک «${t.title}»`, onClick: wrapAction(() => edit.onDelete(t, row)) }), 'del');
         for (const b of items) menuEl.appendChild(b);
         kebab.addEventListener('click', (e) => {
           if (e && e.stopPropagation) e.stopPropagation();
@@ -250,9 +250,9 @@
   }
 
   // جای افزودن تسک زیر هر کارت روز (date = null ⇒ «هر روز»)؛ فرم درجا داخل همین slot باز می‌شود
-  function addSlot(date, title, edit) {
-    const slot = h('div', { class: 'nb-edit-slot', attrs: { 'data-date': date || '' } },
-      btn('＋ افزودن تسک', { variant: 'ghost', small: true, label: `افزودن تسک به ${title}`, onClick: () => edit.onAdd(date, slot) }));
+  function addSlot(date, title, edit, text = '＋ افزودن تسک', cls = 'nb-edit-slot') {
+    const slot = h('div', { class: cls, attrs: { 'data-date': date || '' } },
+      btn(text, { variant: 'ghost', small: true, label: `افزودن تسک به ${title}`, onClick: () => edit.onAdd(date, slot) }));
     if (edit.onSlot) edit.onSlot(date, slot);
     return slot;
   }
@@ -284,7 +284,8 @@
     if (ord.length || (!mgr.length && !sys.length)) out.push(box('ord', 'تسک‌ها', '📝', lines(rowsOf(ord, false), { emptyText: 'تسکی ثبت نشده' })));
     if (sys.length) out.push(box('sys', 'تسک‌های سیستمی', '⚙', lines(rowsOf(sys, false))));
     const rt = (routines || []).map((t, i) => taskRow(t, null, [], null, i + 1, false, true)); // نمای تکراریِ فقط‌خواندنی؛ شناسه‌ی تسک فقط روی ردیف اصلی (کارت «هر روز») می‌ماند
-    out.push(box('routine', 'روتین‌های روزانه', '🔁', rt.length ? lines(rt) : h('p', { class: 'nb-box__empty', text: 'روتینی ثبت نشده' })));
+    out.push(box('routine', 'روتین‌های روزانه', '🔁', rt.length ? lines(rt) : h('p', { class: 'nb-box__empty', text: 'روتینی ثبت نشده' }),
+      edit ? addSlot(null, 'روتین‌های روزانه', edit, '＋ افزودن روتین', 'nb-routine-add') : null)); // تسک بدون تاریخ = روتین روزانه (همان «هر روز»)
     return out;
   }
 
@@ -407,7 +408,7 @@
       warnings.length ? card({ title: 'هشدارهای برنامه', tape: { tone: 'sand', label: '⚠ هشدارها' }, className: 'nb-warnings', collapsible },
         lines(warnings.map((w) => textLine(w.message, '⚠')))) : null,
       anyDay.length ? (() => {
-        const c = card({ title: 'هر روز', subtitle: 'تسک‌های بدون تاریخ', tape: { tone: 'sky', label: '🔁 هر روز' }, className: 'nb-anyday', collapsible }, lines(anyDay.map((t, i) => taskRow(t, edit, anyDay, null, i + 1))), edit ? addSlot(null, 'هر روز', edit) : null);
+        const c = card({ title: 'هر روز', subtitle: 'روتین‌های روزانه (تسک‌های بدون تاریخ)', tape: { tone: 'sky', label: '🔁 هر روز' }, className: 'nb-anyday', collapsible }, lines(anyDay.map((t, i) => taskRow(t, edit, anyDay, null, i + 1))), edit ? addSlot(null, 'هر روز', edit) : null);
         dropZone(c, null, edit);
         return c;
       })() : null);
