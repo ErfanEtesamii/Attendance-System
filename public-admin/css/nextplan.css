@@ -48,3 +48,8 @@
 /* ستون کارمندان هم‌تراز بالای سربرگ کارمند: قاعده‌ی .card (polish) آن را relative کرده و top:12px باعث ۱۲px پایین‌تر نشستنش می‌شد */
 .np-layout > aside.np-side { position: sticky; top: 12px; }
 @media (max-width: 980px) { .np-layout > aside.np-side { position: static; } }
+
+/* دعوت به دیدن وضعیت تسک‌های انجام‌شده (رفتن به برنامه‌ی هفتگی کارمند) */
+.np-weekly-cta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: 14px; padding: var(--space-3) var(--space-4); border: 2px solid var(--brand); border-radius: var(--r-lg); background: var(--brand-soft); box-shadow: var(--shadow-1); }
+.np-weekly-cta-text { flex: 1 1 260px; font-weight: 800; line-height: 1.8; }
+@media print { .np-weekly-cta { display: none !important; } }

@@ -63,11 +63,11 @@ function setup({ ov = OV(), plan = PLAN(), planError = null, ovError = null, per
 const err = (status, message) => Object.assign(new Error(message), { status });
 
 describe('ثبت صفحه و منو', () => {
-  test('منوی «📓 برنامه هفته بعد»، مجوز team.week_view، skeleton دفترچه', () => {
+  test('منوی «برنامه هفته بعد»، مجوز team.week_view، skeleton دفترچه', () => {
     const { def, AP } = setup();
     assert.equal(def.perm, 'team.week_view');
     assert.equal(def.skeleton, 'notebook');
-    assert.deepEqual(AP.nav[0], { id: 'nextplan', icon: 'attendance', label: '📓 برنامه هفته بعد', group: 'کارمندان و تردد' });
+    assert.deepEqual(AP.nav[0], { id: 'nextplan', icon: 'attendance', label: 'برنامه هفته بعد', group: 'کارمندان و تردد' });
   });
 });
 

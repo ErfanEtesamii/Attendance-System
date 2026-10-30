@@ -1,4 +1,4 @@
-// D1 (فاز ۱۳): صفحه‌ی «📓 برنامه هفته بعد» در پنل — مشاهده‌ی برنامه‌ی هفته‌ی هر کارمند با ظاهر دفترچه (AP.notebook.renderWeek از C2).
+// D1 (فاز ۱۳): صفحه‌ی «برنامه هفته بعد» در پنل — مشاهده‌ی برنامه‌ی هفته‌ی هر کارمند با ظاهر دفترچه (AP.notebook.renderWeek از C2).
 // داده: GET /admin/plan-overview (فهرست کارمندان با وضعیت برنامه؛ اسکوپ سمت سرور) و GET /admin/users/:id/plan (مدل هفته؛ B1).
 // E1: ویرایش درجا (افزودن/ویرایش/حذف با واگرد) از plan-editor.js؛ نوار «N تغییر هنوز به کارمند اطلاع داده نشده» + «📣 اطلاع به کارمند» (POST /admin/users/:id/plan/notify).
 // نمایش منو/دکمه با AP.can فقط راهنمای UI است؛ کنترل واقعی (مجوز/اسکوپ/قفل/اعتبارسنجی/همزمانی) سمت سرور است.
@@ -109,7 +109,10 @@
           </div>
           <div class="muted np-shift">شیفت مؤثر: ${esc(shiftText(r.days)).replace(/\((\d{1,2}:\d{2})–(\d{1,2}:\d{2})\)/, '(<bdi dir="ltr">$1–$2</bdi>)')}</div>
         </div>
-        <div class="header-actions"><button type="button" class="btn ghost small" data-go-weekly="${esc(userId)}">📊 نمای هفتگی (عملکرد)</button></div>
+      </div>
+      <div class="np-weekly-cta" role="region" aria-label="وضعیت تسک‌های انجام‌شده">
+        <span class="np-weekly-cta-text">برای دیدن وضعیت تسک‌های انجام‌شده‌ی ${esc(r.employee.fullName)} در این هفته، کلیک کنید</span>
+        <button type="button" class="btn primary" data-go-weekly="${esc(userId)}">دیدن برنامه‌ی هفتگی ${esc(r.employee.fullName)} ◀</button>
       </div>
       ${empty}
       ${AP.can('plan.edit_team') ? `<div id="np-unnotified"></div><div id="np-banner"></div><div id="np-undo"></div><p id="np-status" class="muted np-status" role="status" aria-live="polite"></p>` : ''}
@@ -176,7 +179,7 @@
   AP.view('nextplan', {
     skeleton: 'notebook',
     perm: 'team.week_view',
-    nav: { icon: 'attendance', label: '📓 برنامه هفته بعد', group: 'کارمندان و تردد' },
+    nav: { icon: 'attendance', label: 'برنامه هفته بعد', group: 'کارمندان و تردد' },
     async render(param) {
       const q = ui.start ? `?start=${encodeURIComponent(ui.start)}` : '';
       const ov = await AP.api(`/admin/plan-overview${q}`); // خطا ⇒ صفحه‌ی خطای روتر (با «تلاش دوباره»)
@@ -197,7 +200,7 @@
 
       const html = `
         <div class="view-header">
-          <div><h2 class="np-title">📓 برنامه‌ی هفته</h2><p class="sub">هفته‌ی ${esc(ov.jalaliStart)} تا ${esc(ov.jalaliEnd)}${ov.isNextWeek ? ' (هفته‌ی بعد)' : ''}</p></div>
+          <div><h2 class="np-title">برنامه‌ی هفته</h2><p class="sub">هفته‌ی ${esc(ov.jalaliStart)} تا ${esc(ov.jalaliEnd)}${ov.isNextWeek ? ' (هفته‌ی بعد)' : ''}</p></div>
           <div class="header-actions">${weekNavHtml(ov)}<button type="button" class="btn ghost small" data-print>${icon('download', 14)} چاپ</button></div>
         </div>
         <div class="np-layout">
