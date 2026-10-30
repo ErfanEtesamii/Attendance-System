@@ -1,0 +1,184 @@
+/* ===== ۳۶) مودال «رکورد تردد» (AP.openRecord) =====
+   هم‌خانواده‌ی کاشی‌های آمار، کارت‌های فیلتر و آواتارِ حلقه‌دار. فقط CSS؛ سلکتورها زیر .record-modal محدودند.
+   رنگ‌ها فقط از توکن‌ها؛ تم روشن/تیره خودکار. */
+
+.modal.wide:has(.record-modal) { max-width: 820px; }
+.record-modal { --tone: var(--green); display: flex; flex-direction: column; gap: var(--space-4); }
+.record-modal[data-status="late"] { --tone: var(--yellow); }
+.record-modal[data-status="incomplete"] { --tone: var(--red-solid); }
+.record-modal[data-status="leave"] { --tone: var(--purple); }
+.record-modal[data-status="holiday"] { --tone: var(--hint); }
+.record-modal[data-status="on_break"] { --tone: var(--orange); }
+
+/* ---------- سرِ کارمند ---------- */
+.rec-hero {
+  position: relative; overflow: hidden; isolation: isolate;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
+  padding: 16px 18px; border-radius: var(--r-xl);
+  border: 1px solid color-mix(in srgb, var(--tone) 26%, var(--border));
+  background:
+    radial-gradient(220px 140px at 100% 0%, color-mix(in srgb, var(--tone) 20%, transparent), transparent 72%),
+    linear-gradient(145deg, color-mix(in srgb, var(--card) 94%, var(--tone)), var(--card));
+  box-shadow: 0 18px 34px -26px color-mix(in srgb, var(--tone) 65%, transparent);
+}
+.rec-hero::before {
+  content: ""; position: absolute; inset-block: 0; inset-inline-start: 0; width: 4px;
+  background: var(--tone); border-start-end-radius: 4px; border-end-end-radius: 4px;
+}
+.rec-hero .avatar {
+  width: 52px; height: 52px; flex: none; color: var(--on-brand);
+  background: linear-gradient(145deg, var(--tone), var(--accent-2));
+  box-shadow: 0 0 0 2px var(--card), 0 0 0 4px color-mix(in srgb, var(--brand) 30%, transparent), 0 10px 16px -8px color-mix(in srgb, var(--tone) 70%, transparent);
+}
+.rec-hero-text { flex: 1 1 180px; min-width: 0; }
+.rec-hero-text h2 { margin: 0 0 4px; font-size: var(--fs-lg); font-weight: 800; color: var(--text); overflow-wrap: anywhere; }
+.rec-hero-text h2 a:hover { color: var(--brand); }
+.rec-hero-text p { margin: 0; font-size: var(--fs-sm); color: var(--hint); font-weight: 600; }
+.rec-hero-badges { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+/* ---------- کاشی‌های ورود / خروج / مفید / تأخیر ---------- */
+.rec-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); }
+.rec-tile {
+  --t: var(--brand);
+  position: relative; overflow: hidden; isolation: isolate;
+  display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 2px 10px;
+  padding: 14px; border-radius: var(--r-lg);
+  border: 1px solid color-mix(in srgb, var(--t) 24%, var(--border));
+  background:
+    radial-gradient(120px 90px at 100% 0%, color-mix(in srgb, var(--t) 18%, transparent), transparent 72%),
+    linear-gradient(180deg, var(--card), color-mix(in srgb, var(--card) 93%, var(--t)));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--t) 12%, transparent), 0 16px 28px -22px color-mix(in srgb, var(--t) 60%, transparent);
+}
+.rec-tile::before {
+  content: ""; position: absolute; inset-inline: 0; top: 0; height: 3px;
+  background: linear-gradient(90deg, transparent, var(--t), transparent); opacity: .85;
+}
+.rec-tile[data-tone="green"]  { --t: var(--green); }
+.rec-tile[data-tone="blue"]   { --t: var(--blue); }
+.rec-tile[data-tone="purple"] { --t: var(--purple); }
+.rec-tile[data-tone="red"]    { --t: var(--red); }
+.rec-tile[data-tone="gray"]   { --t: var(--hint); }
+.rec-tile-icon {
+  grid-row: span 2; width: 38px; height: 38px; border-radius: 13px; display: grid; place-items: center; color: var(--t);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--t) 30%, transparent), color-mix(in srgb, var(--t) 12%, transparent));
+  border: 1px solid color-mix(in srgb, var(--t) 30%, transparent);
+  box-shadow: 0 8px 14px -9px color-mix(in srgb, var(--t) 70%, transparent), inset 0 1px 0 rgba(255, 255, 255, .22);
+}
+.rec-tile-icon svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.rec-tile-label { font-size: var(--fs-xs); color: var(--hint); font-weight: 700; }
+.rec-tile-value { font-size: 20px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.35; }
+.rec-tile-sub { grid-column: 2; color: var(--hint); }
+
+/* ---------- IPها ---------- */
+.rec-ips { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: calc(var(--space-2) * -1); }
+.rec-ip {
+  display: inline-flex; align-items: center; gap: 8px; max-width: 100%; padding: 6px 12px; border-radius: 999px;
+  background: color-mix(in srgb, var(--brand) 7%, var(--card)); border: 1px solid color-mix(in srgb, var(--brand) 14%, transparent);
+  font-size: var(--fs-xs);
+}
+.rec-ip em { font-style: normal; color: var(--hint); font-weight: 700; }
+.rec-ip b { color: var(--text); font-weight: 700; overflow-wrap: anywhere; }
+
+/* ---------- بخش‌ها ---------- */
+.rec-section { display: flex; flex-direction: column; gap: 10px; }
+.rec-title { display: flex; align-items: center; gap: 10px; margin: 0; font-size: var(--fs-md); font-weight: 800; color: var(--text); }
+.rec-title-icon {
+  width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; flex: none; color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 12%, var(--card)); border: 1px solid color-mix(in srgb, var(--brand) 22%, transparent);
+}
+.rec-title-icon svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.rec-count {
+  min-width: 24px; padding: 1px 8px; border-radius: 999px; text-align: center; font-size: var(--fs-xs); font-weight: 800;
+  color: var(--brand); background: color-mix(in srgb, var(--brand) 12%, var(--card));
+}
+.rec-title-note { margin-inline-start: auto; font-size: var(--fs-xs); font-weight: 700; color: var(--hint); }
+
+.rec-card {
+  padding: 14px; border-radius: var(--r-lg);
+  border: 1px solid color-mix(in srgb, var(--brand) 14%, var(--border));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--card) 95%, var(--accent-2)), var(--card));
+  box-shadow: 0 14px 26px -22px color-mix(in srgb, var(--brand) 55%, transparent);
+}
+.rec-card .table-wrap { border: 0; background: transparent; box-shadow: none; margin: -4px; }
+.rec-card thead th { color: var(--text); font-weight: 800; background: color-mix(in srgb, var(--brand) 9%, transparent); }
+.rec-card tbody tr:last-child td { border-bottom: 0; }
+.rec-card-title { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-weight: 800; font-size: var(--fs-sm); color: var(--brand); }
+.rec-card-title svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.rec-empty {
+  padding: 18px; text-align: center; border-radius: var(--r-lg); color: var(--hint); font-weight: 700; font-size: var(--fs-sm);
+  border: 1px dashed color-mix(in srgb, var(--brand) 26%, var(--border)); background: color-mix(in srgb, var(--brand) 4%, transparent);
+}
+
+/* ---------- کارت هر استراحت ---------- */
+.rec-breaks { display: flex; flex-direction: column; gap: var(--space-2); }
+.rec-break {
+  --b: var(--orange);
+  position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px;
+  padding: 12px 14px; border-radius: var(--r-lg);
+  border: 1px solid color-mix(in srgb, var(--b) 24%, var(--border));
+  border-inline-start: 4px solid var(--b);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--b) 10%, var(--card)), var(--card) 70%);
+  box-shadow: 0 12px 22px -20px color-mix(in srgb, var(--b) 70%, transparent);
+  transition: box-shadow var(--motion-fast) var(--ease-out), transform var(--motion-fast) var(--ease-out);
+}
+.rec-break.is-lunch { --b: var(--green); }
+.rec-break:hover, .rec-break:focus-within { transform: translateY(-1px); box-shadow: 0 18px 28px -20px color-mix(in srgb, var(--b) 80%, transparent); }
+.rec-break-icon {
+  width: 38px; height: 38px; border-radius: 13px; display: grid; place-items: center; color: var(--b);
+  background: color-mix(in srgb, var(--b) 16%, transparent); border: 1px solid color-mix(in srgb, var(--b) 30%, transparent);
+}
+.rec-break-icon svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.rec-break-fields { display: grid; grid-template-columns: minmax(150px, 1fr) repeat(2, auto); gap: 10px 14px; align-items: end; min-width: 0; }
+.rec-f { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.rec-f > span { font-size: var(--fs-xs); font-weight: 700; color: var(--hint); }
+.rec-f > b { padding-block: 8px; color: var(--text); font-weight: 800; }
+.rec-f select { width: 100%; }
+.rec-f .dt-pair { display: flex; flex-wrap: nowrap; }
+.rec-break-actions { flex-wrap: nowrap; opacity: 1; }
+.rec-break-actions .btn { white-space: nowrap; }
+.rec-break-actions .btn svg, .rec-card .btn svg, .rec-fix .btn svg, .rec-add .btn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- افزودن استراحت: کارت خط‌چین ---------- */
+.rec-add { border-style: dashed; border-color: color-mix(in srgb, var(--brand) 32%, var(--border)); background: color-mix(in srgb, var(--brand) 4%, var(--card)); }
+.rec-add-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; align-items: end; }
+.rec-add .add-break-submit { margin: 0; }
+
+/* ---------- فرم اصلاح ---------- */
+.rec-fix {
+  position: relative; overflow: hidden; isolation: isolate;
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--border));
+  background:
+    radial-gradient(200px 130px at 100% 0%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 72%),
+    linear-gradient(180deg, var(--card), color-mix(in srgb, var(--card) 96%, var(--accent)));
+}
+.rec-fix .field > span { color: var(--brand); font-size: var(--fs-xs); font-weight: 700; }
+.rec-fix .modal-actions { margin-top: 10px; padding-top: 12px; border-top: 1px solid color-mix(in srgb, var(--hint) 16%, transparent); }
+
+/* ---------- اعتراض و تاریخچه ---------- */
+.rec-dispute {
+  display: flex; gap: 10px; padding: 12px 14px; border-radius: var(--r-lg);
+  border: 1px solid color-mix(in srgb, var(--purple) 24%, var(--border)); border-inline-start: 4px solid var(--purple);
+  background: color-mix(in srgb, var(--purple) 6%, var(--card));
+}
+.rec-dispute .text { margin: 6px 0 0; overflow-wrap: anywhere; }
+.rec-history .kv-row { padding-block: 9px; }
+.rec-history .kv-row:nth-child(even) { background: color-mix(in srgb, var(--brand) 4%, transparent); }
+
+/* ---------- واکنش‌گرا ---------- */
+@media (max-width: 760px) {
+  .rec-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rec-break { grid-template-columns: auto minmax(0, 1fr); }
+  .rec-break-actions { grid-column: 1 / -1; justify-content: flex-end; }
+  .rec-break-fields { grid-template-columns: 1fr; }
+  .rec-add-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .rec-hero { padding: 14px; }
+  .rec-hero-badges { width: 100%; }
+  .rec-tile { padding: 12px; grid-template-columns: 1fr; }
+  .rec-tile-icon { grid-row: auto; }
+  .rec-tile-sub { grid-column: 1; }
+  .rec-break-fields .dt-pair { flex-wrap: wrap; }
+  .rec-break-actions .btn:first-child { flex: 1 1 auto; }
+}
+@media (prefers-reduced-motion: reduce) { .rec-break, .rec-break:hover { transition: none; transform: none; } }

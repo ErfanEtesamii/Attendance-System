@@ -53,70 +53,96 @@
     const statusOpts = Object.entries(AP.STATUS_LABEL)
       .map(([k, v]) => `<option value="${k}" ${r.status === k ? 'selected' : ''}>${v}</option>`).join('');
 
-    const breakRow = (b) => `
-      <tr data-break="${b.id}">
-        <td>${admin ? `<select data-f="type" aria-label="نوع استراحت"><option value="lunch" ${b.break_type === 'lunch' ? 'selected' : ''}>ناهار</option><option value="short_break" ${b.break_type === 'short_break' ? 'selected' : ''}>نماز / استراحت کوتاه</option></select>`
-          : esc(b.break_type === 'lunch' ? 'ناهار' : 'نماز / کوتاه')}</td>
-        <td>${admin ? `<input type="datetime-local" data-f="start" aria-label="شروع استراحت" value="${fmt.toLocalInput(b.start_time)}" />` : fmt.clock(b.start_time)}</td>
-        <td>${admin ? `<input type="datetime-local" data-f="end" aria-label="پایان استراحت" value="${fmt.toLocalInput(b.end_time)}" />` : (b.end_time ? fmt.clock(b.end_time) : AP.badge('on_break', 'در جریان'))}</td>
-        ${admin ? `<td><div class="row-actions"><button type="button" class="btn ghost small" data-save-break>ذخیره</button><button type="button" class="btn danger small" data-del-break>${icon('trash')}</button></div></td>` : ''}
-      </tr>`;
+    const breakRow = (b) => {
+      const isLunch = b.break_type === 'lunch';
+      const typeLabel = isLunch ? 'ناهار' : 'نماز / استراحت کوتاه';
+      return `
+      <div class="rec-break ${isLunch ? 'is-lunch' : 'is-short'}" data-break="${b.id}">
+        <div class="rec-break-icon" aria-hidden="true">${icon('coffee')}</div>
+        <div class="rec-break-fields">
+          <label class="rec-f rec-f-type"><span>نوع</span>${admin ? `<select data-f="type" aria-label="نوع استراحت"><option value="lunch" ${isLunch ? 'selected' : ''}>ناهار</option><option value="short_break" ${!isLunch ? 'selected' : ''}>نماز / استراحت کوتاه</option></select>` : `<b>${esc(typeLabel)}</b>`}</label>
+          <label class="rec-f"><span>شروع</span>${admin ? `<input type="datetime-local" data-f="start" aria-label="شروع استراحت" value="${fmt.toLocalInput(b.start_time)}" />` : `<b class="num">${fmt.clock(b.start_time)}</b>`}</label>
+          <label class="rec-f"><span>پایان</span>${admin ? `<input type="datetime-local" data-f="end" aria-label="پایان استراحت" value="${fmt.toLocalInput(b.end_time)}" />` : (b.end_time ? `<b class="num">${fmt.clock(b.end_time)}</b>` : AP.badge('on_break', 'در جریان'))}</label>
+        </div>
+        ${admin ? `<div class="row-actions rec-break-actions"><button type="button" class="btn ghost small" data-save-break>${icon('check')} ذخیره</button><button type="button" class="btn danger small" data-del-break aria-label="حذف استراحت">${icon('trash')}</button></div>` : ''}
+      </div>`;
+    };
 
     const segmentRow = (s) => `<tr data-segment="${s.seq}">
       <td>نوبت ${fmt.num(s.seq)}</td><td>${fmt.clock(s.check_in_time)}</td><td>${s.check_out_time ? fmt.clock(s.check_out_time) : AP.badge('present', 'باز')}</td>
       <td class="ltr">${esc(s.check_in_ip || '—')} / ${esc(s.check_out_ip || '—')}</td>
       ${admin ? `<td>${s.seq > 1 ? `<button type="button" class="btn danger small" data-del-segment>${icon('trash')} حذف نوبت</button>` : ''}</td>` : ''}</tr>`;
 
+    const tile = (tone, ic, label, value, sub) => `
+      <div class="rec-tile" data-tone="${tone}">
+        <span class="rec-tile-icon">${icon(ic)}</span>
+        <span class="rec-tile-label">${label}</span>
+        <b class="rec-tile-value">${value}</b>${sub ? `<small class="rec-tile-sub">${sub}</small>` : ''}
+      </div>`;
+    const late = r.summary.lateMinutes;
+    const eff = r.summary.effectiveMinutes;
+
     const body = `
-      <div class="profile-head u-mb-12">
-        ${AP.avatar(u.fullName, '')}
-        <div class="grow"><h2 class="u-title-sm"><a class="u-link-inherit" href="#/profile/${r.user_id}" data-close-link>${esc(u.fullName || '—')}</a></h2>
-          <div class="muted">${esc(fmt.dateLong(r.record_date))} · ${esc(u.department || '')}</div></div>
-        ${AP.statusBadge(r.status)}${r.via_remote ? ` ${AP.badge('purple', 'دورکاری')}` : ''}
-      </div>
-
-      <div class="grid-2 record-grid">
-        <div class="kv">
-          <div class="kv-row"><span>ورود</span><span class="num">${fmt.clock(r.check_in_time)}</span></div>
-          <div class="kv-row"><span>IP ورود</span><span class="ltr">${esc(r.check_in_ip || '—')}</span></div>
-          <div class="kv-row"><span>تأخیر</span><span>${r.summary.lateMinutes ? fmt.min(r.summary.lateMinutes) : '—'}</span></div>
-        </div>
-        <div class="kv">
-          <div class="kv-row"><span>خروج</span><span class="num">${fmt.clock(r.check_out_time)}</span></div>
-          <div class="kv-row"><span>IP خروج</span><span class="ltr">${esc(r.check_out_ip || '—')}</span></div>
-          <div class="kv-row"><span>ساعت مفید</span><span>${r.summary.effectiveMinutes != null ? fmt.min(r.summary.effectiveMinutes) : '—'}</span></div>
-        </div>
-      </div>
-
-      <div class="section-title">نوبت‌های حضور (${fmt.num((r.segments || []).length)})</div>
-      <div class="table-wrap"><table><thead><tr><th>نوبت</th><th>ورود</th><th>خروج</th><th>IP ورود / خروج</th>${admin ? '<th></th>' : ''}</tr></thead>
-        <tbody>${(r.segments || []).map(segmentRow).join('')}</tbody></table></div>
-
-      <div class="section-title">استراحت‌ها (${fmt.num(r.breaks.length)}) · مجموع ${fmt.min(r.breakMinutes)}</div>
-      ${r.breaks.length ? `<div class="table-wrap"><table><thead><tr><th>نوع</th><th>شروع</th><th>پایان</th>${admin ? '<th></th>' : ''}</tr></thead><tbody>${r.breaks.map(breakRow).join('')}</tbody></table></div>` : `<div class="muted">استراحتی ثبت نشده است.</div>`}
-      ${admin ? `<form class="form-grid add-break-form" id="add-break">
-        <label class="field"><span>نوع استراحت</span><select name="breakType"><option value="lunch" selected>ناهار</option><option value="short_break">نماز / استراحت کوتاه</option></select></label>
-        <label class="field"><span>شروع استراحت جدید</span><input type="datetime-local" name="startTime" required /></label>
-        <label class="field"><span>پایان</span><input type="datetime-local" name="endTime" /></label>
-        <button class="btn ghost small add-break-submit" type="submit">${icon('plus')} افزودن استراحت</button></form>` : ''}
-
-      ${admin ? `<div class="section-title">اصلاح رکورد</div>
-        <form class="form" id="fix-form">
-          <div class="form-grid">
-            <label class="field"><span>ساعت ورود</span><input type="datetime-local" name="checkInTime" value="${fmt.toLocalInput(r.check_in_time)}" /></label>
-            <label class="field"><span>ساعت خروج</span><input type="datetime-local" name="checkOutTime" value="${fmt.toLocalInput(r.check_out_time)}" /></label>
-            <label class="field"><span>وضعیت</span><select name="status">${statusOpts}</select></label>
-            <label class="field full"><span>دلیل اصلاح (اجباری — به کارمند در تلگرام اطلاع داده می‌شود)</span><textarea name="reason" rows="2" required></textarea></label>
+      <div class="record-modal" data-status="${esc(r.status)}">
+        <header class="rec-hero">
+          ${AP.avatar(u.fullName, '')}
+          <div class="rec-hero-text">
+            <h2><a class="u-link-inherit" href="#/profile/${r.user_id}" data-close-link>${esc(u.fullName || '—')}</a></h2>
+            <p>${esc(fmt.dateLong(r.record_date))}${u.department ? ` · ${esc(u.department)}` : ''}</p>
           </div>
-          <div class="form-msg"></div>
-          <div class="modal-actions"><button class="btn primary" type="submit">ذخیره اصلاح</button>
-            <button class="btn danger" type="button" id="del-rec">${icon('trash')} حذف رکورد</button></div>
-        </form>` : ''}
+          <div class="rec-hero-badges">${AP.statusBadge(r.status)}${r.via_remote ? AP.badge('purple', 'دورکاری') : ''}</div>
+        </header>
 
-      ${r.disputes.length ? `<div class="section-title">اعتراض‌های مرتبط</div>${r.disputes.map((d) => `<div class="item dispute-item"><div class="grow">${AP.badge(d.status, d.status === 'open' ? 'باز' : 'بسته')}<p class="text">${esc(d.message)}</p></div></div>`).join('')}` : ''}
+        <div class="rec-tiles">
+          ${tile('green', 'in', 'ورود', `<span class="num">${fmt.clock(r.check_in_time)}</span>`)}
+          ${tile('blue', 'out', 'خروج', `<span class="num">${fmt.clock(r.check_out_time)}</span>`)}
+          ${tile('purple', 'clock', 'ساعت مفید', eff != null ? fmt.min(eff) : '—')}
+          ${tile(late ? 'red' : 'gray', 'alert', 'تأخیر', late ? fmt.min(late) : '—')}
+        </div>
+        <div class="rec-ips">
+          <span class="rec-ip"><em>IP ورود</em><b class="ltr">${esc(r.check_in_ip || '—')}</b></span>
+          <span class="rec-ip"><em>IP خروج</em><b class="ltr">${esc(r.check_out_ip || '—')}</b></span>
+        </div>
 
-      ${AP.can('audit.read') && r.history && r.history.length ? `<div class="section-title">تاریخچه‌ی تغییرات</div><div class="kv">${r.history.map((h) => `
-        <div class="kv-row"><span>${esc(h.userFullName || '—')} · ${esc(h.action)}</span><span class="muted">${esc(fmt.dateTime(h.occurred_at))}</span></div>`).join('')}</div>` : ''}`;
+        <section class="rec-section">
+          <h4 class="rec-title"><span class="rec-title-icon">${icon('attendance')}</span>نوبت‌های حضور<span class="rec-count">${fmt.num((r.segments || []).length)}</span></h4>
+          <div class="rec-card"><div class="table-wrap"><table><thead><tr><th>نوبت</th><th>ورود</th><th>خروج</th><th>IP ورود / خروج</th>${admin ? '<th></th>' : ''}</tr></thead>
+            <tbody>${(r.segments || []).map(segmentRow).join('')}</tbody></table></div></div>
+        </section>
+
+        <section class="rec-section">
+          <h4 class="rec-title"><span class="rec-title-icon">${icon('coffee')}</span>استراحت‌ها<span class="rec-count">${fmt.num(r.breaks.length)}</span><span class="rec-title-note">مجموع ${fmt.min(r.breakMinutes)}</span></h4>
+          ${r.breaks.length ? `<div class="rec-breaks">${r.breaks.map(breakRow).join('')}</div>` : `<div class="rec-empty">استراحتی ثبت نشده است.</div>`}
+          ${admin ? `<form class="rec-card rec-add add-break-form" id="add-break">
+            <div class="rec-card-title">${icon('plus')} افزودن استراحت جدید</div>
+            <div class="rec-add-grid">
+              <label class="field"><span>نوع استراحت</span><select name="breakType"><option value="lunch" selected>ناهار</option><option value="short_break">نماز / استراحت کوتاه</option></select></label>
+              <label class="field"><span>شروع</span><input type="datetime-local" name="startTime" required /></label>
+              <label class="field"><span>پایان</span><input type="datetime-local" name="endTime" /></label>
+            </div>
+            <button class="btn ghost small add-break-submit" type="submit">${icon('plus')} افزودن استراحت</button></form>` : ''}
+        </section>
+
+        ${admin ? `<section class="rec-section">
+          <h4 class="rec-title"><span class="rec-title-icon">${icon('edit')}</span>اصلاح رکورد</h4>
+          <form class="rec-card rec-fix form" id="fix-form">
+            <div class="form-grid">
+              <label class="field"><span>ساعت ورود</span><input type="datetime-local" name="checkInTime" value="${fmt.toLocalInput(r.check_in_time)}" /></label>
+              <label class="field"><span>ساعت خروج</span><input type="datetime-local" name="checkOutTime" value="${fmt.toLocalInput(r.check_out_time)}" /></label>
+              <label class="field"><span>وضعیت</span><select name="status">${statusOpts}</select></label>
+              <label class="field full"><span>دلیل اصلاح (اجباری — به کارمند در تلگرام اطلاع داده می‌شود)</span><textarea name="reason" rows="2" required></textarea></label>
+            </div>
+            <div class="form-msg"></div>
+            <div class="modal-actions"><button class="btn primary" type="submit">${icon('check')} ذخیره اصلاح</button>
+              <button class="btn danger" type="button" id="del-rec">${icon('trash')} حذف رکورد</button></div>
+          </form>
+        </section>` : ''}
+
+        ${r.disputes.length ? `<section class="rec-section"><h4 class="rec-title"><span class="rec-title-icon">${icon('disputes')}</span>اعتراض‌های مرتبط<span class="rec-count">${fmt.num(r.disputes.length)}</span></h4>${r.disputes.map((d) => `<div class="rec-dispute"><div class="grow">${AP.badge(d.status, d.status === 'open' ? 'باز' : 'بسته')}<p class="text">${esc(d.message)}</p></div></div>`).join('')}</section>` : ''}
+
+        ${AP.can('audit.read') && r.history && r.history.length ? `<section class="rec-section"><h4 class="rec-title"><span class="rec-title-icon">${icon('audit')}</span>تاریخچه‌ی تغییرات</h4><div class="rec-card rec-history"><div class="kv">${r.history.map((h) => `
+          <div class="kv-row"><span>${esc(h.userFullName || '—')} · ${esc(h.action)}</span><span class="muted">${esc(fmt.dateTime(h.occurred_at))}</span></div>`).join('')}</div></div></section>` : ''}
+      </div>`;
 
     AP.modal({
       title: 'رکورد تردد', wide: true, body,
@@ -166,7 +192,7 @@
           });
         });
 
-        $$('tr[data-break]', b).forEach((tr) => {
+        $$('.rec-break[data-break]', b).forEach((tr) => {
           const bid = tr.dataset.break;
           $('[data-save-break]', tr).addEventListener('click', async () => {
             const reason = await AP.askReason({ title: 'ویرایش استراحت', confirmText: 'ذخیره' });
