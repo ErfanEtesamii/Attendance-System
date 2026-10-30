@@ -172,7 +172,7 @@
     if (typeof document.createElementNS !== 'function') return h('span', { class: 'nb-task__num', attrs: { 'aria-hidden': 'true' }, text: label });
     const mk = (tag, attrs) => { const e = document.createElementNS(SVG_NS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, String(v)); return e; };
     const svg = mk('svg', { class: 'nb-task__num', viewBox: '0 0 28 28', width: 28, height: 28, 'aria-hidden': 'true', focusable: 'false' });
-    svg.appendChild(mk('circle', { class: 'nb-num__bg', cx: 14, cy: 14, r: 13 }));
+    svg.appendChild(mk('polygon', { class: 'nb-num__bg', points: '14,1 25.5,7.5 25.5,20.5 14,27 2.5,20.5 2.5,7.5' })); // شش‌ضلعی توپر
     const tx = mk('text', { class: 'nb-num__txt', x: 14, y: 14, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': label.length > 2 ? 9 : label.length > 1 ? 12 : 14 });
     tx.textContent = label;
     svg.appendChild(tx);
@@ -284,8 +284,7 @@
     if (ord.length || (!mgr.length && !sys.length)) out.push(box('ord', 'تسک‌ها', '📝', lines(rowsOf(ord, false), { emptyText: 'تسکی ثبت نشده' })));
     if (sys.length) out.push(box('sys', 'تسک‌های سیستمی', '⚙', lines(rowsOf(sys, false))));
     const rt = (routines || []).map((t, i) => taskRow(t, null, [], null, i + 1, false, true)); // نمای تکراریِ فقط‌خواندنی؛ شناسه‌ی تسک فقط روی ردیف اصلی (کارت «هر روز») می‌ماند
-    out.push(box('routine', 'روتین‌های روزانه', '🔁', rt.length ? lines(rt) : h('p', { class: 'nb-box__empty', text: 'روتینی ثبت نشده' }),
-      edit ? addSlot(null, 'روتین‌های روزانه', edit, '＋ افزودن روتین', 'nb-routine-add') : null)); // تسک بدون تاریخ = روتین روزانه (همان «هر روز»)
+    out.push(box('routine', 'روتین‌های روزانه', '🔁', rt.length ? lines(rt) : h('p', { class: 'nb-box__empty', text: 'روتینی ثبت نشده' }))); // افزودن روتین فقط یک‌جا: کارت «هر روز» // تسک بدون تاریخ = روتین روزانه (همان «هر روز»)
     return out;
   }
 
@@ -407,8 +406,8 @@
       noteCard(comment, collapsible, manage),
       warnings.length ? card({ title: 'هشدارهای برنامه', tape: { tone: 'sand', label: '⚠ هشدارها' }, className: 'nb-warnings', collapsible },
         lines(warnings.map((w) => textLine(w.message, '⚠')))) : null,
-      anyDay.length ? (() => {
-        const c = card({ title: 'هر روز', subtitle: 'روتین‌های روزانه (تسک‌های بدون تاریخ)', tape: { tone: 'sky', label: '🔁 هر روز' }, className: 'nb-anyday', collapsible }, lines(anyDay.map((t, i) => taskRow(t, edit, anyDay, null, i + 1))), edit ? addSlot(null, 'هر روز', edit) : null);
+      (anyDay.length || edit) ? (() => {
+        const c = card({ title: 'هر روز', subtitle: 'روتین‌های روزانه (تسک‌های بدون تاریخ)', tape: { tone: 'sky', label: '🔁 هر روز' }, className: 'nb-anyday', collapsible }, lines(anyDay.map((t, i) => taskRow(t, edit, anyDay, null, i + 1))), edit ? addSlot(null, 'روتین روزانه', edit, '＋ افزودن روتین') : null);
         dropZone(c, null, edit);
         return c;
       })() : null);

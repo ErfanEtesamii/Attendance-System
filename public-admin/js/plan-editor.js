@@ -70,9 +70,9 @@
       if (note) general.textContent = note;
       const saveBtn = nb.btn(mode === 'add' ? 'افزودن' : 'ذخیره', { type: 'submit' });
       const cancelBtn = nb.btn('انصراف', { variant: 'ghost', onClick: () => closeActive() });
-      const form = h('form', { class: 'nb-form', attrs: { novalidate: true, 'aria-label': mode === 'add' ? 'افزودن تسک' : 'ویرایش تسک' } },
+      const form = h('form', { class: 'nb-form', attrs: { novalidate: true, 'aria-label': mode === 'add' ? (date ? 'افزودن تسک' : 'افزودن روتین') : 'ویرایش تسک' } },
         field('title', 'عنوان', f.title), field('description', 'توضیح (اختیاری)', f.description),
-        field('priority', 'اولویت', f.priority), field('day', 'روز', f.day), general,
+        field('priority', 'اولویت', f.priority), (mode === 'add' && !date) ? null : field('day', 'روز', f.day), general, // روتین جدید: فقط اولویت؛ خودکار برای همه‌ی روزها
         h('div', { class: 'nb-form-actions' }, saveBtn, cancelBtn));
 
       const ctx = { mode, task, date, f, errs, general, saveBtn, cancelBtn };
