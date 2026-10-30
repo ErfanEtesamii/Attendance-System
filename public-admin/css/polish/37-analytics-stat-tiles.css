@@ -1,0 +1,27 @@
+/* ===== ۳۷) کاشی‌های «گزارش‌های تحلیلی» =====
+   مشکل: مقدار ۳۲px و جملهٔ «۳۹۰ ساعت و ۵۹ دقیقه» در کاشی باریک چندخطی و بی‌قواره می‌شد.
+   راه‌حل: شبکهٔ عریض‌تر، آیکن و برچسب هم‌ردیف، مقدار درشت و مدت‌زمان = عدد درشت + واحد کوچک. */
+
+.stat-grid.rep-stats { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-3); }
+.rep-stats .stat {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "icon label" "value value";
+  align-items: center; gap: 12px 12px; padding: 16px; border-radius: var(--r-xl); min-height: 0;
+}
+.rep-stats .stat-icon { grid-area: icon; width: 40px; height: 40px; border-radius: 14px; }
+.rep-stats .stat-icon svg { width: 20px; height: 20px; }
+.rep-stats .stat-label { grid-area: label; font-size: var(--fs-sm); font-weight: 700; line-height: 1.5; color: var(--text); opacity: .8; }
+.rep-stats .stat-value { grid-area: value; font-size: 30px; line-height: 1.2; letter-spacing: 0; font-variant-numeric: tabular-nums; margin: 0; }
+
+.stat-value .dur { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; row-gap: 2px; }
+.stat-value .dur-part { display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; }
+.stat-value .dur-part b { font-size: 30px; font-weight: 800; line-height: 1.2; }
+.stat-value .dur-part small { font-size: var(--fs-xs); font-weight: 700; color: var(--hint); }
+
+@media (max-width: 600px) {
+  .stat-grid.rep-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .rep-stats .stat { padding: 12px; gap: 8px 10px; border-radius: 18px; }
+  .rep-stats .stat-icon { width: 34px; height: 34px; border-radius: 12px; }
+  .rep-stats .stat-label { font-size: 12px; }
+  .rep-stats .stat > .stat-value, .stat-value .dur-part b { font-size: 22px; }
+  .stat-value .dur-part small { font-size: 11px; }
+}

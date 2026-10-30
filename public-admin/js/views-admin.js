@@ -48,6 +48,13 @@
       const t = d.totals;
       const sortKeys = { name: (r) => r.user.fullName, presentDays: (r) => r.presentDays, totalEffective: (r) => r.totalEffective, avgEffective: (r) => r.avgEffective, lateCount: (r) => r.lateCount, earlyLeaveCount: (r) => r.earlyLeaveCount, incompleteCount: (r) => r.incompleteCount, leaveDays: (r) => r.leaveDays, overtimeMinutes: (r) => r.overtimeMinutes };
       const th = (k, l) => `<th class="sortable" data-sort="${k}">${l}${repUi.sort === k ? (repUi.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`;
+      // مدت‌زمان در کاشی: عدد درشت + واحد کوچک (به‌جای یک جمله‌ی بلند که چند خط می‌شکست)
+      const dur = (m) => {
+        if (m == null || Number.isNaN(m)) return '—';
+        const abs = Math.abs(Math.round(m)); const h = Math.floor(abs / 60); const r = abs % 60;
+        const part = (n, u) => `<span class="dur-part"><b>${fmt.num(n)}</b><small>${u}</small></span>`;
+        return `<span class="dur" aria-label="${esc(fmt.min(m))}">${h ? part(h, 'ساعت') : ''}${r || !h ? part(r, 'دقیقه') : ''}</span>`;
+      };
       const stat = (g, ic, v, l) => `<div class="stat"><div class="stat-icon ${g}">${icon(ic)}</div><div class="stat-value u-stat-value-sm">${v}</div><div class="stat-label">${l}</div></div>`;
 
       const now = new Date();
@@ -72,13 +79,13 @@
             <div class="header-actions" id="monthly-export"></div>
           </form>
         </div>
-        <div class="stat-grid">
+        <div class="stat-grid rep-stats">
           ${stat('g-green', 'in', fmt.num(t.presentDays), 'مجموع روز-نفر حضور')}
-          ${stat('g-blue', 'clock', fmt.min(t.totalEffective), 'مجموع ساعت مفید')}
-          ${stat('g-blue', 'clock', fmt.min(t.avgEffective), 'میانگین مفید روزانه')}
+          ${stat('g-blue', 'clock', dur(t.totalEffective), 'مجموع ساعت مفید')}
+          ${stat('g-blue', 'clock', dur(t.avgEffective), 'میانگین مفید روزانه')}
           ${stat('g-orange', 'alert', fmt.num(t.lateCount), 'ورود با تأخیر')}
           ${stat('g-red', 'out', fmt.num(t.earlyLeaveCount), 'خروج زودهنگام')}
-          ${stat('g-purple', 'clock', fmt.min(t.overtimeMinutes), 'اضافه‌کاری')}
+          ${stat('g-purple', 'clock', dur(t.overtimeMinutes), 'اضافه‌کاری')}
           ${stat('g-gray', 'alert', fmt.num(t.incompleteCount), 'رکورد ناقص')}
           ${stat('g-blue', 'leave', fmt.num(t.leaveDays), 'روز مرخصی')}
         </div>
