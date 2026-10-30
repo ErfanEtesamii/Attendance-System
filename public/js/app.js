@@ -1941,7 +1941,7 @@
     };
     const cards = [];
     const general = data.tasks.filter((t) => !t.plannedDate || !dayDates.has(t.plannedDate));
-    if (general.length) cards.push(card('هر روز / بدون روز مشخص', '', general, null));
+    if (general.length) cards.push(card('🔁 روتین روزانه (هر روز)', '', general, null));
     days.forEach((d, di) => {
       const list = data.tasks.filter((t) => t.plannedDate === d.date);
       if (list.length) cards.push(card(fmtPlanDay(d.date), PLAN_DAY_BADGE[d.kind] || '', list, di));
@@ -2795,7 +2795,7 @@
     if (planUi.step === 'task' && planUi.editing) {
       const { t } = planUi.editing;
       const days = planDays(data);
-      const dayText = t.plannedDate ? fmtPlanDay(t.plannedDate) : 'هر روز / بدون روز مشخص';
+      const dayText = t.plannedDate ? fmtPlanDay(t.plannedDate) : '🔁 روتین روزانه (هر روز)';
       const hueAt = t.plannedDate ? days.findIndex((d) => d.date === t.plannedDate) : -1;
       const card = planEl('div', { class: `card pl-task-focus ${dayHueCls(hueAt < 0 ? null : hueAt)}` });
       card.appendChild(planEl('div', { class: 'pl-focus-head' }, planEl('h4', { class: 'pl-focus-title', text: 'تسک جدید' }), planEl('span', { class: 'day-badge', text: dayText })));
@@ -2815,7 +2815,7 @@
       card.appendChild(planEl('fieldset', { class: 'prio-group pl-focus-prio' }, planEl('legend', { class: 'pl-focus-label', text: 'اولویت این تسک را مشخص کنید' }), planEl('div', { class: 'prio-opts' }, opts.map((o) => o.opt)), help));
       card.appendChild(field('توضیح (اختیاری)', planEl('textarea', { dir: 'auto', rows: 2, class: 'pl-focus-input', maxLength: 500, value: t.description || '', placeholder: 'توضیح (اختیاری)', on: { input: (e) => { t.description = e.target.value; } } })));
       card.appendChild(field('روز', planEl('select', { class: 'pl-focus-input', on: { change: (e) => { t.plannedDate = e.target.value || null; renderPlan(); } } },
-        [planEl('option', { value: '', text: 'بدون روز مشخص', selected: !t.plannedDate }), ...days.map((d) => planEl('option', { value: d.date, text: fmtPlanDay(d.date), selected: t.plannedDate === d.date }))])));
+        [planEl('option', { value: '', text: '🔁 هر روز (روتین)', selected: !t.plannedDate }), ...days.map((d) => planEl('option', { value: d.date, text: fmtPlanDay(d.date), selected: t.plannedDate === d.date }))])));
       card.appendChild(msg);
       const leave = (keep) => {
         if (!keep) { const at = planUi.tasks.indexOf(t); if (at >= 0) planUi.tasks.splice(at, 1); } else planUi.fresh.add(t);
@@ -2896,7 +2896,7 @@
         const group = planEl('fieldset', { class: 'prio-group' }, planEl('legend', { class: 'prio-legend', text: 'اولویت' }), planEl('div', { class: 'prio-opts' }, opts.map((o) => o.opt)), help);
         group.setAttribute('aria-label', `اولویت تسک ${where}`);
         const day = label(planEl('select', { on: { change: (e) => { t.plannedDate = e.target.value || null; renderPlan(); } } },
-          [planEl('option', { value: '', text: 'بدون روز مشخص', selected: !t.plannedDate }), ...days.map((d) => planEl('option', { value: d.date, text: fmtPlanDay(d.date), selected: t.plannedDate === d.date }))]), `روز تسک ${where}`);
+          [planEl('option', { value: '', text: '🔁 هر روز (روتین)', selected: !t.plannedDate }), ...days.map((d) => planEl('option', { value: d.date, text: fmtPlanDay(d.date), selected: t.plannedDate === d.date }))]), `روز تسک ${where}`);
         const more = planEl('details', { class: 'day-task-more' }, planEl('summary', { text: 'توضیح و جابه‌جایی روز' }), desc, planEl('div', { class: 'row' }, day));
         const num = planEl('span', { class: 'day-task-num', text: faDigits(pos) });
         num.setAttribute('aria-hidden', 'true');
@@ -2942,7 +2942,7 @@
       const sysRow = (t) => (isReviewSysTask(t) ? mandatoryTaskRow(t) : planEl('li', { class: 'day-task plan-sys', text: 'تسک خودکار: ' + t.title }));
       const sysOnDay = (date) => planUi.tasks.filter((t) => t.isSystem && isReviewSysTask(t) && t.plannedDate === date).map(sysRow);
       const sysRows = planUi.tasks.filter((t) => t.isSystem && !(isReviewSysTask(t) && t.plannedDate && dayDates.has(t.plannedDate))).map(sysRow);
-      const cards = [dayCard('any', 'هر روز / بدون روز مشخص', '', null, (t) => !t.plannedDate || !dayDates.has(t.plannedDate), sysRows, null)];
+      const cards = [dayCard('any', '🔁 روتین روزانه (هر روز)', '', null, (t) => !t.plannedDate || !dayDates.has(t.plannedDate), sysRows, null)];
       days.forEach((d, di) => {
         const has = planUi.tasks.some((t) => !t.isSystem && t.plannedDate === d.date); // شامل تسک سرپرست
         const sysHere = sysOnDay(d.date);

@@ -80,8 +80,7 @@ function collect(user, weekStart, dates, { dayInfo, today }) {
       if (t.deleted) continue;
       if (t.plannedDate) { if (t.plannedDate === date) add(t, 'planned'); continue; }
       if (date > today || !dayInfo(date).working) continue; // «هرروزه»: فقط روز کاریِ گذشته/امروز
-      const last = lastLogBefore(t.id, date);
-      if (!last || !(last.status === 'done' || last.reschedule_to === DROP || (last.reschedule_to && last.reschedule_to > date))) add(t, 'everyday');
+      add(t, 'everyday'); // روتین روزانه: هر روز کاری؛ وضعیتِ هر روز از لاگِ همان روز می‌آید
     }
     for (const l of incoming) {
       if (l.reschedule_to !== date) continue;

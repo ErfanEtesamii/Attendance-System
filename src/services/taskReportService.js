@@ -81,6 +81,7 @@ function lastLog(taskId) {
 /** تسک‌های پاسخ‌نداده‌ی روز D. */
 function buildList(user, date, settings) {
   const weekStart = calendarService.weekStartOf(date, settings.weekStartDay);
+  try { require('./routineService').ensureRoutines(user.id, weekStart); } catch (err) { console.error('[routine] ', err.message); }
   const plan = plansRepo.findByUserWeek(user.id, weekStart);
   const answeredIds = new Set(logsRepo.listByUserDate(user.id, date).map((l) => l.task_id));
   const picked = new Map();
@@ -89,11 +90,7 @@ function buildList(user, date, settings) {
   if (plan) {
     for (const t of plansRepo.listTasks(plan.id)) {
       if (t.planned_date) { if (t.planned_date === date) add(t, 'planned'); continue; }
-      const last = lastLog(t.id);
-      if (!last) { add(t, 'everyday'); continue; }
-      if (last.status === 'done' || last.reschedule_to === DROP) continue;
-      if (last.reschedule_to && last.reschedule_to > date) continue; // به آینده منتقل شده
-      add(t, 'everyday');
+      add(t, 'everyday'); // روتین روزانه: هر روز دوباره می‌آید؛ پاسخِ هر روز مستقل است (answeredIds همان روز را کنار می‌گذارد)
     }
   }
   for (const l of logsRepo.listRescheduledTo(user.id, date)) {

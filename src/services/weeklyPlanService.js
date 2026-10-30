@@ -75,13 +75,13 @@ function carryOverCandidates(userId, weekStart) {
   const cur = plansRepo.findByUserWeek(userId, weekStart);
   if (cur) plansRepo.listTasks(cur.id).forEach((t) => { if (t.carried_from_task_id) alreadyCarried.add(t.carried_from_task_id); });
   return plansRepo.listTasks(prev.id)
-    .filter((t) => !t.is_system && !t.is_urgent && !alreadyCarried.has(t.id) && lastLogStatus(t.id) !== 'done' && !handledByReschedule(t.id, weekStart))
+    .filter((t) => t.planned_date && !t.is_system && !t.is_urgent && !alreadyCarried.has(t.id) && lastLogStatus(t.id) !== 'done' && !handledByReschedule(t.id, weekStart))
     .map(presentTask);
 }
 
 function copyCandidates(userId, weekStart) {
   const prev = plansRepo.findByUserWeek(userId, addDays(weekStart, -7));
-  return prev ? plansRepo.listTasks(prev.id).filter((t) => !t.is_system && !t.is_urgent).map(presentTask) : [];
+  return prev ? plansRepo.listTasks(prev.id).filter((t) => t.planned_date && !t.is_system && !t.is_urgent).map(presentTask) : [];
 }
 
 function isMonthClosed(weekStart) {
@@ -136,6 +136,7 @@ function getPlan(user, which, { now } = {}) {
   if (teamReview.isReviewer(user)) {
     try { teamReview.ensureWeek(user, weekStart, { today: ctx.today, settings: ctx.settings }); } catch (err) { console.error('[weeklyPlan] ساخت تسک واجب سرپرست ناموفق (نادیده گرفته شد):', err.message); }
   }
+  try { require('./routineService').ensureRoutines(user.id, weekStart); } catch (err) { console.error('[routine] ', err.message); }
   const plan = plansRepo.findByUserWeek(user.id, weekStart);
   const planDay = calendarService.getPlanDay(user, weekStart, { settings: ctx.settings });
   // C1: روزهای هفته با نوع روز (working|half|weekend|holiday) برای کارت‌های روزانه‌ی UI؛ از همان تقویمِ کاربر (شیفت/آخر هفته/نیم‌روز/تعطیلی) می‌آید

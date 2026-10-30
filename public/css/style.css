@@ -1164,7 +1164,7 @@ textarea.dr-extra-input { min-height: 72px; }
 .day-list-edit > .day-task-mandatory { border-inline-start-color: rgba(10, 107, 75, 0.7); }
 .day-list-edit > .day-task-manager { border-inline-start-color: rgba(37, 99, 235, 0.7); }
 .day-task-head { gap: var(--space-2); }
-.day-task-num { display: grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: 50%; background: rgba(10, 107, 75, 0.14); color: var(--plan-title); font-size: var(--fs-xs); font-weight: 800; }
+.day-task-num { display: grid; place-items: center; flex: none; width: 28px; height: 30px; background: var(--plan-title, #0a6b4b); color: #fff; font-size: var(--fs-xs); font-weight: 800; font-variant-numeric: tabular-nums; clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%); } /* شش‌ضلعی توپر */
 .day-task-edit .day-task-title { width: 100%; box-sizing: border-box; min-height: 44px; font-weight: 700; }
 .day-task-edit .day-task-del { display: inline-flex; align-items: center; gap: 6px; margin-inline-start: auto; padding: 6px 14px; border-radius: 999px; transition: background-color .15s ease; }
 .day-task-edit .day-task-del::before { content: "✕"; font-size: var(--fs-xs); }
@@ -1182,7 +1182,7 @@ textarea.dr-extra-input { min-height: 72px; }
 .plan-review-item.pl-day-6 { --pl-c: var(--pl-day-6); }
 .plan-review-item.pl-day-7 { --pl-c: var(--pl-day-7); }
 .plan-review-item .day-task-main { gap: var(--space-2); }
-.plan-review-item .day-task-num { background: var(--brand-soft); color: var(--brand); }
+.plan-review-item .day-task-num { background: var(--brand); color: #fff; }
 .plan-review-title { min-width: 0; overflow-wrap: anywhere; font-weight: 700; }
 .plan-review-item .plan-meta { margin-top: var(--space-1); }
 .plan-carry { border-inline-start: 4px solid var(--accent); transition: background-color .15s ease; }
