@@ -420,3 +420,47 @@
     .nb .nb-spread { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px; }
   }
 }
+
+/* ---------- بازطراحی پنل برنامه‌ی هفتگی: بدون خط‌کشی، کادر هم‌سبک کارت‌های سایت، تسک‌های شماره‌دار، منوی سه‌نقطه ---------- */
+@media screen {
+  /* ۱) پس‌زمینه‌ی خط‌دار حذف؛ ردیف‌ها با فاصله از هم جدا می‌شوند (کلاس nb-lines برای ساختار می‌ماند) */
+  .nb .nb-lines { background: none; display: flex; flex-direction: column; gap: 2px; }
+  .nb .nb-lines > * { min-height: 0; line-height: 1.7; padding-block: 0; }
+  .nb .nb-lines > li > .nb-task { padding: 7px 8px; border-radius: 10px; }
+  .nb .nb-lines > li > .nb-task:hover { background: color-mix(in srgb, var(--brand) 6%, transparent); }
+
+  /* ۲) کادر = همان لعاب و رنگ .card سایت (polish/05-cards.css)؛ قاب بیرونی شفاف تا کارت‌داخل‌کارت نشود.
+     overflow باز می‌ماند تا منوی سه‌نقطه بریده نشود؛ درخشش گوشه با لایه‌ی پس‌زمینه ساخته می‌شود. */
+  .nb .nb-spread { background: transparent; border: 0; border-radius: 0; gap: 16px; }
+  .nb .nb-page { padding: 0; gap: 16px; }
+  .nb .nb-card {
+    border: 1px solid color-mix(in srgb, var(--brand) 13%, var(--border));
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    background:
+      radial-gradient(circle 110px at 0 0, color-mix(in srgb, var(--accent-2, var(--brand)) 14%, transparent), transparent 70%),
+      linear-gradient(180deg, color-mix(in srgb, var(--card) 82%, transparent), color-mix(in srgb, color-mix(in srgb, var(--card) 94%, var(--brand)) 78%, transparent));
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 10%, transparent), 0 20px 40px -28px color-mix(in srgb, var(--brand) 45%, transparent);
+  }
+  .nb .nb-card__title { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm, 0.95rem); font-weight: 800; }
+  .nb .nb-card__title::before { content: ""; width: 5px; height: 18px; border-radius: 4px; background: linear-gradient(180deg, var(--accent-hi, var(--accent, var(--brand))), var(--accent, var(--brand))); }
+
+  /* ۳) شماره‌ی تسک (پشت‌سرهم در هر روز) */
+  .nb .nb-task { flex-wrap: wrap; align-items: center; gap: 8px; }
+  .nb .nb-task__num { flex: none; min-width: 1.9em; color: var(--nb-ink-soft); font-weight: 800; font-variant-numeric: tabular-nums; }
+  .nb .nb-task__title { flex: 1 1 0; min-width: 0; }
+
+  /* ۴) منوی سه‌نقطه */
+  .nb .nb-task__actions { position: relative; display: inline-flex; margin-inline-start: auto; }
+  .nb .nb-task__kebab { min-width: 34px; padding: 0; font-size: 1.15rem; line-height: 1; }
+  .nb .nb-task__menu {
+    position: absolute; z-index: 30; top: calc(100% + 4px); inset-inline-end: 0;
+    display: flex; flex-direction: column; gap: 2px; min-width: 150px; padding: 6px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.45);
+  }
+  .nb .nb-task__menu[hidden] { display: none; }
+  .nb .nb-menu__item { width: 100%; justify-content: flex-start; text-align: start; background: transparent; border-color: transparent; }
+  .nb .nb-menu__item:hover:not([disabled]) { background: var(--card-2); filter: none; }
+  .nb .nb-task__menu .nb-menu__item:last-child { color: var(--red-text); }
+}

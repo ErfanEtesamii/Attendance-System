@@ -148,12 +148,24 @@
     return { toggle, panel };
   }
 
-  function taskRow(t, edit, group = [], zone = null) {
+  // یک منوی سه‌نقطه‌ی باز در هر لحظه؛ کلیک بیرون از آن (یا Escape) آن را می‌بندد.
+  let openKebab = null;
+  if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+    document.addEventListener('click', (e) => {
+      if (!openKebab) return;
+      const wrap = openKebab.menuEl.parentNode;
+      if (wrap && e && e.target && typeof wrap.contains === 'function' && wrap.contains(e.target)) return;
+      openKebab.close(false);
+    });
+  }
+
+  function taskRow(t, edit, group = [], zone = null, num = 0) {
     const pr = PRIORITY[t.priority];
     // E2-ج: دستگیره‌ی لمسی (فقط با لمس/قلم کار می‌کند؛ CSS فقط روی نشانگر درشت/عرض کم نشانش می‌دهد؛ aria-hidden چون جایگزین کیبوردی دارد)
     const handle = edit && edit.dnd && edit.dnd.pStart && t.canEdit ? h('span', { class: 'nb-task__handle', attrs: { 'aria-hidden': 'true' }, text: '⠿' }) : null;
     const row = h('div', { class: 'nb-task', attrs: { 'data-task-id': t.id } },
       handle,
+      num ? h('span', { class: 'nb-task__num', attrs: { 'aria-hidden': 'true' }, text: `${fa(num)}.` }) : null,
       pr ? h('span', { class: `nb-task__prio nb-task__prio--${t.priority}` }, h('span', { attrs: { 'aria-hidden': 'true' }, text: pr.icon }), h('span', { class: 'nb-sr-only', text: pr.text })) : null,
       h('span', { class: 'nb-task__title', text: t.title }),
       t.isUrgent ? chip('فوری', { tone: 'urgent', icon: '⚡' }) : null,
@@ -171,17 +183,41 @@
       const ctrls = {}; // E2-الف: دکمه‌های حرکت (برای بازگرداندن فوکوس بعد از رسم دوباره)
       if (t.canEdit) {
         const acts = h('span', { class: 'nb-task__actions' });
+        const items = []; // آیتم‌های منوی سه‌نقطه (دکمه‌ها همان قبلی‌اند؛ فقط داخل منو قرار می‌گیرند)
         const movable = group.filter((x) => x.canEdit && !x.isSystem && !x.isUrgent); // همان تسک‌هایی که reorder سرور می‌پذیرد
         const idx = movable.findIndex((x) => x.id === t.id);
+        const kebab = btn('⋮', { variant: 'ghost', small: true, label: `گزینه‌های تسک «${t.title}»` });
+        kebab.className += ' nb-task__kebab';
+        kebab.setAttribute('aria-haspopup', 'true');
+        kebab.setAttribute('aria-expanded', 'false');
+        const menuEl = h('div', { class: 'nb-task__menu', attrs: { role: 'group', 'aria-label': `گزینه‌های تسک «${t.title}»` } });
+        menuEl.hidden = true;
+        const closeMenu = (refocus) => { menuEl.hidden = true; kebab.setAttribute('aria-expanded', 'false'); if (openKebab && openKebab.menuEl === menuEl) openKebab = null; if (refocus && kebab.focus) kebab.focus(); };
+        const wrapAction = (fn) => (e) => { closeMenu(false); return fn(e); };
+        const addItem = (b) => { b.className += ' nb-menu__item'; items.push(b); return b; };
         if (edit.onShift && movable.length > 1 && idx >= 0) {
-          ctrls.up = btn('▲', { variant: 'ghost', small: true, label: `بردن تسک «${t.title}» یک جایگاه بالاتر`, disabled: idx === 0, onClick: () => edit.onShift(t, -1, row) });
-          ctrls.down = btn('▼', { variant: 'ghost', small: true, label: `بردن تسک «${t.title}» یک جایگاه پایین‌تر`, disabled: idx === movable.length - 1, onClick: () => edit.onShift(t, 1, row) });
-          acts.appendChild(ctrls.up); acts.appendChild(ctrls.down);
+          ctrls.up = addItem(btn('▲', { variant: 'ghost', small: true, label: `بردن تسک «${t.title}» یک جایگاه بالاتر`, disabled: idx === 0, onClick: wrapAction(() => edit.onShift(t, -1, row)) }));
+          ctrls.down = addItem(btn('▼', { variant: 'ghost', small: true, label: `بردن تسک «${t.title}» یک جایگاه پایین‌تر`, disabled: idx === movable.length - 1, onClick: wrapAction(() => edit.onShift(t, 1, row)) }));
         }
         let menu = null;
-        if (edit.onMove && edit.days && edit.days.length) { menu = moveMenu(t, edit, row); ctrls.move = menu.toggle; acts.appendChild(menu.toggle); }
-        acts.appendChild(btn('ویرایش', { variant: 'ghost', small: true, label: `ویرایش تسک «${t.title}»`, onClick: () => edit.onEdit(t, row) }));
-        acts.appendChild(btn('حذف', { variant: 'ghost', small: true, label: `حذف تسک «${t.title}»`, onClick: () => edit.onDelete(t, row) }));
+        if (edit.onMove && edit.days && edit.days.length) {
+          menu = moveMenu(t, edit, row); ctrls.move = menu.toggle; addItem(menu.toggle);
+          menu.toggle.addEventListener('click', () => closeMenu(false)); // پنل انتقال زیر ردیف باز می‌شود؛ منوی سه‌نقطه بسته می‌شود
+        }
+        addItem(btn('ویرایش', { variant: 'ghost', small: true, label: `ویرایش تسک «${t.title}»`, onClick: wrapAction(() => edit.onEdit(t, row)) }));
+        addItem(btn('حذف', { variant: 'ghost', small: true, label: `حذف تسک «${t.title}»`, onClick: wrapAction(() => edit.onDelete(t, row)) }));
+        for (const b of items) menuEl.appendChild(b);
+        kebab.addEventListener('click', (e) => {
+          if (e && e.stopPropagation) e.stopPropagation();
+          const open = menuEl.hidden;
+          if (openKebab && openKebab.menuEl !== menuEl) openKebab.close(false);
+          menuEl.hidden = !open;
+          kebab.setAttribute('aria-expanded', String(open));
+          openKebab = open ? { menuEl, kebab, close: closeMenu } : null;
+          if (open) { const f = items.find((b) => !b.disabled); if (f && f.focus) f.focus(); }
+        });
+        menuEl.addEventListener('keydown', (e) => { if (e && e.key === 'Escape') { if (e.stopPropagation) e.stopPropagation(); closeMenu(true); } });
+        acts.appendChild(kebab); acts.appendChild(menuEl);
         row.appendChild(acts);
         if (menu) row.appendChild(menu.panel);
       } else {
@@ -220,7 +256,7 @@
     const el = card({ title: dayTitle(d), tape: { tone: k.tape, label: `${k.icon} ${d.kindLabel || k.label}` }, className: `nb-day nb-day--${KIND[d.kind] ? d.kind : 'off'}`, collapsible },
       chips.length ? h('div', { class: 'nb-day-chips' }, ...chips) : null,
       manageActions(d, manage),
-      lines((d.tasks || []).map((t) => taskRow(t, edit, d.tasks, d.date)), { emptyText: 'تسکی ثبت نشده' }),
+      lines((d.tasks || []).map((t, i) => taskRow(t, edit, d.tasks, d.date, i + 1)), { emptyText: 'تسکی ثبت نشده' }),
       edit ? addSlot(d.date, dayTitle(d), edit) : null);
     el.setAttribute('data-date', d.date || '');
     dropZone(el, d.date, edit);
@@ -327,7 +363,7 @@
       warnings.length ? card({ title: 'هشدارهای برنامه', tape: { tone: 'sand', label: '⚠ هشدارها' }, className: 'nb-warnings', collapsible },
         lines(warnings.map((w) => textLine(w.message, '⚠')))) : null,
       anyDay.length ? (() => {
-        const c = card({ title: 'هر روز', subtitle: 'تسک‌های بدون تاریخ', tape: { tone: 'sky', label: '🔁 هر روز' }, className: 'nb-anyday', collapsible }, lines(anyDay.map((t) => taskRow(t, edit, anyDay, null))), edit ? addSlot(null, 'هر روز', edit) : null);
+        const c = card({ title: 'هر روز', subtitle: 'تسک‌های بدون تاریخ', tape: { tone: 'sky', label: '🔁 هر روز' }, className: 'nb-anyday', collapsible }, lines(anyDay.map((t, i) => taskRow(t, edit, anyDay, null, i + 1))), edit ? addSlot(null, 'هر روز', edit) : null);
         dropZone(c, null, edit);
         return c;
       })() : null);
