@@ -172,8 +172,8 @@
     if (typeof document.createElementNS !== 'function') return h('span', { class: 'nb-task__num', attrs: { 'aria-hidden': 'true' }, text: label });
     const mk = (tag, attrs) => { const e = document.createElementNS(SVG_NS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, String(v)); return e; };
     const svg = mk('svg', { class: 'nb-task__num', viewBox: '0 0 28 28', width: 28, height: 28, 'aria-hidden': 'true', focusable: 'false' });
-    svg.appendChild(mk('polygon', { class: 'nb-num__bg', points: '14,1 25.5,7.5 25.5,20.5 14,27 2.5,20.5 2.5,7.5' })); // شش‌ضلعی توپر
-    const tx = mk('text', { class: 'nb-num__txt', x: 14, y: 14, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': label.length > 2 ? 9 : label.length > 1 ? 12 : 14 });
+    svg.appendChild(mk('circle', { class: 'nb-num__bg', cx: 14, cy: 14, r: 13 }));
+    const tx = mk('text', { class: 'nb-num__txt', x: 14, y: 14, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': label.length > 2 ? 11 : label.length > 1 ? 15 : 18 });
     tx.textContent = label;
     svg.appendChild(tx);
     return svg;

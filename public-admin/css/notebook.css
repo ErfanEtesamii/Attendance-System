@@ -447,8 +447,8 @@
   /* ۳) شماره‌ی تسک (SVG وکتور؛ پشت‌سرهم در هر روز) + چیدمان مرتب ردیف: [شماره] [عنوان و برچسب‌ها] [⋮] */
   .nb .nb-task { flex-wrap: wrap; align-items: center; gap: 10px; }
   .nb .nb-task__num { flex: none; width: 28px; height: 28px; display: block; }
-  .nb .nb-num__bg { fill: var(--nb-rose-strong); stroke: none; }
-  .nb .nb-num__txt { fill: #fff; font-weight: 800; font-family: inherit; }
+  .nb .nb-num__bg { fill: var(--nb-rose); stroke: color-mix(in srgb, var(--nb-rose-strong) 55%, transparent); stroke-width: 1.2; }
+  .nb .nb-num__txt { fill: color-mix(in srgb, var(--nb-rose-strong) 55%, #000); paint-order: stroke; stroke: color-mix(in srgb, var(--nb-rose-strong) 55%, #000); stroke-width: 0.6px; font-weight: 800; font-family: inherit; }
   .nb .nb-task__main { flex: 1 1 0; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
   .nb .nb-task__title { min-width: 0; overflow-wrap: anywhere; line-height: 1.6; }
   .nb .nb-task > .nb-why { flex: none; }
