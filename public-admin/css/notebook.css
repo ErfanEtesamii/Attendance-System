@@ -448,7 +448,7 @@
   .nb .nb-task { flex-wrap: wrap; align-items: center; gap: 10px; }
   .nb .nb-task__num { flex: none; width: 28px; height: 28px; display: block; }
   .nb .nb-num__bg { fill: var(--nb-rose); stroke: var(--nb-rose-strong); stroke-width: 1; }
-  .nb .nb-num__txt { fill: var(--nb-ink); font-weight: 900; font-family: inherit; }
+  .nb .nb-num__txt { fill: var(--nb-ink); font-weight: 600; font-family: inherit; }
   .nb .nb-task__main { flex: 1 1 0; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
   .nb .nb-task__title { min-width: 0; overflow-wrap: anywhere; line-height: 1.6; }
   .nb .nb-task > .nb-why { flex: none; }
@@ -458,13 +458,12 @@
   .nb .nb-edit-slot { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--nb-line); }
 
   /* کادرهای داخل کارت روز: سرپرست / تسک‌ها / سیستمی / روتین؛ هر کدام قاب و رنگ ملایم خودش را دارد */
-  .nb .nb-box { margin-top: 12px; padding: 10px 12px 6px; border: 1px solid var(--nb-line); border-radius: 14px; background: color-mix(in srgb, var(--nb-box-tint, var(--text)) 5%, transparent); }
-  .nb .nb-box--mgr { --nb-box-tint: var(--nb-rose-strong); border-color: color-mix(in srgb, var(--nb-rose-strong) 40%, var(--nb-line)); }
-  .nb .nb-box--ord { --nb-box-tint: var(--nb-chip-mission-fg); }
-  .nb .nb-box--sys { --nb-box-tint: var(--nb-chip-half-fg); }
-  .nb .nb-box--routine { --nb-box-tint: var(--nb-chip-work-fg); }
-  .nb .nb-box__head { margin-bottom: 6px; font-size: 0.82rem; font-weight: 800; color: var(--nb-ink-soft); }
-  .nb .nb-box--mgr .nb-box__head { color: var(--nb-rose-strong); }
+  .nb .nb-box { --nb-box-tint: #7c6cf0; margin-top: 12px; padding: 10px 12px 6px; border: 1px solid color-mix(in srgb, var(--nb-box-tint) 55%, transparent); border-radius: 14px; background: color-mix(in srgb, var(--nb-box-tint) 14%, transparent); }
+  .nb .nb-box--mgr { --nb-box-tint: #8b5cf6; }
+  .nb .nb-box--ord { --nb-box-tint: #3b82f6; }
+  .nb .nb-box--sys { --nb-box-tint: #e0a100; }
+  .nb .nb-box--routine { --nb-box-tint: #22a06b; }
+  .nb .nb-box__head { margin-bottom: 6px; font-size: 0.82rem; font-weight: 800; color: color-mix(in srgb, var(--nb-box-tint) 65%, var(--nb-ink)); }
   .nb .nb-box__empty { margin: 0 0 8px; font-size: 0.85rem; color: var(--nb-ink-soft); }
   /* جداکننده‌ی کم‌رنگ خط‌چین بین تسک‌ها */
   .nb .nb-lines > li + li { border-top: 1px dashed var(--nb-line); }
@@ -477,6 +476,8 @@
     font-size: 1.25rem; font-weight: 900; line-height: 1; letter-spacing: 0;
     background: var(--card-2); color: var(--hint); border: 1px solid transparent;
   }
+  .nb .nb-task__kebab { font-size: 0; }
+  .nb .nb-task__kebab::before { content: ""; width: 7px; height: 25px; background: radial-gradient(circle, #f5b800 3.2px, transparent 3.7px) center top / 7px 8.3px repeat-y; }
   .nb .nb-task__kebab:hover:not([disabled]), .nb .nb-task__kebab[aria-expanded="true"] { background: var(--brand-soft); color: var(--brand); border-color: color-mix(in srgb, var(--brand) 30%, transparent); filter: none; }
   .nb .nb-task__menu {
     position: absolute; z-index: 30; top: calc(100% + 6px); inset-inline-end: 0;
