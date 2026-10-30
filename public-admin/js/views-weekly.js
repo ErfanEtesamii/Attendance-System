@@ -75,6 +75,13 @@
   const REASONS = { no_time: 'وقت نشد', needs_more_time: 'زمان بیشتری لازم دارد', blocked_by_others: 'منتظر دیگران', priority_changed: 'اولویت عوض شد', technical_issue: 'مشکل فنی', other: 'سایر' };
   const TASK_STATUS = { done: ['green', 'انجام شد'], partial: ['orange', 'ناقص'], not_done: ['red', 'انجام نشد'], no_answer: ['', 'بدون پاسخ'] };
 
+  // وضعیت تسک با تیک/ضربدر: ✓ انجام شد، ✗ انجام نشد، ◐ ناقص، ○ بدون پاسخ (رنگ همان قبلی)
+  const TASK_ICON = { done: '✓', not_done: '✗', partial: '◐', no_answer: '○' };
+  function taskStatusBadge(status) {
+    const [cls, label] = TASK_STATUS[status] || ['', status];
+    return AP.badge(cls, `${TASK_ICON[status] ? `${TASK_ICON[status]} ` : ''}${label}`);
+  }
+
   function dayChips(d) {
     const att = d.attendance;
     const kindDef = KIND_BADGE[d.kind];
@@ -113,12 +120,11 @@
     return `${fmt.num(r.reviewedCount)} از ${fmt.num(r.reportCount)} گزارش مشاهده شد`;
   }
   function mandatoryTaskRow(t, isSelf) {
-    const [cls, label] = TASK_STATUS[t.status] || ['', t.status];
     const r = t.review || null;
     const pct = r && !r.notYet && r.reportCount > 0 ? Math.round((r.reviewedCount / r.reportCount) * 100) : null;
     return `<li class="day-task is-mandatory">
       <div class="title">${AP.badge('blue', '🔒 واجب', true)}${esc(t.title)}<span class="sr-only">تسک سیستمی؛ فقط‌خواندنی</span></div>
-      <div class="day-task-meta">${AP.badge(cls, label)}</div>
+      <div class="day-task-meta">${taskStatusBadge(t.status)}</div>
       ${r ? `<div class="rv-progress-text" role="status">${esc(reviewProgressText(r))}</div>` : ''}
       ${pct == null ? '' : `<div class="rv-progress" role="progressbar" aria-label="پیشرفت مشاهده‌ی گزارش‌ها" aria-valuemin="0" aria-valuemax="${r.reportCount}" aria-valuenow="${r.reviewedCount}"><div class="rv-progress-fill" data-progress="${pct}"></div></div>`}
       ${r && !r.notYet && isSelf && AP.can('taskreports.read') ? `<button type="button" class="btn ghost small rv-open" data-act="open-reviews" data-date="${esc(r.reviewDate)}">مشاهده‌ی گزارش‌ها</button>` : ''}
@@ -127,10 +133,9 @@
 
   function taskRow(t, isSelf, opts) {
     if (t.isSystem && t.systemKey === REVIEW_KEY) return mandatoryTaskRow(t, isSelf);
-    const [cls, label] = TASK_STATUS[t.status] || ['', t.status];
     const reasonText = t.reasonText || (t.reasonCode ? REASONS[t.reasonCode] || t.reasonCode : '');
     const meta = [
-      AP.badge(cls, label),
+      taskStatusBadge(t.status),
       t.rescheduleTo ? AP.badge('', `منتقل به ${esc(fmt.date(t.rescheduleTo))}`) : '',
       t.dropped ? AP.badge('', 'کنارگذاشته‌شده') : '',
       t.answeredLate ? AP.badge('orange', 'پاسخ دیرهنگام') : '',

@@ -505,3 +505,6 @@
 .nb .nb-multi__range { display: flex; gap: 10px; flex-wrap: wrap; }
 .nb .nb-multi__range[hidden] { display: none; }
 .nb .nb-multi__hint { font-size: .8rem; color: var(--nb-ink-soft); margin: 0; }
+
+/* تیک/ضربدرِ وضعیت تسک در نمای هفته‌ی کارمند */
+.day-task-meta .badge.green, .day-task-meta .badge.red { font-weight: 800; }
