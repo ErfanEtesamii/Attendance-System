@@ -245,7 +245,8 @@
       if (!group) return Promise.resolve();
       const movable = group.filter((x) => x.canEdit && !x.isSystem && !x.isUrgent);
       const i = movable.findIndex((x) => x.id === task.id);
-      const j = i + dir;
+      let j = i + dir;
+      while (j >= 0 && j < movable.length && !!movable[j].managerLocked !== !!task.managerLocked) j += dir; // همسایه‌ی هم‌کادر (کادر سرپرست جدا از کادر عادی نمایش داده می‌شود)
       if (i < 0 || j < 0 || j >= movable.length) return Promise.resolve();
       const order = movable.map((x) => x.id);
       [order[i], order[j]] = [order[j], order[i]];
@@ -282,7 +283,7 @@
         const task = drag.task;
         const allow = () => { if (e.preventDefault) e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'; };
         if (!sameZone(task, zone)) { allow(); setHl(zones.get(zone || ''), 'is-drop-target'); return; }
-        if (target && target.id !== task.id && movableOf(task.id).some((x) => x.id === target.id)) { allow(); setHl(rows.get(target.id), 'is-drop-row'); } else clearHl();
+        if (target && target.id !== task.id && !!target.managerLocked === !!task.managerLocked && movableOf(task.id).some((x) => x.id === target.id)) { allow(); setHl(rows.get(target.id), 'is-drop-row'); } else clearHl();
       },
       drop(zone, e, target) {
         if (!drag) return undefined;
@@ -291,7 +292,7 @@
         endDrag();
         if (busy) return undefined;
         if (!sameZone(task, zone)) return moveTo(task, zone || null);
-        if (!target || target.id === task.id) return undefined;
+        if (!target || target.id === task.id || !!target.managerLocked !== !!task.managerLocked) return undefined;
         const movable = movableOf(task.id);
         const i = movable.findIndex((x) => x.id === task.id);
         const j = movable.findIndex((x) => x.id === target.id);

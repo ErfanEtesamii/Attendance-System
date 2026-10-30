@@ -458,9 +458,17 @@
   .nb .nb-day-actions { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed var(--nb-line); }
   .nb .nb-edit-slot { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--nb-line); }
 
-  /* کادر «تسک‌های سرپرست» داخل کارت روز */
-  .nb .nb-mgr { margin-top: 12px; padding: 10px 12px 8px; border: 1px dashed color-mix(in srgb, var(--nb-rose-strong) 45%, var(--nb-line)); border-radius: 14px; background: color-mix(in srgb, var(--nb-rose-strong) 6%, transparent); }
-  .nb .nb-mgr__head { margin-bottom: 6px; font-size: 0.82rem; font-weight: 800; color: var(--nb-rose-strong); }
+  /* کادرهای داخل کارت روز: سرپرست / تسک‌ها / سیستمی / روتین؛ هر کدام قاب و رنگ ملایم خودش را دارد */
+  .nb .nb-box { margin-top: 12px; padding: 10px 12px 6px; border: 1px solid var(--nb-line); border-radius: 14px; background: color-mix(in srgb, var(--nb-box-tint, var(--text)) 5%, transparent); }
+  .nb .nb-box--mgr { --nb-box-tint: var(--nb-rose-strong); border-color: color-mix(in srgb, var(--nb-rose-strong) 40%, var(--nb-line)); }
+  .nb .nb-box--ord { --nb-box-tint: var(--nb-chip-mission-fg); }
+  .nb .nb-box--sys { --nb-box-tint: var(--nb-chip-half-fg); }
+  .nb .nb-box--routine { --nb-box-tint: var(--nb-chip-work-fg); }
+  .nb .nb-box__head { margin-bottom: 6px; font-size: 0.82rem; font-weight: 800; color: var(--nb-ink-soft); }
+  .nb .nb-box--mgr .nb-box__head { color: var(--nb-rose-strong); }
+  .nb .nb-box__empty { margin: 0 0 8px; font-size: 0.85rem; color: var(--nb-ink-soft); }
+  /* جداکننده‌ی کم‌رنگ خط‌چین بین تسک‌ها */
+  .nb .nb-lines > li + li { border-top: 1px dashed var(--nb-line); }
 
   /* ۴) منوی سه‌نقطه */
   .nb .nb-task__actions { position: relative; display: inline-flex; margin-inline-start: auto; }

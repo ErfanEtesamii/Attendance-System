@@ -179,11 +179,11 @@
     return svg;
   }
 
-  function taskRow(t, edit, group = [], zone = null, num = 0, inMgr = false) {
+  function taskRow(t, edit, group = [], zone = null, num = 0, inMgr = false, view = false) {
     const pr = PRIORITY[t.priority];
     // E2-ج: دستگیره‌ی لمسی (فقط با لمس/قلم کار می‌کند؛ CSS فقط روی نشانگر درشت/عرض کم نشانش می‌دهد؛ aria-hidden چون جایگزین کیبوردی دارد)
     const handle = edit && edit.dnd && edit.dnd.pStart && t.canEdit ? h('span', { class: 'nb-task__handle', attrs: { 'aria-hidden': 'true' }, text: '⠿' }) : null;
-    const row = h('div', { class: 'nb-task', attrs: { 'data-task-id': t.id } },
+    const row = h('div', { class: 'nb-task', attrs: { 'data-task-id': view ? null : t.id } },
       handle,
       num ? numBadge(num) : null,
       h('span', { class: 'nb-task__main' },
@@ -266,23 +266,29 @@
     if (edit.onZone) edit.onZone(date, el);
   }
 
-  // تسک‌های «از طرف سرپرست» (غیرسیستمی) در یک کادر جدا؛ شماره‌ها در کل روز پشت‌سرهم می‌مانند و برچسب «از طرف سرپرست» روی ردیف‌ها تکرار نمی‌شود.
-  function dayTaskBlocks(d, edit) {
+  const box = (kind, title, icon, ...children) => h('div', { class: `nb-box nb-box--${kind}`, attrs: { role: 'group', 'aria-label': title } },
+    h('div', { class: 'nb-box__head' }, h('span', { attrs: { 'aria-hidden': 'true' }, text: `${icon} ` }), title), ...children);
+
+  // هر روز چند کادر جدا دارد، به این ترتیب: تسک‌های سرپرست ← تسک‌های عادی ← تسک‌های سیستمی ← روتین‌های روزانه.
+  // شماره‌ها به همین ترتیبِ نمایش و پشت‌سرهم‌اند. روتین‌ها (تسک‌های بدون تاریخ، «هر روز») همیشه کادر دارند، حتی خالی؛ فقط‌خواندنی‌اند
+  // (ویرایششان از کارت «هر روز» است). کادر سرپرست و سیستمی فقط با وجود تسک ساخته می‌شوند.
+  function dayTaskBlocks(d, edit, routines) {
     const all = d.tasks || [];
-    const isMgr = (t) => !!t.managerLocked && !t.isSystem;
-    const own = all.map((t, i) => ({ t, n: i + 1 })).filter((x) => !isMgr(x.t));
-    const mgr = all.map((t, i) => ({ t, n: i + 1 })).filter((x) => isMgr(x.t));
+    const mgr = all.filter((t) => t.managerLocked && !t.isSystem);
+    const sys = all.filter((t) => t.isSystem);
+    const ord = all.filter((t) => !(t.managerLocked && !t.isSystem) && !t.isSystem);
+    let n = 0;
+    const rowsOf = (list, inMgr) => list.map((t) => taskRow(t, edit, list, d.date, (n += 1), inMgr));
     const out = [];
-    if (own.length || !mgr.length) out.push(lines(own.map((x) => taskRow(x.t, edit, all, d.date, x.n)), { emptyText: 'تسکی ثبت نشده' }));
-    if (mgr.length) {
-      out.push(h('div', { class: 'nb-mgr', attrs: { role: 'group', 'aria-label': 'تسک‌های سرپرست' } },
-        h('div', { class: 'nb-mgr__head' }, h('span', { attrs: { 'aria-hidden': 'true' }, text: '🔒 ' }), 'تسک‌های سرپرست'),
-        lines(mgr.map((x) => taskRow(x.t, edit, all, d.date, x.n, true)))));
-    }
+    if (mgr.length) out.push(box('mgr', 'تسک‌های سرپرست', '🔒', lines(rowsOf(mgr, true))));
+    if (ord.length || (!mgr.length && !sys.length)) out.push(box('ord', 'تسک‌ها', '📝', lines(rowsOf(ord, false), { emptyText: 'تسکی ثبت نشده' })));
+    if (sys.length) out.push(box('sys', 'تسک‌های سیستمی', '⚙', lines(rowsOf(sys, false))));
+    const rt = (routines || []).map((t, i) => taskRow(t, null, [], null, i + 1, false, true)); // نمای تکراریِ فقط‌خواندنی؛ شناسه‌ی تسک فقط روی ردیف اصلی (کارت «هر روز») می‌ماند
+    out.push(box('routine', 'روتین‌های روزانه', '🔁', rt.length ? lines(rt) : h('p', { class: 'nb-box__empty', text: 'روتینی ثبت نشده' })));
     return out;
   }
 
-  function dayCard(d, collapsible, edit, manage) {
+  function dayCard(d, collapsible, edit, manage, routines) {
     const k = KIND[d.kind] || KIND.off;
     const s = d.schedule || {};
     const chips = [];
@@ -293,7 +299,7 @@
     const el = card({ title: dayTitle(d), tape: { tone: k.tape, label: `${k.icon} ${d.kindLabel || k.label}` }, className: `nb-day nb-day--${KIND[d.kind] ? d.kind : 'off'}`, collapsible },
       chips.length ? h('div', { class: 'nb-day-chips' }, ...chips) : null,
       manageActions(d, manage),
-      ...dayTaskBlocks(d, edit),
+      ...dayTaskBlocks(d, edit, routines),
       edit ? addSlot(d.date, dayTitle(d), edit) : null);
     el.setAttribute('data-date', d.date || '');
     dropZone(el, d.date, edit);
@@ -383,6 +389,7 @@
     const anyDay = Array.isArray(m.anyDay) ? m.anyDay : [];
     if (!days.length) return root(card({ title: 'برنامه‌ی هفته', tape: { tone: 'rose', label: '📓 دفترچه' } }, lines([], { emptyText: 'اطلاعات این هفته در دسترس نیست.' })));
 
+    const routines = anyDay.filter((t) => !t.plannedDate);
     const first = days.slice(0, FIRST_PAGE_DAYS);
     const rest = days.slice(FIRST_PAGE_DAYS);
     const comment = m.plan && m.plan.supervisorComment ? String(m.plan.supervisorComment) : '';
@@ -391,9 +398,9 @@
     const manage = opts.manage || null; // E3: ساعت روز / تسک فوری / یادداشت سرپرست (مستقل از opts.edit)
     const edit = opts.edit && opts.edit.enabled ? { ...opts.edit, days } : null; // E1: ابزار ویرایش فقط با opts.edit.enabled (days برای منوی انتقال E2)
 
-    const right = page({ title: `هفته‌ی ${fa(days[0].jalali)} تا ${fa(days[days.length - 1].jalali)}` }, ...first.map((d) => dayCard(d, collapsible, edit, manage)));
+    const right = page({ title: `هفته‌ی ${fa(days[0].jalali)} تا ${fa(days[days.length - 1].jalali)}` }, ...first.map((d) => dayCard(d, collapsible, edit, manage, routines)));
     const left = page({ title: rest.length ? 'ادامه‌ی هفته' : 'خلاصه و یادداشت‌ها' },
-      ...rest.map((d) => dayCard(d, collapsible, edit, manage)),
+      ...rest.map((d) => dayCard(d, collapsible, edit, manage, routines)),
       m.summary ? summaryCard(m.summary, collapsible) : null,
       highlightsCard(days, anyDay, collapsible),
       noteCard(comment, collapsible, manage),
