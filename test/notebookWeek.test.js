@@ -79,13 +79,14 @@ describe('renderWeek: چیدمان دو صفحه', () => {
     const d0 = mkDay(0, { tasks: [mkTask({ title: 'الف', priority: 'high' }), mkTask({ title: 'ب', isUrgent: true }), mkTask({ title: 'ج', isSystem: true }), mkTask({ title: 'د', managerLocked: true, priority: 'low' })] });
     const root = nb.renderWeek(week({ days: [d0, ...Array.from({ length: 6 }, (_, i) => mkDay(i + 1))] }));
     const card0 = byClass(root, 'nb-day')[0];
-    assert.equal(byClass(card0, 'nb-lines').length, 1);
+    assert.equal(byClass(card0, 'nb-lines').length, 2); // لیست عادی + کادر «تسک‌های سرپرست»
+    assert.equal(byClass(card0, 'nb-mgr').length, 1);
     const rows = byClass(card0, 'nb-task');
     assert.deepEqual(rows.map((r) => byClass(r, 'nb-task__title')[0].textContent), ['الف', 'ب', 'ج', 'د']);
     assert.ok(byClass(rows[0], 'nb-sr-only')[0].textContent === 'اولویت بالا');
     assert.ok(byClass(rows[1], 'nb-chip--urgent')[0].textContent.includes('⚡') && byClass(rows[1], 'nb-chip--urgent')[0].textContent.includes('فوری'));
     assert.ok(byClass(rows[2], 'nb-chip--locked')[0].textContent.includes('سیستمی'));
-    assert.ok(byClass(rows[3], 'nb-chip--locked')[0].textContent.includes('از طرف سرپرست'));
+    assert.ok(byClass(byClass(card0, 'nb-mgr')[0], 'nb-task').length === 1 && byClass(rows[3], 'nb-chip--locked').length === 0); // داخل کادر سرپرست؛ برچسب تکرار نمی‌شود
     assert.equal(byClass(rows[3], 'nb-sr-only')[0].textContent, 'اولویت کم');
   });
 

@@ -165,17 +165,32 @@
     else if (!v && was) document.removeEventListener('click', outsideClick);
   }
 
-  function taskRow(t, edit, group = [], zone = null, num = 0) {
+  // شماره‌ی تسک به‌صورت وکتور (SVG درون‌خطی: دایره + عدد)؛ اگر createElementNS نبود (DOM ساختگی تست) span ساده.
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  function numBadge(n) {
+    const label = fa(n);
+    if (typeof document.createElementNS !== 'function') return h('span', { class: 'nb-task__num', attrs: { 'aria-hidden': 'true' }, text: label });
+    const mk = (tag, attrs) => { const e = document.createElementNS(SVG_NS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, String(v)); return e; };
+    const svg = mk('svg', { class: 'nb-task__num', viewBox: '0 0 28 28', width: 28, height: 28, 'aria-hidden': 'true', focusable: 'false' });
+    svg.appendChild(mk('circle', { class: 'nb-num__bg', cx: 14, cy: 14, r: 13 }));
+    const tx = mk('text', { class: 'nb-num__txt', x: 14, y: 14, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': label.length > 2 ? 9 : label.length > 1 ? 12 : 14 });
+    tx.textContent = label;
+    svg.appendChild(tx);
+    return svg;
+  }
+
+  function taskRow(t, edit, group = [], zone = null, num = 0, inMgr = false) {
     const pr = PRIORITY[t.priority];
     // E2-ج: دستگیره‌ی لمسی (فقط با لمس/قلم کار می‌کند؛ CSS فقط روی نشانگر درشت/عرض کم نشانش می‌دهد؛ aria-hidden چون جایگزین کیبوردی دارد)
     const handle = edit && edit.dnd && edit.dnd.pStart && t.canEdit ? h('span', { class: 'nb-task__handle', attrs: { 'aria-hidden': 'true' }, text: '⠿' }) : null;
     const row = h('div', { class: 'nb-task', attrs: { 'data-task-id': t.id } },
       handle,
-      num ? h('span', { class: 'nb-task__num', attrs: { 'aria-hidden': 'true' }, text: `${fa(num)}.` }) : null,
-      pr ? h('span', { class: `nb-task__prio nb-task__prio--${t.priority}` }, h('span', { attrs: { 'aria-hidden': 'true' }, text: pr.icon }), h('span', { class: 'nb-sr-only', text: pr.text })) : null,
-      h('span', { class: 'nb-task__title', text: t.title }),
-      t.isUrgent ? chip('فوری', { tone: 'urgent', icon: '⚡' }) : null,
-      t.isSystem ? chip('سیستمی', { tone: 'locked', icon: '🔒' }) : (t.managerLocked ? chip('از طرف سرپرست', { tone: 'locked', icon: '🔒' }) : null));
+      num ? numBadge(num) : null,
+      h('span', { class: 'nb-task__main' },
+        pr ? h('span', { class: `nb-task__prio nb-task__prio--${t.priority}` }, h('span', { attrs: { 'aria-hidden': 'true' }, text: pr.icon }), h('span', { class: 'nb-sr-only', text: pr.text })) : null,
+        h('span', { class: 'nb-task__title', text: t.title }),
+        t.isUrgent ? chip('فوری', { tone: 'urgent', icon: '⚡' }) : null,
+        t.isSystem ? chip('سیستمی', { tone: 'locked', icon: '🔒' }) : (t.managerLocked && !inMgr ? chip('از طرف سرپرست', { tone: 'locked', icon: '🔒' }) : null)));
     if (edit) {
       if (edit.dnd && t.canEdit) { // E2-ب: drag & drop بومی (رویدادهای dragstart/dragover/drop)؛ فقط تسک قابل‌ویرایش؛ جایگزین کیبوردی همان منوی «انتقال…» و ▲▼ است
         const dnd = edit.dnd;
@@ -251,6 +266,22 @@
     if (edit.onZone) edit.onZone(date, el);
   }
 
+  // تسک‌های «از طرف سرپرست» (غیرسیستمی) در یک کادر جدا؛ شماره‌ها در کل روز پشت‌سرهم می‌مانند و برچسب «از طرف سرپرست» روی ردیف‌ها تکرار نمی‌شود.
+  function dayTaskBlocks(d, edit) {
+    const all = d.tasks || [];
+    const isMgr = (t) => !!t.managerLocked && !t.isSystem;
+    const own = all.map((t, i) => ({ t, n: i + 1 })).filter((x) => !isMgr(x.t));
+    const mgr = all.map((t, i) => ({ t, n: i + 1 })).filter((x) => isMgr(x.t));
+    const out = [];
+    if (own.length || !mgr.length) out.push(lines(own.map((x) => taskRow(x.t, edit, all, d.date, x.n)), { emptyText: 'تسکی ثبت نشده' }));
+    if (mgr.length) {
+      out.push(h('div', { class: 'nb-mgr', attrs: { role: 'group', 'aria-label': 'تسک‌های سرپرست' } },
+        h('div', { class: 'nb-mgr__head' }, h('span', { attrs: { 'aria-hidden': 'true' }, text: '🔒 ' }), 'تسک‌های سرپرست'),
+        lines(mgr.map((x) => taskRow(x.t, edit, all, d.date, x.n, true)))));
+    }
+    return out;
+  }
+
   function dayCard(d, collapsible, edit, manage) {
     const k = KIND[d.kind] || KIND.off;
     const s = d.schedule || {};
@@ -262,7 +293,7 @@
     const el = card({ title: dayTitle(d), tape: { tone: k.tape, label: `${k.icon} ${d.kindLabel || k.label}` }, className: `nb-day nb-day--${KIND[d.kind] ? d.kind : 'off'}`, collapsible },
       chips.length ? h('div', { class: 'nb-day-chips' }, ...chips) : null,
       manageActions(d, manage),
-      lines((d.tasks || []).map((t, i) => taskRow(t, edit, d.tasks, d.date, i + 1)), { emptyText: 'تسکی ثبت نشده' }),
+      ...dayTaskBlocks(d, edit),
       edit ? addSlot(d.date, dayTitle(d), edit) : null);
     el.setAttribute('data-date', d.date || '');
     dropZone(el, d.date, edit);

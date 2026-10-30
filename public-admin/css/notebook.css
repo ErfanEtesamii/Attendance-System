@@ -445,10 +445,22 @@
   .nb .nb-card__title { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; font-weight: 800; }
   .nb .nb-card__title::before { content: ""; width: 5px; height: 18px; border-radius: 4px; background: linear-gradient(180deg, var(--accent-hi, var(--accent, var(--brand))), var(--accent, var(--brand))); }
 
-  /* ۳) شماره‌ی تسک (پشت‌سرهم در هر روز) */
-  .nb .nb-task { flex-wrap: wrap; align-items: center; gap: 8px; }
-  .nb .nb-task__num { flex: none; min-width: 1.9em; color: var(--nb-ink-soft); font-weight: 800; font-variant-numeric: tabular-nums; }
-  .nb .nb-task__title { flex: 1 1 0; min-width: 0; }
+  /* ۳) شماره‌ی تسک (SVG وکتور؛ پشت‌سرهم در هر روز) + چیدمان مرتب ردیف: [شماره] [عنوان و برچسب‌ها] [⋮] */
+  .nb .nb-task { flex-wrap: wrap; align-items: center; gap: 10px; }
+  .nb .nb-task__num { flex: none; width: 28px; height: 28px; display: block; }
+  .nb .nb-num__bg { fill: var(--nb-rose); stroke: color-mix(in srgb, var(--nb-rose-strong) 35%, transparent); stroke-width: 1; }
+  .nb .nb-num__txt { fill: var(--nb-rose-strong); font-weight: 800; font-family: inherit; }
+  .nb .nb-task__main { flex: 1 1 0; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+  .nb .nb-task__title { min-width: 0; overflow-wrap: anywhere; line-height: 1.6; }
+  .nb .nb-task > .nb-why { flex: none; }
+  .nb .nb-task__handle { margin-inline-end: -4px; }
+  .nb .nb-day-chips { margin-bottom: 12px; }
+  .nb .nb-day-actions { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed var(--nb-line); }
+  .nb .nb-edit-slot { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--nb-line); }
+
+  /* کادر «تسک‌های سرپرست» داخل کارت روز */
+  .nb .nb-mgr { margin-top: 12px; padding: 10px 12px 8px; border: 1px dashed color-mix(in srgb, var(--nb-rose-strong) 45%, var(--nb-line)); border-radius: 14px; background: color-mix(in srgb, var(--nb-rose-strong) 6%, transparent); }
+  .nb .nb-mgr__head { margin-bottom: 6px; font-size: 0.82rem; font-weight: 800; color: var(--nb-rose-strong); }
 
   /* ۴) منوی سه‌نقطه */
   .nb .nb-task__actions { position: relative; display: inline-flex; margin-inline-start: auto; }
