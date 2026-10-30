@@ -2455,3 +2455,13 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
 .day-task.dt-row.dt-is-none { --dt-tint: var(--hint); }
 .day-task.dt-row.is-urgent { border-inline-start-color: var(--red); }
 .day-task.dt-row.is-mandatory { border-inline-start-color: var(--green); }
+
+/* تسک واجب («بررسی گزارش روز قبلِ تیم»): فشرده‌تر */
+.day-task.dt-row.is-mandatory { padding: 6px var(--space-2); }
+.day-task.dt-row.is-mandatory .title { font-size: var(--fs-xs); gap: 4px; line-height: 1.6; }
+.day-task.dt-row.is-mandatory .title .badge { font-size: 11px; padding: 1px 7px; }
+.day-task.dt-row.is-mandatory .dt-mark { width: 20px; height: 20px; font-size: 12px; }
+.day-task.dt-row.is-mandatory.dt-row { grid-template-columns: 24px minmax(0, 1fr); }
+.day-task.dt-row.is-mandatory .rv-progress-text { margin-top: 2px; font-size: 11px; font-weight: 600; line-height: 1.6; color: var(--hint); }
+.day-task.dt-row.is-mandatory .rv-progress { height: 4px; margin-top: 4px; }
+.day-task.dt-row.is-mandatory .rv-open { margin-top: 4px; }
