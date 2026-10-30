@@ -182,3 +182,23 @@
   .rec-break-actions .btn:first-child { flex: 1 1 auto; }
 }
 @media (prefers-reduced-motion: reduce) { .rec-break, .rec-break:hover { transition: none; transform: none; } }
+
+/* ---------- تیکِ دکمه‌ی «ذخیره»: دایره‌ی شیشه‌ای با تیک پررنگ ---------- */
+.rec-fix .btn.primary svg,
+.rec-break-actions [data-save-break] svg {
+  box-sizing: content-box; flex: none; width: 13px; height: 13px; padding: 4px; border-radius: 50%;
+  stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round;
+  transition: transform var(--motion-fast) var(--ease-out), background var(--motion-fast) var(--ease-out);
+}
+.rec-fix .btn.primary svg {
+  color: var(--on-brand); stroke: currentColor;
+  background: color-mix(in srgb, var(--on-brand) 24%, transparent);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--on-brand) 55%, transparent), 0 4px 8px -3px rgba(0, 0, 0, .25);
+}
+.rec-fix .btn.primary:hover svg { transform: scale(1.12) rotate(-6deg); background: color-mix(in srgb, var(--on-brand) 36%, transparent); }
+.rec-break-actions [data-save-break] svg {
+  color: var(--green); stroke: currentColor;
+  background: var(--green-soft); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--green) 45%, transparent);
+}
+.rec-break-actions [data-save-break]:hover svg { transform: scale(1.12); }
+@media (prefers-reduced-motion: reduce) { .rec-fix .btn.primary:hover svg, .rec-break-actions [data-save-break]:hover svg { transform: none; transition: none; } }
