@@ -2443,3 +2443,15 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
 .week-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); }
 @media (max-width: 1180px) { .week-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 700px) { .week-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* حالت شیشه‌ای رنگی روی هر تسک: سبز = انجام شد، قرمز = انجام نشد، کهربایی = ناقص، خاکستری = بدون پاسخ (فقط با توکن‌های تم) */
+.day-task.dt-row { --dt-tint: var(--hint); margin-top: 6px; padding: 10px var(--space-2); border-radius: 14px; border: 1px solid color-mix(in srgb, var(--dt-tint) 38%, transparent); border-inline-start-width: 3px; border-inline-start-color: color-mix(in srgb, var(--dt-tint) 75%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--dt-tint) 22%, transparent), color-mix(in srgb, var(--dt-tint) 8%, transparent)); -webkit-backdrop-filter: blur(6px) saturate(1.3); backdrop-filter: blur(6px) saturate(1.3);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--card) 70%, transparent), 0 2px 8px color-mix(in srgb, var(--dt-tint) 14%, transparent); }
+.day-task.dt-row:first-child { margin-top: 0; border-top: 1px solid color-mix(in srgb, var(--dt-tint) 38%, transparent); }
+.day-task.dt-row.dt-is-done { --dt-tint: var(--green); }
+.day-task.dt-row.dt-is-not-done { --dt-tint: var(--red); }
+.day-task.dt-row.dt-is-partial { --dt-tint: var(--orange); }
+.day-task.dt-row.dt-is-none { --dt-tint: var(--hint); }
+.day-task.dt-row.is-urgent { border-inline-start-color: var(--red); }
+.day-task.dt-row.is-mandatory { border-inline-start-color: var(--green); }

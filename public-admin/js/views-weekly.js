@@ -129,7 +129,7 @@
   function mandatoryTaskRow(t, isSelf) {
     const r = t.review || null;
     const pct = r && !r.notYet && r.reportCount > 0 ? Math.round((r.reviewedCount / r.reportCount) * 100) : null;
-    return `<li class="day-task dt-row is-mandatory">
+    return `<li class="day-task dt-row is-mandatory dt-${STATUS_CLS[t.status] || 'is-none'}">
       ${taskStatusCell(t.status)}
       <div class="dt-body">
       <div class="title">${AP.badge('blue', '🔒 واجب', true)}${esc(t.title)}<span class="sr-only">تسک سیستمی؛ فقط‌خواندنی</span></div>
@@ -149,7 +149,7 @@
       t.answeredLate ? AP.badge('orange', 'پاسخ دیرهنگام') : '',
       t.outOfPlan ? AP.badge('', 'خارج از برنامه') : '',
     ].filter(Boolean).join('');
-    return `<li class="day-task dt-row${t.isUrgent ? ' is-urgent' : ''}">
+    return `<li class="day-task dt-row dt-${STATUS_CLS[t.status] || 'is-none'}${t.isUrgent ? ' is-urgent' : ''}">
       ${taskStatusCell(t.status)}
       <div class="dt-body">
       <div class="title">${t.isUrgent ? AP.badge('red', t.selfAssigned ? '⚡ فوری (خودش)' : '⚡ فوری', true) : ''}${t.priority === 'high' && !t.isUrgent ? AP.badge('late', 'اولویت بالا') : ''}${esc(t.title)}</div>
