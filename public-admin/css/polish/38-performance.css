@@ -436,3 +436,17 @@ tr.clickable[data-date], tr.clickable[data-id] { cursor: pointer; }
 .pf-svg-green .pf-gs-b { stop-color: var(--green); }
 .pf-svg-green .pf-bar-grad { filter: drop-shadow(0 8px 10px color-mix(in srgb, var(--green) 28%, transparent)); }
 .pf-svg-green .pf-bar-val-top { fill: var(--green); }
+
+/* ===== ۳۸-ط) عنوان بخش‌ها: هدر کارت‌ها و تیتر بخش‌ها یک‌دست ===== */
+.pf-block > .card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); padding: 16px 20px 12px; }
+.pf-block > .card-head h3, .pf-sec-title { margin: 0; font-size: var(--fs-md, 16px); font-weight: 800; letter-spacing: -.2px; }
+.pf-block > .card-head h3::before, .pf-sec-title::before { display: none; }
+.pf-block > .card-head h3 { display: flex; align-items: center; gap: 10px; }
+.pf-block > .card-head h3 svg, .pf-sec-title svg { flex: none; width: 34px; height: 34px; padding: 8px; border-radius: 12px; color: var(--brand); background: color-mix(in srgb, var(--brand) 12%, transparent); border: 1px solid color-mix(in srgb, var(--brand) 22%, transparent); }
+.pf-paycard > .card-head h3 svg { color: var(--green); background: color-mix(in srgb, var(--green) 12%, transparent); border-color: color-mix(in srgb, var(--green) 24%, transparent); }
+.pf-sec-title { display: flex; align-items: center; gap: 10px; margin-bottom: var(--space-3); }
+.pf-block > .card-head .pf-search { margin: 0; flex: 0 1 280px; }
+.pf-block > .card-head .pf-search input { width: 100%; min-width: 0; }
+.pf-block > .card-head + .table-wrap { border-top: 1px solid color-mix(in srgb, var(--brand) 10%, var(--border)); }
+.pf-chartcard figcaption { font-size: var(--fs-md, 16px); font-weight: 800; }
+@media (max-width: 600px) { .pf-block > .card-head .pf-search { flex-basis: 100%; } }

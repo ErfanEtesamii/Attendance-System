@@ -117,7 +117,7 @@
     [['checkIn', 'in', avgIn], ['checkOut', 'out', avgOut]].forEach(([key, cls, avg]) => {
       if (avg != null) {
         svg.appendChild(el('line', { x1: L, x2: W - R, y1: yAt(avg), y2: yAt(avg), class: `pf-avgline pf-m-${cls}` }));
-        svg.appendChild(el('text', { x: W - R - 4, y: yAt(avg) - 5, class: `pf-avglabel pf-m-${cls}`, 'text-anchor': 'end' }, `میانگین ${cls === 'in' ? 'ورود' : 'خروج'} ${clock(avg)}`));
+        svg.appendChild(el('text', { x: W - R - 4, y: yAt(avg) - 5, class: `pf-avglabel pf-m-${cls}`, 'text-anchor': 'start' }, `میانگین ${cls === 'in' ? 'ورود' : 'خروج'} ${clock(avg)}`));
       }
       const d = segPath(key);
       if (d) svg.appendChild(el('path', { d, class: `pf-line pf-m-${cls}` }));
@@ -186,7 +186,7 @@
     if (avg != null) {
       const ya = T + (1 - avg / mx) * (H - T - B);
       svg.appendChild(el('line', { x1: L, x2: W - R, y1: ya, y2: ya, class: 'pf-avgline pf-m-tasksDone' }));
-      svg.appendChild(el('text', { x: W - R - 4, y: ya - 5, class: 'pf-avglabel pf-m-tasksDone', 'text-anchor': 'end' }, `میانگین ${shortVal(avg)}`));
+      svg.appendChild(el('text', { x: W - R - 4, y: ya - 5, class: 'pf-avglabel pf-m-tasksDone', 'text-anchor': 'start' }, `میانگین ${shortVal(avg)}`));
     }
     if (o.cumulative && n > 1) {
       const d = cumVals.map((v, i) => `${i ? 'L' : 'M'}${xC(i).toFixed(1)},${(T + (1 - v / cmx) * (H - T - B)).toFixed(1)}`).join(' ');
