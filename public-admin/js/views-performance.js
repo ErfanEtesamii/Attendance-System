@@ -105,6 +105,7 @@
       AP.refresh();
     }));
     const f = $('#pf-custom', page);
+    if (f && AP.dates) AP.dates.mount(f); // تقویم شمسی برای «از/تا» (قرارداد AP.dates: قبل از listenerهای صفحه)
     if (f) f.addEventListener('submit', (e) => { e.preventDefault(); const d = AP.formData(f); if (d.from && d.to) { ui.from = d.from; ui.to = d.to; AP.refresh(); } else AP.toast('هر دو تاریخ را وارد کنید.', true); });
   }
 
