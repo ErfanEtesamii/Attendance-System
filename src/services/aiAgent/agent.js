@@ -9,7 +9,7 @@ const { todayInZone } = require('../../utils/time');
 const { jalaliPartsOfDateString } = require('../../utils/jalali');
 const { toolDefinitions, runTool } = require('./tools');
 
-const MAX_HISTORY = 12;
+const MAX_HISTORY = 6;
 const MAX_MESSAGE_CHARS = 4000;
 
 class AiAgentError extends Error {
@@ -57,23 +57,38 @@ function sanitizeHistory(messages) {
   return clean;
 }
 
+// سرویس‌های رایگان (مثل Groq) سقف توکن در دقیقه دارند و در خطای 429 می‌نویسند «try again in 9s»؛ تا ۳ بار صبر و تکرار می‌کنیم
+const MAX_RATE_RETRIES = 3;
+const MAX_RATE_WAIT_MS = 25000;
+function retryDelayMs(res, detail) {
+  const h = Number(res.headers && res.headers.get && res.headers.get('retry-after'));
+  let ms = Number.isFinite(h) && h > 0 ? h * 1000 : 0;
+  const m = /try again in\s+([\d.]+)\s*(ms|s|m)\b/i.exec(detail || '');
+  if (!ms && m) ms = Number(m[1]) * (m[2].toLowerCase() === 'ms' ? 1 : m[2].toLowerCase() === 'm' ? 60000 : 1000);
+  return Math.min((ms || 8000) + 1000, MAX_RATE_WAIT_MS);
+}
+
 async function post(url, headers, body, fetchImpl) {
-  const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), config.ai.timeoutMs);
-  let res;
-  try {
-    res = await fetchImpl(url, { method: 'POST', signal: ctl.signal, headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) });
-  } catch (err) {
-    logger.warn('ai_agent_unreachable', { error: err && err.name === 'AbortError' ? 'timeout' : (err && err.message) });
-    throw new AiAgentError('AI_UNREACHABLE', 'اتصال به سرویس هوش مصنوعی برقرار نشد (شبکه/relay یا زمان‌بری).', 502);
-  } finally { clearTimeout(timer); }
-  if (!res.ok) {
+  for (let attempt = 0; ; attempt += 1) {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), config.ai.timeoutMs);
+    let res;
+    try {
+      res = await fetchImpl(url, { method: 'POST', signal: ctl.signal, headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) });
+    } catch (err) {
+      logger.warn('ai_agent_unreachable', { error: err && err.name === 'AbortError' ? 'timeout' : (err && err.message) });
+      throw new AiAgentError('AI_UNREACHABLE', 'اتصال به سرویس هوش مصنوعی برقرار نشد (شبکه/relay یا زمان‌بری).', 502);
+    } finally { clearTimeout(timer); }
+    if (res.ok) return res.json();
     const detail = await res.text().catch(() => '');
-    logger.warn('ai_agent_upstream_error', { status: res.status, detail: detail.slice(0, 300) });
+    logger.warn('ai_agent_upstream_error', { status: res.status, attempt, detail: detail.slice(0, 300) });
+    if (res.status === 429 && attempt < MAX_RATE_RETRIES) {
+      await new Promise((r) => setTimeout(r, retryDelayMs(res, detail)));
+      continue;
+    }
     const msg = res.status === 401 || res.status === 403 ? 'کلید API نامعتبر است یا دسترسی مجاز نیست.' : res.status === 429 ? 'سقف درخواست سرویس هوش مصنوعی پر شده؛ کمی بعد تلاش کنید.' : 'سرویس هوش مصنوعی خطا داد.';
     throw new AiAgentError('AI_UPSTREAM', msg, 502);
   }
-  return res.json();
 }
 
 // ---- Provider: Claude (Messages API). state.messages = قالب Anthropic ----
