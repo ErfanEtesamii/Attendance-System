@@ -147,7 +147,12 @@
     const mx = niceMax(Math.max(...items.map((x) => x.value)));
     const bw = (W - L - R) / n;
     const xC = (i) => W - R - (i + 0.5) * bw; // RTL
-    const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, class: 'pf-svg', role: 'img', 'aria-label': o.aria || 'نمودار میله‌ای' });
+    const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, class: `pf-svg${o.tone ? ` pf-svg-${o.tone}` : ''}`, role: 'img', 'aria-label': o.aria || 'نمودار میله‌ای' });
+    const gid = `pfg${Math.random().toString(36).slice(2, 8)}`;
+    const defs = el('defs');
+    const lg = el('linearGradient', { id: gid, x1: 0, y1: 0, x2: 0, y2: 1 });
+    lg.appendChild(el('stop', { offset: '0%', class: 'pf-gs-a' })); lg.appendChild(el('stop', { offset: '100%', class: 'pf-gs-b' }));
+    defs.appendChild(lg); svg.appendChild(defs);
     grid(svg, 4);
     for (let i = 0; i <= 4; i += 1) {
       const v = mx * (1 - i / 4);
@@ -158,18 +163,31 @@
     const fmtVal = (v) => (o.unit === 'money' ? `${D.fmt.num(v)} تومان` : o.unit === 'min' ? D.fmt.min(v) : D.fmt.num(v));
     const cumVals = []; let run = 0; items.forEach((x) => { run += x.value; cumVals.push(run); });
     const cmx = niceMax(run);
+    const maxVal = Math.max(...items.map((x) => x.value));
+    const avg = items.length > 1 && !o.cumulative ? run / n : null;
+    const shortMoney = (v) => `${D.fa(Math.round((v / 1e6) * 10) / 10)}م`;
+    const shortVal = (v) => (o.unit === 'money' ? shortMoney(v) : o.unit === 'min' ? D.fmt.min(v) : D.fmt.num(v));
     items.forEach((x, i) => {
       const h = ((H - T - B) * x.value) / mx;
-      const w = Math.max(3, bw - Math.min(8, bw * 0.3));
+      const w = Math.max(3, Math.min(64, bw - Math.min(10, bw * 0.3)));
       const g = el('g', { tabindex: 0, class: 'pf-hour' });
       g.appendChild(el('rect', { x: xC(i) - bw / 2, y: T, width: bw, height: H - T - B, class: 'pf-hit' }));
-      if (h > 0) g.appendChild(el('rect', { x: xC(i) - w / 2, y: H - B - h, width: w, height: h, rx: 3, class: `pf-bar-work${x.tone ? ` pf-tone-${x.tone}` : ''}` }));
+      if (h > 0) {
+        const top = x.value === maxVal;
+        g.appendChild(el('rect', { x: xC(i) - w / 2, y: H - B - h, width: w, height: h, rx: Math.min(10, w / 2.4), fill: `url(#${gid})`, class: `pf-bar-grad${top ? ' pf-bar-top' : ''}${x.tone ? ` pf-tone-${x.tone}` : ''}` }));
+        if (n <= 14) g.appendChild(el('text', { x: xC(i), y: Math.max(T + 10, H - B - h - 7), class: `pf-bar-val${top ? ' pf-bar-val-top' : ''}`, 'text-anchor': 'middle' }, shortVal(x.value)));
+      }
       const show = () => { tip.innerHTML = `<b>${D.esc(x.label)}</b>${x.sub ? `<small>${D.esc(x.sub)}</small>` : ''}<span class="pf-tip-row pf-m-useful"><i class="pf-dot"></i>${D.esc(o.valueLabel || 'مقدار')}<em>${fmtVal(x.value)}</em></span>${o.cumulative ? `<span class="pf-tip-row pf-m-tasksDone"><i class="pf-dot"></i>تجمعی<em>${fmtVal(cumVals[i])}</em></span>` : ''}`; tip.hidden = false; placeTip(tip, svg, xC(i)); };
       g.addEventListener('pointerenter', show); g.addEventListener('focus', show);
       g.addEventListener('pointerleave', () => { tip.hidden = true; }); g.addEventListener('blur', () => { tip.hidden = true; });
       svg.appendChild(g);
       if (i % every === 0) svg.appendChild(el('text', { x: xC(i), y: H - 10, class: 'pf-axis', 'text-anchor': 'middle' }, x.short || x.label));
     });
+    if (avg != null) {
+      const ya = T + (1 - avg / mx) * (H - T - B);
+      svg.appendChild(el('line', { x1: L, x2: W - R, y1: ya, y2: ya, class: 'pf-avgline pf-m-tasksDone' }));
+      svg.appendChild(el('text', { x: W - R - 4, y: ya - 5, class: 'pf-avglabel pf-m-tasksDone', 'text-anchor': 'end' }, `میانگین ${shortVal(avg)}`));
+    }
     if (o.cumulative && n > 1) {
       const d = cumVals.map((v, i) => `${i ? 'L' : 'M'}${xC(i).toFixed(1)},${(T + (1 - v / cmx) * (H - T - B)).toFixed(1)}`).join(' ');
       svg.appendChild(el('path', { d, class: 'pf-line pf-m-tasksDone pf-ontop' }));

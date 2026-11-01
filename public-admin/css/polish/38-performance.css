@@ -357,3 +357,82 @@ tr.clickable[data-date], tr.clickable[data-id] { cursor: pointer; }
 .pf-svg .pf-bar-work { fill: var(--brand); opacity: .92; }
 .pf-svg .pf-bar-work:hover { opacity: 1; }
 .pf-svg .pf-bar-work.pf-tone-green { fill: var(--green); }
+
+/* ===== ۳۸-و) کارت‌های دپارتمان ===== */
+.pf-sec-title { display: flex; align-items: center; gap: 8px; margin: 0 0 var(--space-3); font-size: var(--fs-md, 16px); }
+.pf-sec-title svg { width: 18px; height: 18px; color: var(--brand); }
+.pf-depts { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: var(--space-3); }
+.pf-dept { --dt: var(--brand); position: relative; display: flex; flex-direction: column; gap: 12px; padding: 16px 18px 14px; border-radius: var(--r-xl); overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--dt) 22%, var(--border));
+  background: radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--dt) 14%, transparent), transparent 62%), linear-gradient(160deg, color-mix(in srgb, var(--card) 94%, var(--dt)), var(--card));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--dt) 12%, transparent), 0 22px 34px -26px color-mix(in srgb, var(--dt) 70%, transparent);
+  transition: transform var(--motion-fast), box-shadow var(--motion-fast); animation: pf-rise var(--motion-enter) var(--ease-out) both; }
+.pf-dept::before { content: ""; position: absolute; inset-inline: 0; top: 0; height: 3px; background: linear-gradient(90deg, transparent, var(--dt), transparent); }
+.pf-dept:hover { transform: translateY(-3px); box-shadow: 0 2px 4px color-mix(in srgb, var(--dt) 18%, transparent), 0 28px 40px -24px color-mix(in srgb, var(--dt) 80%, transparent); }
+.pf-dt-brand { --dt: var(--brand); } .pf-dt-green { --dt: var(--green); } .pf-dt-orange { --dt: var(--orange); }
+.pf-dt-purple { --dt: var(--purple); } .pf-dt-blue { --dt: var(--blue); } .pf-dt-red { --dt: var(--red); }
+.pf-dept-top { display: flex; align-items: center; gap: 10px; }
+.pf-dept-top h4 { flex: 1; min-width: 0; margin: 0; font-size: var(--fs-md, 16px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pf-dept-rank { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 9px; font-size: var(--fs-xs); font-weight: 800; color: var(--dt); background: color-mix(in srgb, var(--dt) 14%, transparent); }
+.pf-dept-count { flex: none; font-size: var(--fs-xs); font-weight: 700; color: var(--dt); padding: 2px 10px; border-radius: 999px; background: color-mix(in srgb, var(--dt) 10%, transparent); border: 1px solid color-mix(in srgb, var(--dt) 22%, transparent); }
+.pf-dept-body { display: flex; align-items: center; gap: 14px; }
+.pf-dept-ring { position: relative; flex: none; width: 64px; height: 64px; }
+.pf-ring { width: 64px; height: 64px; fill: none; stroke: none; }
+.pf-ring-bg { stroke: color-mix(in srgb, var(--dt) 14%, transparent); stroke-width: 7; fill: none; }
+.pf-ring-fg { stroke: var(--dt); stroke-width: 7; stroke-linecap: round; fill: none; filter: drop-shadow(0 3px 5px color-mix(in srgb, var(--dt) 45%, transparent)); }
+.pf-ring-txt { position: absolute; inset: 0; display: grid; place-items: center; font-size: 12.5px; font-weight: 800; color: var(--dt); }
+.pf-dept-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pf-dept-main span { font-size: var(--fs-xs); color: var(--hint); font-weight: 700; }
+.pf-dept-main strong { font-size: 19px; line-height: 1.5; font-weight: 800; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.pf-dept .pf-meter { margin: 0; min-width: 0; }
+.pf-dept .pf-meter > i { background: linear-gradient(90deg, var(--dt), color-mix(in srgb, var(--dt) 55%, var(--accent))); }
+.pf-dept-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; margin: 0; padding-top: 10px; border-top: 1px dashed color-mix(in srgb, var(--dt) 25%, var(--border)); }
+.pf-dept-stats dt { font-size: 11px; color: var(--hint); font-weight: 700; }
+.pf-dept-stats dd { margin: 2px 0 0; font-size: var(--fs-xs); font-weight: 700; font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .pf-dept { animation: none; transition: none; } }
+
+/* ===== ۳۸-ز) جدول «ریز هر کارمند» ===== */
+.pf-paycard { overflow: hidden; border-radius: var(--r-xl); border: 1px solid color-mix(in srgb, var(--green) 20%, var(--border));
+  background: radial-gradient(70% 40% at 100% 0%, color-mix(in srgb, var(--green) 9%, transparent), transparent 70%), var(--card); box-shadow: 0 22px 36px -28px color-mix(in srgb, var(--green) 60%, transparent); }
+.pf-paycard .card-head h3 { display: flex; align-items: center; gap: 8px; }
+.pf-paycard .card-head h3 svg { width: 18px; height: 18px; color: var(--green); }
+.pf-paytable { border-collapse: separate; border-spacing: 0 6px; padding-inline: 10px; }
+.pf-paytable thead th { position: sticky; top: 0; z-index: 1; padding: 10px 12px; font-size: var(--fs-xs); white-space: nowrap; background: color-mix(in srgb, var(--green) 7%, var(--card)); }
+.pf-paytable thead th:first-child { border-radius: 0 14px 14px 0; } .pf-paytable thead th:last-child { border-radius: 14px 0 0 14px; }
+.pf-paytable tbody td { padding: 12px; white-space: nowrap; background: color-mix(in srgb, var(--card) 96%, var(--brand)); border-block: 1px solid color-mix(in srgb, var(--brand) 8%, transparent); transition: background var(--motion-fast); }
+.pf-paytable tbody td:first-child { border-radius: 0 16px 16px 0; border-inline-start: 1px solid color-mix(in srgb, var(--brand) 8%, transparent); }
+.pf-paytable tbody td:last-child { border-radius: 16px 0 0 16px; border-inline-end: 1px solid color-mix(in srgb, var(--brand) 8%, transparent); }
+.pf-paytable tbody tr:hover td { background: color-mix(in srgb, var(--green) 9%, var(--card)); }
+.pf-paytable tbody tr:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 16px; }
+.pf-paytable tfoot td { padding: 14px 12px; font-weight: 800; background: linear-gradient(90deg, color-mix(in srgb, var(--green) 14%, var(--card)), color-mix(in srgb, var(--brand) 8%, var(--card))); }
+.pf-paytable tfoot td:first-child { border-radius: 0 14px 14px 0; } .pf-paytable tfoot td:last-child { border-radius: 14px 0 0 14px; }
+.pf-rankdot { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 8px; font-size: 11px; font-weight: 800; color: var(--hint); background: color-mix(in srgb, var(--hint) 12%, transparent); }
+.pf-rankdot.top1 { color: #5a3b00; background: linear-gradient(145deg, #ffd978, #f0a92c); box-shadow: 0 4px 10px -3px rgba(240, 169, 44, .6); }
+.pf-rankdot.top2 { color: #3a4350; background: linear-gradient(145deg, #e6ebf2, #b9c3d1); }
+.pf-rankdot.top3 { color: #4d2a10; background: linear-gradient(145deg, #f0c09a, #cf8a56); }
+.pf-ratechip { display: inline-block; padding: 3px 11px; border-radius: 999px; font-size: var(--fs-xs); font-weight: 700; color: var(--brand); background: color-mix(in srgb, var(--brand) 10%, transparent); border: 1px solid color-mix(in srgb, var(--brand) 22%, transparent); }
+.pf-amtcell { display: inline-block; padding: 4px 12px; border-radius: 12px; font-weight: 800; color: var(--green); background: linear-gradient(145deg, color-mix(in srgb, var(--green) 16%, transparent), color-mix(in srgb, var(--green) 6%, transparent)); border: 1px solid color-mix(in srgb, var(--green) 28%, transparent); }
+.pf-sharecell { display: flex; align-items: center; gap: 8px; min-width: 130px; }
+.pf-sharecell .pf-meter { flex: 1; margin: 0; }
+.pf-sharecell small { flex: none; font-size: 11px; font-weight: 700; color: var(--hint); min-width: 38px; text-align: end; }
+.pf-paytable small.pf-warn { display: block; margin-top: 2px; }
+.pf-paytable thead th, .pf-paytable tbody td { padding-inline: 8px; }
+.pf-paytable tbody td { font-size: var(--fs-xs); }
+.pf-paytable .pf-person b { font-size: var(--fs-sm); }
+.pf-paytable tfoot td { background: color-mix(in srgb, var(--green) 12%, var(--card)); }
+.pf-sharecell { min-width: 110px; }
+.pf-amtcell { padding: 3px 9px; }
+
+/* ===== ۳۸-ح) نمودار میله‌ای (حقوق هر کارمند): گرادیان، برچسب مقدار، خط میانگین ===== */
+.pf-gs-a { stop-color: color-mix(in srgb, var(--accent-2) 80%, var(--brand)); }
+.pf-gs-b { stop-color: var(--brand); }
+.pf-svg .pf-bar-grad { stroke: none; opacity: .88; filter: drop-shadow(0 8px 10px color-mix(in srgb, var(--brand) 28%, transparent)); transition: opacity var(--motion-fast), filter var(--motion-fast); }
+.pf-svg .pf-bar-grad.pf-bar-top { opacity: 1; filter: drop-shadow(0 10px 14px color-mix(in srgb, var(--brand) 45%, transparent)); }
+.pf-hour:hover .pf-bar-grad, .pf-hour:focus .pf-bar-grad { opacity: 1; filter: drop-shadow(0 10px 16px color-mix(in srgb, var(--brand) 55%, transparent)); }
+.pf-svg .pf-bar-val { fill: var(--hint); font-size: 11px; font-weight: 700; }
+.pf-svg .pf-bar-val-top { fill: var(--brand); font-size: 12px; font-weight: 800; }
+@media (prefers-reduced-motion: reduce) { .pf-svg .pf-bar-grad { transition: none; } }
+.pf-svg-green .pf-gs-a { stop-color: color-mix(in srgb, var(--green) 60%, var(--accent)); }
+.pf-svg-green .pf-gs-b { stop-color: var(--green); }
+.pf-svg-green .pf-bar-grad { filter: drop-shadow(0 8px 10px color-mix(in srgb, var(--green) 28%, transparent)); }
+.pf-svg-green .pf-bar-val-top { fill: var(--green); }

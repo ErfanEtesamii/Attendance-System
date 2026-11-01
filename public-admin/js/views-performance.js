@@ -108,6 +108,22 @@
     if (f) f.addEventListener('submit', (e) => { e.preventDefault(); const d = AP.formData(f); if (d.from && d.to) { ui.from = d.from; ui.to = d.to; AP.refresh(); } else AP.toast('هر دو تاریخ را وارد کنید.', true); });
   }
 
+
+  // کارت‌های دپارتمان (به‌جای جدول ساده): سهم از کل با حلقه، رقم اصلی درشت، آمار ریز
+  const DEPT_TONES = ['brand', 'green', 'orange', 'purple', 'blue', 'red'];
+  function ring(pct) {
+    const r = 26; const c = 2 * Math.PI * r; const v = Math.max(0, Math.min(100, pct || 0));
+    return `<svg class="pf-ring" viewBox="0 0 64 64" aria-hidden="true"><circle class="pf-ring-bg" cx="32" cy="32" r="${r}"/><circle class="pf-ring-fg" cx="32" cy="32" r="${r}" stroke-dasharray="${((v / 100) * c).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 32 32)"/></svg><b class="pf-ring-txt">${fa(Math.round(v))}٪</b>`;
+  }
+  function deptCards(list, { main, mainLabel, share, stats, title }) {
+    if (!list.length) return emptyBox('دپارتمانی نیست.');
+    return `<div class="pf-depts" aria-label="${esc(title)}">${list.map((d, i) => `<article class="pf-dept pf-dt-${DEPT_TONES[i % DEPT_TONES.length]}">
+      <div class="pf-dept-top"><span class="pf-dept-rank">${fa(i + 1)}</span><h4>${esc(d.department)}</h4><span class="pf-dept-count">${fmt.num(d.employees)} نفر</span></div>
+      <div class="pf-dept-body"><div class="pf-dept-ring">${ring(share(d))}</div><div class="pf-dept-main"><span>${esc(mainLabel)}</span><strong>${main(d)}</strong></div></div>
+      ${bar(share(d), DEPT_TONES[i % DEPT_TONES.length] === 'brand' ? '' : DEPT_TONES[i % DEPT_TONES.length])}
+      <dl class="pf-dept-stats">${stats(d).map(([l, v]) => `<div><dt>${l}</dt><dd>${v}</dd></div>`).join('')}</dl></article>`).join('')}</div>`.replace(/ style-hook/g, '');
+  }
+
   const kpi = (label, value, foot, tone) => `<div class="pf-kpi${tone ? ` ${tone}` : ''}"><span class="pf-kpi-label">${label}</span><strong class="pf-kpi-val">${value}</strong><span class="pf-kpi-foot">${foot || ''}</span></div>`;
 
   AP.view('performance', {
@@ -147,9 +163,7 @@
       <figure class="chart-fig pf-chartcard"><figcaption>روند روزانه‌ی تیم<span class="pf-chart-tools"><span class="pf-seg" role="group" aria-label="حالت نمودار"><button type="button" class="${ui.tmode === 'daily' ? 'on' : ''}" data-tmode="daily">روزانه</button><button type="button" class="${ui.tmode === 'cum' ? 'on' : ''}" data-tmode="cum">تجمعی</button></span></span></figcaption>
         <div class="pf-chart" id="pf-chart"></div><p class="chart-note" id="pf-note"></p></figure>
       <div class="pf-leaders" id="pf-leaders"></div>
-      <div class="card flush pf-block"><div class="card-head"><h3>دپارتمان‌ها</h3></div><div class="table-wrap"><table><thead><tr><th>دپارتمان</th><th>کارمند</th><th>ساعت مفید</th><th>اضافه‌کاری</th><th>کسری</th><th>تأخیر</th><th>روز غیبت</th></tr></thead><tbody>
-        ${(() => { const mx = Math.max(1, ...data.departments.map((d) => d.useful)); return data.departments.map((d) => `<tr><td><b>${esc(d.department)}</b></td><td class="num">${fmt.num(d.employees)}</td><td class="num">${fmt.min(d.useful)}${bar((d.useful / mx) * 100)}</td><td class="num">${fmt.min(d.overtime)}</td><td class="num">${fmt.min(d.shortfall)}</td><td class="num">${fmt.min(d.late)}</td><td class="num">${fmt.num(d.absentDays)}</td></tr>`).join('') || `<tr><td colspan="7">${emptyBox('دپارتمانی نیست.')}</td></tr>`; })()}
-      </tbody></table></div></div>
+      <section class="pf-block"><h3 class="pf-sec-title">${AP.icon('employees')} دپارتمان‌ها</h3>${deptCards(data.departments, { title: 'دپارتمان‌ها', mainLabel: 'ساعت مفید', main: (x) => fmt.min(x.useful), share: (x) => (t.useful ? (x.useful / t.useful) * 100 : 0), stats: (x) => [['اضافه‌کاری', fmt.min(x.overtime)], ['کسری', fmt.min(x.shortfall)], ['تأخیر', fmt.min(x.late)], ['روز غیبت', fmt.num(x.absentDays)]] })}</section>
       <div class="card flush pf-team pf-block"><div class="card-head"><h3>همه‌ی کارمندان</h3><label class="field pf-search"><input type="search" id="pf-search" placeholder="جستجوی نام…" value="${esc(ui.search)}" aria-label="جستجوی کارمند" /></label></div><div class="table-wrap"><table>
         <thead><tr>${[['name', 'کارمند'], ['useful', 'ساعت مفید'], ['chg', 'تغییر'], ['attendanceRate', 'حضور'], ['punctualityRate', 'وقت‌شناسی'], ['fulfillmentRate', 'تحقق'], ['avgCheckIn', 'میانگین ورود'], ['overtime', 'اضافه‌کاری'], ['shortfall', 'کسری'], ['late', 'تأخیر'], ['absentDays', 'غیبت']].map(([k, l]) => `<th><button type="button" class="pf-sort" data-sort="${k}">${l}${ui.sort === k ? (ui.dir < 0 ? ' ▼' : ' ▲') : ''}</button></th>`).join('')}<th>روند</th></tr></thead>
         <tbody id="pf-team-body"></tbody></table></div></div>`;
@@ -548,9 +562,8 @@
         </form>
         <div class="pf-kpis">${kpis}</div>
         <figure class="chart-fig pf-chartcard"><figcaption>حقوق هر کارمند<small class="heat-sub">${esc(data.label)}</small></figcaption><div class="pf-chart" id="pay-chart"></div></figure>
-        <div class="card flush pf-block"><div class="card-head"><h3>تفکیک دپارتمان</h3></div><div class="table-wrap"><table><thead><tr><th>دپارتمان</th><th>کارمند</th><th>ساعت مفید</th><th>حقوق</th><th>سهم از کل</th></tr></thead><tbody>
-          ${data.departments.map((x) => `<tr><td><b>${esc(x.department)}</b></td><td class="num">${fmt.num(x.employees)}</td><td class="num">${fmt.min(x.usefulMinutes)}</td><td class="num"><b>${toman(x.amountToman)}</b></td><td class="num">${t.amountToman ? pctText(Math.round((x.amountToman / t.amountToman) * 1000) / 10) : '—'}${bar(t.amountToman ? (x.amountToman / t.amountToman) * 100 : 0, 'green')}</td></tr>`).join('') || `<tr><td colspan="5">${emptyBox('—')}</td></tr>`}</tbody></table></div></div>
-        <div class="card flush pf-block"><div class="card-head"><h3>ریز هر کارمند</h3><label class="field pf-search"><input type="search" id="pay-search" placeholder="جستجوی نام…" value="${esc(pay.search)}" aria-label="جستجوی کارمند" /></label></div><div class="table-wrap"><table><thead><tr>
+        <section class="pf-block"><h3 class="pf-sec-title">${AP.icon('employees')} تفکیک دپارتمان</h3>${deptCards(data.departments, { title: 'تفکیک دپارتمان', mainLabel: 'مجموع حقوق', main: (x) => toman(x.amountToman), share: (x) => (t.amountToman ? (x.amountToman / t.amountToman) * 100 : 0), stats: (x) => [['میانگین هر نفر', x.employees ? toman(Math.round(x.amountToman / x.employees)) : '—'], ['ساعت مفید', fmt.min(x.usefulMinutes)], ['هر ساعت', x.usefulMinutes ? toman(Math.round(x.amountToman / (x.usefulMinutes / 60))) : '—']] })}</section>
+        <div class="card flush pf-block pf-paycard"><div class="card-head"><h3>${AP.icon('wallet')} ریز هر کارمند</h3><label class="field pf-search"><input type="search" id="pay-search" placeholder="جستجوی نام…" value="${esc(pay.search)}" aria-label="جستجوی کارمند" /></label></div><div class="table-wrap"><table class="pf-paytable"><thead><tr>
           ${[['name', 'کارمند'], ['rate', 'نرخ ساعتی'], ['useful', 'ساعت مفید'], ['ot', 'اضافه‌کاری'], ['days', 'روز کاری'], ['avgDay', 'میانگین روز'], ['amount', 'حقوق'], ['mom', 'نسبت به ماه قبل'], ['proj', 'پیش‌بینی ماه']].map(([k, l]) => `<th><button type="button" class="pf-sort" data-sort="${k}">${l}${pay.sort === k ? (pay.dir < 0 ? ' ▼' : ' ▲') : ''}</button></th>`).join('')}<th>سهم</th></tr></thead><tbody id="pay-body"></tbody>
           <tfoot><tr><td colspan="6"><b>جمع کل</b></td><td class="num"><b>${toman(t.amountToman)}</b></td><td></td><td class="num">${t.projectedAmountToman != null ? toman(t.projectedAmountToman) : '—'}</td><td></td></tr></tfoot></table></div></div>
         <p class="chart-note">جمع هر کارمند از «کل دقیقه‌ها» محاسبه می‌شود (مثل Mini App)؛ مبلغ هر روز جدا گرد می‌شود و ممکن است با جمع چند تومان اختلاف گرد‌کردن داشته باشد. پیش‌بینی فقط برای ماه جاری است: میانگین روزانه‌ی تاکنون × کل روزهای کاری ماه.</p>`;
@@ -569,21 +582,23 @@
       mom: r.previousAmountToman ? (r.amountToman - r.previousAmountToman) / r.previousAmountToman : -999,
     }));
     // نمودار میله‌ایِ سهم هر نفر
-    PC.barsChart($('#pay-chart', page), rows.filter((r) => r.amount > 0).sort((a, b) => b.amount - a.amount).map((r) => ({ label: r.name, short: r.name.split(' ')[0], value: r.amount, sub: r.user.department || '' })), { unit: 'money', valueLabel: 'حقوق', aria: 'حقوق هر کارمند' });
+    PC.barsChart($('#pay-chart', page), rows.filter((r) => r.amount > 0).sort((a, b) => b.amount - a.amount).map((r) => ({ label: r.name, short: r.name.split(' ')[0], value: r.amount, sub: r.user.department || '' })), { unit: 'money', tone: 'green', valueLabel: 'حقوق', aria: 'حقوق هر کارمند' });
     const body = $('#pay-body', page);
     const paint = () => {
       const term = pay.search.trim();
       const list = rows.filter((r) => !term || r.name.includes(term) || String(r.user.personnelCode || '').includes(term));
       const s = pay.sort;
       list.sort((a, b) => (s === 'name' ? a.name.localeCompare(b.name, 'fa') * -pay.dir : (a[s] - b[s]) * pay.dir));
-      body.innerHTML = list.map((r) => {
-        const mom = r.mom === -999 ? '—' : `<span class="pf-delta ${r.mom > 0 ? 'good' : r.mom < 0 ? 'bad' : 'flat'}">${r.mom === 0 ? '—' : `${r.mom > 0 ? '▲' : '▼'} ${fa(Math.abs(Math.round(r.mom * 100)))}٪`}</span>`;
-        return `<tr class="clickable" data-id="${r.user.id}" tabindex="0"><td><div class="pf-person">${AP.avatar(r.user.fullName, 'sm')}<div><b>${esc(r.user.fullName)}</b><small>${esc(r.user.department || '')}</small></div></div></td>
-          <td class="num">${r.rateKt == null ? '<span class="muted">ثبت نشده</span>' : `${fmt.num(r.rateKt)} هزار`}</td><td class="num">${fmt.min(r.usefulMinutes)}</td><td class="num">${r.overtimeMinutes ? fmt.min(r.overtimeMinutes) : '—'}</td><td class="num">${fmt.num(r.workedDays)}</td>
+      const maxAmt = Math.max(1, ...rows.map((x) => x.amount));
+      body.innerHTML = list.map((r, i) => {
+        const mom = r.mom === -999 ? '<span class="muted">—</span>' : `<span class="pf-delta ${r.mom > 0 ? 'good' : r.mom < 0 ? 'bad' : 'flat'}">${r.mom === 0 ? '—' : `${r.mom > 0 ? '▲' : '▼'} ${fa(Math.abs(Math.round(r.mom * 100)))}٪`}</span>`;
+        const sharePct = t.amountToman && r.amountToman ? Math.round((r.amountToman / t.amountToman) * 1000) / 10 : 0;
+        return `<tr class="clickable" data-id="${r.user.id}" tabindex="0"><td><div class="pf-person"><span class="pf-rankdot${i < 3 && pay.sort === 'amount' && pay.dir < 0 ? ` top${i + 1}` : ''}">${fa(i + 1)}</span>${AP.avatar(r.user.fullName, 'sm')}<div><b>${esc(r.user.fullName)}</b><small>${esc(r.user.department || '')}</small></div></div></td>
+          <td class="num">${r.rateKt == null ? '<span class="muted">ثبت نشده</span>' : `<span class="pf-ratechip">${fmt.num(r.rateKt)} هزار</span>`}</td><td class="num">${fmt.min(r.usefulMinutes)}</td><td class="num">${r.overtimeMinutes ? fmt.min(r.overtimeMinutes) : '—'}</td><td class="num">${fmt.num(r.workedDays)}</td>
           <td class="num">${r.avgPerWorkedDayToman == null ? '—' : toman(r.avgPerWorkedDayToman)}</td>
-          <td class="num"><b>${toman(r.amountToman)}</b>${r.excludedDays.length ? `<small class="pf-warn">${fmt.num(r.excludedDays.length)} روز خارج</small>` : ''}</td><td class="num">${mom}</td>
+          <td class="num"><span class="pf-amtcell">${r.amountToman == null ? '—' : toman(r.amountToman)}</span>${r.excludedDays.length ? `<small class="pf-warn">${fmt.num(r.excludedDays.length)} روز خارج</small>` : ''}</td><td class="num">${mom}</td>
           <td class="num">${r.projectedAmountToman == null ? '—' : toman(r.projectedAmountToman)}</td>
-          <td>${bar(t.amountToman && r.amountToman ? (r.amountToman / t.amountToman) * 100 * Math.min(4, Math.max(1, rows.length / 3)) : 0, 'green')}<small class="pf-hint">${t.amountToman && r.amountToman ? pctText(Math.round((r.amountToman / t.amountToman) * 1000) / 10) : ''}</small></td></tr>`;
+          <td><div class="pf-sharecell">${bar(r.amountToman ? (r.amountToman / maxAmt) * 100 : 0, 'green')}<small>${sharePct ? pctText(sharePct) : '—'}</small></div></td></tr>`;
       }).join('') || `<tr><td colspan="10">${emptyBox('کارمندی نیست.')}</td></tr>`;
       applyProgress(body);
     };
