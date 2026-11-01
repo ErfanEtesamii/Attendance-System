@@ -60,6 +60,11 @@
         }
         t.appendChild(tb); wrap.appendChild(t); container.appendChild(wrap); continue;
       }
+      if (/^\s*>\s?/.test(line)) {
+        const q = el('div', 'ai-quote'); const buf = [];
+        while (i < lines.length && /^\s*>\s?/.test(lines[i])) { buf.push(lines[i].replace(/^\s*>\s?/, '').trim()); i += 1; }
+        const qp = el('p'); inline(qp, buf.join(' ')); q.appendChild(qp); container.appendChild(q); continue;
+      }
       const li = /^\s*([-*•]|\d+[.)])\s+(.*)$/.exec(line);
       if (li) {
         const ordered = /\d/.test(li[1]); const list = el(ordered ? 'ol' : 'ul', 'ai-list');
@@ -71,7 +76,7 @@
         container.appendChild(list); continue;
       }
       const p = el('p'); const buf = [];
-      while (i < lines.length && lines[i].trim() && !/^(#{1,4}\s|\s*([-*•]|\d+[.)])\s|\s*\|)/.test(lines[i])) { buf.push(lines[i].trim()); i += 1; }
+      while (i < lines.length && lines[i].trim() && !/^(#{1,4}\s|\s*([-*•]|\d+[.)])\s|\s*\||\s*>)/.test(lines[i])) { buf.push(lines[i].trim()); i += 1; }
       if (!buf.length) { buf.push(line.trim()); i += 1; }
       inline(p, buf.join(' ')); container.appendChild(p);
     }
@@ -143,7 +148,12 @@
         wait.remove();
         const b = bubble('assistant', r.reply);
         const names = [...new Set((r.tools || []).map((t) => TOOL_LABELS[t.name] || t.name))];
-        if (names.length) b.appendChild(el('div', 'ai-used', 'داده‌های خوانده‌شده: ' + names.join('، ')));
+        if (names.length) {
+          const used = el('div', 'ai-used', 'داده‌های خوانده‌شده:');
+          names.forEach((n) => used.appendChild(el('span', 'ai-tag', n)));
+          b.appendChild(used);
+        }
+        log.scrollTop += b.getBoundingClientRect().top - log.getBoundingClientRect().top - 12;
       } catch (err) {
         history.pop();
         wait.remove();
