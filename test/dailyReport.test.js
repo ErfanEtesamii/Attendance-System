@@ -41,18 +41,18 @@ describe('گزارش روزانه‌ی تسک‌ها — سرویس (D6)', () =>
     assert.equal(r.fullDayOff, false);
   });
 
-  test('«هر روز»: done ⇒ دیگر نمی‌آید؛ not_done ⇒ فردا هم می‌آید؛ drop ⇒ حذف', () => {
+  test('«هر روز» (روتین روزانه): پاسخ هر روز مستقل است؛ هر پاسخی (done/not_done/drop) فقط همان روز را می‌بندد و فردا دوباره می‌آید', () => {
     reset();
     const a = mk('الف'); const b = mk('ب'); const c = mk('ج');
     logs.upsert({ taskId: a.id, userId: u.id, logDate: MON, status: 'done' });
     logs.upsert({ taskId: b.id, userId: u.id, logDate: MON, status: 'not_done', reasonCode: 'no_time' });
     logs.upsert({ taskId: c.id, userId: u.id, logDate: MON, status: 'not_done', reasonCode: 'no_time', rescheduleTo: 'drop' });
-    assert.deepEqual(titles(list('2026-08-04')), ['ب']);
+    assert.deepEqual(titles(list('2026-08-04')), ['الف', 'ب', 'ج']); // روتین هر روز دوباره می‌آید
     assert.deepEqual(titles(list(MON)), []); // همه‌شان امروز پاسخ دارند
     assert.equal(list(MON).answered.length, 3);
   });
 
-  test('انتقال‌یافته به امروز می‌آید؛ انتقال به آینده در روزهای بینابین پنهان است', () => {
+  test('انتقال‌یافته به امروز می‌آید؛ تسک روزدارِ منتقل‌شده به آینده در روزهای بینابین پنهان است (روتین «هر روز» پنهان نمی‌شود)', () => {
     reset();
     const t = mk('منتقل', { plannedDate: MON });
     logs.upsert({ taskId: t.id, userId: u.id, logDate: MON, status: 'not_done', reasonCode: 'no_time', rescheduleTo: '2026-08-05' });
@@ -60,7 +60,7 @@ describe('گزارش روزانه‌ی تسک‌ها — سرویس (D6)', () =>
     assert.deepEqual(titles(list('2026-08-05')), ['منتقل']);
     const e = mk('هر روزِ منتقل');
     logs.upsert({ taskId: e.id, userId: u.id, logDate: MON, status: 'partial', reasonCode: 'needs_more_time', rescheduleTo: '2026-08-05' });
-    assert.ok(!titles(list('2026-08-04')).includes('هر روزِ منتقل'));
+    assert.ok(titles(list('2026-08-04')).includes('هر روزِ منتقل')); // روتین در روزهای بینابین هم می‌آید (هر روز)
     assert.ok(titles(list('2026-08-05')).includes('هر روزِ منتقل'));
   });
 

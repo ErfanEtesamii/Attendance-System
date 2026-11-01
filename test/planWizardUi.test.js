@@ -185,7 +185,7 @@ describe('کارت‌های روزانه (C1)', () => {
     await open(env);
     const cs = cards(env);
     assert.equal(cs.length, 1 + 6);
-    assert.match(cs[0].textContent, /هر روز \/ بدون روز مشخص/);
+    assert.match(cs[0].textContent, /روتین روزانه \(هر روز\)/);
     assert.equal(cs.filter((c) => /نیم‌روز/.test(c.textContent)).length, 1);
     assert.equal(cs.filter((c) => /تعطیل/.test(c.textContent)).length, 0);
     assert.equal(cs.filter((c) => walk(c).some((n) => n.tag === 'h4' && n.textContent)).length, 7); // هر کارت عنوان روز دارد

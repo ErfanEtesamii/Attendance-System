@@ -80,7 +80,8 @@ function setup({ start = model(), confirm = true, fresh = null } = {}) {
 const slotOf = (t, i) => byClass(t.st.root, 'nb-edit-slot')[i];
 const rowOf = (t, id) => byClass(t.st.root, 'nb-task').find((r) => r.attrs['data-task-id'] === String(id));
 const formIn = (el) => byTag(el, 'FORM')[0];
-const fieldsOf = (form) => { const [title, description, priority, day] = [...byTag(form, 'INPUT'), ...byTag(form, 'TEXTAREA'), ...byTag(form, 'SELECT')]; return { title, description, priority, day }; };
+// چک‌باکس «تسک چند روزه» (INPUT checkbox) فیلد متنی نیست؛ فرم روتین («هر روز») فیلد «روز» ندارد ⇒ day = undefined
+const fieldsOf = (form) => { const [title, description, priority, day] = [...byTag(form, 'INPUT').filter((i) => i.attrs.type !== 'checkbox'), ...byTag(form, 'TEXTAREA'), ...byTag(form, 'SELECT')]; return { title, description, priority, day }; };
 const submit = (form) => form.fire('submit');
 
 describe('ابزار ویرایش روی دفترچه', () => {
@@ -94,7 +95,7 @@ describe('ابزار ویرایش روی دفترچه', () => {
     assert.equal(buttonsOf(rowOf(t, 3)).length, 0);
     assert.equal(byClass(rowOf(t, 2), 'nb-why')[0].textContent, 'سیستمی؛ قابل ویرایش نیست');
     assert.equal(byClass(rowOf(t, 3), 'nb-why')[0].textContent, 'فوری؛ فقط از مسیر تسک فوری');
-    assert.equal(byClass(t.st.root, 'nb-edit-slot').length, 7);
+    assert.equal(byClass(t.st.root, 'nb-edit-slot').length, 8); // ۷ کارت روز + کارت «هر روز» (افزودن روتین)
     assert.ok(buttonsOf(slotOf(t, 0))[0].textContent.includes('افزودن تسک'));
   });
 
@@ -130,15 +131,17 @@ describe('افزودن', () => {
 
   test('«هر روز» ⇒ plannedDate=null؛ عنوان خالی سمت کلاینت رد می‌شود (بدون درخواست)', async () => {
     const t = setup();
-    await btnByText(slotOf(t, 0), '＋ افزودن تسک').fire('click');
-    const form = formIn(slotOf(t, 0));
+    const every = slotOf(t, 7); // کارت «هر روز» (آخرین slot)
+    await btnByText(every, '＋ افزودن روتین').fire('click');
+    const form = formIn(every);
     const f = fieldsOf(form);
+    assert.equal(f.day, undefined); // روتین جدید: فقط اولویت؛ فیلد «روز» ندارد
     f.title.value = '   ';
     await submit(form);
     assert.equal(t.calls.length, 0);
     assert.equal(byClass(form, 'nb-field-error')[0].textContent, 'عنوان تسک الزامی است.');
     assert.equal(f.title.attrs['aria-invalid'], 'true');
-    f.title.value = 'x'; f.day.value = '';
+    f.title.value = 'x';
     t.handlers.next = async () => model(4);
     await submit(form);
     assert.equal(t.calls[0].body.plannedDate, null);

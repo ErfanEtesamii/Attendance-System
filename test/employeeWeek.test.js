@@ -153,13 +153,14 @@ describe('نمای هفتگی کارمند (F1-a)', () => {
       assert.equal(svc.getWeek(other, emp.id, { start: W }).status, 403);
     });
 
-    test('انتقال به روز دیگر، «هرروزه» تا انجام‌شدن، و روز غیرکاری بدون تسک هرروزه', () => {
+    test('انتقال به روز دیگر، «هرروزه» (روتین روزانه: پاسخ هر روز مستقل است)، و روز غیرکاری بدون تسک هرروزه', () => {
       const days = svc.getWeek(admin, emp.id, { start: SAT }).days;
       const moved = days[3].tasks.find((t) => t.title === 'تماس با مشتری'); // سه‌شنبه ۲۰۲۶-۰۹-۱۵
       assert.deepEqual([moved.source, moved.status], ['rescheduled', 'no_answer']);
       assert.equal(days[3].tasks.find((t) => t.title === 'کار هرروزه').status, 'done');
       assert.equal(days[1].tasks.length, 0, 'یکشنبه آف است');
-      assert.equal(days[4].tasks.some((t) => t.title === 'کار هرروزه'), false, 'بعد از done دیگر نمی‌آید');
+      const next = days[4].tasks.find((t) => t.title === 'کار هرروزه');
+      assert.deepEqual([next && next.source, next && next.status], ['everyday', 'no_answer'], 'روتین بعد از done هم روز بعد دوباره می‌آید (پاسخ هر روز مستقل)');
     });
 
     test('«مشاهده شد» سرپرست روی روز', () => {
@@ -177,10 +178,10 @@ describe('نمای هفتگی کارمند (F1-a)', () => {
   describe('خلاصه‌ی عملکرد هفته (F1-c)', () => {
     test('اعداد مشخص روی هفته‌ی نمونه: تسک‌ها، درصد، تأخیر، ساعت، غیبت', () => {
       const s = svc.getWeek(admin, emp.id, { start: SAT }).summary;
-      // شنبه: فوری(بی‌پاسخ) + تماس(انجام‌نشده، منتقل) + گزارش(done) + هرروزه(بی‌پاسخ)؛ سه‌شنبه: تماس منتقل‌شده(بی‌پاسخ) + هرروزه(done)
+      // شنبه: فوری(بی‌پاسخ) + تماس(انجام‌نشده، منتقل) + گزارش(done) + هرروزه(بی‌پاسخ)؛ سه‌شنبه: تماس منتقل‌شده(بی‌پاسخ) + هرروزه(done)؛ چهارشنبه: هرروزه(بی‌پاسخ — روتین هر روز دوباره می‌آید)
       assert.deepEqual(
         [s.tasks.total, s.tasks.done, s.tasks.partial, s.tasks.notDone, s.tasks.noAnswer, s.tasks.urgent, s.tasks.normal, s.tasks.rescheduled, s.tasks.completionPercent],
-        [6, 2, 0, 1, 3, 1, 5, 1, 33],
+        [7, 2, 0, 1, 4, 1, 6, 1, 29],
       );
       assert.equal(s.attendance.lateDays, 1);
       assert.equal(s.attendance.absentDays, 2); // سه‌شنبه و چهارشنبه

@@ -264,7 +264,8 @@ describe('اتصال‌ها (ایستا)', () => {
     const nb = read('public-admin/css/notebook.css');
     const printCss = nb.slice(nb.indexOf('@media print'));
     assert.match(printCss, /\.nb \.nb-spread > \.nb-page \{ display: flex !important;/);
-    assert.match(printCss, /\.nb-spring, \.nb \.nb-pager, \.nb \.nb-card__toggle, \.nb \.nb-task__actions, \.nb \.nb-task__handle, \.nb \.nb-edit-slot \{ display: none !important; \}/);
+    const hide = printCss.match(/([^{}]*)\{ display: none !important; \}/g).join(' ');
+    for (const c of ['nb-spring', 'nb-pager', 'nb-card__toggle', 'nb-task__actions', 'nb-task__handle', 'nb-edit-slot', 'nb-routine-add']) assert.match(hide, new RegExp(`\\.nb \\.${c}\\b`), `چاپ: ${c} باید پنهان شود`);
     assert.match(printCss, /box-shadow: none/);
   });
 

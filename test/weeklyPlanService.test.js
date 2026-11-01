@@ -178,7 +178,7 @@ describe('سرویس برنامه‌ی هفتگی (D3)', () => {
 
   test('پیشنهاد انتقال (ناتمام‌های هفته‌ی قبل) و کپی از هفته‌ی قبل؛ منبع انتقال اعتبارسنجی می‌شود', () => {
     reset();
-    const prev = svc.saveDraft(u, 'next', [t('تمام‌شده'), t('ناتمام'), t('نیمه')], { now: at('2026-07-31') });
+    const prev = svc.saveDraft(u, 'next', [t('تمام‌شده', { plannedDate: '2026-08-02' }), t('ناتمام', { plannedDate: '2026-08-02' }), t('نیمه', { plannedDate: '2026-08-02' })], { now: at('2026-07-31') }); // فقط تسک‌های روزدار پیشنهاد انتقال/کپی می‌شوند؛ روتین‌های «هر روز» خودکار منتقل می‌شوند (routineService)
     assert.equal(prev.ok, true, JSON.stringify(prev));
     const [done, undone, half] = prev.tasks;
     logs.upsert({ taskId: done.id, userId: u.id, logDate: '2026-08-02', status: 'done' });
@@ -186,7 +186,7 @@ describe('سرویس برنامه‌ی هفتگی (D3)', () => {
     const next = svc.getPlan(u, 'next', { now: SUN });
     assert.deepEqual(next.carryOver.map((x) => x.title).sort(), ['ناتمام', 'نیمه']);
     assert.equal(next.previousWeekTasks.length, 3);
-    const saved = svc.saveDraft(u, 'next', [t('ناتمام', { carriedFromTaskId: undone.id })], { now: SUN });
+    const saved = svc.saveDraft(u, 'next', [t('ناتمام', { plannedDate: '2026-08-09', carriedFromTaskId: undone.id })], { now: SUN });
     assert.equal(saved.tasks[0].carriedFromTaskId, undone.id);
     assert.deepEqual(svc.getPlan(u, 'next', { now: SUN }).carryOver.map((x) => x.title), ['نیمه'], 'منتقل‌شده دیگر پیشنهاد نمی‌شود');
     const other = F.makeUser();
@@ -221,14 +221,16 @@ describe('سرویس برنامه‌ی هفتگی (D3)', () => {
     assert.deepEqual(reports.buildList(u, '2026-08-03', settings).map((x) => x.title).sort(), ['الف', 'پ', 'بررسی گزارش‌ها'].sort());
     const moved = reports.buildList(u, '2026-08-05', settings).find((x) => x.id === tb.id);
     assert.equal(moved && moved.source, 'rescheduled');
-    // drop و «انجام‌شده» هم مثل قبل
+    // «انجام‌شده» روی روتین «هر روز» فقط همان روز را می‌بندد؛ فردا دوباره می‌آید
     logs.upsert({ taskId: tc.id, userId: u.id, logDate: '2026-08-03', status: 'done' });
-    assert.ok(!reports.buildList(u, '2026-08-04', settings).some((x) => x.id === tc.id));
-    // carry over: ناتمام‌های هفته‌ی شروع‌شده به هفته‌ی بعد می‌روند (هفته‌ی بعد آزاد است)
+    assert.ok(!reports.buildList(u, '2026-08-03', settings).some((x) => x.id === tc.id));
+    assert.ok(reports.buildList(u, '2026-08-04', settings).some((x) => x.id === tc.id));
+    // carry over: ناتمام‌های روزدارِ هفته‌ی شروع‌شده به هفته‌ی بعد می‌روند (هفته‌ی بعد آزاد است)؛ روتین‌های «هر روز» (الف، پ) پیشنهاد انتقال نمی‌شوند
     const next = svc.getPlan(u, 'next', { now: SUN });
-    assert.deepEqual(next.carryOver.map((x) => x.title).sort(), ['الف', 'ب']);
-    const saved = svc.saveDraft(u, 'next', [t('الف', { carriedFromTaskId: ta.id })], { now: SUN });
-    assert.equal(saved.ok, true);
-    assert.equal(saved.tasks[0].carriedFromTaskId, ta.id);
+    assert.deepEqual(next.carryOver.map((x) => x.title).sort(), ['ب']);
+    assert.ok(ta.id);
+    const saved = svc.saveDraft(u, 'next', [t('ب', { plannedDate: '2026-08-10', carriedFromTaskId: tb.id })], { now: SUN });
+    assert.equal(saved.ok, true, JSON.stringify(saved));
+    assert.equal(saved.tasks[0].carriedFromTaskId, tb.id);
   });
 });

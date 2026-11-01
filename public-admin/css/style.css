@@ -424,6 +424,8 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 .day-task .rv-open { margin-top: var(--space-2); }
 .day-task .title { font-weight: 700; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .day-task-meta { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-top: 6px; }
+/* تیک/ضربدرِ وضعیت تسک در نمای هفته‌ی کارمند */
+.day-task-meta .badge.green, .day-task-meta .badge.red { font-weight: 800; }
 .day-task .reason { color: var(--hint); margin-top: var(--space-1); line-height: 1.7; }
 .day-reviewed { font-size: var(--fs-xs); display: flex; align-items: center; gap: 6px; }
 .day-reviewed svg { width: 14px; height: 14px; stroke: var(--green); }
@@ -2437,7 +2439,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
 .dt-mark.is-not-done { color: var(--red); background: var(--red-soft); }
 .dt-mark.is-partial { color: var(--orange); }
 .dt-mark.is-none { color: var(--hint); }
-@media print { .day-task.dt-row { border-top: 1px dashed #999; } }
+@media print { .day-task.dt-row { border-top: 1px dashed var(--border); } }
 
 /* برنامه‌ی هفتگی: ۴ ستون در ردیف (به‌جای ۵) ⇒ کارت‌ها پهن‌تر؛ ردیف دوم ۳ روز باقی‌مانده */
 .week-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); }

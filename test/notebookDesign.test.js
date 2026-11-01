@@ -75,10 +75,11 @@ describe('دو تم', () => {
     assert.deepEqual(vars(auto.body), vars(light.body)); // تم خودکارِ روشن دقیقاً همان تم روشن
   });
 
-  test('«کاغذ شب» تیره است، نه سیاه؛ رنگ‌ها صورتی/گرم', () => {
+  test('«کاغذ شب» تیره است، نه سیاه؛ رنگ‌ها نیلیِ برند', () => {
     const v = vars(dark.body);
     assert.notEqual(v['--nb-paper'].toLowerCase(), '#000000');
-    assert.match(v['--nb-paper'], /^#[2-3][0-9a-f][2-3][0-9a-f][2-3][0-9a-f]$/i);
+    assert.match(v['--nb-paper'], /^#[0-9a-f]{6}$/i);
+    assert.ok(lum(v['--nb-paper']) < 0.05, 'کاغذ شب باید تیره باشد'); // پالت برند: نیلی تیره
   });
 
   // کنتراست WCAG
