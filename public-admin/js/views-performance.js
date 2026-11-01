@@ -408,8 +408,13 @@
     const panelDays = (rows) => {
       const withPay = !!(d.payroll && d.payroll.rateKt != null);
       return `<div class="pf-panel-tools"><button type="button" class="btn ghost small" id="pf-days-csv">${AP.icon('download')} CSV</button><span class="pf-filter-hint">برای بازرسی کامل هر روز روی ردیف بزنید.</span></div>
-        <div class="table-wrap"><table class="pf-daily"><thead><tr><th>روز</th><th>وضعیت</th><th>ورود</th><th>خروج</th><th>ساعت مفید</th><th>اضافه‌کاری</th><th>کسری</th><th>تأخیر</th><th>استراحت</th><th>تسک</th>${withPay ? '<th>حقوق</th>' : ''}</tr></thead>
-        <tbody>${rows.slice().reverse().map((r) => `<tr class="clickable" data-date="${r.date}" tabindex="0"><td>${esc(fmt.date(r.date))}</td><td>${AP.badge(STATUS_TONE[r.status] || 'normal', STATUS[r.status] || r.status)}${r.viaRemote ? ' <small class="pf-warn">دورکاری</small>' : ''}</td><td class="num">${clock(r.checkIn)}</td><td class="num">${clock(r.checkOut)}</td><td class="num">${fmt.min(r.useful)}</td><td class="num">${r.overtime ? fmt.min(r.overtime) : '—'}</td><td class="num">${r.shortfall ? fmt.min(r.shortfall) : '—'}</td><td class="num">${r.late ? fmt.min(r.late) : '—'}</td><td class="num">${r.breaks ? fmt.min(r.breaks) : '—'}</td><td class="num">${r.tasksTotal ? `${fmt.num(r.tasksDone)}/${fmt.num(r.tasksTotal)}` : '—'}</td>${withPay ? `<td class="num">${r.earn ? toman(r.earn) : '—'}</td>` : ''}</tr>`).join('') || `<tr><td colspan="11">${emptyBox('داده‌ای در این بازه نیست.')}</td></tr>`}</tbody></table></div>`;
+        <div class="table-wrap"><table class="pf-daily pf-paytable"><thead><tr><th>روز</th><th>وضعیت</th><th>ورود</th><th>خروج</th><th>ساعت مفید</th><th>اضافه‌کاری</th><th>کسری</th><th>تأخیر</th><th>استراحت</th><th>تسک</th>${withPay ? '<th>حقوق</th>' : ''}</tr></thead>
+        <tbody>${rows.slice().reverse().map((r) => {
+        const dash = '<span class="muted">—</span>';
+        const tg = (v, tone) => (v ? `<span class="pf-tag ${tone}">${fmt.min(v)}</span>` : dash);
+        const wd = persianWeekday(r.date);
+        return `<tr class="clickable${r.status === 'absent' ? ' pf-row-bad' : ''}${r.status === 'weekend' || r.status === 'holiday' ? ' pf-row-off' : ''}" data-date="${r.date}" tabindex="0"><td><div class="pf-dayname"><b>${esc(fmt.date(r.date))}</b><small>${WEEKDAYS[wd]}</small></div></td><td>${AP.badge(STATUS_TONE[r.status] || 'normal', STATUS[r.status] || r.status)}${r.viaRemote ? ' <small class="pf-warn">دورکاری</small>' : ''}</td><td class="num">${r.checkIn == null ? dash : `<span class="pf-ratechip pf-in">${clock(r.checkIn)}</span>`}</td><td class="num">${r.checkOut == null ? dash : `<span class="pf-ratechip pf-out">${clock(r.checkOut)}</span>`}</td><td class="num"><b>${r.useful ? fmt.min(r.useful) : '—'}</b></td><td class="num">${tg(r.overtime, 'good')}</td><td class="num">${tg(r.shortfall, 'bad')}</td><td class="num">${tg(r.late, 'warn')}</td><td class="num">${r.breaks ? fmt.min(r.breaks) : dash}</td><td class="num">${r.tasksTotal ? `<span class="pf-rate ${r.tasksDone === r.tasksTotal ? 'good' : r.tasksDone ? 'warn' : 'bad'}">${fmt.num(r.tasksDone)}/${fmt.num(r.tasksTotal)}</span>` : dash}</td>${withPay ? `<td class="num">${r.earn ? `<span class="pf-amtcell">${toman(r.earn)}</span>` : dash}</td>` : ''}</tr>`;
+      }).join('') || `<tr><td colspan="11">${emptyBox('داده‌ای در این بازه نیست.')}</td></tr>`}</tbody></table></div>`;
     };
     const panelWeekday = () => {
       const wd = d.insights.byWeekday; const mx = Math.max(1, ...wd.map((x) => x.avgUseful));
@@ -506,22 +511,46 @@
     let r;
     try { r = await AP.api(`/admin/performance/employee/${encodeURIComponent(userId)}/day?${q({ date })}`); } catch (err) { AP.toast(err.message, true); return; }
     const x = r.day; const rec = r.record;
-    const fact = (l, v) => `<div><span>${l}</span><strong>${v}</strong></div>`;
-    const dur = (a, b) => { const A = Date.parse(a); const Bt = b ? Date.parse(b) : Date.now(); return Number.isFinite(A) && Number.isFinite(Bt) && Bt > A ? fmt.min(Math.round((Bt - A) / 60000)) : '—'; };
+    const dur = (a1, b1) => { const A = Date.parse(a1); const Bt = b1 ? Date.parse(b1) : Date.now(); return Number.isFinite(A) && Number.isFinite(Bt) && Bt > A ? fmt.min(Math.round((Bt - A) / 60000)) : '—'; };
     const flags = (x.flags || []).map((f) => AP.badge('late', FLAGS[f] || f)).join(' ');
     const tk = r.tasks;
+    const REMOTE = { approved: 'تأییدشده', pending: 'در انتظار', rejected: 'ردشده', active: 'فعال', closed: 'بسته‌شده' };
+    const tile = (label, value, tone, sub) => `<div class="pf-fact ${tone || ''}"><span>${label}</span><strong>${value}</strong>${sub ? `<small>${sub}</small>` : ''}</div>`;
+    const dash = '<span class="muted">—</span>';
+    const dayAmount = r.payroll && r.payroll.days[0] ? r.payroll.days[0].amountToman : null;
+    const wd = persianWeekday(date);
+    const section = (title, icon, inner) => `<section class="pf-dsec"><h4>${AP.icon(icon)} ${title}</h4>${inner}</section>`;
+    const rowsTable = (head, rows) => `<div class="table-wrap pf-daywrap"><table class="pf-paytable pf-mini"><thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
     const body = `
-      <div class="pf-day-head">${AP.badge(STATUS_TONE[x.status] || 'normal', STATUS[x.status] || x.status)} ${x.holidayTitle ? `<span class="pf-chip">${esc(x.holidayTitle)}</span>` : ''} ${x.viaRemote ? '<span class="pf-chip">دورکاری</span>' : ''} ${flags}</div>
-      <div class="pf-pay-grid pf-facts">${[fact('ساعت مورد انتظار', fmt.min(x.expected)), fact('ساعت مفید', fmt.min(x.useful)), fact('ورود', clock(x.checkIn)), fact('خروج', clock(x.checkOut)), fact('تأخیر', x.late ? fmt.min(x.late) : '—'), fact('زودتر رفتن', x.earlyLeave ? fmt.min(x.earlyLeave) : '—'), fact('کسری', x.shortfall ? fmt.min(x.shortfall) : '—'), fact('اضافه‌کاری', x.overtime ? fmt.min(x.overtime) : '—'), fact('استراحت با حقوق', fmt.min(x.breakPaid)), fact('استراحت بدون حقوق', fmt.min(x.breakUnpaid)), x.missionMinutes ? fact('مأموریت', fmt.min(x.missionMinutes)) : '', r.payroll && r.payroll.days[0] ? fact('مبلغ روز', `<span class="pf-amount">${toman(r.payroll.days[0].amountToman)}</span>`) : ''].join('')}</div>
-      <h4>حضور ساعت‌به‌ساعت</h4><div class="pf-chart" id="pf-day-hourly"></div>
-      <div class="pf-split"><div><h4>بازه‌های حضور</h4>${rec && rec.segments.length ? `<ul class="pf-list">${rec.segments.map((s) => `<li><span>${fmt.clock(s.in)} ← ${s.out ? fmt.clock(s.out) : '<b class="pf-warn">باز</b>'}</span><em>${dur(s.in, s.out)}</em></li>`).join('')}</ul>` : emptyBox('رکورد ورودی نیست.')}
-        <h4>استراحت‌ها</h4>${rec && rec.breaks.length ? `<ul class="pf-list">${rec.breaks.map((b) => `<li><span>${b.type === 'lunch' ? 'ناهار' : 'کوتاه'} · ${fmt.clock(b.start)} ← ${b.end ? fmt.clock(b.end) : '<b class="pf-warn">باز</b>'}</span><em>${dur(b.start, b.end)}</em></li>`).join('')}</ul>` : emptyBox('استراحتی نیست.')}</div>
-        <div><h4>مرخصی و مأموریت</h4>${r.leaves.length ? `<ul class="pf-list">${r.leaves.map((l) => `<li><span>${esc(l.type || (l.kind === 'mission' ? 'مأموریت' : 'مرخصی'))}</span><em>${esc(l.reason || '')}</em></li>`).join('')}</ul>` : emptyBox('ندارد.')}
-        <h4>دورکاری</h4>${r.remote.length ? `<ul class="pf-list">${r.remote.map((s) => `<li><span>${esc(s.status)} · ${fmt.clock(s.start)} ← ${s.end ? fmt.clock(s.end) : 'باز'}</span><em>${s.autoClosed ? 'بسته‌شده‌ی خودکار' : ''}</em></li>`).join('')}</ul>` : emptyBox('ندارد.')}
-        <h4>اعتراض‌ها</h4>${r.disputes.length ? `<ul class="pf-list">${r.disputes.map((s) => `<li><span>${esc(s.message)}</span><em>${s.status === 'open' ? 'باز' : 'حل‌شده'}</em></li>`).join('')}</ul>` : emptyBox('ندارد.')}</div></div>
-      <h4>تسک‌ها</h4>${tk ? `<div class="pf-kpis pf-kpis-sm">${[kpi('انجام‌شده', `${fmt.num(tk.done)} از ${fmt.num(tk.total)}`, tk.percent != null ? pctText(tk.percent) : '', 'good'), kpi('نیمه‌کاره', fmt.num(tk.partial), '', 'info'), kpi('بی‌پاسخ', fmt.num((tk.pending || []).length), '', 'warn')].join('')}</div>
-        ${(tk.notDone || []).length ? `<ul class="pf-list">${tk.notDone.map((n) => `<li><span>${esc(n.title)}</span><em>${esc(n.reason || n.carry || '')}</em></li>`).join('')}</ul>` : ''}` : emptyBox('این روز تسکی نبوده است.')}
-      <div class="pf-modal-actions"><button type="button" class="btn ghost" data-prev>روز قبل</button><button type="button" class="btn ghost" data-next>روز بعد</button></div>`;
+      <div class="pf-pay-head pf-day-top">${AP.avatar(r.user ? r.user.fullName : d.user.fullName, 'lg')}<div><h4>${esc(r.user ? r.user.fullName : d.user.fullName)}</h4><p>${esc(WEEKDAYS[wd])}، ${esc(fmt.date(date))}</p></div>
+        <div class="pf-day-badges">${AP.badge(STATUS_TONE[x.status] || 'normal', STATUS[x.status] || x.status)}${x.holidayTitle ? `<span class="pf-chip">${esc(x.holidayTitle)}</span>` : ''}${x.viaRemote ? '<span class="pf-chip">دورکاری</span>' : ''}${flags}</div>
+        ${dayAmount != null ? `<div class="pf-day-amount"><span>مبلغ این روز</span><strong class="pf-amount">${toman(dayAmount)}</strong></div>` : ''}</div>
+      <div class="pf-facts-grid">${[
+        tile('ورود', x.checkIn == null ? dash : `<span class="pf-in-t">${clock(x.checkIn)}</span>`, 'in'),
+        tile('خروج', x.checkOut == null ? dash : `<span class="pf-out-t">${clock(x.checkOut)}</span>`, 'out'),
+        tile('ساعت مورد انتظار', fmt.min(x.expected), 'info'),
+        tile('ساعت مفید', fmt.min(x.useful), 'good', x.expected ? `${pctText(Math.round((x.useful / x.expected) * 100))} از مورد انتظار` : ''),
+        tile('اضافه‌کاری', x.overtime ? fmt.min(x.overtime) : dash, 'good'),
+        tile('تأخیر', x.late ? fmt.min(x.late) : dash, 'warn'),
+        tile('زودتر رفتن', x.earlyLeave ? fmt.min(x.earlyLeave) : dash, 'warn'),
+        tile('کسری', x.shortfall ? fmt.min(x.shortfall) : dash, 'bad'),
+        tile('استراحت با حقوق', x.breakPaid ? fmt.min(x.breakPaid) : dash, 'info'),
+        tile('استراحت بدون حقوق', x.breakUnpaid ? fmt.min(x.breakUnpaid) : dash, 'info'),
+        x.missionMinutes ? tile('مأموریت', fmt.min(x.missionMinutes), 'info') : '',
+      ].join('')}</div>
+      ${section('حضور ساعت‌به‌ساعت', 'clock', '<div class="pf-chart" id="pf-day-hourly"></div><p class="pf-legend"><i class="pf-lg-w"></i> کار <i class="pf-lg-b"></i> استراحت</p>')}
+      <div class="pf-split">
+        ${section('بازه‌های حضور', 'attendance', rec && rec.segments.length ? rowsTable(['ورود', 'خروج', 'مدت'], rec.segments.map((sg) => `<tr><td class="num"><span class="pf-ratechip pf-in">${fmt.clock(sg.in)}</span></td><td class="num">${sg.out ? `<span class="pf-ratechip pf-out">${fmt.clock(sg.out)}</span>` : '<span class="pf-tag bad">باز</span>'}</td><td class="num"><b>${dur(sg.in, sg.out)}</b></td></tr>`).join('')) : emptyBox('رکورد ورودی نیست.'))}
+        ${section('استراحت‌ها', 'coffee', rec && rec.breaks.length ? rowsTable(['نوع', 'از', 'تا', 'مدت'], rec.breaks.map((b2) => `<tr><td>${b2.type === 'lunch' ? '<span class="pf-tag warn">ناهار</span>' : '<span class="pf-tag good">کوتاه</span>'}</td><td class="num">${fmt.clock(b2.start)}</td><td class="num">${b2.end ? fmt.clock(b2.end) : '<span class="pf-tag bad">باز</span>'}</td><td class="num"><b>${dur(b2.start, b2.end)}</b></td></tr>`).join('')) : emptyBox('استراحتی نیست.'))}
+      </div>
+      <div class="pf-split">
+        ${section('مرخصی و مأموریت', 'calendar', r.leaves.length ? `<ul class="pf-list">${r.leaves.map((l) => `<li><span>${AP.badge(l.kind === 'mission' ? 'normal' : 'late', l.type || (l.kind === 'mission' ? 'مأموریت' : 'مرخصی'))}</span><em>${esc(l.reason || '')}</em></li>`).join('')}</ul>` : emptyBox('ندارد.'))}
+        ${section('دورکاری', 'attendance', r.remote.length ? `<ul class="pf-list">${r.remote.map((sr) => `<li><span>${esc(REMOTE[sr.status] || sr.status)} · ${fmt.clock(sr.start)} ← ${sr.end ? fmt.clock(sr.end) : 'باز'}</span><em>${sr.autoClosed ? 'بسته‌شده‌ی خودکار' : ''}</em></li>`).join('')}</ul>` : emptyBox('ندارد.'))}
+      </div>
+      ${section('اعتراض‌ها', 'disputes', r.disputes.length ? `<ul class="pf-list">${r.disputes.map((sd) => `<li><span>${esc(sd.message)}</span><em>${sd.status === 'open' ? '<span class="pf-tag bad">باز</span>' : '<span class="pf-tag good">حل‌شده</span>'}</em></li>`).join('')}</ul>` : emptyBox('ندارد.'))}
+      ${section('تسک‌ها', 'check', tk ? `<div class="pf-facts-grid pf-facts-3">${[tile('انجام‌شده', `${fmt.num(tk.done)} از ${fmt.num(tk.total)}`, 'good', tk.percent != null ? pctText(tk.percent) : ''), tile('نیمه‌کاره', fmt.num(tk.partial), 'info'), tile('بی‌پاسخ', fmt.num((tk.pending || []).length), 'warn')].join('')}</div>
+        ${(tk.notDone || []).length ? rowsTable(['تسک انجام‌نشده', 'دلیل'], tk.notDone.map((n) => `<tr><td>${esc(n.title)}</td><td>${esc(n.reason || n.carry || '—')}</td></tr>`).join('')) : ''}` : emptyBox('این روز تسکی نبوده است.'))}
+      <div class="pf-day-nav"><button type="button" class="btn ghost" data-next>◂ روز بعد</button><button type="button" class="btn ghost" data-prev>روز قبل ▸</button></div>`;
     const m = AP.modal({ title: `بازرسی روز — ${fmt.date(date)}`, body, wide: true });
     PC.hourlyChart($('#pf-day-hourly', m.el), r.hourly);
     const shift = (n) => { const dt = new Date(`${date}T00:00:00Z`); dt.setUTCDate(dt.getUTCDate() + n); return dt.toISOString().slice(0, 10); };
@@ -623,14 +652,21 @@
     try { r = await AP.api(`/admin/payroll/${encodeURIComponent(id)}?${q({ year: data.year, month: data.month })}`); } catch (err) { AP.toast(err.message, true); return; }
     const reason = { open_dispute: 'اعتراض باز', missing_checkout: 'ورود بدون خروج' };
     const days = r.days || [];
-    const body = `<div class="pf-pay-grid"><div><span>حقوق ${esc(data.label)}</span><strong class="pf-amount">${toman(r.amountToman)}</strong></div><div><span>نرخ ساعتی</span><strong>${r.rateKt == null ? 'ثبت نشده' : `${fmt.num(r.rateKt)} هزار تومان`}</strong></div><div><span>ساعت مفید</span><strong>${fmt.min(r.usefulMinutes)}</strong></div><div><span>اضافه‌کاری</span><strong>${fmt.min(r.overtimeMinutes)}</strong></div><div><span>میانگین هر روز</span><strong>${toman(r.avgPerWorkedDayToman)}</strong></div><div><span>پیش‌بینی پایان ماه</span><strong>${toman(r.projectedAmountToman)}</strong></div></div>
+    const valid = days.filter((x) => !x.excluded && x.amountToman > 0);
+    const maxDay = Math.max(1, ...valid.map((x) => x.amountToman));
+    const totalMin = sum(valid.map((x) => x.usefulMinutes));
+    const totalAmt = sum(valid.map((x) => x.amountToman));
+    const body = `<div class="pf-pay-head">${AP.avatar(r.user.fullName, 'lg')}<div><h4>${esc(r.user.fullName)}</h4><p>${esc(r.user.department || 'بدون دپارتمان')} · ${esc(data.label)}</p></div>${r.rateKt == null ? '' : `<span class="pf-ratechip">${fmt.num(r.rateKt)} هزار تومان / ساعت</span>`}</div>
+      <div class="pf-kpis pf-kpis-sm">${[kpi('حقوق ماه', `<span class="pf-amount">${toman(r.amountToman)}</span>`, r.previousAmountToman ? delta({ good: 'up' }, r.amountToman, r.previousAmountToman) : '', 'good'), kpi('ساعت مفید', fmt.min(r.usefulMinutes), `${fmt.num(valid.length)} روز کاری`, 'info'), kpi('اضافه‌کاری', fmt.min(r.overtimeMinutes), '', 'warn'), kpi('میانگین هر روز', toman(r.avgPerWorkedDayToman), '', 'info'), kpi('پیش‌بینی پایان ماه', toman(r.projectedAmountToman), '', 'info')].join('')}</div>
       <h4>درآمد روزانه و تجمعی</h4><div class="pf-chart" id="pf-pay-modal-chart"></div>
-      <div class="table-wrap"><table><thead><tr><th>روز</th><th>ساعت مفید</th><th>مبلغ</th><th>توضیح</th></tr></thead><tbody>
-      ${days.map((x) => `<tr><td>${esc(fmt.date(x.date))}</td><td class="num">${x.excluded ? '—' : fmt.min(x.usefulMinutes)}</td><td class="num">${x.excluded ? '—' : toman(x.amountToman)}</td><td>${x.excluded ? AP.badge('late', `خارج از محاسبه: ${reason[x.excluded] || x.excluded}`) : (x.overtimeMinutes ? `اضافه‌کاری ${fmt.min(x.overtimeMinutes)}` : '')}</td></tr>`).join('') || `<tr><td colspan="4">${emptyBox('روز کاری ثبت نشده.')}</td></tr>`}
-      </tbody></table></div>
-      <div class="pf-modal-actions"><a class="btn ghost" href="#/performance/${esc(r.user.id)}">گزارش عملکرد این کارمند</a></div>`;
+      <h4>ریز روزها</h4>
+      <div class="table-wrap pf-daywrap"><table class="pf-paytable pf-daytable"><thead><tr><th>روز</th><th>وضعیت</th><th>ساعت مفید</th><th>اضافه‌کاری</th><th>مبلغ</th></tr></thead><tbody>
+      ${days.map((x) => `<tr class="${x.excluded ? 'pf-excluded' : ''}"><td><b>${esc(fmt.date(x.date))}</b></td><td>${x.excluded ? AP.badge('late', `خارج از محاسبه: ${reason[x.excluded] || x.excluded}`) : AP.badge(STATUS_TONE[x.status] || 'normal', STATUS[x.status] || x.status || 'حاضر')}</td><td class="num">${x.excluded ? '—' : fmt.min(x.usefulMinutes)}</td><td class="num">${x.excluded || !x.overtimeMinutes ? '<span class="muted">—</span>' : `<span class="pf-tag good">${fmt.min(x.overtimeMinutes)}</span>`}</td><td class="num">${x.excluded ? '—' : `<div class="pf-sharecell"><span class="pf-amtcell">${toman(x.amountToman)}</span>${bar((x.amountToman / maxDay) * 100, 'green')}</div>`}</td></tr>`).join('') || `<tr><td colspan="5">${emptyBox('روز کاری ثبت نشده.')}</td></tr>`}
+      </tbody><tfoot><tr><td colspan="2"><b>جمع روزهای محاسبه‌شده</b></td><td class="num"><b>${fmt.min(totalMin)}</b></td><td></td><td class="num"><b>${toman(totalAmt)}</b></td></tr></tfoot></table></div>
+      <div class="pf-modal-actions"><a class="btn primary" href="#/performance/${esc(r.user.id)}">${AP.icon('trend')} گزارش عملکرد این کارمند</a></div>`;
     const m = AP.modal({ title: `ریز حقوق — ${r.user.fullName}`, body, wide: true });
-    PC.barsChart($('#pf-pay-modal-chart', m.el), days.filter((x) => !x.excluded && x.amountToman > 0).map((x) => ({ label: fmt.date(x.date), short: shortDate(x.date), value: x.amountToman, sub: STATUS[x.status] || '' })), { unit: 'money', cumulative: true, valueLabel: 'درآمد روز', aria: 'درآمد روزانه و تجمعی' });
+    applyProgress(m.el);
+    PC.barsChart($('#pf-pay-modal-chart', m.el), days.filter((x) => !x.excluded && x.amountToman > 0).map((x) => ({ label: fmt.date(x.date), short: shortDate(x.date), value: x.amountToman, sub: STATUS[x.status] || '' })), { unit: 'money', tone: 'green', cumulative: true, valueLabel: 'درآمد روز', aria: 'درآمد روزانه و تجمعی' });
     const link = $('.pf-modal-actions a', m.el);
     if (link) link.addEventListener('click', () => m.close());
   }

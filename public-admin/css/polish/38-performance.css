@@ -474,3 +474,67 @@ tr.clickable[data-date], tr.clickable[data-id] { cursor: pointer; }
 .pf-insightcard h3, .pf-leadercard h3 { font-size: var(--fs-md, 16px); font-weight: 800; }
 .pf-insightcard h3::before, .pf-leadercard h3::before, .pf-chartcard figcaption::after { display: none; }
 .pf-chartcard figcaption { padding-bottom: var(--space-2); }
+
+/* ===== ۳۸-ک) پنجره‌ی «ریز حقوق» یک کارمند ===== */
+.pf-pay-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 14px 16px; margin-bottom: var(--space-3); border-radius: var(--r-xl); border: 1px solid color-mix(in srgb, var(--green) 22%, var(--border));
+  background: radial-gradient(90% 140% at 0% 0%, color-mix(in srgb, var(--green) 12%, transparent), transparent 65%), linear-gradient(160deg, color-mix(in srgb, var(--card) 95%, var(--green)), var(--card)); }
+.pf-pay-head > div { flex: 1; min-width: 0; }
+.pf-pay-head h4 { margin: 0; font-size: var(--fs-md, 16px); }
+.pf-pay-head h4::before { display: none; }
+.pf-pay-head p { margin: 2px 0 0; color: var(--hint); font-size: var(--fs-xs); }
+.modal-body .pf-kpis-sm { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.pf-daywrap { max-height: 340px; overflow: auto; border-radius: var(--r-xl); border: 1px solid color-mix(in srgb, var(--brand) 12%, var(--border)); scrollbar-width: thin; }
+.pf-daytable { width: 100%; }
+.pf-daytable thead th { background: color-mix(in srgb, var(--green) 9%, var(--card)); }
+.pf-daytable tr.pf-excluded td { opacity: .75; background: color-mix(in srgb, var(--red) 6%, var(--card)); }
+.pf-daytable tfoot td { position: sticky; bottom: 0; }
+.pf-daytable .pf-sharecell { flex-direction: column; align-items: flex-start; gap: 4px; min-width: 150px; }
+.pf-daytable .pf-sharecell .pf-meter { width: 100%; flex: none; }
+.pf-modal-actions { display: flex; justify-content: flex-end; margin-top: var(--space-4); }
+.modal-body .pf-kpis-sm { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.modal-body .pf-kpi-val { font-size: 17px; }
+.modal-body .pf-kpi-val .pf-amount { font-size: 17px; }
+.modal-body .pf-kpi { padding: 12px 14px; }
+
+/* ===== ۳۸-ل) جدول «روزها» در صفحه‌ی کارمند ===== */
+.pf-daily.pf-paytable { padding-inline: 4px; }
+.pf-dayname { display: flex; flex-direction: column; line-height: 1.5; }
+.pf-dayname small { color: var(--hint); font-size: 11px; }
+.pf-ratechip.pf-in { color: var(--green); background: color-mix(in srgb, var(--green) 11%, transparent); border-color: color-mix(in srgb, var(--green) 26%, transparent); }
+.pf-ratechip.pf-out { color: var(--orange); background: color-mix(in srgb, var(--orange) 11%, transparent); border-color: color-mix(in srgb, var(--orange) 28%, transparent); }
+.pf-paytable tbody tr.pf-row-bad td { background: color-mix(in srgb, var(--red) 7%, var(--card)); }
+.pf-paytable tbody tr.pf-row-off td { opacity: .72; }
+.pf-paytable tbody tr.clickable:hover td { background: color-mix(in srgb, var(--brand) 9%, var(--card)); }
+.pf-tabpanel .pf-paytable { width: 100%; }
+
+/* ===== ۳۸-م) پنجره‌ی «بازرسی روز» ===== */
+.pf-day-top { align-items: center; }
+.pf-day-badges { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; flex: none !important; }
+.pf-day-amount { text-align: end; flex: none !important; }
+.pf-day-amount span { display: block; font-size: var(--fs-xs); color: var(--hint); font-weight: 700; }
+.pf-day-amount .pf-amount { font-size: 20px; }
+.pf-facts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: var(--space-3); }
+.pf-facts-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pf-fact { --f: var(--brand); position: relative; display: flex; flex-direction: column; gap: 3px; padding: 11px 14px; border-radius: 16px; overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--f) 22%, var(--border));
+  background: radial-gradient(120% 100% at 100% 0%, color-mix(in srgb, var(--f) 11%, transparent), transparent 65%), color-mix(in srgb, var(--card) 96%, var(--f)); }
+.pf-fact::before { content: ""; position: absolute; inset-inline-start: 0; top: 12px; bottom: 12px; width: 3px; border-radius: 3px; background: var(--f); opacity: .8; }
+.pf-fact.good { --f: var(--green); } .pf-fact.warn { --f: var(--orange); } .pf-fact.bad { --f: var(--red); } .pf-fact.info { --f: var(--blue); } .pf-fact.in { --f: var(--green); } .pf-fact.out { --f: var(--orange); }
+.pf-fact span { font-size: 11.5px; font-weight: 700; color: var(--hint); }
+.pf-fact strong { font-size: 17px; font-weight: 800; line-height: 1.45; font-variant-numeric: tabular-nums; }
+.pf-fact small { font-size: 11px; color: var(--hint); }
+.pf-in-t { color: var(--green); } .pf-out-t { color: var(--orange); }
+.pf-dsec { margin-bottom: var(--space-3); min-width: 0; }
+.pf-dsec > h4 { display: flex; align-items: center; gap: 8px; margin: var(--space-3) 0 var(--space-2); }
+.pf-dsec > h4::before { display: none; }
+.pf-dsec > h4 svg { width: 28px; height: 28px; padding: 6px; border-radius: 10px; color: var(--brand); background: color-mix(in srgb, var(--brand) 12%, transparent); border: 1px solid color-mix(in srgb, var(--brand) 22%, transparent); }
+.pf-legend { display: flex; gap: 14px; align-items: center; margin: 4px 0 0; font-size: 11.5px; color: var(--hint); }
+.pf-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-inline-end: 4px; }
+.pf-lg-w { background: var(--brand); } .pf-lg-b { background: var(--blue); }
+.pf-mini { width: 100%; }
+.pf-mini thead th { padding-block: 8px; }
+.pf-mini tbody td { padding-block: 9px; }
+.pf-day-nav { display: flex; justify-content: space-between; gap: 10px; margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px dashed var(--border); }
+@media (max-width: 600px) { .pf-facts-3 { grid-template-columns: 1fr; } .pf-day-amount { text-align: start; } }
+.pf-fact strong span { font-size: inherit; font-weight: inherit; margin: 0; }
+.pf-fact strong .pf-in-t { color: var(--green); } .pf-fact strong .pf-out-t { color: var(--orange); }
