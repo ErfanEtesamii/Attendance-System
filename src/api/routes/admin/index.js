@@ -37,6 +37,7 @@ router.use(require('./overtime'));
 router.use(require('./reports'));
 router.use(require('./monthClosures')); // S5-3: بستن ماه (چک‌لیست؛ بستن/بازکردن در S5-3b/c)
 router.use(require('./analytics')); // S5-6a: روند/مقایسه‌ی تأخیر (فقط‌خواندنی؛ کارمند ممنوع)
+router.use(require('./performance')); // نمودار عملکرد کارمند (مثل Search Console) + حقوق دقیق (فقط admin)
 router.use(require('./settings'));
 router.use(require('./shifts'));
 router.use(require('./userSchedule')); // B2: برنامه‌ی کاری روزبه‌روز هر کارمند
