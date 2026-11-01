@@ -164,17 +164,19 @@
         <div class="pf-chart" id="pf-chart"></div><p class="chart-note" id="pf-note"></p></figure>
       <div class="pf-leaders" id="pf-leaders"></div>
       <section class="pf-block"><h3 class="pf-sec-title">${AP.icon('employees')} دپارتمان‌ها</h3>${deptCards(data.departments, { title: 'دپارتمان‌ها', mainLabel: 'ساعت مفید', main: (x) => fmt.min(x.useful), share: (x) => (t.useful ? (x.useful / t.useful) * 100 : 0), stats: (x) => [['اضافه‌کاری', fmt.min(x.overtime)], ['کسری', fmt.min(x.shortfall)], ['تأخیر', fmt.min(x.late)], ['روز غیبت', fmt.num(x.absentDays)]] })}</section>
-      <div class="card flush pf-team pf-block"><div class="card-head"><h3>${AP.icon('employees')} همه‌ی کارمندان</h3><label class="field pf-search"><input type="search" id="pf-search" placeholder="جستجوی نام…" value="${esc(ui.search)}" aria-label="جستجوی کارمند" /></label></div><div class="table-wrap"><table>
+      <div class="card flush pf-team pf-block"><div class="card-head"><h3>${AP.icon('employees')} همه‌ی کارمندان</h3><label class="field pf-search"><input type="search" id="pf-search" placeholder="جستجوی نام…" value="${esc(ui.search)}" aria-label="جستجوی کارمند" /></label></div><div class="table-wrap"><table class="pf-paytable pf-teamtable">
         <thead><tr>${[['name', 'کارمند'], ['useful', 'ساعت مفید'], ['chg', 'تغییر'], ['attendanceRate', 'حضور'], ['punctualityRate', 'وقت‌شناسی'], ['fulfillmentRate', 'تحقق'], ['avgCheckIn', 'میانگین ورود'], ['overtime', 'اضافه‌کاری'], ['shortfall', 'کسری'], ['late', 'تأخیر'], ['absentDays', 'غیبت']].map(([k, l]) => `<th><button type="button" class="pf-sort" data-sort="${k}">${l}${ui.sort === k ? (ui.dir < 0 ? ' ▼' : ' ▲') : ''}</button></th>`).join('')}<th>روند</th></tr></thead>
         <tbody id="pf-team-body"></tbody></table></div></div>`;
     return { html, mount: (page) => { bindRange(page); mountTeam(page, data); } };
   }
 
   function spark(vals) {
-    const W = 96; const H = 28; const max = Math.max(1, ...vals);
+    const W = 96; const H = 30; const max = Math.max(1, ...vals);
     if (vals.length < 2) return '';
     const step = W / (vals.length - 1);
-    return `<svg class="pf-spark" viewBox="0 0 ${W} ${H}" aria-hidden="true"><polyline points="${vals.map((v, i) => `${(W - i * step).toFixed(1)},${(H - 3 - (v / max) * (H - 6)).toFixed(1)}`).join(' ')}" /></svg>`;
+    const pts = vals.map((v, i) => [(W - i * step).toFixed(1), (H - 3 - (v / max) * (H - 8)).toFixed(1)]);
+    const line = pts.map((p) => p.join(',')).join(' ');
+    return `<svg class="pf-spark" viewBox="0 0 ${W} ${H}" aria-hidden="true"><polygon class="pf-spark-area" points="${line} 0,${H} ${W},${H}" /><polyline points="${line}" /></svg>`;
   }
 
   function leaderCard(title, icon, list, valueOf, textOf, tone) {
@@ -186,7 +188,7 @@
   function mountTeam(page, data) {
     const rows = data.rows.map((r) => ({
       ...r, name: r.user.fullName, useful: r.totals.useful,
-      chg: r.previousUseful ? (r.totals.useful - r.previousUseful) / r.previousUseful : (r.totals.useful ? 1 : 0),
+      chg: r.previousUseful ? (r.totals.useful - r.previousUseful) / r.previousUseful : null,
       overtime: r.totals.overtime, shortfall: r.totals.shortfall, late: r.totals.late, absentDays: r.totals.absentDays,
     }));
     $('#pf-dept', page).addEventListener('change', (e) => { ui.dept = e.target.value; AP.refresh(); });
@@ -225,13 +227,16 @@
       const list = rows.filter((r) => !term || r.name.includes(term) || String(r.user.personnelCode || '').includes(term));
       const sorted = list.slice().sort((a, b) => (s === 'name' ? a.name.localeCompare(b.name, 'fa') * -ui.dir : ((a[s] == null ? -1 : a[s]) - (b[s] == null ? -1 : b[s])) * ui.dir));
       const maxUseful = Math.max(0, ...rows.map((r) => r.useful));
-      body.innerHTML = sorted.map((r) => {
-        const p = Math.round(r.chg * 100);
-        return `<tr class="clickable" data-id="${r.user.id}" tabindex="0"><td><div class="pf-person">${AP.avatar(r.user.fullName, 'sm')}<div><b>${esc(r.user.fullName)}</b><small>${esc(r.user.department || 'بدون دپارتمان')}</small></div></div></td>
-          <td class="num">${fmt.min(r.useful)}${bar(maxUseful ? (r.useful / maxUseful) * 100 : 0)}</td>
-          <td class="num"><span class="pf-delta ${p > 0 ? 'good' : p < 0 ? 'bad' : 'flat'}">${p === 0 ? '—' : `${p > 0 ? '▲' : '▼'} ${fa(Math.abs(p))}٪`}</span></td>
-          <td class="num">${pctText(r.attendanceRate)}</td><td class="num">${pctText(r.punctualityRate)}</td><td class="num">${pctText(r.fulfillmentRate)}</td><td class="num">${r.avgCheckIn == null ? '—' : clock(r.avgCheckIn)}</td>
-          <td class="num">${r.overtime ? fmt.min(r.overtime) : '—'}</td><td class="num">${r.shortfall ? fmt.min(r.shortfall) : '—'}</td><td class="num">${r.late ? fmt.min(r.late) : '—'}</td><td class="num">${fmt.num(r.absentDays)}</td>
+      const rate = (v, good, ok) => (v == null ? '<span class="muted">—</span>' : `<span class="pf-rate ${v >= good ? 'good' : v >= ok ? 'warn' : 'bad'}">${pctText(v)}</span>`);
+      const tag = (v, tone) => (v ? `<span class="pf-tag ${tone}">${fmt.min(v)}</span>` : '<span class="muted">—</span>');
+      body.innerHTML = sorted.map((r, i) => {
+        const p = r.chg == null ? null : Math.round(r.chg * 100);
+        const chg = p == null ? '<span class="pf-delta flat">جدید</span>' : `<span class="pf-delta ${p > 0 ? 'good' : p < 0 ? 'bad' : 'flat'}">${p === 0 ? 'بدون تغییر' : `${p > 0 ? '▲' : '▼'} ${fa(Math.abs(p))}٪`}</span>`;
+        return `<tr class="clickable" data-id="${r.user.id}" tabindex="0"><td><div class="pf-person"><span class="pf-rankdot${i < 3 && ui.sort === 'useful' && ui.dir < 0 && !term ? ` top${i + 1}` : ''}">${fa(i + 1)}</span>${AP.avatar(r.user.fullName, 'sm')}<div><b>${esc(r.user.fullName)}</b><small>${esc(r.user.department || 'بدون دپارتمان')}</small></div></div></td>
+          <td class="num"><div class="pf-sharecell pf-usefulcell"><strong>${fmt.min(r.useful)}</strong>${bar(maxUseful ? (r.useful / maxUseful) * 100 : 0, 'green')}</div></td>
+          <td class="num">${chg}</td>
+          <td class="num">${rate(r.attendanceRate, 95, 80)}</td><td class="num">${rate(r.punctualityRate, 90, 70)}</td><td class="num">${rate(r.fulfillmentRate, 100, 90)}</td><td class="num">${r.avgCheckIn == null ? '<span class="muted">—</span>' : `<span class="pf-ratechip">${clock(r.avgCheckIn)}</span>`}</td>
+          <td class="num">${tag(r.overtime, 'good')}</td><td class="num">${tag(r.shortfall, 'bad')}</td><td class="num">${tag(r.late, 'warn')}</td><td class="num">${r.absentDays ? `<span class="pf-tag bad">${fmt.num(r.absentDays)} روز</span>` : '<span class="muted">—</span>'}</td>
           <td>${spark(r.spark)}</td></tr>`;
       }).join('') || `<tr><td colspan="12">${emptyBox('کارمندی برای نمایش نیست.')}</td></tr>`;
       applyProgress(body);
