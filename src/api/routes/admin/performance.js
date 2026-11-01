@@ -1,7 +1,7 @@
 // عملکرد کارمند و حقوق (فقط‌خواندنی).
-//   GET /admin/performance/team?range=24h|3d|6d|30d|90d|custom[&from=&to][&department=]   analytics.read (اسکوپ: admin/hr همه، سرپرست تیم خودش)
-//   GET /admin/performance/employee/:id?range=…[&from=&to]                                analytics.read (+ اسکوپ؛ اگر payroll.read دارد، payroll هم می‌آید)
-//   GET /admin/performance/employee/:id/day?date=YYYY-MM-DD                              analytics.read — بازرسی یک روز
+//   GET /admin/performance/team?range=24h|3d|6d|30d|90d|custom[&from=&to][&department=]   performance.read (فقط admin)
+//   GET /admin/performance/employee/:id?range=…[&from=&to]                                performance.read (فقط admin)
+//   GET /admin/performance/employee/:id/day?date=YYYY-MM-DD                              performance.read (فقط admin)
 //   GET /admin/payroll?year=&month=[&department=]                                         payroll.read (فقط admin)
 //   GET /admin/payroll/:id?year=&month=                                                   payroll.read — ریز روزانه‌ی یک کارمند
 // نرخ ساعتی فقط در مسیرهای payroll و فقط برای مجوز payroll.read می‌آید.
@@ -25,14 +25,14 @@ function rangeOf(req, res) {
   }
 }
 
-router.get('/admin/performance/team', requirePermission('analytics.read'), (req, res) => {
+router.get('/admin/performance/team', requirePermission('performance.read'), (req, res) => {
   const range = rangeOf(req, res); if (!range) return undefined;
   let users = visibleUsers(req.adminUser, { onlyActive: req.query.includeInactive !== '1' });
   if (req.query.department) users = users.filter((u) => (u.department || '').trim() === String(req.query.department).trim());
   return res.json(perf.teamOverview({ users, range }));
 });
 
-router.get('/admin/performance/employee/:id', requirePermission('analytics.read'), (req, res) => {
+router.get('/admin/performance/employee/:id', requirePermission('performance.read'), (req, res) => {
   if (!/^\d+$/.test(req.params.id)) return res.status(400).json({ error: 'شناسه‌ی کاربر نامعتبر است.', code: 'INVALID_USER' });
   if (!canAccessUser(req.adminUser, req.params.id)) return res.status(403).json({ error: 'به این کاربر دسترسی ندارید.' });
   const user = usersRepository.findById(parseInt(req.params.id, 10));
@@ -43,7 +43,7 @@ router.get('/admin/performance/employee/:id', requirePermission('analytics.read'
 });
 
 // بازرسی یک روز (مثل URL Inspection): رکورد، بازه‌های حضور، استراحت‌ها، مرخصی، دورکاری، اعتراض، تسک‌ها و (برای payroll.read) مبلغ همان روز
-router.get('/admin/performance/employee/:id/day', requirePermission('analytics.read'), (req, res) => {
+router.get('/admin/performance/employee/:id/day', requirePermission('performance.read'), (req, res) => {
   if (!/^\d+$/.test(req.params.id)) return res.status(400).json({ error: 'شناسه‌ی کاربر نامعتبر است.', code: 'INVALID_USER' });
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date || ''))) return res.status(400).json({ error: 'date باید YYYY-MM-DD باشد.', code: 'INVALID_DATE' });
   if (!canAccessUser(req.adminUser, req.params.id)) return res.status(403).json({ error: 'به این کاربر دسترسی ندارید.' });

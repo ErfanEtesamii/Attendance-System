@@ -128,7 +128,7 @@
 
   AP.view('performance', {
     skeleton: 'cards',
-    perm: 'analytics.read',
+    perm: 'performance.read',
     nav: { icon: 'trend', label: 'عملکرد کارمندان', group: 'گزارش‌ها' },
     async render(param) { return param ? employeePage(param) : teamPage(); },
   });

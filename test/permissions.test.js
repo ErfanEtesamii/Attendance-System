@@ -126,3 +126,12 @@ test('ثبت دستی دورکاری: remote_work.create فقط admin؛ سرپر
   for (const r of ['manager', 'hr', 'employee']) assert.equal(run(requirePermission('remote_work.create'), r), 403, r);
 });
 
+
+test('عملکرد و حقوق: performance.read و payroll.read فقط admin', () => {
+  for (const perm of ['performance.read', 'payroll.read']) {
+    assert.ok(PERMISSIONS.includes(perm), perm);
+    assert.equal(hasPermission('admin', perm), true);
+    for (const r of ['manager', 'hr', 'employee', 'ناشناخته']) assert.equal(hasPermission(r, perm), false, `${r} ${perm}`);
+    for (const r of ['manager', 'hr', 'employee']) assert.equal(run(requirePermission(perm), r), 403, `${r} ${perm}`);
+  }
+});

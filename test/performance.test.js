@@ -1,4 +1,4 @@
-// عملکرد کارمند + حقوق: route واقعی + دیتابیس نمونه. نرخ فقط برای admin (payroll.read)؛ سرپرست/hr/کارمند هرگز نرخ و حقوق نمی‌بینند.
+// عملکرد کارمند + حقوق: route واقعی + دیتابیس نمونه. هر دو صفحه فقط برای admin (performance.read و payroll.read)؛ سرپرست/hr/کارمند هیچ‌کدام را نمی‌بینند.
 const { resetDb, cleanup } = require('./helpers/testEnv');
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
@@ -69,24 +69,12 @@ describe('API عملکرد و حقوق', () => {
     assert.ok(Math.abs(present - 630) < 1, `present=${present}`);
   });
 
-  test('سرپرست/hr: عملکرد بله، اما نرخ و حقوق هرگز', async () => {
-    for (const who of ['manager', 'hr']) {
-      const r = await call(who, `/api/admin/performance/employee/${a.id}?${RANGE}`);
-      assert.equal(r.status, 200, who);
-      assert.equal(r.json.payroll, undefined, who);
-      assert.doesNotMatch(JSON.stringify(r.json), /rateKt|amountToman/);
-      assert.equal((await call(who, '/api/admin/payroll?year=1405&month=6')).status, 403, who);
-      assert.equal((await call(who, `/api/admin/payroll/${a.id}?year=1405&month=6`)).status, 403, who);
+  test('فقط ادمین: سرپرست/hr/کارمند هیچ‌کدام از صفحه‌های عملکرد و حقوق را نمی‌بینند', async () => {
+    for (const who of ['manager', 'hr', 'employee']) {
+      for (const u of [`/api/admin/performance/employee/${a.id}?${RANGE}`, `/api/admin/performance/employee/${a.id}/day?date=2026-08-23`, `/api/admin/performance/team?${RANGE}`, '/api/admin/payroll?year=1405&month=6', `/api/admin/payroll/${a.id}?year=1405&month=6`]) {
+        assert.equal((await call(who, u)).status, 403, `${who} ${u}`);
+      }
     }
-  });
-
-  test('اسکوپ: سرپرست کارمند تیم دیگر را نمی‌بیند؛ کارمند هیچ‌کدام', async () => {
-    assert.equal((await call('manager', `/api/admin/performance/employee/${ck.otherId}?${RANGE}`)).status, 403);
-    assert.equal((await call('employee', `/api/admin/performance/employee/${a.id}?${RANGE}`)).status, 403);
-    assert.equal((await call('employee', '/api/admin/performance/team')).status, 403);
-    assert.equal((await call('employee', '/api/admin/payroll?year=1405&month=6')).status, 403);
-    const team = await call('manager', `/api/admin/performance/team?${RANGE}`);
-    assert.deepEqual(team.json.rows.map((x) => x.user.id), [a.id]);
   });
 
   test('بازه‌ی نامعتبر ⇒ ۴۰۰', async () => {
@@ -123,8 +111,6 @@ describe('API عملکرد و حقوق', () => {
     assert.equal(day.json.hourly.hours.length, 24);
     assert.ok(day.json.record.segments.length >= 1);
     assert.equal(day.json.payroll.rateKt, 60);
-    assert.equal((await call('manager', `/api/admin/performance/employee/${a.id}/day?date=2026-08-23`)).json.payroll, undefined);
-    assert.equal((await call('employee', `/api/admin/performance/employee/${a.id}/day?date=2026-08-23`)).status, 403);
     assert.equal((await call('admin', `/api/admin/performance/employee/${a.id}/day?date=bad`)).status, 400);
     const team = await call('admin', `/api/admin/performance/team?${RANGE}`);
     assert.ok(team.json.daily.length >= 2);
