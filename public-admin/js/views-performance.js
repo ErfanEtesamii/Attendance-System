@@ -159,6 +159,7 @@
       <div class="view-header"><div><h2>عملکرد کارمندان</h2><div class="sub">${esc(rangeLabel(data.range))} — روی هر کارمند بزنید تا گزارش کامل او را ببینید.</div></div>
         <div class="pf-head-actions"><label class="field pf-pick"><span>دپارتمان</span><select id="pf-dept"><option value="">همه</option>${deps.map((x) => `<option ${x === ui.dept ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label><button type="button" class="btn ghost" id="pf-team-csv">${AP.icon('download')} CSV</button></div></div>
       ${rangeBar()}
+      <p class="pf-tiles-hint">روی هر کارت بزنید تا آن شاخص روی نمودار نمایش داده یا از آن حذف شود.</p>
       <div class="pf-tiles pf-tiles-team" role="group" aria-label="شاخص‌های تیم؛ برای نمایش روی نمودار کلیک کنید">${tiles}</div>
       <div class="pf-kpis">${kpis}</div>
       <figure class="chart-fig pf-chartcard"><figcaption>روند روزانه‌ی تیم<span class="pf-chart-tools"><span class="pf-seg" role="group" aria-label="حالت نمودار"><button type="button" class="${ui.tmode === 'daily' ? 'on' : ''}" data-tmode="daily">روزانه</button><button type="button" class="${ui.tmode === 'cum' ? 'on' : ''}" data-tmode="cum">تجمعی</button></span></span></figcaption>
@@ -287,6 +288,7 @@
       <div class="pf-insights" id="pf-insights" aria-label="بینش‌ها"></div>
       ${rangeBar()}
       <div class="pf-filterbar" id="pf-filterbar"></div>
+      <p class="pf-tiles-hint">روی هر کارت بزنید تا آن شاخص روی نمودار نمایش داده یا از آن حذف شود.</p>
       <div class="pf-tiles" id="pf-tiles" role="group" aria-label="شاخص‌ها؛ برای نمایش روی نمودار کلیک کنید"></div>
       <figure class="chart-fig pf-chartcard"><figcaption><span id="pf-cap">${d.hourly ? 'حضور ساعت‌به‌ساعت' : 'روند'}</span>
         <span class="pf-chart-tools">${d.hourly ? '' : `<span class="pf-seg" role="group" aria-label="حالت نمودار"><button type="button" data-mode="daily">روزانه</button><button type="button" data-mode="cum">تجمعی</button></span><label class="pf-switch"><input type="checkbox" id="pf-compare" /><span>مقایسه با دوره‌ی قبل</span></label>`}</span></figcaption>

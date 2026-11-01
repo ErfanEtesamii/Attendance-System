@@ -538,3 +538,15 @@ tr.clickable[data-date], tr.clickable[data-id] { cursor: pointer; }
 @media (max-width: 600px) { .pf-facts-3 { grid-template-columns: 1fr; } .pf-day-amount { text-align: start; } }
 .pf-fact strong span { font-size: inherit; font-weight: inherit; margin: 0; }
 .pf-fact strong .pf-in-t { color: var(--green); } .pf-fact strong .pf-out-t { color: var(--orange); }
+
+/* راهنمای قابل‌کلیک بودن کاشی‌ها: متن راهنما، چیپ وضعیت پایین هر کاشی و تیک روی مربع رنگی */
+.pf-tiles-hint { margin: 0 0 var(--space-2); font-size: var(--fs-xs); color: var(--hint); }
+.pf-tile::after {
+  content: "+ نمایش در نمودار"; align-self: flex-start; margin-top: auto; padding: 3px 10px; border-radius: 999px;
+  font-size: var(--fs-xs); font-weight: 700; color: color-mix(in srgb, var(--tone) 80%, var(--text));
+  border: 1px dashed color-mix(in srgb, var(--tone) 55%, transparent); transition: background var(--motion-fast), color var(--motion-fast);
+}
+.pf-tile:hover::after { background: color-mix(in srgb, var(--tone) 12%, transparent); }
+.pf-tile.on::after { content: "✓ روی نمودار"; border-style: solid; background: color-mix(in srgb, var(--tone) 16%, transparent); }
+.pf-tile.on .pf-dot { position: relative; }
+.pf-tile.on .pf-dot::after { content: ""; position: absolute; inset: 1px 3px 3px 3px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
