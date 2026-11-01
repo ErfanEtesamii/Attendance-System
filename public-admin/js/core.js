@@ -863,6 +863,7 @@
     $('.me-box').setAttribute('title', me.fullName);
     AP.rail.apply(AP.rail.read(), false);
     buildNav();
+    if (AP.initAiAssistant) AP.initAiAssistant(); // تحلیلگر هوشمند (فقط با مجوز ai.assistant)
     setupSearch();
     setupDensity();
     setupRailTip();

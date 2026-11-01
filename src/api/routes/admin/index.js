@@ -17,7 +17,7 @@ router.use('/admin', requireAdminAuth);
 // S5-6c: هر نوشتنِ موفق در پنل (POST/PUT/PATCH/DELETE با پاسخ < ۴۰۰) کش تحلیل‌ها را کامل پاک می‌کند تا ادمین بعد از ویرایش/بستن ماه/تغییر تنظیمات
 // عدد کهنه نبیند. (تغییرهای بات/Mini App، مثل ثبت ورود، از این مسیر نمی‌گذرند و فقط با گذشتن TTL کش دیده می‌شوند.)
 router.use('/admin', (req, res, next) => {
-  if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !req.path.startsWith('/admin/ai/')) { // چت ایجنت چیزی را تغییر نمی‌دهد؛ کش را خالی نکن
     res.on('finish', () => { if (res.statusCode < 400) analyticsCache.clear(); });
   }
   next();
@@ -51,6 +51,7 @@ router.use(require('./myTasks')); // M3: تیک‌زدن تسک‌های خود�
 router.use(require('./myUrgent')); // تسک فوریِ خودِ کاربر از پنل («وضعیت من»؛ همان selfUrgentTaskService)
 router.use(require('./employeePlan')); // A2 (فاز ۱۳): برنامه‌ی هفتگی کارمند برای ادمین/سرپرست (بخش ۱: خواندن)
 router.use(require('./remoteWork')); // R5-۳ (فاز ۱۴): صف بررسی دورکاری (فقط‌خواندنی)
+router.use(require('./ai')); // ایجنت هوش مصنوعی (فقط admin؛ فقط‌خواندنی روی داده‌ها)
 router.use(require('./notifications'));
 router.use(require('./system'));
 

@@ -191,6 +191,20 @@ const config = {
     teamReviewEnsure: process.env.CRON_TEAM_REVIEW_ENSURE || '10 0 * * *',
   },
 
+  // ایجنت هوش مصنوعی پنل (فقط ادمین). کلید خالی ⇒ خاموش. baseUrl برای عبور از یک relay/پراکسی (مثلاً سرور واسط) قابل تغییر است.
+  ai: {
+    // anthropic = Claude API؛ openai = هر سرویس سازگار با OpenAI (Ollama محلی، Gemini، Groq، OpenRouter، ...)
+    provider: enumEnv(process.env.AI_PROVIDER, ['anthropic', 'openai'], 'anthropic'),
+    apiKey: (process.env.AI_API_KEY || process.env.ANTHROPIC_API_KEY || '').trim(),
+    // anthropic: پیش‌فرض api.anthropic.com؛ openai: باید صریح تنظیم شود (مثلاً http://localhost:11434/v1)
+    baseUrl: (process.env.AI_BASE_URL || (enumEnv(process.env.AI_PROVIDER, ['anthropic', 'openai'], 'anthropic') === 'anthropic' ? 'https://api.anthropic.com' : '')).trim().replace(/\/+$/, ''),
+    model: (process.env.AI_MODEL || (enumEnv(process.env.AI_PROVIDER, ['anthropic', 'openai'], 'anthropic') === 'anthropic' ? 'claude-sonnet-5-5' : '')).trim(),
+    maxToolRounds: positiveIntEnv(process.env.AI_MAX_TOOL_ROUNDS, 8),
+    maxTokens: positiveIntEnv(process.env.AI_MAX_TOKENS, 2500),
+    timeoutMs: positiveIntEnv(process.env.AI_TIMEOUT_SECONDS, 90) * 1000,
+    perMinuteLimit: positiveIntEnv(process.env.AI_RATE_LIMIT_PER_MINUTE, 6),
+  },
+
   // آرشیو audit (S2-6c): تعداد رکورد در هر تراکنشِ انتقال. مقدار کوچک‌تر ⇒ قفل نوشتن کوتاه‌تر؛ مقدار خراب/خارج از بازه ⇒ ۱۰۰۰
   auditArchive: {
     batchSize: (() => {
