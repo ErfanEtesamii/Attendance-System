@@ -262,6 +262,6 @@ function deleteShift(id) {
 }
 
 module.exports = {
-  EARLIEST, listShifts, findById, findByUserId, shiftOn, makeShiftResolver, listAssignments, assignShift, setForAllDates, findByName, createShift, updateShift,
+  EARLIEST, applyWeekdayHours, listShifts, findById, findByUserId, shiftOn, makeShiftResolver, listAssignments, assignShift, setForAllDates, findByName, createShift, updateShift,
   countUsers, listUsersOfShift, deleteShiftIfUnused, deleteShift,
 };

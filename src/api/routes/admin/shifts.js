@@ -10,7 +10,8 @@ const usersRepository = require('../../../repositories/usersRepository');
 const { validateShiftInput, checkConsistency, checkWeekdayHours } = require('../../../utils/shiftValidation');
 const monthClosuresRepository = require('../../../repositories/monthClosuresRepository');
 const { todayDateString } = require('../../../utils/serverTime');
-const { requireReason, audit, scopedUserIds, userBrief } = require('./common');
+const { requireReason, audit, scopedUserIds, userBrief, canAccessUser } = require('./common');
+const shiftImpactService = require('../../../services/shiftImpactService');
 
 const NOT_FOUND = { error: 'شیفت یافت نشد.' };
 
@@ -128,9 +129,23 @@ function applyAssignment(req, user, shift, effectiveFrom, reason) {
   const beforeId = current ? current.id : null;
   if (beforeId === afterId) return { changed: false, userId: user.id, shiftId: afterId, shift, effectiveFrom };
   shiftsRepository.assignShift({ userId: user.id, shiftId: afterId, effectiveFrom, createdBy: req.adminUser.id });
-  audit(req, 'user_shift_assigned', { targetUserId: user.id, effectiveFrom, changes: { shiftId: { before: beforeId, after: afterId } }, reason });
+  audit(req, 'user_shift_assigned', { targetUserId: user.id, effectiveFrom, retroactive: effectiveFrom < todayDateString(), changes: { shiftId: { before: beforeId, after: afterId } }, reason });
   return { changed: true, userId: user.id, shiftId: afterId, shift, effectiveFrom };
 }
+
+// GET /admin/users/:id/shift/impact?shiftId=<عدد|خالی>&effectiveFrom=YYYY-MM-DD
+//   پیش‌نمایشِ «اعمال شیفت روی گذشته»: برای رکوردهای ثبت‌شده از effectiveFrom تا امروز، تأخیر/زودرفتن/اضافه‌کاری قبل و بعد را مقایسه می‌کند (چیزی ذخیره نمی‌شود).
+router.get('/admin/users/:id/shift/impact', requirePermission('shifts.edit'), (req, res) => {
+  const userId = parseId(req.params.id);
+  const user = userId === null ? null : usersRepository.findById(userId);
+  if (!user || !canAccessUser(req.adminUser, user.id)) return res.status(404).json({ error: 'کارمند یافت نشد.' });
+  const rawShift = req.query.shiftId;
+  const ref = parseShiftRef(rawShift === undefined || rawShift === '' ? null : (/^\d+$/.test(String(rawShift)) ? Number(rawShift) : rawShift));
+  if (ref.error) return res.status(ref.error.status).json(ref.error.body);
+  const eff = parseEffectiveFrom(req.query.effectiveFrom);
+  if (eff.error) return res.status(eff.error.status).json(eff.error.body);
+  return res.json(shiftImpactService.preview(user, ref.shift, eff.value));
+});
 
 // PUT /admin/users/:id/shift  { shiftId: عدد | null, [effectiveFrom], reason } → { changed, userId, shiftId, shift, effectiveFrom }
 router.put('/admin/users/:id/shift', requirePermission('shifts.edit'), (req, res) => {

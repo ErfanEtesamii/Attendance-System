@@ -238,16 +238,44 @@
         ${shifts.map((s) => `<option value="${s.id}"${String(s.id) === cur ? ' selected' : ''}>${esc(s.name)} (${esc(s.startTime)}–${esc(s.endTime)}${s.overnight ? '، شب' : ''})</option>`).join('')}
       </select></label>
       <label class="field"><span>از تاریخ (روزهای قبل از آن تغییر نمی‌کنند)</span><input type="date" name="effectiveFrom" value="${esc(localIso())}" /></label>
+      <div class="check-row" id="shift-back-chips"><span class="muted small">اصلاح گذشته (شیفت از قبل باید اعمال می‌شد):</span>
+        <button class="btn ghost sm" type="button" data-back="7">۷ روز قبل</button>
+        <button class="btn ghost sm" type="button" data-back="30">۳۰ روز قبل</button></div>
+      <div id="shift-impact" class="muted small" aria-live="polite"></div>
       ${shifts.length ? '' : '<p class="muted small u-m0">هنوز شیفتی تعریف نشده است (منوی «شیفت‌ها»).</p>'}
       <div class="form-msg"></div>
-      <div class="modal-actions"><button class="btn primary" type="submit"${shifts.length ? '' : ' disabled'}>ذخیره‌ی شیفت</button></div>
+      <div class="modal-actions"><button class="btn ghost" type="button" id="shift-impact-btn"${shifts.length ? '' : ' disabled'}>پیش‌نمایش اثر روی روزهای گذشته</button><button class="btn primary" type="submit"${shifts.length ? '' : ' disabled'}>ذخیره‌ی شیفت</button></div>
     </form></div>`;
   };
 
   AP.bindShiftAssign = function bindShiftAssign(root, u) {
     const form = $('#shift-assign-form', root);
     if (!form) return;
-    if (AP.dates) AP.dates.mount(form); // datepicker شمسی «از تاریخ»
+    const dps = AP.dates ? AP.dates.mount(form) : null; // datepicker شمسی «از تاریخ»
+    const impact = $('#shift-impact', root);
+    const setFrom = (iso) => {
+      const dp = Array.isArray(dps) ? dps.find((x) => x && x.setValue) : null;
+      if (dp) dp.setValue(iso); else form.effectiveFrom.value = iso;
+    };
+    $$('[data-back]', form).forEach((b) => b.addEventListener('click', () => {
+      const d = new Date(); d.setDate(d.getDate() - Number(b.dataset.back));
+      setFrom(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+      if (impact) impact.textContent = '';
+    }));
+    // پیش‌نمایش: برای رکوردهای ثبت‌شده از «از تاریخ» تا امروز، تأخیر/زودرفتن قبل و بعد از اعمال شیفت (چیزی ذخیره نمی‌شود)
+    $('#shift-impact-btn', form).addEventListener('click', async () => {
+      const from = form.effectiveFrom && form.effectiveFrom.value ? form.effectiveFrom.value : localIso();
+      const q = `shiftId=${encodeURIComponent(form.shiftId.value)}&effectiveFrom=${encodeURIComponent(from)}`;
+      const r = await AP.attempt(() => AP.api(`/admin/users/${u.id}/shift/impact?${q}`));
+      if (!r || !impact) return;
+      const t = r.totals;
+      if (!t.records) { impact.textContent = 'در این بازه رکورد حضوری ثبت نشده است؛ فقط از این تاریخ به بعد اعمال می‌شود.'; return; }
+      impact.innerHTML = `<b>${fmt.num(t.records)}</b> روز دارای حضور؛ <b>${fmt.num(t.changedDays)}</b> روز تغییر می‌کند.<br>
+        تأخیر: ${fmt.num(t.lateBefore)} ← <b>${fmt.num(t.lateAfter)}</b> دقیقه (روزهای تأخیر: ${fmt.num(t.lateDaysBefore)} ← <b>${fmt.num(t.lateDaysAfter)}</b>)
+        ${t.earlyLeaveBefore !== t.earlyLeaveAfter ? `<br>زودرفتن: ${fmt.num(t.earlyLeaveBefore)} ← <b>${fmt.num(t.earlyLeaveAfter)}</b> دقیقه` : ''}
+        ${t.overtimeBefore !== t.overtimeAfter ? `<br>اضافه‌کاری: ${fmt.num(t.overtimeBefore)} ← <b>${fmt.num(t.overtimeAfter)}</b> دقیقه` : ''}
+        ${t.truncated ? '<br>(فقط ۴۰۰ رکورد اخیر بررسی شد)' : ''}`;
+    });
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const raw = form.shiftId.value;
