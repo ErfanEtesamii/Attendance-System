@@ -4,9 +4,11 @@
 //   • هیچ محاسبه‌ی تازه‌ای نیست؛ همه‌چیز از سرویس‌های موجود (performanceService / analyticsService / ...) می‌آید، پس عددهایی که ایجنت می‌بیند
 //     دقیقاً همان عددهای نمودارهاست.
 //   • هر ابزار مجوز خودش را جدا چک می‌کند (performance.read / analytics.read) و کاربران را با visibleUsers/canAccessUser محدود می‌کند.
-//   • حقوق و نرخ ساعتی هرگز به مدل نمی‌رسد (includePayroll=false + حذف بازگشتیِ کلیدهای مالی).
+//   • حقوق و نرخ ساعتی فقط از ابزار payroll_summary (flag: financial) و فقط با مجوز payroll.read + AI_ALLOW_PAYROLL به مدل می‌رسد؛
+//     برای همه‌ی ابزارهای دیگر includePayroll=false و حذف بازگشتیِ کلیدهای مالی (stripFinancial) برقرار است.
 //   • ورودی ابزار از مدل می‌آید ⇒ نامعتبر فرض می‌شود و اعتبارسنجی می‌شود؛ خطا به‌صورت متن به مدل برمی‌گردد تا خودش اصلاح کند.
 
+const config = require('../../config');
 const { hasPermission } = require('../../middleware/permissions');
 const { visibleUsers, canAccessUser } = require('../../api/routes/admin/common');
 const { parseYearMonth } = require('../../api/routes/admin/monthParams');
@@ -21,7 +23,8 @@ const { detectPatterns } = require('../patternService');
 const { computeMonthlyReport } = require('../monthlyReportService');
 const { reportFromSnapshot } = require('../monthCloseService');
 
-const MAX_RESULT_CHARS = 40000;
+// سرویس‌های رایگان سقف توکن در دقیقه‌ی کمی دارند (مثلاً ۸۰۰۰)؛ خروجی هر ابزار باید کوچک بماند.
+const MAX_RESULT_CHARS = 9000;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const FINANCIAL_KEYS = /^(hourlyRate|hourly_rate|rateToman|amountToman|amount_toman|estimatedAmount|payroll|salary|earnings)$/i;
 
@@ -244,11 +247,44 @@ const TOOLS = [
   },
 ];
 
+// ابزارهای تکمیلی (تردد/دورکاری/تسک/مرخصی/اعتراض/اضافه‌کاری/شیفت/رویداد مشکوک)
+TOOLS.push(...require('./extraTools').build({ need, userFilter, ToolError, today, shiftIso, DATE_RE, getTimezone: () => settingsRepository.getTimezone() }));
+
 const BY_NAME = new Map(TOOLS.map((t) => [t.name, t]));
 
-/** تعریف ابزارها به قالب Messages API */
-function toolDefinitions() {
-  return TOOLS.map(({ name, description, input_schema: schema }) => ({ name, description, input_schema: schema }));
+// توضیح کوتاه انگلیسی برای ارسال به سرویس‌های OpenAI-سازگار: توکن بسیار کمتری از فارسی می‌خورد (سقف توکن در دقیقه‌ی پلن‌های رایگان کم است).
+const SHORT_DESC = {
+  list_employees: 'List accessible employees (id, name, department). Call first to map a name to userId.',
+  team_performance: 'Team overview for a range: attendance rate, punctuality, plan adherence, avg in/out, streaks, vs previous period. range: 24h|3d|6d|30d|90d|custom (with from,to).',
+  employee_performance: 'Full performance of one employee for a range vs previous period: useful/late/overtime hours, weekday and check-in insights, tasks, leave, disputes.',
+  employee_day: 'Inspect one day of one employee: attendance records, segments, breaks, leave/remote, disputes, tasks.',
+  late_trend: 'Lateness trend over time (granularity week|month), optionally grouped by department/user.',
+  late_compare: 'Compare lateness of a Jalali month (year, month) with the previous month.',
+  rankings: 'Monthly ranking of employees by overtime or shortfall (metric).',
+  attendance_rate: 'Monthly attendance rate for a Jalali year/month, optionally grouped.',
+  leave_by_type: 'Monthly leave distribution by leave type.',
+  checkin_distribution: 'Histogram of check-in times in a range (default last 30 days).',
+  behavior_patterns: 'Behavioral pattern signals for a Jalali month (consecutive lateness, repeated absences). Signals, not proof.',
+  attendance_log: 'Attendance records (in/out times, worked and break minutes) for a range. With userId: per-day rows; otherwise per-employee summary.',
+  remote_work: 'Remote-work sessions (times, approval status, duration) in a range.',
+  tasks_overview: 'Tasks and weekly plans: planned, done/partial/not-done, reasons, urgent, plan submission. With userId also lists the tasks.',
+  leave_requests: 'Leave/mission requests overlapping a range with status summary. With userId and year (Jalali) also leave balances.',
+  disputes: 'Employee disputes about attendance records: open/resolved counts, messages, times.',
+  overtime_decisions: 'Overtime approve/reject decisions with reasons in a range.',
+  shifts_holidays: 'Defined shifts, holidays and per-day schedule overrides; with userId also that employee shift.',
+  suspicious_events: 'System-flagged suspicious events (same IP, device change) with review status.',
+  payroll_summary: 'Monthly payroll for a Jalali year/month: hourly rate (thousand toman/hour), useful and overtime minutes, amount (toman), previous month, department totals. With userId also daily breakdown. Sensitive: use only when the manager asks about pay.',
+  org_overview: 'Organization structure: employees per department, roles, managers with team sizes, inactive count.',
+  panel_settings: 'Company settings of the panel (work hours, overtime, leave, reminders, planning...). Optional group filter.',
+  audit_trail: 'Recent admin/system actions (who did what, when) in a range; optional actor userId or action text.',
+  system_status: 'Month closing status of recent Jalali months, failed background jobs, firing monitor alerts.',
+  checkin_permissions: 'Late check-in permission requests with status, reasons and decisions in a range.',
+};
+
+/** تعریف ابزارها. compact=true ⇒ توضیح کوتاه انگلیسی (برای سرویس‌های OpenAI-سازگار) */
+function toolDefinitions({ compact = false } = {}) {
+  return TOOLS.filter((t) => !t.financial || config.ai.allowPayroll)
+    .map(({ name, description, input_schema: schema }) => ({ name, description: (compact && SHORT_DESC[name]) || description, input_schema: schema }));
 }
 
 /** اجرای یک ابزار ⇒ { text, isError }؛ هرگز throw نمی‌کند (خطا به مدل برمی‌گردد). */
@@ -257,7 +293,9 @@ function runTool(ctx, name, input) {
   if (!tool) return { text: `ابزار «${name}» وجود ندارد.`, isError: true };
   try {
     const safeInput = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
-    let text = JSON.stringify(stripFinancial(tool.run(ctx, safeInput)));
+    if (tool.financial && !config.ai.allowPayroll) return { text: 'دسترسی ایجنت به حقوق غیرفعال است.', isError: true };
+    const raw = tool.run(ctx, safeInput);
+    let text = JSON.stringify(tool.financial ? raw : stripFinancial(raw)); // فقط ابزار مالیِ مجازشده، خروجی‌اش stripFinancial نمی‌شود
     if (text.length > MAX_RESULT_CHARS) {
       text = `${text.slice(0, MAX_RESULT_CHARS)}…[خروجی بریده شد؛ بازه یا دامنه را کوچک‌تر کنید (یک کارمند/دپارتمان/بازه‌ی کوتاه‌تر)]`;
     }

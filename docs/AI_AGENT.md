@@ -34,3 +34,17 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 ## افزودن ابزار تازه
 یک آیتم به آرایه‌ی `TOOLS` در `tools.js` اضافه کنید (`name`, `description`, `input_schema`, `run(ctx, input)`) و داخل `run` مجوز لازم را با `need(ctx, '...')` چک کنید.
+
+
+## ابزارهای ایجنت و داده‌ی در دسترس
+
+فقط‌خواندنی و محدود به نقش پرسنده (ai.assistant = admin):
+
+- عملکرد/تأخیر/نرخ حضور/مرخصی/ساعت ورود/الگوهای رفتاری/بازرسی یک روز (۱۱ ابزار اصلی نمودارها)
+- `attendance_log` (تردد و استراحت)، `remote_work`، `tasks_overview`، `leave_requests` (+ مانده‌ی مرخصی)، `disputes`، `overtime_decisions`، `shifts_holidays`، `suspicious_events`، `checkin_permissions`
+- `org_overview` (ساختار سازمان)، `panel_settings` (تنظیمات پنل بدون گروه‌های امنیت/زمان‌بندی)، `audit_trail` (فقط admin/hr)، `system_status` (بستن ماه، Jobهای ناموفق، هشدارها)
+- `payroll_summary` (حقوق و نرخ ساعتی): فقط با مجوز `payroll.read` (admin) و `AI_ALLOW_PAYROLL` (پیش‌فرض true). هر استفاده با `via: ai_agent` در audit ثبت می‌شود. بقیه‌ی ابزارها هیچ داده‌ی مالی نمی‌خوانند و خروجی‌شان با `stripFinancial` پاک‌سازی می‌شود.
+
+نکته‌ی حریم خصوصی: با سرویس ابری، خروجی ابزارها (و در صورت فعال‌بودن، مبلغ حقوق) به آن سرویس ارسال می‌شود. با Ollama محلی هیچ داده‌ای از شرکت خارج نمی‌شود.
+
+سقف توکن در دقیقه‌ی سرویس‌های رایگان کم است: خروجی هر ابزار ≤ ۹۰۰۰ کاراکتر، تاریخچه‌ی چت ۶ پیام، و روی خطای 429 تا ۳ بار صبر و تکرار انجام می‌شود.

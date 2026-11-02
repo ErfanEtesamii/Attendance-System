@@ -59,7 +59,7 @@ describe('ایجنت هوش مصنوعی', () => {
     const defs = toolDefinitions();
     assert.ok(defs.length >= 10);
     for (const d of defs) { assert.match(d.name, /^[a-z_]+$/); assert.equal(d.input_schema.type, 'object'); assert.ok(d.description); }
-    assert.ok(!defs.some((d) => /payroll|salary|create|update|delete|write/i.test(d.name)));
+    assert.ok(!defs.some((d) => d.name !== 'payroll_summary' && /payroll|salary|create|update|delete|write/i.test(d.name))); // payroll_summary تنها ابزار مالیِ مجاز است (مجوز payroll.read + AI_ALLOW_PAYROLL)
   });
 
   test('stripFinancial کلیدهای مالی را بازگشتی حذف می‌کند ولی attendanceRate می‌ماند', () => {

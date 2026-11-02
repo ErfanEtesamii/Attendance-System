@@ -195,6 +195,8 @@ const config = {
   ai: {
     // anthropic = Claude API؛ openai = هر سرویس سازگار با OpenAI (Ollama محلی، Gemini، Groq، OpenRouter، ...)
     provider: enumEnv(process.env.AI_PROVIDER, ['anthropic', 'openai'], 'anthropic'),
+    // AI_ALLOW_PAYROLL=false ⇒ ابزار حقوق/نرخ ساعتی غیرفعال (پیش‌فرض: فعال، فقط برای مجوز payroll.read یعنی admin). هر بار استفاده در audit ثبت می‌شود.
+    allowPayroll: String(process.env.AI_ALLOW_PAYROLL || 'true').trim().toLowerCase() !== 'false',
     apiKey: (process.env.AI_API_KEY || process.env.ANTHROPIC_API_KEY || '').trim(),
     // anthropic: پیش‌فرض api.anthropic.com؛ openai: باید صریح تنظیم شود (مثلاً http://localhost:11434/v1)
     baseUrl: (process.env.AI_BASE_URL || (enumEnv(process.env.AI_PROVIDER, ['anthropic', 'openai'], 'anthropic') === 'anthropic' ? 'https://api.anthropic.com' : '')).trim().replace(/\/+$/, ''),
