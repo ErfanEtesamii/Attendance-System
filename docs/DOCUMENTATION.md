@@ -959,6 +959,7 @@ npm run migrate:status                     # همه باید applied باشند
 | `lateLimitGateMode` | `off` | `off` بی‌اثر، `soft` فقط هشدار و ثبت، `enforce` مسدود |
 | `lateLimitPermissionTtlMinutes` | ۶۰ (۵ تا ۷۲۰) | اعتبار اجازه‌ی تأییدشده |
 | `cronUrgentTaskReminder` / `CRON_URGENT_TASK_REMINDER` | `*/10 * * * *` | یادآوری مهلت تسک فوری |
+| `cronBreakOverrunReminder` / `CRON_BREAK_OVERRUN_REMINDER` | `* * * * *` | یادآوری استراحتِ فراموش‌شده (آستانه: `breakOverrunReminderMinutes`، پیش‌فرض ۱۵ دقیقه، ۰ = خاموش؛ ناهار فقط با `breakOverrunReminderLunch`) |
 | `cronTeamReviewEnsure` / `CRON_TEAM_REVIEW_ENSURE` | `10 0 * * *` | ساخت خودکار تسک واجب سرپرست (H5) |
 
 مجوزهای تازه: `schedule.read`، `schedule.manage`، `checkin_permissions.read`، `checkin_permissions.decide`، `tasks.assign_urgent`، `team.week_view`. قاعده‌ی کلی: ادمین همه‌ی کارمندان؛ سرپرست فقط زیردست مستقیم خودش؛ HR فقط‌خواندنی (بدون `schedule.manage`، `checkin_permissions.decide` و `tasks.assign_urgent`)؛ کارمند هیچ‌کدام را ندارد. اسکوپ سمت سرور اعمال می‌شود.

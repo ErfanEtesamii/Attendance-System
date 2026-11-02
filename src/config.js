@@ -162,6 +162,8 @@ const config = {
     lateCheckinCheck: process.env.CRON_LATE_CHECKIN_CHECK || '*/5 8-12 * * *',
     // یادآوری ثبت خروج نزدیک پایان ساعت کاری (S3-8a: هر روز؛ ساعت‌ها ۹ تا ۱۸ تا پایانِ نیم‌روز/نیم‌روزِ تعطیلی هم پوشش داده شود)
     checkoutReminderCheck: process.env.CRON_CHECKOUT_REMINDER_CHECK || '*/5 9-18 * * *',
+    // یادآوری استراحتِ فراموش‌شده (هر دقیقه؛ آستانه‌ی دقیقه از تنظیمات breakOverrunReminderMinutes، پیش‌فرض ۱۵)
+    breakOverrunReminder: process.env.CRON_BREAK_OVERRUN_REMINDER || '* * * * *',
     // گزارش پایان روز برای مدیران/ادمین (S3-8b: هر روز؛ کارمندِ روز غیرکاری را خود Job از getCalendarDay کنار می‌گذارد)
     dailyReport: process.env.CRON_DAILY_REPORT || '0 17 * * *',
     // گزارش هفتگی (شروع هفته کاری - شنبه صبح)

@@ -11,6 +11,7 @@ const cron = require('node-cron');
 const config = require('../../config');
 const { checkLateCheckins, checkRepeatedLateness } = require('./lateCheckinReminder');
 const { checkCheckoutReminders } = require('./checkoutReminder');
+const { runBreakOverrunReminder } = require('./breakOverrunReminder');
 const { autoCloseIncompleteRecords } = require('./autoCloseIncomplete');
 const { markNonWorkingDays } = require('./markNonWorkingDays');
 const { sendDailyReport, sendWeeklyReport, sendMonthlyReport } = require('./reports');
@@ -37,6 +38,8 @@ function buildJobs(bot) {
   return [
     { name: 'lateCheckinCheck', run: () => runAll(() => checkLateCheckins(bot), () => checkRepeatedLateness(bot)) },
     { name: 'checkoutReminderCheck', run: () => checkCheckoutReminders(bot) },
+    // یادآوری استراحتِ باز (هر دقیقه ⇒ فقط شکست‌ها در job_runs ثبت می‌شود)؛ هر استراحت فقط یک‌بار پیام می‌گیرد
+    { name: 'breakOverrunReminder', opts: { recordSuccess: false }, run: () => runBreakOverrunReminder() },
     { name: 'dailyReport', run: () => sendDailyReport(bot) },
     { name: 'nightlyReview', run: () => sendNightlyReview(bot) },
     // D12: خلاصه‌ی صبحگاهیِ گزارش تسک‌ها (دیرهنگام‌ها + مشاهده‌نشده‌ها)؛ نتیجه‌اش در job_runs ثبت می‌شود

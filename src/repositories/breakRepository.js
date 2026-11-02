@@ -45,6 +45,21 @@ function totalBreakMinutes(attendanceRecordId) {
   return Math.round(totalMs / 60000);
 }
 
+// استراحت‌های «بازِ» یک بازه‌ی شروع (ISO UTC) روی رکوردِ بدون خروج؛ برای یادآوری استراحتِ فراموش‌شده (job: breakOverrunReminder).
+// ⇒ ردیف break_records + user_id + record_date
+function listOpenStartedBetween(fromIso, toIso) {
+  return getDb()
+    .prepare(
+      `SELECT b.*, r.user_id AS user_id, r.record_date AS record_date
+         FROM break_records b
+         JOIN attendance_records r ON r.id = b.attendance_record_id
+        WHERE b.end_time IS NULL AND r.check_out_time IS NULL
+          AND b.start_time >= ? AND b.start_time <= ?
+        ORDER BY b.start_time`
+    )
+    .all(fromIso, toIso);
+}
+
 function findById(id) {
   const db = getDb();
   return db.prepare('SELECT * FROM break_records WHERE id = ?').get(id);
@@ -84,6 +99,7 @@ module.exports = {
   remove,
   listByAttendanceRecord,
   findOpenBreak,
+  listOpenStartedBetween,
   startBreak,
   endBreak,
   totalBreakMinutes,

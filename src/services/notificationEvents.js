@@ -14,6 +14,7 @@
 //   urgentTaskAssigned({...})        تسک فوریِ تازه (E1)             ⇒ خودِ کارمند (پنل + تلگرام، با دکمه‌ی باز کردن Mini App)
 //   selfUrgentTaskAdded(employee, task)  تسک فوریِ خودِ کارمند (A3، فاز ۱۵) ⇒ همان گیرنده‌های weeklyPlanChanged (سرپرست یا ادمین‌ها؛ فقط پنل)، نه خودِ کارمند
 //   urgentTaskReminder({...})        یادآوریِ نزدیک‌شدن مهلتِ تسک فوری (E1) ⇒ خودِ کارمند (پنل + تلگرام)
+//   breakOverrun({...})              استراحتِ فراموش‌شده‌ی بازمانده ⇒ خودِ کارمند (پنل + تلگرام با دکمه‌ی Mini App)
 //   remoteWorkSubmitted(sessionId)   ثبت پایان دورکاری (بات/Mini App/بستن خودکار) ⇒ تأییدکننده‌ها (مدیر مستقیم‌ِ فعال؛ وگرنه ادمین‌ها) (پنل + تلگرام با دکمه‌ی «صف دورکاری»)
 //   remoteWorkApproved(sessionId, {note, actor})  تأیید دورکاری توسط سرپرست/ادمین ⇒ خودِ کارمند (پنل + تلگرام)
 //   remoteWorkBatchApproved(userId, sessionIds, {actor})  تأیید دسته‌ای ⇒ «یک» پیام تجمیعی برای هر کارمند (نه یک پیام برای هر نشست)
@@ -421,6 +422,29 @@ function urgentTaskReminder({ task, employeeId, minutesLeft }) {
   });
 }
 
+// ---------- یادآوری استراحتِ فراموش‌شده ----------
+/**
+ * استراحتِ بازِ کارمند از آستانه‌ی «minutes» دقیقه گذشته (job: breakOverrunReminder) ⇒ پنل + تلگرام (دکمه‌ی باز کردن Mini App).
+ * پایان استراحت عمداً فقط از Mini App انجام می‌شود (نه callback بات) تا محدودیت «فقط شبکه‌ی شرکت» دور زده نشود.
+ * dedupeKey = شناسه‌ی استراحت ⇒ هر استراحت فقط یک‌بار (حتی بعد از ری‌استارت پروسه).
+ */
+function breakOverrun({ employeeId, breakId, breakType, minutes }) {
+  return guard('breakOverrun', () => {
+    if (!employeeId || !breakId) return [];
+    const url = panelLinks.miniAppLink({ view: 'today' });
+    return [send('breakOverrun', employeeId, {
+      type: 'break_overrun_reminder',
+      title: `☕ ${faNum(minutes)} دقیقه از استراحت شما گذشته است`,
+      body: 'اگر نمی‌خواهید بیشتر استراحت کنید، «پایان استراحت» را بزنید.',
+      link: '#/today',
+      data: { breakId, breakType: breakType || 'lunch', minutes },
+      dedupeKey: `break_overrun:${breakId}`,
+      telegram: true,
+      telegramButton: url && panelLinks.canUseWebApp(url) ? { text: '☕ پایان استراحت', web_app: { url } } : undefined,
+    })];
+  });
+}
+
 // ---------- ویرایش برنامه‌ی هفتگی توسط مدیر (فاز ۱۳، A2-۵) ----------
 /**
  * اعلان تجمیعی تغییرهای مدیر در برنامه‌ی یک هفته ⇒ پنل + تلگرام (با دکمه‌ی باز کردن برنامه‌ی هفتگی در Mini App) به خودِ کارمند.
@@ -695,4 +719,4 @@ function remoteWorkRejected(session, { note = null, actor = null } = {}) {
   });
 }
 
-module.exports = { remoteWorkSubmitted, remoteWorkApproved, remoteWorkBatchApproved, remoteWorkRejected, urgentTaskAssigned, selfUrgentTaskAdded, urgentTaskReminder, weeklyPlanEditedByManager, checkinPermissionRequested, checkinPermissionDecided, reportCommented, weeklyPlanChanged, leaveRequested, leaveStepAdvanced, leaveDecided, disputeOpened, disputeResolved, disputeResolvedTelegram, disputeAdminMessage, disputeUserMessage, systemAlert, suspiciousCreated };
+module.exports = { remoteWorkSubmitted, remoteWorkApproved, remoteWorkBatchApproved, remoteWorkRejected, urgentTaskAssigned, selfUrgentTaskAdded, urgentTaskReminder, breakOverrun, weeklyPlanEditedByManager, checkinPermissionRequested, checkinPermissionDecided, reportCommented, weeklyPlanChanged, leaveRequested, leaveStepAdvanced, leaveDecided, disputeOpened, disputeResolved, disputeResolvedTelegram, disputeAdminMessage, disputeUserMessage, systemAlert, suspiciousCreated };

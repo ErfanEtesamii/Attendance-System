@@ -185,6 +185,8 @@ def('leaveApprovalExtraStepRole', 'leave_approval_extra_step_role', 'enum', { gr
 // تأخیر و یادآوری
 def('lateCheckinGraceMinutes', 'late_checkin_grace_minutes', 'number', { group: 'reminders', min: 0, max: 720, default: () => config.lateCheckinGraceMinutes, fallback: 15, description: 'مهلت تأخیر ورود (دقیقه) پس از ساعت شروع، پیش از یادآوری ورود' });
 def('checkoutReminderMinutesBefore', 'checkout_reminder_minutes_before', 'number', { group: 'reminders', min: 0, max: 720, default: () => config.checkoutReminderMinutesBefore, fallback: 15, description: 'یادآوری ثبت خروج، این‌قدر دقیقه پیش از پایان کار' });
+def('breakOverrunReminderMinutes', 'break_overrun_reminder_minutes', 'number', { group: 'reminders', min: 0, max: 240, default: 15, description: 'یادآوری استراحتِ باز: اگر استراحتی این‌قدر دقیقه از شروعش گذشته و هنوز پایان نخورده، به کارمند پیام می‌رود «اگر استراحتت تمام شده پایانش را بزن» (۰ = خاموش؛ یک‌بار برای هر استراحت)' });
+def('breakOverrunReminderLunch', 'break_overrun_reminder_lunch', 'boolean', { group: 'reminders', default: false, description: 'یادآوری استراحتِ باز برای «ناهار» هم ارسال شود (پیش‌فرض خاموش: ناهار معمولاً طولانی‌تر از آستانه‌ی یادآوری است و فقط استراحت کوتاه/نماز یادآوری می‌گیرد)' });
 def('repeatedLatenessThreshold', 'repeated_lateness_threshold', 'number', { group: 'reminders', min: 1, max: 100, default: () => config.repeatedLatenessThreshold, fallback: 3, description: 'حداقل تعداد تأخیر در ماه برای اعلان «تأخیر تکراری» به مدیر' });
 // امنیت
 def('missionBackdateDays', 'mission_backdate_days', 'number', { group: 'leave', min: 0, max: 30, default: 3, description: 'حداکثر چند روز قبل می‌توان ماموریت ثبت کرد (برای ماموریت‌هایی که فراموش شده)' });
@@ -248,6 +250,7 @@ function defCron(job, key, dbKey, getDefault, fallback, title) {
 }
 defCron('lateCheckinCheck', 'cronLateCheckinCheck', 'cron_late_checkin_check', () => config.cron.lateCheckinCheck, '*/5 8-12 * * *', 'یادآوری ورود دیرهنگام');
 defCron('checkoutReminderCheck', 'cronCheckoutReminderCheck', 'cron_checkout_reminder_check', () => config.cron.checkoutReminderCheck, '*/5 9-18 * * *', 'یادآوری ثبت خروج');
+defCron('breakOverrunReminder', 'cronBreakOverrunReminder', 'cron_break_overrun_reminder', () => config.cron.breakOverrunReminder, '* * * * *', 'یادآوری استراحتِ فراموش‌شده');
 defCron('dailyReport', 'cronDailyReport', 'cron_daily_report', () => config.cron.dailyReport, '0 17 * * *', 'گزارش پایان روز');
 defCron('weeklyReport', 'cronWeeklyReport', 'cron_weekly_report', () => config.cron.weeklyReport, '0 8 * * 6', 'گزارش هفتگی');
 defCron('monthlyReport', 'cronMonthlyReport', 'cron_monthly_report', () => config.cron.monthlyReport, '0 8 * * *', 'بررسی گزارش ماهانه‌ی شمسی (فقط روز اول ماه شمسی می‌فرستد؛ هر روز اجرا شود)');
