@@ -280,11 +280,13 @@
       e.preventDefault();
       const raw = form.shiftId.value;
       const before = u.shiftId == null ? '' : String(u.shiftId);
-      if (raw === before) { AP.toast('شیفت تغییری نکرده است.'); return; }
+      // همان شیفت ولی «از تاریخ» دیگر (اصلاح گذشته) هم مجاز است؛ فقط وقتی شیفت و تاریخ هر دو بی‌تغییرند پیام «تغییری نکرده» می‌آید
+      const fromVal = form.effectiveFrom && form.effectiveFrom.value ? form.effectiveFrom.value : localIso();
+      if (raw === before && fromVal >= localIso()) { AP.toast('شیفت تغییری نکرده است.'); return; }
       const reason = await AP.askReason({ title: `تغییر شیفت «${u.fullName}»`, confirmText: 'ثبت' });
       if (reason === null) return;
       const ok = await AP.attempt(() => AP.api(`/admin/users/${u.id}/shift`, { method: 'PUT', body: { shiftId: raw === '' ? null : Number(raw), ...(form.effectiveFrom && form.effectiveFrom.value ? { effectiveFrom: form.effectiveFrom.value } : {}), reason } }), 'شیفت کارمند ذخیره شد.');
-      if (ok) AP.refresh();
+      if (ok) { AP.state.users = null; AP.refresh(); } // کش فهرست کارمندان (شیفتِ فعلی در صفحه‌ی «شیفت‌ها») باطل شود
     });
   };
 })();
