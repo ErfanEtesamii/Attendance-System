@@ -48,7 +48,7 @@ function applyWeekdayHours(shift, date) {
   const weekday = (((dn + 4) % 7) + 7) % 7; // 1970-01-01 پنجشنبه (۴) بود
   const entry = shift.weekdayHours && shift.weekdayHours[weekday];
   if (!entry || !(shift.workDays || []).includes(weekday)) return shift;
-  return { ...shift, isUntimed: false, startTime: entry.startTime, endTime: entry.endTime, overnight: false, weekdayHoursApplied: true };
+  return { ...shift, isUntimed: false, startTime: entry.startTime, endTime: entry.endTime, overnight: entry.endTime < entry.startTime, weekdayHoursApplied: true };
 }
 
 function toShift(row) {
