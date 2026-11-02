@@ -127,8 +127,11 @@ function applyAssignment(req, user, shift, effectiveFrom, reason) {
   const afterId = shift ? shift.id : null;
   const current = shiftsRepository.shiftOn(user.id, effectiveFrom);
   const beforeId = current ? current.id : null;
-  if (beforeId === afterId) return { changed: false, userId: user.id, shiftId: afterId, shift, effectiveFrom };
-  shiftsRepository.assignShift({ userId: user.id, shiftId: afterId, effectiveFrom, createdBy: req.adminUser.id });
+  const retroactive = effectiveFrom < todayDateString();
+  // اصلاح گذشته: ردیف‌های بعد از این تاریخ تا امروز با شیفت جدید یکی می‌شوند (وگرنه ردیف بعدی مثل «بدون شیفت» غالب می‌ماند)
+  const laterDiffers = retroactive && shiftsRepository.listAssignments(user.id).some((a) => a.effective_from > effectiveFrom && a.effective_from <= todayDateString() && a.shift_id !== afterId);
+  if (beforeId === afterId && !laterDiffers) return { changed: false, userId: user.id, shiftId: afterId, shift, effectiveFrom };
+  shiftsRepository.assignShift({ userId: user.id, shiftId: afterId, effectiveFrom, createdBy: req.adminUser.id, replaceLater: retroactive });
   audit(req, 'user_shift_assigned', { targetUserId: user.id, effectiveFrom, retroactive: effectiveFrom < todayDateString(), changes: { shiftId: { before: beforeId, after: afterId } }, reason });
   return { changed: true, userId: user.id, shiftId: afterId, shift, effectiveFrom };
 }

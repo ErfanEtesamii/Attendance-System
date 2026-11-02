@@ -157,10 +157,12 @@ function listAssignments(userId) {
 
 // انتساب شیفت (shiftId = عدد یا null) از effectiveFrom به بعد. همان (کاربر، تاریخ) ⇒ جایگزین. آینه‌ی users.shift_id برای «امروز» همگام می‌شود.
 // ⇒ { before: شیفتِ مؤثر در effectiveFrom پیش از تغییر, after: بعد از تغییر }
-function assignShift({ userId, shiftId, effectiveFrom, createdBy = null }) {
+// replaceLater=true (اصلاح گذشته): ردیف‌های انتساب «بعد از effectiveFrom تا امروز» حذف می‌شوند تا شیفت جدید واقعاً تا امروز اعمال شود (وگرنه ردیفِ بعدی مثل «بدون شیفت» روی آن غالب می‌ماند). ردیف‌های آینده دست نمی‌خورند.
+function assignShift({ userId, shiftId, effectiveFrom, createdBy = null, replaceLater = false }) {
   const db = getDb();
   return db.transaction(() => {
     const before = shiftOn(userId, effectiveFrom);
+    if (replaceLater) db.prepare('DELETE FROM user_shift_assignments WHERE user_id = ? AND effective_from > ? AND effective_from <= ?').run(userId, effectiveFrom, todayDateString());
     db.prepare(
       `INSERT INTO user_shift_assignments (user_id, shift_id, effective_from, created_by) VALUES (?, ?, ?, ?)
        ON CONFLICT(user_id, effective_from) DO UPDATE SET shift_id = excluded.shift_id, created_by = excluded.created_by, created_at = datetime('now')`
