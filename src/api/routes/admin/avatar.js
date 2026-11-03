@@ -3,6 +3,8 @@
 //   GET    /admin/avatar/:userId   عکس خودِ کاربر، یا کاربری که در اسکوپ او هست (canAccessUser)؛ بدون عکس ⇒ 404
 //   POST   /admin/avatar           بدنه = خودِ تصویر (Content-Type = نوع تصویر)؛ فقط برای «خودِ» کاربر
 //   DELETE /admin/avatar           حذف عکس خود
+//   POST   /admin/avatar/:userId   افزودن/تغییر عکس هر کاربر (فقط ادمین)
+//   DELETE /admin/avatar/:userId   حذف عکس هر کاربر (فقط ادمین)
 const express = require('express');
 const router = express.Router();
 const { canAccessUser, scopedUserIds } = require('./common');
@@ -36,6 +38,34 @@ router.post('/admin/avatar', async (req, res, next) => {
     if (!r.ok) return res.status(400).json({ error: r.error, code: r.code });
     auditRepository.logEvent({ userId: req.adminUser.id, action: 'avatar_updated', ipAddress: req.ip, details: { source: 'admin_panel', size: r.avatar.size } });
     return res.status(201).json({ ok: true, version: r.avatar.file_id });
+  } catch (err) { return next(err); }
+});
+
+// ادمین برای هر کاربری عکس می‌گذارد/عوض می‌کند (بدنه = تصویر). کاربر بعداً از Mini App هم می‌تواند عوضش کند.
+router.post('/admin/avatar/:userId', async (req, res, next) => {
+  try {
+    if (req.adminUser.role !== 'admin') return res.status(403).json({ error: 'فقط ادمین می‌تواند عکس کاربران را تغییر دهد.' });
+    if (!/^\d+$/.test(req.params.userId)) return res.status(404).json({ error: 'کاربر یافت نشد.' });
+    const id = parseInt(req.params.userId, 10);
+    if (!getDb().prepare('SELECT 1 FROM users WHERE id = ?').get(id)) return res.status(404).json({ error: 'کاربر یافت نشد.' });
+    const mime = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+    const size = parseInt(req.headers['content-length'], 10);
+    const r = await avatarService.save(id, req, { mime, size: Number.isFinite(size) ? size : undefined });
+    if (!r.ok) return res.status(400).json({ error: r.error, code: r.code });
+    auditRepository.logEvent({ userId: req.adminUser.id, action: 'avatar_updated_by_admin', ipAddress: req.ip, details: { source: 'admin_panel', targetUserId: id, size: r.avatar.size } });
+    return res.status(201).json({ ok: true, version: r.avatar.file_id });
+  } catch (err) { return next(err); }
+});
+
+// ادمین عکسِ هر کاربری را حذف می‌کند (مثلاً عکس نامناسب)؛ در audit با targetUserId ثبت می‌شود. کاربر دوباره می‌تواند عکس بگذارد.
+router.delete('/admin/avatar/:userId', async (req, res, next) => {
+  try {
+    if (req.adminUser.role !== 'admin') return res.status(403).json({ error: 'فقط ادمین می‌تواند عکس کاربران را حذف کند.' });
+    if (!/^\d+$/.test(req.params.userId)) return res.status(404).json({ error: 'کاربر یافت نشد.' });
+    const id = parseInt(req.params.userId, 10);
+    const r = await avatarService.remove(id);
+    if (r.removed) auditRepository.logEvent({ userId: req.adminUser.id, action: 'avatar_removed_by_admin', ipAddress: req.ip, details: { source: 'admin_panel', targetUserId: id } });
+    return res.json({ ok: true, removed: r.removed });
   } catch (err) { return next(err); }
 });
 

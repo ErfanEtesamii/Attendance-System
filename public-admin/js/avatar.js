@@ -78,30 +78,90 @@
   // ---------- عکس دیگران در لیست‌ها و پروفایل‌ها ----------
   // AP.avatar(name, cls, userId) برچسب data-uid می‌گذارد؛ این‌جا فقط برای کاربرانِ دارای عکس تصویر بارگذاری می‌شود.
   let have = new Map(); // userId → نسخه
+  let loaded = false;
+  // ادمین روی آواتارهای بزرگ (صفحه‌ی پروفایل/هدرها) با رفتن موس دو دکمه می‌بیند: 📷 افزودن/تغییر و 🗑 حذف (دو مرحله‌ای).
+  const isAdmin = () => !!(AP.state && AP.state.me && AP.state.me.role === 'admin');
+  let adminInput = null; let adminTarget = null;
+  function pickFor(id) {
+    if (!adminInput) {
+      adminInput = document.createElement('input');
+      adminInput.type = 'file'; adminInput.accept = 'image/*'; adminInput.hidden = true;
+      adminInput.addEventListener('change', () => {
+        const f = adminInput.files && adminInput.files[0]; adminInput.value = '';
+        if (!f || !adminTarget) return;
+        if (!/^image\//.test(f.type)) { AP.toast('فقط فایل تصویری انتخاب کنید.', true); return; }
+        upload(f, adminTarget);
+      });
+      document.body.appendChild(adminInput);
+    }
+    adminTarget = id; adminInput.click();
+  }
+  function addAdminControls(el, id, withPhoto) {
+    const state = withPhoto ? 'photo' : 'none';
+    const cur = el.querySelector('.avatar-ctl');
+    if (cur && cur.dataset.state === state) return;
+    if (cur) cur.remove();
+    if (!isAdmin() || !el.classList.contains('lg')) return;
+    const bar = document.createElement('span');
+    bar.className = 'avatar-ctl'; bar.dataset.state = state;
+    const mk = (txt, label, cls) => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = txt; b.setAttribute('aria-label', label); b.title = label; return b; };
+    const add = mk('📷', withPhoto ? 'تغییر عکس این کاربر' : 'افزودن عکس برای این کاربر', 'avatar-ctl-btn');
+    add.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); pickFor(id); });
+    bar.appendChild(add);
+    if (withPhoto) {
+      const del = mk('🗑', 'حذف عکس این کاربر', 'avatar-ctl-btn is-danger');
+      let armed = null;
+      del.addEventListener('click', async (e) => {
+        e.preventDefault(); e.stopPropagation();
+        if (!armed) {
+          del.textContent = '؟'; del.classList.add('is-armed'); del.title = 'برای حذف دوباره بزنید';
+          armed = setTimeout(() => { armed = null; del.textContent = '🗑'; del.classList.remove('is-armed'); }, 3000);
+          return;
+        }
+        clearTimeout(armed); armed = null;
+        try {
+          await AP.api('/admin/avatar/' + id, { method: 'DELETE' });
+          AP.toast('عکس کاربر حذف شد.');
+          await loadSet();
+          if (me && id === me.id) paint();
+        } catch (err) { AP.toast(err.message || 'خطا', true); del.textContent = '🗑'; del.classList.remove('is-armed'); }
+      });
+      bar.appendChild(del);
+    }
+    el.appendChild(bar);
+  }
   function enhance(el) {
     if (el.id === 'me-avatar') return;
     const id = Number(el.dataset.uid);
     const v = have.get(id);
     const existing = el.querySelector('img.avatar-photo');
-    if (!v) { if (existing) existing.remove(); el.classList.remove('has-photo'); return; }
-    if (existing && existing.dataset.v === v) return;
-    if (existing) existing.remove();
-    const img = document.createElement('img');
-    img.className = 'avatar-photo'; img.alt = ''; img.dataset.v = v;
-    img.addEventListener('error', () => img.remove());
-    img.src = '/api/admin/avatar/' + id + '?v=' + encodeURIComponent(v);
-    el.appendChild(img); el.classList.add('has-photo');
+    if (!v) {
+      if (existing) existing.remove();
+      el.classList.remove('has-photo');
+      addAdminControls(el, id, false);
+      return;
+    }
+    if (!existing || existing.dataset.v !== v) {
+      if (existing) existing.remove();
+      const img = document.createElement('img');
+      img.className = 'avatar-photo'; img.alt = ''; img.dataset.v = v;
+      img.addEventListener('error', () => img.remove());
+      img.src = '/api/admin/avatar/' + id + '?v=' + encodeURIComponent(v);
+      el.insertBefore(img, el.firstChild); el.classList.add('has-photo');
+    }
+    addAdminControls(el, id, true);
   }
   function enhanceAll() { document.querySelectorAll('.avatar[data-uid]').forEach(enhance); }
   async function loadSet() {
     try {
       const d = await AP.api('/admin/avatars');
       have = new Map(Object.entries(d.versions || {}).map(([k, v]) => [Number(k), v]));
+      loaded = true;
       enhanceAll();
     } catch (_) { /* بدون عکس: حروف اول نام */ }
   }
   new MutationObserver((muts) => {
-    if (!have.size) return;
+    if (!loaded) return;
     for (const m of muts) {
       for (const n of m.addedNodes) {
         if (n.nodeType !== 1) continue;
@@ -128,21 +188,20 @@
     b.appendChild(img);
   }
 
-  async function upload(file) {
-    const b = box();
+  async function upload(file, targetId) {
+    const b = targetId ? null : box(); // نوار «در حال ذخیره» فقط برای عکس خودِ کاربر
     try {
       const blob = await openCropper(file);
       if (!blob) return;
-      b.classList.add('is-busy');
-      const res = await fetch('/api/admin/avatar', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'image/jpeg', 'X-Requested-With': 'AttendancePanel' }, body: blob });
+      if (b) b.classList.add('is-busy');
+      const res = await fetch(targetId ? '/api/admin/avatar/' + targetId : '/api/admin/avatar', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'image/jpeg', 'X-Requested-With': 'AttendancePanel' }, body: blob });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'ذخیره‌ی عکس ناموفق بود.');
       AP.toast('عکس پروفایل ذخیره شد.');
       if (window.celebrate) window.celebrate('confetti');
       paint(); loadSet();
-      b.classList.add('avatar-pop');
-      setTimeout(() => b.classList.remove('avatar-pop'), 600);
-    } catch (err) { AP.toast(err.message || 'خطا', true); } finally { b.classList.remove('is-busy'); }
+      if (b) { b.classList.add('avatar-pop'); setTimeout(() => b.classList.remove('avatar-pop'), 600); }
+    } catch (err) { AP.toast(err.message || 'خطا', true); } finally { if (b) b.classList.remove('is-busy'); }
   }
 
   async function removePhoto() {
