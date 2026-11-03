@@ -84,6 +84,13 @@
       else if (t.rescheduledFrom) label = `↪ از ${typeof ctx.fmtDate === 'function' ? ctx.fmtDate(t.rescheduledFrom) : t.rescheduledFrom}`;
       out.push({ key: 'moved', label, cls: 'pl-chip-moved' });
     }
+    // تسکی که به سقف انتقال (taskCarryMaxTimes) رسیده و هنوز پاسخ ندارد: دیگر قابل انتقال نیست؛ اول از همه نشان داده می‌شود.
+    const carryMax = Number(ctx.carryMax) || 0;
+    const carried = Number(t.carryCount) || 0;
+    const unanswered = !t.status || t.status === 'pending' || t.status === 'no_answer';
+    if (carryMax > 0 && carried >= carryMax && unanswered && !t.dropped && !t.isSystem) {
+      out.unshift({ key: 'carry-limit', label: `⛔ دیگر قابل انتقال نیست (${fa(carried)} از ${fa(carryMax)} بار)`, cls: 'pl-chip-carry-limit' });
+    }
     return out;
   }
 

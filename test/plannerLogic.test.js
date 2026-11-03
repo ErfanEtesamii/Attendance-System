@@ -42,6 +42,15 @@ describe('منطق خالصِ Planner (C1)', () => {
     assert.deepEqual(labels({ source: 'rescheduled', rescheduledFrom: '2026-08-01', priority: 'normal' }, { today: '2026-08-02' }), ['اولویت معمولی', '↪ از دیروز']);
     assert.deepEqual(labels({ source: 'rescheduled', rescheduledFrom: '2026-07-30', priority: 'normal' }, { today: '2026-08-02', fmtDate: (d) => `«${d}»` }), ['اولویت معمولی', '↪ از «2026-07-30»']);
     assert.deepEqual(labels({ carryCount: 2, priority: 'normal' }), ['اولویت معمولی', '↪ منتقل‌شده']);
+    // سقف انتقال: فقط وقتی سقف > ۰ و carryCount ≥ سقف و تسک بی‌پاسخ است؛ چیپ اول می‌آید
+    const lim = (t, ctx) => P.chipsFor(t, ctx).filter((c) => c.key === 'carry-limit').length;
+    assert.equal(lim({ carryCount: 2, status: 'pending' }, { carryMax: 2 }), 1);
+    assert.equal(P.chipsFor({ carryCount: 2, status: 'pending', priority: 'normal' }, { carryMax: 2 })[0].key, 'carry-limit');
+    assert.match(P.chipsFor({ carryCount: 2, status: 'pending' }, { carryMax: 2 })[0].label, /۲ از ۲/);
+    assert.equal(lim({ carryCount: 1, status: 'pending' }, { carryMax: 2 }), 0);
+    assert.equal(lim({ carryCount: 2, status: 'pending' }, { carryMax: 0 }), 0);
+    assert.equal(lim({ carryCount: 2, status: 'pending' }), 0);
+    assert.equal(lim({ carryCount: 2, status: 'done' }, { carryMax: 2 }), 0);
     // همه‌ی چیپ‌ها متن دارند (فقط به رنگ متکی نیستند)
     for (const c of P.chipsFor({ isUrgent: true, managerLocked: true, priority: 'low', carryCount: 1 })) assert.ok(c.label.length > 2 && c.key && c.cls);
   });

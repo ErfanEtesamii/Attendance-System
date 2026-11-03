@@ -262,6 +262,7 @@ function getWeekBoard(user, { week = 'current', now = new Date() } = {}) {
   return {
     ok: true, week, weekStart, weekEnd: addDays(weekStart, 6), today,
     planStatus: got.plan ? got.plan.status : 'draft', hasPlan: !!got.plan,
+    taskCarryMaxTimes: Number(settings.taskCarryMaxTimes) || 0, // سقف انتقال؛ مینی‌اپ با آن تسک‌های رسیده به سقف را نشان می‌دهد
     progress: { done: wDone, total: wTotal, percent: wTotal ? Math.round(((wDone + wPartial * 0.5) / wTotal) * 100) : null },
     days,
   };

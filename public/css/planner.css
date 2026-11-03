@@ -117,6 +117,9 @@
 .pl-chip { display: inline-block; padding: 1px 8px; border-radius: 10px; background: var(--pl-chip-bg); color: var(--pl-chip-ink); font-size: 12px; line-height: 1.7; }
 .pl-chip-urgent { background: var(--pl-urgent-bg); color: var(--pl-urgent-ink); font-weight: 700; }
 .pl-chip-manager, .pl-chip-mandatory { background: var(--pl-manager-bg); color: var(--pl-manager-ink); }
+/* تسکِ رسیده به سقف انتقال: چیپ پررنگ + نوار قرمز کنار ردیف (متن هم دارد؛ فقط به رنگ متکی نیست) */
+.pl-chip-carry-limit { background: color-mix(in srgb, var(--pl-danger) 18%, transparent); color: var(--pl-danger); border: 1px solid var(--pl-danger); font-weight: 800; }
+.pl-row.is-carry-limit { border-inline-start: 4px solid var(--pl-danger); padding-inline-start: 6px; background: color-mix(in srgb, var(--pl-danger) 7%, transparent); border-radius: 8px; }
 
 /* چک‌باکس: ظاهر مربعیِ کوچک، هدف لمسی ≥ ۴۴px */
 .pl-check { position: relative; flex: 0 0 44px; width: 44px; min-height: 44px; padding: 0; background: none; border: 0; color: var(--pl-ink); cursor: pointer; }

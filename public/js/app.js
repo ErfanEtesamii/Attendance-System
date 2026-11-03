@@ -2012,7 +2012,9 @@
     if (planUi.focusCheck === key) { planUi.focusCheck = null; setTimeout(() => { if (typeof check.focus === 'function') check.focus(); }, 0); }
 
     const statusText = task.rescheduleTo && task.rescheduleTo !== 'drop' ? `${meta.icon} ${meta.label} به ${fmtDate(task.rescheduleTo)}` : `${meta.icon} ${meta.label}`;
-    const chips = PL.chipsFor(task, { today: board.today, fmtDate }).map((c) => planEl('span', { class: `pl-chip ${c.cls}`, text: c.label }));
+    const chipDefs = PL.chipsFor(task, { today: board.today, fmtDate, carryMax: board.taskCarryMaxTimes });
+    const limited = chipDefs.some((c) => c.key === 'carry-limit');
+    const chips = chipDefs.map((c) => planEl('span', { class: `pl-chip ${c.cls}`, text: c.label }));
     const main = planEl('button', { type: 'button', class: 'pl-row-main' },
       planEl('span', { class: 'pl-row-title', text: task.title }),
       planEl('span', { class: `pl-row-status ${meta.cls}`, text: statusText }),
@@ -2022,7 +2024,7 @@
     main.setAttribute('aria-haspopup', 'dialog');
     main.addEventListener('click', () => openTaskSheet(task.id, day.date));
     planUi.rowEls.set(key, main);
-    return planEl('li', { class: `pl-row${isDone ? ' is-done' : ''}` }, main, check);
+    return planEl('li', { class: `pl-row${isDone ? ' is-done' : ''}${limited ? ' is-carry-limit' : ''}` }, main, check);
   }
 
   function planBoard(board) {
@@ -2181,7 +2183,7 @@
   // ---------- D2: انتقال (فردا / تاریخ مشخص) داخل شیت ----------
   // قاعده‌ی سرور: انتقال = نیمه‌کاره/انجام‌نشده + علت الزامی (همان ویزارد گزارش). اعتبارسنجی با DailyReport.validateAnswer و بدنه با toApiAnswer (منبع واحد).
   function detailCtx(task, day) {
-    return { today: sheetToday(), date: day.date, fmtDate, editable: true, carryMax: sheetIsMyDay() && myDay.model ? myDay.model.carryMax : 0 };
+    return { today: sheetToday(), date: day.date, fmtDate, editable: true, carryMax: sheetIsMyDay() && myDay.model ? myDay.model.carryMax : (Number(planUi.board && planUi.board.taskCarryMaxTimes) || 0) };
   }
 
   function beginMove() {
@@ -2559,7 +2561,9 @@
     check.addEventListener('click', () => myDayToggle(task));
     myDay.checkEls.set(task.id, check);
 
-    const chips = PL.chipsFor(task, { today: m.today, fmtDate }).map((c) => planEl('span', { class: `pl-chip ${c.cls}`, text: c.label }));
+    const chipDefs = PL.chipsFor(task, { today: m.today, fmtDate, carryMax: m.carryMax });
+    const limited = chipDefs.some((c) => c.key === 'carry-limit');
+    const chips = chipDefs.map((c) => planEl('span', { class: `pl-chip ${c.cls}`, text: c.label }));
     const statusText = task.status === 'pending' ? '' : (task.rescheduleTo && task.rescheduleTo !== 'drop' ? `${meta.icon} ${meta.label} به ${fmtDate(task.rescheduleTo)}` : `${meta.icon} ${meta.label}`);
     const main = planEl('button', { type: 'button', class: 'pl-row-main' },
       planEl('span', { class: 'pl-row-title', text: task.title }),
@@ -2573,13 +2577,13 @@
 
     let moveBtn = null;
     if (task.status === 'pending' && !review && !m.fullDayOff) {
-      moveBtn = planEl('button', { type: 'button', class: 'pl-move', text: '↪', disabled: busy });
+      moveBtn = planEl('button', { type: 'button', class: 'pl-move', text: limited ? '⛔' : '↪', disabled: busy });
       moveBtn.setAttribute('aria-label', `انتقال «${task.title}»`);
-      moveBtn.title = 'انتقال به روز بعد یا تاریخ مشخص';
+      moveBtn.title = limited ? 'به سقف انتقال رسیده؛ باید انجام شود یا حذف شود' : 'انتقال به روز بعد یا تاریخ مشخص';
       moveBtn.addEventListener('click', () => openTaskSheet(task.id, m.date, { src: 'myday', moving: true }));
     }
     const extra = isDone && myDay.noteOpen.has(task.id) ? myDayNoteBox(task) : null;
-    return planEl('li', { class: `pl-row${isDone ? ' is-done' : ''}${extra ? ' has-extra' : ''}` }, main, moveBtn, check, extra);
+    return planEl('li', { class: `pl-row${isDone ? ' is-done' : ''}${extra ? ' has-extra' : ''}${limited ? ' is-carry-limit' : ''}` }, main, moveBtn, check, extra);
   }
 
   function renderMyDay() {
