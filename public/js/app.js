@@ -3782,7 +3782,7 @@
     $('#pf-avatar').textContent = (state.me.fullName || '؟').trim().charAt(0);
     $('#pf-code').textContent = state.me.personnelCode || '—';
     $('#pf-dept').textContent = state.me.department || '—';
-    const roleLabels = { employee: 'کارمند', manager: 'سرپرست', admin: 'ادمین کل' };
+    const roleLabels = { employee: 'کارمند', manager: 'سرپرست', admin: 'ادمین کل', owner: 'مالک سیستم' };
     $('#pf-role').textContent = roleLabels[state.me.role] || state.me.role;
     $('#pf-role-chip').textContent = $('#pf-role').textContent;
     $('#pf-dept-chip').textContent = state.me.department || 'بدون دپارتمان';
@@ -3895,19 +3895,6 @@
       badge.addEventListener('click', (e) => { e.stopPropagation(); input.click(); });
     }
     if (!box.dataset.avReady) { box.dataset.avReady = '1'; box.addEventListener('click', () => input.click()); }
-    if (!$('#pf-avatar-actions')) {
-      const chips = document.querySelector('#view-profile .pf-chips');
-      if (!chips) return;
-      const row = document.createElement('div');
-      row.id = 'pf-avatar-actions'; row.className = 'pf-avatar-actions';
-      const del = document.createElement('button');
-      del.type = 'button'; del.id = 'pf-avatar-del'; del.className = 'pf-avatar-btn pf-avatar-del hidden'; del.textContent = 'حذف عکس';
-      row.appendChild(del);
-      chips.insertAdjacentElement('afterend', row);
-      del.addEventListener('click', async () => {
-        try { await api('/avatar', { method: 'DELETE' }); paintAvatar(null); showToast('عکس حذف شد.'); } catch (err) { showToast(err.message || 'خطا', true); }
-      });
-    }
   }
 
   async function onAvatarFile(e) {

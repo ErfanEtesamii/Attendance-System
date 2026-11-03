@@ -37,3 +37,22 @@ button.stat:active { transform: translateY(-1px) scale(.99); }
 .stat-trend { grid-template-columns: minmax(0, 1fr) 52px; padding: 6px 8px; border-radius: 12px; background: color-mix(in srgb, currentColor 9%, transparent); font-size: 11px; line-height: 1.5; }
 .stat-trend .sparkline { width: 52px; }
 .stat-value { margin-top: 2px; }
+
+/* ---------- کاشی‌های «وضعیت امروز» داشبورد: فشرده (آیکن کنار عدد؛ روند یک ردیف کم‌ارتفاع) ----------
+   قبلاً هر کاشی ستونی و بلند بود و کادر روند در عرض باریک کلمه‌به‌کلمه می‌شکست. فقط دسکتاپ/تبلت؛ موبایل جدا مدیریت می‌شود. */
+@media (min-width: 601px) {
+  .stat-grid[data-widget="stats"] { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; align-items: start; }
+  .stat-grid[data-widget="stats"] > .stat {
+    display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "icon value" "icon label" "trend trend";
+    align-items: center; column-gap: 12px; row-gap: 2px;
+    padding: 12px 14px; border-radius: 18px;
+  }
+  .stat-grid[data-widget="stats"] .stat-icon { grid-area: icon; width: 40px; height: 40px; border-radius: 13px; }
+  .stat-grid[data-widget="stats"] .stat-icon svg { width: 20px; height: 20px; }
+  .stat-grid[data-widget="stats"] .stat-value { grid-area: value; font-size: 26px; margin-top: 0; align-self: end; }
+  .stat-grid[data-widget="stats"] .stat-label { grid-area: label; font-size: 12px; line-height: 1.4; align-self: start; }
+  .stat-grid[data-widget="stats"] .stat-trend {
+    grid-area: trend; grid-template-columns: minmax(0, 1fr) 34px; gap: 6px; margin-top: 8px; padding: 3px 8px; border-radius: 10px; font-size: 11px; line-height: 1.45;
+  }
+  .stat-grid[data-widget="stats"] .stat-trend .sparkline { width: 34px; height: 16px; }
+}

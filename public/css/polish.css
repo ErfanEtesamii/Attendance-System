@@ -865,3 +865,33 @@ body {
 .pf-hero .pf-avatar.pf-av-5 { background: linear-gradient(135deg, #a3e635, #4d7c0f); color: #fff; }
 @media (prefers-reduced-motion: reduce) { .pf-hero .pf-avatar.has-photo::before { animation: none; } }
 /* </avatar-css> */
+
+/* ---------- پروفایل مینی‌اپ: کارت هیرو زیباتر (تم روشن) — دکمه‌ی «حذف عکس» برداشته شد ---------- */
+:root[data-theme="light"] #view-profile .pf-hero { padding: 64px var(--space-4) 22px; }
+:root[data-theme="light"] #view-profile .pf-hero .pf-avatar {
+  width: 80px; height: 80px; margin: 0 auto 10px;
+  border: 3px solid #fffaf0;
+  box-shadow: 0 0 0 2px rgba(184, 134, 46, .55), 0 12px 26px rgba(92, 52, 24, .30);
+}
+:root[data-theme="light"] #view-profile .pf-hero .pf-avatar.has-photo::before {
+  inset: -6px; background: conic-gradient(#b8862e, #f3d27a, #7a1f1a, #e0b659, #b8862e);
+}
+:root[data-theme="light"] #view-profile .pf-hero .pf-avatar-badge {
+  width: 28px; height: 28px; font-size: 13px; color: #4a1f14;
+  background: linear-gradient(135deg, #b8862e, #f0cf7a); border: 2px solid #fffaf0;
+  box-shadow: 0 4px 10px rgba(92, 52, 24, .30);
+}
+:root[data-theme="light"] #view-profile .pf-hero .profile-name { font-size: 19px; font-weight: 800; }
+:root[data-theme="light"] #view-profile .pf-hero .profile-name::after {
+  content: ""; display: block; width: 64px; height: 2px; margin: 7px auto 0; border-radius: 2px;
+  background: linear-gradient(90deg, transparent, #b8862e, transparent);
+}
+:root[data-theme="light"] #view-profile .pf-hero .pf-chips { margin-top: 12px; gap: 8px; justify-content: center; }
+:root[data-theme="light"] #view-profile .pf-hero .pf-chip {
+  padding: 4px 14px; font-size: 12px; font-weight: 700;
+  background: rgba(255, 250, 240, .88); color: #6b3a1f; border: 1px solid rgba(176, 128, 60, .38);
+  box-shadow: 0 2px 6px rgba(92, 52, 24, .08);
+}
+:root[data-theme="light"] #view-profile .pf-hero #pf-role-chip {
+  background: linear-gradient(135deg, #7a1f1a, #5a1e12); color: #fff4dc; border-color: #b8862e;
+}
