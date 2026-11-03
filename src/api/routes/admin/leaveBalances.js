@@ -12,6 +12,7 @@ const usersRepository = require('../../../repositories/usersRepository');
 const leaveTypesRepository = require('../../../repositories/leaveTypesRepository');
 const leaveBalanceService = require('../../../services/leaveBalanceService');
 const { scopedUserIds } = require('./common');
+const { isOwner } = require('../../../utils/roles');
 const { todayDateString } = require('../../../utils/serverTime');
 const { jalaliYearOfDateString } = require('../../../utils/jalali');
 
@@ -102,7 +103,7 @@ router.post('/admin/leave-balances/adjust', requirePermission('leave.balance.edi
   const b = req.body || {};
   const r = leaveBalanceService.addAdjustment({
     userId: b.userId, leaveTypeId: b.leaveTypeId, jalaliYear: resolveYear(b.year) === null ? NaN : resolveYear(b.year),
-    minutes: b.minutes, reason: b.reason, actor: req.adminUser.id, ip: req.ip,
+    minutes: b.minutes, reason: b.reason, reasonOptional: isOwner(req.adminUser), actor: req.adminUser.id, ip: req.ip,
   });
   if (!r.ok) return sendFailure(res, r);
   return res.status(201).json({ adjustment: r.adjustment, balance: r.balance });
@@ -113,7 +114,7 @@ router.put('/admin/leave-balances/entitlement', requirePermission('leave.balance
   const b = req.body || {};
   const r = leaveBalanceService.setEntitlement({
     userId: b.userId, leaveTypeId: b.leaveTypeId, jalaliYear: resolveYear(b.year) === null ? NaN : resolveYear(b.year),
-    entitledMinutes: b.entitledMinutes, carriedOverMinutes: b.carriedOverMinutes, reason: b.reason, actor: req.adminUser.id, ip: req.ip,
+    entitledMinutes: b.entitledMinutes, carriedOverMinutes: b.carriedOverMinutes, reason: b.reason, reasonOptional: isOwner(req.adminUser), actor: req.adminUser.id, ip: req.ip,
   });
   if (!r.ok) return sendFailure(res, r);
   return res.json({ balance: r.balance });

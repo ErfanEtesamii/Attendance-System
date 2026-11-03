@@ -31,11 +31,13 @@ async function startFlow(bot, query, flow, prompt) {
   }
   session.start(chatId, flow, { requestId, messageId: query.message.message_id });
   await bot.answerCallbackQuery(query.id);
-  await bot.sendMessage(chatId, prompt(request));
+  await bot.sendMessage(chatId, prompt(request, actor));
 }
 
 const startMissionReject = (bot, query) => startFlow(bot, query, 'mission_reject',
-  (r) => `علت رد ماموریت #${r.id} را بنویسید (الزامی، حداقل ${missionDecisionService.REJECT_REASON_MIN} نویسه). برای انصراف «${CANCEL_WORD}» بفرستید.`);
+  (r, actor) => (actor && actor.role === 'owner'
+    ? `علت رد ماموریت #${r.id} را بنویسید (اختیاری؛ برای رد بدون علت یک «-» بفرستید). برای انصراف «${CANCEL_WORD}» بفرستید.`
+    : `علت رد ماموریت #${r.id} را بنویسید (الزامی، حداقل ${missionDecisionService.REJECT_REASON_MIN} نویسه). برای انصراف «${CANCEL_WORD}» بفرستید.`));
 
 const startMissionEdit = (bot, query) => startFlow(bot, query, 'mission_edit',
   (r) => `ساعت جدید ماموریت #${r.id} را به‌صورت «شروع-پایان» بفرستید (فعلی: ${r.start_time}-${r.end_time})؛ مثال: 09:30-12:00. برای انصراف «${CANCEL_WORD}».`);
@@ -51,7 +53,7 @@ async function handleMissionRejectText(bot, msg, sess) {
     await bot.sendMessage(chatId, 'این درخواست دیگر قابل تصمیم‌گیری نیست.');
     return;
   }
-  const res = missionDecisionService.rejectMission({ requestId: request.id, actor, reason: text });
+  const res = missionDecisionService.rejectMission({ requestId: request.id, actor, reason: actor && actor.role === 'owner' && text === '-' ? '' : text });
   if (!res.ok) { // علت کوتاه: جریان باز می‌ماند تا دوباره بفرستد
     if (res.code !== 'REASON_REQUIRED') session.clear(chatId);
     await bot.sendMessage(chatId, res.error);

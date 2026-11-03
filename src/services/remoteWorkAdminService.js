@@ -242,6 +242,9 @@ function normalizeIso(v) {
   return Number.isNaN(t) ? undefined : new Date(t).toISOString();
 }
 
+// مالک (owner) برای هیچ تصمیمی مجبور به نوشتن یادداشت/دلیل نیست.
+const isOwnerActor = (actor) => !!actor && actor.role === 'owner';
+
 function normalizeNote(v) {
   if (v === undefined || v === null) return { ok: true, note: null };
   if (typeof v !== 'string') return { ok: false };
@@ -379,7 +382,7 @@ function approveInner(actor, sessionId, input = {}, { ip = null, now = new Date(
     if (overlap && !decision) {
       return fail('ONSITE_OVERLAP', 'این کارمند در همان روز حضور حضوری هم دارد؛ تأیید نیاز به تصمیم صریح دارد (overlap_decision = merge | keep_onsite) همراه با یادداشت.');
     }
-    if (overlap && !noteR.note) return fail('REVIEW_NOTE_REQUIRED', 'برای تصمیم در هم‌پوشانی با حضور حضوری، یادداشت (review_note) الزامی است.');
+    if (overlap && !noteR.note && !isOwnerActor(actor)) return fail('REVIEW_NOTE_REQUIRED', 'برای تصمیم در هم‌پوشانی با حضور حضوری، یادداشت (review_note) الزامی است.');
 
     const decisionAudit = (outcome, extra = {}) => auditRepository.logChange({
       actor: actor.id, action: 'remote_work_overlap_decision', entityType: 'remote_work_session', entityId: row.id,
@@ -465,7 +468,7 @@ function reject(actor, sessionId, input = {}, { ip = null, now = new Date() } = 
   const body = input && typeof input === 'object' ? input : {};
   const noteR = normalizeNote(body.reviewNote);
   if (!noteR.ok) return fail('INVALID_NOTE', `یادداشت باید رشته و حداکثر ${MAX_NOTE} نویسه باشد.`);
-  if (!noteR.note) return fail('REVIEW_NOTE_REQUIRED', 'برای رد دورکاری نوشتن دلیل (review_note) الزامی است.');
+  if (!noteR.note && !isOwnerActor(actor)) return fail('REVIEW_NOTE_REQUIRED', 'برای رد دورکاری نوشتن دلیل (review_note) الزامی است.');
   const nowIso = now.toISOString();
   const r = getDb().transaction(() => {
     const row = remoteRepo.findSessionFull(Number(sessionId));
@@ -583,7 +586,7 @@ function createManual(actor, input = {}, { ip = null, now = new Date() } = {}) {
   if (end > now.toISOString()) return fail('INVALID_TIME', 'پایان دورکاری نمی‌تواند در آینده باشد.');
   const noteR = normalizeNote(body.note);
   if (!noteR.ok) return fail('INVALID_NOTE', `دلیل ثبت باید رشته و حداکثر ${MAX_NOTE} نویسه باشد.`);
-  if (!noteR.note) return fail('REVIEW_NOTE_REQUIRED', 'دلیل ثبت دستی الزامی است.');
+  if (!noteR.note && !isOwnerActor(actor)) return fail('REVIEW_NOTE_REQUIRED', 'دلیل ثبت دستی الزامی است.');
   const decR = normalizeDecision(body.overlapDecision);
   if (!decR.ok || decR.decision === 'keep_onsite') return fail('INVALID_DECISION', 'تصمیم هم‌پوشانی نامعتبر است (فقط merge یا خالی).');
 

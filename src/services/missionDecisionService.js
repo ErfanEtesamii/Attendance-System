@@ -51,13 +51,14 @@ function missionKeyboardRow(request) {
 
 function rejectMission({ requestId, actor, reason }) {
   const text = cleanText(reason, REJECT_REASON_MAX);
-  if (text.length < REJECT_REASON_MIN) return { ok: false, code: 'REASON_REQUIRED', error: `علت رد الزامی است (حداقل ${REJECT_REASON_MIN} نویسه).` };
+  const ownerExempt = actor && actor.role === 'owner'; // مالک: علت رد اختیاری
+  if (text.length < REJECT_REASON_MIN && !ownerExempt) return { ok: false, code: 'REASON_REQUIRED', error: `علت رد الزامی است (حداقل ${REJECT_REASON_MIN} نویسه).` };
   const request = leaveRepository.findById(requestId);
   if (!request || request.kind !== 'mission') return { ok: false, code: 'NOT_FOUND', error: 'ماموریت یافت نشد.' };
-  const result = leaveApprovalService.decide({ requestId, actor, decision: 'reject', note: text });
+  const result = leaveApprovalService.decide({ requestId, actor, decision: 'reject', note: text || undefined });
   if (!result.ok) return result;
   auditRepository.logEvent({ userId: actor.id, action: 'leave_request_rejected', details: { requestId, employeeId: request.user_id, step: result.step, via: 'nightly_review', reasonLength: text.length } });
-  notificationEvents.leaveDecided(result.request, { note: text });
+  notificationEvents.leaveDecided(result.request, text ? { note: text } : {});
   return { ...result, reason: text };
 }
 

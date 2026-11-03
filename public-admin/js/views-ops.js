@@ -130,7 +130,7 @@
               <label class="field"><span>ساعت ورود</span><input type="datetime-local" name="checkInTime" value="${fmt.toLocalInput(r.check_in_time)}" /></label>
               <label class="field"><span>ساعت خروج</span><input type="datetime-local" name="checkOutTime" value="${fmt.toLocalInput(r.check_out_time)}" /></label>
               <label class="field"><span>وضعیت</span><select name="status">${statusOpts}</select></label>
-              <label class="field full"><span>دلیل اصلاح (اجباری — به کارمند در تلگرام اطلاع داده می‌شود)</span><textarea name="reason" rows="2" required></textarea></label>
+              <label class="field full"><span>${AP.reasonOptional() ? 'دلیل اصلاح (اختیاری — در صورت نوشتن، به کارمند در تلگرام اطلاع داده می‌شود)' : 'دلیل اصلاح (اجباری — به کارمند در تلگرام اطلاع داده می‌شود)'}</span><textarea name="reason" rows="2" ${AP.reasonOptional() ? '' : 'required'}></textarea></label>
             </div>
             <div class="form-msg"></div>
             <div class="modal-actions"><button class="btn primary" type="submit">${icon('check')} ذخیره اصلاح</button>
@@ -228,7 +228,7 @@
           <label class="field"><span>ساعت ورود</span><input type="datetime-local" name="checkInTime" /></label>
           <label class="field"><span>ساعت خروج</span><input type="datetime-local" name="checkOutTime" /></label>
           <label class="field"><span>وضعیت</span><select name="status">${Object.entries(AP.STATUS_LABEL).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label>
-          <label class="field full"><span>دلیل (اجباری)</span><textarea name="reason" rows="2" required></textarea></label>
+          <label class="field full"><span>${AP.reasonOptional() ? 'دلیل (اختیاری)' : 'دلیل (اجباری)'}</span><textarea name="reason" rows="2" ${AP.reasonOptional() ? '' : 'required'}></textarea></label>
         </div>
         <div class="form-msg"></div>
         <div class="modal-actions"><button class="btn primary" type="submit">ثبت رکورد</button></div></form>`,

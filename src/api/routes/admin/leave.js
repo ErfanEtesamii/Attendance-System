@@ -18,7 +18,7 @@ const attachmentService = require('../../../services/attachmentService');
 const { sendAttachment } = require('../../../utils/attachmentResponse');
 const { applyDecision, normalizeNote } = require('./leaveDecision');
 
-const { isAdmin } = require('../../../utils/roles');
+const { isAdmin, isOwner } = require('../../../utils/roles');
 // ---------- صف تأیید مرخصی/مأموریت ----------
 
 router.get('/admin/leave-requests', requirePermission('leave.read'), (req, res) => {
@@ -84,7 +84,7 @@ router.post('/admin/leave-requests', requirePermission('leave.edit'), (req, res)
   if (!user) return res.status(404).json({ error: 'کارمند یافت نشد.' });
   if (!canAccessUser(req.adminUser, user.id)) return res.status(403).json({ error: 'به این کارمند دسترسی ندارید.' });
   const reason = typeof b.reason === 'string' ? b.reason.trim() : '';
-  if (!reason) return res.status(400).json({ error: 'ذکر دلیل ثبت الزامی است.' });
+  if (!reason && !isOwner(req.adminUser)) return res.status(400).json({ error: 'ذکر دلیل ثبت الزامی است.' });
   const unit = b.unit || 'day';
   const endDate = b.endDate || (unit === 'day' ? undefined : b.startDate);
   if (!DATE_RE.test(b.startDate || '') || !DATE_RE.test(endDate || '') || endDate < b.startDate) {

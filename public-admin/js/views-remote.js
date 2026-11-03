@@ -210,7 +210,7 @@
           <label class="field full"><span>کارمند</span><select name="userId" required><option value="">انتخاب کنید…</option>${options}</select></label>
           <label class="field"><span>شروع</span><input type="datetime-local" name="start" required /></label>
           <label class="field"><span>پایان</span><input type="datetime-local" name="end" required /></label>
-          <label class="field full"><span>دلیل ثبت (الزامی)</span><textarea name="note" rows="2" maxlength="500" required></textarea></label>
+          <label class="field full"><span>${AP.reasonOptional() ? 'دلیل ثبت (اختیاری)' : 'دلیل ثبت (الزامی)'}</span><textarea name="note" rows="2" maxlength="500" ${AP.reasonOptional() ? '' : 'required'}></textarea></label>
           <label class="field full"><span>اگر همان روز حضور حضوری هم دارد</span><select name="decision"><option value="">خطا بده (ثبت نشود)</option><option value="merge">ادغام با رکورد حضوری</option></select></label>
         </div>
         <div class="form-msg"></div>
@@ -228,8 +228,8 @@
           const end = fmt.fromLocalInput(f.end);
           if (!f.userId) { msg('کارمند را انتخاب کنید.'); return; }
           if (!start || !end) { msg('ساعت شروع و پایان را کامل وارد کنید.'); return; }
-          if (!String(f.note || '').trim()) { msg('دلیل ثبت را بنویسید.'); return; }
-          const r = await AP.attempt(() => AP.api('/admin/remote-work', { method: 'POST', body: { user_id: Number(f.userId), start_at: start, end_at: end, review_note: f.note.trim(), ...(f.decision ? { overlap_decision: f.decision } : {}) } }), 'دورکاری ثبت و تأیید شد.');
+          if (!AP.reasonOptional() && !String(f.note || '').trim()) { msg('دلیل ثبت را بنویسید.'); return; }
+          const r = await AP.attempt(() => AP.api('/admin/remote-work', { method: 'POST', body: { user_id: Number(f.userId), start_at: start, end_at: end, review_note: String(f.note || '').trim(), ...(f.decision ? { overlap_decision: f.decision } : {}) } }), 'دورکاری ثبت و تأیید شد.');
           if (!r) return;
           m.close();
           after();

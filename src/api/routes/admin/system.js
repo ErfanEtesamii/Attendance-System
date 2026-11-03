@@ -75,7 +75,7 @@ router.post('/admin/broadcast', requirePermission('system.manage'), async (req, 
 // به‌صورت پیش‌فرض نشست خود ادمینِ اجراکننده حفظ می‌شود (کوکی تازه می‌گیرد)؛ با includeSelf=true او هم خارج می‌شود.
 router.post('/admin/system/revoke-all-sessions', requirePermission('system.manage'), (req, res) => {
   const reason = requireReason(req, res);
-  if (!reason) return;
+  if (reason === null) return undefined;
   const includeSelf = !!(req.body && req.body.includeSelf);
 
   const epochBefore = settingsRepository.getGlobalSessionEpoch();

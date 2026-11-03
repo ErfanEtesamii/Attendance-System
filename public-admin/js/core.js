@@ -433,7 +433,11 @@
     if (e.key === 'Tab' && window.A11y) window.A11y.trapTab(e, $('.modal', topModal.el), document.activeElement); // فوکوس در مودال می‌ماند (S5-9a)
   });
 
+  // مالک (owner) برای هیچ تغییری مجبور به نوشتن دلیل نیست: فیلد اختیاری می‌شود و خروجی '' است (null = انصراف).
+  AP.reasonOptional = () => !!(AP.state.me && AP.state.me.role === 'owner');
+
   AP.askReason = function askReason({ title, label = 'دلیل (اجباری)', confirmText = 'تأیید', danger = false, message = '', required = true, placeholder = '' }) {
+    if (AP.reasonOptional()) { required = false; label = String(label).replace('اجباری', 'اختیاری'); }
     return new Promise((resolve) => {
       let done = false;
       const finish = (v) => { if (!done) { done = true; resolve(v); } };

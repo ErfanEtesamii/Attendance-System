@@ -20,7 +20,7 @@ const { attendanceRecordView, breakView } = require('../../../utils/auditViews')
 const monthLock = require('./monthLock'); // S5-3c: قفل ماه بسته
 const remoteRepo = require('../../../repositories/remoteWorkRepository');
 
-const { isAdmin } = require('../../../utils/roles');
+const { isAdmin, isOwner } = require('../../../utils/roles');
 // ---------- اصلاح دستی رکورد تردد (فقط ادمین کل) ----------
 
 router.patch('/admin/attendance-records/:id', requirePermission('records.edit'), (req, res) => {
@@ -32,8 +32,10 @@ router.patch('/admin/attendance-records/:id', requirePermission('records.edit'),
     return res.status(403).json({ error: 'به این کارمند دسترسی ندارید.' });
   }
 
-  const { checkInTime, checkOutTime, status, reason } = req.body || {};
-  if (!reason || !reason.trim()) {
+  const { checkInTime, checkOutTime, status } = req.body || {};
+  // مالک مجبور به ذکر دلیل نیست؛ بقیه (ادمین/سرپرست) هنوز الزامی است.
+  const reason = typeof (req.body || {}).reason === 'string' ? req.body.reason.trim() : '';
+  if (!reason && !isOwner(req.adminUser)) {
     return res.status(400).json({ error: 'ذکر دلیل اصلاح الزامی است.' });
   }
 
@@ -61,7 +63,7 @@ router.patch('/admin/attendance-records/:id', requirePermission('records.edit'),
     entityId: id,
     before: attendanceRecordView(record),
     after: attendanceRecordView(updated),
-    reason: reason.trim(),
+    reason,
     meta: { recordId: id, targetUserId: record.user_id, fields: Object.keys(fields) },
   });
 
@@ -69,7 +71,7 @@ router.patch('/admin/attendance-records/:id', requirePermission('records.edit'),
   if (employee?.telegram_user_id) {
     notifyUser(
       employee.telegram_user_id,
-      `رکورد تردد شما در تاریخ ${record.record_date} توسط ${isAdmin(req.adminUser) ? 'ادمین' : 'سرپرست'} اصلاح شد.\nدلیل: ${reason.trim()}`
+      `رکورد تردد شما در تاریخ ${record.record_date} توسط ${isAdmin(req.adminUser) ? 'ادمین' : 'سرپرست'} اصلاح شد.${reason ? `\nدلیل: ${reason}` : ''}`
     );
   }
 
@@ -198,7 +200,7 @@ router.get('/admin/attendance-records/:id', requirePermission('attendance.read')
 
 router.delete('/admin/attendance-records/:id/segments/:seq', requirePermission('records.edit'), (req, res) => {
   const reason = requireReason(req, res);
-  if (!reason) return;
+  if (reason === null) return undefined;
   const record = attendanceRepository.findById(parseInt(req.params.id, 10));
   const seq = parseInt(req.params.seq, 10);
   if (!record) return res.status(404).json({ error: 'رکورد یافت نشد.' });
@@ -219,7 +221,7 @@ router.delete('/admin/attendance-records/:id/segments/:seq', requirePermission('
 
 router.post('/admin/attendance-records', requirePermission('records.edit'), (req, res) => {
   const reason = requireReason(req, res);
-  if (!reason) return;
+  if (reason === null) return undefined;
   const { userId, date, checkInTime, checkOutTime, status } = req.body || {};
   const user = usersRepository.findById(parseInt(userId, 10));
   if (!user) return res.status(404).json({ error: 'کارمند یافت نشد.' });
@@ -258,7 +260,7 @@ router.post('/admin/attendance-records', requirePermission('records.edit'), (req
 
 router.delete('/admin/attendance-records/:id', requirePermission('records.edit'), (req, res) => {
   const reason = requireReason(req, res);
-  if (!reason) return;
+  if (reason === null) return undefined;
   const record = attendanceRepository.findById(parseInt(req.params.id, 10));
   if (!record) return res.status(404).json({ error: 'رکورد یافت نشد.' });
   if (!canAccessUser(req.adminUser, record.user_id)) return res.status(403).json({ error: 'به این کارمند دسترسی ندارید.' });
@@ -282,7 +284,7 @@ router.delete('/admin/attendance-records/:id', requirePermission('records.edit')
 
 router.post('/admin/attendance-records/:id/breaks', requirePermission('records.edit'), (req, res) => {
   const reason = requireReason(req, res);
-  if (!reason) return;
+  if (reason === null) return undefined;
   const record = attendanceRepository.findById(parseInt(req.params.id, 10));
   if (!record) return res.status(404).json({ error: 'رکورد یافت نشد.' });
   if (!canAccessUser(req.adminUser, record.user_id)) return res.status(403).json({ error: 'به این کارمند دسترسی ندارید.' });
@@ -314,7 +316,7 @@ router.post('/admin/attendance-records/:id/breaks', requirePermission('records.e
 
 router.patch('/admin/break-records/:id', requirePermission('records.edit'), (req, res) => {
   const reason = requireReason(req, res);
-  if (!reason) return;
+  if (reason === null) return undefined;
   const br = breakRepository.findById(parseInt(req.params.id, 10));
   if (!br) return res.status(404).json({ error: 'استراحت یافت نشد.' });
   const ownerRec = attendanceRepository.findById(br.attendance_record_id);
@@ -351,7 +353,7 @@ router.patch('/admin/break-records/:id', requirePermission('records.edit'), (req
 
 router.delete('/admin/break-records/:id', requirePermission('records.edit'), (req, res) => {
   const reason = requireReason(req, res);
-  if (!reason) return;
+  if (reason === null) return undefined;
   const br = breakRepository.findById(parseInt(req.params.id, 10));
   if (!br) return res.status(404).json({ error: 'استراحت یافت نشد.' });
   const ownerRec = attendanceRepository.findById(br.attendance_record_id);

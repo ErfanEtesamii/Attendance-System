@@ -94,7 +94,7 @@ router.post('/admin/month-closures/:year/:month/reopen', requirePermission('mont
   const p = parseYearMonth(req.params.year, req.params.month);
   if (p.error) return res.status(400).json(p.error);
   const reason = requireReason(req, res);
-  if (!reason) return undefined;
+  if (reason === null) return undefined;
   const before = monthClosuresRepository.findByMonth(p.year, p.month);
   const row = monthClosuresRepository.reopen(p.year, p.month, { reopenedBy: req.adminUser.id, reason: reason.slice(0, 500) });
   if (!row) return res.status(409).json({ error: 'این ماه بسته نیست.', code: 'NOT_CLOSED' });

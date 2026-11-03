@@ -9,7 +9,7 @@ const dayService = require('../../../engine/dayService');
 const { minutesSinceMidnight } = require('../../../utils/time');
 const { todayDateString } = require('../../../utils/serverTime');
 
-const { isAdmin } = require('../../../utils/roles');
+const { isAdmin, isOwner } = require('../../../utils/roles');
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const STATUSES = ['normal', 'late', 'incomplete', 'leave', 'holiday'];
 
@@ -94,14 +94,21 @@ function makeUserMap() {
   return map;
 }
 
+// متنِ جایگزین برای ستون‌های دیتابیسی که NOT NULL هستند وقتی مالک دلیلی ننوشته است.
+const NO_REASON_TEXT = 'بدون ذکر دلیل (ثبت توسط مالک)';
+
+// مالک (owner) برای هیچ تغییری مجبور به نوشتن دلیل نیست؛ دلیل اگر نوشته شود ثبت می‌شود، وگرنه '' برمی‌گردد.
+// ⚠️ خروجی null یعنی «پاسخ ۴۰۰ داده شد»؛ '' یعنی «مجاز، بدون دلیل» ⇒ callerها باید با === null چک کنند، نه !reason.
 function requireReason(req, res) {
-  const reason = ((req.body && req.body.reason) || req.query.reason || '').toString().trim();
-  if (!reason) {
+  const reason = ((req.body && req.body.reason) || (req.query && req.query.reason) || '').toString().trim();
+  if (!reason && !isOwner(req.adminUser)) {
     res.status(400).json({ error: 'ذکر دلیل برای این عملیات الزامی است.' });
     return null;
   }
   return reason;
 }
+
+const reasonOrDefault = (reason) => (reason && String(reason).trim() ? String(reason).trim() : NO_REASON_TEXT);
 
 function audit(req, action, details) {
   auditRepository.logEvent({
@@ -221,6 +228,8 @@ module.exports = {
   enrichRecord,
   makeUserMap,
   requireReason,
+  reasonOrDefault,
+  NO_REASON_TEXT,
   audit,
   auditChange,
   classifyToday,

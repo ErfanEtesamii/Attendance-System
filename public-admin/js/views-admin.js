@@ -830,7 +830,7 @@
               title: 'خروج همه‌ی کاربران', danger: true, confirmText: 'باطل‌کردن همه‌ی نشست‌ها',
               message: 'نشست ورود همه‌ی کاربران (ادمین‌ها، سرپرستان و کارمندان) به پنل باطل می‌شود و همه باید دوباره وارد شوند. نشست خود شما حفظ می‌شود.',
             });
-            if (!reason) return;
+            if (reason === null) return;
             await AP.attempt(() => AP.api('/admin/system/revoke-all-sessions', { method: 'POST', body: { reason } }), 'همه‌ی نشست‌ها باطل شد.');
           });
         },

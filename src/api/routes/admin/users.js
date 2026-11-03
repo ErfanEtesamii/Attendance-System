@@ -315,7 +315,7 @@ router.post('/admin/users/:id/revoke-sessions', requirePermission('users.write')
   const denied = adminManagementDenied(req, user.role, undefined);
   if (denied && id !== req.adminUser.id) return res.status(403).json({ error: denied });
   const reason = requireReason(req, res);
-  if (!reason) return;
+  if (reason === null) return undefined;
 
   const version = usersRepository.revokeSessions(id);
   auditChange(req, {

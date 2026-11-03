@@ -18,6 +18,7 @@ const leaveBalanceService = require('../../../services/leaveBalanceService');
 const { formatMinutes } = require('../../../utils/leaveBalanceFormat');
 const { jalaliYearOfDateString } = require('../../../utils/jalali');
 const { DATE_RE, scopedUserIds, audit } = require('./common');
+const { isOwner } = require('../../../utils/roles');
 const { applyDecision, normalizeNote } = require('./leaveDecision');
 
 const QUEUE_PERMS = ['leave.approve', 'leave.approve.hr'];
@@ -176,7 +177,7 @@ router.post('/admin/leave-queue/bulk', requireAnyPermission(...QUEUE_PERMS), (re
   if (ids.length > MAX_BULK) return bad(res, 'TOO_MANY', `حداکثر ${MAX_BULK} درخواست در هر بار.`);
   if (b.note !== undefined && b.note !== null && typeof b.note !== 'string') return bad(res, 'INVALID_NOTE', 'note باید متن باشد.');
   const note = normalizeNote(b.note);
-  if (b.action === 'reject' && !note) return bad(res, 'REASON_REQUIRED', 'ذکر دلیل برای رد کردن الزامی است.');
+  if (b.action === 'reject' && !note && !isOwner(req.adminUser)) return bad(res, 'REASON_REQUIRED', 'ذکر دلیل برای رد کردن الزامی است.');
 
   const results = ids.map((id) => {
     let done;

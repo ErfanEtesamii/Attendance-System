@@ -18,6 +18,7 @@ const { jalaliYearToDateRange } = require('../utils/jalali');
 const { dayLengthMinutes, formatMinutes, evaluatePolicy, FALLBACK_DAY_MINUTES } = require('../utils/leaveBalanceFormat');
 
 const MAX_MINUTES = 100000000; // فقط محافظ داده‌ی خراب (کران فنی)، نه قاعده‌ی تجاری
+const NO_REASON_TEXT = 'بدون ذکر دلیل (ثبت توسط مالک)';
 const fail = (code, error) => ({ ok: false, code, error });
 const isMinutes = (v, { min = 0 } = {}) => Number.isSafeInteger(v) && v >= min && v <= MAX_MINUTES;
 
@@ -73,8 +74,9 @@ function setEntitlement(input = {}) {
   if (!k.ok) return k;
   const untracked = requireTracked(k.type);
   if (untracked) return untracked;
-  const reason = typeof input.reason === 'string' ? input.reason.trim() : '';
-  if (!reason) return fail('REASON_REQUIRED', 'ذکر دلیل الزامی است.');
+  let reason = typeof input.reason === 'string' ? input.reason.trim() : '';
+  if (!reason && !input.reasonOptional) return fail('REASON_REQUIRED', 'ذکر دلیل الزامی است.');
+  if (!reason) reason = NO_REASON_TEXT; // مالک: دلیل اختیاری (ستون دیتابیس NOT NULL است)
   const { entitledMinutes, carriedOverMinutes } = input;
   if (entitledMinutes === undefined && carriedOverMinutes === undefined) return fail('NOTHING_TO_SET', 'حداقل یکی از استحقاق یا انتقالی باید داده شود.');
   if (entitledMinutes !== undefined && !isMinutes(entitledMinutes)) return fail('INVALID_MINUTES', 'استحقاق باید عدد صحیح ≥ ۰ (دقیقه) باشد.');
@@ -107,8 +109,9 @@ function addAdjustment(input = {}) {
   if (!k.ok) return k;
   const untracked = requireTracked(k.type);
   if (untracked) return untracked;
-  const reason = typeof input.reason === 'string' ? input.reason.trim() : '';
-  if (!reason) return fail('REASON_REQUIRED', 'ذکر دلیل الزامی است.');
+  let reason = typeof input.reason === 'string' ? input.reason.trim() : '';
+  if (!reason && !input.reasonOptional) return fail('REASON_REQUIRED', 'ذکر دلیل الزامی است.');
+  if (!reason) reason = NO_REASON_TEXT; // مالک: دلیل اختیاری (ستون دیتابیس NOT NULL است)
   if (!Number.isSafeInteger(input.minutes) || input.minutes === 0 || Math.abs(input.minutes) > MAX_MINUTES) {
     return fail('INVALID_MINUTES', 'مقدار تعدیل باید عدد صحیح غیرصفر (دقیقه؛ مثبت = افزایش، منفی = کاهش) باشد.');
   }

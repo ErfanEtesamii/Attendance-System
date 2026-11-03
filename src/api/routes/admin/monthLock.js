@@ -3,7 +3,7 @@
 //
 // قاعده: اگر بازه‌ی تاریخِ عملیات با ماهِ «closed» هم‌پوشانی داشته باشد
 //   • غیر-ادمین (سرپرست/hr/…): ۴۰۳ MONTH_CLOSED
-//   • ادمین بدون دلیل: ۴۰۰ MONTH_CLOSED_REASON_REQUIRED
+//   • ادمین بدون دلیل: ۴۰۰ MONTH_CLOSED_REASON_REQUIRED (owner مستثناست: دلیل اختیاری)
 //   • ادمین با دلیل: مجاز؛ بعد از موفقیت route باید adjust() را صدا بزند (ردیف adjustment + audit)
 // ماهِ «reopened» یا باز قفل نیست. snapshot هرگز بازنویسی نمی‌شود (فقط با reopen + بستن دوباره).
 // ⚠️ ثبت ورود/خروج واقعی کارمند (بات/Mini App) برای «امروز» است و بازه‌ی ماه بسته را لمس نمی‌کند؛ پوشش داده نشده.
@@ -11,7 +11,8 @@
 const monthClosuresRepository = require('../../../repositories/monthClosuresRepository');
 const auditRepository = require('../../../repositories/auditRepository');
 
-const { isAdmin } = require('../../../utils/roles');
+const { isAdmin, isOwner } = require('../../../utils/roles');
+const NO_REASON_TEXT = 'بدون ذکر دلیل (ثبت توسط مالک)';
 const MONTH_NAMES_ERR = (c) => `ماه ${c.jalali_year}/${String(c.jalali_month).padStart(2, '0')} بسته شده است`;
 
 // ⇒ { locked:false } | { locked:true, ok:false, status, code, error } | { locked:true, ok:true, closure }
@@ -25,10 +26,11 @@ function evaluate({ actor, from, to, reason, bulk = false }) {
     return { locked: true, ok: false, status: 403, code: 'MONTH_CLOSED', error: `${label}؛ فقط ادمین می‌تواند با ذکر دلیل آن را اصلاح کند.` };
   }
   if (bulk) return { locked: true, ok: false, status: 409, code: 'MONTH_CLOSED', error: `${label}؛ اصلاح آن از صف دسته‌جمعی ممکن نیست (تک‌به‌تک با دلیل).` };
-  if (!reason || !String(reason).trim()) {
+  const hasReason = !!(reason && String(reason).trim());
+  if (!hasReason && !isOwner(actor)) {
     return { locked: true, ok: false, status: 400, code: 'MONTH_CLOSED_REASON_REQUIRED', error: `${label}؛ برای اصلاح، ذکر دلیل الزامی است.` };
   }
-  return { locked: true, ok: true, closure: c, reason: String(reason).trim().slice(0, 500) };
+  return { locked: true, ok: true, closure: c, reason: hasReason ? String(reason).trim().slice(0, 500) : NO_REASON_TEXT };
 }
 
 // نسخه‌ی route: پاسخ خطا را می‌فرستد. ⇒ false (پاسخ داده شد؛ route باید return کند) | null (قفل نیست) | { closure, reason } (مجاز؛ بعد adjust بزنید)

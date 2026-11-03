@@ -585,7 +585,7 @@
               title: 'خروج از همه‌ی نشست‌ها', danger: true, confirmText: 'باطل‌کردن نشست‌ها',
               message: `همه‌ی نشست‌های ورود «${u.fullName}» به پنل باطل می‌شود و باید دوباره وارد شود.${u.id === AP.state.me.id ? ' (این حساب خود شماست؛ خودتان هم خارج می‌شوید.)' : ''}`,
             });
-            if (!reason) return;
+            if (reason === null) return;
             try {
               const r = await AP.api(`/admin/users/${u.id}/revoke-sessions`, { method: 'POST', body: { reason } });
               if (r.selfLoggedOut) { location.reload(); return; }

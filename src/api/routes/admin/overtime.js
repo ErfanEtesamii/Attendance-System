@@ -16,7 +16,7 @@ const attendanceRepository = require('../../../repositories/attendanceRepository
 const overtimeApprovalRepository = require('../../../repositories/overtimeApprovalRepository');
 const dayService = require('../../../engine/dayService');
 const monthLock = require('./monthLock'); // S5-3c
-const { scopedUserIds, canAccessUser, DATE_RE, parseRange, userBrief, makeUserMap, requireReason, audit } = require('./common');
+const { scopedUserIds, canAccessUser, DATE_RE, parseRange, userBrief, makeUserMap, requireReason, NO_REASON_TEXT, audit } = require('./common');
 
 const LIST_STATUSES = ['pending', 'approved', 'rejected'];
 
@@ -85,6 +85,7 @@ router.post('/admin/overtime-approvals/:recordId/:action(approve|reject)', requi
   } else {
     reason = requireReason(req, res);
     if (reason === null) return undefined;
+    if (!reason) reason = NO_REASON_TEXT; // مالک بدون دلیل
   }
 
   const context = dayService.loadContext();
