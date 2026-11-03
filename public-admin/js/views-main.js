@@ -217,7 +217,7 @@
             body.innerHTML = list.length ? list.map((r) => {
               const rec = r.record;
               return `<tr>
-                <td><a class="cell-user u-link-inherit" href="#/profile/${r.user.id}">${AP.avatar(r.user.fullName, 'sm')}
+                <td><a class="cell-user u-link-inherit" href="#/profile/${r.user.id}">${AP.avatar(r.user.fullName, 'sm', r.user.id)}
                   <span><b>${esc(r.user.fullName)}</b><small>${esc(r.user.department || '—')}</small></span></a></td>
                 <td>${AP.stateBadge(r.state)} ${r.late ? AP.badge('late', `تأخیر ${fmt.min(r.summary.lateMinutes)}`) : ''} ${r.onMission ? AP.badge('mission', 'مأموریت') : ''}</td>
                 <td class="num">${rec && rec.check_in_time ? fmt.clock(rec.check_in_time) : '—'} ${rec && rec.segmentCount > 1 ? AP.badge('purple', `${fmt.num(rec.segmentCount)} نوبت`) : ''}</td>
@@ -321,7 +321,7 @@
             $('#emp-count', page).textContent = `نمایش ${fmt.num(list.length)} از ${fmt.num(users.length)} کارمند`;
             body.innerHTML = list.length ? list.map((u) => `
               <tr class="clickable ${u.isActive ? '' : 'inactive'}" data-id="${u.id}">
-                <td><div class="cell-user">${AP.avatar(u.fullName, 'sm')}<span><b>${esc(u.fullName)}</b></span></div></td>
+                <td><div class="cell-user">${AP.avatar(u.fullName, 'sm', u.id)}<span><b>${esc(u.fullName)}</b></span></div></td>
                 <td class="num">${esc(u.personnelCode || '—')}</td>
                 <td>${esc(u.department || '—')}</td>
                 <td>${AP.badge(u.role === 'admin' ? 'purple' : u.role === 'manager' ? 'blue' : '', AP.ROLE[u.role])}</td>
@@ -424,7 +424,7 @@
         ${AP.can('users.read') ? '<div class="view-header"><button class="btn ghost small" data-go="employees">→ بازگشت به کارمندان</button></div>' : ''}
 
         <div class="card profile-head">
-          ${AP.avatar(u.fullName, 'lg')}
+          ${AP.avatar(u.fullName, 'lg', u.id)}
           <div class="grow">
             <h2>${esc(u.fullName)}</h2>
             <div class="tags">
@@ -516,7 +516,7 @@
         },
         team() {
           return `<div class="list">${d.team.map((m) => `
-            <a class="item u-link-inherit" href="#/profile/${m.id}">${AP.avatar(m.fullName, 'sm')}
+            <a class="item u-link-inherit" href="#/profile/${m.id}">${AP.avatar(m.fullName, 'sm', m.id)}
               <div class="grow"><div class="title">${esc(m.fullName)}</div><div class="meta">${esc(m.department || '—')}</div></div>
               ${m.isActive ? AP.badge('green', 'فعال') : AP.badge('red', 'غیرفعال')}</a>`).join('')}</div>`;
         },

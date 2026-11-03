@@ -35,7 +35,7 @@
     const shiftText = u.shift ? `${esc(u.shift.name)} (${esc(u.shift.startTime || '')}–${esc(u.shift.endTime || '')})` : 'بدون شیفت اختصاصی';
     return `
       <div class="card profile-head">
-        ${AP.avatar(u.fullName, 'lg')}
+        ${AP.avatar(u.fullName, 'lg', u.id)}
         <div class="grow">
           <h2>${esc(u.fullName)}</h2>
           <div class="tags">

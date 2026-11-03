@@ -183,7 +183,7 @@
 
   function leaderCard(title, icon, list, valueOf, textOf, tone) {
     const mx = Math.max(1, ...list.map(valueOf));
-    const body = list.length ? list.map((r, i) => `<button type="button" class="pf-leader" data-id="${r.user.id}"><span class="pf-rank">${fa(i + 1)}</span>${AP.avatar(r.user.fullName, 'sm')}<span class="pf-leader-name"><b>${esc(r.user.fullName)}</b>${bar((valueOf(r) / mx) * 100, tone)}</span><em>${textOf(r)}</em></button>`).join('') : emptyBox('موردی نیست.');
+    const body = list.length ? list.map((r, i) => `<button type="button" class="pf-leader" data-id="${r.user.id}"><span class="pf-rank">${fa(i + 1)}</span>${AP.avatar(r.user.fullName, 'sm', r.user.id)}<span class="pf-leader-name"><b>${esc(r.user.fullName)}</b>${bar((valueOf(r) / mx) * 100, tone)}</span><em>${textOf(r)}</em></button>`).join('') : emptyBox('موردی نیست.');
     return `<div class="card pf-leadercard pf-tone-${tone}"><h3>${AP.icon(icon)} ${esc(title)}</h3>${body}</div>`;
   }
 
@@ -234,7 +234,7 @@
       body.innerHTML = sorted.map((r, i) => {
         const p = r.chg == null ? null : Math.round(r.chg * 100);
         const chg = p == null ? '<span class="pf-delta flat">جدید</span>' : `<span class="pf-delta ${p > 0 ? 'good' : p < 0 ? 'bad' : 'flat'}">${p === 0 ? 'بدون تغییر' : `${p > 0 ? '▲' : '▼'} ${fa(Math.abs(p))}٪`}</span>`;
-        return `<tr class="clickable" data-id="${r.user.id}" tabindex="0"><td><div class="pf-person"><span class="pf-rankdot${i < 3 && ui.sort === 'useful' && ui.dir < 0 && !term ? ` top${i + 1}` : ''}">${fa(i + 1)}</span>${AP.avatar(r.user.fullName, 'sm')}<div><b>${esc(r.user.fullName)}</b><small>${esc(r.user.department || 'بدون دپارتمان')}</small></div></div></td>
+        return `<tr class="clickable" data-id="${r.user.id}" tabindex="0"><td><div class="pf-person"><span class="pf-rankdot${i < 3 && ui.sort === 'useful' && ui.dir < 0 && !term ? ` top${i + 1}` : ''}">${fa(i + 1)}</span>${AP.avatar(r.user.fullName, 'sm', r.user.id)}<div><b>${esc(r.user.fullName)}</b><small>${esc(r.user.department || 'بدون دپارتمان')}</small></div></div></td>
           <td class="num"><div class="pf-sharecell pf-usefulcell"><strong>${fmt.min(r.useful)}</strong>${bar(maxUseful ? (r.useful / maxUseful) * 100 : 0, 'green')}</div></td>
           <td class="num">${chg}</td>
           <td class="num">${rate(r.attendanceRate, 95, 80)}</td><td class="num">${rate(r.punctualityRate, 90, 70)}</td><td class="num">${rate(r.fulfillmentRate, 100, 90)}</td><td class="num">${r.avgCheckIn == null ? '<span class="muted">—</span>' : `<span class="pf-ratechip">${clock(r.avgCheckIn)}</span>`}</td>
@@ -283,7 +283,7 @@
     const html = `
       <div class="view-header"><div><h2>عملکرد ${esc(u.fullName)}</h2><div class="sub">${esc(u.department || 'بدون دپارتمان')} · ${esc(rangeLabel(d.range))}</div></div>
         <div class="pf-head-actions"><label class="field pf-pick"><span>کارمند</span><select id="pf-user">${options}</select></label><button type="button" class="btn ghost" id="pf-back">همه‌ی کارمندان</button></div></div>
-      <div class="card pf-hero">${AP.avatar(u.fullName, 'lg')}<div class="pf-hero-text"><h3>${esc(u.fullName)}</h3><p>${esc(AP.ROLE[u.role] || u.role || '')} · ${esc(u.department || 'بدون دپارتمان')}${u.personnelCode ? ` · کد ${esc(u.personnelCode)}` : ''}</p></div>
+      <div class="card pf-hero">${AP.avatar(u.fullName, 'lg', u.id)}<div class="pf-hero-text"><h3>${esc(u.fullName)}</h3><p>${esc(AP.ROLE[u.role] || u.role || '')} · ${esc(u.department || 'بدون دپارتمان')}${u.personnelCode ? ` · کد ${esc(u.personnelCode)}` : ''}</p></div>
         <div class="pf-hero-chips"><span class="pf-chip"><b>${fmt.num(t0.present)}</b> روز حضور</span><span class="pf-chip"><b>${fmt.num(t0.lateDays)}</b> روز تأخیر</span><span class="pf-chip"><b>${fmt.num(t0.absentDays)}</b> روز غیبت</span>${t0.taskRate != null ? `<span class="pf-chip"><b>${fa(t0.taskRate)}٪</b> انجام تسک</span>` : ''}</div></div>
       <div class="pf-insights" id="pf-insights" aria-label="بینش‌ها"></div>
       ${rangeBar()}
@@ -525,7 +525,7 @@
     const section = (title, icon, inner) => `<section class="pf-dsec"><h4>${AP.icon(icon)} ${title}</h4>${inner}</section>`;
     const rowsTable = (head, rows) => `<div class="table-wrap pf-daywrap"><table class="pf-paytable pf-mini"><thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
     const body = `
-      <div class="pf-pay-head pf-day-top">${AP.avatar(r.user ? r.user.fullName : d.user.fullName, 'lg')}<div><h4>${esc(r.user ? r.user.fullName : d.user.fullName)}</h4><p>${esc(WEEKDAYS[wd])}، ${esc(fmt.date(date))}</p></div>
+      <div class="pf-pay-head pf-day-top">${AP.avatar(r.user ? r.user.fullName : d.user.fullName, 'lg', (r.user || d.user).id)}<div><h4>${esc(r.user ? r.user.fullName : d.user.fullName)}</h4><p>${esc(WEEKDAYS[wd])}، ${esc(fmt.date(date))}</p></div>
         <div class="pf-day-badges">${AP.badge(STATUS_TONE[x.status] || 'normal', STATUS[x.status] || x.status)}${x.holidayTitle ? `<span class="pf-chip">${esc(x.holidayTitle)}</span>` : ''}${x.viaRemote ? '<span class="pf-chip">دورکاری</span>' : ''}${flags}</div>
         ${dayAmount != null ? `<div class="pf-day-amount"><span>مبلغ این روز</span><strong class="pf-amount">${toman(dayAmount)}</strong></div>` : ''}</div>
       <div class="pf-facts-grid">${[
@@ -630,7 +630,7 @@
       body.innerHTML = list.map((r, i) => {
         const mom = r.mom === -999 ? '<span class="muted">—</span>' : `<span class="pf-delta ${r.mom > 0 ? 'good' : r.mom < 0 ? 'bad' : 'flat'}">${r.mom === 0 ? '—' : `${r.mom > 0 ? '▲' : '▼'} ${fa(Math.abs(Math.round(r.mom * 100)))}٪`}</span>`;
         const sharePct = t.amountToman && r.amountToman ? Math.round((r.amountToman / t.amountToman) * 1000) / 10 : 0;
-        return `<tr class="clickable" data-id="${r.user.id}" tabindex="0"><td><div class="pf-person"><span class="pf-rankdot${i < 3 && pay.sort === 'amount' && pay.dir < 0 ? ` top${i + 1}` : ''}">${fa(i + 1)}</span>${AP.avatar(r.user.fullName, 'sm')}<div><b>${esc(r.user.fullName)}</b><small>${esc(r.user.department || '')}</small></div></div></td>
+        return `<tr class="clickable" data-id="${r.user.id}" tabindex="0"><td><div class="pf-person"><span class="pf-rankdot${i < 3 && pay.sort === 'amount' && pay.dir < 0 ? ` top${i + 1}` : ''}">${fa(i + 1)}</span>${AP.avatar(r.user.fullName, 'sm', r.user.id)}<div><b>${esc(r.user.fullName)}</b><small>${esc(r.user.department || '')}</small></div></div></td>
           <td class="num">${r.rateKt == null ? '<span class="muted">ثبت نشده</span>' : `<span class="pf-ratechip">${fmt.num(r.rateKt)} هزار</span>`}</td><td class="num">${fmt.min(r.usefulMinutes)}</td><td class="num">${r.overtimeMinutes ? fmt.min(r.overtimeMinutes) : '—'}</td><td class="num">${fmt.num(r.workedDays)}</td>
           <td class="num">${r.avgPerWorkedDayToman == null ? '—' : toman(r.avgPerWorkedDayToman)}</td>
           <td class="num"><span class="pf-amtcell">${r.amountToman == null ? '—' : toman(r.amountToman)}</span>${r.excludedDays.length ? `<small class="pf-warn">${fmt.num(r.excludedDays.length)} روز خارج</small>` : ''}</td><td class="num">${mom}</td>
@@ -659,7 +659,7 @@
     const maxDay = Math.max(1, ...valid.map((x) => x.amountToman));
     const totalMin = sum(valid.map((x) => x.usefulMinutes));
     const totalAmt = sum(valid.map((x) => x.amountToman));
-    const body = `<div class="pf-pay-head">${AP.avatar(r.user.fullName, 'lg')}<div><h4>${esc(r.user.fullName)}</h4><p>${esc(r.user.department || 'بدون دپارتمان')} · ${esc(data.label)}</p></div>${r.rateKt == null ? '' : `<span class="pf-ratechip">${fmt.num(r.rateKt)} هزار تومان / ساعت</span>`}</div>
+    const body = `<div class="pf-pay-head">${AP.avatar(r.user.fullName, 'lg', r.user.id)}<div><h4>${esc(r.user.fullName)}</h4><p>${esc(r.user.department || 'بدون دپارتمان')} · ${esc(data.label)}</p></div>${r.rateKt == null ? '' : `<span class="pf-ratechip">${fmt.num(r.rateKt)} هزار تومان / ساعت</span>`}</div>
       <div class="pf-kpis pf-kpis-sm">${[kpi('حقوق ماه', `<span class="pf-amount">${toman(r.amountToman)}</span>`, r.previousAmountToman ? delta({ good: 'up' }, r.amountToman, r.previousAmountToman) : '', 'good'), kpi('ساعت مفید', fmt.min(r.usefulMinutes), `${fmt.num(valid.length)} روز کاری`, 'info'), kpi('اضافه‌کاری', fmt.min(r.overtimeMinutes), '', 'warn'), kpi('میانگین هر روز', toman(r.avgPerWorkedDayToman), '', 'info'), kpi('پیش‌بینی پایان ماه', toman(r.projectedAmountToman), '', 'info')].join('')}</div>
       <h4>درآمد روزانه و تجمعی</h4><div class="pf-chart" id="pf-pay-modal-chart"></div>
       <h4>ریز روزها</h4>

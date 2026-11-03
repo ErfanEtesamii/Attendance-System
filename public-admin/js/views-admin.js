@@ -100,7 +100,7 @@
             const f = sortKeys[repUi.sort] || sortKeys.totalEffective;
             const x = f(a); const y = f(b);
             return (typeof x === 'string' ? x.localeCompare(y, 'fa') : x - y) * repUi.dir;
-          }).map((r) => `<tr class="clickable" data-id="${r.user.id}"><td><div class="cell-user">${AP.avatar(r.user.fullName, 'sm')}<span><b>${esc(r.user.fullName)}</b><small>${esc(r.user.department || '')}</small></span></div></td>
+          }).map((r) => `<tr class="clickable" data-id="${r.user.id}"><td><div class="cell-user">${AP.avatar(r.user.fullName, 'sm', r.user.id)}<span><b>${esc(r.user.fullName)}</b><small>${esc(r.user.department || '')}</small></span></div></td>
             <td>${fmt.num(r.presentDays)}</td><td>${fmt.min(r.totalEffective)}</td><td>${fmt.min(r.avgEffective)}</td><td>${fmt.num(r.lateCount)}</td><td>${fmt.num(r.earlyLeaveCount)}</td>
             <td>${fmt.min(r.overtimeMinutes)}</td><td>${fmt.num(r.incompleteCount)}</td><td>${fmt.num(r.leaveDays)}</td><td class="num">${r.avgCheckIn ? `<span class="ltr">${esc(r.avgCheckIn)}</span>` : '—'}</td></tr>`).join('')}</tbody></table></div>${d.rows.length ? '' : emptyBox('در این بازه داده‌ای برای کارمندان نیست.')}</div>`;
       return {

@@ -75,6 +75,43 @@
     ok.focus();
   }
 
+  // ---------- عکس دیگران در لیست‌ها و پروفایل‌ها ----------
+  // AP.avatar(name, cls, userId) برچسب data-uid می‌گذارد؛ این‌جا فقط برای کاربرانِ دارای عکس تصویر بارگذاری می‌شود.
+  let have = new Map(); // userId → نسخه
+  function enhance(el) {
+    if (el.id === 'me-avatar') return;
+    const id = Number(el.dataset.uid);
+    const v = have.get(id);
+    const existing = el.querySelector('img.avatar-photo');
+    if (!v) { if (existing) existing.remove(); el.classList.remove('has-photo'); return; }
+    if (existing && existing.dataset.v === v) return;
+    if (existing) existing.remove();
+    const img = document.createElement('img');
+    img.className = 'avatar-photo'; img.alt = ''; img.dataset.v = v;
+    img.addEventListener('error', () => img.remove());
+    img.src = '/api/admin/avatar/' + id + '?v=' + encodeURIComponent(v);
+    el.appendChild(img); el.classList.add('has-photo');
+  }
+  function enhanceAll() { document.querySelectorAll('.avatar[data-uid]').forEach(enhance); }
+  async function loadSet() {
+    try {
+      const d = await AP.api('/admin/avatars');
+      have = new Map(Object.entries(d.versions || {}).map(([k, v]) => [Number(k), v]));
+      enhanceAll();
+    } catch (_) { /* بدون عکس: حروف اول نام */ }
+  }
+  new MutationObserver((muts) => {
+    if (!have.size) return;
+    for (const m of muts) {
+      for (const n of m.addedNodes) {
+        if (n.nodeType !== 1) continue;
+        if (n.matches && n.matches('.avatar[data-uid]')) enhance(n);
+        if (n.querySelectorAll) n.querySelectorAll('.avatar[data-uid]').forEach(enhance);
+      }
+    }
+  }).observe(document.documentElement, { childList: true, subtree: true });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && me) loadSet(); });
+
   function box() { return document.getElementById('me-avatar'); }
 
   function paint() {
@@ -102,14 +139,14 @@
       if (!res.ok) throw new Error(data.error || 'ذخیره‌ی عکس ناموفق بود.');
       AP.toast('عکس پروفایل ذخیره شد.');
       if (window.celebrate) window.celebrate('confetti');
-      paint();
+      paint(); loadSet();
       b.classList.add('avatar-pop');
       setTimeout(() => b.classList.remove('avatar-pop'), 600);
     } catch (err) { AP.toast(err.message || 'خطا', true); } finally { b.classList.remove('is-busy'); }
   }
 
   async function removePhoto() {
-    try { await AP.api('/admin/avatar', { method: 'DELETE' }); AP.toast('عکس حذف شد.'); hasPhoto = false; paint(); } catch (err) { AP.toast(err.message || 'خطا', true); }
+    try { await AP.api('/admin/avatar', { method: 'DELETE' }); AP.toast('عکس حذف شد.'); hasPhoto = false; paint(); loadSet(); } catch (err) { AP.toast(err.message || 'خطا', true); }
   }
 
   function closeMenu() { if (menu) { menu.remove(); menu = null; } }
@@ -143,6 +180,8 @@
   AP.profilePhoto = {
     mount(user) {
       me = user;
+      loadSet();
+      if (!AP.profilePhoto.timer) AP.profilePhoto.timer = setInterval(loadSet, 5 * 60 * 1000);
       const b = box();
       if (!b || b.dataset.avatarReady) { paint(); return; }
       b.dataset.avatarReady = '1';

@@ -49,7 +49,7 @@
     const managerConfigured = e.managerConfigured ? AP.badge('approved', 'تنظیم‌شده توسط سرپرست', true) : '';
     const warn = e.needsAttention ? '<span class="np-warn"><span aria-hidden="true">⚠</span><span class="sr-only">نیازمند توجه</span></span>' : '';
     return `<li><button type="button" class="np-emp${e.id === selectedId ? ' is-active' : ''}" data-np-user="${esc(e.id)}"${e.id === selectedId ? ' aria-current="true"' : ''}>
-      ${AP.avatar ? AP.avatar(e.fullName, 'sm') : ''}
+      ${AP.avatar ? AP.avatar(e.fullName, 'sm', e.id) : ''}
       <span class="np-emp-name">${esc(e.fullName)}${e.isSelf ? ' <span class="np-self">شما</span>' : ''}</span>
       <span class="np-emp-dep muted">${esc(e.department || 'بدون دپارتمان')}</span>
       <span class="np-emp-tags">${AP.badge(cls, label, true)}${managerConfigured}${warn}</span>
@@ -97,7 +97,7 @@
     const empty = !plan.id
       ? `<div id="np-empty" class="notice np-empty" role="status">برای این هفته برنامه‌ای ثبت نشده است.${plan.editable ? ' می‌توانید برای این کارمند تسک اضافه کنید.' : ''}</div>` : '';
     return `<div class="card profile-head np-head">
-        ${AP.avatar(r.employee.fullName, 'lg')}
+        ${AP.avatar(r.employee.fullName, 'lg', r.employee.id)}
         <div class="grow">
           <h2>${esc(r.employee.fullName)}</h2>
           <div class="tags">

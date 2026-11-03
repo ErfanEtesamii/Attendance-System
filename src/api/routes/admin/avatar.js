@@ -1,12 +1,25 @@
 // عکس پروفایل در پنل مدیریتی (کوکی نشست؛ <img src> مستقیم).
+//   GET    /admin/avatars          فهرست کاربران دارای عکس (اسکوپ پرسنده)
 //   GET    /admin/avatar/:userId   عکس خودِ کاربر، یا کاربری که در اسکوپ او هست (canAccessUser)؛ بدون عکس ⇒ 404
 //   POST   /admin/avatar           بدنه = خودِ تصویر (Content-Type = نوع تصویر)؛ فقط برای «خودِ» کاربر
 //   DELETE /admin/avatar           حذف عکس خود
 const express = require('express');
 const router = express.Router();
-const { canAccessUser } = require('./common');
+const { canAccessUser, scopedUserIds } = require('./common');
+const { getDb } = require('../../../db/connection');
 const avatarService = require('../../../services/avatarService');
 const auditRepository = require('../../../repositories/auditRepository');
+
+// فهرست کاربرانِ دارای عکس (فقط در اسکوپ پرسنده) ⇒ { versions: { [userId]: نسخه } }؛ کلاینت فقط برای همین‌ها عکس می‌خواهد
+router.get('/admin/avatars', (req, res) => {
+  const ids = scopedUserIds(req.adminUser);
+  const versions = {};
+  for (const r of getDb().prepare('SELECT user_id, file_id FROM user_avatars').all()) {
+    if (r.user_id === req.adminUser.id || ids === null || ids.includes(r.user_id)) versions[r.user_id] = r.file_id;
+  }
+  res.set('Cache-Control', 'private, no-store');
+  res.json({ versions });
+});
 
 router.get('/admin/avatar/:userId', (req, res) => {
   if (!/^\d+$/.test(req.params.userId)) return res.status(404).json({ error: 'عکسی ثبت نشده است.' });

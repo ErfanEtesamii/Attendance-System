@@ -150,7 +150,7 @@
         AP.modal({
           title: `کارمندان شیفت «${s.name}»`,
           body: d.users.length
-            ? `<div class="list">${d.users.map((u) => `<a class="item u-link-inherit" href="#/profile/${u.id}">${AP.avatar(u.fullName, 'sm')}
+            ? `<div class="list">${d.users.map((u) => `<a class="item u-link-inherit" href="#/profile/${u.id}">${AP.avatar(u.fullName, 'sm', u.id)}
                 <div class="grow"><div class="title">${esc(u.fullName)}</div><div class="meta">${esc(u.department || '—')}</div></div></a>`).join('')}</div>
               <p class="muted small shift-help">برای تغییر یا برداشتن شیفت، پرونده‌ی کارمند ← «اطلاعات و ویرایش».</p>`
             : '<div class="empty">کارمندی در محدوده‌ی دسترسی شما به این شیفت منتسب نیست.</div>',

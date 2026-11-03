@@ -114,7 +114,7 @@
     }).join('');
     const body = visible.map((r) => {
       const u = r.user;
-      return `<tr class="${u.isActive ? '' : 'inactive'}"><td class="cal-name"><div class="cell-user">${AP.avatar(u.fullName, 'sm')}<div><b><a class="u-link-inherit" href="#/profile/${esc(u.id)}">${esc(u.fullName)}</a>${u.isActive ? '' : ' <small>(غیرفعال)</small>'}</b><small>${esc(u.department || '')}</small></div></div></td>${r.days.map((c, i) => cellHtml(r, c, i)).join('')}</tr>`;
+      return `<tr class="${u.isActive ? '' : 'inactive'}"><td class="cal-name"><div class="cell-user">${AP.avatar(u.fullName, 'sm', u.id)}<div><b><a class="u-link-inherit" href="#/profile/${esc(u.id)}">${esc(u.fullName)}</a>${u.isActive ? '' : ' <small>(غیرفعال)</small>'}</b><small>${esc(u.department || '')}</small></div></div></td>${r.days.map((c, i) => cellHtml(r, c, i)).join('')}</tr>`;
     }).join('');
     const sum = visible.length > 1
       ? `<tfoot><tr class="cal-sum"><td class="cal-name">هم‌زمان مرخصی/مأموریت</td>${counts.map((c, i) => {

@@ -85,7 +85,7 @@
     const body = `
       <div class="record-modal" data-status="${esc(r.status)}">
         <header class="rec-hero">
-          ${AP.avatar(u.fullName, '')}
+          ${AP.avatar(u.fullName, '', u.id)}
           <div class="rec-hero-text">
             <h2><a class="u-link-inherit" href="#/profile/${r.user_id}" data-close-link>${esc(u.fullName || '—')}</a></h2>
             <p>${esc(fmt.dateLong(r.record_date))}${u.department ? ` · ${esc(u.department)}` : ''}</p>
@@ -302,7 +302,7 @@
         <div class="card flush"><div class="table-wrap"><table>
           <thead><tr><th>کارمند</th><th>تاریخ</th><th>ورود</th><th>خروج</th><th>استراحت</th><th>ساعت مفید</th><th>تأخیر</th><th>IP ورود</th><th>وضعیت</th></tr></thead><tbody>
           ${data.records.length ? data.records.map((r) => `<tr class="${r.id ? 'clickable' : ''}" ${r.id ? `data-rec="${r.id}"` : ''}>
-            <td><div class="cell-user">${AP.avatar(r.user ? r.user.fullName : '?', 'sm')}<span><b>${esc(r.user ? r.user.fullName : '—')}</b><small>${esc(r.user ? r.user.department || '' : '')}</small></span></div></td>
+            <td><div class="cell-user">${AP.avatar(r.user ? r.user.fullName : '?', 'sm', r.user ? r.user.id : undefined)}<span><b>${esc(r.user ? r.user.fullName : '—')}</b><small>${esc(r.user ? r.user.department || '' : '')}</small></span></div></td>
             <td>${esc(fmt.date(r.record_date))}</td><td class="num">${r.remoteOnly ? '—' : fmt.clock(r.check_in_time)}${remoteCell(r.remoteSessions)}</td><td class="num">${r.remoteOnly ? '—' : fmt.clock(r.check_out_time)}</td>
             <td class="num">${r.breakMinutes ? fmt.min(r.breakMinutes) : '—'}</td>
             <td class="num${r.summary.effectiveMinutes != null ? ' att-eff' : ''}">${r.summary.effectiveMinutes != null ? fmt.min(r.summary.effectiveMinutes) : '—'}</td>
@@ -420,7 +420,7 @@
         .map(([k, l]) => `<button class="chip ${k === leaveUi.status ? 'active' : ''}" data-s="${k}">${l}</button>`).join('')}</div>
       <div class="list">${items.length ? items.map((l) => `
         <div class="item">
-          ${AP.avatar(l.employee ? l.employee.fullName : '?', '')}
+          ${AP.avatar(l.employee ? l.employee.fullName : '?', '', l.employee ? l.employee.id : undefined)}
           <div class="grow">
             <div class="title"><a class="u-link-inherit" href="#/profile/${l.employee ? l.employee.id : ''}">${esc(l.employee ? l.employee.fullName : '—')}</a>
               ${AP.badge(l.leaveType === 'mission' ? 'mission' : 'leave', AP.LEAVE_TYPE[l.leaveType])} ${AP.badge(l.status, AP.LEAVE_STATUS[l.status])}</div>
@@ -501,7 +501,7 @@
     return `
       <div class="item leave-item st-${esc(it.status)}">
         ${check}
-        ${AP.avatar(emp ? emp.fullName : '?', '')}
+        ${AP.avatar(emp ? emp.fullName : '?', '', emp ? emp.id : undefined)}
         <div class="grow">
           <div class="title">${emp ? `<a class="u-link-inherit" href="#/profile/${esc(emp.id)}">${esc(emp.fullName)}</a>` : '—'}
             ${AP.badge(it.kind === 'mission' ? 'mission' : 'leave', type)} ${AP.badge(it.status, AP.LEAVE_STATUS[it.status] || it.status)}${waiting}</div>
@@ -665,7 +665,7 @@
     const decided = it.decidedAt ? `<div class="meta">تصمیم: ${esc(fmt.dateTime(it.decidedAt))}${it.decisionNote ? ` — ${esc(it.decisionNote)}` : ''}</div>` : '';
     return `
       <div class="item">
-        ${AP.avatar(u ? u.fullName : '?', '')}
+        ${AP.avatar(u ? u.fullName : '?', '', u ? u.id : undefined)}
         <div class="grow">
           <div class="title">${u ? `<a class="u-link-inherit" href="#/profile/${esc(u.id)}">${esc(u.fullName)}</a>` : '—'} ${AP.badge(cls, label)}</div>
           <div class="meta">${u ? `${esc(u.department || '')}${u.personnelCode ? ` · کد پرسنلی <span class="ltr">${esc(u.personnelCode)}</span>` : ''} · ` : ''}${esc(fmt.dateLong(it.date))}${late} · درخواست: ${esc(fmt.dateTime(it.requestedAt))}</div>
@@ -831,7 +831,7 @@
       const chips = DISP_FILTERS.map(([k, label, ck]) => `<button class="chip ${k === dispUi.status ? 'active' : ''}" data-s="${k}">${esc(label)}${counts && counts[ck] != null ? ` <b>${fmt.num(counts[ck])}</b>` : ''}</button>`).join('');
       const rows = items.map((d) => `
         <div class="item">
-          ${AP.avatar(d.employee ? d.employee.fullName : '?', 'purple')}
+          ${AP.avatar(d.employee ? d.employee.fullName : '?', 'purple', d.employee ? d.employee.id : undefined)}
           <div class="grow">
             <div class="title"><a href="#/profile/${d.employee ? d.employee.id : ''}" class="dsp-emp">${esc(d.employee ? d.employee.fullName : '—')}</a>
               ${dispBadge(d)} ${dispCountBadge(d)}
@@ -968,7 +968,7 @@
 
       const leaveItems = leaves.map((l) => `
         <div class="item">
-          ${AP.avatar(l.employee ? l.employee.fullName : '?', '')}
+          ${AP.avatar(l.employee ? l.employee.fullName : '?', '', l.employee ? l.employee.id : undefined)}
           <div class="grow">
             <div class="title"><a class="u-link-inherit" href="#/profile/${l.employee ? l.employee.id : ''}">${esc(l.employee ? l.employee.fullName : '—')}</a>
               ${AP.badge(l.leaveType === 'mission' ? 'mission' : 'leave', AP.LEAVE_TYPE[l.leaveType])}</div>
@@ -982,7 +982,7 @@
 
       const disputeItems = disputes.map((d) => `
         <div class="item">
-          ${AP.avatar(d.employee ? d.employee.fullName : '?', 'purple')}
+          ${AP.avatar(d.employee ? d.employee.fullName : '?', 'purple', d.employee ? d.employee.id : undefined)}
           <div class="grow">
             <div class="title"><a class="u-link-inherit" href="#/profile/${d.employee ? d.employee.id : ''}">${esc(d.employee ? d.employee.fullName : '—')}</a>
               <span class="muted table-hint">${esc(fmt.dateTime(d.createdAt))}</span></div>
@@ -1023,7 +1023,7 @@
             $$('.chip', chipsEl).forEach((c) => c.classList.toggle('active', c.dataset.f === nightUi.filter));
             const list = nightUi.filter === 'attention' ? rows.filter((r) => r.needsAttention) : rows;
             body.innerHTML = list.length ? list.map((r) => `<tr>
-              <td><a class="cell-user u-link-inherit" href="#/profile/${r.user.id}">${AP.avatar(r.user.fullName, 'sm')}
+              <td><a class="cell-user u-link-inherit" href="#/profile/${r.user.id}">${AP.avatar(r.user.fullName, 'sm', r.user.id)}
                 <span><b>${esc(r.user.fullName)}</b><small>${esc(r.user.department || '—')}</small></span></a></td>
               <td>${AP.stateBadge(r.state)} ${r.onMission ? AP.badge('mission', 'مأموریت') : ''}</td>
               <td class="num">${r.checkIn ? fmt.clock(r.checkIn) : '—'}</td>
