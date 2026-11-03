@@ -16,6 +16,7 @@ const { todayDateString } = require('../../utils/serverTime');
 const { addDays } = require('../../utils/shiftDay');
 const { MONTH_NAMES, jalaliPartsOfDateString, jalaliMonthRangeOf, jalaliMonthDates } = require('../../utils/jalali');
 
+const { isAdmin, isManagerUp } = require('../../utils/roles');
 const CB = { CANCEL: 'fl:x', HOME: 'fl:h', SKIP: 'fl:s', NOOP: 'dp:n' };
 const EXPIRED_TEXT = 'این دکمه منقضی شده، منو را باز کنید.';
 const WEEKDAY_NAMES = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
@@ -159,13 +160,13 @@ function candidateUsers(filter, pick = {}) {
   let list = usersRepository.listUsers({});
   if (filter === 'urgent_targets') {
     const actor = pick && pick.actorId ? usersRepository.findById(pick.actorId) : null;
-    list = list.filter((u) => u.is_active && actor && u.id !== actor.id && (actor.role === 'admin' || (actor.role === 'manager' && u.manager_id === actor.id)));
-  } else if (filter === 'managers') list = list.filter((u) => u.is_active && ['manager', 'admin'].includes(u.role));
+    list = list.filter((u) => u.is_active && actor && u.id !== actor.id && (isAdmin(actor) || (actor.role === 'manager' && u.manager_id === actor.id)));
+  } else if (filter === 'managers') list = list.filter((u) => u.is_active && isManagerUp(u));
   return list.sort((a, b) => (Number(b.is_active) - Number(a.is_active)) || String(a.full_name).localeCompare(String(b.full_name), 'fa'));
 }
 
 function employeeLabel(u) {
-  const role = u.role === 'manager' ? ' — سرپرست' : u.role === 'admin' ? ' — ادمین' : '';
+  const role = u.role === 'manager' ? ' — سرپرست' : isAdmin(u) ? ' — ادمین' : '';
   return `${u.is_active ? '' : '🔴 '}${u.full_name}${role}`.slice(0, 48);
 }
 

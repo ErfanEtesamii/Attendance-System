@@ -15,6 +15,7 @@
     "smoke": "node scripts/smoke-test.js",
     "bench:analytics": "node scripts/bench-analytics.js",
     "create-admin": "node src/scripts/createAdmin.js",
+    "promote-owner": "node src/scripts/promoteOwner.js",
     "dev": "node --watch src/index.js",
     "secret-scan": "node scripts/secret-scan.js",
     "package": "node scripts/package-release.js",

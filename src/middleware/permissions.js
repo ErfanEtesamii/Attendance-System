@@ -39,7 +39,8 @@ const PERMISSIONS = Object.freeze([
   'settings.edit', // تنظیمات و تعطیلات (نوشتن، import)
   'audit.read',
   'system.read',
-  'system.manage', // ارسال همگانی، ابطال همه‌ی نشست‌ها، بک‌آپ
+  'system.manage', // ارسال همگانی، ابطال همه‌ی نشست‌ها، بک‌آپ، ریست و پاک‌سازی تاریخچه (فقط owner)
+  'admins.manage', // مدیریت adminها: ساخت/ویرایش/غیرفعال/حذف/ابطال نشست کاربرانی با نقش admin و تعیین نقش admin (فقط owner)
   'notifications.read', // S4-5b: فهرست/شمارنده‌ی اعلان‌های «خود کاربر» (اسکوپ سمت سرور؛ پارامتر کاربر ندارد)
   'notifications.mark', // S4-5b: علامت خوانده‌شدنِ اعلان‌های «خود کاربر» (برای همه‌ی نقش‌ها از جمله hr؛ روی داده‌ی دیگران اثر ندارد)
   'leave.balance.read', // S4-9c: مانده‌ی مرخصی؛ اسکوپ در route (کارمند خودش، سرپرست خودش+تیم، admin/hr همه)
@@ -124,10 +125,17 @@ const HR_PERMISSIONS = [
   'remote_work.read', // R5-1: فقط‌خواندنی روی همه (تأیید/رد ندارد)
 ];
 
+// مجوزهای «فقط owner»: سیستم و امنیت + مدیریت adminها. admin کل این‌ها را ندارد.
+const OWNER_ONLY_PERMISSIONS = Object.freeze(['system.manage', 'admins.manage']);
+
+// admin = همه‌ی مجوزها به‌جز «فقط owner»؛ owner = همه‌ی مجوزها (فراتر از admin).
+const ADMIN_PERMISSIONS = PERMISSIONS.filter((p) => !OWNER_ONLY_PERMISSIONS.includes(p));
+
 const ROLE_PERMISSIONS = Object.freeze({
   employee: Object.freeze(new Set(EMPLOYEE_PERMISSIONS)),
   manager: Object.freeze(new Set(MANAGER_PERMISSIONS)),
-  admin: Object.freeze(new Set(PERMISSIONS)),
+  admin: Object.freeze(new Set(ADMIN_PERMISSIONS)),
+  owner: Object.freeze(new Set(PERMISSIONS)),
   hr: Object.freeze(new Set(HR_PERMISSIONS)),
 });
 
@@ -180,4 +188,4 @@ function requireAnyPermission(...anyOf) {
   };
 }
 
-module.exports = { PERMISSIONS, ROLES, ROLE_PERMISSIONS, hasPermission, permissionsFor, requirePermission, requireAnyPermission };
+module.exports = { PERMISSIONS, OWNER_ONLY_PERMISSIONS, ROLES, ROLE_PERMISSIONS, hasPermission, permissionsFor, requirePermission, requireAnyPermission };

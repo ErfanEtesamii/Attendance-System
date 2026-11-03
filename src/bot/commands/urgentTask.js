@@ -11,6 +11,7 @@ const ui = require('../ui/pickers');
 const { todayDateString } = require('../../utils/serverTime');
 const { addDays } = require('../../utils/shiftDay');
 
+const { isAdmin, isManagerUp } = require('../../utils/roles');
 const FLOW = 'urgent_task';
 const CANCEL = 'fl:x';
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -25,7 +26,7 @@ const normalizeDigits = (s) => String(s || '')
 /** کاربرِ تعیین‌کننده‌ی همین مکالمه؛ هر بار از دیتابیس (نقش/فعال‌بودن ممکن است عوض شده باشد). */
 function sessionActor(sess) {
   const u = sess && sess.data && sess.data.actorId ? usersRepository.findById(sess.data.actorId) : null;
-  return u && u.is_active && (u.role === 'admin' || u.role === 'manager') ? u : null;
+  return u && u.is_active && (isAdmin(u) || u.role === 'manager') ? u : null;
 }
 
 async function denyAndClear(bot, chatId) {
@@ -51,13 +52,13 @@ async function handleUrgentTaskCommand(bot, msg) {
     await bot.sendMessage(chatId, notRegisteredMessage(msg.from.id), { parse_mode: 'Markdown' });
     return;
   }
-  if (!['admin', 'manager'].includes(user.role)) {
+  if (!isManagerUp(user)) {
     await bot.sendMessage(chatId, '⛔️ تعیین تسک فوری فقط برای ادمین و سرپرست مجاز است.');
     return;
   }
   session.start(chatId, FLOW, { actorId: user.id });
   await ui.askEmployee(bot, chatId, {
-    text: user.role === 'admin' ? '⚡ تسک فوری برای کدام کارمند؟' : '⚡ تسک فوری برای کدام یک از اعضای تیم شما؟',
+    text: isAdmin(user) ? '⚡ تسک فوری برای کدام کارمند؟' : '⚡ تسک فوری برای کدام یک از اعضای تیم شما؟',
     label: 'کارمند',
     filter: 'urgent_targets',
     actorId: user.id,

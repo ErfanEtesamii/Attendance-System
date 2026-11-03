@@ -9,8 +9,9 @@ const auditRepository = require('../../repositories/auditRepository');
 const notificationEvents = require('../../services/notificationEvents');
 const ui = require('../ui/pickers');
 
+const { isAdmin } = require('../../utils/roles');
 function canHandle(actor, dispute) {
-  if (actor.role === 'admin') return true;
+  if (isAdmin(actor)) return true;
   const employee = usersRepository.findById(dispute.user_id);
   return !!employee && employee.manager_id === actor.id;
 }

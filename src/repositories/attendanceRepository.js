@@ -183,10 +183,13 @@ function ensureNonWorkingDayRecord(userId, dateStr, status) {
   return result.changes > 0;
 }
 
+// owner کارمند شرکت نیست: رکوردهای تستیِ ورود/خروج او در آمار، فهرست حضور و تشخیص موارد مشکوک نمی‌آید.
+const NOT_OWNER_SQL = "user_id NOT IN (SELECT id FROM users WHERE role = 'owner')";
+
 // همه رکوردهای امروز (برای گزارش پایان روز و بررسی «ورود دیرهنگام»/«ناقص»)
 function listAllToday() {
   const db = getDb();
-  return db.prepare('SELECT * FROM attendance_records WHERE record_date = ?').all(todayDateString());
+  return db.prepare(`SELECT * FROM attendance_records WHERE record_date = ? AND ${NOT_OWNER_SQL}`).all(todayDateString());
 }
 
 // رکوردهای «ناقص» تاریخ مشخص که خروج ثبت نشده (برای Job بستن خودکار پایان روز)
@@ -208,7 +211,7 @@ function listForFraud(fromDate, toDate) {
               check_in_time, check_in_ip, check_in_device,
               check_out_time, check_out_ip, check_out_device
        FROM attendance_records
-       WHERE record_date BETWEEN ? AND ?
+       WHERE record_date BETWEEN ? AND ? AND ${NOT_OWNER_SQL}
        ORDER BY record_date, id`
     )
     .all(fromDate, toDate);
@@ -244,6 +247,7 @@ function search({ from, to, userIds = null, status = null, limit = 500 }) {
   const db = getDb();
   const where = ['r.record_date BETWEEN ? AND ?'];
   const params = [from, to];
+  if (userIds === null) where.push("r.user_id NOT IN (SELECT id FROM users WHERE role = 'owner')");
   if (userIds !== null) {
     if (!userIds.length) return [];
     where.push(`r.user_id IN (${userIds.map(() => '?').join(',')})`);

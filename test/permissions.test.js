@@ -2,7 +2,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const {
-  PERMISSIONS, ROLE_PERMISSIONS, hasPermission, permissionsFor, requirePermission,
+  PERMISSIONS, OWNER_ONLY_PERMISSIONS, ROLE_PERMISSIONS, hasPermission, permissionsFor, requirePermission,
 } = require('../src/middleware/permissions');
 const { requireStaff, requireFullAdmin } = require('../src/middleware/adminAuth');
 
@@ -19,7 +19,9 @@ test('نگاشت سازگار است: هر مجوز نقش‌ها در فهرس�
   for (const [role, set] of Object.entries(ROLE_PERMISSIONS)) {
     for (const p of set) assert.ok(PERMISSIONS.includes(p), `${role}: مجوز ناشناخته ${p}`);
   }
-  assert.deepEqual(permissionsFor('admin'), [...PERMISSIONS]);
+  // admin = همه به‌جز «فقط owner»؛ owner = همه (بالاتر از admin)
+  assert.deepEqual(permissionsFor('owner'), [...PERMISSIONS]);
+  assert.deepEqual(permissionsFor('admin'), PERMISSIONS.filter((x) => !OWNER_ONLY_PERMISSIONS.includes(x)));
   assert.ok(Object.isFrozen(ROLE_PERMISSIONS));
 });
 
@@ -33,7 +35,7 @@ test('محدوده‌ی هر نقش: کارمند فقط خواندنی خود،
   for (const p of ['records.edit', 'leave.approve', 'users.read', 'reports.read', 'settings.read']) {
     assert.equal(hasPermission('manager', p), true, `manager ${p}`);
   }
-  for (const p of ['users.write', 'settings.edit', 'audit.read', 'system.manage', 'shifts.edit']) {
+  for (const p of ['users.write', 'settings.edit', 'audit.read', 'shifts.edit']) {
     assert.equal(hasPermission('manager', p), false, `manager ${p}`);
     assert.equal(hasPermission('admin', p), true, `admin ${p}`);
   }
@@ -74,10 +76,10 @@ test('default-deny: نقش/مجوز ناشناخته یا ورودی نامعت�
 });
 
 test('requirePermission با requireStaff / requireFullAdmin فعلی برای هر نقش هم‌ارز است', () => {
-  const roles = ['employee', 'manager', 'admin', undefined];
+  const roles = ['employee', 'manager', 'admin', 'owner', undefined];
   const staffPerms = ['records.edit', 'leave.approve', 'leave.edit', 'disputes.resolve', 'overtime.approve',
     'shifts.read', 'suspicious.read', 'suspicious.review'];
-  const adminPerms = ['users.write', 'shifts.edit', 'settings.edit', 'audit.read', 'system.read', 'system.manage'];
+  const adminPerms = ['users.write', 'shifts.edit', 'settings.edit', 'audit.read', 'system.read'];
   for (const role of roles) {
     for (const p of staffPerms) assert.equal(run(requirePermission(p), role), run(requireStaff, role), `${role} ${p}`);
     for (const p of adminPerms) assert.equal(run(requirePermission(p), role), run(requireFullAdmin, role), `${role} ${p}`);
@@ -134,4 +136,20 @@ test('عملکرد و حقوق: performance.read و payroll.read فقط admin', 
     for (const r of ['manager', 'hr', 'employee', 'ناشناخته']) assert.equal(hasPermission(r, perm), false, `${r} ${perm}`);
     for (const r of ['manager', 'hr', 'employee']) assert.equal(run(requirePermission(perm), r), 403, `${r} ${perm}`);
   }
+});
+
+test('owner: همه‌ی مجوزهای admin + بخش‌های فقط-owner (سیستم/امنیت و مدیریت adminها)؛ admin آن‌ها را ندارد', () => {
+  assert.deepEqual([...OWNER_ONLY_PERMISSIONS].sort(), ['admins.manage', 'system.manage']);
+  for (const p of PERMISSIONS) assert.equal(hasPermission('owner', p), true, `owner ${p}`);
+  for (const p of OWNER_ONLY_PERMISSIONS) {
+    assert.equal(hasPermission('admin', p), false, `admin ${p}`);
+    for (const r of ['hr', 'manager', 'employee']) assert.equal(hasPermission(r, p), false, `${r} ${p}`);
+  }
+  // هر مجوزی که admin دارد، owner هم دارد (owner ابرمجموعه است)
+  for (const p of permissionsFor('admin')) assert.equal(hasPermission('owner', p), true, `owner ⊇ admin: ${p}`);
+  assert.equal(run(requirePermission('system.manage'), 'owner'), 'next');
+  assert.equal(run(requirePermission('system.manage'), 'admin'), 403);
+  assert.equal(run(requirePermission('admins.manage'), 'admin'), 403);
+  assert.equal(run(requireStaff, 'owner'), 'next');
+  assert.equal(run(requireFullAdmin, 'owner'), 'next');
 });

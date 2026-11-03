@@ -5,6 +5,7 @@ const auditRepository = require('../../repositories/auditRepository');
 const notificationEvents = require('../../services/notificationEvents');
 const leaveApprovalService = require('../../services/leaveApprovalService');
 
+const { isAdmin } = require('../../utils/roles');
 async function handlePendingLeaves(bot, msg) {
   const chatId = msg.chat.id;
   const user = getRegisteredUser(msg.from.id);
@@ -20,7 +21,7 @@ async function handlePendingLeaves(bot, msg) {
   const pending = leaveRepository.listPending();
   // S4-11a: سرپرست فقط درخواست‌هایی را می‌بیند که «نوبت مرحله‌ی سرپرست» است؛ ادمین همه‌ی pendingها (هر مرحله) را
   const scoped =
-    user.role === 'admin'
+    isAdmin(user)
       ? pending
       : pending.filter((r) => usersRepository.findById(r.user_id)?.manager_id === user.id && leaveApprovalService.awaitingRole(r) === 'manager');
 

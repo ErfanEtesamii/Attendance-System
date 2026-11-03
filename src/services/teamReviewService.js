@@ -31,6 +31,7 @@ const auditRepository = require('../repositories/auditRepository');
 const calendarService = require('../engine/calendarService');
 const { sanitizeText } = require('../utils/sanitize');
 const { addDays, dayNumber } = require('../utils/shiftDay');
+const { isAdmin } = require('../utils/roles');
 const logErr = (label, err) => console.error(`[teamReview] ${label} (نادیده گرفته شد):`, sanitizeText(err && err.message ? err.message : String(err), 200));
 
 const REVIEW_KEY = 'review_team_reports';
@@ -43,7 +44,7 @@ const MAX_LOOKBACK_DAYS = 60;
 const fail = (code, error, extra = {}) => ({ ok: false, code, error, ...extra });
 const clean = (v, max) => sanitizeText(v == null ? '' : String(v), max + 1).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
 
-const isReviewer = (user) => !!user && (user.role === 'manager' || user.role === 'admin');
+const isReviewer = (user) => !!user && (user.role === 'manager' || isAdmin(user));
 
 // کد خطا ⇒ وضعیت HTTP (مشترک بین Mini App و پنل)
 const ERROR_STATUS = { FORBIDDEN: 403, SUBJECT_NOT_IN_SCOPE: 403, USER_NOT_FOUND: 404, NO_REPORT: 404, MONTH_CLOSED: 409 };
@@ -321,7 +322,7 @@ function markReviewed(reviewer, input, { now = new Date(), ip = null } = {}) {
 
   const subject = usersRepository.findById(subjectId);
   if (!subject) return fail('USER_NOT_FOUND', 'کارمند پیدا نشد.');
-  const inScope = subject.id !== reviewer.id && (reviewer.role === 'admin' || subject.manager_id === reviewer.id);
+  const inScope = subject.id !== reviewer.id && (isAdmin(reviewer) || subject.manager_id === reviewer.id);
   if (!inScope) return fail('SUBJECT_NOT_IN_SCOPE', 'این کارمند عضو تیم شما نیست.');
 
   let comment;

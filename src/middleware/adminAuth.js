@@ -16,6 +16,7 @@ const settingsRepository = require('../repositories/settingsRepository');
 const { SESSION_COOKIE_NAME, buildClearCookie } = require('../utils/sessionCookie');
 const { ROLES } = require('./permissions');
 
+const { isAdmin, isManagerUp } = require('../utils/roles');
 // فقط خواندنِ داده‌های خود کارمند. (اسکوپ «فقط خودش» در scopedUserIds هر route اعمال می‌شود.)
 const EMPLOYEE_ALLOWED = [
   ['GET', /^\/admin\/me$/],
@@ -91,7 +92,7 @@ function requireAdminAuth(req, res, next) {
 
 // برای اکشن‌های مدیریتی: سرپرست (فقط روی تیم خودش؛ اسکوپ را خود route چک می‌کند) و ادمین
 function requireStaff(req, res, next) {
-  if (!req.adminUser || !['manager', 'admin'].includes(req.adminUser.role)) {
+  if (!req.adminUser || !isManagerUp(req.adminUser)) {
     return res.status(403).json({ error: 'این عملیات فقط برای سرپرست یا ادمین مجاز است.' });
   }
   next();
@@ -99,7 +100,7 @@ function requireStaff(req, res, next) {
 
 // برای اکشن‌هایی که فقط ادمین کل مجاز است (مدیریت کاربران، تنظیمات، لاگ، سیستم، ارسال همگانی)
 function requireFullAdmin(req, res, next) {
-  if (!req.adminUser || req.adminUser.role !== 'admin') {
+  if (!req.adminUser || !isAdmin(req.adminUser)) {
     return res.status(403).json({ error: 'این عملیات فقط برای ادمین کل مجاز است.' });
   }
   next();

@@ -23,6 +23,7 @@ const resetService = require('../../../services/resetService');
 const historyPurgeService = require('../../../services/historyPurgeService');
 const { createRateLimiter } = require('../../../middleware/rateLimiter');
 
+const { isOwner } = require('../../../utils/roles');
 // ریست برنامه: ۳ تلاش در ساعت برای هر ادمین (شامل تلاش‌های ردشده)
 const resetLimiter = createRateLimiter({
   name: 'system-reset',
@@ -187,7 +188,7 @@ router.get('/admin/system/reset/options', requirePermission('system.manage'), (r
 
 // پیش‌نمایش (dry-run): فقط می‌شمارد
 router.post('/admin/system/reset/preview', requirePermission('system.manage'), (req, res) => {
-  if (!req.adminUser || req.adminUser.role !== 'admin') return res.status(403).json({ error: 'فقط ادمین کل.', code: 'forbidden' });
+  if (!req.adminUser || !isOwner(req.adminUser)) return res.status(403).json({ error: 'فقط owner.', code: 'forbidden' });
   try {
     const preview = resetService.previewReset({ groups: (req.body || {}).groups, beforeDate: (req.body || {}).beforeDate });
     res.json({ ...preview, locked: resetService.isResetLocked() });
@@ -212,7 +213,7 @@ router.post('/admin/system/reset', requirePermission('system.manage'), resetLimi
 
 // پاک‌سازی محدودِ بازه‌ای: فقط تردد و برنامه‌های هفتگی (و وابسته‌های مستقیم‌شان).
 router.post('/admin/system/history-purge/preview', requirePermission('system.manage'), (req, res) => {
-  if (!req.adminUser || req.adminUser.role !== 'admin') return res.status(403).json({ error: 'فقط ادمین کل.', code: 'forbidden' });
+  if (!req.adminUser || !isOwner(req.adminUser)) return res.status(403).json({ error: 'فقط owner.', code: 'forbidden' });
   try {
     res.json(historyPurgeService.preview(req.body || {}));
   } catch (err) {

@@ -12,6 +12,7 @@ const { todayInZone, zonedTimeToUtc } = require('../../utils/time');
 const { addDays } = require('../../utils/shiftDay');
 const { isoDateToJalaliString } = require('../../utils/jalali');
 
+const { isAdmin } = require('../../utils/roles');
 const MAX_NAMES = 12;
 
 const jd = (iso) => isoDateToJalaliString(iso) || iso;
@@ -33,7 +34,7 @@ function buildMorningDigests({ now = new Date() } = {}) {
   const fromDate = addDays(today, -(Number(settings.reportBackfillDays) || 2) - 1);
   const out = [];
   for (const { reviewer, members } of nightlyTaskReportService.recipientsMap().values()) {
-    if (reviewer.role !== 'manager' && reviewer.role !== 'admin') continue;
+    if (reviewer.role !== 'manager' && !isAdmin(reviewer)) continue;
     const cal = calendarService.getCalendarDay(reviewer, today, { settings });
     if (!cal.isWorkingDay) continue;
     const byId = new Map(members.map((m) => [m.id, m]));

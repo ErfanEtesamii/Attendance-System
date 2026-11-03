@@ -7,11 +7,12 @@ const leaveRepository = require('../../repositories/leaveRepository');
 const leaveApprovalService = require('../../services/leaveApprovalService');
 const missionDecisionService = require('../../services/missionDecisionService');
 
+const { isAdmin } = require('../../utils/roles');
 const CANCEL_WORD = 'انصراف';
 
 function canAct(actor, request) {
   if (!actor || !hasRole(actor, ['admin', 'manager'])) return false;
-  if (actor.id === request.user_id && actor.role !== 'admin') return false;
+  if (actor.id === request.user_id && !isAdmin(actor)) return false;
   return leaveApprovalService.canDecide(actor, request, leaveApprovalService.awaitingRole(request));
 }
 

@@ -20,11 +20,11 @@ function collect({ now = new Date() } = {}) {
 
   const since = addDays(today, -6);
   const lates = db.prepare(`SELECT u.full_name n, COUNT(*) c FROM attendance_records r JOIN users u ON u.id=r.user_id
-    WHERE r.status='late' AND r.record_date BETWEEN ? AND ? AND u.is_active=1 GROUP BY r.user_id HAVING c >= ? ORDER BY c DESC LIMIT 8`).all(since, today, LATE_THRESHOLD_7D);
+    WHERE r.status='late' AND r.record_date BETWEEN ? AND ? AND u.is_active=1 AND u.role<>'owner' GROUP BY r.user_id HAVING c >= ? ORDER BY c DESC LIMIT 8`).all(since, today, LATE_THRESHOLD_7D);
   if (lates.length) out.push({ key: `late_repeat:${today}`, text: `⚠️ تأخیر مکرر در ۷ روز اخیر: ${lates.map((l) => `${l.n} (${l.c} بار)`).join('، ')}` });
 
   const yesterday = addDays(today, -1);
-  const incomplete = db.prepare(`SELECT COUNT(*) c FROM attendance_records WHERE record_date=? AND status='incomplete'`).get(yesterday).c;
+  const incomplete = db.prepare(`SELECT COUNT(*) c FROM attendance_records WHERE record_date=? AND status='incomplete' AND user_id NOT IN (SELECT id FROM users WHERE role='owner')`).get(yesterday).c;
   if (incomplete > 0) out.push({ key: `incomplete:${yesterday}`, text: `🚪 ${incomplete} رکورد دیروز بدون ثبت خروج (ناقص) است.` });
 
   return out;

@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { requirePermission, ROLES } = require('../../../middleware/permissions');
+const { requirePermission, hasPermission, ROLES } = require('../../../middleware/permissions');
 const usersRepository = require('../../../repositories/usersRepository');
 const attendanceRepository = require('../../../repositories/attendanceRepository');
 const leaveRepository = require('../../../repositories/leaveRepository');
@@ -24,6 +24,20 @@ const { scopedUserIds, canAccessUser, parseRange, userBrief, enrichRecord, audit
 const { userView } = require('../../../utils/auditViews');
 const teamReviewService = require('../../../services/teamReviewService');
 
+const { isAdmin } = require('../../../utils/roles');
+
+// مدیریت adminها فقط با مجوز «admins.manage» (فقط owner). نقش owner هرگز از طریق API/پنل داده یا گرفته نمی‌شود
+// (فقط با اسکریپت promote-owner یا OWNER_TELEGRAM_ID)، و کاربر owner را کس دیگری نمی‌تواند تغییر دهد.
+// targetRole = نقش فعلی هدف (یا null برای کاربر جدید)؛ nextRole = نقش درخواستی (یا undefined اگر تغییر نمی‌کند).
+function adminManagementDenied(req, targetRole, nextRole) {
+  const touchesPrivileged = ['admin', 'owner'].includes(targetRole) || ['admin', 'owner'].includes(nextRole);
+  if (!touchesPrivileged) return null;
+  if (targetRole === 'owner' && req.adminUser.role !== 'owner') return 'حساب owner را فقط خود owner می‌تواند مدیریت کند.';
+  if (nextRole === 'owner' && targetRole !== 'owner') return 'نقش owner از طریق پنل قابل تعیین نیست.';
+  if (targetRole === 'owner' && nextRole !== undefined && nextRole !== 'owner') return 'نقش owner از طریق پنل قابل تغییر نیست.';
+  if (!hasPermission(req.adminUser.role, 'admins.manage')) return 'مدیریت adminها فقط برای owner مجاز است.';
+  return null;
+}
 // H5: بعد از افزودن/جابه‌جایی زیردست یا تغییر نقش/فعال‌بودن، تسک واجبِ «بررسی گزارش تیم» سرپرست‌های مرتبط بلافاصله ساخته شود (ضدخطا)
 function refreshTeamReview(ids) {
   try { teamReviewService.refreshReviewersOf(ids); } catch (err) { console.error('[users] بازسازی تسک واجب سرپرست ناموفق (نادیده گرفته شد):', err.message); }
@@ -82,6 +96,8 @@ router.post('/admin/users', requirePermission('users.write'), (req, res) => {
   if (!fullName || !fullName.trim()) {
     return res.status(400).json({ error: 'fullName الزامی است.' });
   }
+  const denied = adminManagementDenied(req, null, ROLES.includes(role) ? role : 'employee');
+  if (denied) return res.status(403).json({ error: denied });
   if (telegramUserId && usersRepository.findByTelegramId(String(telegramUserId))) {
     return res.status(409).json({ error: 'این آیدی تلگرام قبلاً ثبت شده است.' });
   }
@@ -217,12 +233,16 @@ router.patch('/admin/users/:id', requirePermission('users.write'), (req, res) =>
     req.body || {};
   const rateIn = parseHourlyRateKt((req.body || {}).hourlyRateKt);
   if (rateIn.error) return res.status(400).json({ error: rateIn.error });
+  const nextRole = role !== undefined && ROLES.includes(role) ? role : undefined;
+  const selfNoRoleChange = id === req.adminUser.id && (nextRole === undefined || nextRole === user.role);
+  const denied = selfNoRoleChange ? null : adminManagementDenied(req, user.role, nextRole);
+  if (denied) return res.status(403).json({ error: denied });
   // جلوگیری از قفل شدن پنل: ادمین نباید خودش را غیرفعال یا تنزل نقش کند
   if (id === req.adminUser.id) {
     if (isActive !== undefined && !isActive) {
       return res.status(400).json({ error: 'نمی‌توانید حساب خودتان را غیرفعال کنید.' });
     }
-    if (role !== undefined && role !== 'admin') {
+    if (role !== undefined && role !== req.adminUser.role) {
       return res.status(400).json({ error: 'نمی‌توانید نقش خودتان را تغییر دهید.' });
     }
   }
@@ -292,6 +312,8 @@ router.post('/admin/users/:id/revoke-sessions', requirePermission('users.write')
   const id = parseInt(req.params.id, 10);
   const user = usersRepository.findById(id);
   if (!user) return res.status(404).json({ error: 'کارمند یافت نشد.' });
+  const denied = adminManagementDenied(req, user.role, undefined);
+  if (denied && id !== req.adminUser.id) return res.status(403).json({ error: denied });
   const reason = requireReason(req, res);
   if (!reason) return;
 
@@ -321,6 +343,8 @@ router.delete('/admin/users/:id', requirePermission('users.write'), (req, res) =
   if (id === req.adminUser.id) {
     return res.status(400).json({ error: 'نمی‌توانید حساب خودتان را حذف کنید.' });
   }
+  const denied = adminManagementDenied(req, user.role, undefined);
+  if (denied) return res.status(403).json({ error: denied });
 
   const counts = usersRepository.getHistoryCounts(id);
   const hasHistory = counts.attendance + counts.leave + counts.disputes > 0;
@@ -362,7 +386,7 @@ router.get('/admin/users/:id/details', requirePermission('users.details.read'), 
   const todayRecord = attendanceRepository.findTodayRecord(user.id);
 
   let audits = [];
-  if (req.adminUser.role === 'admin') {
+  if (isAdmin(req.adminUser)) {
     const own = auditRepository.search({ userId: user.id, limit: 100 });
     const about = auditRepository.search({ q: `"targetUserId":${user.id}`, limit: 100 });
     const seen = new Set();

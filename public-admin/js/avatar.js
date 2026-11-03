@@ -80,7 +80,7 @@
   let have = new Map(); // userId → نسخه
   let loaded = false;
   // ادمین روی آواتارهای بزرگ (صفحه‌ی پروفایل/هدرها) با رفتن موس دو دکمه می‌بیند: 📷 افزودن/تغییر و 🗑 حذف (دو مرحله‌ای).
-  const isAdmin = () => !!(AP.state && AP.state.me && AP.state.me.role === 'admin');
+  const isAdmin = () => !!(AP.state && AP.state.me && ['admin', 'owner'].includes(AP.state.me.role));
   let adminInput = null; let adminTarget = null;
   function pickFor(id) {
     if (!adminInput) {

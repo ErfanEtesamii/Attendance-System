@@ -18,6 +18,7 @@ const attachmentService = require('../../../services/attachmentService');
 const { sendAttachment } = require('../../../utils/attachmentResponse');
 const { applyDecision, normalizeNote } = require('./leaveDecision');
 
+const { isAdmin } = require('../../../utils/roles');
 // ---------- صف تأیید مرخصی/مأموریت ----------
 
 router.get('/admin/leave-requests', requirePermission('leave.read'), (req, res) => {
@@ -92,7 +93,7 @@ router.post('/admin/leave-requests', requirePermission('leave.edit'), (req, res)
   const lock = monthLock.guard(req, res, { from: b.startDate, to: endDate, reason });
   if (lock === false) return undefined;
   const force = b.force === true;
-  if (force && req.adminUser.role !== 'admin') return res.status(403).json({ error: 'فقط ادمین می‌تواند محدودیت مانده را نادیده بگیرد.' });
+  if (force && !isAdmin(req.adminUser)) return res.status(403).json({ error: 'فقط ادمین می‌تواند محدودیت مانده را نادیده بگیرد.' });
 
   const result = leaveService.create({
     userId: user.id,

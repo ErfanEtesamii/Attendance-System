@@ -15,6 +15,7 @@ const usersRepository = require('../repositories/usersRepository');
 const notifier = require('../bot/notifier');
 const config = require('../config');
 
+const { isOwner, isAdmin } = require('../utils/roles');
 class ResetError extends Error {
   constructor(code, message) {
     super(message);
@@ -87,7 +88,7 @@ const deny = (status, code, error) => ({ ok: false, status, code, error });
  * @returns {{ok: true, options: object} | {ok: false, status: number, code: string, error: string}}
  */
 function checkResetRequest(body, adminUser) {
-  if (!adminUser || adminUser.role !== 'admin') return deny(403, 'forbidden', 'فقط ادمین کل می‌تواند برنامه را ریست کند.');
+  if (!adminUser || !isOwner(adminUser)) return deny(403, 'forbidden', 'فقط owner می‌تواند برنامه را ریست کند.');
   if (isResetLocked()) return deny(403, 'go_live_locked', 'سیستم در حالت Go-Live است و ریست قفل است (فقط با ALLOW_DATA_RESET=true در .env).');
   const b = body || {};
   let options;
@@ -109,7 +110,7 @@ async function notifyAdminsOfReset(result, actorUser) {
     `ردیف حذف‌شده: ${result.total}${result.beforeDate ? ` (قبل از ${result.beforeDate})` : ''}`,
     `بک‌آپ پیش از ریست: ${result.backup.file}`,
   ];
-  const admins = usersRepository.listUsers({ onlyActive: true }).filter((u) => u.role === 'admin' && u.telegram_user_id);
+  const admins = usersRepository.listUsers({ onlyActive: true, includeOwner: true }).filter((u) => isAdmin(u) && u.telegram_user_id);
   let sent = 0;
   for (const a of admins) {
     try {

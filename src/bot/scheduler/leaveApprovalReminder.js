@@ -19,12 +19,13 @@ const { notify } = require('../../services/notificationService');
 const { todayInZone } = require('../../utils/time');
 const { sanitizeText } = require('../../utils/sanitize');
 
+const { isAdmin } = require('../../utils/roles');
 const HOUR = 3600000;
 const toMs = (s) => (typeof s === 'string' ? Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(s) ? s : `${s.replace(' ', 'T')}Z`) : NaN);
 
 function recipientsOf(role, employee) {
-  const active = usersRepository.listUsers({ onlyActive: true });
-  if (role === 'admin') return active.filter((u) => u.role === 'admin' && u.id !== employee.id);
+  const active = usersRepository.listUsers({ onlyActive: true, includeOwner: true });
+  if (role === 'admin') return active.filter((u) => isAdmin(u) && u.id !== employee.id);
   if (role === 'hr') return active.filter((u) => u.role === 'hr' && u.id !== employee.id);
   const manager = employee.manager_id ? usersRepository.findById(employee.manager_id) : null;
   return manager && manager.is_active ? [manager] : [];

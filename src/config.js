@@ -109,6 +109,10 @@ const config = {
     process.env.ADMIN_SESSION_SECRET ||
     (process.env.NODE_ENV === 'production' ? '' : 'dev-only-insecure-secret-change-me'),
 
+  // آیدی عددی تلگرام owner (مالک سیستم). اگر تنظیم باشد، هنگام بالا آمدن سرور آن کاربر owner می‌شود (idempotent).
+  ownerTelegramId: (process.env.OWNER_TELEGRAM_ID || '').trim(),
+  ownerFullName: (process.env.OWNER_FULL_NAME || '').trim(),
+
   // مدت اعتبار session ورود مدیر به پنل وب (روز)
   adminSessionMaxAgeDays: parseInt(process.env.ADMIN_SESSION_MAX_AGE_DAYS || '7', 10),
 

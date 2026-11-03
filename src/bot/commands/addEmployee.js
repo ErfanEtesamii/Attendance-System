@@ -4,6 +4,7 @@ const usersRepository = require('../../repositories/usersRepository');
 const auditRepository = require('../../repositories/auditRepository');
 const ui = require('../ui/pickers');
 
+const { isAdmin, isManagerUp, isOwner } = require('../../utils/roles');
 // E3: هر مرحله زیرش «❌ انصراف | 🏠 منوی اصلی» دارد؛ فیلدهای اختیاری «⏭ رد شدن»؛ سرپرست از فهرست دکمه‌ای انتخاب می‌شود
 // (تایپ فقط برای آیدی/نام/کد/دپارتمان می‌ماند؛ آیدی سرپرست هنوز تایپ‌شده هم پذیرفته می‌شود). نقش ادمین هر بار سمت سرور چک می‌شود.
 
@@ -30,7 +31,7 @@ async function handleAddEmployeeCommand(bot, msg) {
 // ادمینِ همین مکالمه هنوز ادمین فعال است؟ (دکمه‌ی پیام قدیمی بعد از تغییر نقش اجرا نمی‌شود)
 function sessionAdmin(sess) {
   const admin = sess && sess.data && sess.data.adminId ? usersRepository.findById(sess.data.adminId) : null;
-  return admin && admin.is_active && admin.role === 'admin' ? admin : null;
+  return admin && admin.is_active && isAdmin(admin) ? admin : null;
 }
 
 async function handleAddEmployeeText(bot, msg, sess) {
@@ -72,12 +73,14 @@ async function handleAddEmployeeText(bot, msg, sess) {
   if (sess.step === 3) {
     const department = text === '-' ? null : text;
     session.update(chatId, { step: 4, data: { ...sess.data, department } });
+    // ساخت نقش «ادمین کل» فقط برای owner است (مجوز admins.manage)
+    const roleButtons = [
+      { text: 'کارمند', callback_data: 'add_emp_role:employee' },
+      { text: 'سرپرست', callback_data: 'add_emp_role:manager' },
+    ];
+    if (isOwner(sessionAdmin(sess))) roleButtons.push({ text: 'ادمین کل', callback_data: 'add_emp_role:admin' });
     await bot.sendMessage(chatId, 'نقش کارمند را انتخاب کنید:', {
-      reply_markup: ui.withNav([[
-        { text: 'کارمند', callback_data: 'add_emp_role:employee' },
-        { text: 'سرپرست', callback_data: 'add_emp_role:manager' },
-        { text: 'ادمین کل', callback_data: 'add_emp_role:admin' },
-      ]]),
+      reply_markup: ui.withNav([roleButtons]),
     });
     return;
   }
@@ -90,7 +93,7 @@ async function handleAddEmployeeText(bot, msg, sess) {
         return;
       }
       const manager = usersRepository.findByTelegramId(text);
-      if (!manager || !manager.is_active || !['manager', 'admin'].includes(manager.role)) {
+      if (!manager || !manager.is_active || !isManagerUp(manager)) {
         await ui.retry(bot, chatId, 'سرپرست فعالی با این آیدی پیدا نشد. از فهرست بالا انتخاب کنید یا دوباره تایپ کنید:');
         return;
       }
@@ -114,6 +117,10 @@ async function handleAddEmployeeCallback(bot, query, sess) {
     await bot.answerCallbackQuery(query.id, { text: 'اجازه این عملیات را ندارید.', show_alert: true });
     return;
   }
+  if (role === 'admin' && !isOwner(sessionAdmin(sess))) {
+    await bot.answerCallbackQuery(query.id, { text: 'فقط owner می‌تواند ادمین بسازد.', show_alert: true });
+    return;
+  }
   await bot.answerCallbackQuery(query.id);
 
   const data = { ...sess.data, role };
@@ -135,7 +142,7 @@ async function handleManagerPick(bot, chatId, sess, chosen) {
     await bot.sendMessage(chatId, 'اجازه این عملیات را ندارید.');
     return;
   }
-  if (chosen && (!chosen.is_active || !['manager', 'admin'].includes(chosen.role))) {
+  if (chosen && (!chosen.is_active || !isManagerUp(chosen))) {
     await ui.retry(bot, chatId, 'این کاربر به‌عنوان سرپرست قابل انتخاب نیست. دیگری را انتخاب کنید:');
     return;
   }

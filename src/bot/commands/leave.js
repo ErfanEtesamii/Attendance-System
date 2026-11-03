@@ -20,6 +20,7 @@ const { formatMinutes } = require('../../utils/leaveBalanceFormat');
 const ui = require('../ui/pickers');
 const { addDays } = require('../../utils/shiftDay');
 
+const { isAdmin } = require('../../utils/roles');
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^([01]?\d|2[0-3]):([0-5]\d)$/;
 const UNIT_LABEL = { day: '📅 روزانه', half_day: '🌗 نیم‌روز', hour: '⏱ ساعتی' };
@@ -42,7 +43,7 @@ async function notifyApprovers(bot, employee, request) {
   // مدیر مستقیم اگر تعریف شده، وگرنه همه ادمین‌ها
   const approvers = employee.manager_id
     ? [usersRepository.findById(employee.manager_id)].filter(Boolean)
-    : usersRepository.listUsers({ onlyActive: true }).filter((u) => u.role === 'admin');
+    : usersRepository.listUsers({ onlyActive: true, includeOwner: true }).filter((u) => isAdmin(u));
 
   const typeLabel = request.kind === 'mission' ? 'مأموریت' : 'مرخصی';
   const text = [

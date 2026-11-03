@@ -16,6 +16,7 @@ const settingsRepository = require('../../repositories/settingsRepository');
 const { formatTime } = require('../../utils/time');
 const { jalaliMonthRangeOf } = require('../../utils/jalali');
 
+const { isAdmin } = require('../../utils/roles');
 const MAX_DAYS = 93;
 const MAX_ROWS = 40;
 const cut = (s, n) => { const t = String(s == null ? '' : s).replace(/\s+/g, ' ').trim(); return t.length > n ? `${t.slice(0, n)}…` : t; };
@@ -327,7 +328,7 @@ function build({ need, userFilter, ToolError, today, shiftIso, DATE_RE, getTimez
       input_schema: { type: 'object', properties: { ...RANGE, userId: SCOPE.userId, action: { type: 'string' } } },
       run(ctx, input) {
         need(ctx, 'performance.read');
-        if (ctx.adminUser.role !== 'admin' && ctx.adminUser.role !== 'hr') throw new ToolError('فقط admin/hr.');
+        if (!isAdmin(ctx.adminUser) && ctx.adminUser.role !== 'hr') throw new ToolError('فقط admin/hr.');
         const { from, to } = dateRange(input);
         const conds = ['substr(occurred_at, 1, 10) BETWEEN ? AND ?']; const args = [from, to];
         if (Number.isInteger(input.userId)) { conds.push('user_id = ?'); args.push(input.userId); }
@@ -394,7 +395,7 @@ function build({ need, userFilter, ToolError, today, shiftIso, DATE_RE, getTimez
         for (const r of rows) {
           let uids = [];
           try { uids = JSON.parse(r.user_ids || '[]'); } catch (_) { uids = []; }
-          if (ctx.adminUser.role !== 'admin' && ctx.adminUser.role !== 'hr' && !uids.some((id) => names.has(id))) continue; // اسکوپ سرپرست
+          if (!isAdmin(ctx.adminUser) && ctx.adminUser.role !== 'hr' && !uids.some((id) => names.has(id))) continue; // اسکوپ سرپرست
           byType[r.event_type] = (byType[r.event_type] || 0) + 1; byStatus[r.status] = (byStatus[r.status] || 0) + 1;
           if (list.length < MAX_ROWS) list.push({ type: r.event_type, date: r.event_date, status: r.status, employees: uids.map((id) => names.get(id) || `#${id}`), details: cut(r.details, 80) });
         }

@@ -13,6 +13,7 @@ const calendarService = require('../engine/calendarService');
 const { dayNumber, addDays } = require('../utils/shiftDay');
 const { sanitizeText } = require('../utils/sanitize');
 
+const { isAdmin } = require('../utils/roles');
 const MAX_BULK_DAYS = 31;
 const MAX_BULK_USERS = 50;
 const MAX_RANGE_DAYS = 62; // سقف بازه‌ی GET (دو ماه شمسی)
@@ -29,12 +30,12 @@ function view(row) {
 }
 
 function canRead(actor, user) {
-  if (actor.role === 'admin' || actor.role === 'hr') return true;
+  if (isAdmin(actor) || actor.role === 'hr') return true;
   if (actor.role === 'manager') return user.manager_id === actor.id;
   return actor.role === 'employee' && user.id === actor.id;
 }
 function canManage(actor, user) {
-  if (actor.role === 'admin') return true;
+  if (isAdmin(actor)) return true;
   return actor.role === 'manager' && user.manager_id === actor.id;
 }
 

@@ -20,7 +20,7 @@ describe('گیت‌های ریست (B3) — سرویس', () => {
   before(() => {
     db = resetDb();
     config.monitor.backupDir = path.join(tmpDir, 'bk');
-    admin = F.makeUser({ role: 'admin' });
+    admin = F.makeUser({ role: 'owner' });
     manager = F.makeUser({ role: 'manager' });
     emp = F.makeUser();
   });
@@ -140,7 +140,7 @@ describe('ریست روی routeهای واقعی (B3)', { skip: hasDeps ? false 
     resetDb();
     config.monitor.backupDir = path.join(tmpDir, 'bk2');
     u = F.makeUser();
-    admin = F.makeUser({ role: 'admin' });
+    admin = F.makeUser({ role: 'owner' });
     S = await require('./helpers/miniappClient').startServer();
   });
   after(() => { if (S) S.close(); });

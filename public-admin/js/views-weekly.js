@@ -39,7 +39,7 @@
         <div class="grow">
           <h2>${esc(u.fullName)}</h2>
           <div class="tags">
-            ${AP.badge(u.role === 'admin' ? 'purple' : u.role === 'manager' ? 'blue' : '', AP.ROLE[u.role])}
+            ${AP.badge(['admin', 'owner'].includes(u.role) ? 'purple' : u.role === 'manager' ? 'blue' : '', AP.ROLE[u.role])}
             ${AP.badge('', u.department || 'بدون دپارتمان')}
             ${planBadge(r.plan)}
             ${r.summary.closed.allClosed ? AP.badge('', 'ماه بسته (فقط‌خواندنی)') : r.summary.closed.partlyClosed ? AP.badge('', 'بخشی از هفته در ماه بسته') : ''}

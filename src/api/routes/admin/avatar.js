@@ -12,6 +12,7 @@ const { getDb } = require('../../../db/connection');
 const avatarService = require('../../../services/avatarService');
 const auditRepository = require('../../../repositories/auditRepository');
 
+const { isAdmin } = require('../../../utils/roles');
 // فهرست کاربرانِ دارای عکس (فقط در اسکوپ پرسنده) ⇒ { versions: { [userId]: نسخه } }؛ کلاینت فقط برای همین‌ها عکس می‌خواهد
 router.get('/admin/avatars', (req, res) => {
   const ids = scopedUserIds(req.adminUser);
@@ -44,7 +45,7 @@ router.post('/admin/avatar', async (req, res, next) => {
 // ادمین برای هر کاربری عکس می‌گذارد/عوض می‌کند (بدنه = تصویر). کاربر بعداً از Mini App هم می‌تواند عوضش کند.
 router.post('/admin/avatar/:userId', async (req, res, next) => {
   try {
-    if (req.adminUser.role !== 'admin') return res.status(403).json({ error: 'فقط ادمین می‌تواند عکس کاربران را تغییر دهد.' });
+    if (!isAdmin(req.adminUser)) return res.status(403).json({ error: 'فقط ادمین می‌تواند عکس کاربران را تغییر دهد.' });
     if (!/^\d+$/.test(req.params.userId)) return res.status(404).json({ error: 'کاربر یافت نشد.' });
     const id = parseInt(req.params.userId, 10);
     if (!getDb().prepare('SELECT 1 FROM users WHERE id = ?').get(id)) return res.status(404).json({ error: 'کاربر یافت نشد.' });
@@ -60,7 +61,7 @@ router.post('/admin/avatar/:userId', async (req, res, next) => {
 // ادمین عکسِ هر کاربری را حذف می‌کند (مثلاً عکس نامناسب)؛ در audit با targetUserId ثبت می‌شود. کاربر دوباره می‌تواند عکس بگذارد.
 router.delete('/admin/avatar/:userId', async (req, res, next) => {
   try {
-    if (req.adminUser.role !== 'admin') return res.status(403).json({ error: 'فقط ادمین می‌تواند عکس کاربران را حذف کند.' });
+    if (!isAdmin(req.adminUser)) return res.status(403).json({ error: 'فقط ادمین می‌تواند عکس کاربران را حذف کند.' });
     if (!/^\d+$/.test(req.params.userId)) return res.status(404).json({ error: 'کاربر یافت نشد.' });
     const id = parseInt(req.params.userId, 10);
     const r = await avatarService.remove(id);

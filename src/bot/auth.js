@@ -18,7 +18,8 @@ function notRegisteredMessage(telegramUserId) {
 
 function hasRole(user, roles) {
   if (!user) return false;
-  return roles.includes(user.role);
+  // owner همه‌ی دسترسی‌های admin را دارد (بخش‌های «فقط owner» جداگانه با isOwner چک می‌شوند)
+  return roles.includes(user.role) || (user.role === 'owner' && roles.includes('admin'));
 }
 
 module.exports = { getRegisteredUser, notRegisteredMessage, hasRole };

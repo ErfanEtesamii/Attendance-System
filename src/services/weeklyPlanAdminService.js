@@ -35,6 +35,7 @@ const auditRepository = require('../repositories/auditRepository');
 const { getDb } = require('../db/connection');
 const { sanitizeText } = require('../utils/sanitize');
 
+const { isAdmin } = require('../utils/roles');
 const ERROR_STATUS = {
   FORBIDDEN: 403, SELF_NOT_ALLOWED: 403, NOT_IN_SCOPE: 403,
   USER_NOT_FOUND: 404, TASK_NOT_FOUND: 404,
@@ -77,7 +78,7 @@ function versionFailure(plan, expectedVersion) {
  */
 function lockReasonFor(actor, weekStart, ctx) {
   const reason = weeklyPlan.lockReason(weekStart, ctx);
-  return actor && actor.role === 'admin' && reason === 'week_started' ? null : reason;
+  return actor && isAdmin(actor) && reason === 'week_started' ? null : reason;
 }
 function lockFailureFor(actor, weekStart, ctx) {
   return lockReasonFor(actor, weekStart, ctx) === null ? null : weeklyPlan.lockFailure(weekStart, ctx);

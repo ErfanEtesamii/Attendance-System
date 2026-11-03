@@ -8,6 +8,7 @@ const maintenanceMode = require('../utils/maintenanceMode');
 const { todayDateString } = require('../utils/serverTime');
 const backup = require('../bot/scheduler/backup');
 
+const { isOwner, isAdmin } = require('../utils/roles');
 class HistoryPurgeError extends Error {
   constructor(code, message) {
     super(message);
@@ -94,7 +95,7 @@ async function execute(input = {}, { actor = null, ip = null } = {}) {
 }
 
 function checkRequest(body, adminUser) {
-  if (!adminUser || adminUser.role !== 'admin') {
+  if (!adminUser || !isOwner(adminUser)) {
     return { ok: false, status: 403, code: 'forbidden', error: 'فقط ادمین کل می‌تواند داده‌های گذشته را پاک کند.' };
   }
   let range;

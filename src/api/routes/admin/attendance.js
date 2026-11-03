@@ -20,6 +20,7 @@ const { attendanceRecordView, breakView } = require('../../../utils/auditViews')
 const monthLock = require('./monthLock'); // S5-3c: قفل ماه بسته
 const remoteRepo = require('../../../repositories/remoteWorkRepository');
 
+const { isAdmin } = require('../../../utils/roles');
 // ---------- اصلاح دستی رکورد تردد (فقط ادمین کل) ----------
 
 router.patch('/admin/attendance-records/:id', requirePermission('records.edit'), (req, res) => {
@@ -68,7 +69,7 @@ router.patch('/admin/attendance-records/:id', requirePermission('records.edit'),
   if (employee?.telegram_user_id) {
     notifyUser(
       employee.telegram_user_id,
-      `رکورد تردد شما در تاریخ ${record.record_date} توسط ${req.adminUser.role === 'admin' ? 'ادمین' : 'سرپرست'} اصلاح شد.\nدلیل: ${reason.trim()}`
+      `رکورد تردد شما در تاریخ ${record.record_date} توسط ${isAdmin(req.adminUser) ? 'ادمین' : 'سرپرست'} اصلاح شد.\nدلیل: ${reason.trim()}`
     );
   }
 
@@ -183,7 +184,7 @@ router.get('/admin/attendance-records/:id', requirePermission('attendance.read')
     return res.status(403).json({ error: 'به این رکورد دسترسی ندارید.' });
   }
   let history = [];
-  if (req.adminUser.role === 'admin') {
+  if (isAdmin(req.adminUser)) {
     history = auditRepository
       .search({ q: `"recordId":${record.id}`, limit: 50 })
       .map((r) => ({ ...r, userFullName: r.user_id ? usersRepository.findById(r.user_id)?.full_name : null }));

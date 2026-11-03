@@ -383,7 +383,7 @@ describe('اپ واقعی: هدرها، CSRF، ابطال نشست', { skip }, (
     });
 
     test('revoke-all-sessions: دلیل اجباری، فقط ادمین؛ همه ۴۰۱ جز ادمین اجراکننده که کوکی تازه می‌گیرد', async () => {
-      const a2 = F.makeUser({ role: 'admin' });
+      const a2 = F.makeUser({ role: 'owner' }); // ابطال سراسری فقط owner
       const u = F.makeUser({ role: 'employee', managerId: mgr.id });
       const m = F.makeUser({ role: 'manager' });
       const lu = sess(u);
@@ -410,7 +410,7 @@ describe('اپ واقعی: هدرها، CSRF، ابطال نشست', { skip }, (
     });
 
     test('revoke-all-sessions با includeSelf=true ادمین را هم خارج می‌کند', async () => {
-      const a3 = F.makeUser({ role: 'admin' });
+      const a3 = F.makeUser({ role: 'owner' });
       const { cookie } = sess(a3);
       const res = await req('POST', '/api/admin/system/revoke-all-sessions', { cookie, body: { reason: 'تست', includeSelf: true } });
       assert.equal(res.status, 200);

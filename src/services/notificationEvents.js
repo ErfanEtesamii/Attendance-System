@@ -53,7 +53,7 @@ function logError(label, err) {
 }
 
 function activeAdmins() {
-  return usersRepository.listUsers({ onlyActive: true }).filter((u) => u.role === 'admin');
+  return usersRepository.listUsers({ onlyActive: true, includeOwner: true }).filter((u) => isAdmin(u));
 }
 
 // مدیر مستقیم‌ِ فعال اگر هست، وگرنه ادمین‌های فعال (همان قاعده‌ی notifyApprovers بات). خودِ درخواست‌دهنده حذف می‌شود.
@@ -217,7 +217,7 @@ function disputeResolvedTelegram(dispute, { note = null, actor = null } = {}) {
   return guard('disputeResolvedTelegram', () => {
     const employee = dispute ? usersRepository.findById(dispute.user_id) : null;
     if (!employee || !employee.telegram_user_id) return [];
-    const who = actor && actor.role === 'admin' ? 'ادمین' : 'سرپرست';
+    const who = actor && isAdmin(actor) ? 'ادمین' : 'سرپرست';
     const text = `اعتراض شما بررسی و بسته شد ✅${note ? `\nپاسخ ${who}: ${note}` : ''}`;
     const btn = panelLinks.disputeButton(dispute.id);
     const options = btn ? { reply_markup: { inline_keyboard: [[btn]] } } : undefined;
@@ -236,7 +236,7 @@ function disputeResolvedTelegram(dispute, { note = null, actor = null } = {}) {
 function disputeAdminMessage(dispute, message, { actor = null } = {}) {
   return guard('disputeAdminMessage', () => {
     if (!dispute || !message || message.id == null) return [];
-    const who = actor && actor.role === 'admin' ? 'ادمین' : 'سرپرست';
+    const who = actor && isAdmin(actor) ? 'ادمین' : 'سرپرست';
     return [
       send('disputeAdminMessage', dispute.user_id, {
         type: 'dispute_admin_message',
@@ -537,7 +537,7 @@ function checkinPermissionDecided(permission, { actor = null, note = null } = {}
   return guard('checkinPermissionDecided', () => {
     if (!permission || !['approved', 'rejected'].includes(permission.status)) return [];
     const approved = permission.status === 'approved';
-    const who = actor && actor.role === 'admin' ? 'ادمین' : 'سرپرست';
+    const who = actor && isAdmin(actor) ? 'ادمین' : 'سرپرست';
     const until = approved && permission.expiresAt ? hhmmInCompanyZone(permission.expiresAt) : null;
     const lines = [approved
       ? `اکنون می‌توانید ورود خود را ثبت کنید${until ? ` (تا ساعت ${until} معتبر است)` : ''}.`
@@ -564,6 +564,7 @@ const REMOTE_LINE = '━━━━━━━━━━━━━━';
 const FA_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
 const faNum = (v) => String(v).replace(/\d/g, (d) => FA_DIGITS[Number(d)]);
 const faTime = (iso) => faNum(require('../utils/time').formatTime(iso));
+const { isAdmin } = require('../utils/roles');
 const faDate = (iso) => faNum(isoDateToJalaliString(iso));
 function faDuration(minutes) {
   const m = Math.max(0, Math.round(minutes));
@@ -588,7 +589,7 @@ function remoteMinutes(session, { approved = false } = {}) {
 }
 
 const remoteRange = (session, approved) => `${faTime((approved && session.approved_start_at) || session.start_at)} تا ${faTime((approved && session.approved_end_at) || session.end_at)}`;
-const roleWho = (actor) => (actor && actor.role === 'admin' ? 'ادمین' : 'سرپرست');
+const roleWho = (actor) => (actor && isAdmin(actor) ? 'ادمین' : 'سرپرست');
 
 /**
  * پایان یک نشست دورکاری ثبت شد (کارمند خودش، یا job شبانه بسته است) ⇒ پیام «برای بررسی» برای تأییدکننده‌ها.

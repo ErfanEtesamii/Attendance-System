@@ -30,6 +30,7 @@ const shiftsRepository = require('../repositories/shiftsRepository');
 const settingsRepository = require('../repositories/settingsRepository');
 const { formatDate } = require('../utils/time');
 
+const { isAdmin } = require('../utils/roles');
 const PERM_READ = 'remote_work.read';
 const PERM_REVIEW = 'remote_work.review';
 const PERM_CREATE = 'remote_work.create';
@@ -56,7 +57,7 @@ function isDirectManager(actor, target) {
 function readScopeFailure(actor, target) {
   if (!actor || !hasPermission(actor.role, PERM_READ)) return fail('FORBIDDEN', 'برای مشاهده‌ی دورکاری کارمندان مجوز لازم را ندارید.');
   if (!target) return fail('USER_NOT_FOUND', 'کارمند یافت نشد.');
-  if (actor.role === 'admin' || actor.role === 'hr') return null;
+  if (isAdmin(actor) || actor.role === 'hr') return null;
   if (isDirectManager(actor, target)) return null;
   return fail('NOT_IN_SCOPE', 'این کارمند در تیم شما نیست.');
 }
@@ -69,7 +70,7 @@ function reviewScopeFailure(actor, target) {
   if (!actor || !hasPermission(actor.role, PERM_REVIEW)) return fail('FORBIDDEN', 'برای تأیید یا رد دورکاری مجوز لازم را ندارید.');
   if (!target) return fail('USER_NOT_FOUND', 'کارمند یافت نشد.');
   if (target.id === actor.id) return fail('SELF_NOT_ALLOWED', 'دورکاریِ خودتان را نمی‌توانید تأیید یا رد کنید؛ سرپرست یا ادمین دیگری باید آن را بررسی کند.');
-  if (actor.role === 'admin') return null;
+  if (isAdmin(actor)) return null;
   if (isDirectManager(actor, target)) return null;
   return fail('NOT_IN_SCOPE', 'این کارمند در تیم شما نیست.');
 }
@@ -81,7 +82,7 @@ function reviewScopeFailure(actor, target) {
  */
 function queueScope(actor) {
   if (!actor || !hasPermission(actor.role, PERM_READ)) return fail('FORBIDDEN', 'برای مشاهده‌ی دورکاری کارمندان مجوز لازم را ندارید.');
-  if (actor.role === 'admin' || actor.role === 'hr') return { ok: true, userIds: null };
+  if (isAdmin(actor) || actor.role === 'hr') return { ok: true, userIds: null };
   return { ok: true, userIds: usersRepository.listUsers({ managerId: actor.id }).map((u) => u.id) };
 }
 
@@ -631,15 +632,15 @@ function summaryFor(userIds, excludeUserId) {
  * (تا ادمین‌ها با صف همه‌ی تیم‌ها پر نشوند). فقط گیرنده‌هایی که چیزی منتظر دارند. ⇒ [{ user, summary }]
  */
 function reminderTargets() {
-  const active = usersRepository.listUsers({ onlyActive: true });
+  const active = usersRepository.listUsers({ onlyActive: true, includeOwner: true });
   const activeManagerIds = new Set(active.filter((u) => u.role === 'manager').map((u) => u.id));
   const out = [];
   for (const m of active.filter((u) => u.role === 'manager')) {
     const sum = summaryFor(active.filter((u) => u.manager_id === m.id).map((u) => u.id), m.id);
     if (sum.total > 0) out.push({ user: m, summary: sum });
   }
-  const orphanIds = active.filter((u) => !u.manager_id || !activeManagerIds.has(u.manager_id)).map((u) => u.id);
-  for (const a of active.filter((u) => u.role === 'admin')) {
+  const orphanIds = active.filter((u) => u.role !== 'owner' && (!u.manager_id || !activeManagerIds.has(u.manager_id))).map((u) => u.id);
+  for (const a of active.filter((u) => isAdmin(u))) {
     const sum = summaryFor(orphanIds, a.id);
     if (sum.total > 0) out.push({ user: a, summary: sum });
   }

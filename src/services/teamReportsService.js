@@ -12,6 +12,7 @@ const teamReview = require('./teamReviewService');
 const { taskDayTally } = require('./taskDayTally');
 const { addDays, dayNumber } = require('../utils/shiftDay');
 
+const { isAdmin } = require('../utils/roles');
 const TABS = ['daily', 'plan', 'stuck', 'unreviewed'];
 const STUCK_MIN = 2; // دو بار پشت‌سرهم منتقل‌شده
 const STUCK_LOOKBACK_DAYS = 35;
@@ -25,7 +26,7 @@ const statusOf = (code) => ERROR_STATUS[code] || 400;
 function scopeUsers(viewer) {
   if (!viewer) return [];
   if (viewer.role === 'manager') return teamReview.teamOf(viewer);
-  if (viewer.role === 'admin' || viewer.role === 'hr') return usersRepository.listUsers({ onlyActive: true }).filter((u) => u.id !== viewer.id);
+  if (isAdmin(viewer) || viewer.role === 'hr') return usersRepository.listUsers({ onlyActive: true }).filter((u) => u.id !== viewer.id);
   return [viewer]; // employee و هر نقش ناشناخته: فقط خودش
 }
 

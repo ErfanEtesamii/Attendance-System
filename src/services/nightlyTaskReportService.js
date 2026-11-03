@@ -19,6 +19,7 @@ const { REASON_LABELS } = require('../content/reportLabels');
 const { isoDateToJalaliString } = require('../utils/jalali');
 const { addDays } = require('../utils/shiftDay');
 
+const { isAdmin } = require('../utils/roles');
 const TG_LIMIT = 4096;
 const SAFE_LIMIT = 3900; // حاشیه برای عنوان/پانویس
 const MAX_PARTS = 3; // سرپرست؛ ادمین ⇒ تنظیم taskReportAdminMaxParts
@@ -155,15 +156,15 @@ function pack(header, blocks, footerLines = [], { maxParts = MAX_PARTS } = {}) {
 
 /** گیرنده → اعضایی که باید گزارششان را ببیند (فقط سرپرست/ادمین مستقیم؛ H2 در recipientsMap بازتعریف می‌شود). */
 function assignments() {
-  const all = usersRepository.listUsers({ onlyActive: true });
+  const all = usersRepository.listUsers({ onlyActive: true, includeOwner: true });
   const byId = new Map(all.map((u) => [u.id, u]));
-  const admins = all.filter((u) => u.role === 'admin');
+  const admins = all.filter((u) => isAdmin(u));
   const map = new Map();
   const add = (reviewer, member) => { if (!map.has(reviewer.id)) map.set(reviewer.id, { reviewer, members: [] }); map.get(reviewer.id).members.push(member); };
   for (const u of all) {
-    if (u.role === 'admin') continue;
+    if (isAdmin(u)) continue;
     const boss = u.manager_id ? byId.get(u.manager_id) : null;
-    if (boss && (boss.role === 'manager' || boss.role === 'admin') && boss.id !== u.id) add(boss, u);
+    if (boss && (boss.role === 'manager' || isAdmin(boss)) && boss.id !== u.id) add(boss, u);
     else admins.forEach((a) => add(a, u));
   }
   return map;
@@ -174,13 +175,13 @@ function assignments() {
  * سرپرست (manager) = همان assignments() (فقط اعضای مستقیم، بدون عضو ⇒ نیست)؛ ادمین = همه‌ی کاربران فعالِ غیرادمین (حتی اگر عضو مستقیمش نباشند).
  */
 function recipientsMap() {
-  const all = usersRepository.listUsers({ onlyActive: true });
-  const everyone = all.filter((u) => u.role !== 'admin');
+  const all = usersRepository.listUsers({ onlyActive: true, includeOwner: true });
+  const everyone = all.filter((u) => !isAdmin(u));
   const map = new Map();
   for (const [rid, v] of assignments()) {
     if (v.reviewer.role === 'manager' && v.members.length) map.set(rid, { reviewer: v.reviewer, members: v.members, scope: 'team' });
   }
-  for (const a of all.filter((u) => u.role === 'admin')) map.set(a.id, { reviewer: a, members: everyone, scope: 'all' });
+  for (const a of all.filter((u) => isAdmin(u))) map.set(a.id, { reviewer: a, members: everyone, scope: 'all' });
   return map;
 }
 

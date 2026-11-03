@@ -1,6 +1,7 @@
 // «❓ راهنما»: توضیح گزینه‌های «📂 منو» بر اساس نقش (E4: بدون ارجاع به /دستور؛ H2: پشت دکمه‌ی «📂 منو»).
 const { getRegisteredUser, notRegisteredMessage } = require('../auth');
 
+const { isAdmin } = require('../../utils/roles');
 const EMPLOYEE_BUTTONS = [
   '🕒 ثبت تردد — ثبت ورود، خروج و استراحت',
   '🏠 ثبت دورکاری — شروع/استراحت/پایان دورکاری وقتی در شرکت نیستید (پس از تأیید سرپرست لحاظ می‌شود)',
@@ -38,10 +39,10 @@ async function handleHelp(bot, msg) {
 
   const lines = ['برای دیدن همه‌ی کارها دکمه‌ی «📂 منو» (پایین صفحه) را بزنید؛ گزینه‌های آن:', '', 'گزینه‌های کارمندی:', ...EMPLOYEE_BUTTONS];
 
-  if (user.role === 'manager' || user.role === 'admin') {
+  if (user.role === 'manager' || isAdmin(user)) {
     lines.push('', 'گزینه‌های تیم:', ...MANAGER_BUTTONS);
   }
-  if (user.role === 'admin') {
+  if (isAdmin(user)) {
     lines.push('', 'گزینه‌های ادمین:', ...ADMIN_BUTTONS);
   }
   lines.push('', 'در هر مرحله‌ی چندمرحله‌ای، «❌ انصراف» و «🏠 منوی اصلی» زیر پیام هست.');

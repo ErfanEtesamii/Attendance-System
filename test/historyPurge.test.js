@@ -49,6 +49,6 @@ describe('پاک‌سازی بازه‌ایِ تردد و برنامه‌های 
   test('بازهٔ نامعتبر یا امروز/آینده پذیرفته نمی‌شود و متن تأیید لازم است', () => {
     assert.throws(() => service.preview({ fromDate: '2025-05-31', toDate: '2025-05-01' }), (err) => err.code === 'INVALID_RANGE');
     assert.throws(() => service.preview({ fromDate: '2025-05-01', toDate: new Date().toISOString().slice(0, 10) }), (err) => err.code === 'PAST_ONLY');
-    assert.equal(service.checkRequest({ fromDate: '2025-05-01', toDate: '2025-05-31', confirmText: 'نه' }, { role: 'admin' }).code, 'confirm_required');
+    assert.equal(service.checkRequest({ fromDate: '2025-05-01', toDate: '2025-05-31', confirmText: 'نه' }, { role: 'owner' }).code, 'confirm_required');
   });
 });

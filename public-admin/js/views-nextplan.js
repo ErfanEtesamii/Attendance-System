@@ -101,7 +101,7 @@
         <div class="grow">
           <h2>${esc(r.employee.fullName)}</h2>
           <div class="tags">
-            ${me.role ? AP.badge(me.role === 'admin' ? 'purple' : me.role === 'manager' ? 'blue' : '', AP.ROLE[me.role] || me.role) : ''}
+            ${me.role ? AP.badge(['admin', 'owner'].includes(me.role) ? 'purple' : me.role === 'manager' ? 'blue' : '', AP.ROLE[me.role] || me.role) : ''}
             ${AP.badge('', me.department || 'بدون دپارتمان')}
             ${AP.badge(cls, label, true)}
             ${plan.managerConfigured ? AP.badge('approved', 'تنظیم‌شده توسط سرپرست', true) : ''}

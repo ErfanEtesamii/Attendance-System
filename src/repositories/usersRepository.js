@@ -13,11 +13,14 @@ function userColumns(db) {
   return list;
 }
 
-function listUsers({ onlyActive = false, managerId = null } = {}) {
+// owner جزو کارمندان شرکت نیست: به‌طور پیش‌فرض در فهرست نمی‌آید (کارمندان، حضور و غیاب، گزارش‌ها، عملکرد).
+// فقط جاهایی که «حساب‌های دارای دسترسی» لازم است (گیرنده‌ی اعلان، تأییدکننده، مدیریت کاربران) includeOwner:true می‌دهند.
+function listUsers({ onlyActive = false, managerId = null, includeOwner = false } = {}) {
   const db = getDb();
   const conditions = [];
   const params = [];
   if (onlyActive) conditions.push('is_active = 1');
+  if (!includeOwner) conditions.push("role <> 'owner'");
   if (managerId != null) {
     conditions.push('manager_id = ?');
     params.push(managerId);

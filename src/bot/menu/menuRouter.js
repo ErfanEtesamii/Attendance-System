@@ -11,8 +11,8 @@ const session = require('../session');
 const { getRegisteredUser, notRegisteredMessage, hasRole } = require('../auth');
 const panelLinks = require('../panelLinks');
 
-const MANAGER_UP = ['manager', 'admin'];
-const ADMIN_ONLY = ['admin'];
+const MANAGER_UP = ['manager', 'admin', 'owner'];
+const ADMIN_ONLY = ['admin', 'owner'];
 
 // H2: تنها دکمه‌ی کیبورد پایین چت و پیام منوی inline
 const MENU_LABEL = '📂 منو';

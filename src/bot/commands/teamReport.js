@@ -5,6 +5,7 @@ const { summarizeRange } = require('../../engine/dayService');
 const { formatMinutes } = require('../../utils/workHours');
 const { todayDateString } = require('../../utils/serverTime');
 
+const { isAdmin } = require('../../utils/roles');
 function daysAgoDateString(days) {
   const d = new Date();
   d.setDate(d.getDate() - days);
@@ -24,7 +25,7 @@ async function handleTeamReport(bot, msg) {
   }
 
   const all = usersRepository.listUsers({ onlyActive: true });
-  const team = user.role === 'admin' ? all : all.filter((u) => u.manager_id === user.id);
+  const team = isAdmin(user) ? all : all.filter((u) => u.manager_id === user.id);
 
   if (team.length === 0) {
     await bot.sendMessage(chatId, 'هیچ کارمند فعالی برای گزارش‌گیری یافت نشد.');

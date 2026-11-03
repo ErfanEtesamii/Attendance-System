@@ -23,6 +23,16 @@ function createApp() {
   // اطمینان از ساخته‌شدن دیتابیس و جداول قبل از بالا آمدن سرور
   getDb();
 
+  // owner: اگر OWNER_TELEGRAM_ID تنظیم باشد، همان حساب owner می‌شود (ادمین/کارمند فعلی هم ارتقا می‌یابد).
+  if (config.ownerTelegramId) {
+    try {
+      const { status, user } = require('./services/ownerBootstrap').ensureOwner(config.ownerTelegramId, { fullName: config.ownerFullName || null, source: 'env' });
+      if (status !== 'unchanged') logger.info('owner_bootstrapped', { status, userId: user.id });
+    } catch (err) {
+      logger.warn(`[owner] OWNER_TELEGRAM_ID نامعتبر یا ناموفق: ${err.message}`);
+    }
+  }
+
   const app = express();
 
   // فقط وقتی TRUST_PROXY=true باشد به X-Forwarded-For اعتماد می‌شود.

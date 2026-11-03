@@ -16,6 +16,7 @@ const usersRepository = require('../repositories/usersRepository');
 const settingsRepository = require('../repositories/settingsRepository');
 const { dayDiff } = require('../utils/shiftDay');
 
+const { isAdmin } = require('../utils/roles');
 // نقش‌های مراحل برای یک درخواست (آرایه‌ی ۱ یا ۲ عضوی)
 function planRoles(request) {
   const settings = settingsRepository.getAll();
@@ -61,13 +62,13 @@ function awaitingRole(request) {
 
 // تنها ادمین فعال سیستم؟ (استثنای خودتأییدی ماموریت)
 function isSoleActiveAdmin(user) {
-  if (!user || user.role !== 'admin') return false;
-  return !usersRepository.listUsers({ onlyActive: true }).some((u) => u.role === 'admin' && u.id !== user.id);
+  if (!user || !isAdmin(user)) return false;
+  return !usersRepository.listUsers({ onlyActive: true, includeOwner: true }).some((u) => isAdmin(u) && u.id !== user.id);
 }
 
 function canDecide(actor, request, role) {
   if (!actor) return false;
-  if (actor.role === 'admin') return true;
+  if (isAdmin(actor)) return true;
   if (role === 'hr') return actor.role === 'hr';
   const employee = usersRepository.findById(request.user_id);
   return role === 'manager' && actor.role === 'manager' && !!employee && employee.manager_id === actor.id;

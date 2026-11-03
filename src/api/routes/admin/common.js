@@ -9,11 +9,12 @@ const dayService = require('../../../engine/dayService');
 const { minutesSinceMidnight } = require('../../../utils/time');
 const { todayDateString } = require('../../../utils/serverTime');
 
+const { isAdmin } = require('../../../utils/roles');
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const STATUSES = ['normal', 'late', 'incomplete', 'leave', 'holiday'];
 
 function scopedUserIds(adminUser) {
-  if (adminUser.role === 'admin' || adminUser.role === 'hr') return null; // hr: فقط‌خواندنی روی همه (نوشتن با requirePermission بسته است)
+  if (isAdmin(adminUser) || adminUser.role === 'hr') return null; // hr: فقط‌خواندنی روی همه (نوشتن با requirePermission بسته است)
   if (adminUser.role === 'employee') return [adminUser.id]; // کارمند فقط خودش
   return usersRepository.listUsers({ managerId: adminUser.id }).map((u) => u.id);
 }

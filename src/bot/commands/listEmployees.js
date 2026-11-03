@@ -1,6 +1,7 @@
 const { getRegisteredUser, notRegisteredMessage, hasRole } = require('../auth');
 const usersRepository = require('../../repositories/usersRepository');
 
+const { isAdmin } = require('../../utils/roles');
 async function handleListEmployees(bot, msg) {
   const chatId = msg.chat.id;
   const user = getRegisteredUser(msg.from.id);
@@ -14,7 +15,7 @@ async function handleListEmployees(bot, msg) {
   }
 
   const all = usersRepository.listUsers({});
-  const scoped = user.role === 'admin' ? all : all.filter((u) => u.manager_id === user.id);
+  const scoped = isAdmin(user) ? all : all.filter((u) => u.manager_id === user.id);
 
   if (scoped.length === 0) {
     await bot.sendMessage(chatId, 'هیچ کارمندی یافت نشد.');

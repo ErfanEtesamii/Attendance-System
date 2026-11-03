@@ -20,6 +20,7 @@ const { todayInZone } = require('../utils/time');
 const { addDays } = require('../utils/shiftDay');
 const { sanitizeText } = require('../utils/sanitize');
 
+const { isAdmin } = require('../utils/roles');
 const fail = (status, code, error) => ({ ok: false, status, code, error });
 const MAX_NOTE = 200;
 
@@ -141,7 +142,7 @@ function requestPermission(user, reason, now = new Date()) {
 
 // آیا actor حق تصمیم روی درخواستِ این کارمند را دارد؟ admin همیشه؛ سرپرست فقط مستقیمِ همان کارمند؛ کارمندِ بدون سرپرست فقط ادمین؛ hr/employee هرگز.
 function canDecide(actor, employee) {
-  if (actor.role === 'admin') return true;
+  if (isAdmin(actor)) return true;
   return actor.role === 'manager' && employee.manager_id !== null && employee.manager_id !== undefined && employee.manager_id === actor.id;
 }
 

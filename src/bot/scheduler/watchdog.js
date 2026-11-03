@@ -18,6 +18,7 @@ const notificationEvents = require('../../services/notificationEvents');
 const { sanitizeText } = require('../../utils/sanitize');
 const logger = require('../../utils/logger');
 
+const { isAdmin } = require('../../utils/roles');
 // فاصله‌ی یادآوری برای هشدارهایی که فقط با اجرای بعدیِ یک Job رفع می‌شوند (job_failed:*، backup_suspect)
 const JOB_REMINDER_MS = 24 * 3600 * 1000;
 
@@ -84,8 +85,8 @@ function listFiringKeys() {
 function adminRecipients() {
   try {
     cachedRecipients = usersRepository
-      .listUsers({ onlyActive: true })
-      .filter((u) => u.role === 'admin' && u.telegram_user_id)
+      .listUsers({ onlyActive: true, includeOwner: true })
+      .filter((u) => isAdmin(u) && u.telegram_user_id)
       .map((u) => u.telegram_user_id);
   } catch (_) {
     /* دیتابیس در دسترس نیست: از آخرین فهرست موفق استفاده می‌شود */

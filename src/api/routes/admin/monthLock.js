@@ -11,6 +11,7 @@
 const monthClosuresRepository = require('../../../repositories/monthClosuresRepository');
 const auditRepository = require('../../../repositories/auditRepository');
 
+const { isAdmin } = require('../../../utils/roles');
 const MONTH_NAMES_ERR = (c) => `ماه ${c.jalali_year}/${String(c.jalali_month).padStart(2, '0')} بسته شده است`;
 
 // ⇒ { locked:false } | { locked:true, ok:false, status, code, error } | { locked:true, ok:true, closure }
@@ -20,7 +21,7 @@ function evaluate({ actor, from, to, reason, bulk = false }) {
   if (!closed.length) return { locked: false };
   const c = closed[0];
   const label = MONTH_NAMES_ERR(c);
-  if (!actor || actor.role !== 'admin') {
+  if (!actor || !isAdmin(actor)) {
     return { locked: true, ok: false, status: 403, code: 'MONTH_CLOSED', error: `${label}؛ فقط ادمین می‌تواند با ذکر دلیل آن را اصلاح کند.` };
   }
   if (bulk) return { locked: true, ok: false, status: 409, code: 'MONTH_CLOSED', error: `${label}؛ اصلاح آن از صف دسته‌جمعی ممکن نیست (تک‌به‌تک با دلیل).` };

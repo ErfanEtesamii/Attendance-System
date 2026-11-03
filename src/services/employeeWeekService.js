@@ -22,12 +22,13 @@ const { summarizeWeek } = require('./employeeWeekSummary');
 const { addDays, dayNumber } = require('../utils/shiftDay');
 const { isoDateToJalaliString } = require('../utils/jalali');
 
+const { isAdmin } = require('../utils/roles');
 const fail = (status, code, error) => ({ ok: false, status, code, error });
 const minutesOf = (hhmm) => (typeof hhmm === 'string' && /^\d{2}:\d{2}$/.test(hhmm) ? Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3)) : null);
 
 function canView(actor, user) {
   if (!actor) return false;
-  if (actor.role === 'admin' || actor.role === 'hr') return true;
+  if (isAdmin(actor) || actor.role === 'hr') return true;
   if (actor.role === 'manager') return user.manager_id === actor.id;
   return false; // کارمند و نقش ناشناخته: ممنوع (default-deny)
 }

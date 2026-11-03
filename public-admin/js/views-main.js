@@ -258,7 +258,7 @@
   // کارمندان
   // ======================================================
   function employeeFormFields(u, users) {
-    const managers = users.filter((x) => ['manager', 'admin'].includes(x.role) && x.isActive && (!u || x.id !== u.id));
+    const managers = users.filter((x) => ['manager', 'admin', 'owner'].includes(x.role) && x.isActive && (!u || x.id !== u.id));
     return `
       <div class="form-grid">
         <label class="field"><span>نام و نام‌خانوادگی</span><input name="fullName" required value="${esc(u ? u.fullName : '')}" /></label>
@@ -266,7 +266,10 @@
         <label class="field"><span>دپارتمان</span><input name="department" list="dept-list" value="${esc(u ? u.department || '' : '')}" />
           <datalist id="dept-list">${[...new Set(users.map((x) => x.department).filter(Boolean))].map((d) => `<option value="${esc(d)}">`).join('')}</datalist></label>
         <label class="field"><span>نقش</span><select name="role">
-          ${Object.entries(AP.ROLE).map(([k, v]) => `<option value="${k}" ${u && u.role === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
+          ${Object.entries(AP.ROLE)
+            // owner از پنل قابل تعیین نیست؛ نقش admin فقط برای دارنده‌ی مجوز admins.manage (owner) قابل انتخاب است. نقش فعلیِ خود کاربر همیشه دیده می‌شود.
+            .filter(([k]) => (u && u.role === k) || (k !== 'owner' && (k !== 'admin' || AP.can('admins.manage'))))
+            .map(([k, v]) => `<option value="${k}" ${u && u.role === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
         <label class="field"><span>سرپرست مستقیم</span><select name="managerId"><option value="">— ندارد —</option>
           ${managers.map((m) => `<option value="${m.id}" ${u && u.managerId === m.id ? 'selected' : ''}>${esc(m.fullName)}</option>`).join('')}</select></label>
         <label class="field"><span>آیدی عددی تلگرام</span><input name="telegramUserId" class="ltr" inputmode="numeric" value="${esc(u ? u.telegramUserId || '' : '')}" /></label>
@@ -324,7 +327,7 @@
                 <td><div class="cell-user">${AP.avatar(u.fullName, 'sm', u.id)}<span><b>${esc(u.fullName)}</b></span></div></td>
                 <td class="num">${esc(u.personnelCode || '—')}</td>
                 <td>${esc(u.department || '—')}</td>
-                <td>${AP.badge(u.role === 'admin' ? 'purple' : u.role === 'manager' ? 'blue' : '', AP.ROLE[u.role])}</td>
+                <td>${AP.badge(['admin', 'owner'].includes(u.role) ? 'purple' : u.role === 'manager' ? 'blue' : '', AP.ROLE[u.role])}</td>
                 <td>${esc(u.managerId && byId.get(u.managerId) ? byId.get(u.managerId).fullName : '—')}</td>
                 <td>${u.shiftName ? `${esc(u.shiftName)} <span class="ltr muted">${esc(u.shiftTime)}</span>` : '<span class="muted">پیش‌فرض</span>'}</td>
                 <td>${AP.stateBadge(todayMap[u.todayStatus] || 'absent')}</td>
@@ -428,7 +431,7 @@
           <div class="grow">
             <h2>${esc(u.fullName)}</h2>
             <div class="tags">
-              ${AP.badge(u.role === 'admin' ? 'purple' : u.role === 'manager' ? 'blue' : '', AP.ROLE[u.role])}
+              ${AP.badge(['admin', 'owner'].includes(u.role) ? 'purple' : u.role === 'manager' ? 'blue' : '', AP.ROLE[u.role])}
               ${AP.badge('', u.department || 'بدون دپارتمان')}
               ${u.personnelCode ? AP.badge('', `کد ${u.personnelCode}`) : ''}
               ${u.isActive ? AP.badge('green', 'فعال') : AP.badge('red', 'غیرفعال')}

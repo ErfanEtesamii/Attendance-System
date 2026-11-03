@@ -8,7 +8,7 @@ async function sendAiDigest() {
   if (!config.ai.digestEnabled) return;
   const fresh = insights.takeNew(insights.collect());
   if (!fresh.length) return;
-  const admins = getDb().prepare(`SELECT telegram_user_id t FROM users WHERE role='admin' AND is_active=1 AND telegram_user_id IS NOT NULL`).all();
+  const admins = getDb().prepare(`SELECT telegram_user_id t FROM users WHERE role IN ('admin','owner') AND is_active=1 AND telegram_user_id IS NOT NULL`).all();
   const text = `🤖 تحلیلگر هوشمند\n\n${fresh.map((f) => f.text).join('\n')}`;
   for (const a of admins) await notifier.sendMessage(a.t, text);
 }

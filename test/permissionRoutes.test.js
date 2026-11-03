@@ -15,6 +15,7 @@ const E = 'employee';
 const M = 'manager';
 const A = 'admin';
 const H = 'hr';
+const O = 'owner';
 
 // hr (S4-4a): فقط‌خواندنی همه؛ همین routeها برای hr مجازند و بقیه (همه‌ی نوشتن‌ها، تنظیمات، ممیزی، سیستم، شیفت، مشکوک) ۴۰۳ گارد مجوز می‌دهند.
 const HR_ALLOWED = new Set([
@@ -136,12 +137,12 @@ const ROUTES_2 = [
   ['POST', '/api/admin/suspicious/999999/review', [M, A]],
   ['GET', '/api/admin/system', [A]],
   ['GET', '/api/admin/system/status', [A]],
-  ['POST', '/api/admin/broadcast', [A], 'skip'],
-  ['POST', '/api/admin/system/revoke-all-sessions', [A], 'skip'],
-  ['GET', '/api/admin/system/backup', [A], 'skip'],
-  ['GET', '/api/admin/system/reset/options', [A]], // B3
-  ['POST', '/api/admin/system/reset/preview', [A]], // B3 (فقط شمارش)
-  ['POST', '/api/admin/system/reset', [A], 'skip'], // B3 (مخرب؛ ادمین اجرا نمی‌شود)
+  ['POST', '/api/admin/broadcast', [O], 'skip'],
+  ['POST', '/api/admin/system/revoke-all-sessions', [O], 'skip'],
+  ['GET', '/api/admin/system/backup', [O], 'skip'],
+  ['GET', '/api/admin/system/reset/options', [O]], // B3
+  ['POST', '/api/admin/system/reset/preview', [O]], // B3 (فقط شمارش)
+  ['POST', '/api/admin/system/reset', [O], 'skip'], // B3 (مخرب؛ ادمین اجرا نمی‌شود)
 ];
 
 describe('گارد مجوز routeهای /api/admin/* (S4-3b/S4-3c)', { skip: hasDeps ? false : 'express نصب نیست (npm install)' }, () => {
@@ -153,9 +154,10 @@ describe('گارد مجوز routeهای /api/admin/* (S4-3b/S4-3c)', { skip: has
     const { createApp } = require('../src/server');
     const admin = makeUser({ role: 'admin' });
     const hr = makeUser({ role: 'hr' });
+    const owner = makeUser({ role: 'owner' });
     const mgr = makeUser({ role: 'manager' });
     const emp = makeUser({ role: 'employee', managerId: mgr.id });
-    cookies = { employee: sessionCookie(emp.id), manager: sessionCookie(mgr.id), admin: sessionCookie(admin.id), hr: sessionCookie(hr.id) };
+    cookies = { employee: sessionCookie(emp.id), manager: sessionCookie(mgr.id), admin: sessionCookie(admin.id), hr: sessionCookie(hr.id), owner: sessionCookie(owner.id) };
     server = createApp().listen(0);
     await new Promise((r) => server.once('listening', r));
     base = `http://127.0.0.1:${server.address().port}`;
@@ -174,8 +176,9 @@ describe('گارد مجوز routeهای /api/admin/* (S4-3b/S4-3c)', { skip: has
   // «ممنوع»: ۴۰۳ (برای کارمند ممکن است پیام لیست سفید باشد؛ برای سرپرست/ادمین پیام گارد مجوز).
   for (const [method, url, allowed, skip] of [...ROUTES, ...ROUTES_2]) {
     test(`${method} ${url}`, async () => {
-      for (const role of [E, M, A, H]) {
-        const allow = allowed.includes(role) || (role === H && HR_ALLOWED.has(`${method} ${url}`));
+      for (const role of [E, M, A, H, O]) {
+        // owner ابرمجموعه‌ی admin است: هر route مجاز برای admin برای owner هم مجاز است
+        const allow = allowed.includes(role) || (role === O && allowed.includes(A)) || (role === H && HR_ALLOWED.has(`${method} ${url}`));
         if (allow && skip) continue;
         const r = await hit(role, method, url);
         if (allow) {

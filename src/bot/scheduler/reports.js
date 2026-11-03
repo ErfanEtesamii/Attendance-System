@@ -9,6 +9,7 @@ const { formatMinutes } = require('../../utils/workHours');
 const { todayDateString } = require('../../utils/serverTime');
 const { jalaliMonthRange } = require('../../utils/jalali');
 
+const { isAdmin } = require('../../utils/roles');
 // برچسب درست برای روزی که کارمند ورود ثبت نکرده: تعطیل رسمی / مرخصی تأییدشده / واقعاً غایب.
 // اول status رکورد placeholder (اگر Job صبحگاهی markNonWorkingDays آن را ساخته باشد) چک می‌شود؛
 // در غیر این صورت به‌صورت مستقل از تقویم/leaveRepository هم چک می‌کنیم تا حتی اگر آن
@@ -32,11 +33,11 @@ function daysAgoDateString(days) {
 function recipientsFor(manager) {
   // مدیر دپارتمان فقط تیم خودش، ادمین همه را می‌بیند
   const all = usersRepository.listUsers({ onlyActive: true });
-  return manager.role === 'admin' ? all : all.filter((u) => u.manager_id === manager.id);
+  return isAdmin(manager) ? all : all.filter((u) => u.manager_id === manager.id);
 }
 
 async function sendToManagersAndAdmins(bot, buildMessage) {
-  const recipients = usersRepository.listUsers({ onlyActive: true }).filter((u) => ['manager', 'admin'].includes(u.role));
+  const recipients = usersRepository.listUsers({ onlyActive: true, includeOwner: true }).filter((u) => ['manager', 'admin', 'owner'].includes(u.role));
 
   for (const recipient of recipients) {
     if (!recipient.telegram_user_id) continue;

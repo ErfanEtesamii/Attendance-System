@@ -10,6 +10,7 @@ const ui = require('../ui/pickers');
 const { todayDateString } = require('../../utils/serverTime');
 const timeInput = require('../../utils/timeInput');
 
+const { isAdmin } = require('../../utils/roles');
 // E3: کارمند از فهرست دکمه‌ای، تاریخ از تقویم شمسی، ساعت از اسلات ۳۰ دقیقه‌ای؛ فقط «دلیل» تایپ می‌شود (اجباری، بدون «رد شدن»).
 // تایپ آیدی تلگرام / YYYY-MM-DD / HH:mm هم همچنان پذیرفته است. نقش ادمین هر بار سمت سرور دوباره چک می‌شود.
 
@@ -37,7 +38,7 @@ const menuOpts = (userId) => ui.menuKeyboardOpts(userId ? usersRepository.findBy
 
 function sessionAdmin(sess) {
   const admin = sess && sess.data && sess.data.adminId ? usersRepository.findById(sess.data.adminId) : null;
-  return admin && admin.is_active && admin.role === 'admin' ? admin : null;
+  return admin && admin.is_active && isAdmin(admin) ? admin : null;
 }
 
 // بعد از انتخاب کارمند (از فهرست یا تایپ): مرحله‌ی تاریخ

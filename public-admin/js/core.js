@@ -165,7 +165,7 @@
     },
   });
 
-  AP.ROLE = { employee: 'کارمند', manager: 'سرپرست', admin: 'ادمین کل', hr: 'منابع انسانی' };
+  AP.ROLE = { employee: 'کارمند', manager: 'سرپرست', admin: 'ادمین کل', hr: 'منابع انسانی', owner: 'مالک سیستم' };
   AP.STATE_LABEL = {
     present: 'حاضر', on_break: 'در استراحت', checked_out: 'خارج شده', absent: 'غایب / نیامده',
     leave: 'مرخصی', holiday: 'تعطیل', incomplete: 'ناقص',
@@ -854,7 +854,7 @@
     const me = AP.state.me;
     await AP.loadPermissions(); // قبل از ساخت منو؛ بدون آن همه‌چیز بسته می‌ماند
     // فقط برچسب نمایشی زیر لوگو (کنترل دسترسی نیست)
-    $('.brand-sub').textContent = { admin: 'پنل مدیریتی', manager: 'پنل سرپرست', hr: 'پنل منابع انسانی', employee: 'پنل کارمند' }[me.role] || 'پنل';
+    $('.brand-sub').textContent = { owner: 'پنل مالک', admin: 'پنل مدیریتی', manager: 'پنل سرپرست', hr: 'پنل منابع انسانی', employee: 'پنل کارمند' }[me.role] || 'پنل';
     if (AP.selfOnly()) $('#global-search').placeholder = 'جستجوی صفحه یا اقدام…'; // بدون users.read فقط فرمان‌ها/صفحه‌ها، نه افراد
     $('#me-avatar').textContent = AP.initials(me.fullName);
     if (AP.profilePhoto) AP.profilePhoto.mount(me); // عکس پروفایل

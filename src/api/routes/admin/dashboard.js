@@ -22,6 +22,7 @@ const { todayDateString, nowIso } = require('../../../utils/serverTime');
 const { DATE_RE, scopedUserIds, visibleUsers, shiftDate, userBrief, safeSummary, makeUserMap, classifyToday } = require('./common');
 const { requirePermission, permissionsFor } = require('../../../middleware/permissions');
 
+const { isAdmin } = require('../../../utils/roles');
 router.get('/admin/me', requirePermission('me.read'), (req, res) => {
   const u = req.adminUser;
   res.json({ id: u.id, fullName: u.full_name, role: u.role, department: u.department });
@@ -209,7 +210,7 @@ router.get('/admin/overview', requirePermission('dashboard.read'), (req, res) =>
   const openDisputes = disputeRepository.listOpen().filter((d) => userIds.includes(d.user_id)).length;
 
   let recentActivity = [];
-  if (req.adminUser.role === 'admin') {
+  if (isAdmin(req.adminUser)) {
     recentActivity = auditRepository.listRecent(8).map((r) => ({
       ...r,
       userFullName: r.user_id ? userMap.get(r.user_id)?.full_name || null : null,

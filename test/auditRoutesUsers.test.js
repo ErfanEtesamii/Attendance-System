@@ -13,7 +13,7 @@ describe('audit با قالب logChange — کاربران/سشن/تنظیمات
     db = resetDb();
     F = require('./helpers/factories');
     const { createApp } = require('../src/server');
-    admin = F.makeUser({ role: 'admin' });
+    admin = F.makeUser({ role: 'owner' });
     cookie = F.sessionCookie(admin.id);
     server = createApp().listen(0);
     await new Promise((r) => server.once('listening', r));
