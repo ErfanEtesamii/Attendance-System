@@ -101,3 +101,22 @@
 .ai-form .ai-send { border-radius: 16px; box-shadow: 0 4px 12px rgba(217, 138, 6, .3); transition: transform .15s, box-shadow .15s; }
 .ai-form .ai-send:hover:not([disabled]) { transform: translateY(-1px); }
 @media (prefers-reduced-motion: reduce) { .ai-sub::before { animation: none; } }
+
+/* ai-fab-v2: دکمه روی نوار کناری (سمت راست در RTL) می‌افتاد؛ به گوشه‌ی پایین-چپ (inline-end) رفت، زیر پنل گفتگو و بالای «بازگشت به بالا». */
+.ai-fab { inset-inline-start: auto; inset-inline-end: max(16px, env(safe-area-inset-right)); inset-block-end: max(16px, env(safe-area-inset-bottom)); gap: 10px; padding: 7px 18px 7px 8px; min-height: 48px; font-size: var(--fs-sm); letter-spacing: .1px; border: 1px solid rgba(255, 255, 255, .22); background: radial-gradient(120% 160% at 0% 0%, color-mix(in srgb, var(--accent) 34%, transparent), transparent 55%), linear-gradient(135deg, var(--brand), color-mix(in srgb, var(--brand) 55%, #8b7cf6)); box-shadow: 0 10px 26px rgba(43, 37, 96, .34), inset 0 1px 0 rgba(255, 255, 255, .24); }
+.ai-fab-ico { flex: none; display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: rgba(255, 255, 255, .2); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .28); font-size: 16px; line-height: 1; transition: transform .35s ease; }
+.ai-fab:hover .ai-fab-ico { transform: rotate(72deg) scale(1.08); }
+.ai-fab::after { content: ""; position: absolute; inset: -4px; border-radius: inherit; border: 2px solid color-mix(in srgb, var(--accent) 65%, transparent); opacity: 0; pointer-events: none; animation: ai-fab-ring 3.2s ease-out 1.2s 3; }
+@keyframes ai-fab-ring { 0% { opacity: .7; transform: scale(.96); } 70%, 100% { opacity: 0; transform: scale(1.12); } }
+.ai-fab[aria-expanded="true"] { background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 78%, #000), var(--brand)); }
+.ai-fab[aria-expanded="true"]::after { display: none; }
+.ai-panel { inset-inline-start: auto; inset-inline-end: max(16px, env(safe-area-inset-right)); inset-block-end: 76px; transform-origin: bottom left; }
+body:has(#ai-fab) .ux-back-to-top { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 62px); }
+@media (max-width: 640px) {
+  .ai-fab { inset-inline-start: auto; inset-inline-end: 14px; inset-block-end: 14px; padding: 7px; }
+  .ai-fab-label { display: none; }
+  .ai-panel { inset-inline-start: 12px; inset-inline-end: 12px; inset-block-end: 72px; width: auto; height: calc(100vh - 96px); }
+  body:has(#ai-fab) .ux-back-to-top { bottom: 72px; }
+}
+@media (prefers-reduced-motion: reduce) { .ai-fab::after { animation: none; } .ai-fab:hover .ai-fab-ico { transform: none; } }
+@media print { .ai-fab::after { display: none; } }

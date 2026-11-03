@@ -113,7 +113,9 @@
     const history = [];
     let busy = false;
 
-    const fab = el('button', 'ai-fab', '✦ تحلیلگر هوشمند');
+    const fab = el('button', 'ai-fab');
+    fab.append(el('span', 'ai-fab-ico', '✦'), el('span', 'ai-fab-label', 'تحلیلگر هوشمند'));
+    fab.title = 'تحلیلگر هوشمند'; fab.setAttribute('aria-label', 'تحلیلگر هوشمند');
     fab.id = 'ai-fab'; fab.type = 'button'; fab.setAttribute('aria-expanded', 'false'); fab.setAttribute('aria-controls', 'ai-panel');
 
     const panel = el('section', 'ai-panel hidden');
