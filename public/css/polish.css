@@ -895,3 +895,30 @@ body {
 :root[data-theme="light"] #view-profile .pf-hero #pf-role-chip {
   background: linear-gradient(135deg, #7a1f1a, #5a1e12); color: #fff4dc; border-color: #b8862e;
 }
+
+/* ===== نوار پایین فیت‌شده + آواتار بزرگ‌تر (مینی‌اپ) ===== */
+/* نوار پایین: بدون فاصله از لبه‌های چپ/راست/پایین؛ فقط گوشه‌های بالا گرد؛ ناحیه‌ی امن پایین داخل خود نوار */
+.bottom-nav {
+  left: 0; right: 0;
+  bottom: 0;
+  padding: 6px 8px calc(6px + max(env(safe-area-inset-bottom, 0px), var(--tg-safe-bottom, 0px), var(--tg-content-safe-bottom, 0px)));
+  border-radius: 22px 22px 0 0;
+  border-width: 1px 0 0;
+  box-shadow: 0 -10px 28px -10px rgba(0, 0, 0, .35);
+}
+.nav-btn { border-radius: 16px; }
+.toast { bottom: calc(92px + max(env(safe-area-inset-bottom, 0px), var(--tg-safe-bottom, 0px))); }
+#views { padding-bottom: calc(92px + max(env(safe-area-inset-bottom, 0px), var(--tg-safe-bottom, 0px))); }
+
+/* پروفایل (تم روشن): ارتفاع کارت همان قبلی (آواتار ۲۸px بزرگ‌تر ← padding بالا ۲۸px کمتر).
+   تصویر فرش همیشه کل ارتفاع کارت را می‌پوشاند (ارتفاع تصویر = ارتفاع کارت + برش)، پس زیر تصویر فضای خالی نمی‌ماند.
+   قله‌ی موج در ۶۵٪ ارتفاع تصویر است؛ با ارتفاع ≈۲۵۵ و برش ۲۱۶، قله ≈۹۰px از بالا = مرکز آواتار (۳۶ + ۵۴).
+   برای جابه‌جایی آواتار نسبت به موج: --pf-crop-top را کم/زیاد کنید (۱px برش ≈ ۰٫۳۵px جابه‌جایی قله). */
+:root[data-theme="light"] #view-profile .pf-hero {
+  --pf-crop-top: 216px;
+  padding: 36px var(--space-4) 22px;
+  background-size: auto calc(100% + var(--pf-crop-top));
+  background-position: 50% calc(var(--pf-crop-top) * -1);
+}
+:root[data-theme="light"] #view-profile .pf-hero .pf-avatar { width: 108px; height: 108px; font-size: 42px; }
+:root[data-theme="light"] #view-profile .pf-hero .pf-avatar-badge { width: 32px; height: 32px; font-size: 15px; }
