@@ -210,6 +210,25 @@
 
   function closeMenu() { if (menu) { menu.remove(); menu = null; } }
 
+  // موقعیت منو با left/top فیزیکی (نه inset-inline-start: در RTL همان right می‌شود و منو از کادر بیرون می‌زد).
+  // لبه‌ی منو با لبه‌ی آواتار هم‌تراز می‌شود و همیشه داخل صفحه می‌ماند؛ اگر بالای آواتار جا نبود، زیرش باز می‌شود.
+  function placeMenu(anchor) {
+    if (!menu) return;
+    const M = 8;
+    const r = anchor.getBoundingClientRect();
+    const w = menu.offsetWidth, h = menu.offsetHeight;
+    const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
+    const rtl = getComputedStyle(document.documentElement).direction === 'rtl';
+    let left = rtl ? r.right - w : r.left;
+    left = Math.min(Math.max(M, left), Math.max(M, vw - w - M));
+    let top = r.top - h - 10;
+    if (top < M) top = r.bottom + 10;
+    top = Math.min(Math.max(M, top), Math.max(M, vh - h - M));
+    menu.style.left = left + 'px';
+    menu.style.right = 'auto';
+    menu.style.top = top + 'px';
+  }
+
   function openMenu(anchor, input) {
     closeMenu();
     menu = document.createElement('div');
@@ -230,9 +249,7 @@
     item('📷', hasPhoto ? 'تغییر عکس' : 'افزودن عکس', () => input.click());
     if (hasPhoto) item('🗑', 'حذف عکس', removePhoto, true);
     document.body.appendChild(menu);
-    const r = anchor.getBoundingClientRect();
-    menu.style.top = Math.max(8, r.top - menu.offsetHeight - 10) + 'px';
-    menu.style.insetInlineStart = Math.max(8, r.left) + 'px';
+    placeMenu(anchor);
     menu.querySelector('button').focus();
   }
 
@@ -260,6 +277,8 @@
       b.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') toggle(e); });
       document.addEventListener('click', (e) => { if (menu && !menu.contains(e.target)) closeMenu(); });
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
+      window.addEventListener('resize', closeMenu);
+      window.addEventListener('scroll', closeMenu, true);
       paint();
     },
   };
