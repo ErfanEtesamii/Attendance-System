@@ -1,0 +1,351 @@
+// S3-1a: رجیستری تنظیمات پویا. «تنها منبع حقیقت» برای کلیدها، نوع، پیش‌فرض، بازه، توضیح و گروه.
+// خالص است (بدون SQL و بدون دسترسی به DB)؛ ذخیره/خواندن در settingsRepository انجام می‌شود.
+//
+// افزودن تنظیم جدید = یک خط در REGISTRY (پایین همین فایل)؛ اعتبارسنجی، پیش‌فرض و خواندن/ذخیره خودکار است.
+//
+// انواع: number (عدد صحیح، مگر integer:false) | boolean | time (HH:MM) | cron (با node-cron validate)
+//        | enum (values) | string (minLength/maxLength اختیاری) | timezone (نام IANA، مثل Asia/Tehran)
+//        | weekdays (آرایه‌ی روزهای هفته ۰=یکشنبه … ۶=شنبه؛ ورودی آرایه یا متن «4,5»؛ مقدار نرمال = آرایه‌ی مرتب و یکتا)
+
+const cron = require('node-cron');
+const config = require('../config');
+const time = require('./time');
+
+const TYPES = ['number', 'boolean', 'time', 'cron', 'enum', 'string', 'timezone', 'weekdays', 'date'];
+
+// برچسب فارسی گروه‌ها (برای صفحه‌ی تنظیمات گروه‌بندی‌شده در S3-9a)
+const GROUP_LABELS = {
+  workHours: 'ساعت کاری',
+  calendar: 'تقویم کاری',
+  overtime: 'اضافه‌کاری',
+  leave: 'مرخصی و مانده',
+  reminders: 'تأخیر و یادآوری',
+  security: 'امنیت',
+  retention: 'نگهداری و آرشیو داده',
+  schedule: 'زمان‌بندی Jobها',
+  monthClose: 'بستن ماه',
+  reportDelivery: 'ارسال خودکار گزارش',
+  patterns: 'الگوهای رفتاری (هشدار الگو)',
+  planning: 'برنامه‌ی هفتگی و گزارش روزانه',
+  performance: 'تشویق و تنبیه (امتیاز عملکرد)',
+  disputes: 'اعتراض‌ها',
+};
+
+// ---------- اعتبارسنجی بر اساس نوع ----------
+// خروجی: { ok: true, value } با مقدار نرمال‌شده | { ok: false, error } با پیام فارسی
+
+function parseBool(value) {
+  if (value === true || value === 1 || value === '1' || value === 'true') return true;
+  if (value === false || value === 0 || value === '0' || value === 'false') return false;
+  return null;
+}
+
+function validateValue(def, raw) {
+  const bad = (error) => ({ ok: false, error });
+  switch (def.type) {
+    case 'number': {
+      let n;
+      if (typeof raw === 'number') n = raw;
+      else if (typeof raw === 'string' && /^\s*-?\d+(\.\d+)?\s*$/.test(raw)) n = Number(raw);
+      else return bad('باید عدد باشد.');
+      if (!Number.isFinite(n)) return bad('باید عدد باشد.');
+      if (def.integer !== false && !Number.isInteger(n)) return bad('باید عدد صحیح باشد.');
+      if (def.min !== undefined && n < def.min) return bad(`نباید کمتر از ${def.min} باشد.`);
+      if (def.max !== undefined && n > def.max) return bad(`نباید بیشتر از ${def.max} باشد.`);
+      return { ok: true, value: n };
+    }
+    case 'boolean': {
+      const b = parseBool(raw);
+      return b === null ? bad('باید true یا false باشد.') : { ok: true, value: b };
+    }
+    case 'time': {
+      const m = typeof raw === 'string' ? /^\s*(\d{1,2}):(\d{2})\s*$/.exec(raw) : null;
+      if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) return bad('باید ساعت معتبر با قالب HH:MM باشد.');
+      return { ok: true, value: `${m[1].padStart(2, '0')}:${m[2]}` };
+    }
+    case 'cron': {
+      const s = typeof raw === 'string' ? raw.trim() : '';
+      return s && cron.validate(s) ? { ok: true, value: s } : bad('عبارت cron نامعتبر است.');
+    }
+    case 'enum': {
+      return def.values.includes(raw) ? { ok: true, value: raw } : bad(`باید یکی از ${def.values.join('، ')} باشد.`);
+    }
+    case 'string': {
+      if (typeof raw !== 'string') return bad('باید متن باشد.');
+      const s = raw.trim();
+      if (s.length < (def.minLength || 0)) return bad(`حداقل ${def.minLength} نویسه لازم است.`);
+      if (s.length > (def.maxLength || 200)) return bad(`حداکثر ${def.maxLength || 200} نویسه مجاز است.`);
+      return { ok: true, value: s };
+    }
+    case 'date': { // D2: تاریخ میلادی YYYY-MM-DD یا خالی (= تنظیم نشده)
+      const s = typeof raw === 'string' ? raw.trim() : '';
+      if (s === '') return { ok: true, value: '' };
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+      const d = m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null;
+      return d && d.toISOString().slice(0, 10) === s ? { ok: true, value: s } : bad('باید تاریخ معتبر با قالب YYYY-MM-DD (یا خالی) باشد.');
+    }
+    case 'timezone': {
+      const zone = time.normalizeTimezone(raw);
+      return zone ? { ok: true, value: zone } : bad('باید نام معتبر منطقه‌ی زمانی IANA باشد (مثل Asia/Tehran).');
+    }
+    case 'weekdays': {
+      // آرایه‌ی عددها یا متن جداشده با کاما ('4,5'؛ متن خالی = بدون روز، فقط اگر def.allowEmpty)
+      let list;
+      if (Array.isArray(raw)) list = raw;
+      else if (typeof raw === 'string') list = raw.trim() === '' ? [] : raw.split(',').map((x) => (/^\s*\d\s*$/.test(x) ? Number(x) : NaN));
+      else return bad('باید فهرست روزهای هفته باشد (۰=یکشنبه … ۶=شنبه).');
+      if (!list.every((d) => Number.isInteger(d) && d >= 0 && d <= 6)) return bad('هر روز باید عدد صحیح ۰ تا ۶ باشد (۰=یکشنبه … ۶=شنبه).');
+      const days = [...new Set(list)].sort((a, b) => a - b);
+      if (days.length < (def.allowEmpty ? 0 : 1)) return bad('حداقل یک روز لازم است.');
+      if (days.length > (def.maxDays || 7)) return bad(`حداکثر ${def.maxDays || 7} روز مجاز است.`);
+      return { ok: true, value: days };
+    }
+    default:
+      return bad('نوع تنظیم ناشناخته است.');
+  }
+}
+
+// ---------- تعریف رجیستری ----------
+// def(key، کلید DB، نوع، { default، fallback، min، max، values، group، description })
+//  - default می‌تواند تابع باشد (مثلاً خواندن از config در لحظه‌ی استفاده).
+//  - fallback: مقدار ثابت امن برای وقتی که default (مثلاً از .env) نامعتبر باشد؛ سرور به‌خاطر غلط تایپی در .env بالا نیامدن ندارد.
+const REGISTRY = [];
+function def(key, dbKey, type, opts) {
+  REGISTRY.push({ key, dbKey, type, ...opts });
+}
+
+// ساعت کاری
+def('timezone', 'timezone', 'timezone', { group: 'workHours', default: () => config.timezone, fallback: 'Asia/Tehran', description: 'منطقه‌ی زمانی شرکت (نام IANA) برای تعیین روز و ساعت کاری' });
+def('workDayStart', 'work_day_start', 'time', { group: 'workHours', default: () => config.workDayStart, fallback: '08:00', description: 'ساعت شروع کار' });
+def('workDayEnd', 'work_day_end', 'time', { group: 'workHours', default: () => config.workDayEnd, fallback: '16:30', description: 'ساعت پایان کار' });
+// S3-3a: مهلت تأخیر در محاسبه‌ی روز (نه یادآور؛ یادآور ورود با lateCheckinGraceMinutes جداست)
+def('lateGraceMinutes', 'late_grace_minutes', 'number', { group: 'workHours', min: 0, max: 240, default: 0, description: 'مهلت تأخیر (دقیقه) پس از ساعت شروع کار؛ ورود تا پایان مهلت «تأخیر» حساب نمی‌شود (۰ = بدون مهلت)' });
+def('lateCountsFrom', 'late_counts_from', 'enum', { group: 'workHours', values: ['shift_start', 'after_grace'], default: 'shift_start', description: 'مبنای دقیقه‌ی تأخیر پس از گذشتن از مهلت: shift_start = از ساعت شروع کار (کل تأخیر)، after_grace = فقط از پایان مهلت' });
+def('earlyGraceMinutes', 'early_grace_minutes', 'number', { group: 'workHours', min: 0, max: 240, default: 0, description: 'مهلت زودتر رفتن (دقیقه) پیش از ساعت پایان کار؛ خروج تا این مقدار زودتر «زودتر رفتن» حساب نمی‌شود (۰ = بدون مهلت). در صورت عبور از مهلت، کل دقیقه‌های مانده تا پایان کار حساب می‌شود' });
+// S3-7a: تقویم کاری (فقط برای getCalendarDay؛ مصرف‌کننده‌ها در S3-7c وصل می‌شوند). روزهای هفته: ۰=یکشنبه … ۶=شنبه
+def('weekendDays', 'weekend_days', 'weekdays', { group: 'calendar', maxDays: 6, default: [5], description: 'روزهای آخر هفته‌ی (تعطیل) شرکت برای کاربر بدون شیفت؛ ۰=یکشنبه … ۶=شنبه (پیش‌فرض جمعه = ۵). کاربر دارای شیفت از «روزهای کاری شیفت» پیروی می‌کند' });
+def('halfDayWeekdays', 'half_day_weekdays', 'weekdays', { group: 'calendar', allowEmpty: true, default: [4], description: 'روزهای هفته‌ی نیم‌روز کاری (پیش‌فرض پنجشنبه = ۴)؛ فقط روزی که کاری است نیم‌روز می‌شود. فهرست خالی = بدون نیم‌روز' });
+def('halfDayEndTime', 'half_day_end_time', 'time', { group: 'calendar', default: '12:30', description: 'ساعت پایان کار در روزهای نیم‌روز؛ اگر از شروع کار زودتر یا از پایان کار دیرتر باشد نادیده گرفته می‌شود' });
+def('teamCalendarMaxConcurrent', 'team_calendar_max_concurrent', 'number', { group: 'calendar', min: 0, max: 1000, default: 0, description: 'هشدار هم‌زمانی در «تقویم تیم»: اگر در یک روز بیش از این تعداد نفر (از افراد نمایش‌داده‌شده) مرخصی/مأموریت تمام‌روز تأییدشده داشته باشند، آن روز در شبکه‌ی ماهانه هشدار می‌گیرد (۰ = بدون هشدار)' });
+// U1: ناهار ثبت‌نشده با کسر ثابت ۴۵ دقیقه پس از حداقل ۴ ساعت حضور ناخالص؛ سقف ناهار ۰ یعنی بدون سقف.
+def('maxLunchMinutes', 'max_lunch_minutes', 'number', { group: 'workHours', min: 0, max: 480, default: 0, description: 'حداکثر ناهار مجاز در روز (دقیقه)؛ مازاد ناهار ثبت‌شده به‌صورت «مازاد استراحت» گزارش می‌شود و همچنان از ساعت مفید کم می‌شود (۰ = بدون سقف)' });
+def('fixedLunchDeductMinutes', 'fixed_lunch_deduct_minutes', 'number', { group: 'workHours', min: 0, max: 480, default: 45, description: 'کسر ثابت ناهار (دقیقه) از ساعت مفید روزهای بسته‌شده‌ای که هیچ ناهاری ثبت نشده (۰ = خاموش)؛ فقط پس از رسیدن به حداقل حضور ناخالص اعمال می‌شود و استراحت کوتاه جای ناهار حساب نمی‌شود' });
+def('fixedLunchMinPresenceMinutes', 'fixed_lunch_min_presence_minutes', 'number', { group: 'workHours', min: 0, default: 240, description: 'حداقل حضور ناخالص (دقیقه) برای اعمال کسر ثابت ناهارِ ثبت‌نشده؛ ۰ = بدون آستانه و رفتار پیشین' });
+def('maxReEntriesPerDay', 'max_re_entries_per_day', 'number', { group: 'workHours', min: 0, max: 5, default: 1, description: 'حداکثر ورود مجدد پس از خروج در یک روز؛ ۰ = غیرفعال' });
+// C1 (فاز ۱۲): استراحت کوتاهِ با حقوق (هر دو پیش‌فرض ۰ = خاموش ⇒ رفتار قبلی). روی هر شیفت هم می‌شود جدا تنظیم کرد (NULL = همین مقدار سراسری)
+def('paidBreakCount', 'paid_break_count', 'number', { group: 'workHours', min: 0, max: 10, default: 3, description: 'حداکثر تعداد استراحت کوتاهِ دارای سهم با حقوق در روز؛ ۰ = خاموش' });
+def('paidBreakCountUnlimited', 'paid_break_count_unlimited', 'boolean', { group: 'workHours', default: false, description: 'تعداد استراحت کوتاه با حقوق نامحدود: روشن ⇒ سقف تعداد (paidBreakCount) نادیده گرفته می‌شود و استراحت‌های کوتاه به ترتیب شروع از استخر روزانه‌ی paidBreakMinutes سهم می‌گیرند؛ مازاد استخر بدون حقوق است. استخر دقیقه باید > ۰ باشد. روی تعداد تنظیم شیفت‌ها هم غالب است' });
+def('paidBreakMinutes', 'paid_break_minutes', 'number', { group: 'workHours', min: 0, max: 120, default: 45, description: 'استخر مجموعِ روزانه‌ی استراحت کوتاه با حقوق (دقیقه)؛ بین استراحت‌های مجاز به ترتیب شروع تقسیم می‌شود و ۰ = خاموش است' });
+// D1 (فاز ۱۲): سقف تأخیر در هر ماه شمسی و «اجازه‌ی ورود». lateMonthlyLimit=۰ ⇒ خاموش؛ با سقف N، N بار تأخیرِ بسته‌شده آزاد است و ورودِ دیرِ بعدی اجازه می‌خواهد.
+def('lateMonthlyLimit', 'late_monthly_limit', 'number', { group: 'workHours', min: 0, max: 31, default: 0, description: 'سقف تعداد تأخیر در هر ماه شمسی؛ بعد از این تعداد، ثبتِ ورودِ دیر نیازمند اجازه‌ی سرپرست است. ۰ = خاموش' });
+def('lateLimitGateMode', 'late_limit_gate_mode', 'enum', { group: 'workHours', values: ['off', 'soft', 'enforce'], default: 'off', description: 'اعمال سقف تأخیر: off = بی‌اثر، soft = فقط هشدار و ثبتِ رویداد (ورود مجاز است)، enforce = ورودِ دیرِ بالای سقف بدون اجازه‌ی سرپرست ثبت نمی‌شود' });
+def('lateLimitPermissionTtlMinutes', 'late_limit_permission_ttl_minutes', 'number', { group: 'workHours', min: 5, max: 720, default: 60, description: 'اعتبار «اجازه‌ی ورود» بعد از تأیید سرپرست (دقیقه)؛ با یک ورود موفق مصرف می‌شود و بعد از این مدت منقضی است' });
+// S3-4b: آستانه‌ی پرچم‌ها (فقط گزارش؛ عددی را عوض نمی‌کنند)
+def('longOpenBreakMinutes', 'long_open_break_minutes', 'number', { group: 'workHours', min: 1, max: 720, default: 120, description: 'آستانه‌ی پرچم «استراحت بسته‌نشده» (دقیقه): استراحتی که پایان نخورده و بیش از این مدت طول کشیده پرچم می‌شود' });
+def('outsideShiftMarginMinutes', 'outside_shift_margin_minutes', 'number', { group: 'workHours', min: 0, max: 720, default: 120, description: 'حاشیه‌ی مجاز (دقیقه) ورود/خروج پیش از شروع یا پس از پایان کار؛ بیرون از آن پرچم «خارج از شیفت» می‌خورد (۷۲۰ = عملاً خاموش)' });
+def('crossMidnightMode', 'cross_midnight_mode', 'enum', { group: 'workHours', values: ['legacy', 'by_shift_day'], default: 'legacy', description: 'خروج پس از نیمه‌شب در شیفت عادی: «سازگار با گذشته» همان محاسبهٔ قبلی را نگه می‌دارد؛ «بر پایهٔ روز شیفت» آن را ادامهٔ همان روز کاری حساب می‌کند.' });
+// S3-5a: اضافه‌کاری روزانه (پیش‌فرض خاموش؛ ضریب‌ها ۱ = خنثی، عدد قانونی hard-code نشده)
+def('overtimeEnabled', 'overtime_enabled', 'boolean', { group: 'overtime', default: false, description: 'محاسبه‌ی «اضافه‌کاری قابل‌پرداخت» (خاموش = ۰؛ اضافه‌کاری خام همچنان گزارش می‌شود)' });
+def('overtimeMinMinutes', 'overtime_min_minutes', 'number', { group: 'overtime', min: 0, max: 480, default: 0, description: 'حداقل اضافه‌کاری روزانه (دقیقه) برای قابل‌پرداخت بودن؛ کمتر از آن صفر حساب می‌شود و برابر یا بیشتر کامل (۰ = بدون آستانه)' });
+def('overtimeDailyCapMinutes', 'overtime_daily_cap_minutes', 'number', { group: 'overtime', min: 0, max: 720, default: 0, description: 'سقف اضافه‌کاری قابل‌پرداخت در یک روز (دقیقه)؛ پیش از گرد‌کردن و ضریب برش می‌خورد (۰ = بدون سقف)' });
+def('overtimeFactor', 'overtime_factor', 'number', { group: 'overtime', integer: false, min: 0, max: 10, default: 1, description: 'ضریب اضافه‌کاری روز عادی (۱ = بدون ضریب)؛ دقیقه‌ی قابل‌پرداخت = دقیقه‌ی گرد‌شده × ضریب' });
+def('overtimeHolidayFactor', 'overtime_holiday_factor', 'number', { group: 'overtime', integer: false, min: 0, max: 10, default: 1, description: 'ضریب اضافه‌کاری رکورد روز تعطیل (status = holiday)؛ ۱ = بدون ضریب' });
+def('overtimeRoundStep', 'overtime_round_step', 'number', { group: 'overtime', min: 1, max: 60, default: 1, description: 'گام گرد‌کردن اضافه‌کاری (دقیقه)؛ ۱ = بدون گرد‌کردن' });
+def('overtimeRounding', 'overtime_rounding', 'enum', { group: 'overtime', values: ['down', 'nearest', 'up'], default: 'down', description: 'حالت گرد‌کردن به گام: down = به پایین، nearest = نزدیک‌ترین (نیم‌گام به بالا)، up = به بالا' });
+def('overtimeMonthlyCapMinutes', 'overtime_monthly_cap_minutes', 'number', { group: 'overtime', min: 0, max: 12000, default: 0, description: 'سقف ماهانه‌ی اضافه‌کاری قابل‌پرداخت (دقیقه‌ی معادل، پس از آستانه/گرد‌کردن/ضریب)؛ روزها به ترتیب تاریخ جمع می‌شوند و مازاد بر سقف قابل‌پرداخت نیست (۰ = بدون سقف). فقط در محاسبه‌ی ماهانه اعمال می‌شود، نه خروجی روزانه' });
+def('overtimeRequiresApproval', 'overtime_requires_approval', 'boolean', { group: 'overtime', default: false, description: 'الزام تأیید اضافه‌کاری: وقتی روشن باشد اضافه‌کاری هر روز تا تأیید سرپرست/ادمین «معلق» است و در اضافه‌کاری قابل‌پرداخت ماهانه نمی‌آید؛ ردشده هم نمی‌آید (خاموش = بدون نیاز به تأیید)' });
+// S5-3a: چک‌لیست پیش از بستن ماه. هر مورد «مانع» (بستن را مسدود می‌کند) یا «هشدار» (فقط نمایش) است؛ تصمیم تجاری با ادمین، نه کد.
+def('monthCloseRequireMonthEnded', 'month_close_require_month_ended', 'boolean', { group: 'monthClose', default: true, description: 'بستن ماه فقط پس از پایان آخرین روز ماه شمسی ممکن باشد (خاموش = ادمین می‌تواند ماهِ در جریان را هم ببندد)' });
+def('monthCloseBlockIncomplete', 'month_close_block_incomplete', 'boolean', { group: 'monthClose', default: true, description: 'وجود روز ناقص (ورود بدون خروج) در ماه، بستن را مسدود کند؛ خاموش = فقط هشدار' });
+def('monthCloseBlockOpenDisputes', 'month_close_block_open_disputes', 'boolean', { group: 'monthClose', default: true, description: 'وجود اعتراض باز به رکوردهای ماه، بستن را مسدود کند؛ خاموش = فقط هشدار' });
+def('monthCloseBlockPendingLeave', 'month_close_block_pending_leave', 'boolean', { group: 'monthClose', default: true, description: 'وجود درخواست مرخصی/مأموریت در انتظار تصمیم که با ماه هم‌پوشانی دارد، بستن را مسدود کند؛ خاموش = فقط هشدار' });
+def('monthCloseBlockPendingOvertime', 'month_close_block_pending_overtime', 'boolean', { group: 'monthClose', default: true, description: 'وجود اضافه‌کاری منتظر تأیید (فقط وقتی «الزام تأیید اضافه‌کاری» روشن است)، بستن را مسدود کند؛ خاموش = فقط هشدار' });
+def('monthCloseBlockSuspicious', 'month_close_block_suspicious', 'boolean', { group: 'monthClose', default: false, description: 'وجود مورد مشکوکِ بررسی‌نشده در ماه، بستن را مسدود کند (پیش‌فرض خاموش: «نشانه» است نه اتهام؛ فقط هشدار می‌دهد)' });
+// S5-5a: ارسال خودکار xlsx گزارش ماهانه در تلگرام (روز اول ماه شمسی، برای ماه قبل). پیش‌فرض خاموش؛ ایمیل پشتیبانی نمی‌شود.
+def('reportXlsxEnabled', 'report_xlsx_enabled', 'boolean', { group: 'reportDelivery', default: false, description: 'ارسال خودکار فایل xlsx گزارش ماهانه (ماه شمسی قبل) در تلگرام، روز اول هر ماه شمسی (خاموش = فقط پیام متنی قبلی)' });
+def('reportXlsxRecipientRoles', 'report_xlsx_recipient_roles', 'string', { group: 'reportDelivery', default: 'admin', maxLength: 40, description: 'نقش‌های گیرنده‌ی فایل xlsx (با ویرگول، از admin,hr,manager). ادمین و منابع انسانی کل شرکت، سرپرست فقط تیم خودش را می‌گیرد؛ فقط کاربران فعالِ دارای تلگرام' });
+def('reportXlsxRequireClosed', 'report_xlsx_require_closed', 'boolean', { group: 'reportDelivery', default: false, description: 'فقط وقتی ماه قبل «بسته» شده باشد فایل ارسال شود؛ خاموش = اگر بسته نشده باشد هم با ارقام زنده ارسال می‌شود (در فایل و کپشن «زنده» اعلام می‌شود)' });
+// مرخصی و مانده (S4-9b). هیچ عدد قانونی hard-code نیست: پیش‌فرض‌ها خنثی‌اند و ادمین مقدار شرکت را می‌دهد.
+def('leaveDefaultEntitlementMinutes', 'leave_default_entitlement_minutes', 'number', { group: 'leave', min: 0, max: 10000000, default: 0, description: 'استحقاق پیش‌فرض سالانه (دقیقه) برای هر نوعِ دارای مانده، وقتی برای کاربر/سال ردیف استحقاق صریح ثبت نشده؛ ردیف صریح همیشه اولویت دارد (۰ = بدون استحقاق پیش‌فرض). مثلاً ۲۶ روز × طول روز کاری را خودتان به دقیقه بدهید' });
+def('leaveCarryOverCapMinutes', 'leave_carry_over_cap_minutes', 'number', { group: 'leave', min: 0, max: 10000000, default: 0, description: 'سقف مقدار انتقالی از سال قبل (دقیقه) هنگام ثبت انتقالی؛ بیشتر از آن رد می‌شود (۰ = بدون سقف)' });
+def('leaveBalancePolicy', 'leave_balance_policy', 'enum', { group: 'leave', values: ['block', 'warn', 'allow_negative'], default: 'warn', description: 'وقتی درخواست از مانده بیشتر است: block = ثبت رد می‌شود، warn = ثبت می‌شود ولی هشدار می‌دهد، allow_negative = بی‌صدا مانده منفی می‌شود (اعمال در ثبت درخواست: S4-10a)' });
+def('leaveAllowPastRequests', 'leave_allow_past_requests', 'boolean', { group: 'leave', default: true, description: 'اجازه‌ی ثبت درخواست مرخصی/مأموریت برای تاریخ گذشته (خاموش = فقط از امروز به بعد)' });
+def('leaveMaxPastDays', 'leave_max_past_days', 'number', { group: 'leave', min: 0, max: 3650, default: 0, description: 'حداکثر فاصله‌ی گذشته‌ی مجاز (روز) برای تاریخ شروع درخواست، وقتی ثبت گذشته مجاز است (۰ = بدون سقف)' });
+def('leaveMaxFutureDays', 'leave_max_future_days', 'number', { group: 'leave', min: 0, max: 3650, default: 0, description: 'حداکثر فاصله‌ی آینده (روز) برای تاریخ شروع درخواست (۰ = بدون سقف)' });
+def('leaveMinNoticeHours', 'leave_min_notice_hours', 'number', { group: 'leave', min: 0, max: 8760, default: 0, description: 'حداقل پیش‌اطلاع (ساعت) بین لحظه‌ی ثبت و شروع مرخصی (برای ساعتی از ساعت شروع، وگرنه از ابتدای روز شروع)؛ فقط برای درخواست‌های آینده (۰ = بدون حداقل)' });
+def('backupIncludeAttachments', 'backup_include_attachments', 'boolean', { group: 'retention', default: true, description: 'بک‌آپ روزانه پوشه‌ی پیوست‌های مرخصی را هم (به‌صورت آینه‌ی افزایشی در پوشه‌ی بک‌آپ) کپی کند' });
+def('leaveAttachmentMaxKb', 'leave_attachment_max_kb', 'number', { group: 'leave', min: 16, max: 20000, default: 5120, description: 'حداکثر حجم پیوست درخواست مرخصی (کیلوبایت)؛ سقف دانلود بات تلگرام حدود ۲۰ مگابایت است' });
+def('leaveAttachmentTypes', 'leave_attachment_types', 'string', { group: 'leave', default: 'image/jpeg,image/png,application/pdf', maxLength: 200, description: 'نوع‌های مجاز پیوست (mime، با ویرگول)؛ محتوای فایل با امضای JPEG/PNG/PDF هم سنجیده می‌شود، پس فقط زیرمجموعه‌ی همین سه نوع معنی دارد' });
+def('leaveApprovalReminderHours', 'leave_approval_reminder_hours', 'number', { group: 'leave', min: 0, max: 8760, default: 0, description: 'اگر درخواست مرخصی بیش از این ساعت در مرحله‌ی فعلی بی‌اقدام ماند، به تأییدکننده‌ی همان مرحله یادآوری می‌رود (۰ = خاموش)' });
+def('leaveApprovalEscalateHours', 'leave_approval_escalate_hours', 'number', { group: 'leave', min: 0, max: 8760, default: 0, description: 'اگر پس از یادآوریِ مرحله‌ی «سرپرست» این‌قدر ساعت دیگر هم بی‌اقدام ماند، مرحله به ادمین ارجاع می‌شود (۰ = ارجاعِ زمان‌محور خاموش)' });
+def('leaveEscalateWhenApproverOnLeave', 'leave_escalate_when_approver_on_leave', 'boolean', { group: 'leave', default: false, description: 'اگر سرپرست مستقیم خودش مرخصی/مأموریت تأییدشده‌ی امروز (روزانه یا نیم‌روز) دارد، مرحله‌ی او فوراً به ادمین ارجاع شود' });
+def('leaveApprovalExtraStepDays', 'leave_approval_extra_step_days', 'number', { group: 'leave', min: 0, max: 3650, default: 0, description: 'اگر طول بازه‌ی درخواست (روز تقویمی) بیشتر از این عدد باشد، علاوه بر سرپرست یک مرحله‌ی تأیید دیگر هم لازم است (۰ = خاموش)' });
+def('leaveApprovalExtraStepTypes', 'leave_approval_extra_step_types', 'string', { group: 'leave', default: '', maxLength: 200, description: 'کدهای نوع مرخصی (با ویرگول، مثل annual,sick) که همیشه مرحله‌ی تأیید اضافه می‌خواهند؛ خالی = هیچ' });
+def('leaveApprovalExtraStepRole', 'leave_approval_extra_step_role', 'enum', { group: 'leave', values: ['admin', 'hr'], default: 'admin', description: 'تأییدکننده‌ی مرحله‌ی اضافه: ادمین یا منابع انسانی' });
+// تأخیر و یادآوری
+def('lateCheckinGraceMinutes', 'late_checkin_grace_minutes', 'number', { group: 'reminders', min: 0, max: 720, default: () => config.lateCheckinGraceMinutes, fallback: 15, description: 'مهلت تأخیر ورود (دقیقه) پس از ساعت شروع، پیش از یادآوری ورود' });
+def('checkoutReminderMinutesBefore', 'checkout_reminder_minutes_before', 'number', { group: 'reminders', min: 0, max: 720, default: () => config.checkoutReminderMinutesBefore, fallback: 15, description: 'یادآوری ثبت خروج، این‌قدر دقیقه پیش از پایان کار' });
+def('breakOverrunReminderMinutes', 'break_overrun_reminder_minutes', 'number', { group: 'reminders', min: 0, max: 240, default: 15, description: 'یادآوری استراحتِ باز: اگر استراحتی این‌قدر دقیقه از شروعش گذشته و هنوز پایان نخورده، به کارمند پیام می‌رود «اگر استراحتت تمام شده پایانش را بزن» (۰ = خاموش؛ یک‌بار برای هر استراحت)' });
+def('breakOverrunReminderLunch', 'break_overrun_reminder_lunch', 'boolean', { group: 'reminders', default: false, description: 'یادآوری استراحتِ باز برای «ناهار» هم ارسال شود (پیش‌فرض خاموش: ناهار معمولاً طولانی‌تر از آستانه‌ی یادآوری است و فقط استراحت کوتاه/نماز یادآوری می‌گیرد)' });
+def('repeatedLatenessThreshold', 'repeated_lateness_threshold', 'number', { group: 'reminders', min: 1, max: 100, default: () => config.repeatedLatenessThreshold, fallback: 3, description: 'حداقل تعداد تأخیر در ماه برای اعلان «تأخیر تکراری» به مدیر' });
+// امنیت
+def('missionBackdateDays', 'mission_backdate_days', 'number', { group: 'leave', min: 0, max: 30, default: 3, description: 'حداکثر چند روز قبل می‌توان ماموریت ثبت کرد (برای ماموریت‌هایی که فراموش شده)' });
+def('missionAdvanceDays', 'mission_advance_days', 'number', { group: 'leave', min: 0, max: 365, default: 30, description: 'حداکثر چند روز جلوتر می‌توان ماموریت ثبت کرد' });
+def('allowCheckinWithPendingMission', 'allow_checkin_with_pending_mission', 'boolean', { group: 'leave', default: true, description: 'اگر ماموریتِ در انتظارِ تأییدِ امروز دارید، ورود/خروج از بیرون شبکه مجاز است (با نشانه‌ی بررسی تا تصمیم سرپرست)' });
+// ---- D2: برنامه‌ی هفتگی و گزارش روزانه ----
+def('weekStartDay', 'week_start_day', 'number', { group: 'planning', min: 0, max: 6, default: 6, description: 'اولین روز هفته‌ی برنامه‌ریزی (۰=یکشنبه … ۶=شنبه)' });
+def('planSubmissionWeekday', 'plan_submission_weekday', 'enum', { group: 'planning', values: ['auto', '0', '1', '2', '3', '4', '5', '6'], default: 'auto', description: 'روز ثبت برنامه‌ی هفته‌ی بعد: auto = آخرین روز کاریِ هفته‌ی همان کاربر؛ یا شماره‌ی روز هفته (۰=یکشنبه … ۶=شنبه)' });
+def('planGateWarnWeekday', 'plan_gate_warn_weekday', 'enum', { group: 'planning', values: ['off', '0', '1', '2', '3', '4', '5', '6'], default: '3', description: 'روز «آخرین فرصتِ» ثبت برنامه‌ی هفته‌ی بعد: در این روز (اگر پیش از روز ثبت باشد) هنگام خروجِ بدون برنامه از کاربر تأیید گرفته می‌شود؛ شماره‌ی روز هفته (۰=یکشنبه … ۶=شنبه) یا off' });
+def('planMinTasks', 'plan_min_tasks', 'number', { group: 'planning', min: 0, max: 30, default: 1, description: 'حداقل تعداد تسک برای ثبت برنامه‌ی هفتگی' });
+def('planGateMode', 'plan_gate_mode', 'enum', { group: 'planning', values: ['enforce', 'soft', 'off'], default: 'off', description: 'الزام ثبت برنامه‌ی هفته‌ی بعد هنگام خروج: enforce = بدون برنامه خروج ثبت نمی‌شود، soft = فقط یادآوری، off = خاموش' });
+def('planGateStartDate', 'plan_gate_start_date', 'date', { group: 'planning', default: '', description: 'تاریخ شروع اعمال الزام برنامه‌ی هفتگی/گزارش روزانه (میلادی YYYY-MM-DD)؛ خالی = از همان لحظه‌ی روشن‌شدن' });
+def('dailyReportGateMode', 'daily_report_gate_mode', 'enum', { group: 'planning', values: ['enforce', 'soft', 'off'], default: 'enforce', description: 'پرسش وضعیت تسک‌های همان روز (انجام شد/نشد + علت) هنگام خروج: enforce = بدون تعیین‌وضعیت تسک‌های الزامی خروج ثبت نمی‌شود، soft = خروج مجاز است و «بعداً پر می‌کنم» تا ۲۴ ساعت، off = خاموش (هیچ سؤالی پرسیده نمی‌شود)' });
+def('reportBackfillDays', 'report_backfill_days', 'number', { group: 'planning', min: 0, max: 14, default: 2, description: 'تا چند روز بعد می‌توان گزارش روزِ گذشته را تکمیل کرد (مثلاً رکوردِ خروجِ خودکار)' });
+def('taskCarryMaxTimes', 'task_carry_max_times', 'number', { group: 'planning', min: 0, max: 20, default: 0, description: 'حداکثر دفعاتی که یک تسک را می‌توان به روز دیگر منتقل کرد (۰ = بدون سقف)؛ بیش از آن باید انجام شود یا حذف شود. پیشنهاد استقرار: ۳' });
+def('selfUrgentEnabled', 'self_urgent_enabled', 'boolean', { group: 'planning', default: true, description: 'تسک فوریِ شخصی: هر کاربر می‌تواند از «وضعیت من» یا Mini App برای خودش تسک فوری اضافه کند (به سرپرست اعلان می‌رود؛ خاموش = فقط سرپرست/ادمین تسک فوری می‌گذارد)' });
+def('selfUrgentMaxPerDay', 'self_urgent_max_per_day', 'number', { group: 'planning', min: 1, max: 50, default: 5, description: 'حداکثر تسک فوریِ خودِ کارمند برای یک روز از برنامه (روزِ برنامه‌ریزی‌شده، نه روز ثبت)' });
+def('taskReportAdminMaxParts', 'task_report_admin_max_parts', 'number', { group: 'planning', min: 1, max: 10, default: 6, description: 'حداکثر تعداد پیام تلگرام در «گزارش تسک‌های امروز» برای ادمین (گزارش همه‌ی تیم‌ها؛ سرپرست‌ها همیشه حداکثر ۳ پیام می‌گیرند)' });
+def('encouragementsEnabled', 'encouragements_enabled', 'boolean', { group: 'planning', default: true, description: 'نمایش پیام تشویقی کوتاه پس از ثبت گزارش روزانه' });
+// این‌ها «امتیاز ساعت مفید» را می‌سازند، نه حقوق و مزایای پرداختی. کسر حقوق نیازمند آیین‌نامه و قرارداد مصوب شرکت است.
+def('latePerformancePenaltyEnabled', 'late_performance_penalty_enabled', 'boolean', { group: 'performance', default: false, description: 'فعال‌سازی کسر از امتیاز ساعت مفید به‌علت تأخیر؛ روی ساعت خام تردد یا حقوق اعمال نمی‌شود' });
+def('latePerformanceThresholdMinutes', 'late_performance_threshold_minutes', 'number', { group: 'performance', min: 0, max: 480, default: 15, description: 'تأخیرِ بیشتر از این تعداد دقیقه مشمول کسر امتیاز می‌شود' });
+def('latePerformancePenaltyFactor', 'late_performance_penalty_factor', 'number', { group: 'performance', integer: false, min: 0, max: 5, default: 1, description: 'ضریب کسر امتیاز: برای هر دقیقه تأخیرِ مشمول، این تعداد دقیقه از امتیاز مفید کم می‌شود' });
+def('performanceRewardEnabled', 'performance_reward_enabled', 'boolean', { group: 'performance', default: false, description: 'فعال‌سازی چارچوب تشویق؛ تا وقتی فهرست اعمال پاداش توسط شرکت تعریف نشود هیچ امتیازی خودکار اضافه نمی‌شود' });
+def('performanceRewardFactor', 'performance_reward_factor', 'number', { group: 'performance', integer: false, min: 0, max: 5, default: 1, description: 'ضریب پاداش برای اعمالی که بعداً توسط شرکت تعریف و تأیید می‌شوند؛ پیش‌فرض ۱ = بدون تغییر' });
+def('showEarningsCard', 'show_earnings_card', 'boolean', { group: 'performance', default: false, description: 'نمایش کارکرد تخمینی ماه به کارمند: کارتِ «کارکرد این ماه» در «وضعیت من» (فقط برای کاربری که نرخ ساعتی‌اش ثبت شده؛ خاموش = کارت هرگز نمایش داده نمی‌شود)' });
+def('disputeMaxReopens', 'dispute_max_reopens', 'number', { group: 'disputes', min: 0, max: 20, default: 3, description: 'حداکثر دفعاتی که کارمند می‌تواند اعتراضِ حل‌شده را «ادامه» دهد (۰ = ادامه‌ی اعتراض خاموش)' });
+def('systemGoLive', 'system_go_live', 'boolean', { group: 'security', default: false, description: 'حالت Go-Live: وقتی روشن است ریست برنامه (حذف داده‌ی عملیاتی) ۴۰۳ می‌دهد، مگر ALLOW_DATA_RESET=true در .env باشد' });
+def('blockOnSharedDevice', 'block_on_shared_device', 'boolean', { group: 'security', default: false, description: 'مسدودکردن ثبت تردد وقتی دستگاه همان روز برای کاربر دیگری استفاده شده' });
+def('remoteWorkEnabled', 'remote_work_enabled', 'boolean', { group: 'security', default: true, description: 'دورکاری خارج از شبکه: کاربرِ بیرون از شبکه‌ی شرکت (بدون ماموریت) می‌تواند ساعتش را به‌عنوان دورکار ثبت کند؛ این ساعت‌ها تا تأیید سرپرست در هیچ گزارشی حساب نمی‌شوند (خاموش = مثل قبل فقط خطای «خارج از شبکه»)' });
+def('remoteWorkBotEnabled', 'remote_work_bot_enabled', 'boolean', { group: 'security', default: true, description: 'ثبت دورکاری از طریق بات تلگرام؛ خاموش‌کردن اضطراری فقط شروع نشست تازه از بات را می‌بندد و پایان نشست باز همچنان ممکن است' });
+def('remoteWorkBotBlockOnsiteToday', 'remote_work_bot_block_onsite_today', 'boolean', { group: 'security', default: true, description: 'ثبت دورکاری از بات را برای کاربری که همان روز حضور حضوری ثبت کرده مسدود می‌کند' });
+def('remoteWorkAllowAfterOnsiteCheckout', 'remote_work_allow_after_onsite_checkout', 'boolean', { group: 'security', default: true, description: 'وقتی «مسدودسازی دورکاری پس از حضور حضوری» روشن است، اگر خروج حضوریِ همان روز ثبت شده باشد شروع دورکاری از بات مجاز است (بعد از خروج؛ حضوریِ باز همچنان مسدود می‌ماند)' });
+def('remoteWorkMaxOpenHours', 'remote_work_max_open_hours', 'number', { group: 'security', min: 1, max: 72, default: 16, description: 'دورکاری: نشستِ بازی که بیش از این‌قدر ساعت باز بماند (ورود بدون خروج) در job شبانه بسته و برای بررسی دقیق‌تر سرپرست علامت می‌خورد؛ پایان آن = شروع + همین سقف' });
+// نگهداری و آرشیو
+def('auditRetentionMonths', 'audit_retention_months', 'number', { group: 'retention', min: 1, max: 240, default: 24, description: 'مدت نگهداری رویدادهای audit در جدول اصلی (ماه)' });
+def('auditArchiveEnabled', 'audit_archive_enabled', 'boolean', { group: 'retention', default: false, description: 'انتقال ماهانه‌ی audit قدیمی به آرشیو (خاموش = فقط شمارش)' });
+def('jobRunsRetentionDays', 'job_runs_retention_days', 'number', { group: 'retention', min: 7, max: 3650, default: 180, description: 'نگهداری تاریخچه‌ی اجرای Jobها (روز)' });
+def('monitorAlertsRetentionDays', 'monitor_alerts_retention_days', 'number', { group: 'retention', min: 7, max: 3650, default: 180, description: 'نگهداری هشدارهای حل‌شده‌ی مانیتورینگ (روز)' });
+def('rateLimitRetentionDays', 'rate_limit_retention_days', 'number', { group: 'retention', min: 1, max: 365, default: 7, description: 'نگهداری ردیف‌های منقضی‌شده‌ی rate limit (روز)' });
+def('notificationsRetentionDays', 'notifications_retention_days', 'number', { group: 'retention', min: 7, max: 3650, default: 90, description: 'نگهداری اعلان‌های «خوانده‌شده» (روز؛ اعلان خوانده‌نشده هرگز خودکار حذف نمی‌شود)' });
+// S5-7b: آستانه‌های «قواعد الگو» (نشانه، نه اتهام). ۰ برای آستانه‌ی اصلیِ هر قاعده = همان قاعده خاموش
+def('patternConsecutiveLateDays', 'pattern_consecutive_late_days', 'number', { group: 'patterns', min: 0, max: 60, default: 3, description: 'قاعده‌ی «تأخیر پشت‌سرهم»: حداقل تعداد روزِ حضوریِ متوالی با تأخیر برای نشانه (مرخصی/تعطیلی زنجیره را نمی‌شکند؛ ۰ = قاعده خاموش)' });
+def('patternWeekdayLateMinCount', 'pattern_weekday_late_min_count', 'number', { group: 'patterns', min: 0, max: 31, default: 3, description: 'قاعده‌ی «تأخیر مکرر یک روز هفته»: حداقل تعداد تأخیر در یک روز مشخص هفته (در ماه مورد بررسی) (۰ = قاعده خاموش)' });
+def('patternWeekdayLateMinSharePercent', 'pattern_weekday_late_min_share_percent', 'number', { group: 'patterns', min: 1, max: 100, default: 75, description: 'حداقل سهم (٪) روزهای تأخیردار از روزهای حضوریِ همان روز هفته برای نشانه‌ی «تأخیر مکرر یک روز هفته»' });
+def('patternWeekdayLateMarginPercent', 'pattern_weekday_late_margin_percent', 'number', { group: 'patterns', min: 0, max: 100, default: 25, description: 'سهم تأخیرِ آن روز هفته باید دست‌کم این‌قدر واحد درصد از سهم تأخیر در بقیه‌ی روزهای هفته بیشتر باشد؛ تا کسی که هر روز دیر می‌آید «الگوی روز هفته» نگیرد (۰ = بدون این شرط)' });
+def('patternWeekendAbsenceMinCount', 'pattern_weekend_absence_min_count', 'number', { group: 'patterns', min: 0, max: 31, default: 3, description: 'قاعده‌ی «غیبت چسبیده به آخر هفته/تعطیلی»: حداقل تعداد غیبتِ چسبیده در ماه (روز قبل یا بعدش آخر هفته/تعطیلی است) (۰ = قاعده خاموش)' });
+def('patternWeekendAbsenceMinSharePercent', 'pattern_weekend_absence_min_share_percent', 'number', { group: 'patterns', min: 1, max: 100, default: 60, description: 'حداقل سهم (٪) غیبت‌های چسبیده به آخر هفته/تعطیلی از کل غیبت‌های ماه' });
+def('patternSuddenIncreaseFactor', 'pattern_sudden_increase_factor', 'number', { group: 'patterns', integer: false, min: 0, max: 20, default: 2, description: 'قاعده‌ی «افزایش ناگهانی تأخیر»: نرخ تأخیر ماه باید دست‌کم این‌قدر برابرِ میانگین ماه‌های قبل باشد (۰ = قاعده خاموش)' });
+def('patternSuddenIncreaseMinExtraLate', 'pattern_sudden_increase_min_extra_late', 'number', { group: 'patterns', min: 1, max: 31, default: 3, description: 'حداقل تعداد روز تأخیرِ اضافه نسبت به انتظار (نرخ ماه‌های قبل × حضور ماه) برای نشانه‌ی افزایش ناگهانی' });
+def('patternBaselineMonths', 'pattern_baseline_months', 'number', { group: 'patterns', min: 1, max: 12, default: 3, description: 'تعداد ماه‌های قبلِ مبنا برای میانگین در قاعده‌ی افزایش ناگهانی' });
+def('patternBaselineMinMonths', 'pattern_baseline_min_months', 'number', { group: 'patterns', min: 1, max: 12, default: 2, description: 'حداقل تعداد ماهِ مبنای معتبر (با حضور کافی) برای اجرای قاعده‌ی افزایش ناگهانی؛ کمتر از آن قاعده برای آن فرد اجرا نمی‌شود' });
+def('patternMinPresentDays', 'pattern_min_present_days', 'number', { group: 'patterns', min: 1, max: 31, default: 5, description: 'حداقل روز حضور در یک ماه تا آن ماه در قاعده‌ی افزایش ناگهانی (ماه جاری یا مبنا) معتبر شمرده شود' });
+def('patternIdenticalTimeMinDays', 'pattern_identical_time_min_days', 'number', { group: 'patterns', min: 0, max: 31, default: 5, description: 'قاعده‌ی «ساعت‌های دقیقاً یکسان»: حداقل تعداد روزی که ساعت ورود (یا خروج) دقیقاً به یک دقیقه تکرار شده؛ ورودی دستی هم چنین الگویی می‌سازد (۰ = قاعده خاموش)' });
+def('patternIdenticalTimeMinSharePercent', 'pattern_identical_time_min_share_percent', 'number', { group: 'patterns', min: 1, max: 100, default: 80, description: 'حداقل سهم (٪) روزهای هم‌ساعت از کل رکوردهای ورود (یا خروج) آن ماه' });
+// S3-8c: زمان‌بندی Jobها (عبارت cron با فرمت node-cron). default از config (.env یا پیش‌فرض کد)؛ مقدار ذخیره‌شده‌ی پنل غالب است و reset دوباره به .env برمی‌گردد.
+// job = نام Job (کلید config.cron و نام اجرای ثبت‌شده در job_runs). تغییر این کلیدها از مسیرهای settings بلافاصله با scheduler.reload() اعمال می‌شود (بدون ری‌استارت).
+// fallback = پیش‌فرض ثابت امنِ کد برای وقتی که مقدار .env نامعتبر باشد (غلط تایپی cron دیگر سرور را بالا نمی‌آورد/نمی‌شکند).
+function defCron(job, key, dbKey, getDefault, fallback, title) {
+  def(key, dbKey, 'cron', { group: 'schedule', job, default: getDefault, fallback, description: `زمان‌بندی Job «${title}» (عبارت cron: دقیقه ساعت روزماه ماه روزهفته؛ ۰=یکشنبه … ۶=شنبه). بدون ری‌استارت اعمال می‌شود` });
+}
+defCron('lateCheckinCheck', 'cronLateCheckinCheck', 'cron_late_checkin_check', () => config.cron.lateCheckinCheck, '*/5 8-12 * * *', 'یادآوری ورود دیرهنگام');
+defCron('checkoutReminderCheck', 'cronCheckoutReminderCheck', 'cron_checkout_reminder_check', () => config.cron.checkoutReminderCheck, '*/5 9-18 * * *', 'یادآوری ثبت خروج');
+defCron('breakOverrunReminder', 'cronBreakOverrunReminder', 'cron_break_overrun_reminder', () => config.cron.breakOverrunReminder, '* * * * *', 'یادآوری استراحتِ فراموش‌شده');
+defCron('dailyReport', 'cronDailyReport', 'cron_daily_report', () => config.cron.dailyReport, '0 17 * * *', 'گزارش پایان روز');
+defCron('weeklyReport', 'cronWeeklyReport', 'cron_weekly_report', () => config.cron.weeklyReport, '0 8 * * 6', 'گزارش هفتگی');
+defCron('monthlyReport', 'cronMonthlyReport', 'cron_monthly_report', () => config.cron.monthlyReport, '0 8 * * *', 'بررسی گزارش ماهانه‌ی شمسی (فقط روز اول ماه شمسی می‌فرستد؛ هر روز اجرا شود)');
+defCron('nightlyReview', 'cronNightlyReview', 'cron_nightly_review', () => config.cron.nightlyReview, '0 20 * * *', 'مرور شبانه‌ی سرپرستان');
+defCron('morningDigest', 'cronMorningDigest', 'cron_morning_digest', () => config.cron.morningDigest, '0 8 * * *', 'خلاصه‌ی صبحگاهی گزارش تسک‌ها برای سرپرستان (فقط روز کاری)');
+defCron('autoCloseIncomplete', 'cronAutoCloseIncomplete', 'cron_auto_close_incomplete', () => config.cron.autoCloseIncomplete, '59 23 * * *', 'بستن رکوردهای بدون خروج');
+defCron('markNonWorkingDays', 'cronMarkNonWorkingDays', 'cron_mark_non_working_days', () => config.cron.markNonWorkingDays, '5 0 * * *', 'علامت‌گذاری تعطیل/مرخصی');
+defCron('dailyBackup', 'cronDailyBackup', 'cron_daily_backup', () => config.cron.dailyBackup, '30 2 * * *', 'بک‌آپ روزانه');
+defCron('auditArchive', 'cronAuditArchive', 'cron_audit_archive', () => config.cron.auditArchive, '0 3 1 * *', 'آرشیو ماهانه‌ی audit');
+defCron('dbMaintenance', 'cronDbMaintenance', 'cron_db_maintenance', () => config.cron.dbMaintenance, '0 4 2 * *', 'نگهداری ماهانه‌ی دیتابیس');
+defCron('leaveApprovalReminder', 'cronLeaveApprovalReminder', 'cron_leave_approval_reminder', () => config.cron.leaveApprovalReminder, '15 * * * *', 'یادآوری/ارجاع تأیید مرخصی');
+defCron('urgentTaskReminder', 'cronUrgentTaskReminder', 'cron_urgent_task_reminder', () => config.cron.urgentTaskReminder, '*/10 * * * *', 'یادآوری مهلت تسک فوری');
+defCron('teamReviewEnsure', 'cronTeamReviewEnsure', 'cron_team_review_ensure', () => config.cron.teamReviewEnsure, '10 0 * * *', 'ساخت خودکار تسک واجب بررسی گزارش تیم برای سرپرست‌ها');
+defCron('watchdog', 'cronWatchdog', 'cron_watchdog', () => config.monitor.watchdogCron, '*/5 * * * *', 'watchdog (سلامت سیستم؛ روشن/خاموش‌بودنش همچنان با WATCHDOG_ENABLED در .env است)');
+
+// ---------- توابع عمومی ----------
+const BY_KEY = new Map(REGISTRY.map((d) => [d.key, d]));
+
+function getDef(key) {
+  return BY_KEY.get(key) || null;
+}
+
+function keys() {
+  return REGISTRY.map((d) => d.key);
+}
+
+// تنظیم‌های زمان‌بندی (S3-8c): [{ job, key }] به ترتیب تعریف
+function cronJobs() {
+  return REGISTRY.filter((d) => d.type === 'cron' && d.job).map((d) => ({ job: d.job, key: d.key }));
+}
+
+// پیش‌فرض معتبر: default (در صورت تابع بودن، در لحظه) و اگر نامعتبر بود fallback
+function defaultOf(key) {
+  const d = BY_KEY.get(key);
+  if (!d) return undefined;
+  const raw = typeof d.default === 'function' ? d.default() : d.default;
+  const r = validateValue(d, raw);
+  if (r.ok) return r.value;
+  if (d.fallback !== undefined) return d.fallback;
+  throw new Error(`پیش‌فرض نامعتبر برای تنظیم ${key}`);
+}
+
+// اعتبارسنجی مقدار ورودی یک کلید (برای API در S3-1b)
+function validate(key, raw) {
+  const d = BY_KEY.get(key);
+  if (!d) return { ok: false, error: 'کلید تنظیمات ناشناخته است.' };
+  if (raw === undefined || raw === null || raw === '') return { ok: false, error: 'مقدار الزامی است.' };
+  return validateValue(d, raw);
+}
+
+// مقدار ذخیره‌شده در DB (متن) → مقدار نوع‌دار؛ نبودن یا خرابی/خارج از بازه ⇒ پیش‌فرض (هرگز NaN و هرگز پرتاب خطا)
+function deserialize(key, raw) {
+  const d = BY_KEY.get(key);
+  if (!d) return undefined;
+  if (raw === undefined || raw === null) return defaultOf(key);
+  const r = validateValue(d, raw);
+  return r.ok ? r.value : defaultOf(key);
+}
+
+// مقدار معتبر → متن برای DB (بولی به '1'/'0' مثل قبل)
+function serialize(key, value) {
+  const d = BY_KEY.get(key);
+  if (d.type === 'boolean') return value ? '1' : '0';
+  if (d.type === 'weekdays') return value.join(',');
+  return String(value);
+}
+
+// برابری دو مقدار نرمال‌شده‌ی یک تنظیم (آرایه‌ی weekdays با === برابر نمی‌شود)
+function sameValue(a, b) {
+  if (Array.isArray(a) && Array.isArray(b)) return a.length === b.length && a.every((x, i) => x === b[i]);
+  return a === b;
+}
+
+// بررسی سلامت خود رجیستری (کلید تکراری، نوع ناشناخته، پیش‌فرض نامعتبر، enum بدون values، cron/min>max)
+function selfCheck() {
+  const problems = [];
+  const seenKeys = new Set();
+  const seenDb = new Set();
+  const seenJobs = new Set();
+  REGISTRY.forEach((d) => {
+    if (d.job) { if (seenJobs.has(d.job)) problems.push(`نام Job تکراری: ${d.job}`); seenJobs.add(d.job); }
+    if (seenKeys.has(d.key)) problems.push(`کلید تکراری: ${d.key}`);
+    if (seenDb.has(d.dbKey)) problems.push(`کلید DB تکراری: ${d.dbKey}`);
+    seenKeys.add(d.key); seenDb.add(d.dbKey);
+    if (!TYPES.includes(d.type)) problems.push(`نوع نامعتبر: ${d.key}`);
+    if (!d.description) problems.push(`توضیح خالی: ${d.key}`);
+    if (!GROUP_LABELS[d.group]) problems.push(`گروه نامعتبر: ${d.key}`);
+    if (d.type === 'enum' && !(Array.isArray(d.values) && d.values.length)) problems.push(`values خالی: ${d.key}`);
+    if (d.type === 'cron' && !d.job) problems.push(`نام Job برای تنظیم cron نیست: ${d.key}`);
+    if (d.min !== undefined && d.max !== undefined && d.min > d.max) problems.push(`min>max: ${d.key}`);
+    const raw = typeof d.default === 'function' ? d.default() : d.default;
+    if (!validateValue(d, raw).ok && d.fallback === undefined) problems.push(`پیش‌فرض نامعتبر: ${d.key}`);
+    if (d.fallback !== undefined && !validateValue(d, d.fallback).ok) problems.push(`fallback نامعتبر: ${d.key}`);
+  });
+  return problems;
+}
+
+module.exports = { REGISTRY, GROUP_LABELS, TYPES, getDef, keys, cronJobs, defaultOf, validate, validateValue, deserialize, serialize, sameValue, selfCheck };

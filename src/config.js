@@ -174,6 +174,7 @@ const config = {
     nightlyReview: process.env.CRON_NIGHTLY_REVIEW || '0 20 * * *',
     // خلاصه‌ی صبحگاهی سرپرست (D12): گزارش‌های دیرهنگام بعد از ارسال شبانه + مشاهده‌نشده‌ها؛ هر روز اجرا می‌شود و فقط روز کاریِ سرپرست می‌فرستد
     morningDigest: process.env.CRON_MORNING_DIGEST || '0 8 * * *',
+    aiDigest: process.env.CRON_AI_DIGEST || '0 9 * * *',
     // بستن خودکار رکوردهای بدون خروج ثبت‌شده در پایان روز (وضعیت «ناقص»)
     autoCloseIncomplete: process.env.CRON_AUTO_CLOSE_INCOMPLETE || '59 23 * * *',
     // علامت‌گذاری روزهای تعطیل رسمی/مرخصی تأییدشده، قبل از شروع پنجره ثبت ورود (رفع گپ «غایب» فاز ۵)
@@ -198,6 +199,8 @@ const config = {
     // anthropic = Claude API؛ openai = هر سرویس سازگار با OpenAI (Ollama محلی، Gemini، Groq، OpenRouter، ...)
     provider: enumEnv(process.env.AI_PROVIDER, ['anthropic', 'openai'], 'anthropic'),
     // AI_ALLOW_PAYROLL=false ⇒ ابزار حقوق/نرخ ساعتی غیرفعال (پیش‌فرض: فعال، فقط برای مجوز payroll.read یعنی admin). هر بار استفاده در audit ثبت می‌شود.
+    // AI_DIGEST_ENABLED=true ⇒ هشدار/گزارش هوشمند قانون‌محور برای ادمین‌ها در تلگرام
+    digestEnabled: String(process.env.AI_DIGEST_ENABLED || 'false').trim().toLowerCase() === 'true',
     allowPayroll: String(process.env.AI_ALLOW_PAYROLL || 'true').trim().toLowerCase() !== 'false',
     apiKey: (process.env.AI_API_KEY || process.env.ANTHROPIC_API_KEY || '').trim(),
     // anthropic: پیش‌فرض api.anthropic.com؛ openai: باید صریح تنظیم شود (مثلاً http://localhost:11434/v1)

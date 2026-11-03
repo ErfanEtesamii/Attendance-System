@@ -18,6 +18,7 @@ const { sendDailyReport, sendWeeklyReport, sendMonthlyReport } = require('./repo
 const { sendMonthlyXlsxReports } = require('./reportDocuments');
 const { sendNightlyReview } = require('./nightlyReview');
 const { sendMorningDigest } = require('./morningDigest');
+const { sendAiDigest } = require('./aiDigest');
 const { runWatchdog } = require('./watchdog');
 const { runDailyBackup } = require('./backup');
 const { runAuditArchive } = require('./auditArchive');
@@ -44,6 +45,8 @@ function buildJobs(bot) {
     { name: 'nightlyReview', run: () => sendNightlyReview(bot) },
     // D12: خلاصه‌ی صبحگاهیِ گزارش تسک‌ها (دیرهنگام‌ها + مشاهده‌نشده‌ها)؛ نتیجه‌اش در job_runs ثبت می‌شود
     { name: 'morningDigest', run: () => sendMorningDigest(bot) },
+    // تحلیلگر هوشمند: هشدارهای قانون‌محور برای ادمین‌ها (AI_DIGEST_ENABLED=true)
+    { name: 'aiDigest', run: () => sendAiDigest() },
     // R6 (فاز ۱۴): یادآوری صف دورکاریِ منتظر بررسی به سرپرست‌ها هم با همین cron می‌رود (بدون تنظیم/job جدید؛ هر هفته یک بار با dedupe)
     { name: 'weeklyReport', run: () => runAll(() => sendWeeklyReport(bot), () => runRemoteWorkWeeklyReminder()) },
     // گزارش ماهانه بر اساس تقویم شمسی: چون روز شروع ماه شمسی روی تقویم میلادی هر سال جابه‌جا می‌شود،

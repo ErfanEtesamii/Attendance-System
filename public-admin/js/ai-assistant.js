@@ -9,12 +9,38 @@
     'گزارش عملکرد کل تیم در ۳۰ روز اخیر',
     'چه کسانی بیشترین تأخیر را این ماه داشتند و روندشان چیست؟',
     'الگوهای رفتاری قابل‌توجه این ماه را بررسی کن',
+    'مرخصی‌ها و اعتراض‌های منتظر تصمیم را فهرست کن',
   ];
+  const CHIP_ICONS = ['📊', '⏱', '🔎', '📥', '📤'];
   const TOOL_LABELS = {
     list_employees: 'فهرست کارمندان', team_performance: 'عملکرد تیم', employee_performance: 'عملکرد کارمند', employee_day: 'بازرسی روز',
     late_trend: 'روند تأخیر', late_compare: 'مقایسه‌ی تأخیر', rankings: 'رتبه‌بندی', attendance_rate: 'نرخ حضور', leave_by_type: 'مرخصی',
     checkin_distribution: 'توزیع ساعت ورود', behavior_patterns: 'الگوهای رفتاری',
+    propose_leave_decision: 'پیشنهاد تصمیم مرخصی', propose_dispute_reply: 'پیشنهاد پاسخ اعتراض', propose_dispute_close: 'پیشنهاد بستن اعتراض', compare_periods: 'مقایسه‌ی دوره‌ها', export_excel: 'خروجی اکسل', remember_note: 'ذخیره‌ی یادداشت', forget_note: 'یادداشت‌ها',
+    attendance_log: 'ریز تردد', remote_work: 'دورکاری', tasks_overview: 'تسک‌ها', leave_requests: 'درخواست‌های مرخصی', disputes: 'اعتراض‌ها', overtime_decisions: 'اضافه‌کاری', shifts_holidays: 'شیفت و تعطیلات', payroll_summary: 'حقوق', org_overview: 'ساختار سازمان', panel_settings: 'تنظیمات پنل', audit_trail: 'ممیزی', system_status: 'وضعیت سیستم', checkin_permissions: 'اجازه‌ی ورود', suspicious_events: 'رویدادهای مشکوک', panel_guide: 'راهنمای پنل',
   };
+
+  // کارت عملیات پیشنهادیِ ایجنت: فقط با کلیک صریح مدیر اجرا می‌شود
+  function actionCard(p) {
+    const card = el('div', 'ai-action');
+    card.appendChild(el('div', 'ai-action-text', p.summary));
+    const status = el('div', 'ai-action-status', 'منتظر تأیید شما (۱۵ دقیقه)');
+    const ok = el('button', 'btn ai-action-ok', 'تأیید و اجرا');
+    const no = el('button', 'btn ghost ai-action-no', 'لغو');
+    ok.type = 'button'; no.type = 'button';
+    const done = (msg, isErr) => { ok.remove(); no.remove(); status.textContent = msg; status.classList.toggle('ai-error', !!isErr); };
+    const call = async (verb) => {
+      ok.disabled = true; no.disabled = true;
+      try {
+        const r = await AP.api('/admin/ai/actions/' + p.id + '/' + verb, { method: 'POST', body: {} });
+        done((verb === 'confirm' ? '✅ ' : '✖ ') + r.message);
+      } catch (err) { done('⚠️ ' + (err.message || 'خطا'), true); }
+    };
+    ok.addEventListener('click', () => call('confirm'));
+    no.addEventListener('click', () => call('cancel'));
+    card.append(status, ok, no);
+    return card;
+  }
 
   const el = (tag, cls, text) => {
     const n = document.createElement(tag);
@@ -93,7 +119,9 @@
     const panel = el('section', 'ai-panel hidden');
     panel.id = 'ai-panel'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'تحلیلگر هوشمند');
     const head = el('header', 'ai-head');
-    head.appendChild(el('strong', '', 'تحلیلگر هوشمند'));
+    const title = el('div', 'ai-title');
+    title.append(el('strong', '', 'تحلیلگر هوشمند'), el('span', 'ai-sub', 'آنلاین · فقط‌خواندنی، اقدام‌ها با تأیید شما'));
+    head.appendChild(title);
     const clear = el('button', 'ai-link', 'گفتگوی تازه'); clear.type = 'button';
     const close = el('button', 'ai-link', 'بستن'); close.type = 'button';
     head.append(clear, close);
@@ -107,17 +135,32 @@
     document.body.append(fab, panel);
 
     const note = el('p', 'ai-note', 'تحلیل خودکار بر پایه‌ی همان داده‌ی نمودارهای پنل است و نیاز به بررسی مدیر دارد. حقوق و نرخ ساعتی به ایجنت داده نمی‌شود.');
-    log.appendChild(note);
+    const hero = el('div', 'ai-hero');
+    hero.append(el('div', 'ai-hero-icon', '✦'), el('div', 'ai-hero-title', 'سلام! چه کمکی از من برمیاد؟'),
+      el('div', 'ai-hero-text', 'درباره‌ی تردد، تأخیر، مرخصی، اعتراض‌ها و تسک‌ها بپرسید؛ یا بگویید کدام بخش پنل کجاست.'));
+    log.append(hero, note);
 
     function bubble(role, text) {
       const b = el('div', 'ai-msg ai-' + role);
-      if (role === 'assistant') render(b, text); else b.textContent = text;
+      if (role === 'assistant') {
+        render(b, text);
+        if (text) {
+          const cp = el('button', 'ai-copy', 'کپی'); cp.type = 'button'; cp.setAttribute('aria-label', 'کپی پاسخ');
+          cp.addEventListener('click', async () => {
+            try { await navigator.clipboard.writeText(text); cp.textContent = 'کپی شد ✓'; } catch (_) { cp.textContent = 'ناموفق'; }
+            setTimeout(() => { cp.textContent = 'کپی'; }, 1600);
+          });
+          b.appendChild(cp);
+        }
+      } else b.textContent = text;
+      hero.classList.add('hidden');
       log.appendChild(b); log.scrollTop = log.scrollHeight;
       return b;
     }
 
     SUGGESTIONS.forEach((s) => {
-      const c = el('button', 'ai-chip', s); c.type = 'button';
+      const c = el('button', 'ai-chip'); c.type = 'button';
+      c.append(el('span', 'ai-chip-ico', CHIP_ICONS[chips.childElementCount % CHIP_ICONS.length]), el('span', 'ai-chip-txt', s));
       c.addEventListener('click', () => { input.value = s; form.requestSubmit(); });
       chips.appendChild(c);
     });
@@ -130,7 +173,8 @@
     fab.addEventListener('click', () => setOpen(panel.classList.contains('hidden')));
     close.addEventListener('click', () => setOpen(false));
     panel.addEventListener('keydown', (e) => { if (e.key === 'Escape') setOpen(false); });
-    clear.addEventListener('click', () => { if (busy) return; history.length = 0; log.textContent = ''; log.appendChild(note); chips.classList.remove('hidden'); });
+    clear.addEventListener('click', () => { if (busy) return; history.length = 0; log.textContent = ''; log.append(hero, note); chips.classList.remove('hidden'); hero.classList.remove('hidden'); });
+    input.addEventListener('input', () => { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 120) + 'px'; });
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
 
     form.addEventListener('submit', async (e) => {
@@ -153,6 +197,13 @@
           names.forEach((n) => used.appendChild(el('span', 'ai-tag', n)));
           b.appendChild(used);
         }
+        (r.pending || []).forEach((p) => b.appendChild(actionCard(p)));
+        (r.files || []).forEach((f) => {
+          const a = el('a', 'ai-file', '⬇️ دانلود ' + f.name);
+          a.href = '/api/admin/ai/export/' + encodeURIComponent(f.token);
+          a.setAttribute('download', f.name);
+          b.appendChild(a);
+        });
         log.scrollTop += b.getBoundingClientRect().top - log.getBoundingClientRect().top - 12;
       } catch (err) {
         history.pop();

@@ -10,6 +10,7 @@
 const { getDb } = require('../../db/connection');
 const config = require('../../config');
 const perf = require('../performanceService');
+const panelGuide = require('./panelGuide');
 const auditRepository = require('../../repositories/auditRepository');
 const settingsRepository = require('../../repositories/settingsRepository');
 const { formatTime } = require('../../utils/time');
@@ -47,6 +48,16 @@ function build({ need, userFilter, ToolError, today, shiftIso, DATE_RE, getTimez
   };
 
   return [
+    // ---------- راهنمای پنل: «فلان چیز کجاست؟» ----------
+    {
+      name: 'panel_guide',
+      description: 'راهنمای پنل: هر صفحه/قابلیت کجاست (مسیر منو)، چه کاری می‌کند، چه نقش‌هایی دسترسی دارند و مراحل انجام کار. query فارسی بدهید؛ بدون query فهرست منو.',
+      input_schema: { type: 'object', properties: { query: { type: 'string', description: 'کلمات کلیدی فارسی، مثل «افزودن کارمند» یا «نرخ ساعتی»' } } },
+      run(ctx, input) {
+        return panelGuide.search(typeof input.query === 'string' ? input.query.slice(0, 120) : '');
+      },
+    },
+
     // ---------- تردد و استراحت ----------
     {
       name: 'attendance_log',

@@ -33,7 +33,7 @@ describe('ابزارهای تکمیلی ایجنت', () => {
 
   test('ابزارهای جدید ثبت شده‌اند و هیچ‌کدام نام نوشتن/حقوق ندارند', () => {
     const names = toolDefinitions().map((d) => d.name);
-    for (const n of ['attendance_log', 'remote_work', 'tasks_overview', 'leave_requests', 'disputes', 'overtime_decisions', 'shifts_holidays', 'suspicious_events', 'org_overview', 'panel_settings', 'audit_trail', 'system_status', 'checkin_permissions']) assert.ok(names.includes(n), n);
+    for (const n of ['attendance_log', 'remote_work', 'tasks_overview', 'leave_requests', 'disputes', 'overtime_decisions', 'shifts_holidays', 'suspicious_events', 'org_overview', 'panel_settings', 'audit_trail', 'system_status', 'checkin_permissions', 'panel_guide']) assert.ok(names.includes(n), n);
     assert.ok(!names.some((n) => n !== 'payroll_summary' && /payroll|salary|create|update|delete|write/i.test(n)));
   });
 
@@ -103,6 +103,26 @@ describe('ابزارهای تکمیلی ایجنت', () => {
     assert.equal(runTool(ctx, 'system_status', {}).isError, false);
     assert.equal(runTool(ctx, 'checkin_permissions', { from: today, to: today }).isError, false);
     assert.equal(runTool({ adminUser: manager }, 'audit_trail', {}).isError, true);
+  });
+
+  test('panel_guide: هر صفحه‌ی دارای منو در پنل راهنما دارد و جست‌وجو درست جواب می‌دهد', () => {
+    const fs = require('fs'); const path = require('path');
+    const dir = path.join(__dirname, '..', 'public-admin', 'js');
+    const guideTitles = require('../src/services/aiAgent/panelGuide').ENTRIES.map((e) => `${e.title} ${e.path}`).join('\n');
+    for (const f of fs.readdirSync(dir).filter((n) => /^views-.*\.js$/.test(n))) {
+      const src = fs.readFileSync(path.join(dir, f), 'utf8');
+      for (const m of src.matchAll(/nav:\s*\{[^}]*label:\s*'([^']+)'/g)) assert.ok(guideTitles.includes(m[1]), `راهنما برای صفحه‌ی «${m[1]}» (${f}) نیست`);
+    }
+    const g = (q) => json(runTool({ adminUser: admin }, 'panel_guide', { query: q }));
+    assert.equal(g('حقوق کارمندان کجاست؟').matches[0].id, 'payroll');
+    assert.deepEqual(g('حقوق و دستمزد').matches[0].who, ['ادمین']);
+    assert.equal(g('چطور کارمند جدید اضافه کنم').matches[0].id, 'employees');
+    assert.equal(g('نرخ ساعتی رو کجا عوض کنم').matches[0].id, 'profile');
+    assert.equal(g('تعطیلات رو کجا ثبت کنم').matches[0].id, 'holidays');
+    assert.equal(g('بستن ماه').matches[0].kind, 'فقط API (در پنل صفحه ندارد)');
+    assert.deepEqual(g('xyzqq').matches, []);
+    assert.ok(Object.keys(g('').menu).length >= 4);
+    assert.ok(runTool({ adminUser: admin }, 'panel_guide', { query: 'تعطیلات' }).text.length < 3000);
   });
 
   test('مقدار null پارامتر اختیاری از مدل نادیده گرفته می‌شود و روی 429 صبر و تکرار می‌کند', async () => {

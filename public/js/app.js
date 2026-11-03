@@ -3786,7 +3786,157 @@
     $('#pf-role').textContent = roleLabels[state.me.role] || state.me.role;
     $('#pf-role-chip').textContent = $('#pf-role').textContent;
     $('#pf-dept-chip').textContent = state.me.department || 'بدون دپارتمان';
+    loadAvatar();
   }
+
+  // <avatar-block>
+  // ---------- عکس پروفایل ----------
+  // انتخاب فایل ⇒ ویرایشگر برش (کشیدن + بزرگ‌نمایی) ⇒ JPEG ۲۵۶×۲۵۶ (~۲۰ کیلوبایت)؛ سرور مستقل حجم و امضای فایل را می‌سنجد.
+  // نمایش با data URL است چون CSP تصویر blob را نمی‌پذیرد.
+  // ویرایشگر برش: کشیدن = جابه‌جایی، اسلایدر/چرخ ماوس = بزرگ‌نمایی. خروجی Blob (JPEG ۲۵۶×۲۵۶) یا null (انصراف).
+  function openCropper(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('خواندن فایل ممکن نشد.'));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('فایل انتخاب‌شده تصویر معتبری نیست.'));
+        img.onload = () => buildCropper(img, resolve);
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  function buildCropper(img, done) {
+    const S = 256;
+    const mk = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
+    const back = mk('div', 'av-crop-back');
+    const box = mk('div', 'av-crop');
+    box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-label', 'تنظیم عکس پروفایل');
+    const stage = mk('div', 'av-crop-stage');
+    const canvas = mk('canvas', 'av-crop-canvas'); canvas.width = S; canvas.height = S;
+    stage.append(canvas, mk('div', 'av-crop-grid'), mk('div', 'av-crop-ring'));
+    const zoom = mk('input', 'av-crop-zoom'); zoom.type = 'range'; zoom.min = '1'; zoom.max = '3'; zoom.step = '0.01'; zoom.value = '1'; zoom.setAttribute('aria-label', 'بزرگ‌نمایی');
+    const tool = (txt, label) => { const t = mk('button', 'av-tool', txt); t.type = 'button'; t.setAttribute('aria-label', label); t.title = label; return t; };
+    const minus = tool('−', 'کوچک‌نمایی'); const plus = tool('+', 'بزرگ‌نمایی'); const rotL = tool('⟲', 'چرخش به چپ'); const rotR = tool('⟳', 'چرخش به راست');
+    const zoomRow = mk('div', 'av-crop-zoomrow'); zoomRow.append(rotL, minus, zoom, plus, rotR);
+    const ok = mk('button', 'av-btn av-btn-primary', 'ذخیره'); ok.type = 'button';
+    const no = mk('button', 'av-btn', 'انصراف'); no.type = 'button';
+    box.append(mk('div', 'av-crop-title', 'تنظیم عکس پروفایل'), stage, zoomRow, mk('div', 'av-crop-hint', 'عکس را بکشید تا جایش تنظیم شود؛ با نوار بزرگ‌نمایی و با دکمه‌های کناری بچرخانید.'), (() => { const a = mk('div', 'av-crop-actions'); a.append(ok, no); return a; })());
+    back.appendChild(box);
+    const base = S / Math.min(img.width, img.height);
+    let z = 1; let ox = 0; let oy = 0; let rot = 0;
+    function draw() {
+      const w = img.width * base * z; const h = img.height * base * z;
+      const odd = rot % 2 !== 0;
+      const mx = Math.max(0, ((odd ? h : w) - S) / 2); const my = Math.max(0, ((odd ? w : h) - S) / 2);
+      ox = Math.min(mx, Math.max(-mx, ox)); oy = Math.min(my, Math.max(-my, oy));
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = 'white'; ctx.fillRect(0, 0, S, S);
+      ctx.save(); ctx.translate(S / 2 + ox, S / 2 + oy); ctx.rotate((rot * Math.PI) / 2);
+      ctx.drawImage(img, -w / 2, -h / 2, w, h); ctx.restore();
+    }
+    let drag = null;
+    stage.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY }; try { stage.setPointerCapture(e.pointerId); } catch (_) { /* قدیمی */ } });
+    stage.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      const k = S / stage.getBoundingClientRect().width;
+      ox += (e.clientX - drag.x) * k; oy += (e.clientY - drag.y) * k;
+      drag = { x: e.clientX, y: e.clientY }; draw();
+    });
+    const endDrag = () => { drag = null; };
+    stage.addEventListener('pointerup', endDrag); stage.addEventListener('pointercancel', endDrag);
+    const setZoom = (v) => { z = Math.min(3, Math.max(1, v)); zoom.value = String(z); draw(); };
+    zoom.addEventListener('input', () => setZoom(Number(zoom.value) || 1));
+    minus.addEventListener('click', () => setZoom(z - 0.2)); plus.addEventListener('click', () => setZoom(z + 0.2));
+    rotL.addEventListener('click', () => { rot = (rot + 3) % 4; ox = 0; oy = 0; draw(); }); rotR.addEventListener('click', () => { rot = (rot + 1) % 4; ox = 0; oy = 0; draw(); });
+    stage.addEventListener('wheel', (e) => { e.preventDefault(); setZoom(z - e.deltaY * 0.002); }, { passive: false });
+    function close(result) { document.removeEventListener('keydown', onKey); back.remove(); done(result); }
+    function onKey(e) { if (e.key === 'Escape') close(null); }
+    document.addEventListener('keydown', onKey);
+    back.addEventListener('click', (e) => { if (e.target === back) close(null); });
+    no.addEventListener('click', () => close(null));
+    ok.addEventListener('click', () => canvas.toBlob((b) => close(b), 'image/jpeg', 0.88));
+    document.body.appendChild(back);
+    draw();
+    ok.focus();
+  }
+
+  function paintAvatar(dataUrl) {
+    const box = $('#pf-avatar');
+    if (!box) return;
+    let face = box.querySelector('.pf-avatar-face');
+    if (!face) { face = document.createElement('span'); face.className = 'pf-avatar-face'; box.insertBefore(face, box.firstChild); }
+    Array.from(box.childNodes).forEach((n) => { if (n.nodeType === 3) n.remove(); }); // حرف اولِ ثبت‌شده توسط loadProfile
+    face.textContent = '';
+    if (dataUrl) {
+      const img = document.createElement('img');
+      img.className = 'pf-avatar-img'; img.alt = ''; img.src = dataUrl;
+      face.appendChild(img);
+      box.className = box.className.replace(/\bpf-av-\d\b/g, '').trim();
+    } else {
+      const nm = ((state.me && state.me.fullName) || '؟').trim();
+      face.appendChild(document.createTextNode(nm.charAt(0)));
+      box.className = box.className.replace(/\bpf-av-\d\b/g, '').trim() + ' pf-av-' + ((nm.charCodeAt(0) || 0) % 6);
+    }
+    box.classList.toggle('has-photo', !!dataUrl);
+    const del = $('#pf-avatar-del');
+    if (del) del.classList.toggle('hidden', !dataUrl);
+  }
+
+  function ensureAvatarUi() {
+    const box = $('#pf-avatar');
+    if (!box) return;
+    const input = (() => { let i = $('#pf-avatar-input'); if (!i) { i = document.createElement('input'); i.id = 'pf-avatar-input'; i.type = 'file'; i.accept = 'image/*'; i.className = 'hidden'; document.body.appendChild(i); i.addEventListener('change', onAvatarFile); } return i; })();
+    if (!box.querySelector('.pf-avatar-badge')) {
+      const badge = document.createElement('button');
+      badge.type = 'button'; badge.className = 'pf-avatar-badge'; badge.setAttribute('aria-label', 'تغییر عکس پروفایل'); badge.textContent = '📷';
+      box.appendChild(badge);
+      badge.addEventListener('click', (e) => { e.stopPropagation(); input.click(); });
+    }
+    if (!box.dataset.avReady) { box.dataset.avReady = '1'; box.addEventListener('click', () => input.click()); }
+    if (!$('#pf-avatar-actions')) {
+      const chips = document.querySelector('#view-profile .pf-chips');
+      if (!chips) return;
+      const row = document.createElement('div');
+      row.id = 'pf-avatar-actions'; row.className = 'pf-avatar-actions';
+      const del = document.createElement('button');
+      del.type = 'button'; del.id = 'pf-avatar-del'; del.className = 'pf-avatar-btn pf-avatar-del hidden'; del.textContent = 'حذف عکس';
+      row.appendChild(del);
+      chips.insertAdjacentElement('afterend', row);
+      del.addEventListener('click', async () => {
+        try { await api('/avatar', { method: 'DELETE' }); paintAvatar(null); showToast('عکس حذف شد.'); } catch (err) { showToast(err.message || 'خطا', true); }
+      });
+    }
+  }
+
+  async function onAvatarFile(e) {
+    const input = e.target;
+    const file = input.files && input.files[0];
+    input.value = '';
+    if (!file) return;
+    if (!/^image\//.test(file.type)) { showToast('فقط فایل تصویری انتخاب کنید.', true); return; }
+    const box = $('#pf-avatar');
+    try {
+      const blob = await openCropper(file);
+      if (!blob) return;
+      box.classList.add('is-busy');
+      const res = await fetch('/api/miniapp/avatar', { method: 'POST', headers: { 'Content-Type': 'image/jpeg', 'X-Telegram-Init-Data': initData }, body: blob });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'ذخیره‌ی عکس ناموفق بود.');
+      paintAvatar(data.dataUrl);
+      box.classList.add('pf-avatar-pop');
+      setTimeout(() => box.classList.remove('pf-avatar-pop'), 600);
+      showToast('عکس پروفایل ذخیره شد.');
+      if (window.celebrate) window.celebrate('confetti');
+    } catch (err) { showToast(err.message || 'خطا', true); } finally { box.classList.remove('is-busy'); }
+  }
+
+  async function loadAvatar() {
+    ensureAvatarUi();
+    try { const d = await api('/avatar'); paintAvatar(d.dataUrl); } catch (_) { /* بدون عکس: حرف اول نام */ }
+  }
+  // </avatar-block>
 
   $('#dispute-form').addEventListener('submit', async (e) => {
     e.preventDefault();

@@ -51,6 +51,7 @@ const ITEMS = [
 
   { id: 'add_employee', label: '➕ افزودن کارمند', roles: ADMIN_ONLY, handler: 'addEmployee' },
   { id: 'fix_record', label: '🛠 اصلاح رکورد', roles: ADMIN_ONLY, handler: 'fixRecord' },
+  { id: 'ai_chat', label: '🤖 تحلیلگر هوشمند', roles: ADMIN_ONLY, handler: 'aiChat' },
   { id: 'admin_panel', label: '⚙️ پنل مدیریت', roles: ADMIN_ONLY, url: () => panelLinks.panelUrl() },
 ];
 
@@ -204,6 +205,7 @@ function defaultHandlers() {
     listEmployees: require('../commands/listEmployees').handleListEmployees,
     addEmployee: require('../commands/addEmployee').handleAddEmployeeCommand,
     fixRecord: require('../commands/fixRecord').handleFixRecordCommand,
+    aiChat: require('../commands/aiChat').handleAiChat,
     yesterdayReports: sendTeamReportsLink,
     urgentTask: require('../commands/urgentTask').handleUrgentTaskCommand,
     pendingRemote: require('../commands/pendingRemote').handlePendingRemote,

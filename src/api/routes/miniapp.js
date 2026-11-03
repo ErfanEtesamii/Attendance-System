@@ -866,4 +866,7 @@ router.post('/miniapp/dispute/:id/close', (req, res) => {
   return res.json(r);
 });
 
+// عکس پروفایل (GET/POST/DELETE /miniapp/avatar)
+router.use(require('./miniappAvatar'));
+
 module.exports = router;

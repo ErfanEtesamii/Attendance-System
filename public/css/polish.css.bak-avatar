@@ -1,0 +1,815 @@
+/* پرداخت بصری Mini App — فقط ظاهر. بعد از همه‌ی استایل‌ها بارگذاری می‌شود و فقط از توکن‌های tokens.css استفاده می‌کند. */
+
+/* ---------- ۱) کارت قهرمان: وضعیت امروز ---------- */
+.status-card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 28px;
+  padding: 22px var(--space-4) 18px;
+  border: 1px solid color-mix(in srgb, var(--brand) 14%, var(--border));
+  background:
+    radial-gradient(240px 160px at 100% -10%, color-mix(in srgb, var(--accent-2) 16%, transparent), transparent 70%),
+    radial-gradient(260px 180px at 0% 0%, color-mix(in srgb, var(--brand) 14%, transparent), transparent 70%),
+    linear-gradient(180deg, var(--card-bg), color-mix(in srgb, var(--card-bg) 92%, var(--brand)));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 10%, transparent), 0 22px 44px -26px color-mix(in srgb, var(--brand) 45%, transparent);
+  animation: pl-card-in var(--motion-enter) var(--ease-out) both;
+}
+.status-card::before,
+.status-card::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.status-card::before { width: 190px; height: 190px; top: -80px; inset-inline-start: -70px; border: 26px solid color-mix(in srgb, var(--brand) 6%, transparent); }
+.status-card::after { width: 120px; height: 120px; bottom: -50px; inset-inline-end: -40px; background: radial-gradient(circle, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%); }
+.status-card[data-state="active"]::after { background: radial-gradient(circle, color-mix(in srgb, var(--green) 20%, transparent), transparent 70%); }
+.status-card[data-state="break"]::after { background: radial-gradient(circle, color-mix(in srgb, var(--orange) 22%, transparent), transparent 70%); }
+.status-card[data-state="mission"]::after { background: radial-gradient(circle, color-mix(in srgb, var(--purple) 20%, transparent), transparent 70%); }
+.status-card[data-state="remote"]::after { background: radial-gradient(circle, color-mix(in srgb, var(--blue) 20%, transparent), transparent 70%); }
+
+/* نشان وضعیت */
+.status-pill {
+  padding: 7px 16px 7px 14px;
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  box-shadow: 0 6px 16px -10px color-mix(in srgb, currentColor 60%, transparent);
+  letter-spacing: 0;
+}
+.status-pill .dot { width: 9px; height: 9px; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 20%, transparent); }
+
+/* ---------- ۲) حلقه ---------- */
+.progress-ring {
+  width: min(264px, 76vw);
+  margin: 18px auto 10px;
+  filter: drop-shadow(0 18px 22px color-mix(in srgb, var(--brand) 22%, transparent));
+}
+.progress-ring::before {
+  /* دیسک داخلی با حس عمق */
+  content: "";
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 30%, var(--card-bg), color-mix(in srgb, var(--card-bg) 90%, var(--brand)) 100%);
+  box-shadow: inset 0 2px 10px color-mix(in srgb, var(--brand) 12%, transparent), 0 0 0 1px var(--border);
+}
+.progress-ring svg { position: relative; }
+.progress-ring circle { stroke-width: 8; }
+.progress-ring-track { stroke: color-mix(in srgb, var(--brand) 11%, transparent); }
+.progress-bar {
+  transition: stroke-dashoffset .9s var(--ease-out), stroke .3s ease;
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--accent-2) 45%, transparent));
+}
+.status-card[data-state="active"] .progress-bar { filter: drop-shadow(0 0 7px color-mix(in srgb, var(--green) 60%, transparent)); }
+.status-card[data-state="break"] .progress-bar { filter: drop-shadow(0 0 7px color-mix(in srgb, var(--orange) 55%, transparent)); }
+.status-card[data-state="mission"] .progress-bar { filter: drop-shadow(0 0 7px color-mix(in srgb, var(--purple) 55%, transparent)); }
+.status-card[data-state="remote"] .progress-bar { filter: drop-shadow(0 0 7px color-mix(in srgb, var(--blue) 55%, transparent)); }
+.progress-ring-content { inset: 17%; gap: 2px; }
+
+.timer {
+  color: var(--text);
+  background: linear-gradient(135deg, var(--brand), var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 800;
+  line-height: 1.35;
+  text-wrap: balance;
+}
+.today-summary {
+  font-weight: 500;
+  color: var(--hint);
+}
+
+/* راهنمای هدف: دو سر خط به‌صورت دو چیپ */
+.progress-legend { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border); align-items: center; }
+.progress-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--ov-05);
+  font-weight: 600;
+}
+.progress-legend span:first-child { background: var(--brand-soft); color: var(--brand); font-weight: 700; }
+.progress-legend span:last-child::before {
+  content: "";
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent);
+}
+
+.break-note { border-radius: var(--radius-md); }
+
+/* ---------- ۳) کاشی‌های عملیات ---------- */
+.actions { gap: 12px; }
+.action-tile {
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--card-bg), color-mix(in srgb, var(--card-bg) 94%, var(--brand)));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 8%, transparent), 0 14px 24px -20px color-mix(in srgb, var(--brand) 40%, transparent);
+  transition: transform var(--motion-fast) var(--ease-out), box-shadow var(--motion-normal) var(--ease-out), border-color var(--motion-fast);
+}
+@media (hover: hover) {
+  .action-tile:not(.is-primary):hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--brand) 30%, var(--border)); box-shadow: 0 18px 28px -20px color-mix(in srgb, var(--brand) 55%, transparent); }
+}
+.action-tile:active { transform: scale(.97); }
+.action-tile .tile-icon { border-radius: 18px; box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 14%, transparent); }
+.action-tile.t-green .tile-icon { background: linear-gradient(145deg, var(--green-soft), color-mix(in srgb, var(--green) 24%, transparent)); }
+.action-tile.t-orange .tile-icon { background: linear-gradient(145deg, var(--orange-soft), color-mix(in srgb, var(--orange) 24%, transparent)); }
+.action-tile.t-red .tile-icon { background: linear-gradient(145deg, var(--red-soft), color-mix(in srgb, var(--red) 22%, transparent)); }
+.action-tile.t-purple .tile-icon { background: linear-gradient(145deg, var(--purple-soft), color-mix(in srgb, var(--purple) 24%, transparent)); }
+.action-tile.t-blue .tile-icon { background: linear-gradient(145deg, var(--blue-soft), color-mix(in srgb, var(--blue) 24%, transparent)); }
+
+/* دکمه‌ی اصلی ورود/خروج با درخشش ملایم */
+.action-tile.is-primary {
+  position: relative;
+  overflow: hidden;
+  border-radius: 22px;
+  background: linear-gradient(135deg, var(--accent-hi), var(--accent) 60%, var(--accent-dark));
+  box-shadow: 0 14px 28px -12px color-mix(in srgb, var(--accent) 65%, transparent), inset 0 1px 0 color-mix(in srgb, #fff 40%, transparent);
+}
+.action-tile.is-primary::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: -60%;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, color-mix(in srgb, #fff 38%, transparent), transparent);
+  transform: skewX(-18deg);
+  animation: pl-sheen 5.5s ease-in-out infinite;
+  pointer-events: none;
+}
+.action-tile.is-primary .tile-icon { box-shadow: none; border-radius: 16px; }
+
+/* ---------- ۴) کارت‌های ثانویه ---------- */
+.card { border-radius: 20px; }
+.card:not(.status-card) { box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 6%, transparent), 0 14px 26px -22px color-mix(in srgb, var(--brand) 35%, transparent); }
+
+.today-times { border-radius: 20px; }
+.time-stat { gap: 8px; padding: 16px var(--space-2); }
+.time-stat .row-value { font-size: var(--fs-md); font-weight: 800; }
+.time-stat-label .icon-chip { border-radius: 10px; }
+
+.earnings-card { border-radius: 22px; }
+.earnings-amount { background: linear-gradient(135deg, var(--green), var(--accent-2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.earnings-amount small { -webkit-text-fill-color: var(--hint); }
+
+/* ---------- ۵) نوار پایین ---------- */
+.bottom-nav {
+  border-radius: 26px;
+  padding: 7px;
+  border: 1px solid color-mix(in srgb, var(--rail-text) 12%, transparent);
+  box-shadow: 0 18px 36px -12px color-mix(in srgb, var(--rail) 70%, transparent), inset 0 1px 0 color-mix(in srgb, var(--rail-text) 10%, transparent);
+}
+.nav-btn { border-radius: 19px; transition: background var(--motion-normal) var(--ease-out), color var(--motion-fast), transform var(--motion-fast) var(--ease-out); }
+.nav-btn:active { transform: scale(.94); }
+.nav-btn.active {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--rail-text) 22%, transparent), color-mix(in srgb, var(--rail-text) 10%, transparent));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rail-text) 14%, transparent);
+  position: relative;
+}
+.nav-btn.active::after {
+  content: "";
+  position: absolute;
+  bottom: 3px;
+  width: 16px; height: 3px;
+  border-radius: 3px;
+  background: var(--accent);
+}
+
+/* ---------- حرکت ---------- */
+@keyframes pl-card-in { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes pl-sheen { 0%, 62% { inset-inline-start: -60%; } 100% { inset-inline-start: 130%; } }
+@media (prefers-reduced-motion: reduce) {
+  .status-card, .action-tile.is-primary::after { animation: none; }
+  .progress-bar { transition: none; }
+}
+html[data-contrast="high"] .status-card::before,
+html[data-contrast="high"] .status-card::after,
+html[data-contrast="high"] .action-tile.is-primary::after { display: none; }
+html[data-contrast="high"] .timer,
+html[data-contrast="high"] .earnings-amount { background: none; -webkit-text-fill-color: #fff; color: #fff; }
+
+/* پروفایل مینی‌اپ: هیرو با کاور گرادیان، چیپ نقش/دپارتمان، ردیف‌های اطلاعات با آیکن */
+.pf-hero { position: relative; overflow: hidden; padding: 0 var(--space-4) 20px; text-align: center; }
+.pf-cover { height: 88px; margin: 0 calc(var(--space-4) * -1); background:
+  radial-gradient(90px 70px at 88% 12%, rgba(247, 160, 29, .55), transparent 70%),
+  linear-gradient(135deg, #322c79 0%, #4b3fc0 55%, #7a67ee 100%); }
+.pf-hero .pf-avatar { width: 84px; height: 84px; margin: -42px auto 10px; position: relative; border: 4px solid var(--card-bg); font-size: 32px;
+  background: var(--brand); color: var(--on-brand); box-shadow: 0 10px 24px rgba(50, 44, 121, .28); }
+.pf-hero .profile-name { font-size: var(--fs-lg); line-height: 1.5; }
+.pf-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 10px; }
+.pf-chip { padding: 4px 14px; border-radius: 999px; font-size: var(--fs-xs); font-weight: 700; background: var(--brand-soft); color: var(--brand); }
+.pf-chip-soft { background: var(--ov-06, rgba(127, 127, 127, .12)); color: var(--hint); }
+.pf-info { padding-block: 6px; }
+.pf-row { padding: 12px 0; align-items: center; }
+.pf-row .row-value { align-self: center; line-height: 1.4; margin: 0; }
+.pf-row .row-label { font-weight: 600; }
+.pf-ico { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 11px; flex: none; }
+.pf-ico.is-blue { background: color-mix(in srgb, var(--blue, #3b82f6) 14%, transparent); color: var(--blue, #3b82f6); }
+.pf-ico.is-purple { background: color-mix(in srgb, var(--purple, #8b5cf6) 14%, transparent); color: var(--purple, #8b5cf6); }
+.pf-ico.is-teal { background: var(--accent-2-soft, rgba(63, 208, 217, .15)); color: var(--accent-2, #2bb5be); }
+.pf-ico.is-amber { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+#view-profile .view-title { margin-top: 22px; }
+#dispute-form { border-radius: var(--radius); }
+#dispute-form textarea { min-height: 96px; resize: vertical; line-height: 1.8; background: var(--field, var(--bg-2)); }
+#dispute-form textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+#dispute-form .btn { width: 100%; }
+
+/* اعتراض‌ها در مینی‌اپ: فرم با نوار رنگی و دکمه‌ی اصلی، کارت‌های فهرست با رنگ وضعیت */
+#dispute-form { padding-top: 20px; background-image: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 30%, transparent)); background-size: 100% 4px; background-repeat: no-repeat; background-position: top; background-color: var(--card-bg); }
+#dispute-form label { font-weight: 700; color: var(--text); font-size: var(--fs-sm); }
+#dispute-form textarea { font-weight: 400; font-size: var(--fs-sm); }
+#dispute-form .btn { background: linear-gradient(135deg, #322c79, #4b3fc0); color: #fff; font-weight: 800; border: 0; box-shadow: 0 10px 22px rgba(50, 44, 121, .28); }
+#dispute-form .btn:active { transform: scale(.98); }
+#dispute-form .form-msg:empty { display: none; }
+#dispute-list { display: flex; flex-direction: column; gap: 10px; }
+#dispute-list .dispute-item { --dsp-c: var(--border); position: relative; margin: 0; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--dsp-c) 30%, var(--border)); border-inline-start: 4px solid var(--dsp-c); border-radius: var(--radius); background: var(--card-bg); box-shadow: var(--shadow-1); transition: transform var(--motion-fast, .16s), box-shadow var(--motion-fast, .16s); }
+#dispute-list .dispute-item:active { transform: scale(.985); }
+#dispute-list .dispute-item:has(.badge.dsp-open) { --dsp-c: var(--yellow); }
+#dispute-list .dispute-item:has(.badge.dsp-answered) { --dsp-c: var(--green); }
+#dispute-list .dispute-item:has(.badge.dsp-resolved) { --dsp-c: var(--purple-text); }
+#dispute-list .dispute-item:has(.badge.dsp-closed) { --dsp-c: var(--hint); }
+#dispute-list .dsp-title { font-size: var(--fs-sm); font-weight: 800; }
+#dispute-list .dsp-preview { margin-top: 10px; padding: 8px 12px; border-radius: 12px; background: color-mix(in srgb, var(--dsp-c) 8%, transparent); color: var(--text); font-size: var(--fs-sm); }
+#dispute-list .dispute-item .li-bottom { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border); font-size: var(--fs-xs); font-weight: 600; }
+#dispute-list .dispute-item .li-bottom > span:first-child::before { content: "💬 "; filter: grayscale(.3); }
+
+/* پروفایل مینی‌اپ: هیرو تمام‌رنگ (کل کارت گرادیان، متن روشن) */
+.pf-hero { padding: 30px var(--space-4) 24px; border-color: transparent; color: #fff; background:
+  radial-gradient(130px 110px at 88% 6%, rgba(247, 160, 29, .5), transparent 70%),
+  radial-gradient(180px 140px at 8% 100%, rgba(122, 103, 238, .55), transparent 70%),
+  linear-gradient(160deg, #322c79 0%, #4b3fc0 62%, #6c5ce0 100%); box-shadow: 0 14px 30px rgba(50, 44, 121, .28); }
+.pf-hero .pf-cover { display: none; }
+.pf-hero .pf-avatar { margin: 0 auto 12px; background: #fff; color: #322c79; border: 4px solid rgba(255, 255, 255, .45); box-shadow: 0 10px 24px rgba(0, 0, 0, .25); }
+.pf-hero .profile-name { color: #fff; }
+.pf-hero .pf-chip { background: rgba(255, 255, 255, .2); color: #fff; }
+.pf-hero .pf-chip-soft { background: rgba(255, 255, 255, .1); color: rgba(255, 255, 255, .88); }
+
+/* مرخصی در مینی‌اپ: فرم دو‌ستونه با نوار رنگی، پیام مانده‌ی مرخصی به‌صورت بنر، فهرست درخواست‌ها با رنگ وضعیت */
+#leave-form [hidden] { display: none !important; } /* برچسب‌های hidden (بخش روز، ساعت‌ها) به‌خاطر display:flex فرم دیده می‌شدند */
+#leave-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 12px; padding-top: 20px; background-color: var(--card-bg); background-image: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 30%, transparent)); background-size: 100% 4px; background-repeat: no-repeat; background-position: top; }
+#leave-form > * { grid-column: 1 / -1; min-width: 0; }
+#leave-form #leave-start-row, #leave-form #leave-end-row, #leave-form #leave-starttime-row, #leave-form #leave-endtime-row { grid-column: span 1; }
+#leave-form label { font-weight: 700; color: var(--text); font-size: var(--fs-sm); }
+#leave-form select, #leave-form input, #leave-form textarea { font-weight: 500; }
+#leave-form textarea { min-height: 84px; resize: vertical; line-height: 1.8; }
+#leave-form select:focus, #leave-form input:focus, #leave-form textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+#leave-balance:empty, #leave-msg:empty { display: none; }
+#leave-balance:not(:empty) { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 14px; background: var(--brand-soft); color: var(--text); font-size: var(--fs-sm); font-weight: 700; }
+#leave-balance:not(:empty)::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
+#leave-form .btn.primary { width: 100%; background: linear-gradient(135deg, #322c79, #4b3fc0); color: #fff; font-weight: 800; border: 0; box-shadow: 0 10px 22px rgba(50, 44, 121, .28); }
+#leave-form .btn.primary:active { transform: scale(.98); }
+#leave-list { display: flex; flex-direction: column; gap: 10px; }
+#leave-list .list-item { --lv-c: var(--border); margin: 0; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--lv-c) 30%, var(--border)); border-inline-start: 4px solid var(--lv-c); border-radius: var(--radius); background: var(--card-bg); box-shadow: var(--shadow-1); }
+#leave-list .list-item:has(.badge.pending) { --lv-c: var(--yellow); }
+#leave-list .list-item:has(.badge.approved) { --lv-c: var(--green); }
+#leave-list .list-item:has(.badge.rejected) { --lv-c: var(--red); }
+#leave-list .li-top { font-size: var(--fs-sm); font-weight: 800; }
+#leave-list .li-bottom { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border); font-size: var(--fs-xs); font-weight: 600; }
+
+/* گزارش در مینی‌اپ: کارت هیرو برای عدد اصلی، کاشی‌های شاخص رنگی، نمودارهای خواناتر */
+.tabs-inline { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 5px; border: 1px solid var(--border); border-radius: 16px; background: var(--card-bg); box-shadow: var(--shadow-1); }
+.tabs-inline .tab-btn { border: 0; border-bottom: 0; border-radius: 12px; min-height: 42px; background: transparent; color: var(--hint); font-weight: 700; }
+.tabs-inline .tab-btn.active { background: linear-gradient(135deg, #322c79, #4b3fc0); color: #fff; font-weight: 800; box-shadow: 0 8px 18px rgba(50, 44, 121, .28); }
+#report-card { background: transparent; border: 0; box-shadow: none; padding: 0; }
+.rp-hero { position: relative; overflow: hidden; margin-bottom: 12px; padding: 20px 20px 18px; border-radius: 24px; color: #fff; text-align: center; background: radial-gradient(130px 100px at 90% 0, rgba(247, 160, 29, .5), transparent 70%), radial-gradient(160px 120px at 5% 100%, rgba(122, 103, 238, .55), transparent 70%), linear-gradient(160deg, #322c79 0%, #4b3fc0 62%, #6c5ce0 100%); box-shadow: 0 14px 30px rgba(50, 44, 121, .28); }
+.rp-hero-label { font-size: var(--fs-sm); font-weight: 600; opacity: .85; }
+.rp-hero-value { margin: 6px 0 10px; font-size: 30px; font-weight: 800; line-height: 1.4; font-variant-numeric: tabular-nums; }
+.rp-hero-sub { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.rp-hero-sub span { padding: 4px 12px; border-radius: 999px; background: rgba(255, 255, 255, .18); font-size: var(--fs-xs); font-weight: 700; }
+.rp-hero-sub .rp-good { background: rgba(52, 211, 153, .28); }
+.rp-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.rp-kpi { --k: var(--hint); display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; border-radius: 18px; border: 1px solid color-mix(in srgb, var(--k) 28%, var(--border)); border-inline-start: 4px solid var(--k); background: color-mix(in srgb, var(--k) 9%, var(--card-bg)); box-shadow: var(--shadow-1); }
+.rp-kpi b { font-size: 26px; font-weight: 800; line-height: 1.3; color: var(--k); font-variant-numeric: tabular-nums; }
+.rp-kpi span { font-size: var(--fs-xs); font-weight: 700; color: var(--hint); }
+.rp-kpi.is-good { --k: var(--green); }
+.rp-kpi.is-warn { --k: var(--orange); }
+.rp-kpi.is-bad { --k: var(--red-text, var(--red)); }
+.rp-kpi.is-zero { --k: var(--hint); background: var(--card-bg); }
+.rp-kpi.is-zero b { opacity: .55; }
+.rp-section { margin-bottom: 12px; padding: 16px; border: 1px solid var(--border); border-radius: 20px; background: var(--card-bg); box-shadow: var(--shadow-1); }
+.rp-section h3 { margin: 0 0 12px; font-size: var(--fs-sm); font-weight: 800; }
+.report-bars { border-bottom: 0; }
+.report-bar { fill: var(--brand); }
+.report-bar.status-normal { fill: var(--green); }
+.report-bar-label { fill: var(--hint); font-size: 9px; font-weight: 600; }
+.rp-donut-wrap, .report-donut-wrap.rp-section { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.rp-donut-info { flex: 1; min-width: 0; }
+.rp-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+.rp-leg { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs); font-weight: 600; color: var(--hint); }
+.rp-leg b { margin-inline-start: auto; color: var(--text); font-size: var(--fs-sm); }
+.rp-leg i { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--hint); }
+.rp-leg.status-normal i { background: var(--green); }
+.rp-leg.status-late i { background: var(--orange); }
+.rp-leg.status-incomplete i { background: var(--red); }
+.rp-leg.status-leave i { background: var(--blue); }
+.rp-donut-box { position: relative; width: 116px; height: 116px; flex: 0 0 116px; }
+.rp-donut-box .report-donut { width: 100%; height: 100%; }
+.rp-donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; }
+.rp-donut-center b { font-size: var(--fs-lg); font-weight: 800; }
+.rp-donut-center span { font-size: var(--fs-xs); color: var(--hint); font-weight: 600; }
+
+/* ===== بازطراحی کارت‌های صفحه «امروز» + ارقام لاتین ===== */
+#view-today, .status-card, .today-times, .earnings-card, .work-hours-card { font-variant-numeric: tabular-nums lining-nums; }
+#view-today:not(.hidden) { display: flex; flex-direction: column; gap: 14px; }
+
+/* نوار ورود / استراحت / خروج */
+.today-times {
+  border: 1px solid color-mix(in srgb, var(--brand) 14%, var(--border));
+  background: linear-gradient(180deg, var(--card-bg), color-mix(in srgb, var(--card-bg) 94%, var(--brand)));
+}
+.time-stat { padding: 18px 6px 16px; gap: 10px; transition: background var(--motion-fast) var(--ease-out); }
+.time-stat:active { background: var(--brand-soft); }
+.time-stat-label { font-weight: 600; letter-spacing: .2px; }
+.time-stat-label .icon-chip { width: 30px; height: 30px; border-radius: 11px; box-shadow: 0 6px 14px -8px currentColor; }
+.time-stat .row-value {
+  direction: ltr; unicode-bidi: isolate;
+  font-family: "Inter", "SF Pro Display", system-ui, "Vazirmatn", sans-serif;
+  font-size: 22px; font-weight: 800; letter-spacing: .4px; line-height: 1.1;
+}
+
+/* کارت کارکرد این ماه */
+.earnings-card {
+  position: relative; overflow: hidden; isolation: isolate; padding: 20px 18px 16px; gap: 12px;
+  border: 1px solid color-mix(in srgb, var(--green) 22%, var(--border));
+  background:
+    radial-gradient(220px 150px at 0% 0%, color-mix(in srgb, var(--green) 16%, transparent), transparent 72%),
+    radial-gradient(200px 140px at 100% 100%, color-mix(in srgb, var(--accent-2) 12%, transparent), transparent 72%),
+    var(--card-bg);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--green) 10%, transparent), 0 22px 40px -26px color-mix(in srgb, var(--green) 45%, transparent);
+}
+.earnings-card::before {
+  content: ""; position: absolute; z-index: -1; width: 170px; height: 170px; inset-inline-end: -60px; top: -70px;
+  border-radius: 50%; border: 22px solid color-mix(in srgb, var(--green) 7%, transparent); pointer-events: none;
+}
+.earnings-heading h3 { display: inline-flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 800; }
+.earnings-intro { margin: 0; font-size: var(--fs-sm); line-height: 1.7; }
+.earnings-amount {
+  direction: ltr; justify-content: flex-end; flex-direction: row-reverse; align-items: center; gap: 10px;
+  font-family: "Inter", "SF Pro Display", system-ui, "Vazirmatn", sans-serif;
+  font-size: clamp(34px, 11vw, 46px); font-weight: 800; letter-spacing: -1px; line-height: 1.1; padding-block: 4px;
+  filter: drop-shadow(0 8px 14px color-mix(in srgb, var(--green) 25%, transparent));
+}
+.earnings-amount small { font-family: "Vazirmatn", system-ui, sans-serif; font-size: var(--fs-sm); font-weight: 700; letter-spacing: 0; }
+.earnings-spark { color: var(--accent); -webkit-text-fill-color: currentColor; }
+.earnings-useful {
+  padding: 7px 16px; font-weight: 800; font-size: var(--fs-sm);
+  border: 1px solid color-mix(in srgb, var(--green) 25%, transparent);
+  background: linear-gradient(135deg, var(--green-soft), color-mix(in srgb, var(--accent-2) 14%, transparent));
+}
+.earnings-foot { padding-top: 12px; border-top: 1px dashed color-mix(in srgb, var(--green) 25%, var(--border)); width: 100%; }
+.earnings-live { box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 14%, transparent); }
+
+/* ساعت کاری امروز / فردا */
+.work-hours-card { padding: 6px 18px; }
+.work-hours-card .row { padding: 15px 0; align-items: center; }
+.work-hours-card .row + .row { border-top: 1px solid var(--border); }
+.work-hours-card .row-label { color: var(--hint); font-weight: 600; }
+.work-hours-card .row-value {
+  direction: ltr; unicode-bidi: isolate; padding: 5px 14px; border-radius: 999px; font-size: var(--fs-sm); font-weight: 800;
+  font-family: "Inter", system-ui, "Vazirmatn", sans-serif;
+  background: var(--brand-soft); color: var(--brand);
+}
+:root[data-theme="light"] .work-hours-card .row-value { color: #4b3fc0; }
+
+/* نوار پایین: فاصله از محتوا */
+#views { padding-bottom: 104px; }
+
+/* ===== نسخه ۲: کاشی‌های عملیات، هدر، پس‌زمینه، نوار پایین ===== */
+body {
+  background:
+    radial-gradient(420px 300px at 100% -5%, color-mix(in srgb, var(--brand) 14%, transparent), transparent 70%),
+    radial-gradient(380px 280px at 0% 30%, color-mix(in srgb, var(--accent-2) 9%, transparent), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+/* هدر */
+.app-header { border-radius: 0 0 26px 26px; border-bottom: 1px solid color-mix(in srgb, var(--brand) 14%, var(--border)); backdrop-filter: blur(8px); }
+.brand-logo { background: linear-gradient(145deg, #4b3fc0, #322c79); box-shadow: 0 10px 20px -10px #4b3fc0; color: #fff; }
+.app-title { font-weight: 800; }
+
+/* نوار وضعیت ثابت */
+.sticky-status { background: color-mix(in srgb, var(--card-bg) 88%, transparent); backdrop-filter: blur(10px); font-weight: 700; font-variant-numeric: tabular-nums; border-radius: 0 0 18px 18px; }
+
+/* کاشی‌ها */
+.actions { gap: 14px; }
+.action-tile:not(.is-primary) {
+  position: relative; overflow: hidden; padding: 18px 14px; gap: 10px;
+  --tc: var(--brand);
+  border: 1px solid color-mix(in srgb, var(--tc) 22%, var(--border));
+  background:
+    radial-gradient(130px 90px at 100% 0%, color-mix(in srgb, var(--tc) 14%, transparent), transparent 75%),
+    linear-gradient(180deg, var(--card-bg), color-mix(in srgb, var(--card-bg) 95%, var(--tc)));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--tc) 10%, transparent), 0 16px 28px -22px color-mix(in srgb, var(--tc) 60%, transparent);
+}
+.action-tile:not(.is-primary)::before { content: ""; position: absolute; inset-inline: 22% ; top: 0; height: 3px; border-radius: 0 0 6px 6px; background: var(--tc); opacity: .75; }
+.action-tile.t-green { --tc: var(--green); } .action-tile.t-orange { --tc: var(--orange); } .action-tile.t-red { --tc: var(--red); }
+.action-tile.t-purple { --tc: var(--purple); } .action-tile.t-blue { --tc: var(--blue); }
+.action-tile:not(.is-primary) .tile-icon {
+  width: 52px; height: 52px; border-radius: 17px; color: #fff;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--tc) 80%, #fff), var(--tc));
+  box-shadow: 0 12px 18px -10px var(--tc), inset 0 1px 0 rgba(255, 255, 255, .35);
+}
+.action-tile:not(.is-primary) .tile-icon svg { width: 26px; height: 26px; }
+.action-tile .tile-title { font-size: 17px; }
+.action-tile .tile-sub { font-size: 12.5px; line-height: 1.6; }
+
+/* دکمهٔ اصلی ثبت ورود/خروج */
+.action-tile.is-primary { min-height: 92px; gap: 16px; padding: 16px 20px; }
+.action-tile.is-primary .tile-icon { width: 54px; height: 54px; border-radius: 18px; background: rgba(255, 255, 255, .28); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5); }
+.action-tile.is-primary .tile-title { font-size: 20px; font-weight: 900; }
+
+/* کارت‌ها: ظاهر کلی */
+.view-title { font-weight: 800; }
+.card { border: 1px solid color-mix(in srgb, var(--brand) 12%, var(--border)); }
+
+/* نوار پایین شناورتر */
+.bottom-nav { backdrop-filter: blur(12px); background: color-mix(in srgb, var(--rail) 92%, transparent); }
+.nav-btn.active { color: #fff; }
+
+/* ===== نسخه ۳ ===== */
+/* کاشی‌ها: همیشه دو ستون (مربع‌های کنار هم)، حتی روی گوشی‌های باریک */
+.actions, .actions.single { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+.action-tile.is-primary { grid-column: 1 / -1; }
+.action-tile.wide:not(.is-primary) { flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px 10px 16px; gap: 10px; }
+.action-tile.wide:not(.is-primary) .tile-text { align-items: center; }
+.action-tile.wide:not(.is-primary) .tile-title { font-size: 16px; }
+.action-tile.wide:not(.is-primary) .tile-sub { font-size: 12px; }
+
+/* کارت کارکرد این ماه: کارت «بانکی» نیلی-طلایی */
+.earnings-card {
+  border: 1px solid rgba(255, 210, 120, .28); color: #f4f1ff; padding: 22px 20px 18px;
+  background:
+    radial-gradient(200px 140px at 100% 0%, rgba(247, 160, 29, .38), transparent 70%),
+    radial-gradient(240px 180px at 0% 100%, rgba(123, 104, 238, .45), transparent 70%),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, .035) 0 2px, transparent 2px 14px),
+    linear-gradient(145deg, #1d1850 0%, #2a2272 55%, #3b2f9a 100%);
+  box-shadow: 0 24px 44px -20px rgba(43, 34, 120, .8), inset 0 1px 0 rgba(255, 255, 255, .22);
+}
+.earnings-card::before { width: 200px; height: 200px; inset-inline-end: -70px; top: -90px; border: 1px solid rgba(255, 210, 120, .25); box-shadow: 0 0 0 26px rgba(255, 210, 120, .05), 0 0 0 54px rgba(255, 210, 120, .03); background: none; }
+.earnings-card::after { content: ""; position: absolute; z-index: -1; inset-inline-start: 18px; bottom: 16px; width: 38px; height: 28px; border-radius: 7px; opacity: .0; }
+.earnings-heading h3, .earnings-intro { color: #fff; }
+.earnings-intro { opacity: .72; }
+.earnings-heading .icon-chip { background: linear-gradient(145deg, #ffd27a, #f7a01d); color: #2a2272; box-shadow: 0 8px 16px -8px #f7a01d; }
+.earnings-live { background: rgba(255, 210, 120, .16); color: #ffd27a; border: 1px solid rgba(255, 210, 120, .35); box-shadow: none; }
+.earnings-live i { background: #ffd27a; }
+.earnings-amount {
+  background: linear-gradient(180deg, #fff6d9 0%, #ffd27a 55%, #f7a01d 100%); -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent; filter: drop-shadow(0 6px 16px rgba(247, 160, 29, .35));
+  font-size: clamp(36px, 12vw, 50px);
+}
+.earnings-amount small { -webkit-text-fill-color: rgba(255, 255, 255, .75); color: rgba(255, 255, 255, .75); }
+.earnings-spark { color: #ffd27a; -webkit-text-fill-color: #ffd27a; }
+.earnings-useful { background: rgba(255, 255, 255, .09); color: #fff; border: 1px solid rgba(255, 255, 255, .2); backdrop-filter: blur(4px); }
+.earnings-foot { border-top: 1px dashed rgba(255, 210, 120, .35); }
+.earnings-foot summary, .earnings-note, .earnings-excluded, .earnings-info { color: rgba(255, 255, 255, .85); }
+.earnings-excluded .btn-link { color: #ffd27a; }
+
+/* ساعت کاری: چیپ فقط وقتی مقدار دارد */
+.work-hours-card .row-value { font-size: 13.5px; white-space: nowrap; direction: rtl; unicode-bidi: plaintext; }
+.earnings-amount { flex-wrap: nowrap; }
+.earnings-spark { font-size: .55em; flex: none; }
+
+
+/* ===== فراز هنر: کارت حقوق با هویت صنایع دستی ===== */
+.earnings-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: block;
+  padding: 16px 16px 0;
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, rgba(255,255,255,.1));
+  border-radius: var(--radius);
+  color: #f8f4e9;
+  background:
+    linear-gradient(90deg, rgba(31, 26, 92, 1) 0%, rgba(34, 28, 100, .96) 40%, rgba(40, 33, 110, .5) 64%, rgba(40, 33, 110, .06) 100%),
+    url("/images/earnings-handicrafts-fade.webp") right center / auto 118% no-repeat,
+    #241e66;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 10%, transparent), 0 22px 44px -26px rgba(34, 28, 100, .75), inset 0 1px 0 rgba(255,255,255,.1);
+}
+.earnings-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 9px;
+  width: 66%;
+  margin-inline-start: auto;
+  padding-bottom: 14px;
+}
+.earnings-heading { display: flex; align-items: center; gap: 8px; max-width: 100%; }
+.earnings-heading h3 {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin: 0; padding: 5px 12px;
+  border: 1px solid rgba(247, 160, 29, .42);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .08);
+  color: #ffd9a0;
+  font-size: 12.5px; font-weight: 800;
+}
+.earnings-bolt { width: 13px; height: 13px; fill: var(--accent-hi); }
+.earnings-wallet { width: 15px; height: 15px; color: var(--accent-hi); stroke: currentColor; }
+.earnings-intro { opacity: 1; margin: 0; color: rgba(255, 250, 240, .86); font-size: 11.5px; line-height: 1.6; text-align: left; }
+.earnings-amount {
+  display: flex; flex-direction: row-reverse; justify-content: flex-end; align-items: baseline;
+  flex-wrap: nowrap; gap: 6px; margin: 0; direction: ltr;
+  font-size: clamp(28px, 9vw, 40px); font-weight: 900; letter-spacing: -1px; line-height: 1.2;
+  white-space: nowrap; background: none;
+  color: var(--accent-hi); -webkit-text-fill-color: var(--accent-hi);
+  filter: drop-shadow(0 3px 9px rgba(0,0,0,.2));
+}
+.earnings-amount small { color: var(--accent-hi); -webkit-text-fill-color: var(--accent-hi); font-size: 12px; font-weight: 800; letter-spacing: 0; }
+.earnings-live { color: var(--accent-hi); background: rgba(247, 160, 29, .14); border: 1px solid rgba(247, 160, 29, .35); }
+.earnings-live i { background: var(--accent); }
+.earnings-foot { border-top: 0; padding-top: 0; width: auto; position: relative; display: flex; flex-direction: row; align-items: center; gap: 8px; max-width: 100%; }
+.earnings-useful {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid rgba(255, 255, 255, .22); border-radius: 999px;
+  background: rgba(255, 255, 255, .09); color: #f6f8ed;
+  font-size: 11px; font-weight: 700; white-space: nowrap;
+}
+.earnings-useful::before {
+  content: ""; width: 13px; height: 13px; flex: none; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='16' rx='3'/%3E%3Cpath d='M8 3v4M16 3v4M3 10h18'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='16' rx='3'/%3E%3Cpath d='M8 3v4M16 3v4M3 10h18'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+/* راهنمای محاسبه: فقط آیکون، متن در پاپ‌اور */
+.earnings-card .ux-collapse { border: 0; }
+.earnings-card .ux-collapse > summary { min-height: 0; width: 26px; height: 26px; justify-content: center; border-radius: 50%; color: rgba(255,250,240,.8); }
+.earnings-card .ux-collapse > summary::before { content: none; }
+.earnings-card .ux-collapse > summary svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.earnings-card .ux-collapse .earnings-note {
+  position: absolute; z-index: 3; inset-inline-end: 0; top: calc(100% + 6px);
+  width: max-content; max-width: 230px; margin: 0; padding: 8px 10px;
+  border-radius: 10px; background: #161246; border: 1px solid rgba(255,255,255,.18);
+  color: #f6f8ed; font-size: 11px; line-height: 1.6;
+}
+/* نوار پایین */
+.earnings-excluded {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0 -16px; padding: 11px 16px;
+  background: rgba(18, 14, 60, .62); border-top: 1px solid rgba(255,255,255,.14);
+  color: rgba(255, 250, 240, .9); font-size: 11.5px; backdrop-filter: blur(4px);
+}
+.earnings-excluded::before {
+  content: ""; width: 15px; height: 15px; flex: none; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 11v5M12 8h.01'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 11v5M12 8h.01'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.earnings-excluded .btn-link { margin-inline-start: auto; color: var(--accent-hi); text-decoration: none; font-weight: 700; }
+.earnings-excluded .btn-link::before { content: "‹ "; }
+.earnings-card:not(:has(.earnings-excluded:not(.hidden))) { padding-bottom: 0; }
+@media (max-width: 360px) {
+  .earnings-body { width: 72%; }
+  .earnings-useful { font-size: 10px; padding: 6px 9px; }
+}
+
+/* تم روشن: کارت حقوق هم روشن می‌شود (همان چیدمان، رنگ‌های روشن پنل) */
+:root[data-theme="light"] .earnings-card {
+  color: var(--text);
+  border-color: var(--border);
+  background:
+    linear-gradient(90deg, #fff 0%, rgba(255,255,255,.97) 40%, rgba(255,255,255,.55) 64%, rgba(255,255,255,.04) 100%),
+    url("/images/earnings-handicrafts-fade.webp") right center / auto 118% no-repeat,
+    var(--card-bg);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 8%, transparent), 0 18px 34px -24px color-mix(in srgb, var(--brand) 45%, transparent);
+}
+:root[data-theme="light"] .earnings-heading h3 { color: var(--brand); background: color-mix(in srgb, var(--accent) 12%, #fff); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+:root[data-theme="light"] .earnings-bolt { fill: var(--accent-dark); }
+:root[data-theme="light"] .earnings-wallet { color: var(--brand); }
+:root[data-theme="light"] .earnings-intro { color: var(--text); opacity: .78; }
+:root[data-theme="light"] .earnings-amount,
+:root[data-theme="light"] .earnings-amount small { color: var(--accent-dark); -webkit-text-fill-color: var(--accent-dark); filter: none; }
+:root[data-theme="light"] .earnings-useful { color: var(--brand); background: var(--brand-soft); border-color: color-mix(in srgb, var(--brand) 18%, transparent); }
+:root[data-theme="light"] .earnings-card .ux-collapse > summary { color: var(--hint); }
+:root[data-theme="light"] .earnings-card .ux-collapse .earnings-note { background: var(--card-bg); color: var(--text); border-color: var(--border); box-shadow: var(--shadow-2); }
+:root[data-theme="light"] .earnings-excluded { background: rgba(255,255,255,.84); border-top-color: var(--border); color: var(--text); }
+:root[data-theme="light"] .earnings-excluded .btn-link { color: var(--brand); }
+:root[data-theme="light"] .earnings-live { color: var(--accent-dark); background: color-mix(in srgb, var(--accent) 14%, #fff); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+
+/* Faraz Honar handicraft visual refresh v2 — 2026-10-27 (تم روشن؛ فقط بک‌گراند، ظاهر کارت‌ها بدون تغییر) */
+/* کارت وضعیت امروز: تصویر کاشی/گلدان سمت راست، محو شدن مه‌آلود به سفید سمت چپ */
+:root[data-theme="light"] #today-status-card.status-card {
+  background-color: #f7faff;
+  /* نوار مینا روی دیوارهٔ چپ و راست؛ ارتفاع = ارتفاع کارت، عرض با نسبت تصویر (بدون کشیدگی)،
+     چسبیده به لبه‌ها تا با دیواره‌ها فیت شوند. */
+  background-image:
+    url('/images/mina-wall-left.webp'),
+    url('/images/mina-wall-right.webp');
+  background-size: auto 100%, auto 100%;
+  background-repeat: no-repeat;
+  background-position: left center, right center;
+  border-color: rgba(41,112,190,.16);
+  box-shadow: 0 16px 34px rgba(35,76,133,.10);
+}
+:root[data-theme="light"] #today-status-card.status-card::before { border-color: rgba(43,112,191,.06); }
+/* هالهٔ نور مه‌آلود پشت حلقه */
+:root[data-theme="light"] #today-status-card.status-card::after {
+  content: none;
+}
+
+/* پروفایل: فرش بالا، پنل کرم موج‌دار پایین، آواتار روی لبهٔ موج */
+/* پروفایل: تصویر کامل (فرش + پنل کرم موج‌دار + تزئینات) پس‌زمینهٔ کارت است؛ آواتار روی قلهٔ موج می‌نشیند.
+   تصویر ۱۴۵۶×۸۱۹ است؛ عرض تصویر حداقل ۵۸۷px است (ارتفاع ۳۳۰px) و از بالا لنگر می‌شود؛ پس قلهٔ موج همیشه حدود ۲۱۲px از بالاست و ارتفاع محتوا روی آن اثر ندارد. */
+:root[data-theme="light"] #view-profile .pf-hero {
+  position: relative;
+  isolation: isolate;
+  min-height: 330px;
+  padding: 170px var(--space-4) 18px;
+  color: #4a1f14;
+  background-color: #fcf7eb;
+  background-image: url('/images/profile-hero.webp');
+  background-size: max(100%, 587px) auto;
+  background-repeat: no-repeat;
+  background-position: 50% 0;
+  border-color: rgba(176,128,60,.30);
+  box-shadow: 0 14px 30px rgba(92,52,24,.18);
+}
+:root[data-theme="light"] #view-profile .pf-hero::before { content: none; }
+:root[data-theme="light"] #view-profile .pf-hero > * { position: relative; z-index: 1; }
+:root[data-theme="light"] #view-profile .pf-hero .pf-avatar {
+  margin: 0 auto 10px;
+  background: #fff;
+  color: #5a2a1a;
+  border: 4px solid #fff;
+  box-shadow: 0 8px 20px rgba(92,52,24,.25);
+}
+:root[data-theme="light"] #view-profile .pf-hero .profile-name { color: #5a1e12; text-shadow: none; }
+:root[data-theme="light"] #view-profile .pf-hero .pf-chip { background: rgba(122,64,30,.12); color: #6b3a1f; backdrop-filter: none; }
+:root[data-theme="light"] #view-profile .pf-hero .pf-chip-soft { background: rgba(122,64,30,.07); color: #7d5636; backdrop-filter: none; }
+
+/* پروفایل مینی‌اپ: هیرو جمع‌وجور (تم روشن)
+   تصویر 1456×819 با عرض 640px نمایش داده می‌شود (ارتفاع 360px) و قله‌ی موج در 65٪ ارتفاع تصویر (≈234px) است.
+   --pf-crop-top از بالای تصویر بریده می‌شود؛ padding-top = قله − برش − نصف آواتار تا آواتار روی قله بماند.
+   برای کوچک/بزرگ‌کردن: فقط --pf-crop-top را عوض کنید و padding-top را به همان اندازه کم/زیاد کنید (مثلاً برش 130 ← padding 68). */
+:root[data-theme="light"] #view-profile .pf-hero {
+  --pf-crop-top: 130px;
+  min-height: 0;
+  padding: 68px var(--space-4) 8px;
+  background-size: max(100%, 640px) auto;
+  background-position: 50% calc(var(--pf-crop-top) * -1);
+}
+:root[data-theme="light"] #view-profile .pf-hero .pf-avatar { width: 72px; height: 72px; font-size: 28px; margin: 0 auto 8px; }
+:root[data-theme="light"] #view-profile .pf-hero .profile-name { margin: 0; font-size: 17px; line-height: 1.6; }
+:root[data-theme="light"] #view-profile .pf-hero .pf-chips { margin-top: 8px; gap: 6px; }
+:root[data-theme="light"] #view-profile .pf-hero .pf-chip { padding: 3px 12px; }
+
+/* پروفایل مینی‌اپ: هارمونی با پنل هیرو (تم روشن)
+   پالت از خود تصویر: کرم #fcf7eb، قهوه‌ای #5a1e12، زرشکی #7a1f1a، لاجوردی #24356b، زیتونی #4f6b3a، طلایی #b8862e */
+:root[data-theme="light"] #view-profile { --pf-line: rgba(176, 128, 60, .30); --pf-ink: #4a1f14; --pf-ink-soft: #7d5636; }
+:root[data-theme="light"] #view-profile .view-title { color: #5a1e12; }
+:root[data-theme="light"] #view-profile .view-title::before { background: linear-gradient(180deg, #b8862e, #7a1f1a); }
+:root[data-theme="light"] #view-profile .card:not(.pf-hero) { background-color: #fffaf0; background-image: linear-gradient(180deg, #fffdf8, #fcf7eb); border-color: var(--pf-line); box-shadow: 0 10px 24px rgba(92, 52, 24, .10); }
+:root[data-theme="light"] #view-profile .pf-row { border-color: rgba(176, 128, 60, .22); }
+:root[data-theme="light"] #view-profile .pf-row .row-label { color: var(--pf-ink-soft); }
+:root[data-theme="light"] #view-profile .pf-row .row-value { color: var(--pf-ink); }
+:root[data-theme="light"] #view-profile .pf-ico.is-blue { background: rgba(36, 53, 107, .12); color: #24356b; }
+:root[data-theme="light"] #view-profile .pf-ico.is-purple { background: rgba(122, 31, 26, .11); color: #7a1f1a; }
+:root[data-theme="light"] #view-profile .pf-ico.is-teal { background: rgba(79, 107, 58, .15); color: #4f6b3a; }
+:root[data-theme="light"] #view-profile .pf-ico.is-amber { background: rgba(184, 134, 46, .20); color: #8f6416; }
+:root[data-theme="light"] #dispute-form { background-image: linear-gradient(90deg, #b8862e, rgba(184, 134, 46, .25)), linear-gradient(180deg, #fffdf8, #fcf7eb); background-size: 100% 4px, 100% 100%; background-repeat: no-repeat; background-position: top, center; }
+:root[data-theme="light"] #dispute-form label { color: #5a1e12; }
+:root[data-theme="light"] #dispute-form textarea { background: #fbf3e2; border-color: rgba(176, 128, 60, .38); color: var(--pf-ink); }
+:root[data-theme="light"] #dispute-form textarea::placeholder { color: #a58662; }
+:root[data-theme="light"] #dispute-form textarea:focus { border-color: #b8862e; box-shadow: 0 0 0 3px rgba(184, 134, 46, .25); }
+:root[data-theme="light"] #dispute-form .btn { background: linear-gradient(135deg, #6b1f1a, #9a3a26); box-shadow: 0 10px 22px rgba(107, 31, 26, .28); }
+:root[data-theme="light"] #dispute-list .dispute-item { background: #fffaf0; border-color: color-mix(in srgb, var(--dsp-c) 30%, rgba(176, 128, 60, .30)); box-shadow: 0 8px 20px rgba(92, 52, 24, .08); }
+:root[data-theme="light"] #dispute-list .dsp-title { color: #5a1e12; }
+:root[data-theme="light"] #dispute-list .dispute-item .li-bottom { border-top-color: rgba(176, 128, 60, .35); color: var(--pf-ink-soft); }
+
+/* گزارش هفتگی/ماهانه (تم روشن): هیروی روشن هماهنگ با کارت وضعیت امروز و پالت پنل (نیلی برند + مینای پریوینکل + فیروزه‌ای)؛
+   به‌جای بلوک تیرهٔ پررنگ، همان زمینهٔ #f7faff و نوارهای مینای دیوارهٔ چپ/راست، با متن نیلی. */
+:root[data-theme="light"] .rp-hero {
+  color: var(--brand);
+  background-color: #f7faff;
+  background-image: url('/images/mina-wall-left.webp'), url('/images/mina-wall-right.webp');
+  background-size: auto 100%, auto 100%;
+  background-repeat: no-repeat;
+  background-position: left center, right center;
+  border: 1px solid rgba(41, 112, 190, .16);
+  box-shadow: 0 16px 34px rgba(35, 76, 133, .10);
+}
+:root[data-theme="light"] .rp-hero-label { color: var(--hint); opacity: 1; }
+:root[data-theme="light"] .rp-hero-value { color: var(--brand); }
+:root[data-theme="light"] .rp-hero-sub span { background: var(--brand-soft); color: var(--brand); }
+:root[data-theme="light"] .rp-hero-sub .rp-good { background: var(--green-soft); color: var(--green); }
+:root[data-theme="light"] .tabs-inline .tab-btn.active {
+  background: linear-gradient(135deg, #1d74bd, #3a9be0);
+  box-shadow: 0 8px 18px rgba(35, 110, 180, .28);
+}
+
+/* ===== تم تیره: همان تصاویر صنایع دستی، با لایهٔ تیرهٔ نیلی روی آن‌ها =====
+   تصاویر مینا/پروفایل پس‌زمینهٔ روشن دارند؛ در تم تیره یک گرادیان تیره روی تصویر می‌نشیند
+   (اولین لایه = بالاترین لایه) تا نقش‌ها دیده شوند ولی متن خوانا بماند. */
+:root[data-theme="dark"] #today-status-card.status-card,
+:root[data-theme="dark"] .rp-hero {
+  background-color: #0d1530;
+  background-image:
+    url('/images/mina-wall-left-dark.webp'),
+    url('/images/mina-wall-right-dark.webp');
+  background-size: auto 100%, auto 100%;
+  background-repeat: no-repeat;
+  background-position: left center, right center;
+  border: 1px solid rgba(110,160,230,.20);
+  box-shadow: 0 16px 34px rgba(0,0,0,.40);
+}
+:root[data-theme="dark"] #today-status-card.status-card::before { border-color: rgba(120,170,240,.07); }
+:root[data-theme="dark"] #today-status-card.status-card::after { content: none; }
+:root[data-theme="dark"] .rp-hero { color: #eaf1ff; }
+
+/* پروفایل: فرش بالا؛ پنل کرمِ پایین (زیر قلهٔ موج) تیره می‌شود */
+:root[data-theme="dark"] #view-profile .pf-hero {
+  --pf-crop-top: 130px;
+  position: relative;
+  isolation: isolate;
+  min-height: 0;
+  padding: 68px var(--space-4) 8px;
+  color: #f3e9d6;
+  background-color: #14122b;
+  background-image:
+    linear-gradient(180deg, rgba(14,12,34,0) 0, rgba(14,12,34,0) 84px, rgba(14,12,34,.86) 112px, rgba(14,12,34,.94) 100%),
+    linear-gradient(180deg, rgba(14,12,34,.30), rgba(14,12,34,.30)),
+    url('/images/profile-hero.webp');
+  background-size: 100% 100%, 100% 100%, max(100%, 640px) auto;
+  background-repeat: no-repeat;
+  background-position: 0 0, 0 0, 50% calc(var(--pf-crop-top) * -1);
+  border-color: rgba(200,160,90,.28);
+  box-shadow: 0 14px 30px rgba(0,0,0,.45);
+}
+:root[data-theme="dark"] #view-profile .pf-hero::before { content: none; }
+:root[data-theme="dark"] #view-profile .pf-hero > * { position: relative; z-index: 1; }
+:root[data-theme="dark"] #view-profile .pf-hero .pf-avatar { width: 72px; height: 72px; font-size: 28px; margin: 0 auto 8px; background: #fff; color: #322c79; border: 4px solid rgba(255,255,255,.55); box-shadow: 0 8px 20px rgba(0,0,0,.45); }
+:root[data-theme="dark"] #view-profile .pf-hero .profile-name { margin: 0; font-size: 17px; line-height: 1.6; color: #fff; }
+:root[data-theme="dark"] #view-profile .pf-hero .pf-chips { margin-top: 8px; gap: 6px; }
+:root[data-theme="dark"] #view-profile .pf-hero .pf-chip { padding: 3px 12px; background: rgba(255,255,255,.16); color: #fff; }
+:root[data-theme="dark"] #view-profile .pf-hero .pf-chip-soft { background: rgba(255,255,255,.09); color: rgba(255,255,255,.88); }
+
+/* ===== تم تیره — کارت وضعیت امروز با حاشیهٔ مینای شبانه (mina-dark.webp) =====
+   یک نوار چسبیده به لبهٔ راست (::before) و قرینه‌اش چسبیده به لبهٔ چپ (::after)؛
+   سمت داخلی هر نوار (طرف مرکز کارت) با ماسک به شفاف محو می‌شود. */
+:root[data-theme="dark"] #today-status-card.status-card {
+  --mina-bg: #10162e;
+  --mina-image: url('/images/mina-dark.webp');
+  --mina-width: clamp(104px, 31%, 150px);
+  --mina-opacity: .85;
+  background-color: var(--mina-bg);
+  background-image: none;
+  border: 1px solid rgba(157, 154, 220, .16);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, .40);
+}
+:root[data-theme="dark"] #today-status-card.status-card::before,
+:root[data-theme="dark"] #today-status-card.status-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--mina-width);
+  height: auto;
+  z-index: -1;
+  pointer-events: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  transform: none;
+  background-color: transparent;
+  background-image: var(--mina-image);
+  background-repeat: no-repeat;
+  background-position: right center;
+  background-size: auto 100%;
+  opacity: var(--mina-opacity);
+  -webkit-mask-image: linear-gradient(to left, #000 0%, #000 38%, rgba(0,0,0,.55) 68%, transparent 100%);
+  mask-image: linear-gradient(to left, #000 0%, #000 38%, rgba(0,0,0,.55) 68%, transparent 100%);
+}
+/* راست: همان تصویر؛ ماسک از لبهٔ بیرونی (راست) پررنگ و به سمت مرکز محو */
+:root[data-theme="dark"] #today-status-card.status-card::before { left: auto; right: 0; }
+/* چپ: قرینه (تصویر و ماسک هر دو با هم برعکس می‌شوند) */
+:root[data-theme="dark"] #today-status-card.status-card::after { right: auto; left: 0; transform: scaleX(-1); }
+@media print {
+  :root[data-theme="dark"] #today-status-card.status-card::before,
+  :root[data-theme="dark"] #today-status-card.status-card::after { display: none; }
+}
+
+/* ===== هیروی گزارش هفتگی/ماهانه (.rp-hero) — پس‌زمینهٔ تمام‌کارت برای هر دو تم =====
+   تصاویر ۱۸۹۹×۸۲۹ (نسبت ≈۲٫۳) هم‌نسبت کارت موبایل (≈۴۲۴×۱۸۵)؛ وسط خالی برای متن.
+   cover: روی کارت‌های بلندتر فقط از بالا/پایین بریده می‌شود، کشیده نمی‌شود. */
+:root[data-theme="light"] .rp-hero {
+  background-color: #f7faff;
+  background-image: url('/images/rp-hero-light.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+:root[data-theme="dark"] .rp-hero {
+  background-color: #10162e;
+  background-image: url('/images/rp-hero-dark.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border: 1px solid rgba(157, 154, 220, .16);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, .40);
+}

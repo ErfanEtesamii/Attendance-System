@@ -9,6 +9,8 @@ const { createRateLimiter } = require('../../../middleware/rateLimiter');
 const auditRepository = require('../../../repositories/auditRepository');
 const config = require('../../../config');
 const agent = require('../../../services/aiAgent/agent');
+const actions = require('../../../services/aiAgent/actions');
+const { takeExport } = require('../../../services/aiAgent/moreTools');
 
 const chatLimiter = createRateLimiter({
   name: 'ai-chat',
@@ -40,6 +42,24 @@ router.post('/admin/ai/chat', requirePermission('ai.assistant'), chatLimiter, as
     if (err instanceof agent.AiAgentError) return res.status(err.status).json({ error: err.message, code: err.code });
     return next(err); // Express 4: خطای async باید صریح به errorHandler برسد
   }
+});
+
+// تأیید/لغو عملیات پیشنهادیِ ایجنت (فقط همان ادمین، یک‌بار، قبل از انقضا؛ مجوز و اسکوپ دوباره سنجیده می‌شود)
+router.post('/admin/ai/actions/:id/:verb(confirm|cancel)', requirePermission('ai.assistant'), (req, res, next) => {
+  try {
+    const out = req.params.verb === 'confirm' ? actions.confirm(req.adminUser, req.params.id, { ip: req.ip }) : actions.cancel(req.adminUser, req.params.id);
+    res.json(out);
+  } catch (err) {
+    if (err instanceof actions.ActionError) return res.status(400).json({ error: err.message });
+    return next(err);
+  }
+});
+
+// دانلود خروجی اکسلِ ساخته‌شده توسط ایجنت (توکن تصادفی، فقط صاحبش، ۳۰ دقیقه)
+router.get('/admin/ai/export/:token', requirePermission('ai.assistant'), (req, res) => {
+  const e = /^[0-9a-f]{32}$/.test(req.params.token) ? takeExport(req.adminUser.id, req.params.token) : null;
+  if (!e) return res.status(404).json({ error: 'فایل یافت نشد یا منقضی شده است.' });
+  return res.download(e.file, e.name);
 });
 
 module.exports = router;

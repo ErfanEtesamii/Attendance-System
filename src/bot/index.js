@@ -91,6 +91,7 @@ function createBot() {
     if (sess.flow === 'mission_reject') return handleMissionRejectText(bot, msg, sess);
     if (sess.flow === 'mission_edit') return handleMissionEditText(bot, msg, sess);
     if (sess.flow === 'report_comment') return handleReportCommentText(bot, msg, sess);
+    if (sess.flow === 'ai_chat') return require('./commands/aiChat').handleAiText(bot, msg, sess);
   });
 
   bot.on('callback_query', async (query) => {
@@ -105,6 +106,7 @@ function createBot() {
       // E4: دکمه‌های inline که به handlerِ دکمه‌ی منو می‌روند (mn:<id>)؛ نقش سمت سرور چک می‌شود
       if (data.startsWith('mn:')) return await handleMenuCallback(bot, query);
 
+      if (data.startsWith('aic:') || data.startsWith('aix:')) return await require('./commands/aiChat').handleAiCallback(bot, query);
       if (data.startsWith('rw:')) return await handleRemoteWorkCallback(bot, query);
 
       if (data.startsWith('rvs:') || data.startsWith('rvc:')) return await handleReportReviewCallback(bot, query);

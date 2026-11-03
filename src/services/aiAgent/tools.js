@@ -250,6 +250,10 @@ const TOOLS = [
 // ابزارهای تکمیلی (تردد/دورکاری/تسک/مرخصی/اعتراض/اضافه‌کاری/شیفت/رویداد مشکوک)
 TOOLS.push(...require('./extraTools').build({ need, userFilter, ToolError, today, shiftIso, DATE_RE, getTimezone: () => settingsRepository.getTimezone() }));
 
+// ابزارهای اجرایی/تحلیلی/یادداشت (با تأیید انسان، اکسل، مقایسه، یادداشت)
+const EXPORTABLE = ['team_performance', 'employee_performance', 'attendance_log', 'late_trend', 'rankings', 'attendance_rate', 'leave_by_type', 'remote_work', 'tasks_overview', 'leave_requests', 'disputes', 'overtime_decisions'];
+TOOLS.push(...require('./moreTools').build({ ToolError, EXPORTABLE, runRaw: (ctx, name, input) => stripFinancial(BY_NAME.get(name).run(ctx, input && typeof input === 'object' ? input : {})) }));
+
 const BY_NAME = new Map(TOOLS.map((t) => [t.name, t]));
 
 // توضیح کوتاه انگلیسی برای ارسال به سرویس‌های OpenAI-سازگار: توکن بسیار کمتری از فارسی می‌خورد (سقف توکن در دقیقه‌ی پلن‌های رایگان کم است).
@@ -265,6 +269,13 @@ const SHORT_DESC = {
   leave_by_type: 'Monthly leave distribution by leave type.',
   checkin_distribution: 'Histogram of check-in times in a range (default last 30 days).',
   behavior_patterns: 'Behavioral pattern signals for a Jalali month (consecutive lateness, repeated absences). Signals, not proof.',
+  propose_leave_decision: 'Queue approve/reject of a pending leave request (requestId, decision, note; note required for reject). Does NOT execute: the admin must press Confirm.',
+  propose_dispute_reply: 'Queue a reply (max 500 chars) to an open dispute. Needs admin confirmation.',
+  propose_dispute_close: 'Queue closing an open dispute that has no attendance record attached. Needs admin confirmation.',
+  compare_periods: 'Run an analytic tool for two ranges (fromA,toA vs fromB,toB) and return numeric deltas, % change and a rough linear next-period estimate.',
+  export_excel: 'Build an Excel file from the tables of an analytic tool result (tool, args, title). Admin gets a download button.',
+  remember_note: 'Save a short admin note/preference, only when explicitly asked. Never sensitive data.',
+  forget_note: 'Delete own note by id, or list notes.',
   attendance_log: 'Attendance records (in/out times, worked and break minutes) for a range. With userId: per-day rows; otherwise per-employee summary.',
   remote_work: 'Remote-work sessions (times, approval status, duration) in a range.',
   tasks_overview: 'Tasks and weekly plans: planned, done/partial/not-done, reasons, urgent, plan submission. With userId also lists the tasks.',
@@ -274,6 +285,7 @@ const SHORT_DESC = {
   shifts_holidays: 'Defined shifts, holidays and per-day schedule overrides; with userId also that employee shift.',
   suspicious_events: 'System-flagged suspicious events (same IP, device change) with review status.',
   payroll_summary: 'Monthly payroll for a Jalali year/month: hourly rate (thousand toman/hour), useful and overtime minutes, amount (toman), previous month, department totals. With userId also daily breakdown. Sensitive: use only when the manager asks about pay.',
+  panel_guide: 'Where things are in the admin panel: menu path, what each page does, which roles can access it, and how-to steps (also Telegram bot menu). Pass Persian keywords as query, or omit for the menu index.',
   org_overview: 'Organization structure: employees per department, roles, managers with team sizes, inactive count.',
   panel_settings: 'Company settings of the panel (work hours, overtime, leave, reminders, planning...). Optional group filter.',
   audit_trail: 'Recent admin/system actions (who did what, when) in a range; optional actor userId or action text.',
@@ -306,4 +318,22 @@ function runTool(ctx, name, input) {
   }
 }
 
-module.exports = { toolDefinitions, runTool, stripFinancial, TOOLS, ToolError, MAX_RESULT_CHARS };
+async function runToolAsync(ctx, name, input) {
+  const tool = BY_NAME.get(name);
+  if (!tool) return { text: `ابزار «${name}» وجود ندارد.`, isError: true };
+  try {
+    const safeInput = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
+    if (tool.financial && !config.ai.allowPayroll) return { text: 'دسترسی ایجنت به حقوق غیرفعال است.', isError: true };
+    const raw = await tool.run(ctx, safeInput);
+    let text = JSON.stringify(tool.financial ? raw : stripFinancial(raw)); // فقط ابزار مالیِ مجازشده، خروجی‌اش stripFinancial نمی‌شود
+    if (text.length > MAX_RESULT_CHARS) {
+      text = `${text.slice(0, MAX_RESULT_CHARS)}…[خروجی بریده شد؛ بازه یا دامنه را کوچک‌تر کنید (یک کارمند/دپارتمان/بازه‌ی کوتاه‌تر)]`;
+    }
+    return { text, isError: false };
+  } catch (err) {
+    if (err instanceof ToolError) return { text: err.message, isError: true };
+    return { text: 'خطای داخلی هنگام خواندن داده.', isError: true, internal: err };
+  }
+}
+
+module.exports = { toolDefinitions, runTool, runToolAsync, stripFinancial, TOOLS, ToolError, MAX_RESULT_CHARS };

@@ -58,7 +58,7 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
 
     test('هر ۱۸ دکمه‌ی منو برچسب نرمال‌شده‌ی یکتا دارند', () => {
       const labels = menu.ITEMS.map((it) => menu.normalizeLabel(it.label));
-      assert.equal(menu.ITEMS.length, 18);
+      assert.equal(menu.ITEMS.length, 19);
       assert.equal(new Set(labels).size, labels.length);
       assert.ok(labels.every(Boolean));
     });
@@ -66,7 +66,7 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
 
   const EMP = ['🕒 ثبت تردد', '🏠 ثبت دورکاری', '📊 وضعیت من', '📈 گزارش من', '🏖 مرخصی / 🚗 ماموریت', '📋 برنامه هفتگی', '🖥 پنل', '❓ راهنما'];
   const MGR = ['👥 گزارش تیم', '📥 درخواست‌های منتظر', '💬 اعتراض‌ها', '🏠 دورکاری‌های منتظر', '📝 گزارش‌های دیروز تیم', '👤 لیست اعضا', '⚡ تسک فوری'];
-  const ADM = ['➕ افزودن کارمند', '🛠 اصلاح رکورد', '⚙️ پنل مدیریت'];
+  const ADM = ['➕ افزودن کارمند', '🛠 اصلاح رکورد', '🤖 تحلیلگر هوشمند', '⚙️ پنل مدیریت'];
 
   describe('buildMainKeyboard — فقط «📂 منو» (H2)', () => {
     test('هر سه نقش: دقیقاً یک دکمه‌ی متنی «📂 منو» (بدون web_app)، resize و persistent', () => {
@@ -120,7 +120,7 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
       assert.deepEqual(headerTexts(kb), ['— کارهای من —', '— تیم —']);
     });
 
-    test('ادمین: همه‌ی ۱۷ آیتم به ترتیب با سه سرتیتر', () => {
+    test('ادمین: همه‌ی ۱۸ آیتم به ترتیب با سه سرتیتر', () => {
       const kb = menu.buildMenuInline(admin);
       assert.deepEqual(itemTexts(kb), [...EMP, ...MGR, ...ADM]);
       assert.deepEqual(headerTexts(kb), ['— کارهای من —', '— تیم —', '— مدیریت —']);
@@ -338,7 +338,7 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
     const itemLabels = (kb) => kb.inline_keyboard.flat().filter((b) => b.callback_data !== 'mn:_' && b.callback_data !== 'mn:_close').map((b) => b.text);
 
     test('هر نقش پیام منوی inline همان نقش را می‌گیرد؛ handler اجرا نمی‌شود و پیام کیبورد قدیمی نمی‌رود', async () => {
-      for (const [user, n] of [[emp, 8], [mgr, 15], [admin, 18]]) {
+      for (const [user, n] of [[emp, 8], [mgr, 15], [admin, 19]]) {
         const bot = mockBot(); const { calls, h } = spies();
         assert.equal(await menu.routeMenuText(bot, msgFrom(user, '📂 منو'), h), true);
         assert.deepEqual(calls, []);

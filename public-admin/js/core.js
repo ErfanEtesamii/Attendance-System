@@ -857,6 +857,7 @@
     $('.brand-sub').textContent = { admin: 'پنل مدیریتی', manager: 'پنل سرپرست', hr: 'پنل منابع انسانی', employee: 'پنل کارمند' }[me.role] || 'پنل';
     if (AP.selfOnly()) $('#global-search').placeholder = 'جستجوی صفحه یا اقدام…'; // بدون users.read فقط فرمان‌ها/صفحه‌ها، نه افراد
     $('#me-avatar').textContent = AP.initials(me.fullName);
+    if (AP.profilePhoto) AP.profilePhoto.mount(me); // عکس پروفایل
     $('#me-name').textContent = me.fullName;
     $('#me-role').textContent = AP.ROLE[me.role] || me.role;
     $('#topbar-date').textContent = fmt.dateFull(fmt.today());

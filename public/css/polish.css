@@ -813,3 +813,55 @@ body {
   border: 1px solid rgba(157, 154, 220, .16);
   box-shadow: 0 16px 34px rgba(0, 0, 0, .40);
 }
+/* <avatar-css> */
+/* عکس پروفایل */
+.pf-hero .pf-avatar { overflow: visible; cursor: pointer; transition: box-shadow .2s; }
+.pf-avatar-face { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; overflow: hidden; }
+.pf-avatar-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pf-avatar-badge { position: absolute; inset-block-end: -2px; inset-inline-end: -2px; width: 30px; height: 30px; padding: 0; display: grid; place-items: center; border-radius: 50%; border: 2px solid #fff; background: #f59e0b; color: #1d1a45; font-size: 14px; cursor: pointer; box-shadow: 0 4px 10px rgba(0, 0, 0, .25); }
+.pf-avatar.is-busy .pf-avatar-face { opacity: .5; }
+.pf-avatar.is-busy::after { content: ""; position: absolute; inset: 0; margin: auto; width: 30px; height: 30px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, .55); border-top-color: #fff; animation: av-spin .8s linear infinite; }
+.pf-avatar.pf-avatar-pop { animation: av-bump .5s ease-out; }
+.pf-avatar-actions { display: flex; justify-content: center; gap: 8px; margin-top: 12px; }
+.pf-avatar-btn { border: 1px solid rgba(255, 255, 255, .38); background: rgba(255, 255, 255, .16); color: #fff; font: inherit; font-size: var(--fs-xs); font-weight: 700; padding: 6px 14px; border-radius: 999px; cursor: pointer; }
+.pf-avatar-del { color: #ffd9d4; }
+:root[data-theme="light"] #view-profile .pf-avatar-btn { border-color: var(--border); background: transparent; color: var(--brand); }
+:root[data-theme="light"] #view-profile .pf-avatar-del { color: var(--danger, #c0392b); }
+
+/* ویرایشگر برش */
+.av-crop-back { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 16px; background: rgba(18, 14, 50, .62); backdrop-filter: blur(4px); animation: av-fade .15s ease-out; }
+.av-crop { width: min(340px, 100%); display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 20px 18px 16px; background: var(--card-bg, var(--card, #fff)); color: var(--text, #1d1a45); border-radius: 24px; box-shadow: 0 24px 64px rgba(0, 0, 0, .4); animation: av-pop .2s ease-out; }
+.av-crop-title { font-weight: 800; font-size: 1.02rem; }
+.av-crop-stage { position: relative; width: 240px; height: 240px; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+.av-crop-stage:active { cursor: grabbing; }
+.av-crop-canvas { width: 100%; height: 100%; display: block; border-radius: 50%; background: #fff; box-shadow: 0 8px 24px rgba(30, 25, 80, .25); }
+.av-crop-ring { position: absolute; inset: -5px; border-radius: 50%; border: 3px solid var(--accent, #f59e0b); pointer-events: none; }
+.av-crop-zoom { width: 100%; accent-color: var(--brand, #4b3fc0); }
+.av-crop-hint { font-size: .78rem; line-height: 1.8; color: var(--hint, #5d5a8a); text-align: center; }
+.av-crop-actions { display: flex; gap: 10px; width: 100%; }
+.av-btn { flex: 1; border: 1px solid var(--border, #d9d6f0); background: transparent; color: inherit; font: inherit; font-weight: 700; padding: 10px 12px; border-radius: 12px; cursor: pointer; }
+.av-btn-primary { background: var(--accent, #f59e0b); border-color: transparent; color: var(--on-accent, #1d1a45); }
+.av-btn:focus-visible { outline: 2px solid var(--brand, #4b3fc0); outline-offset: 2px; }
+@keyframes av-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes av-pop { from { opacity: 0; transform: translateY(10px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes av-spin { to { transform: rotate(360deg); } }
+@keyframes av-bump { 40% { transform: scale(1.12); } 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .av-crop-back, .av-crop, .pf-avatar-pop, .avatar-pop { animation: none !important; } }
+.av-crop-grid { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; opacity: .5; background: linear-gradient(to right, transparent 33%, rgba(255, 255, 255, .55) 33%, rgba(255, 255, 255, .55) calc(33% + 1px), transparent calc(33% + 1px), transparent 66%, rgba(255, 255, 255, .55) 66%, rgba(255, 255, 255, .55) calc(66% + 1px), transparent calc(66% + 1px)), linear-gradient(to bottom, transparent 33%, rgba(255, 255, 255, .55) 33%, rgba(255, 255, 255, .55) calc(33% + 1px), transparent calc(33% + 1px), transparent 66%, rgba(255, 255, 255, .55) 66%, rgba(255, 255, 255, .55) calc(66% + 1px), transparent calc(66% + 1px)); mix-blend-mode: overlay; }
+.av-crop-zoomrow { display: flex; align-items: center; gap: 8px; width: 100%; }
+.av-tool { flex: none; width: 34px; height: 34px; padding: 0; display: grid; place-items: center; border: 1px solid var(--border, #d9d6f0); background: transparent; color: inherit; border-radius: 50%; font: inherit; font-size: 1.1rem; line-height: 1; cursor: pointer; transition: background .15s, transform .15s; }
+.av-tool:hover { background: var(--brand-soft, #ecebfa); transform: translateY(-1px); }
+.av-tool:focus-visible { outline: 2px solid var(--brand, #4b3fc0); outline-offset: 2px; }
+.av-crop-zoom { flex: 1; min-width: 0; }
+@keyframes av-rot { to { transform: rotate(360deg); } }
+.pf-hero .pf-avatar { isolation: isolate; }
+.pf-hero .pf-avatar.has-photo { box-shadow: 0 12px 30px rgba(0, 0, 0, .35); }
+.pf-hero .pf-avatar.has-photo::before { content: ""; position: absolute; inset: -7px; z-index: -1; border-radius: 50%; background: conic-gradient(#f7a01d, #7a67ee, #4ade80, #f7a01d); animation: av-rot 7s linear infinite; }
+.pf-hero .pf-avatar.pf-av-0 { background: linear-gradient(135deg, #f7a01d, #e8590c); color: #fff; }
+.pf-hero .pf-avatar.pf-av-1 { background: linear-gradient(135deg, #7a67ee, #4b3fc0); color: #fff; }
+.pf-hero .pf-avatar.pf-av-2 { background: linear-gradient(135deg, #2dd4bf, #0f766e); color: #fff; }
+.pf-hero .pf-avatar.pf-av-3 { background: linear-gradient(135deg, #f472b6, #be185d); color: #fff; }
+.pf-hero .pf-avatar.pf-av-4 { background: linear-gradient(135deg, #60a5fa, #1d4ed8); color: #fff; }
+.pf-hero .pf-avatar.pf-av-5 { background: linear-gradient(135deg, #a3e635, #4d7c0f); color: #fff; }
+@media (prefers-reduced-motion: reduce) { .pf-hero .pf-avatar.has-photo::before { animation: none; } }
+/* </avatar-css> */

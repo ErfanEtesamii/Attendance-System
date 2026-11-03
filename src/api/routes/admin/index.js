@@ -52,6 +52,7 @@ router.use(require('./myUrgent')); // تسک فوریِ خودِ کاربر از
 router.use(require('./employeePlan')); // A2 (فاز ۱۳): برنامه‌ی هفتگی کارمند برای ادمین/سرپرست (بخش ۱: خواندن)
 router.use(require('./remoteWork')); // R5-۳ (فاز ۱۴): صف بررسی دورکاری (فقط‌خواندنی)
 router.use(require('./ai')); // ایجنت هوش مصنوعی (فقط admin؛ فقط‌خواندنی روی داده‌ها)
+router.use(require('./avatar')); // عکس پروفایل (خودِ کاربر)
 router.use(require('./notifications'));
 router.use(require('./system'));
 

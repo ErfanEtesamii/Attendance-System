@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#f4f3fb" />
+<meta name="default-theme" content="light" />
+<meta name="theme-bg-dark" content="#17143a" />
+<meta name="theme-bg-light" content="#f4f3fb" />
+<script src="/js/theme.js"></script>
+<title>پنل حضور و غیاب فرازهنر</title>
+<link rel="stylesheet" href="/admin/css/datepicker.css" />
+<link rel="stylesheet" href="/css/tokens.css" />
+<link rel="stylesheet" href="/admin/css/style.css" />
+<link rel="stylesheet" href="/css/reveal.css" />
+<link rel="stylesheet" href="/css/collapse.css" />
+<link rel="stylesheet" href="/admin/css/notebook.css" />
+<link rel="stylesheet" href="/admin/css/employees.css" />
+<link rel="stylesheet" href="/admin/css/analytics.css" />
+<link rel="stylesheet" href="/admin/css/nextplan.css" />
+<link rel="stylesheet" href="/admin/css/polish.css" />
+<link rel="stylesheet" href="/admin/css/polish/01-background.css" />
+<link rel="stylesheet" href="/admin/css/polish/02-sidebar.css" />
+<link rel="stylesheet" href="/admin/css/polish/03-topbar.css" />
+<link rel="stylesheet" href="/admin/css/polish/04-page-header.css" />
+<link rel="stylesheet" href="/admin/css/polish/05-cards.css" />
+<link rel="stylesheet" href="/admin/css/polish/06-stat-tiles.css" />
+<link rel="stylesheet" href="/admin/css/polish/07-buttons-chips.css" />
+<link rel="stylesheet" href="/admin/css/polish/08-tables.css" />
+<link rel="stylesheet" href="/admin/css/polish/09-inbox-bars-charts.css" />
+<link rel="stylesheet" href="/admin/css/polish/10-forms-modal.css" />
+<link rel="stylesheet" href="/admin/css/polish/11-login.css" />
+<link rel="stylesheet" href="/admin/css/polish/13-live-board.css" />
+<link rel="stylesheet" href="/admin/css/polish/14-nightly-review.css" />
+<link rel="stylesheet" href="/admin/css/polish/15-team-calendar.css" />
+<link rel="stylesheet" href="/admin/css/polish/16-employees.css" />
+<link rel="stylesheet" href="/admin/css/polish/17-attendance-records.css" />
+<link rel="stylesheet" href="/admin/css/polish/18-suspicious.css" />
+<link rel="stylesheet" href="/admin/css/polish/19-leave-queue.css" />
+<link rel="stylesheet" href="/admin/css/polish/20-checkin-permissions.css" />
+<link rel="stylesheet" href="/admin/css/polish/21-disputes.css" />
+<link rel="stylesheet" href="/admin/css/polish/22-remote-work.css" />
+<link rel="stylesheet" href="/admin/css/polish/23-reports.css" />
+<link rel="stylesheet" href="/admin/css/polish/24-analytics-charts.css" />
+<link rel="stylesheet" href="/admin/css/polish/25-team-reports.css" />
+<link rel="stylesheet" href="/admin/css/polish/26-broadcast.css" />
+<link rel="stylesheet" href="/admin/css/polish/27-settings.css" />
+<link rel="stylesheet" href="/admin/css/polish/28-holidays.css" />
+<link rel="stylesheet" href="/admin/css/polish/29-audit-log.css" />
+<link rel="stylesheet" href="/admin/css/polish/30-system.css" />
+<link rel="stylesheet" href="/admin/css/polish/31-status.css" />
+<link rel="stylesheet" href="/admin/css/polish/32-shifts.css" />
+<link rel="stylesheet" href="/admin/css/polish/33-team-kpis.css" />
+<link rel="stylesheet" href="/admin/css/polish/34-reports-tables.css" />
+<link rel="stylesheet" href="/admin/css/polish/36-record-modal.css" />
+<link rel="stylesheet" href="/admin/css/polish/37-analytics-stat-tiles.css" />
+<link rel="stylesheet" href="/admin/css/polish/38-performance.css" />
+<link rel="stylesheet" href="/admin/css/polish/39-ai-assistant.css" />
+<link rel="stylesheet" href="/admin/css/polish/35-mobile.css" />
+<link rel="stylesheet" href="/admin/css/polish/12-reduced-motion.css" />
+</head>
+<body>
+  <a class="skip-link" href="#page">پرش به محتوای اصلی</a>
+
+  <!-- صفحه ورود -->
+  <div id="login-screen" class="login-screen">
+    <div class="login-card">
+      <div class="login-brand-panel" aria-hidden="true">
+        <div class="login-brand-art">
+          <svg viewBox="0 0 240 180"><path d="M35 142c22-50 47-81 86-86 38-5 66 20 84 67"/><circle cx="82" cy="75" r="25"/><path d="M82 62v16l12 8M48 142h144M146 54h43M168 32v44"/></svg>
+        </div>
+        <p>زمان تیم، شفاف و منظم</p>
+        <p class="login-brand-lead">ورود و خروج، مرخصی، گزارش‌ها و برنامه‌ی هفته‌ی تیم؛ همه در یک پنل ساده و قابل‌اعتماد.</p>
+      </div>
+      <div class="login-form-panel">
+        <div class="brand brand-center">
+          <div class="brand-mark">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          </div>
+        </div>
+        <h1>پنل حضور و غیاب</h1>
+        <p class="muted">برای ورود، در بات دکمه‌ی «🖥 پنل» را بزنید، یا با حساب تلگرامی که در بات ثبت شده وارد شوید.</p>
+        <div id="telegram-login-container"></div>
+        <div class="code-login">
+          <p class="muted">یا در بات دکمه‌ی «🖥 پنل» را بزنید و کد ورود را اینجا وارد کنید:</p>
+          <input id="code-input" type="text" inputmode="numeric" maxlength="8" autocomplete="one-time-code" placeholder="کد ۸ رقمی" aria-label="کد ورود ۸ رقمی" dir="ltr">
+          <button id="code-login-btn" type="button">ورود با کد</button>
+        </div>
+        <p id="login-error" class="error-msg"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- برنامه اصلی -->
+  <div id="app-shell" class="app-shell hidden">
+
+    <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        </div>
+        <div class="brand-text">
+          <div class="brand-name">فرازهنر</div>
+          <div class="brand-sub">پنل مدیریتی</div>
+        </div>
+      </div>
+
+      <nav class="side-nav" id="side-nav" aria-label="منوی اصلی"></nav>
+
+      <div class="sidebar-footer">
+        <button id="rail-toggle" class="rail-toggle" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="نمایش برچسب‌های منو" title="نمایش برچسب‌های منو">
+          <svg class="ico-expand" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+          <svg class="ico-collapse" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+          <span class="rail-toggle-label">جمع کردن منو</span>
+        </button>
+        <div class="me-box">
+          <div class="avatar" id="me-avatar">—</div>
+          <div class="me-text">
+            <div class="me-name" id="me-name">—</div>
+            <div class="me-role" id="me-role">—</div>
+          </div>
+        </div>
+        <button id="logout-btn" class="icon-btn" title="خروج" aria-label="خروج">
+          <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        </button>
+      </div>
+    </aside>
+
+    <div class="content">
+      <header class="topbar">
+        <button id="menu-btn" class="icon-btn menu-btn" type="button" aria-label="منو" aria-controls="sidebar" aria-expanded="false">
+          <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+        <div class="search-box">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input id="global-search" type="search" placeholder="جستجوی کارمند (نام یا کد پرسنلی)…" aria-label="جستجوی کارمند (نام یا کد پرسنلی)" autocomplete="off" />
+          <div id="search-results" class="search-results hidden"></div>
+        </div>
+        <div class="topbar-date" id="topbar-date"></div>
+        <button id="bell-btn" class="icon-btn bell-btn hidden" type="button" title="اعلان‌ها" aria-label="اعلان‌ها" aria-haspopup="dialog" aria-expanded="false" aria-controls="bell-drawer">
+          <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          <span id="bell-count" class="bell-count hidden" aria-hidden="true"></span>
+        </button>
+        <button id="theme-btn" class="icon-btn theme-btn" type="button" data-theme-toggle title="تم" aria-label="تغییر تم">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        </button>
+        <button id="density-btn" class="icon-btn density-btn" type="button" title="تراکم نمایش" aria-label="تغییر تراکم نمایش" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <button id="refresh-btn" class="icon-btn" title="تازه‌سازی" aria-label="تازه‌سازی">
+          <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg>
+        </button>
+      </header>
+
+      <main class="page" id="page" tabindex="-1"></main>
+    </div>
+  </div>
+
+  <!-- زنگوله‌ی اعلان: پنل کشویی (S4-6a؛ منطق در js/bell.js) -->
+  <div id="bell-backdrop" class="bell-backdrop"></div>
+  <aside id="bell-drawer" class="bell-drawer" role="dialog" aria-modal="false" aria-labelledby="bell-title" aria-hidden="true">
+    <div class="bell-head">
+      <h3 id="bell-title">اعلان‌ها</h3>
+      <button id="bell-mark-all" type="button" class="btn ghost small" disabled>خواندن همه</button>
+      <button id="bell-close" type="button" class="icon-btn" aria-label="بستن">
+        <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="bell-list" class="bell-list" aria-live="polite"></div>
+    <div class="bell-foot"><button id="bell-more" type="button" class="btn ghost small hidden">نمایش بیشتر</button></div>
+  </aside>
+
+  <div id="rail-tip" class="rail-tip" role="tooltip" aria-hidden="true"></div>
+
+  <div id="modal-root"></div>
+  <div id="toast" class="toast hidden" role="status" aria-live="polite" aria-atomic="true"></div>
+  <button id="ux-back-to-top" class="ux-back-to-top" type="button" aria-label="بازگشت به بالای صفحه" hidden>بازگشت به بالا</button>
+
+  <script src="/admin/js/jalali.js"></script>
+  <script src="/admin/js/datepicker.js"></script>
+  <script src="/admin/js/timeinput.js"></script>
+  <script src="/admin/js/a11y.js"></script>
+  <script src="/js/safeHtml.js"></script>
+  <script src="/js/states.js"></script>
+  <script src="/admin/js/core.js"></script>
+  <script src="/admin/js/notebook.js"></script>
+  <script src="/admin/js/plan-editor.js"></script>
+  <script src="/admin/js/plan-manage.js"></script>
+  <script src="/admin/js/exports.js"></script>
+  <script src="/admin/js/charts.js"></script>
+  <script src="/admin/js/patterns.js"></script>
+  <script src="/admin/js/views-main.js"></script>
+  <script src="/admin/js/views-ops.js"></script>
+  <script src="/admin/js/views-calendar.js"></script>
+  <script src="/admin/js/views-admin.js"></script>
+  <script src="/admin/js/views-analytics.js"></script>
+  <script src="/admin/js/perf-charts.js"></script>
+  <script src="/admin/js/views-performance.js"></script>
+  <script src="/admin/js/views-shifts.js"></script>
+  <script src="/admin/js/views-schedule.js"></script>
+  <script src="/admin/js/views-teamreports.js"></script>
+  <script src="/admin/js/views-weekly.js"></script>
+  <script src="/admin/js/views-nextplan.js"></script>
+  <script src="/admin/js/views-remote.js"></script>
+  <script src="/admin/js/views-mystatus.js"></script>
+  <script src="/admin/js/ai-assistant.js"></script>
+  <script src="/admin/js/bell.js"></script>
+  <script src="/admin/js/boot.js"></script>
+  <script src="/js/reveal.js"></script>
+  <script src="/js/collapse.js"></script>
+</body>
+</html>
