@@ -922,3 +922,41 @@ body {
 }
 :root[data-theme="light"] #view-profile .pf-hero .pf-avatar { width: 108px; height: 108px; font-size: 42px; }
 :root[data-theme="light"] #view-profile .pf-hero .pf-avatar-badge { width: 32px; height: 32px; font-size: 15px; }
+
+/* ===== پروفایل (تم تیره): هم‌اندازه و هم‌ابعاد با تم روشن =====
+   همان ارتفاع کارت، آواتار ۱۰۸px، نشان دوربین ۳۲px، خط طلایی زیر نام، چیپ‌های هم‌اندازه.
+   فقط رنگ‌ها تیره‌اند. برای جابه‌جایی آواتار نسبت به موج: --pf-crop-top و padding-top را هم‌زمان تغییر دهید. */
+:root[data-theme="dark"] #view-profile .pf-hero {
+  --pf-crop-top: 216px;
+  padding: 36px var(--space-4) 22px;
+  background-size: 100% 100%, 100% 100%, auto calc(100% + var(--pf-crop-top));
+  background-position: 0 0, 0 0, 50% calc(var(--pf-crop-top) * -1);
+}
+:root[data-theme="dark"] #view-profile .pf-hero .pf-avatar {
+  width: 108px; height: 108px; font-size: 42px; margin: 0 auto 10px;
+  background: #1c1940; color: #f3e9d6;
+  border: 3px solid #1c1940;
+  box-shadow: 0 0 0 2px rgba(224, 182, 89, .55), 0 12px 26px rgba(0, 0, 0, .55);
+}
+:root[data-theme="dark"] #view-profile .pf-hero .pf-avatar.has-photo::before {
+  inset: -6px; background: conic-gradient(#b8862e, #f3d27a, #7a67ee, #e0b659, #b8862e);
+}
+:root[data-theme="dark"] #view-profile .pf-hero .pf-avatar-badge {
+  width: 32px; height: 32px; font-size: 15px; color: #2a1608;
+  background: linear-gradient(135deg, #b8862e, #f0cf7a); border: 2px solid #1c1940;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, .45);
+}
+:root[data-theme="dark"] #view-profile .pf-hero .profile-name { font-size: 19px; font-weight: 800; }
+:root[data-theme="dark"] #view-profile .pf-hero .profile-name::after {
+  content: ""; display: block; width: 64px; height: 2px; margin: 7px auto 0; border-radius: 2px;
+  background: linear-gradient(90deg, transparent, #e0b659, transparent);
+}
+:root[data-theme="dark"] #view-profile .pf-hero .pf-chips { margin-top: 12px; gap: 8px; justify-content: center; }
+:root[data-theme="dark"] #view-profile .pf-hero .pf-chip {
+  padding: 4px 14px; font-size: 12px; font-weight: 700;
+  background: rgba(255, 255, 255, .10); color: #f3e9d6; border: 1px solid rgba(224, 182, 89, .32);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .25);
+}
+:root[data-theme="dark"] #view-profile .pf-hero #pf-role-chip {
+  background: linear-gradient(135deg, #7a1f1a, #5a1e12); color: #fff4dc; border-color: #b8862e;
+}
