@@ -149,3 +149,25 @@ body:has(.nav-item.active[data-view="reports"]) #page[aria-busy="true"] .skeleto
   #rep-filters ~ .card .chart .bar-a, #rep-filters ~ .card.flush tbody > tr, #rep-filters ~ .card.flush thead th.sortable { transition: none; }
   #rep-filters ~ .card.flush tbody > tr > td:first-child::before { transition: none; }
 }
+
+/* ===== نوار خروجی بالای صفحه: برچسب توضیحی ===== */
+.rep-export-top { align-items: center; }
+.rep-export-top .export-cap { color: var(--hint); font-size: var(--fs-xs); font-weight: 700; white-space: nowrap; }
+
+/* ===== کارت «دریافت گزارش ماهانه»: سرتیتر، خلاصه‌ی خروجی، دکمه‌ی اصلی ===== */
+#monthly-card .mc-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: var(--space-3); }
+#monthly-card .mc-head h3 { margin-bottom: 4px; }
+#monthly-card .mc-head .report-note { margin-bottom: 0; }
+#monthly-card .mc-ic { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; color: var(--brand); background: color-mix(in srgb, var(--brand) 14%, transparent); }
+#monthly-card .mc-ic svg { width: 20px; height: 20px; }
+#monthly-card .mc-result { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); margin-top: var(--space-3); padding: 14px 16px; border-radius: var(--r-xl); border: 1px dashed color-mix(in srgb, var(--brand) 30%, var(--border)); }
+#monthly-card .mc-summary { color: var(--text); font-size: var(--fs-sm); line-height: 1.9; }
+#monthly-card #monthly-export { margin: 0; align-items: center; }
+#monthly-card .mc-main-btn { padding-inline: 22px; min-height: 44px; font-size: var(--fs-sm); box-shadow: 0 12px 22px -14px color-mix(in srgb, var(--accent) 80%, transparent); }
+#monthly-card .mc-foot { margin-top: var(--space-3); color: var(--hint); font-size: var(--fs-xs); line-height: 1.9; }
+@media (max-width: 640px) {
+  #monthly-card .mc-result { flex-direction: column; align-items: stretch; }
+  #monthly-card #monthly-export { justify-content: stretch; }
+  #monthly-card .mc-main-btn { flex: 1 1 100%; justify-content: center; }
+  .rep-export-top .export-cap { flex-basis: 100%; }
+}

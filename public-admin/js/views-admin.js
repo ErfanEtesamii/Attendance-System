@@ -62,20 +62,27 @@
       const monthNames = window.Jalali.MONTH_NAMES;
       const html = `
         <div class="view-header"><div><h2>گزارش‌های تحلیلی</h2><div class="sub">${esc(fmt.dateLong(d.from))} تا ${esc(fmt.dateLong(d.to))}</div></div>
-          <div class="header-actions">${AP.exportBar({ path: '/api/admin/reports/export', params: { from: d.from, to: d.to, department: repUi.department } })}</div></div>
+          <div class="header-actions rep-export-top"><span class="export-cap">دانلود همین گزارش (بازه‌ی انتخاب‌شده):</span>${AP.exportBar({ path: '/api/admin/reports/export', params: { from: d.from, to: d.to, department: repUi.department } })}</div></div>
         <form class="filters" id="rep-filters">
           ${AP.rangeBar.html({ from: d.from, to: d.to, label: 'بازه‌ی گزارش', presets: ['7', '30', 'month', 'lastMonth', '90'] })}
           <label class="field"><span>دپارتمان</span><select name="department"><option value="">همه</option>${d.departmentOptions.map((x) => `<option ${x === repUi.department ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
         </form>
         <div class="card mt" id="monthly-card">
-          <h3>گزارش ماهانه (ماه شمسی)</h3>
-          <div class="sub report-note">ماه بسته‌شده از snapshot و در غیر این صورت زنده؛ چاپ A4 در تب جدید باز می‌شود.</div>
+          <div class="mc-head">
+            <span class="mc-ic" aria-hidden="true">${icon('download')}</span>
+            <div><h3>دریافت گزارش ماهانه (فایل اکسل)</h3>
+              <div class="sub report-note">گزارش کامل یک ماه شمسی برای همه‌ی کارمندان. این بخش به بازه‌ی بالای صفحه ربطی ندارد؛ فقط ماه را انتخاب کنید و دکمه‌ی دانلود را بزنید.</div></div>
+          </div>
           <form class="filters" id="monthly-form">
-            <label class="field"><span>سال</span><input type="number" name="year" min="1300" max="1500" value="${monthlyDefault.jy}" /></label>
-            <label class="field"><span>ماه</span><select name="month">${monthNames.map((n, i) => `<option value="${i + 1}" ${i + 1 === monthlyDefault.jm ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>
-            <label class="field"><span>دپارتمان</span><select name="department"><option value="">همه</option>${d.departmentOptions.map((x) => `<option ${x === repUi.department ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
-            <div class="header-actions" id="monthly-export"></div>
+            <label class="field"><span>۱. سال</span><input type="number" name="year" min="1300" max="1500" value="${monthlyDefault.jy}" /></label>
+            <label class="field"><span>۲. ماه</span><select name="month">${monthNames.map((n, i) => `<option value="${i + 1}" ${i + 1 === monthlyDefault.jm ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>
+            <label class="field"><span>۳. دپارتمان (اختیاری)</span><select name="department"><option value="">همه‌ی دپارتمان‌ها</option>${d.departmentOptions.map((x) => `<option ${x === repUi.department ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
           </form>
+          <div class="mc-result">
+            <div class="mc-summary" id="monthly-summary" aria-live="polite"></div>
+            <div class="header-actions" id="monthly-export"></div>
+          </div>
+          <div class="mc-foot">فایل شامل شیت‌های «گزارش ماهانه»، «مرخصی و مأموریت»، «مانده مرخصی»، «ریز روزانه» و «راهنما» است. ماهِ بسته‌شده همان اعدادِ لحظه‌ی بسته‌شدن را نشان می‌دهد و ماه جاری زنده محاسبه می‌شود. «چاپ» نسخه‌ی A4 را در تب جدید باز می‌کند.</div>
         </div>
         <div class="stat-grid rep-stats">
           ${stat('g-green', 'in', fmt.num(t.presentDays), 'مجموع روز-نفر حضور')}
@@ -110,7 +117,14 @@
           const drawMonthly = () => {
             const v = AP.formData(mform);
             const params = { year: v.year, month: v.month, department: v.department };
-            $('#monthly-export', page).innerHTML = AP.exportBar({ path: '/api/admin/reports/monthly/export', params, print: { href: AP.buildExportUrl('/admin/print.html', params) } });
+            const mName = window.Jalali.MONTH_NAMES[Number(v.month) - 1] || '';
+            $('#monthly-summary', page).innerHTML = `خروجی: گزارش <b>${esc(mName)} ${esc(window.Jalali.toFaDigits(String(v.year || '')))}</b> · ${v.department ? `دپارتمان <b>${esc(v.department)}</b>` : '<b>همه‌ی دپارتمان‌ها</b>'}`;
+            const base = '/api/admin/reports/monthly/export';
+            const box = $('#monthly-export', page);
+            box.innerHTML = AP.exportBar({ path: base, params, formats: [['xlsx', 'دانلود فایل اکسل']], print: false })
+              + AP.exportBar({ path: base, params, formats: [['csv', 'CSV']], print: { href: AP.buildExportUrl('/admin/print.html', params) } });
+            const x = box.querySelector('a[data-export="xlsx"]');
+            if (x) { x.classList.remove('ghost', 'small'); x.classList.add('primary', 'mc-main-btn'); }
           };
           drawMonthly();
           $$('input, select', mform).forEach((el) => el.addEventListener('input', drawMonthly));
