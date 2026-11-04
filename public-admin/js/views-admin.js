@@ -55,7 +55,8 @@
         const part = (n, u) => `<span class="dur-part"><b>${fmt.num(n)}</b><small>${u}</small></span>`;
         return `<span class="dur" aria-label="${esc(fmt.min(m))}">${h ? part(h, 'ساعت') : ''}${r || !h ? part(r, 'دقیقه') : ''}</span>`;
       };
-      const stat = (g, ic, v, l) => `<div class="stat"><div class="stat-icon ${g}">${icon(ic)}</div><div class="stat-value u-stat-value-sm">${v}</div><div class="stat-label">${l}</div></div>`;
+      // کاشی به سبک پرونده‌ی کارمند؛ zero=true ⇒ «بدون مورد» کم‌رنگ و با تیک
+      const stat = (g, ic, v, l, o = {}) => `<div class="stat${o.zero ? ' is-zero' : ''}"><div class="stat-icon ${o.zero ? 'g-gray' : g}">${icon(o.zero ? 'check' : ic)}</div><div class="stat-label">${l}</div><div class="stat-value u-stat-value-sm">${v}</div>${o.hint || o.zero ? `<div class="stat-hint">${o.hint || 'بدون مورد'}</div>` : ''}</div>`;
 
       const now = new Date();
       const monthlyDefault = window.Jalali.toJalali(now.getFullYear(), now.getMonth() + 1, now.getDate());
@@ -84,15 +85,18 @@
           </div>
           <div class="mc-foot">فایل شامل شیت‌های «گزارش ماهانه»، «مرخصی و مأموریت»، «مانده مرخصی»، «ریز روزانه» و «راهنما» است. ماهِ بسته‌شده همان اعدادِ لحظه‌ی بسته‌شدن را نشان می‌دهد و ماه جاری زنده محاسبه می‌شود. «چاپ» نسخه‌ی A4 را در تب جدید باز می‌کند.</div>
         </div>
-        <div class="stat-grid rep-stats">
-          ${stat('g-green', 'in', fmt.num(t.presentDays), 'مجموع روز-نفر حضور')}
-          ${stat('g-blue', 'clock', dur(t.totalEffective), 'مجموع ساعت مفید')}
-          ${stat('g-blue', 'clock', dur(t.avgEffective), 'میانگین مفید روزانه')}
-          ${stat('g-orange', 'alert', fmt.num(t.lateCount), 'ورود با تأخیر')}
-          ${stat('g-red', 'out', fmt.num(t.earlyLeaveCount), 'خروج زودهنگام')}
-          ${stat('g-purple', 'clock', dur(t.overtimeMinutes), 'اضافه‌کاری')}
-          ${stat('g-gray', 'alert', fmt.num(t.incompleteCount), 'رکورد ناقص')}
-          ${stat('g-blue', 'leave', fmt.num(t.leaveDays), 'روز مرخصی')}
+        <div class="prk-kpis">
+          <section><h3 class="prk-title">عملکرد در این بازه</h3><div class="stat-grid rep-stats">
+            ${stat('g-green', 'in', fmt.num(t.presentDays), 'مجموع روز-نفر حضور')}
+            ${stat('g-blue', 'clock', dur(t.totalEffective), 'مجموع ساعت مفید', { hint: `میانگین روزانه ${esc(fmt.min(t.avgEffective))}` })}
+            ${stat('g-purple', 'clock', dur(t.overtimeMinutes), 'اضافه‌کاری')}
+            ${stat('g-blue', 'leave', fmt.num(t.leaveDays), 'روز مرخصی')}
+          </div></section>
+          <section><h3 class="prk-title">موارد نیازمند توجه</h3><div class="stat-grid rep-stats">
+            ${stat('g-orange', 'alert', fmt.num(t.lateCount), 'ورود با تأخیر', { zero: !t.lateCount })}
+            ${stat('g-red', 'out', fmt.num(t.earlyLeaveCount), 'خروج زودهنگام', { zero: !t.earlyLeaveCount })}
+            ${stat('g-gray', 'alert', fmt.num(t.incompleteCount), 'رکورد ناقص', { zero: !t.incompleteCount })}
+          </div></section>
         </div>
         <div class="card"><h3>تعداد حاضرین به تفکیک روز</h3>${dailyChart(d.daily)}</div>
         <div class="card flush mt"><div class="u-panel-head"><h3>دپارتمان‌ها</h3></div><div class="table-wrap"><table id="rep-dept-table">

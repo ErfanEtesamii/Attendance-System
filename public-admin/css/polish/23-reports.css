@@ -171,3 +171,4 @@ body:has(.nav-item.active[data-view="reports"]) #page[aria-busy="true"] .skeleto
   #monthly-card .mc-main-btn { flex: 1 1 100%; justify-content: center; }
   .rep-export-top .export-cap { flex-basis: 100%; }
 }
+#rep-filters ~ .prk-kpis, .card ~ .prk-kpis { margin-top: var(--space-4); }

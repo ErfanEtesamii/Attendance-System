@@ -1,0 +1,103 @@
+/* ===== ۴۲) یک‌دست‌سازی همه‌ی کاشی‌های آمار به سبک کاشی‌های پرونده‌ی کارمند (.prk) =====
+   همه‌ی `.stat` ها (داشبورد، گزارش‌های تحلیلی، وضعیت من، گزارش‌های تیم، برنامه‌ی هفتگی) و `.pf-kpi` (عملکرد کارمندان):
+   آیکن درشت سمت شروع، عنوان بالا، عدد + واحد در یک خط، توضیح کوچک به‌شکل قرص، خط رنگی نازک بالا.
+   فقط CSS؛ مارکاپ همان است. برای غلبه بر قواعد صفحه‌های قبلی، سلکتورها عمداً دو بار کلاس دارند. رنگ‌ها فقط از tokens. */
+
+/* ---------- شبکه ---------- */
+.stat-grid.stat-grid:not(.ms-stats-earn) { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; align-items: stretch; }
+
+/* ---------- کاشی ---------- */
+.stat-grid.stat-grid > .stat.stat {
+  --tone: var(--brand); --tone-num: var(--brand);
+  position: relative; overflow: hidden; isolation: isolate; min-width: 0; min-height: 0; margin: 0;
+  display: grid; grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "icon label" "icon value" "icon hint" "trend trend";
+  grid-template-rows: auto auto auto auto;
+  align-items: center; justify-items: start; column-gap: 16px; row-gap: 3px;
+  padding: 18px 20px; border-radius: var(--r-xl); text-align: start; font: inherit; color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--tone) 20%, var(--border));
+  background:
+    radial-gradient(180px 120px at 0% 0%, color-mix(in srgb, var(--tone) 13%, transparent), transparent 75%),
+    linear-gradient(160deg, var(--card), color-mix(in srgb, var(--card) 95%, var(--tone)));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--tone) 10%, transparent), 0 16px 30px -24px color-mix(in srgb, var(--tone) 65%, transparent);
+  transition: transform var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out), border-color var(--motion-fast) var(--ease-out);
+}
+.stat-grid.stat-grid > .stat.stat::before {
+  inset-inline: 18px; height: 3px; border-radius: 0 0 4px 4px; z-index: -1; opacity: .8;
+  background: linear-gradient(90deg, transparent, var(--tone), transparent);
+}
+.stat-grid.stat-grid > .stat.stat:hover {
+  transform: translateY(-3px); border-color: color-mix(in srgb, var(--tone) 45%, var(--border));
+  box-shadow: 0 2px 4px color-mix(in srgb, var(--tone) 14%, transparent), 0 22px 34px -22px color-mix(in srgb, var(--tone) 75%, transparent);
+}
+.stat-grid.stat-grid > .stat.stat:not(button):not([data-go]):hover { transform: none; }
+
+/* رنگ از روی آیکن (همان g-* های قبلی) */
+.stat-grid.stat-grid > .stat.stat:has(.stat-icon.g-green)  { --tone: var(--green);  --tone-num: var(--green); }
+.stat-grid.stat-grid > .stat.stat:has(.stat-icon.g-blue)   { --tone: var(--blue);   --tone-num: var(--blue); }
+.stat-grid.stat-grid > .stat.stat:has(.stat-icon.g-orange) { --tone: var(--orange); --tone-num: var(--orange); }
+.stat-grid.stat-grid > .stat.stat:has(.stat-icon.g-red)    { --tone: var(--red-solid); --tone-num: var(--red-text); }
+.stat-grid.stat-grid > .stat.stat:has(.stat-icon.g-purple) { --tone: var(--purple); --tone-num: var(--purple-text); }
+.stat-grid.stat-grid > .stat.stat:has(.stat-icon.g-gray)   { --tone: var(--hint);   --tone-num: var(--hint); }
+
+/* ---------- آیکن ---------- */
+.stat-grid.stat-grid > .stat.stat > .stat-icon {
+  grid-area: icon; align-self: center; width: 54px; height: 54px; border-radius: 18px; color: var(--tone-num);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--tone) 28%, transparent), color-mix(in srgb, var(--tone) 10%, transparent));
+  border: 1px solid color-mix(in srgb, var(--tone) 28%, transparent);
+  box-shadow: 0 10px 18px -10px color-mix(in srgb, var(--tone) 70%, transparent), inset 0 1px 0 color-mix(in srgb, var(--card) 45%, transparent);
+}
+.stat-grid.stat-grid > .stat.stat > .stat-icon svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- عنوان / عدد / توضیح ---------- */
+.stat-grid.stat-grid > .stat.stat > .stat-label { grid-area: label; margin: 0; font-size: var(--fs-sm); font-weight: 700; line-height: 1.5; color: var(--text); opacity: 1; }
+.stat-grid.stat-grid > .stat.stat > .stat-value {
+  grid-area: value; margin: 0; align-self: center; font-size: 28px; font-weight: 700; line-height: 1.15; letter-spacing: 0; color: var(--text);
+  font-variant-numeric: tabular-nums; white-space: normal; overflow-wrap: normal;
+}
+.stat-grid.stat-grid > .stat.stat > .stat-hint {
+  grid-area: hint; margin: 4px 0 0; padding: 2px 10px; border-radius: 999px; font-size: var(--fs-xs); font-weight: 600; color: var(--text);
+  background: color-mix(in srgb, var(--tone) 10%, transparent);
+}
+.stat-grid.stat-grid > .stat.stat > .stat-trend { grid-area: trend; justify-self: stretch; margin-top: 10px; }
+.stat-grid.stat-grid > .stat.stat > .stat-value:empty { display: none; }
+
+/* مدت‌زمان: عدد درشت + واحد کوچک در یک خط (گزارش‌ها) */
+.stat-grid.stat-grid > .stat.stat .stat-value .dur { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; row-gap: 0; }
+.stat-grid.stat-grid > .stat.stat .stat-value .dur-part { display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; }
+.stat-grid.stat-grid > .stat.stat .stat-value .dur-part b { font-size: 28px; font-weight: 700; line-height: 1.15; }
+.stat-grid.stat-grid > .stat.stat .stat-value .dur-part small { font-size: var(--fs-sm); font-weight: 600; color: var(--hint); }
+/* «وضعیت من»: عدد و واحد */
+.stat-grid.stat-grid > .stat.stat .stat-value .tv { font-size: 1em; }
+.stat-grid.stat-grid > .stat.stat .stat-value .tu { margin: 0 4px; font-size: var(--fs-sm); font-weight: 600; color: var(--hint); }
+
+/* ---------- صفر = همه‌چیز خوب: کم‌رنگ و خط‌چین ---------- */
+.stat-grid.stat-grid > .stat.stat.is-zero { background: color-mix(in srgb, var(--card) 72%, transparent); border-style: dashed; box-shadow: none; }
+.stat-grid.stat-grid > .stat.stat.is-zero::before { display: none; }
+.stat-grid.stat-grid > .stat.stat.is-zero > .stat-value { color: var(--hint); font-weight: 600; }
+.stat-grid.stat-grid > .stat.stat.is-zero > .stat-hint { background: transparent; padding-inline: 0; color: var(--hint); }
+
+/* ---------- عملکرد کارمندان: .pf-kpi ---------- */
+.pf-kpi.pf-kpi { gap: 3px; padding: 16px 18px; border-radius: var(--r-xl); border-color: color-mix(in srgb, var(--k) 20%, var(--border)); }
+.pf-kpi.pf-kpi::before { inset-inline: 18px; border-radius: 0 0 4px 4px; opacity: .8; }
+.pf-kpi.pf-kpi .pf-kpi-label { font-size: var(--fs-sm); font-weight: 700; color: var(--text); }
+.pf-kpi.pf-kpi .pf-kpi-val { font-size: 26px; font-weight: 700; line-height: 1.2; letter-spacing: 0; }
+.pf-kpi.pf-kpi .pf-kpi-foot { align-self: flex-start; min-height: 0; margin-top: 4px; padding: 2px 10px; border-radius: 999px; font-weight: 600; color: var(--text); background: color-mix(in srgb, var(--k) 10%, transparent); }
+.pf-kpi.pf-kpi .pf-kpi-foot:empty { display: none; }
+.modal-body .pf-kpi.pf-kpi { padding: 12px 14px; }
+.modal-body .pf-kpi.pf-kpi .pf-kpi-val { font-size: 20px; }
+
+/* ---------- موبایل ---------- */
+@media (max-width: 640px) {
+  .stat-grid.stat-grid:not(.ms-stats-earn) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .stat-grid.stat-grid > .stat.stat { padding: 14px 12px; column-gap: 10px; border-radius: var(--r-lg); }
+  .stat-grid.stat-grid > .stat.stat > .stat-icon { width: 40px; height: 40px; border-radius: 13px; }
+  .stat-grid.stat-grid > .stat.stat > .stat-icon svg { width: 20px; height: 20px; }
+  .stat-grid.stat-grid > .stat.stat > .stat-label { font-size: var(--fs-xs); }
+  .stat-grid.stat-grid > .stat.stat > .stat-value, .stat-grid.stat-grid > .stat.stat .stat-value .dur-part b { font-size: 22px; }
+  .stat-grid.stat-grid > .stat.stat .stat-value .dur-part small, .stat-grid.stat-grid > .stat.stat .stat-value .tu { font-size: 11px; }
+  .stat-grid.stat-grid > .stat.stat > .stat-hint { border-radius: 12px; line-height: 1.5; }
+  .stat-grid.stat-grid > .stat.stat:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .pf-kpi.pf-kpi .pf-kpi-val { font-size: 20px; }
+}
+@media (prefers-reduced-motion: reduce) { .stat-grid.stat-grid > .stat.stat, .stat-grid.stat-grid > .stat.stat:hover { transition: none; transform: none; } }
