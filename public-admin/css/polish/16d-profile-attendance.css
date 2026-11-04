@@ -58,7 +58,7 @@
 .atd-m b { font-size: var(--fs-sm); font-weight: 700; color: var(--text); }
 .atd-m.is-late b { color: var(--orange); }
 .atd-bar { display: block; height: 5px; border-radius: 999px; background: var(--ov-06); overflow: hidden; }
-.atd-bar > i { display: block; width: var(--w, 0); height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--tone), color-mix(in srgb, var(--tone) 55%, var(--card))); }
+.atd-bar > i { display: block; width: var(--progress, 0); height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--tone), color-mix(in srgb, var(--tone) 55%, var(--card))); }
 
 /* وضعیت */
 .atd-state { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }

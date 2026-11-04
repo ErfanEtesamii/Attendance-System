@@ -9,7 +9,7 @@
 const { hasPermission } = require('../../middleware/permissions');
 
 const ROLES = ['owner', 'admin', 'hr', 'manager', 'employee'];
-const ROLE_FA = { admin: 'ادمین', hr: 'منابع انسانی', manager: 'سرپرست', employee: 'کارمند' };
+const ROLE_FA = { owner: 'مالک', admin: 'ادمین', hr: 'منابع انسانی', manager: 'سرپرست', employee: 'کارمند' };
 
 const NAV = (group, label) => `منوی کناری ← گروه «${group}» ← «${label}»`;
 

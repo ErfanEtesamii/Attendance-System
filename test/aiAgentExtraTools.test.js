@@ -115,7 +115,7 @@ describe('ابزارهای تکمیلی ایجنت', () => {
     }
     const g = (q) => json(runTool({ adminUser: admin }, 'panel_guide', { query: q }));
     assert.equal(g('حقوق کارمندان کجاست؟').matches[0].id, 'payroll');
-    assert.deepEqual(g('حقوق و دستمزد').matches[0].who, ['ادمین']);
+    assert.deepEqual(g('حقوق و دستمزد').matches[0].who, ['مالک', 'ادمین']);
     assert.equal(g('چطور کارمند جدید اضافه کنم').matches[0].id, 'employees');
     assert.equal(g('نرخ ساعتی رو کجا عوض کنم').matches[0].id, 'profile');
     assert.equal(g('تعطیلات رو کجا ثبت کنم').matches[0].id, 'holidays');

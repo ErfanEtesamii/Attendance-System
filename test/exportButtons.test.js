@@ -35,9 +35,10 @@ describe('سازنده‌ی دکمه‌های دانلود (S5-5b)', () => {
 
   test('همه‌ی صفحه‌های گزارش (تردد، تحلیلی، رویدادها، کارمندان، ماهانه) از AP.exportBar استفاده می‌کنند و لینک CSV ثابت قدیمی نمانده', () => {
     const all = ['views-ops.js', 'views-admin.js', 'views-main.js'].map((f) => panel(`js/${f}`)).join('\n');
-    for (const p of ['/api/admin/attendance/export', '/api/admin/reports/export', '/api/admin/audit-log/export', '/api/admin/users/export', '/api/admin/reports/monthly/export']) {
+    for (const p of ['/api/admin/attendance/export', '/api/admin/reports/export', '/api/admin/audit-log/export', '/api/admin/users/export']) {
       assert.match(all, new RegExp(`exportBar\\(\\{ path: '${p.replace(/\//g, '\\/')}'`), p);
     }
+    assert.match(all, /const base = '\/api\/admin\/reports\/monthly\/export'[\s\S]*exportBar\(\{ path: base/, '/api/admin/reports/monthly/export');
     assert.doesNotMatch(all, /خروجی CSV/);
     assert.match(panel('index.html'), /src="\/admin\/js\/exports\.js"/);
     assert.match(panel('css/style.css'), /@media print/);

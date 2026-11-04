@@ -56,7 +56,7 @@ describe('تسک فوری از بات و پنل (E3)', () => {
 
   test('منو: دکمه‌ی «⚡ تسک فوری» فقط برای سرپرست/ادمین و به handler وصل است', async () => {
     const item = menu.ITEMS.find((i) => i.id === 'urgent_task');
-    assert.deepEqual(item.roles, ['manager', 'admin']);
+    assert.deepEqual(item.roles, ['manager', 'admin', 'owner']);
     assert.equal(menu.defaultHandlers().urgentTask, flow.handleUrgentTaskCommand);
     const bot = mockBot(); const c = chat();
     await menu.routeMenuText(bot, msgOf(emp, c, '⚡ تسک فوری'), menu.defaultHandlers());

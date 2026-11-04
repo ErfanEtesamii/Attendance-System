@@ -13,11 +13,12 @@ let hasDeps = true;
 try { require.resolve('express'); } catch (_) { hasDeps = false; }
 
 const JS_DIR = path.join(__dirname, '..', 'public-admin', 'js');
-const PANEL_FILES = ['jalali.js', 'core.js', 'exports.js', 'views-main.js', 'views-ops.js', 'views-calendar.js', 'views-admin.js', 'views-shifts.js']; // boot.js عمداً نه: خودش AP.boot() را صدا می‌زند
+const PANEL_FILES = ['jalali.js', 'core.js', 'exports.js', 'range-bar.js', 'views-main.js', 'views-ops.js', 'views-calendar.js', 'views-admin.js', 'views-shifts.js']; // boot.js عمداً نه: خودش AP.boot() را صدا می‌زند
 
 // منوی هر نقش پیش از S4-4b (admin: همه؛ manager: همه‌ی غیر‌ادمینی؛ employee: صفحه‌های employee:true + پروفایل من) + hr جدید.
 const NAV = {
-  admin: ['attendance', 'audit', 'broadcast', 'checkin_permissions', 'dashboard', 'disputes', 'employees', 'holidays', 'leave', 'live', 'nightly', 'reports', 'settings', 'shifts', 'status', 'suspicious', 'system', 'teamCalendar'],
+  owner: ['attendance', 'audit', 'broadcast', 'checkin_permissions', 'dashboard', 'disputes', 'employees', 'holidays', 'leave', 'live', 'nightly', 'profile', 'reports', 'settings', 'shifts', 'status', 'suspicious', 'system', 'teamCalendar'],
+  admin: ['attendance', 'audit', 'checkin_permissions', 'dashboard', 'disputes', 'employees', 'holidays', 'leave', 'live', 'nightly', 'reports', 'settings', 'shifts', 'status', 'suspicious', 'system', 'teamCalendar'],
   manager: ['attendance', 'checkin_permissions', 'dashboard', 'disputes', 'employees', 'leave', 'live', 'nightly', 'reports', 'suspicious', 'teamCalendar'],
   employee: ['attendance', 'disputes', 'leave', 'profile', 'reports'],
   hr: ['attendance', 'checkin_permissions', 'dashboard', 'disputes', 'employees', 'leave', 'live', 'nightly', 'reports', 'teamCalendar'],
@@ -70,11 +71,12 @@ describe('UI پنل بر پایه‌ی مجوز (S4-4b)', { skip: hasDeps ? fals
     const leaveRepository = require('../src/repositories/leaveRepository');
     ({ permissionsFor, PERMISSIONS } = require('../src/middleware/permissions'));
     const { createApp } = require('../src/server');
+    const owner = f.makeUser({ role: 'owner' });
     const admin = f.makeUser({ role: 'admin' });
     const hr = f.makeUser({ role: 'hr' });
     const mgr = f.makeUser({ role: 'manager' });
     const emp = f.makeUser({ role: 'employee', managerId: mgr.id });
-    users = { admin, hr, manager: mgr, employee: emp };
+    users = { owner, admin, hr, manager: mgr, employee: emp };
     leaveRepository.createLeaveRequest({ userId: emp.id, startDate: '2026-09-20', endDate: '2026-09-20', leaveType: 'leave', reason: 'تست' });
     cookies = Object.fromEntries(Object.entries(users).map(([role, u]) => [role, f.sessionCookie(u.id)]));
     server = createApp().listen(0);
@@ -84,14 +86,15 @@ describe('UI پنل بر پایه‌ی مجوز (S4-4b)', { skip: hasDeps ? fals
   after(() => { if (server) server.close(); cleanup(); });
 
   test('GET /api/admin/me/permissions: فهرست دقیق مجوزهای نقش؛ بدون سشن ۴۰۱؛ فقط GET؛ hr بدون هیچ مجوز نوشتن', async () => {
-    for (const role of ['admin', 'manager', 'employee', 'hr']) {
+    for (const role of ['owner', 'admin', 'manager', 'employee', 'hr']) {
       const res = await fetch(`${base}/api/admin/me/permissions`, { headers: { cookie: cookies[role] } });
       assert.equal(res.status, 200, role); // از جمله کارمند: در لیست سفید است
       const json = await res.json();
       assert.equal(json.role, role);
       assert.deepEqual(json.permissions, permissionsFor(role));
     }
-    assert.deepEqual((await (await fetch(`${base}/api/admin/me/permissions`, { headers: { cookie: cookies.admin } })).json()).permissions, [...PERMISSIONS]);
+    assert.deepEqual((await (await fetch(`${base}/api/admin/me/permissions`, { headers: { cookie: cookies.owner } })).json()).permissions, [...PERMISSIONS]);
+    assert.deepEqual((await (await fetch(`${base}/api/admin/me/permissions`, { headers: { cookie: cookies.admin } })).json()).permissions, permissionsFor('admin'));
     assert.equal((await fetch(`${base}/api/admin/me/permissions`)).status, 401);
     const post = await fetch(`${base}/api/admin/me/permissions`, { method: 'POST', headers: { cookie: cookies.employee, 'x-requested-with': 'AttendancePanel' } });
     assert.equal(post.status, 403, 'کارمند فقط GET این مسیر را دارد');
@@ -100,7 +103,7 @@ describe('UI پنل بر پایه‌ی مجوز (S4-4b)', { skip: hasDeps ? fals
   });
 
   test('منو و صفحه‌ی اول هر نقش (admin/manager/employee مثل قبل، hr جدید) و رد صفحه‌ی غیرمجاز با hash', async () => {
-    for (const role of ['admin', 'manager', 'employee', 'hr']) {
+    for (const role of ['owner', 'admin', 'manager', 'employee', 'hr']) {
       const { AP, win, $ } = loadPanel(base, cookies[role]);
       await AP.boot();
       await settle($);
@@ -131,12 +134,13 @@ describe('UI پنل بر پایه‌ی مجوز (S4-4b)', { skip: hasDeps ? fals
     const want = {
       // [add-emp, att-new, lv-new, approve/edit مرخصی در صفحه‌ی مرخصی, approve در مرور شبانه, pf-msg, pf-rec, pf-leave, pf-revoke, pf-del]
       // (دکمه‌های ردیف‌های تابلوی زنده/مرور شبانه در mount با DOM واقعی ساخته می‌شوند؛ تست دستی)
+      owner: [true, true, true, true, true, true, true, true, true, true],
       admin: [true, true, true, true, true, true, true, true, true, true],
       manager: [false, true, true, true, true, true, true, true, false, false],
       hr: [false, false, false, false, false, false, false, false, false, false],
     };
     const has = (html, re) => re.test(html);
-    for (const role of ['admin', 'manager', 'hr']) {
+    for (const role of ['owner', 'admin', 'manager', 'hr']) {
       const { AP } = loadPanel(base, cookies[role]);
       AP.state.me = await AP.api('/admin/me');
       assert.equal(await AP.loadPermissions(), true);

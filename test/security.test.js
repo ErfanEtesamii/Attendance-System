@@ -120,7 +120,7 @@ describe('کوکی نشست', () => {
 });
 
 describe('اپ واقعی: هدرها، CSRF، ابطال نشست', { skip }, () => {
-  let server, base, admin, mgr, emp, emp2;
+  let server, base, owner, admin, mgr, emp, emp2;
   const { CSRF_HEADERS } = require('./helpers/factories');
   let F; // factories
   let usersRepository, auditRepository, settingsRepository, issueCode;
@@ -132,6 +132,7 @@ describe('اپ واقعی: هدرها، CSRF، ابطال نشست', { skip }, (
     auditRepository = require('../src/repositories/auditRepository');
     settingsRepository = require('../src/repositories/settingsRepository');
     ({ issueCode } = require('../src/utils/panelLoginCodes'));
+    owner = F.makeUser({ role: 'owner' });
     admin = F.makeUser({ role: 'admin' });
     mgr = F.makeUser({ role: 'manager' });
     emp = F.makeUser({ role: 'employee', managerId: mgr.id });
@@ -235,7 +236,7 @@ describe('اپ واقعی: هدرها، CSRF، ابطال نشست', { skip }, (
 
   describe('CSRF', () => {
     let cookie;
-    before(async () => { cookie = F.sessionCookie(admin.id); });
+    before(async () => { cookie = F.sessionCookie(owner.id); });
     const writeCall = (opts) => req('POST', '/api/admin/broadcast', { cookie, body: { scope: 'bad', text: 'x' }, ...opts });
     // scope نامعتبر ← اگر CSRF رد نکند، به ۴۰۰ منطق route می‌رسد (نه ۴۰۳)
 
@@ -382,7 +383,7 @@ describe('اپ واقعی: هدرها، CSRF، ابطال نشست', { skip }, (
       assert.equal((await req('GET', '/api/admin/me', { cookie })).status, 401);
     });
 
-    test('revoke-all-sessions: دلیل اجباری، فقط ادمین؛ همه ۴۰۱ جز ادمین اجراکننده که کوکی تازه می‌گیرد', async () => {
+    test('revoke-all-sessions: فقط owner و دلیل برای owner اختیاری؛ همه ۴۰۱ جز اجراکننده که کوکی تازه می‌گیرد', async () => {
       const a2 = F.makeUser({ role: 'owner' }); // ابطال سراسری فقط owner
       const u = F.makeUser({ role: 'employee', managerId: mgr.id });
       const m = F.makeUser({ role: 'manager' });
@@ -391,10 +392,8 @@ describe('اپ واقعی: هدرها، CSRF، ابطال نشست', { skip }, (
       const la = sess(a2);
 
       assert.equal((await req('POST', '/api/admin/system/revoke-all-sessions', { cookie: lm.cookie, body: { reason: 'x' } })).status, 403);
-      assert.equal((await req('POST', '/api/admin/system/revoke-all-sessions', { cookie: la.cookie, body: {} })).status, 400);
-
       const before = settingsRepository.getGlobalSessionEpoch();
-      const res = await req('POST', '/api/admin/system/revoke-all-sessions', { cookie: la.cookie, body: { reason: 'چرخش راز' } });
+      const res = await req('POST', '/api/admin/system/revoke-all-sessions', { cookie: la.cookie, body: {} });
       assert.equal(res.status, 200);
       assert.equal(settingsRepository.getGlobalSessionEpoch(), before + 1);
 

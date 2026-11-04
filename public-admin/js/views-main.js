@@ -601,7 +601,7 @@
                 ${r.segmentCount > 1 ? `<span class="atd-seg">${fmt.num(r.segmentCount)} نوبت</span>` : ''}
               </span>
               <span class="atd-metrics">
-                <span class="atd-m"><em>ساعت مفید</em><b>${eff != null ? fmt.min(eff) : '—'}</b>${eff > 0 ? `<i class="atd-bar"><i style="--w:${Math.max(4, Math.round((eff / maxEff) * 100))}%"></i></i>` : ''}</span>
+                <span class="atd-m"><em>ساعت مفید</em><b>${eff != null ? fmt.min(eff) : '—'}</b>${eff > 0 ? `<i class="atd-bar"><i data-progress="${Math.max(4, Math.round((eff / maxEff) * 100))}"></i></i>` : ''}</span>
                 <span class="atd-m"><em>استراحت</em><b>${r.breaks.length ? `${fmt.num(r.breaks.length)} بار · ${fmt.min(r.breakMinutes)}` : 'بدون استراحت'}</b></span>
                 ${late ? `<span class="atd-m is-late"><em>تأخیر</em><b>${fmt.min(late)}</b></span>` : ''}
               </span>

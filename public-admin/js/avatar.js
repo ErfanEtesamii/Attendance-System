@@ -80,7 +80,7 @@
   let have = new Map(); // userId → نسخه
   let loaded = false;
   // ادمین روی آواتارهای بزرگ (صفحه‌ی پروفایل/هدرها) با رفتن موس دو دکمه می‌بیند: 📷 افزودن/تغییر و 🗑 حذف (دو مرحله‌ای).
-  const isAdmin = () => !!(AP.state && AP.state.me && ['admin', 'owner'].includes(AP.state.me.role));
+  const canManageAvatars = () => AP.can('users.write');
   let adminInput = null; let adminTarget = null;
   function pickFor(id) {
     if (!adminInput) {
@@ -101,7 +101,7 @@
     const cur = el.querySelector('.avatar-ctl');
     if (cur && cur.dataset.state === state) return;
     if (cur) cur.remove();
-    if (!isAdmin() || !el.classList.contains('lg')) return;
+    if (!canManageAvatars() || !el.classList.contains('lg')) return;
     const bar = document.createElement('span');
     bar.className = 'avatar-ctl'; bar.dataset.state = state;
     const mk = (txt, label, cls) => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = txt; b.setAttribute('aria-label', label); b.title = label; return b; };

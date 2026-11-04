@@ -44,7 +44,7 @@ describe('انتخابگرهای دکمه‌ای بات و حذف ارجاع ب�
     leaveRepo = require('../src/repositories/leaveRepository');
     typesRepo = require('../src/repositories/leaveTypesRepository');
     todayStr = require('../src/utils/serverTime').todayDateString();
-    admin = F.makeUser({ role: 'admin' });
+    admin = F.makeUser({ role: 'owner' });
     mgr = F.makeUser({ role: 'manager' });
     emp = F.makeUser({ managerId: mgr.id });
   });
@@ -85,7 +85,7 @@ describe('انتخابگرهای دکمه‌ای بات و حذف ارجاع ب�
       assert.ok(rows.flat().some((b) => b.callback_data === 'ep:p:1'));
       assert.ok(rows.flat().some((b) => b.callback_data === 'ep:none'));
       const managers = ui.candidateUsers('managers');
-      assert.ok(managers.every((u) => ['manager', 'admin'].includes(u.role)));
+      assert.ok(managers.every((u) => ['manager', 'admin', 'owner'].includes(u.role)));
     });
   });
 
@@ -222,7 +222,7 @@ describe('انتخابگرهای دکمه‌ای بات و حذف ارجاع ب�
       assert.ok(welcome && !/\/\w+/.test(welcome.text), 'پیام خوش‌آمد بدون ارجاع به /دستور');
     });
 
-    test('«بدون سرپرست» ⇒ manager_id خالی؛ نقش ادمین مرحله‌ی سرپرست ندارد', async () => {
+    test('«بدون سرپرست» ⇒ manager_id خالی؛ owner نقش ادمین را بدون مرحله‌ی سرپرست می‌سازد', async () => {
       const bot = mockBot(); const c = chat();
       await addEmp.handleAddEmployeeCommand(bot, { chat: { id: c }, from: { id: Number(admin.telegram_user_id) } });
       await say(bot, c, '77001123', addEmp.handleAddEmployeeText);

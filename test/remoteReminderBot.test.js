@@ -63,7 +63,7 @@ describe('دورکاری: شمارنده، منوی بات و یادآوری ه�
     assert.ok(texts(calm).includes('🏠 دورکاری‌های منتظر')); // صف خالی ⇒ متن ساده
     const item = menu.ITEMS.find((i) => i.id === 'pending_remote');
     assert.equal(item.handler, 'pendingRemote');
-    assert.deepEqual(item.roles, ['manager', 'admin']);
+    assert.deepEqual(item.roles, ['manager', 'admin', 'owner']);
     const kb = menu.buildMenuInline(U.m1).inline_keyboard.flat().find((b) => b.callback_data === 'mn:pending_remote');
     assert.equal(kb.style, 'success'); // گروه «تیم»
   });
