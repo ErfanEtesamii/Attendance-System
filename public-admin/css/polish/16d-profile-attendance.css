@@ -1,0 +1,78 @@
+/* ---------- تب «تردد» در پرونده‌ی کارمند: کارت روزانه به‌جای جدول (.atd-*) ----------
+   تاریخ به‌شکل برگه‌ی تقویم، ورود ← خروج، چند شاخص ریز، و وضعیت. IP در tooltip می‌ماند.
+   رنگ‌ها فقط از tokens. */
+
+.atd-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.atd-chip {
+  display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 999px; cursor: pointer;
+  font: inherit; font-size: var(--fs-sm); font-weight: 700; color: var(--text);
+  background: var(--card); border: 1px solid var(--border);
+  transition: background-color var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast);
+}
+.atd-chip b { font-size: var(--fs-xs); min-width: 22px; padding: 1px 7px; border-radius: 999px; text-align: center; background: var(--ov-06); color: var(--hint); }
+.atd-chip:hover { border-color: var(--brand); }
+.atd-chip[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
+.atd-chip[aria-pressed="true"] b { background: color-mix(in srgb, var(--on-brand) 22%, transparent); color: var(--on-brand); }
+.atd-chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+.atd-list { display: flex; flex-direction: column; gap: 10px; }
+.atd-none[hidden], .atd-day[hidden] { display: none !important; }
+
+.atd-day {
+  --tone: var(--green); --tone-num: var(--green);
+  display: grid; grid-template-columns: 78px minmax(190px, 1.1fr) minmax(0, 2fr) auto; align-items: center; gap: 18px;
+  width: 100%; padding: 12px 16px; text-align: start; cursor: pointer; font: inherit; color: inherit;
+  border-radius: var(--r-lg); background: var(--card);
+  border: 1px solid var(--border); border-inline-start: 4px solid var(--tone);
+  transition: transform var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out), border-color var(--motion-fast) var(--ease-out);
+}
+.atd-day[data-tone="orange"] { --tone: var(--orange); --tone-num: var(--orange); }
+.atd-day[data-tone="red"]    { --tone: var(--red-solid); --tone-num: var(--red-text); }
+.atd-day[data-tone="purple"] { --tone: var(--purple); --tone-num: var(--purple-text); }
+.atd-day:hover { transform: translateY(-2px); border-color: var(--tone); box-shadow: 0 14px 26px -18px color-mix(in srgb, var(--tone) 70%, transparent); }
+.atd-day:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* تاریخ: برگه‌ی تقویم */
+.atd-date {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; padding: 8px 6px; border-radius: 16px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--tone) 16%, transparent), color-mix(in srgb, var(--tone) 6%, transparent));
+  border: 1px solid color-mix(in srgb, var(--tone) 24%, transparent);
+}
+.atd-date em { font-style: normal; font-size: var(--fs-xs); font-weight: 700; color: var(--tone-num); }
+.atd-date b { font-size: 26px; font-weight: 700; color: var(--text); }
+.atd-date small { font-size: var(--fs-xs); color: var(--hint); font-weight: 600; }
+
+/* ورود ← خروج */
+.atd-times { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; min-width: 0; }
+.atd-t { display: flex; flex-direction: column; gap: 2px; }
+.atd-t em { font-style: normal; font-size: var(--fs-xs); font-weight: 700; color: var(--hint); }
+.atd-t b { font-size: 20px; font-weight: 700; color: var(--text); unicode-bidi: isolate; }
+.atd-t.is-missing b { font-size: var(--fs-sm); color: var(--red-text); padding: 4px 10px; border-radius: 999px; background: var(--red-soft); }
+.atd-arrow { color: var(--hint); font-size: 18px; }
+.atd-seg { padding: 2px 10px; border-radius: 999px; font-size: var(--fs-xs); font-weight: 700; color: var(--purple-text); background: var(--purple-soft); }
+
+/* شاخص‌ها */
+.atd-metrics { display: flex; flex-wrap: wrap; gap: 10px 26px; min-width: 0; }
+.atd-m { display: flex; flex-direction: column; gap: 3px; min-width: 120px; }
+.atd-m em { font-style: normal; font-size: var(--fs-xs); font-weight: 700; color: var(--hint); }
+.atd-m b { font-size: var(--fs-sm); font-weight: 700; color: var(--text); }
+.atd-m.is-late b { color: var(--orange); }
+.atd-bar { display: block; height: 5px; border-radius: 999px; background: var(--ov-06); overflow: hidden; }
+.atd-bar > i { display: block; width: var(--w, 0); height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--tone), color-mix(in srgb, var(--tone) 55%, var(--card))); }
+
+/* وضعیت */
+.atd-state { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.atd-ip { padding: 2px 8px; border-radius: 8px; font-size: 10px; font-weight: 800; letter-spacing: .5px; color: var(--hint); background: var(--ov-06); cursor: help; }
+
+@media (max-width: 1000px) {
+  .atd-day { grid-template-columns: 70px minmax(0, 1fr) auto; gap: 12px 14px; }
+  .atd-metrics { grid-column: 1 / -1; order: 4; padding-top: 10px; border-top: 1px dashed color-mix(in srgb, var(--hint) 28%, transparent); }
+}
+@media (max-width: 560px) {
+  .atd-day { grid-template-columns: 64px minmax(0, 1fr); padding: 12px; }
+  .atd-state { grid-column: 1 / -1; order: 3; justify-content: flex-start; }
+  .atd-date b { font-size: 22px; }
+  .atd-t b { font-size: 18px; }
+  .atd-m { min-width: 100px; }
+}
+@media (prefers-reduced-motion: reduce) { .atd-day, .atd-day:hover, .atd-chip { transition: none; transform: none; } }

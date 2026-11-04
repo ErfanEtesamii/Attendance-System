@@ -594,17 +594,49 @@
       const panels = {
         attendance() {
           if (!d.records.length) return `<div class="card">${emptyBox('در این بازه رکوردی ثبت نشده است.')}</div>`;
-          return `<div class="card flush"><div class="table-wrap"><table>
-            <thead><tr><th>تاریخ</th><th>ورود</th><th>خروج</th><th>استراحت‌ها</th><th>ساعت مفید</th><th>تأخیر</th><th>IP ورود / خروج</th><th>وضعیت</th></tr></thead><tbody>
-            ${d.records.map((r) => `<tr class="clickable" data-rec="${r.id}">
-              <td>${esc(fmt.date(r.record_date))}</td>
-              <td class="num">${fmt.clock(r.check_in_time)} ${r.segmentCount > 1 ? AP.badge('purple', `${fmt.num(r.segmentCount)} نوبت`) : ''}</td><td class="num">${fmt.clock(r.check_out_time)}</td>
-              <td class="num">${r.breaks.length ? `${fmt.num(r.breaks.length)} بار · ${fmt.min(r.breakMinutes)}` : '—'}</td>
-              <td class="num">${r.summary.effectiveMinutes != null ? fmt.min(r.summary.effectiveMinutes) : '—'}</td>
-              <td class="num">${r.summary.lateMinutes ? fmt.min(r.summary.lateMinutes) : '—'}</td>
-              <td><span class="ltr muted">${esc(r.check_in_ip || '—')} / ${esc(r.check_out_ip || '—')}</span></td>
-              <td>${AP.statusBadge(r.status)}${r.via_remote ? ` ${AP.badge('purple', 'دورکاری')}` : ''}</td></tr>`).join('')}
-            </tbody></table></div></div>`;
+          // گروه‌بندی برای فیلتر سریع: عادی / تأخیر / ناقص / مرخصی و تعطیل
+          const groupOf = (st) => (st === 'normal' ? 'normal' : st === 'late' ? 'late' : st === 'incomplete' ? 'incomplete' : 'other');
+          const toneOf = { normal: 'green', late: 'orange', incomplete: 'red', other: 'purple' };
+          const GROUP_LABEL = { normal: 'عادی', late: 'با تأخیر', incomplete: 'ناقص', other: 'مرخصی / تعطیل' };
+          const counts = { normal: 0, late: 0, incomplete: 0, other: 0 };
+          d.records.forEach((r) => { counts[groupOf(r.status)] += 1; });
+          const maxEff = Math.max(1, ...d.records.map((r) => (r.summary.effectiveMinutes > 0 ? r.summary.effectiveMinutes : 0)));
+          const cleanIp = (v) => String(v || '').replace(/^::ffff:/i, '');
+          const chips = [['all', 'همه', d.records.length]].concat(Object.keys(counts).filter((k) => counts[k]).map((k) => [k, GROUP_LABEL[k], counts[k]]));
+          const dayCard = (r) => {
+            const iso = String(r.record_date || '').slice(0, 10);
+            const j = iso && window.Jalali.isoToJalali(iso);
+            const g = groupOf(r.status);
+            const eff = r.summary.effectiveMinutes;
+            const late = r.summary.lateMinutes;
+            const missingOut = r.check_in_time && !r.check_out_time;
+            const ipTitle = (r.check_in_ip || r.check_out_ip) ? `IP ورود: ${cleanIp(r.check_in_ip) || '—'} · IP خروج: ${cleanIp(r.check_out_ip) || '—'}` : '';
+            return `
+            <button type="button" class="atd-day" data-rec="${r.id}" data-group="${g}" data-tone="${toneOf[g]}">
+              <span class="atd-date" aria-hidden="true"><em>${esc(j ? window.Jalali.weekdayName(iso) : '')}</em><b>${j ? fmt.num(j.jd) : '—'}</b><small>${esc(j ? window.Jalali.MONTH_NAMES[j.jm - 1] : '')}</small></span>
+              <span class="atd-times">
+                <span class="atd-t"><em>ورود</em><b>${r.check_in_time ? fmt.clock(r.check_in_time) : '—'}</b></span>
+                <span class="atd-arrow" aria-hidden="true">←</span>
+                <span class="atd-t${missingOut ? ' is-missing' : ''}"><em>خروج</em><b>${r.check_out_time ? fmt.clock(r.check_out_time) : (missingOut ? 'ثبت نشده' : '—')}</b></span>
+                ${r.segmentCount > 1 ? `<span class="atd-seg">${fmt.num(r.segmentCount)} نوبت</span>` : ''}
+              </span>
+              <span class="atd-metrics">
+                <span class="atd-m"><em>ساعت مفید</em><b>${eff != null ? fmt.min(eff) : '—'}</b>${eff > 0 ? `<i class="atd-bar"><i style="--w:${Math.max(4, Math.round((eff / maxEff) * 100))}%"></i></i>` : ''}</span>
+                <span class="atd-m"><em>استراحت</em><b>${r.breaks.length ? `${fmt.num(r.breaks.length)} بار · ${fmt.min(r.breakMinutes)}` : 'بدون استراحت'}</b></span>
+                ${late ? `<span class="atd-m is-late"><em>تأخیر</em><b>${fmt.min(late)}</b></span>` : ''}
+              </span>
+              <span class="atd-state">
+                ${AP.statusBadge(r.status)}${r.via_remote ? ` ${AP.badge('purple', 'دورکاری')}` : ''}
+                ${ipTitle ? `<span class="atd-ip" title="${esc(ipTitle)}">IP</span>` : ''}
+              </span>
+            </button>`;
+          };
+          return `
+            <div class="atd-filters" role="group" aria-label="فیلتر وضعیت">
+              ${chips.map(([k, l, n], i) => `<button type="button" class="atd-chip" data-att-filter="${k}" aria-pressed="${i === 0 ? 'true' : 'false'}">${l} <b>${fmt.num(n)}</b></button>`).join('')}
+            </div>
+            <div class="atd-list">${d.records.map(dayCard).join('')}</div>
+            <div class="atd-none" hidden>${emptyBox('رکوردی با این فیلتر نیست.')}</div>`;
         },
         leave() {
           if (!d.leaves.length) return `<div class="card">${emptyBox('درخواستی ثبت نشده است.')}</div>`;
@@ -661,6 +693,13 @@
             panel.innerHTML = panels[profileUi.tab]();
             $$('#pf-tabs .tab', page).forEach((t) => t.classList.toggle('active', t.dataset.tab === profileUi.tab));
             $$('[data-rec]', panel).forEach((el) => el.addEventListener('click', () => AP.openRecord(el.dataset.rec)));
+            $$('[data-att-filter]', panel).forEach((b) => b.addEventListener('click', () => {
+              const f = b.dataset.attFilter;
+              $$('[data-att-filter]', panel).forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+              $$('.atd-day', panel).forEach((c) => { c.hidden = !(f === 'all' || c.dataset.group === f); });
+              const none = $('.atd-none', panel);
+              if (none) none.hidden = $$('.atd-day:not([hidden])', panel).length > 0;
+            }));
             $$('[data-leave]', panel).forEach((el) => el.addEventListener('click', () => AP.openLeaveEditor(el.dataset.leave)));
             $$('[data-go-disputes]', panel).forEach((el) => el.addEventListener('click', () => AP.go('disputes')));
             if (AP.bindShiftAssign) AP.bindShiftAssign(panel, u);
