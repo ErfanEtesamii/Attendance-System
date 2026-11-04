@@ -46,6 +46,7 @@
     const form = $('#an-filters', page);
     form.addEventListener('submit', (e) => e.preventDefault());
     $$('input, select', form).forEach((el) => el.addEventListener('change', () => { Object.assign(ui, AP.formData(form)); AP.refresh(); }));
+    AP.monthStepper(form); // ماه قبل/بعد/ماه جاری
     const box = $('#an-charts', page);
     C.mountInteractiveCharts(box);
     const q = (o) => new URLSearchParams(Object.entries(o).filter(([, v]) => v !== '' && v != null)).toString();

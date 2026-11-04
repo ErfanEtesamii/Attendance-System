@@ -64,10 +64,8 @@
         <div class="view-header"><div><h2>گزارش‌های تحلیلی</h2><div class="sub">${esc(fmt.dateLong(d.from))} تا ${esc(fmt.dateLong(d.to))}</div></div>
           <div class="header-actions">${AP.exportBar({ path: '/api/admin/reports/export', params: { from: d.from, to: d.to, department: repUi.department } })}</div></div>
         <form class="filters" id="rep-filters">
-          <label class="field"><span>از تاریخ</span><input type="date" name="from" value="${esc(d.from)}" /></label>
-          <label class="field"><span>تا تاریخ</span><input type="date" name="to" value="${esc(d.to)}" /></label>
+          ${AP.rangeBar.html({ from: d.from, to: d.to, label: 'بازه‌ی گزارش', presets: ['7', '30', 'month', 'lastMonth', '90'] })}
           <label class="field"><span>دپارتمان</span><select name="department"><option value="">همه</option>${d.departmentOptions.map((x) => `<option ${x === repUi.department ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
-          <button type="button" class="btn ghost" data-range="6">۷ روز</button><button type="button" class="btn ghost" data-range="29">۳۰ روز</button><button type="button" class="btn ghost" data-range="89">۹۰ روز</button>
         </form>
         <div class="card mt" id="monthly-card">
           <h3>گزارش ماهانه (ماه شمسی)</h3>
@@ -118,8 +116,9 @@
           $$('input, select', mform).forEach((el) => el.addEventListener('input', drawMonthly));
           mform.addEventListener('submit', (e) => e.preventDefault());
           AP.dates.mount(form); // از/تا تاریخ شمسی؛ قبل از بستن listenerها (S3-11b)
+          AP.rangeBar.bind(form);
           $$('input, select', form).forEach((el) => el.addEventListener('change', () => { Object.assign(repUi, AP.formData(form)); AP.refresh(); }));
-          $$('[data-range]', form).forEach((b) => b.addEventListener('click', () => { repUi.from = fmt.daysAgo(Number(b.dataset.range)); repUi.to = fmt.today(); AP.refresh(); }));
+          AP.monthStepper(mform); // ماه قبل/بعد/ماه جاری
           $$('th[data-sort]', page).forEach((h) => h.addEventListener('click', () => {
             if (repUi.sort === h.dataset.sort) repUi.dir *= -1; else { repUi.sort = h.dataset.sort; repUi.dir = h.dataset.sort === 'name' ? 1 : -1; }
             AP.refresh();
@@ -751,8 +750,7 @@
           <label class="field"><span>رویداد</span><select name="action"><option value="">همه</option>${actions.map((a) => `<option value="${esc(a.action)}" ${a.action === auUi.action ? 'selected' : ''}>${esc(a.action)} (${fmt.num(a.count)})</option>`).join('')}</select></label>
           <label class="field"><span>موجودیت</span><select name="entityType"><option value="">همه</option>${Object.keys(AU_ENTITY).map((k) => `<option value="${k}" ${k === auUi.entityType ? 'selected' : ''}>${esc(AU_ENTITY[k])}</option>`).join('')}</select></label>
           <label class="field"><span>کاربر</span><select name="userId"><option value="">همه</option>${users.map((u) => `<option value="${u.id}" ${String(u.id) === String(auUi.userId) ? 'selected' : ''}>${esc(u.fullName)}</option>`).join('')}</select></label>
-          <label class="field"><span>از تاریخ</span><input type="date" name="from" value="${esc(auUi.from)}" /></label>
-          <label class="field"><span>تا تاریخ</span><input type="date" name="to" value="${esc(auUi.to)}" /></label>
+          ${AP.rangeBar.html({ from: auUi.from, to: auUi.to, label: 'بازه‌ی رویدادها', presets: ['today', '7', '30', 'month', 'lastMonth'] })}
           <label class="field"><span>تعداد</span><select name="limit">${[100, 200, 500, 1000].map((n) => `<option ${n === auUi.limit ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
         </form>
         <div class="card flush"><div class="table-wrap"><table>
@@ -766,6 +764,7 @@
         mount(page) {
           const form = $('#au-filters', page);
           AP.dates.mount(form); // از/تا تاریخ شمسی؛ قبل از بستن listenerها (S3-11b)
+          AP.rangeBar.bind(form);
           let t;
           $$('input, select', form).forEach((el) => el.addEventListener(el.type === 'search' ? 'input' : 'change', () => {
             clearTimeout(t);

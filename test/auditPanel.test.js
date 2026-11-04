@@ -18,6 +18,7 @@ describe('صفحه‌ی گزارش رویدادها (S4-2b)', () => {
       view(id, def) { AP.views[id] = def; if (def.nav) AP.nav.push({ id, ...def.nav }); },
       api: async (p) => { calls.push(p); return p.startsWith('/admin/audit-actions') ? [] : rows; },
       loadUsers: async () => [],
+      rangeBar: { html: () => '<div class="rb" data-rb></div>', bind() {} }, // نوار بازه (range-bar.js) جداگانه تست می‌شود
       // S5-5b: همان سازنده‌ی واقعی دکمه‌های دانلود (exports.js)
       exportBar: (spec) => require('../public-admin/js/exports.js').exportBarHtml(spec, { esc, icon: () => '' }),
     };

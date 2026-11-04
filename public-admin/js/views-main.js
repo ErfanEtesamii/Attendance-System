@@ -461,25 +461,12 @@
   // ======================================================
   // پرونده‌ی کارمند
   // ======================================================
-  const profileUi = { days: 30, month: null, tab: 'attendance' }; // month: { jy, jm } ⇒ بازه‌ی کل یک ماه شمسی؛ وگرنه «N روز اخیر»
-  const PF_MONTHS_BACK = 6; // ماه جاری + ۵ ماه قبل
-  const pfMonthList = () => {
-    const J = window.Jalali;
-    const cur = J.isoToJalali(fmt.today());
-    const out = [];
-    let { jy, jm } = { jy: cur.jy, jm: cur.jm };
-    for (let i = 0; i < PF_MONTHS_BACK; i += 1) { out.push({ jy, jm }); jm -= 1; if (jm < 1) { jm = 12; jy -= 1; } }
-    return out;
-  };
-  // بازه‌ی انتخاب‌شده ⇒ { from, to } (ماه جاری تا امروز بریده می‌شود)
-  const pfRange = () => {
-    if (!profileUi.month) return { from: fmt.daysAgo(profileUi.days - 1), to: fmt.today() };
-    const J = window.Jalali;
-    const { jy, jm } = profileUi.month;
-    const to = J.jalaliToIso(jy, jm, J.monthLength(jy, jm));
-    const today = fmt.today();
-    return { from: J.jalaliToIso(jy, jm, 1), to: to > today ? today : to };
-  };
+  const profileUi = { from: '', to: '', tab: 'attendance' }; // from/to خالی ⇒ پیش‌فرض «۳۰ روز اخیر»
+  const PF_MONTHS_BACK = 12; // منوی «ماه کامل»: ماه جاری + ۱۱ ماه قبل
+  // بازه‌ی انتخاب‌شده ⇒ { from, to } (از نوار بازه؛ پیش‌فرض ۳۰ روز اخیر)
+  const pfRange = () => (profileUi.from && profileUi.to
+    ? { from: profileUi.from, to: profileUi.to }
+    : { from: fmt.daysAgo(29), to: fmt.today() });
 
   AP.view('profile', {
     skeleton: 'page', // شکل skeleton هنگام بارگذاری (S5-9c)
@@ -557,15 +544,8 @@
           </div>
         </div>
 
-        <div class="filters u-mb-12">
-          <label class="field"><span>بازه‌ی آمار</span><select id="pf-days">
-            <optgroup label="روزهای اخیر">
-              ${[7, 14, 30, 60, 90, 180].map((n) => `<option value="d:${n}" ${!profileUi.month && n === profileUi.days ? 'selected' : ''}>${fmt.num(n)} روز اخیر</option>`).join('')}
-            </optgroup>
-            <optgroup label="ماه کامل">
-              ${pfMonthList().map(({ jy, jm }) => `<option value="m:${jy}-${jm}" ${profileUi.month && profileUi.month.jy === jy && profileUi.month.jm === jm ? 'selected' : ''}>${esc(window.Jalali.MONTH_NAMES[jm - 1])} ${fmt.num(jy)}</option>`).join('')}
-            </optgroup></select></label>
-          <div class="muted filter-range">${esc(fmt.dateLong(d.range.from))} تا ${esc(fmt.dateLong(d.range.to))}</div>
+        <div class="filters u-mb-12" id="pf-range">
+          ${AP.rangeBar.html({ from: d.range.from, to: d.range.to, label: 'بازه‌ی آمار', presets: ['7', '14', '30', '90'], months: PF_MONTHS_BACK })}
         </div>
 
         <div class="prk-kpis">
@@ -727,11 +707,9 @@
           };
           drawTab();
           $('#pf-tabs', page).addEventListener('click', (e) => { const t = e.target.closest('[data-tab]'); if (t) { profileUi.tab = t.dataset.tab; drawTab(); } });
-          $('#pf-days', page).addEventListener('change', (e) => {
-            const [kind, val] = String(e.target.value).split(':');
-            if (kind === 'm') { const [jy, jm] = val.split('-').map(Number); profileUi.month = { jy, jm }; } else { profileUi.month = null; profileUi.days = Number(val); }
-            AP.refresh();
-          });
+          const pfBox = $('#pf-range', page);
+          AP.dates.mount(pfBox);
+          AP.rangeBar.bind(pfBox, { onApply: (from, to) => { profileUi.from = from; profileUi.to = to; AP.refresh(); } });
           $$('[data-go]', page).forEach((b) => b.addEventListener('click', () => AP.go(b.dataset.go)));
           const week = $('#pf-week', page); if (week) week.addEventListener('click', () => AP.go('weekly', u.id));
           const msg = $('#pf-msg', page); if (msg) msg.addEventListener('click', () => AP.openMessage(u.id));

@@ -50,6 +50,7 @@ function setup({ queue, types = [{ id: 1, title: 'استحقاقی' }], users = 
     view(id, def) { AP.views[id] = def; if (def.nav) AP.nav.push({ id, ...def.nav }); },
     loadUsers: async () => users,
     dates: { mount: () => [] },
+    rangeBar: { html: () => '<div class="rb" data-rb></div>', bind() {} }, // نوار بازه (range-bar.js) جداگانه تست می‌شود
     formData: (form) => ({ ...form.values }),
     refresh: () => { AP.refreshed = (AP.refreshed || 0) + 1; return Promise.resolve(); },
     refreshCounts: () => {},

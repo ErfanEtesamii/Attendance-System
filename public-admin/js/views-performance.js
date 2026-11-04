@@ -91,12 +91,16 @@
   const applyProgress = (root) => $$('[data-progress]', root).forEach((m) => m.style.setProperty('--progress', `${Math.max(0, Math.min(100, Number(m.dataset.progress) || 0))}%`));
   const emptyBox = (msg) => `<div class="empty">${esc(msg)}</div>`;
 
-  function rangeBar() {
-    const chips = RANGES.map(([k, l]) => `<button type="button" class="chip pf-range${ui.range === k ? ' active' : ''}" data-range="${k}" aria-pressed="${ui.range === k}">${l}</button>`).join('');
+  // نوار بازه (همان ظاهر مشترک range-bar): چیپ‌های سریع + خلاصه‌ی شمسیِ بازه‌ی واقعی + «از/تا» برای حالت دلخواه
+  function rangeBar(range) {
+    const chips = RANGES.map(([k, l]) => `<button type="button" class="rb-chip pf-range${ui.range === k ? ' is-active' : ''}" data-range="${k}" aria-pressed="${ui.range === k}">${l}</button>`).join('');
+    const r = range || {};
     const custom = ui.range === 'custom'
-      ? `<form class="pf-custom" id="pf-custom"><label class="field"><span>از</span><input type="date" name="from" value="${esc(ui.from)}" /></label><label class="field"><span>تا</span><input type="date" name="to" value="${esc(ui.to)}" /></label><button class="btn primary" type="submit">اعمال</button></form>`
+      ? `<div class="rb-fields" id="pf-custom"><label class="field"><span>از تاریخ</span><input type="date" name="from" value="${esc(ui.from)}" /></label><span class="rb-arrow" aria-hidden="true">←</span><label class="field"><span>تا تاریخ</span><input type="date" name="to" value="${esc(ui.to)}" /></label></div>`
       : '';
-    return `<div class="pf-rangebar"><div class="chips" role="group" aria-label="بازه‌ی زمانی">${chips}</div>${custom}</div>`;
+    return `<div class="rb-wrap"><div class="rb" data-rb><div class="rb-top"><span class="rb-label">${AP.icon('calendar')}بازه‌ی زمانی</span>
+      <div class="rb-chips" role="group" aria-label="بازه‌ی زمانی">${chips}</div>
+      <div class="rb-summary" aria-live="polite">${r.from ? AP.rangeBar.summaryHtml(r.from, r.to) : ''}</div></div>${custom}</div></div>`;
   }
   function bindRange(page) {
     $$('.pf-range', page).forEach((b) => b.addEventListener('click', () => {
@@ -105,8 +109,14 @@
       AP.refresh();
     }));
     const f = $('#pf-custom', page);
-    if (f && AP.dates) AP.dates.mount(f); // تقویم شمسی برای «از/تا» (قرارداد AP.dates: قبل از listenerهای صفحه)
-    if (f) f.addEventListener('submit', (e) => { e.preventDefault(); const d = AP.formData(f); if (d.from && d.to) { ui.from = d.from; ui.to = d.to; AP.refresh(); } else AP.toast('هر دو تاریخ را وارد کنید.', true); });
+    if (!f) return;
+    if (AP.dates) AP.dates.mount(f); // تقویم شمسی برای «از/تا» (قرارداد AP.dates: قبل از listenerهای صفحه)
+    f.addEventListener('change', () => {
+      const d = AP.formData(f);
+      if (!d.from || !d.to) return; // هنوز نیمه‌کاره
+      if (d.from > d.to) { AP.toast('تاریخ شروع نباید بعد از تاریخ پایان باشد.', true); return; }
+      ui.from = d.from; ui.to = d.to; AP.refresh();
+    });
   }
 
 
@@ -158,7 +168,7 @@
     const html = `
       <div class="view-header"><div><h2>عملکرد کارمندان</h2><div class="sub">${esc(rangeLabel(data.range))} — روی هر کارمند بزنید تا گزارش کامل او را ببینید.</div></div>
         <div class="pf-head-actions"><label class="field pf-pick"><span>دپارتمان</span><select id="pf-dept"><option value="">همه</option>${deps.map((x) => `<option ${x === ui.dept ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label><button type="button" class="btn ghost" id="pf-team-csv">${AP.icon('download')} CSV</button></div></div>
-      ${rangeBar()}
+      ${rangeBar(data.range)}
       <p class="pf-tiles-hint">روی هر کارت بزنید تا آن شاخص روی نمودار نمایش داده یا از آن حذف شود.</p>
       <div class="pf-tiles pf-tiles-team" role="group" aria-label="شاخص‌های تیم؛ برای نمایش روی نمودار کلیک کنید">${tiles}</div>
       <div class="pf-kpis">${kpis}</div>
@@ -286,7 +296,7 @@
       <div class="card pf-hero">${AP.avatar(u.fullName, 'lg', u.id)}<div class="pf-hero-text"><h3>${esc(u.fullName)}</h3><p>${esc(AP.ROLE[u.role] || u.role || '')} · ${esc(u.department || 'بدون دپارتمان')}${u.personnelCode ? ` · کد ${esc(u.personnelCode)}` : ''}</p></div>
         <div class="pf-hero-chips"><span class="pf-chip"><b>${fmt.num(t0.present)}</b> روز حضور</span><span class="pf-chip"><b>${fmt.num(t0.lateDays)}</b> روز تأخیر</span><span class="pf-chip"><b>${fmt.num(t0.absentDays)}</b> روز غیبت</span>${t0.taskRate != null ? `<span class="pf-chip"><b>${fa(t0.taskRate)}٪</b> انجام تسک</span>` : ''}</div></div>
       <div class="pf-insights" id="pf-insights" aria-label="بینش‌ها"></div>
-      ${rangeBar()}
+      ${rangeBar(d.range)}
       <div class="pf-filterbar" id="pf-filterbar"></div>
       <p class="pf-tiles-hint">روی هر کارت بزنید تا آن شاخص روی نمودار نمایش داده یا از آن حذف شود.</p>
       <div class="pf-tiles" id="pf-tiles" role="group" aria-label="شاخص‌ها؛ برای نمایش روی نمودار کلیک کنید"></div>
@@ -612,6 +622,7 @@
     const f = $('#pay-filters', page);
     f.addEventListener('submit', (e) => e.preventDefault());
     $$('input, select', f).forEach((x) => x.addEventListener('change', () => { Object.assign(pay, AP.formData(f)); AP.refresh(); }));
+    AP.monthStepper(f); // ماه قبل/بعد/ماه جاری
     const t = data.totals;
     const rows = data.rows.map((r) => ({
       ...r, name: r.user.fullName, rate: r.rateKt == null ? -1 : r.rateKt, useful: r.usefulMinutes, ot: r.overtimeMinutes, days: r.workedDays, avgDay: r.avgPerWorkedDayToman == null ? -1 : r.avgPerWorkedDayToman,

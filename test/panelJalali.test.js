@@ -103,7 +103,7 @@ describe('اتصال شمسی به بقیه‌ی صفحه‌ها (S3-11b)', () =
       assert.ok(/type="date"/.test(src) && /AP\.dates\.mount\(/.test(src), f);
     }
     const adm = read('js', 'views-admin.js');
-    assert.match(adm, /AP\.dates\.mount\(form\)[^\n]*\n\s*(let t;|\$\$\('input, select', form\))/);
+    assert.match(adm, /AP\.dates\.mount\(form\)[^\n]*\n\s*(AP\.rangeBar\.bind\(form\);\s*\n\s*)?(let t;|\$\$\('input, select', form\))/);
     assert.equal((adm.match(/AP\.dates\.mount\(/g) || []).length, 6, 'گزارش‌ها، تنظیمات (H4: ساعت‌های قابل‌تایپ)، تعطیلات، audit، و دو ناحیه‌ی تاریخ (mountResetZone: قبل از تاریخ / از-تا)');
     const ops = read('js', 'views-ops.js');
     assert.match(ops, /name="ntDate"/);

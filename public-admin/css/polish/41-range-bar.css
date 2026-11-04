@@ -1,0 +1,88 @@
+/* ===== ۴۱) نوار بازه‌ی زمانی (range-bar.js) — انتخاب بازه در کل پنل =====
+   یک کارت جمع‌وجور: برچسب + چیپ‌های سریع + خلاصه‌ی شمسی، و زیرش «از ← تا».
+   فقط توکن‌های tokens.css؛ بدون رنگ سخت‌کد و بدون استایل درون‌خطی. */
+
+.rb {
+  flex: 1 1 100%; min-width: 0;
+  display: flex; flex-direction: column; gap: var(--space-3);
+  padding: 12px 14px; border-radius: var(--radius-md);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--card) 92%, var(--brand)), var(--card));
+  border: 1px solid color-mix(in srgb, var(--brand) 16%, var(--border));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 8%, transparent), 0 14px 28px -24px color-mix(in srgb, var(--brand) 55%, transparent);
+  transition: border-color var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out);
+}
+.rb.is-invalid { border-color: color-mix(in srgb, var(--red) 55%, var(--border)); }
+
+.rb-top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); }
+.rb-label { display: inline-flex; align-items: center; gap: 6px; color: var(--brand); font-size: var(--fs-xs); font-weight: 700; white-space: nowrap; }
+.rb-label svg { width: 16px; height: 16px; }
+
+/* چیپ‌ها: قرص یک‌تکه با پس‌زمینه‌ی ملایم؛ چیپ فعال پررنگ */
+.rb-chips { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 4px; border-radius: 999px; background: var(--ov-05); border: 1px solid var(--border); }
+.rb-chip, .rb-step {
+  appearance: none; border: 1px solid transparent; background: transparent; color: var(--hint); font: inherit; cursor: pointer;
+  border-radius: 999px; padding: 6px 14px; min-height: 32px; font-size: var(--fs-xs); font-weight: 700; line-height: 1.2; white-space: nowrap;
+  transition: background-color var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out);
+}
+.rb-chip:hover, .rb-step:hover { color: var(--text); background: var(--ov-08); }
+.rb-chip:focus-visible, .rb-step:focus-visible, .rb-months select:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.rb-chip.is-active {
+  color: var(--on-brand);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--brand) 92%, var(--accent-2)), var(--brand));
+  box-shadow: 0 8px 16px -10px color-mix(in srgb, var(--brand) 80%, transparent), inset 0 1px 0 rgba(255, 255, 255, .25);
+}
+.rb-months select {
+  appearance: none; border: 1px solid transparent; border-radius: 999px; background: transparent; color: var(--hint); font: inherit;
+  font-size: var(--fs-xs); font-weight: 700; padding: 6px 12px; min-height: 32px; cursor: pointer; max-width: 130px;
+}
+.rb-months select:hover { color: var(--text); background: var(--ov-08); }
+
+/* خلاصه‌ی بازه (سمت چپ در RTL = انتهای ردیف) */
+.rb-summary {
+  margin-inline-start: auto; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 999px; font-size: var(--fs-xs);
+  background: color-mix(in srgb, var(--brand) 12%, transparent); color: var(--text);
+}
+.rb-summary b { font-weight: 700; }
+.rb-summary i { font-style: normal; color: var(--hint); }
+.rb-summary em { font-style: normal; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, var(--brand) 22%, transparent); }
+.rb-sum-bad { color: var(--red); font-weight: 700; }
+.rb-sum-empty { color: var(--hint); }
+.rb.is-invalid .rb-summary { background: color-mix(in srgb, var(--red) 14%, transparent); }
+
+/* ردیف «از ← تا» */
+.rb-fields { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-2) var(--space-3); }
+.rb-fields .field { min-width: 150px; flex: 0 1 190px; }
+.rb-fields .field > span { font-size: var(--fs-xs); font-weight: 700; color: var(--hint); }
+.rb-fields .jdp-input { text-align: center; }
+.rb-arrow { color: var(--hint); padding-bottom: 12px; font-size: var(--fs-md); }
+
+/* ===== گام‌زن ماه (فرم‌های سال + ماه) ===== */
+.rb-month {
+  display: inline-flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-2);
+  padding: 8px 10px; border-radius: var(--radius-md);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--card) 92%, var(--brand)), var(--card));
+  border: 1px solid color-mix(in srgb, var(--brand) 16%, var(--border));
+}
+.rb-month .field { min-width: 96px; }
+.rb-month .field > span { font-size: var(--fs-xs); font-weight: 700; color: var(--hint); }
+.rb-month .field input[type="number"] { width: 92px; text-align: center; }
+.rb-step { width: 36px; min-height: 36px; padding: 0; font-size: 20px; background: var(--ov-05); border-color: var(--border); align-self: flex-end; }
+.rb-now { align-self: flex-end; min-height: 36px; background: var(--ov-05); border-color: var(--border); }
+
+@media (max-width: 640px) {
+  .rb { padding: 10px; }
+  .rb-summary { margin-inline-start: 0; width: 100%; justify-content: center; }
+  .rb-chips { width: 100%; justify-content: center; border-radius: 18px; }
+  .rb-fields { flex-wrap: nowrap; }
+  .rb-fields .field { flex: 1 1 0; min-width: 0; }
+  .rb-arrow { display: none; }
+  .rb-month { width: 100%; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rb, .rb-chip, .rb-step { transition: none; }
+}
+
+/* پوشش نوار بازه در صفحه‌ی عملکرد (خارج از <form class="filters">) */
+.rb-wrap { margin-bottom: var(--space-4); animation: pf-rise var(--motion-enter) var(--ease-out) both; }
+@media (prefers-reduced-motion: reduce) { .rb-wrap { animation: none; } }

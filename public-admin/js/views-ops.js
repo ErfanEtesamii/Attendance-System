@@ -290,14 +290,10 @@
           </div>
         </div>
         <form class="filters" id="att-filters">
-          <label class="field"><span>از تاریخ</span><input type="date" name="from" value="${esc(attUi.from)}" /></label>
-          <label class="field"><span>تا تاریخ</span><input type="date" name="to" value="${esc(attUi.to)}" /></label>
+          ${AP.rangeBar.html({ from: attUi.from, to: attUi.to, presets: ['today', 'week', '7', '30', 'month', 'lastMonth'] })}
           <label class="field"><span>کارمند</span><select name="userId"><option value="">همه</option>${userOptions(users, attUi.userId)}</select></label>
           <label class="field"><span>دپارتمان</span><select name="department"><option value="">همه</option>${depts.map((d) => `<option ${d === attUi.department ? 'selected' : ''}>${esc(d)}</option>`).join('')}</select></label>
           <label class="field"><span>وضعیت</span><select name="status"><option value="">همه</option>${Object.entries(AP.STATUS_LABEL).map(([k, v]) => `<option value="${k}" ${k === attUi.status ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
-          <button class="btn ghost" type="button" data-range="0">امروز</button>
-          <button class="btn ghost" type="button" data-range="6">۷ روز</button>
-          <button class="btn ghost" type="button" data-range="29">۳۰ روز</button>
         </form>
         <div class="card flush"><div class="table-wrap"><table>
           <thead><tr><th>کارمند</th><th>تاریخ</th><th>ورود</th><th>خروج</th><th>استراحت</th><th>ساعت مفید</th><th>تأخیر</th><th>IP ورود</th><th>وضعیت</th></tr></thead><tbody>
@@ -316,12 +312,8 @@
           const form = $('#att-filters', page);
           AP.dates.mount(form); // فیلتر از/تا تاریخ شمسی؛ قبل از بستن listenerها (S3-11a)
           const apply = () => { Object.assign(attUi, AP.formData(form)); AP.refresh(); };
+          AP.rangeBar.bind(form); // چیپ‌های سریع + اعتبارسنجی بازه (نوار بازه)
           $$('input, select', form).forEach((el) => el.addEventListener('change', apply));
-          $$('[data-range]', form).forEach((b) => b.addEventListener('click', () => {
-            attUi.from = fmt.daysAgo(Number(b.dataset.range));
-            attUi.to = fmt.today();
-            AP.refresh();
-          }));
           $$('tr[data-rec]', page).forEach((tr) => tr.addEventListener('click', () => AP.openRecord(tr.dataset.rec)));
           const n = $('#att-new', page); if (n) n.addEventListener('click', () => AP.openCreateRecord({}));
         },
@@ -557,8 +549,7 @@
         <label class="field"><span>نوع کلی</span><select name="kind"><option value="">همه</option><option value="leave" ${queueUi.kind === 'leave' ? 'selected' : ''}>مرخصی</option><option value="mission" ${queueUi.kind === 'mission' ? 'selected' : ''}>مأموریت</option></select></label>
         <label class="field"><span>نوع مرخصی</span><select name="leaveTypeId"><option value="">همه</option>${types.map((t) => `<option value="${esc(t.id)}" ${String(t.id) === String(queueUi.leaveTypeId) ? 'selected' : ''}>${esc(t.title)}</option>`).join('')}</select></label>
         ${managers.length ? `<label class="field"><span>تیم (سرپرست)</span><select name="team"><option value="">همه</option>${managers.map((m) => `<option value="${esc(m.id)}" ${String(m.id) === String(queueUi.team) ? 'selected' : ''}>${esc(m.fullName)}</option>`).join('')}</select></label>` : ''}
-        <label class="field"><span>از تاریخ</span><input type="date" name="from" value="${esc(queueUi.from)}" /></label>
-        <label class="field"><span>تا تاریخ</span><input type="date" name="to" value="${esc(queueUi.to)}" /></label>
+        ${AP.rangeBar.html({ from: queueUi.from, to: queueUi.to, label: 'بازه‌ی درخواست‌ها', presets: ['7', '30', 'month', 'lastMonth', '90'] })}
         ${queueUi.status === 'pending' ? `<label class="check-row"><input type="checkbox" name="decidable" ${queueUi.decidable ? 'checked' : ''} /> فقط مواردی که من تصمیم می‌گیرم</label>` : ''}
       </form>
       ${decidableIds.length ? `<div class="filters filters-center" id="q-bulk">
@@ -577,6 +568,7 @@
       mount(page) {
         const form = $('#q-filters', page);
         AP.dates.mount(form); // از/تا تاریخ شمسی؛ مقدار میلادی (قبل از بستن listenerها)
+        AP.rangeBar.bind(form);
         const reload = () => { queueSel.clear(); AP.refresh(); };
         $$('input, select', form).forEach((el) => el.addEventListener('change', () => {
           const f = AP.formData(form);

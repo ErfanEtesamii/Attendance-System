@@ -187,8 +187,7 @@
           <section class="tr-section tr-export-section">
             <div class="tr-section-head"><h3 class="tr-title">خروجی Excel تسک‌ها</h3><span class="tr-hint">بازه‌ی دلخواه را انتخاب و دانلود کنید</span></div>
             <form class="filters card tr-filters" id="tr-export" aria-label="خروجی کامل تسک‌ها">
-              <label class="field"><span>از تاریخ</span><input type="date" name="from" value="${esc(ui.expFrom || fmt.daysAgo(29))}" /></label>
-              <label class="field"><span>تا تاریخ</span><input type="date" name="to" value="${esc(ui.expTo || fmt.today())}" /></label>
+              ${AP.rangeBar.html({ from: ui.expFrom || fmt.daysAgo(29), to: ui.expTo || fmt.today(), label: 'بازه‌ی خروجی', presets: ['7', '30', 'month', 'lastMonth', '90'] })}
               ${managers.length ? `<label class="field"><span>تیم</span><select name="managerId"><option value="">کل مجموعه</option>${managers.map((m) => `<option value="${m.id}" ${String(m.id) === String(ui.expManager) ? 'selected' : ''}>${esc(m.fullName)}</option>`).join('')}</select></label>` : ''}
               ${users.length ? `<label class="field"><span>فرد</span><select name="expUserId"><option value="">همه</option>${users.map((u) => `<option value="${u.id}" ${String(u.id) === String(ui.expUser) ? 'selected' : ''}>${esc(u.fullName || u.full_name)}</option>`).join('')}</select></label>` : ''}
               <span id="tr-export-bar" class="export-group">${expBar()}</span>
@@ -204,6 +203,7 @@
           pickers = AP.dates.mount($('#tr-filters', page));
           const exp = $('#tr-export', page);
           AP.dates.mount(exp);
+          AP.rangeBar.bind(exp);
           exp.addEventListener('submit', (e) => e.preventDefault());
           $$('input, select', exp).forEach((el) => el.addEventListener('change', () => {
             const f = AP.formData(exp);
