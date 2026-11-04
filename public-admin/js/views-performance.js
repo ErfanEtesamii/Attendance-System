@@ -135,7 +135,21 @@
       <dl class="pf-dept-stats">${stats(d).map(([l, v]) => `<div><dt>${l}</dt><dd>${v}</dd></div>`).join('')}</dl></article>`).join('')}</div>`.replace(/ style-hook/g, '');
   }
 
-  const kpi = (label, value, foot, tone) => `<div class="pf-kpi${tone ? ` ${tone}` : ''}"><span class="pf-kpi-label">${label}</span><strong class="pf-kpi-val">${value}</strong><span class="pf-kpi-foot">${foot || ''}</span></div>`;
+  // مقدار کاشی: عدد درشت + واحد کوچک کنار هم (به‌جای یک جمله‌ی هم‌اندازه که چندخطی می‌شد)؛ مقدارهای غیرِ «عدد+واحد» دست‌نخورده می‌مانند
+  const unitize = (raw) => {
+    const v = String(raw).replace(/^<span class="pf-amount">([^<]*)<\/span>$/, '$1').trim();
+    const tight = (n) => String(n).replace(/[٬,]/g, '<span class="pf-sep">٬</span>'); // جداکننده‌ی هزارگان جمع‌وجور (در وزیرمتن پهن است)
+    const part = (n, u) => `<span class="pf-v">${tight(n)}</span><span class="pf-u">${u}</span>`;
+    const N = '[\\d۰-۹٬,.٫]+';
+    let m = new RegExp(`^(${N})\\s*(تومان|هزار|روز)$`).exec(v);
+    if (m) return part(m[1], m[2]);
+    m = new RegExp(`^(${N})\\s*ساعت(?:\\s*و\\s*(${N})\\s*دقیقه)?$`).exec(v);
+    if (m) return part(m[1], 'ساعت') + (m[2] ? part(m[2], 'دقیقه') : '');
+    m = new RegExp(`^(${N})\\s*دقیقه$`).exec(v);
+    if (m) return part(m[1], 'دقیقه');
+    return /^[\d۰-۹٬,.٫]+$/.test(v) ? `<span class="pf-v">${tight(v)}</span>` : raw;
+  };
+  const kpi = (label, value, foot, tone) => `<div class="pf-kpi${tone ? ` ${tone}` : ''}"><span class="pf-kpi-label">${label}</span><strong class="pf-kpi-val">${unitize(value)}</strong><span class="pf-kpi-foot">${foot || ''}</span></div>`;
 
   AP.view('performance', {
     skeleton: 'cards',

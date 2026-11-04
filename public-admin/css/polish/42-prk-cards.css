@@ -53,7 +53,7 @@
 .stat-grid.stat-grid > .stat.stat > .stat-label { grid-area: label; margin: 0; font-size: var(--fs-sm); font-weight: 700; line-height: 1.5; color: var(--text); opacity: 1; }
 .stat-grid.stat-grid > .stat.stat > .stat-value {
   grid-area: value; margin: 0; align-self: center; font-size: 28px; font-weight: 700; line-height: 1.15; letter-spacing: 0; color: var(--text);
-  font-variant-numeric: tabular-nums; white-space: normal; overflow-wrap: normal;
+  font-variant-numeric: normal; white-space: normal; overflow-wrap: normal;
 }
 .stat-grid.stat-grid > .stat.stat > .stat-hint {
   grid-area: hint; margin: 4px 0 0; padding: 2px 10px; border-radius: 999px; font-size: var(--fs-xs); font-weight: 600; color: var(--text);
@@ -101,3 +101,20 @@
   .pf-kpi.pf-kpi .pf-kpi-val { font-size: 20px; }
 }
 @media (prefers-reduced-motion: reduce) { .stat-grid.stat-grid > .stat.stat, .stat-grid.stat-grid > .stat.stat:hover { transition: none; transform: none; } }
+
+/* ---------- مقدار کاشی‌های .pf-kpi: عدد درشت + واحد کوچک در یک خط (حقوق، ساعت، …) ---------- */
+.pf-kpis { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.pf-kpis.pf-kpis-sm { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.pf-kpi.pf-kpi .pf-kpi-val { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 4px; row-gap: 0; overflow-wrap: normal; }
+.pf-kpi.pf-kpi .pf-v { font-size: 26px; font-weight: 700; line-height: 1.2; letter-spacing: 0; color: var(--text); white-space: nowrap; font-variant-numeric: normal; unicode-bidi: isolate; }
+.pf-kpi.pf-kpi .pf-u { font-size: var(--fs-sm); font-weight: 600; color: var(--hint); margin-inline-end: 8px; white-space: nowrap; }
+.pf-kpi.pf-kpi .pf-u:last-child { margin-inline-end: 0; }
+.modal-body .pf-kpi.pf-kpi .pf-v { font-size: 20px; }
+.modal-body .pf-kpi.pf-kpi .pf-u { font-size: var(--fs-xs); }
+@media (max-width: 640px) { .pf-kpi.pf-kpi .pf-v { font-size: 20px; } .pf-kpi.pf-kpi .pf-u { font-size: 11px; margin-inline-end: 5px; } .pf-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* فاصله‌ی ارقام مثل کاشی‌های پرونده‌ی کارمند: بدون tabular-nums (در وزیرمتن هر رقم را هم‌عرض و پراکنده می‌کند) */
+.stat-grid.stat-grid > .stat.stat .stat-value, .stat-grid.stat-grid > .stat.stat .stat-value *,
+.pf-kpi.pf-kpi .pf-kpi-val, .pf-kpi.pf-kpi .pf-kpi-val * { font-variant-numeric: normal; font-feature-settings: normal; letter-spacing: 0; word-spacing: 0; }
+.pf-kpi.pf-kpi .pf-sep { display: inline-block; width: .28em; text-align: center; font-weight: 600; overflow: visible; }
+.pf-kpi.pf-kpi .pf-v { direction: ltr; unicode-bidi: isolate; }
