@@ -503,7 +503,26 @@
         else if (todayRec.check_in_time) todayKey = 'present';
       } else if (d.onLeaveToday) todayKey = 'leave';
 
-      const stat = (g, ic, v, l, hint) => `<div class="stat"><div class="stat-icon ${g}">${icon(ic)}</div><div class="stat-value u-stat-value-sm">${v}</div><div class="stat-label">${l}</div>${hint ? `<div class="stat-hint">${hint}</div>` : ''}</div>`;
+      // کاشی‌های آمار پروفایل: عدد و واحد در یک خط؛ گروه «نیازمند توجه» وقتی صفر است کم‌رنگ و با تیک نشان داده می‌شود
+      const durHtml = (m) => {
+        if (m == null || Number.isNaN(m)) return '<span class="pf-kpi-v">—</span>';
+        const abs = Math.abs(Math.round(m));
+        const h = Math.floor(abs / 60);
+        const r = abs % 60;
+        const part = (n, u) => `<span class="pf-kpi-v">${fmt.num(n)}</span><span class="pf-kpi-u">${u}</span>`;
+        if (!h) return part(r, 'دقیقه');
+        return part(h, 'ساعت') + (r ? part(r, 'دقیقه') : '');
+      };
+      const cntHtml = (n, unit) => `<span class="pf-kpi-v">${fmt.num(n)}</span><span class="pf-kpi-u">${unit}</span>`;
+      const kpi = (tone, ic, label, valueHtml, hint, zero) => `
+        <div class="pf-kpi${zero ? ' is-zero' : ''}" data-tone="${zero ? 'gray' : tone}">
+          <span class="pf-kpi-ico">${icon(zero ? 'check' : ic)}</span>
+          <span class="pf-kpi-body">
+            <span class="pf-kpi-label">${label}</span>
+            <span class="pf-kpi-val">${valueHtml}</span>
+            ${hint || zero ? `<span class="pf-kpi-hint">${hint || 'بدون مورد'}</span>` : ''}
+          </span>
+        </div>`;
 
       const tabs = [['attendance', 'تردد'], ['leave', 'مرخصی و مأموریت'], ['disputes', 'اعتراض‌ها'], ['info', 'اطلاعات و ویرایش']];
       if (AP.scheduleTab && AP.can('schedule.read')) tabs.push(['schedule', 'برنامه‌ی روزبه‌روز']); // B2
@@ -548,14 +567,24 @@
           <div class="muted filter-range">${esc(fmt.dateLong(d.range.from))} تا ${esc(fmt.dateLong(d.range.to))}</div>
         </div>
 
-        <div class="stat-grid">
-          ${stat('g-green', 'in', fmt.num(s.presentDays), 'روز حضور', s.avgCheckIn ? `میانگین ورود ${fmt.num(Number(s.avgCheckIn.slice(0, 2)))}:${s.avgCheckIn.slice(3)}` : '')}
-          ${stat('g-blue', 'clock', fmt.min(s.totalEffective), 'مجموع ساعت مفید', `میانگین روزانه ${fmt.min(s.avgEffective)}`)}
-          ${stat('g-orange', 'alert', fmt.num(s.lateCount), 'ورود با تأخیر', s.totalLateMinutes ? `جمعاً ${fmt.min(s.totalLateMinutes)}` : '')}
-          ${stat('g-red', 'out', fmt.num(s.earlyLeaveCount), 'خروج زودهنگام', s.totalEarlyMinutes ? `جمعاً ${fmt.min(s.totalEarlyMinutes)}` : '')}
-          ${stat('g-purple', 'clock', fmt.min(s.overtimeMinutes), 'اضافه‌کاری')}
-          ${stat('g-gray', 'alert', fmt.num(s.incompleteCount), 'رکورد ناقص')}
-          ${stat('g-blue', 'leave', fmt.num(s.leaveDays), 'روز مرخصی')}
+        <div class="pf-kpis">
+          <section class="pf-kpi-group" aria-label="عملکرد این بازه">
+            <h4 class="pf-kpi-title">عملکرد در این بازه</h4>
+            <div class="pf-kpi-row">
+              ${kpi('green', 'in', 'روز حضور', cntHtml(s.presentDays, 'روز'), s.avgCheckIn ? `میانگین ورود ${fmt.num(Number(s.avgCheckIn.slice(0, 2)))}:${s.avgCheckIn.slice(3)}` : '')}
+              ${kpi('blue', 'clock', 'مجموع ساعت مفید', durHtml(s.totalEffective), `میانگین روزانه ${fmt.min(s.avgEffective)}`)}
+              ${kpi('purple', 'clock', 'اضافه‌کاری', durHtml(s.overtimeMinutes), '')}
+              ${kpi('blue', 'leave', 'مرخصی', cntHtml(s.leaveDays, 'روز'), '')}
+            </div>
+          </section>
+          <section class="pf-kpi-group" aria-label="موارد نیازمند توجه">
+            <h4 class="pf-kpi-title">موارد نیازمند توجه</h4>
+            <div class="pf-kpi-row">
+              ${kpi('orange', 'alert', 'ورود با تأخیر', cntHtml(s.lateCount, 'بار'), s.totalLateMinutes ? `جمعاً ${fmt.min(s.totalLateMinutes)}` : '', !s.lateCount)}
+              ${kpi('red', 'out', 'خروج زودهنگام', cntHtml(s.earlyLeaveCount, 'بار'), s.totalEarlyMinutes ? `جمعاً ${fmt.min(s.totalEarlyMinutes)}` : '', !s.earlyLeaveCount)}
+              ${kpi('gray', 'alert', 'رکورد ناقص', cntHtml(s.incompleteCount, 'مورد'), '', !s.incompleteCount)}
+            </div>
+          </section>
         </div>
 
         <div class="tabs" id="pf-tabs">${tabs.map(([k, l]) => `<button class="tab ${k === profileUi.tab ? 'active' : ''}" data-tab="${k}">${esc(l)}</button>`).join('')}</div>
