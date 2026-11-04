@@ -5,6 +5,7 @@
   const { $, $$, esc, fmt, icon } = Object.assign({}, window.AP, { icon: (n) => window.AP.icon(n) });
   const AP = window.AP;
 
+  const faD = (v) => window.Jalali.toFaDigits(String(v == null ? '' : v)); // نمایش همه‌ی ارقام فارسی (برای کد پرسنلی و ساعت)
   const emptyBox = (text) => `<div class="empty">${AP.icon('inbox')}${esc(text)}</div>`;
 
   function statTrendHtml(trend, field) {
@@ -321,7 +322,7 @@
         mount(page) {
           const body = $('#emp-body', page);
           const draw = () => {
-            const q = $('#f-q', page).value.trim().toLowerCase();
+            const q = window.Jalali.toEnDigits($('#f-q', page).value.trim()).toLowerCase(); // کد پرسنلی با رقم فارسی هم پیدا شود
             const dp = $('#f-dept', page).value;
             const rl = $('#f-role', page).value;
             const ac = $('#f-active', page).value;
@@ -334,7 +335,7 @@
             body.innerHTML = list.length ? list.map((u) => `
               <tr class="clickable ${u.isActive ? '' : 'inactive'}" data-id="${u.id}">
                 <td><div class="cell-user">${AP.avatar(u.fullName, 'sm', u.id)}<span><b>${esc(u.fullName)}</b></span></div></td>
-                <td class="num">${esc(u.personnelCode || '—')}</td>
+                <td class="num">${esc(faD(u.personnelCode || '—'))}</td>
                 <td>${esc(u.department || '—')}</td>
                 <td>${AP.badge(['admin', 'owner'].includes(u.role) ? 'purple' : u.role === 'manager' ? 'blue' : '', AP.ROLE[u.role])}</td>
                 <td>${esc(u.managerId && byId.get(u.managerId) ? byId.get(u.managerId).fullName : '—')}</td>
@@ -356,7 +357,7 @@
                   ${AP.stateBadge(st)}
                 </span>
                 <span class="emp-card-meta">
-                  <span><em>کد پرسنلی</em><b>${esc(u.personnelCode || '—')}</b></span>
+                  <span><em>کد پرسنلی</em><b>${esc(faD(u.personnelCode || '—'))}</b></span>
                   <span><em>نقش</em><b>${esc(AP.ROLE[u.role] || '—')}</b></span>
                   <span><em>سرپرست</em><b>${esc(mgr)}</b></span>
                   <span><em>شیفت امروز</em><b>${u.shiftName ? `${esc(u.shiftName)} <i class="ltr">${esc(u.shiftTime)}</i>` : 'پیش‌فرض'}</b></span>
@@ -400,7 +401,7 @@
               ${list.length ? `<div class="emp-drill-list">${list.map((u) => `
                 <button type="button" class="emp-drill-item" data-id="${u.id}">
                   ${AP.avatar(u.fullName, 'sm', u.id)}
-                  <span class="emp-drill-name"><b>${esc(u.fullName)}</b><span class="muted">${esc(u.department || '—')}${u.personnelCode ? ` · کد ${esc(u.personnelCode)}` : ''}</span></span>
+                  <span class="emp-drill-name"><b>${esc(u.fullName)}</b><span class="muted">${esc(u.department || '—')}${u.personnelCode ? ` · کد ${esc(faD(u.personnelCode))}` : ''}</span></span>
                   <span class="emp-drill-shift">${u.shiftName ? `${esc(u.shiftName)} <span class="ltr muted">${esc(u.shiftTime)}</span>` : '<span class="muted">شیفت پیش‌فرض</span>'}</span>
                 </button>`).join('')}</div>` : emptyBox('کارمندی در این وضعیت نیست.')}`;
             drill.hidden = false;
@@ -505,22 +506,22 @@
 
       // کاشی‌های آمار پروفایل: عدد و واحد در یک خط؛ گروه «نیازمند توجه» وقتی صفر است کم‌رنگ و با تیک نشان داده می‌شود
       const durHtml = (m) => {
-        if (m == null || Number.isNaN(m)) return '<span class="pf-kpi-v">—</span>';
+        if (m == null || Number.isNaN(m)) return '<span class="prk-v">—</span>';
         const abs = Math.abs(Math.round(m));
         const h = Math.floor(abs / 60);
         const r = abs % 60;
-        const part = (n, u) => `<span class="pf-kpi-v">${fmt.num(n)}</span><span class="pf-kpi-u">${u}</span>`;
+        const part = (n, u) => `<span class="prk-v">${fmt.num(n)}</span><span class="prk-u">${u}</span>`;
         if (!h) return part(r, 'دقیقه');
         return part(h, 'ساعت') + (r ? part(r, 'دقیقه') : '');
       };
-      const cntHtml = (n, unit) => `<span class="pf-kpi-v">${fmt.num(n)}</span><span class="pf-kpi-u">${unit}</span>`;
+      const cntHtml = (n, unit) => `<span class="prk-v">${fmt.num(n)}</span><span class="prk-u">${unit}</span>`;
       const kpi = (tone, ic, label, valueHtml, hint, zero) => `
-        <div class="pf-kpi${zero ? ' is-zero' : ''}" data-tone="${zero ? 'gray' : tone}">
-          <span class="pf-kpi-ico">${icon(zero ? 'check' : ic)}</span>
-          <span class="pf-kpi-body">
-            <span class="pf-kpi-label">${label}</span>
-            <span class="pf-kpi-val">${valueHtml}</span>
-            ${hint || zero ? `<span class="pf-kpi-hint">${hint || 'بدون مورد'}</span>` : ''}
+        <div class="prk${zero ? ' is-zero' : ''}" data-tone="${zero ? 'gray' : tone}">
+          <span class="prk-ico">${icon(zero ? 'check' : ic)}</span>
+          <span class="prk-body">
+            <span class="prk-label">${label}</span>
+            <span class="prk-val">${valueHtml}</span>
+            ${hint || zero ? `<span class="prk-hint">${hint || 'بدون مورد'}</span>` : ''}
           </span>
         </div>`;
 
@@ -540,7 +541,7 @@
             <div class="tags">
               ${AP.badge(['admin', 'owner'].includes(u.role) ? 'purple' : u.role === 'manager' ? 'blue' : '', AP.ROLE[u.role])}
               ${AP.badge('', u.department || 'بدون دپارتمان')}
-              ${u.personnelCode ? AP.badge('', `کد ${u.personnelCode}`) : ''}
+              ${u.personnelCode ? AP.badge('', `کد ${faD(u.personnelCode)}`) : ''}
               ${u.isActive ? AP.badge('green', 'فعال') : AP.badge('red', 'غیرفعال')}
               ${AP.stateBadge(todayKey)}
               ${d.lateLimit && d.lateLimit.limit > 0 ? AP.badge(d.lateLimit.overLimit ? 'red' : '', `تأخیر این ماه: ${fmt.num(d.lateLimit.lateCount)} از ${fmt.num(d.lateLimit.limit)}${d.lateLimit.enabled ? '' : ' (اعمال خاموش)'}`) : ''}
@@ -567,19 +568,19 @@
           <div class="muted filter-range">${esc(fmt.dateLong(d.range.from))} تا ${esc(fmt.dateLong(d.range.to))}</div>
         </div>
 
-        <div class="pf-kpis">
-          <section class="pf-kpi-group" aria-label="عملکرد این بازه">
-            <h4 class="pf-kpi-title">عملکرد در این بازه</h4>
-            <div class="pf-kpi-row">
-              ${kpi('green', 'in', 'روز حضور', cntHtml(s.presentDays, 'روز'), s.avgCheckIn ? `میانگین ورود ${fmt.num(Number(s.avgCheckIn.slice(0, 2)))}:${s.avgCheckIn.slice(3)}` : '')}
+        <div class="prk-kpis">
+          <section class="prk-group" aria-label="عملکرد این بازه">
+            <h4 class="prk-title">عملکرد در این بازه</h4>
+            <div class="prk-row">
+              ${kpi('green', 'in', 'روز حضور', cntHtml(s.presentDays, 'روز'), s.avgCheckIn ? `میانگین ورود ${faD(s.avgCheckIn.slice(0, 5))}` : '')}
               ${kpi('blue', 'clock', 'مجموع ساعت مفید', durHtml(s.totalEffective), `میانگین روزانه ${fmt.min(s.avgEffective)}`)}
               ${kpi('purple', 'clock', 'اضافه‌کاری', durHtml(s.overtimeMinutes), '')}
               ${kpi('blue', 'leave', 'مرخصی', cntHtml(s.leaveDays, 'روز'), '')}
             </div>
           </section>
-          <section class="pf-kpi-group" aria-label="موارد نیازمند توجه">
-            <h4 class="pf-kpi-title">موارد نیازمند توجه</h4>
-            <div class="pf-kpi-row">
+          <section class="prk-group" aria-label="موارد نیازمند توجه">
+            <h4 class="prk-title">موارد نیازمند توجه</h4>
+            <div class="prk-row">
               ${kpi('orange', 'alert', 'ورود با تأخیر', cntHtml(s.lateCount, 'بار'), s.totalLateMinutes ? `جمعاً ${fmt.min(s.totalLateMinutes)}` : '', !s.lateCount)}
               ${kpi('red', 'out', 'خروج زودهنگام', cntHtml(s.earlyLeaveCount, 'بار'), s.totalEarlyMinutes ? `جمعاً ${fmt.min(s.totalEarlyMinutes)}` : '', !s.earlyLeaveCount)}
               ${kpi('gray', 'alert', 'رکورد ناقص', cntHtml(s.incompleteCount, 'مورد'), '', !s.incompleteCount)}
@@ -624,7 +625,7 @@
           if (!AP.can('users.write')) {
             return `<div class="card"><div class="kv">
               <div class="kv-row"><span>نام</span><span>${esc(u.fullName)}</span></div>
-              <div class="kv-row"><span>کد پرسنلی</span><span>${esc(u.personnelCode || '—')}</span></div>
+              <div class="kv-row"><span>کد پرسنلی</span><span>${esc(faD(u.personnelCode || '—'))}</span></div>
               <div class="kv-row"><span>دپارتمان</span><span>${esc(u.department || '—')}</span></div>
               <div class="kv-row"><span>نقش</span><span>${esc(AP.ROLE[u.role])}</span></div>
               <div class="kv-row"><span>آیدی تلگرام</span><span class="ltr">${esc(u.telegramUserId || '—')}</span></div></div></div>`;
