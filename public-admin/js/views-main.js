@@ -296,6 +296,7 @@
           </div>
         </div>
         <div class="emp-stats" id="emp-stats"></div>
+        <div class="card emp-drill" id="emp-drill" role="region" aria-live="polite" hidden></div>
         <div class="filters emp-filters">
           <label class="field grow"><span>جستجو</span><input id="f-q" type="search" placeholder="نام یا کد پرسنلی…" /></label>
           <label class="field"><span>دپارتمان</span><select id="f-dept"><option value="">همه</option>${depts.map((d) => `<option>${esc(d)}</option>`).join('')}</select></label>
@@ -337,8 +338,51 @@
           };
           const active = users.filter((u) => u.isActive);
           const cntBy = (st) => active.filter((u) => u.todayStatus === st).length;
-          const tile = (cls, label, n) => `<div class="emp-stat ${cls}"><span class="emp-stat-n">${fmt.num(n)}</span><span class="emp-stat-l">${label}</span></div>`;
-          $('#emp-stats', page).innerHTML = tile('', 'کل کارمندان', users.length) + tile('is-ok', 'فعال', active.length) + tile('is-in', 'داخل شرکت', cntBy('checked_in')) + tile('is-out', 'خارج‌شده', cntBy('checked_out')) + tile('is-abs', 'غایب / نیامده', cntBy('not_checked_in'));
+          // کاشی‌های «داخل شرکت / خارج‌شده / غایب» کلیک‌پذیرند و لیست کارمندانِ همان وضعیت را زیر کاشی‌ها باز می‌کنند
+          const DRILL = { checked_in: 'داخل شرکت', checked_out: 'خارج‌شده', not_checked_in: 'غایب / نیامده' };
+          const tile = (cls, label, n, st) => (st
+            ? `<button type="button" class="emp-stat is-click ${cls}" data-st="${st}" aria-pressed="false" aria-controls="emp-drill" title="نمایش لیست کارمندان"><span class="emp-stat-n">${fmt.num(n)}</span><span class="emp-stat-l">${label}</span></button>`
+            : `<div class="emp-stat ${cls}"><span class="emp-stat-n">${fmt.num(n)}</span><span class="emp-stat-l">${label}</span></div>`);
+          $('#emp-stats', page).innerHTML = tile('', 'کل کارمندان', users.length) + tile('is-ok', 'فعال', active.length) + tile('is-in', 'داخل شرکت', cntBy('checked_in'), 'checked_in') + tile('is-out', 'خارج‌شده', cntBy('checked_out'), 'checked_out') + tile('is-abs', 'غایب / نیامده', cntBy('not_checked_in'), 'not_checked_in');
+          const drill = $('#emp-drill', page);
+          let drillSt = null;
+          const closeDrill = () => {
+            drillSt = null;
+            drill.hidden = true;
+            drill.innerHTML = '';
+            $$('.emp-stat.is-click', page).forEach((b) => { b.classList.remove('is-selected'); b.setAttribute('aria-pressed', 'false'); });
+          };
+          const openDrill = (st) => {
+            drillSt = st;
+            const list = active.filter((u) => u.todayStatus === st);
+            $$('.emp-stat.is-click', page).forEach((b) => {
+              const on = b.dataset.st === st;
+              b.classList.toggle('is-selected', on);
+              b.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+            drill.innerHTML = `
+              <div class="emp-drill-head">
+                <h3>${esc(DRILL[st])} <span class="muted">(${fmt.num(list.length)} نفر)</span></h3>
+                <button type="button" class="btn ghost small" data-close>بستن ✕</button>
+              </div>
+              ${list.length ? `<div class="emp-drill-list">${list.map((u) => `
+                <button type="button" class="emp-drill-item" data-id="${u.id}">
+                  ${AP.avatar(u.fullName, 'sm', u.id)}
+                  <span class="emp-drill-name"><b>${esc(u.fullName)}</b><span class="muted">${esc(u.department || '—')}${u.personnelCode ? ` · کد ${esc(u.personnelCode)}` : ''}</span></span>
+                  <span class="emp-drill-shift">${u.shiftName ? `${esc(u.shiftName)} <span class="ltr muted">${esc(u.shiftTime)}</span>` : '<span class="muted">شیفت پیش‌فرض</span>'}</span>
+                </button>`).join('')}</div>` : emptyBox('کارمندی در این وضعیت نیست.')}`;
+            drill.hidden = false;
+          };
+          $('#emp-stats', page).addEventListener('click', (e) => {
+            const b = e.target.closest('.emp-stat.is-click');
+            if (!b) return;
+            if (drillSt === b.dataset.st) closeDrill(); else openDrill(b.dataset.st);
+          });
+          drill.addEventListener('click', (e) => {
+            if (e.target.closest('[data-close]')) { closeDrill(); return; }
+            const it = e.target.closest('.emp-drill-item[data-id]');
+            if (it) AP.go('profile', it.dataset.id);
+          });
           draw();
           $$('.filters input, .filters select', page).forEach((el) => el.addEventListener('input', draw));
           body.addEventListener('click', (e) => { const tr = e.target.closest('tr[data-id]'); if (tr) AP.go('profile', tr.dataset.id); });

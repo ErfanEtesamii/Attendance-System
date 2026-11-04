@@ -247,3 +247,27 @@ body:has(.nav-item.active[data-view="employees"]) #page[aria-busy="true"] .skele
   .emp-table #emp-body > tr > td:first-child::before, .emp-table #emp-body > tr > td:first-child { transition: none; }
   .emp-filters :where(input, select) { transition: none; }
 }
+
+/* ===== کاشی‌های کلیک‌پذیر + لیست کارمندان زیر کاشی‌ها ===== */
+button.emp-stat.is-click { font: inherit; color: inherit; text-align: start; cursor: pointer; width: 100%; }
+button.emp-stat.is-click:focus-visible { outline: 2px solid var(--tone); outline-offset: 3px; }
+.emp-stat.is-selected {
+  border-color: var(--tone);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tone) 35%, transparent), 0 26px 40px -22px color-mix(in srgb, var(--tone) 70%, transparent);
+}
+.emp-drill { margin-block: 14px; padding: 16px 18px; border-radius: var(--r-xl); animation: emp-rise var(--motion-enter) var(--ease-out) both; }
+.emp-drill[hidden] { display: none; }
+.emp-drill-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-block-end: 12px; }
+.emp-drill-head h3 { margin: 0; font-size: 1.05rem; }
+.emp-drill-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.emp-drill-item {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px; text-align: start; cursor: pointer;
+  font: inherit; color: inherit; background: var(--card); border: 1px solid var(--border); border-radius: var(--r-lg);
+  transition: border-color var(--motion-fast) var(--ease-out), transform var(--motion-fast) var(--ease-out);
+}
+.emp-drill-item:hover { border-color: var(--brand); transform: translateY(-1px); }
+.emp-drill-item:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.emp-drill-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.emp-drill-name .muted { font-size: .8rem; }
+.emp-drill-shift { font-size: .78rem; white-space: nowrap; }
+@media (max-width: 640px) { .emp-drill-list { grid-template-columns: 1fr; } .emp-drill-shift { display: none; } }
