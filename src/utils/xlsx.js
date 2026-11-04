@@ -72,14 +72,15 @@ function sanitizeSheetName(name, used = []) {
 const SHEET_VIEWS = () => [{ rightToLeft: true, state: 'frozen', xSplit: 0, ySplit: 1 }];
 
 function columnWidth(headers, rows, index) {
-  let max = String(headers[index] == null ? '' : headers[index]).length;
+  // فونت B Nazanin 12/14 پهن‌تر از پیش‌فرض است: ضریب ۱٫۲ برای داده و ۱٫۵ برای سرستون پررنگ ۱۴
+  let max = Math.ceil(String(headers[index] == null ? '' : headers[index]).length * 1.5);
   for (const r of rows) {
     const v = r[index];
     if (v === null || v === undefined) continue;
-    const len = (v instanceof Date ? 16 : String(v).length);
+    const len = Math.ceil((v instanceof Date ? 16 : String(v).length) * 1.2);
     if (len > max) max = len;
   }
-  return Math.min(60, Math.max(10, max + 2));
+  return Math.min(60, Math.max(14, max + 2));
 }
 
 /**

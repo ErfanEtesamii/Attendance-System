@@ -54,7 +54,7 @@ async function writeXlsx(tables, file) {
     const cols = [...new Set(t.rows.slice(0, 500).flatMap((r) => Object.keys(r)))];
     const data = t.rows.slice(0, 5000).map((r) => cols.map((c) => cellOf(r[c])));
     const kinds = style.columnKinds(cols, data);
-    ws.columns = cols.map((c, i) => ({ header: c, key: c, width: Math.min(40, Math.max(12, c.length + 4, ...data.slice(0, 200).map((d) => String(d[i] == null ? '' : d[i]).length + 2))) }));
+    ws.columns = cols.map((c, i) => ({ header: c, key: c, width: Math.min(50, Math.max(14, Math.ceil(c.length * 1.5) + 2, ...data.slice(0, 200).map((d) => Math.ceil(String(d[i] == null ? "" : d[i]).length * 1.2) + 2))) }));
     style.styleHeader(ws.getRow(1));
     data.forEach((d, ri) => style.styleBodyRow(ws.addRow(d), ri, kinds));
     ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cols.length } };
