@@ -96,11 +96,11 @@
     const chips = RANGES.map(([k, l]) => `<button type="button" class="rb-chip pf-range${ui.range === k ? ' is-active' : ''}" data-range="${k}" aria-pressed="${ui.range === k}">${l}</button>`).join('');
     const r = range || {};
     const custom = ui.range === 'custom'
-      ? `<div class="rb-fields" id="pf-custom"><label class="field"><span>از تاریخ</span><input type="date" name="from" value="${esc(ui.from)}" /></label><span class="rb-arrow" aria-hidden="true">←</span><label class="field"><span>تا تاریخ</span><input type="date" name="to" value="${esc(ui.to)}" /></label></div>`
+      ? `<div class="rb-fields" id="pf-custom"><label class="field"><span>از</span><input type="date" name="from" value="${esc(ui.from)}" /></label><span class="rb-arrow" aria-hidden="true">←</span><label class="field"><span>تا</span><input type="date" name="to" value="${esc(ui.to)}" /></label></div>`
       : '';
     return `<div class="rb-wrap"><div class="rb" data-rb><div class="rb-top"><span class="rb-label">${AP.icon('calendar')}بازه‌ی زمانی</span>
-      <div class="rb-chips" role="group" aria-label="بازه‌ی زمانی">${chips}</div>
-      <div class="rb-summary" aria-live="polite">${r.from ? AP.rangeBar.summaryHtml(r.from, r.to) : ''}</div></div>${custom}</div></div>`;
+      <div class="rb-chips" role="group" aria-label="بازه‌ی زمانی">${chips}</div></div>
+      <div class="rb-foot">${custom}<div class="rb-summary" aria-live="polite">${r.from ? AP.rangeBar.summaryHtml(r.from, r.to) : ''}</div></div></div></div>`;
   }
   function bindRange(page) {
     $$('.pf-range', page).forEach((b) => b.addEventListener('click', () => {

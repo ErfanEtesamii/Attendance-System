@@ -60,7 +60,7 @@
     const body = from === to
       ? `<b>${esc(fmt.dateLong(from))}</b>`
       : `<b>${esc(fmt.dateLong(from))}</b><i>تا</i><b>${esc(fmt.dateLong(to))}</b>`;
-    return `${body}<em>${num(n)} روز</em>`;
+    return `<em><strong>${num(n)}</strong> روز</em><span class="rb-sum-dates">${body}</span>`;
   };
 
   // ---------- html ----------
@@ -84,16 +84,16 @@
     }
     const fields = o.fields === false ? '' : `
       <div class="rb-fields">
-        <label class="field"><span>از تاریخ</span><input type="date" name="from" value="${esc(o.from || '')}" /></label>
+        <label class="field"><span>از</span><input type="date" name="from" value="${esc(o.from || '')}" /></label>
         <span class="rb-arrow" aria-hidden="true">←</span>
-        <label class="field"><span>تا تاریخ</span><input type="date" name="to" value="${esc(o.to || '')}" /></label>
+        <label class="field"><span>تا</span><input type="date" name="to" value="${esc(o.to || '')}" /></label>
       </div>`;
     return `<div class="rb" data-rb>
       <div class="rb-top">
         <span class="rb-label">${AP.icon('calendar')}${esc(o.label || 'بازه‌ی زمانی')}</span>
         <div class="rb-chips" role="group" aria-label="بازه‌های آماده">${chips}${monthsSel}</div>
-        <div class="rb-summary" data-rb-summary aria-live="polite">${summaryHtml(o.from, o.to)}</div>
-      </div>${fields}
+      </div>
+      <div class="rb-foot">${fields}<div class="rb-summary" data-rb-summary aria-live="polite">${summaryHtml(o.from, o.to)}</div></div>
     </div>`;
   }
 

@@ -48,10 +48,10 @@ describe('نوار بازه (range-bar.js)', () => {
     const s = AP.rangeBar.summaryHtml('2026-10-06', '2026-11-04');
     assert.match(s, /۱۴ مهر ۱۴۰۵/);
     assert.match(s, /۱۳ آبان ۱۴۰۵/);
-    assert.match(s, /۳۰ روز/);
+    assert.match(s, /۳۰<\/strong> روز/);
     assert.match(AP.rangeBar.summaryHtml('2026-11-04', '2026-10-01'), /بعد از تاریخ پایان/);
     assert.match(AP.rangeBar.summaryHtml('', ''), /انتخاب نشده/);
-    assert.match(AP.rangeBar.summaryHtml('2026-11-04', '2026-11-04'), /۱ روز/);
+    assert.match(AP.rangeBar.summaryHtml('2026-11-04', '2026-11-04'), /۱<\/strong> روز/);
   });
 
   test('html: ورودی‌های from/to برای فرم‌های قدیمی، منوی ماه کامل اختیاری، بدون استایل درون‌خطی', () => {
