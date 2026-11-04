@@ -43,18 +43,21 @@ const cellOf = (v) => (v && typeof v === 'object' ? JSON.stringify(v) : v);
 
 async function writeXlsx(tables, file) {
   const ExcelJS = require('exceljs');
+  const style = require('../../utils/xlsxStyle');
   const wb = new ExcelJS.Workbook();
   const used = new Set();
   for (const t of tables.slice(0, 6)) {
     let nm = String(t.name).replace(/[\\/*?:[\]]/g, '_').slice(0, 28) || 'sheet';
     while (used.has(nm)) nm = `${nm.slice(0, 26)}_${used.size}`;
     used.add(nm);
-    const ws = wb.addWorksheet(nm);
-    ws.views = [{ rightToLeft: true }];
+    const ws = wb.addWorksheet(nm, { views: [{ rightToLeft: true, state: 'frozen', xSplit: 0, ySplit: 1 }], ...style.sheetOptions(used.size - 1) });
     const cols = [...new Set(t.rows.slice(0, 500).flatMap((r) => Object.keys(r)))];
-    ws.columns = cols.map((c) => ({ header: c, key: c, width: Math.min(32, Math.max(10, c.length + 2)) }));
-    ws.getRow(1).font = { bold: true };
-    t.rows.slice(0, 5000).forEach((r) => ws.addRow(Object.fromEntries(cols.map((c) => [c, cellOf(r[c])]))));
+    const data = t.rows.slice(0, 5000).map((r) => cols.map((c) => cellOf(r[c])));
+    const kinds = style.columnKinds(cols, data);
+    ws.columns = cols.map((c, i) => ({ header: c, key: c, width: Math.min(40, Math.max(12, c.length + 4, ...data.slice(0, 200).map((d) => String(d[i] == null ? '' : d[i]).length + 2))) }));
+    style.styleHeader(ws.getRow(1));
+    data.forEach((d, ri) => style.styleBodyRow(ws.addRow(d), ri, kinds));
+    ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cols.length } };
   }
   await wb.xlsx.writeFile(file);
 }

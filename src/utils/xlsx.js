@@ -13,6 +13,7 @@
 
 const { sendCsv } = require('./csv');
 const { neutralizeCell, neutralizeRow } = require('./exportSafety');
+const style = require('./xlsxStyle');
 
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const FALLBACK_NOTICE = 'کتابخانه‌ی exceljs روی سرور نصب نیست؛ به‌جای xlsx فایل CSV داده شد. برای فعال‌شدن xlsx دستور npm install را اجرا و سرویس را ری‌استارت کنید.';
@@ -70,12 +71,6 @@ function sanitizeSheetName(name, used = []) {
 
 const SHEET_VIEWS = () => [{ rightToLeft: true, state: 'frozen', xSplit: 0, ySplit: 1 }];
 
-function styleHeaderRow(head) {
-  head.font = { bold: true };
-  head.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-  head.eachCell((c) => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9EAD3' } }; });
-}
-
 function columnWidth(headers, rows, index) {
   let max = String(headers[index] == null ? '' : headers[index]).length;
   for (const r of rows) {
@@ -109,9 +104,10 @@ function buildWorkbook(spec) {
     usedNames.push(name);
 
     // RTL + فریز ردیف اول
-    const ws = wb.addWorksheet(name, { views: SHEET_VIEWS() });
-    styleHeaderRow(ws.addRow(s.headers.map(neutralizeCell)));
-    for (const r of rows) ws.addRow(neutralizeRow(r).map((v) => (v === undefined ? null : v)));
+    const ws = wb.addWorksheet(name, { views: SHEET_VIEWS(), ...style.sheetOptions(usedNames.length - 1) });
+    const kinds = style.columnKinds(s.headers, rows);
+    style.styleHeader(ws.addRow(s.headers.map(neutralizeCell)));
+    rows.forEach((r, ri) => style.styleBodyRow(ws.addRow(neutralizeRow(r).map((v) => (v === undefined ? null : v))), ri, kinds));
     s.headers.forEach((_, i) => { ws.getColumn(i + 1).width = columnWidth(s.headers, rows, i); });
     ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: s.headers.length } };
   }
@@ -164,12 +160,17 @@ async function writeWorkbookStream(out, spec) {
     const rows = Array.isArray(s.rows) ? s.rows : [];
     const name = sanitizeSheetName(s.name, usedNames);
     usedNames.push(name);
-    const ws = wb.addWorksheet(name, { views: SHEET_VIEWS() });
+    const ws = wb.addWorksheet(name, { views: SHEET_VIEWS(), ...style.sheetOptions(usedNames.length - 1) });
     ws.columns = s.headers.map((_, i) => ({ width: columnWidth(s.headers, rows, i) }));
+    const kinds = style.columnKinds(s.headers, rows);
     const head = ws.addRow(s.headers.map(neutralizeCell));
-    styleHeaderRow(head);
+    style.styleHeader(head);
     head.commit();
-    for (const r of rows) ws.addRow(neutralizeRow(r).map((v) => (v === undefined ? null : v))).commit();
+    rows.forEach((r, ri) => {
+      const row = ws.addRow(neutralizeRow(r).map((v) => (v === undefined ? null : v)));
+      style.styleBodyRow(row, ri, kinds);
+      row.commit();
+    });
     ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: s.headers.length } };
     await ws.commit();
   }
