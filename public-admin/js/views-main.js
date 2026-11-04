@@ -287,7 +287,9 @@
       const users = await AP.loadUsers(true);
       const byId = new Map(users.map((u) => [u.id, u]));
       const depts = [...new Set(users.map((u) => u.department).filter(Boolean))];
+      const SEARCH_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
       const html = `
+        <div class="emp-v2">
         <div class="view-header">
           <div><h2>کارمندان</h2><div class="sub">${fmt.num(users.length)} نفر ثبت‌شده</div></div>
           <div class="header-actions">
@@ -297,16 +299,22 @@
         </div>
         <div class="emp-stats" id="emp-stats"></div>
         <div class="card emp-drill" id="emp-drill" role="region" aria-live="polite" hidden></div>
-        <div class="filters emp-filters">
-          <label class="field grow"><span>جستجو</span><input id="f-q" type="search" placeholder="نام یا کد پرسنلی…" /></label>
-          <label class="field"><span>دپارتمان</span><select id="f-dept"><option value="">همه</option>${depts.map((d) => `<option>${esc(d)}</option>`).join('')}</select></label>
-          <label class="field"><span>نقش</span><select id="f-role"><option value="">همه</option>${Object.entries(AP.ROLE).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label>
-          <label class="field"><span>وضعیت حساب</span><select id="f-active"><option value="">همه</option><option value="1">فعال</option><option value="0">غیرفعال</option></select></label>
+        <div class="emp-toolbar">
+          <label class="emp-search">${SEARCH_SVG}<input id="f-q" type="search" placeholder="جستجوی نام یا کد پرسنلی…" aria-label="جستجو" /></label>
+          <select id="f-dept" aria-label="دپارتمان"><option value="">همه‌ی دپارتمان‌ها</option>${depts.map((d) => `<option>${esc(d)}</option>`).join('')}</select>
+          <select id="f-role" aria-label="نقش"><option value="">همه‌ی نقش‌ها</option>${Object.entries(AP.ROLE).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
+          <select id="f-active" aria-label="وضعیت حساب"><option value="">همه‌ی حساب‌ها</option><option value="1">فقط فعال</option><option value="0">فقط غیرفعال</option></select>
+          <div class="emp-view-toggle" role="group" aria-label="نحوه‌ی نمایش">
+            <button type="button" data-emp-view="cards" aria-pressed="true">کارتی</button>
+            <button type="button" data-emp-view="table" aria-pressed="false">جدولی</button>
+          </div>
         </div>
         <div class="emp-count" id="emp-count" role="status" aria-live="polite"></div>
-        <div class="card flush emp-table"><div class="table-wrap"><table>
+        <div class="emp-cards" id="emp-cards"></div>
+        <div class="card flush emp-table" id="emp-table" hidden><div class="table-wrap"><table>
           <thead><tr><th>کارمند</th><th>کد پرسنلی</th><th>دپارتمان</th><th>نقش</th><th>سرپرست مستقیم</th><th>شیفت مؤثر</th><th>وضعیت امروز</th><th>آیدی تلگرام</th><th>حساب</th></tr></thead>
-          <tbody id="emp-body"></tbody></table></div></div>`;
+          <tbody id="emp-body"></tbody></table></div></div>
+        </div>`;
       const todayMap = { not_checked_in: 'absent', checked_in: 'present', checked_out: 'checked_out', incomplete: 'incomplete', holiday: 'holiday', leave: 'leave' };
       return {
         html,
@@ -335,15 +343,39 @@
                 <td><span class="ltr muted">${esc(u.telegramUserId || '—')}</span></td>
                 <td>${u.isActive ? AP.badge('green', 'فعال') : AP.badge('red', 'غیرفعال')}</td></tr>`).join('')
               : `<tr><td colspan="9">${emptyBox('کارمندی با این فیلتر پیدا نشد.')}</td></tr>`;
+            // نمای کارتی: هر کارمند یک کارت با وضعیت امروز، نقش، دپارتمان و شیفت
+            const cardsEl = $('#emp-cards', page);
+            cardsEl.innerHTML = list.length ? list.map((u) => {
+              const st = todayMap[u.todayStatus] || 'absent';
+              const mgr = u.managerId && byId.get(u.managerId) ? byId.get(u.managerId).fullName : '—';
+              return `
+              <button type="button" class="emp-card ${u.isActive ? '' : 'inactive'}" data-id="${u.id}" data-state="${st}">
+                <span class="emp-card-top">
+                  ${AP.avatar(u.fullName, 'sm', u.id)}
+                  <span class="emp-card-id"><b>${esc(u.fullName)}</b><span class="muted">${esc(u.department || 'بدون دپارتمان')}</span></span>
+                  ${AP.stateBadge(st)}
+                </span>
+                <span class="emp-card-meta">
+                  <span><em>کد پرسنلی</em><b>${esc(u.personnelCode || '—')}</b></span>
+                  <span><em>نقش</em><b>${esc(AP.ROLE[u.role] || '—')}</b></span>
+                  <span><em>سرپرست</em><b>${esc(mgr)}</b></span>
+                  <span><em>شیفت امروز</em><b>${u.shiftName ? `${esc(u.shiftName)} <i class="ltr">${esc(u.shiftTime)}</i>` : 'پیش‌فرض'}</b></span>
+                </span>
+                ${u.isActive ? '' : `<span class="emp-card-off">${AP.badge('red', 'حساب غیرفعال')}</span>`}
+              </button>`;
+            }).join('') : emptyBox('کارمندی با این فیلتر پیدا نشد.');
           };
           const active = users.filter((u) => u.isActive);
           const cntBy = (st) => active.filter((u) => u.todayStatus === st).length;
           // کاشی‌های «داخل شرکت / خارج‌شده / غایب» کلیک‌پذیرند و لیست کارمندانِ همان وضعیت را زیر کاشی‌ها باز می‌کنند
           const DRILL = { checked_in: 'داخل شرکت', checked_out: 'خارج‌شده', not_checked_in: 'غایب / نیامده' };
-          const tile = (cls, label, n, st) => (st
-            ? `<button type="button" class="emp-stat is-click ${cls}" data-st="${st}" aria-pressed="false" aria-controls="emp-drill" title="نمایش لیست کارمندان"><span class="emp-stat-n">${fmt.num(n)}</span><span class="emp-stat-l">${label}</span></button>`
-            : `<div class="emp-stat ${cls}"><span class="emp-stat-n">${fmt.num(n)}</span><span class="emp-stat-l">${label}</span></div>`);
-          $('#emp-stats', page).innerHTML = tile('', 'کل کارمندان', users.length) + tile('is-ok', 'فعال', active.length) + tile('is-in', 'داخل شرکت', cntBy('checked_in'), 'checked_in') + tile('is-out', 'خارج‌شده', cntBy('checked_out'), 'checked_out') + tile('is-abs', 'غایب / نیامده', cntBy('not_checked_in'), 'not_checked_in');
+          const tile = (cls, ic, label, n, st) => {
+            const inner = `<span class="emp-stat-ico">${icon(ic)}</span><span class="emp-stat-txt"><span class="emp-stat-n">${fmt.num(n)}</span><span class="emp-stat-l">${label}</span></span>`;
+            return st
+              ? `<button type="button" class="emp-stat is-click ${cls}" data-st="${st}" aria-pressed="false" aria-controls="emp-drill" title="نمایش لیست کارمندان">${inner}<span class="emp-stat-go" aria-hidden="true">لیست ‹</span></button>`
+              : `<div class="emp-stat ${cls}">${inner}</div>`;
+          };
+          $('#emp-stats', page).innerHTML = tile('', 'employees', 'کل کارمندان', users.length) + tile('is-ok', 'check', 'فعال', active.length) + tile('is-in', 'in', 'داخل شرکت', cntBy('checked_in'), 'checked_in') + tile('is-out', 'out', 'خارج‌شده', cntBy('checked_out'), 'checked_out') + tile('is-abs', 'alert', 'غایب / نیامده', cntBy('not_checked_in'), 'not_checked_in');
           const drill = $('#emp-drill', page);
           let drillSt = null;
           const closeDrill = () => {
@@ -384,8 +416,20 @@
             if (it) AP.go('profile', it.dataset.id);
           });
           draw();
-          $$('.filters input, .filters select', page).forEach((el) => el.addEventListener('input', draw));
+          $$('.emp-toolbar input, .emp-toolbar select', page).forEach((el) => el.addEventListener('input', draw));
           body.addEventListener('click', (e) => { const tr = e.target.closest('tr[data-id]'); if (tr) AP.go('profile', tr.dataset.id); });
+          $('#emp-cards', page).addEventListener('click', (e) => { const c = e.target.closest('.emp-card[data-id]'); if (c) AP.go('profile', c.dataset.id); });
+          // تغییر نمای کارتی/جدولی (انتخاب کاربر در مرورگر نگه داشته می‌شود)
+          const setView = (v) => {
+            $('#emp-cards', page).hidden = v !== 'cards';
+            $('#emp-table', page).hidden = v !== 'table';
+            $$('[data-emp-view]', page).forEach((b) => b.setAttribute('aria-pressed', b.dataset.empView === v ? 'true' : 'false'));
+            try { window.localStorage.setItem('emp-view', v); } catch (_) { /* ignore */ }
+          };
+          let savedView = 'cards';
+          try { if (window.localStorage.getItem('emp-view') === 'table') savedView = 'table'; } catch (_) { /* ignore */ }
+          setView(savedView);
+          $$('[data-emp-view]', page).forEach((b) => b.addEventListener('click', () => setView(b.dataset.empView)));
           const add = $('#add-emp', page);
           if (add) add.addEventListener('click', () => {
             AP.modal({
