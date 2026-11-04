@@ -38,8 +38,10 @@
     const sp = day.schedule;
     let cls = eff.isWorkingDay ? 'sch-work' : 'sch-off';
     if (sp) cls = sp.kind === 'off' ? 'sch-sp-off' : 'sch-sp-work';
-    const text = eff.isWorkingDay ? `${fa(eff.expectedStart)}–${fa(eff.expectedEnd)}` : (sp ? 'آف' : (eff.isHoliday ? 'تعطیل' : '—'));
-    const title = `${J.format ? J.format(J.isoToJalali(day.date)) : day.date} — ${eff.isWorkingDay ? `${eff.expectedStart} تا ${eff.expectedEnd}` : 'غیرکاری'}${sp ? ' (برنامه‌ی ویژه)' : ''}${sp && sp.note ? ` — ${sp.note}` : ''}`;
+    // شیفت بدون ساعت (isUntimed): روز کاری است ولی expectedStart/End ندارد ⇒ به‌جای «null–null» «ساعت آزاد» نشان بده
+    const timed = !!(eff.expectedStart && eff.expectedEnd);
+    const text = eff.isWorkingDay ? (timed ? `${fa(eff.expectedStart)}–${fa(eff.expectedEnd)}` : 'ساعت آزاد') : (sp ? 'آف' : (eff.isHoliday ? 'تعطیل' : '—'));
+    const title = `${J.format ? J.format(J.isoToJalali(day.date)) : day.date} — ${eff.isWorkingDay ? (timed ? `${eff.expectedStart} تا ${eff.expectedEnd}` : 'روز کاری بدون ساعت مشخص') : 'غیرکاری'}${sp ? ' (برنامه‌ی ویژه)' : ''}${sp && sp.note ? ` — ${sp.note}` : ''}`;
     return { cls, text, title };
   }
 
