@@ -128,8 +128,11 @@
   background: color-mix(in srgb, var(--b) 16%, transparent); border: 1px solid color-mix(in srgb, var(--b) 30%, transparent);
 }
 .rec-break-icon svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.rec-break-fields { display: grid; grid-template-columns: minmax(150px, 1fr) repeat(2, auto); gap: 10px 14px; align-items: end; min-width: 0; }
-.rec-f { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+/* فیلدها در عرض کم به خط بعد می‌شکنند تا روی دکمه‌ی «ذخیره» نیفتند */
+.rec-break-fields { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; min-width: 0; }
+.rec-f { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 0 0 auto; }
+.rec-f-type { flex: 1 1 150px; min-width: 150px; }
+.rec-break-actions { flex-shrink: 0; }
 .rec-f > span { font-size: var(--fs-xs); font-weight: 700; color: var(--hint); }
 .rec-f > b { padding-block: 8px; color: var(--text); font-weight: 800; }
 .rec-f select { width: 100%; }
@@ -169,7 +172,7 @@
   .rec-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .rec-break { grid-template-columns: auto minmax(0, 1fr); }
   .rec-break-actions { grid-column: 1 / -1; justify-content: flex-end; }
-  .rec-break-fields { grid-template-columns: 1fr; }
+  .rec-f { flex: 1 1 100%; }
   .rec-add-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 480px) {
