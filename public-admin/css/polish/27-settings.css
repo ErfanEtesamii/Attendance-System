@@ -137,9 +137,11 @@ body:has(.nav-item.active[data-view="settings"]) #page[aria-busy="true"] .skelet
 
 /* ===== دکمه‌ی شناور «تحلیلگر هوشمند» روی این صفحه: کوچک و بالاتر از نوار ذخیره ===== */
 .st-layout .st-main { padding-bottom: 24px; }
-body:has(.st-layout) .ai-fab { inset-block-end: 92px; width: 44px; height: 44px; padding: 0; justify-content: center; }
+/* نوار ذخیره‌ی چسبان پایین است؛ دکمه‌ی تحلیلگر بالاتر می‌نشیند و «بازگشت به بالا» خودکار از روی همین متغیرها بالای آن قرار می‌گیرد (39-ai-assistant.css). */
+body:has(.st-layout):has(.ai-fab) { --fab-bottom: 92px; --fab-size: 44px; }
+body:has(.st-layout) .ai-fab { width: 44px; height: 44px; padding: 0; justify-content: center; }
 body:has(.st-layout) .ai-fab .ai-fab-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-body:has(.st-layout) .ai-panel { inset-block-end: 148px; height: min(680px, calc(100vh - 170px)); }
+body:has(.st-layout) .ai-panel { height: min(680px, calc(100vh - 170px)); }
 
 /* ===== کاهش حرکت ===== */
 @media (prefers-reduced-motion: reduce) {
