@@ -550,3 +550,49 @@ tr.clickable[data-date], tr.clickable[data-id] { cursor: pointer; }
 .pf-tile.on::after { content: "✓ روی نمودار"; border-style: solid; background: color-mix(in srgb, var(--tone) 16%, transparent); }
 .pf-tile.on .pf-dot { position: relative; }
 .pf-tile.on .pf-dot::after { content: ""; position: absolute; inset: 1px 3px 3px 3px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+
+/* ===== ۳۸-ن) جدول «همه‌ی کارمندان» در موبایل: هر کارمند یک کارت مرتب =====
+   علت مشکل: استایل‌های دسکتاپ .pf-paytable (پس‌زمینه و گوشه‌گردِ هر سلول، nowrap، min-width) روی کارت موبایل هم می‌نشست
+   و سلول‌ها تکه‌تکه و بریده دیده می‌شدند. اینجا همه را برای کارت ریست و چیدمان تازه می‌دهیم. دسکتاپ بدون تغییر. */
+@media (max-width: 600px) {
+  #page .pf-teamtable[data-stack] { padding: 0; border-spacing: 0; width: 100%; }
+  #page .pf-teamtable[data-stack] tbody > tr {
+    grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px 8px; margin: 0 0 10px; padding: 12px;
+    border: 1px solid color-mix(in srgb, var(--brand) 12%, var(--border)); background: color-mix(in srgb, var(--card) 97%, var(--brand));
+  }
+  #page .pf-teamtable[data-stack] tbody > tr:active { background: color-mix(in srgb, var(--brand) 8%, var(--card)); }
+  #page .pf-teamtable[data-stack] tbody > tr > td {
+    grid-column: span 3; min-width: 0; padding: 0; white-space: normal; background: none; border: 0; border-radius: 0; align-items: flex-start; gap: 4px;
+  }
+  #page .pf-teamtable[data-stack] tbody > tr > td::before { color: var(--hint); font-size: 11px; font-weight: 700; }
+  #page .pf-teamtable[data-stack] tbody > tr:hover > td { background: none; }
+  #page .pf-teamtable[data-stack] tbody > tr > td[colspan] { grid-column: 1 / -1; }
+
+  /* ۱ کارمند: سرِ کارت */
+  #page .pf-teamtable[data-stack] .pf-person { gap: 10px; min-width: 0; width: 100%; }
+  #page .pf-teamtable[data-stack] .pf-person > div { min-width: 0; flex: 1; }
+  #page .pf-teamtable[data-stack] .pf-person b { display: block; font-size: 15px; overflow-wrap: anywhere; }
+  #page .pf-teamtable[data-stack] .pf-rankdot { order: 2; margin-inline-start: auto; }
+
+  /* ۲ ساعت مفید: نوار تمام‌عرض */
+  #page .pf-teamtable[data-stack] tbody > tr > td:nth-child(2) { grid-column: 1 / -1; order: 1; }
+  #page .pf-teamtable[data-stack] .pf-usefulcell { width: 100%; min-width: 0; align-items: stretch; gap: 6px; }
+  #page .pf-teamtable[data-stack] .pf-usefulcell strong { font-size: 15px; }
+  #page .pf-teamtable[data-stack] .pf-usefulcell .pf-meter { min-width: 0; width: 100%; margin: 0; }
+
+  /* ۴ حضور | ۵ وقت‌شناسی | ۶ تحقق: سه‌تایی در یک ردیف */
+  #page .pf-teamtable[data-stack] tbody > tr > td:nth-child(4),
+  #page .pf-teamtable[data-stack] tbody > tr > td:nth-child(5),
+  #page .pf-teamtable[data-stack] tbody > tr > td:nth-child(6) { grid-column: span 2; order: 2; }
+  /* ۳ تغییر | ۷ میانگین ورود | ۸ اضافه‌کاری | ۹ کسری | ۱۰ تأخیر | ۱۱ غیبت: دوتایی */
+  #page .pf-teamtable[data-stack] tbody > tr > td:nth-child(n+7):nth-child(-n+11),
+  #page .pf-teamtable[data-stack] tbody > tr > td:nth-child(3) { order: 3; }
+  #page .pf-teamtable[data-stack] .pf-rate, #page .pf-teamtable[data-stack] .pf-tag, #page .pf-teamtable[data-stack] .pf-delta,
+  #page .pf-teamtable[data-stack] .pf-ratechip { max-width: 100%; white-space: normal; text-align: start; line-height: 1.6; }
+
+  /* ۱۲ روند: خط نمودار تمام‌عرض در پایین کارت */
+  #page .pf-teamtable[data-stack] tbody > tr > td:nth-child(12) { grid-column: 1 / -1; order: 4; padding-top: 8px; border-top: 1px dashed color-mix(in srgb, var(--hint) 22%, transparent); }
+  #page .pf-teamtable[data-stack] tbody > tr > td:nth-child(12):empty { display: none; }
+  #page .pf-teamtable[data-stack] .pf-spark { width: 100%; height: 34px; }
+  #page .pf-teamtable[data-stack] .pf-spark polyline { vector-effect: non-scaling-stroke; }
+}

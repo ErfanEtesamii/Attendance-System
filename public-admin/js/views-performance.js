@@ -202,7 +202,7 @@
     const step = W / (vals.length - 1);
     const pts = vals.map((v, i) => [(W - i * step).toFixed(1), (H - 3 - (v / max) * (H - 8)).toFixed(1)]);
     const line = pts.map((p) => p.join(',')).join(' ');
-    return `<svg class="pf-spark" viewBox="0 0 ${W} ${H}" aria-hidden="true"><polygon class="pf-spark-area" points="${line} 0,${H} ${W},${H}" /><polyline points="${line}" /></svg>`;
+    return `<svg class="pf-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><polygon class="pf-spark-area" points="${line} 0,${H} ${W},${H}" /><polyline points="${line}" /></svg>`;
   }
 
   function leaderCard(title, icon, list, valueOf, textOf, tone) {
