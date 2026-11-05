@@ -4,13 +4,13 @@
 // و اسکوپ نقش را تعیین نمی‌کند؛ فقط فیلد به ستون نگاشت می‌کند.
 //
 // قالب ثابت: هر شیت با «تعریف ستون‌ها» (header، توضیح، تابع مقدار) ساخته می‌شود و شیت «راهنما» دقیقاً از همین تعریف‌ها تولید می‌شود
-// تا راهنما هرگز از ستون‌های واقعی عقب نیفتد. ترتیب شیت‌ها: گزارش ماهانه، مرخصی و مأموریت، مانده مرخصی، ریز روزانه، مشخصات گزارش، راهنما.
+// تا راهنما هرگز از ستون‌های واقعی عقب نیفتد. ترتیب شیت‌ها: گزارش ماهانه، خلاصه دپارتمان، مرخصی و مأموریت، مانده مرخصی، ریز روزانه، مشخصات گزارش، راهنما.
 // مدت‌ها هم «دقیقه» (عدد؛ قابل جمع در اکسل) و هم «ساعت:دقیقه» (متن؛ برای خواندن).
 
 const { isoDateToJalaliString } = require('../utils/jalali');
 const { minutesToHHMM } = require('../api/routes/admin/common');
 
-const SHEET = { main: 'گزارش ماهانه', leave: 'مرخصی و مأموریت', balances: 'مانده مرخصی', daily: 'ریز روزانه', meta: 'مشخصات گزارش', guide: 'راهنما' };
+const SHEET = { main: 'گزارش ماهانه', dept: 'خلاصه دپارتمان', leave: 'مرخصی و مأموریت', balances: 'مانده مرخصی', daily: 'ریز روزانه', meta: 'مشخصات گزارش', guide: 'راهنما' };
 
 const DAY_STATUS = {
   present: 'حاضر', late: 'تأخیر', incomplete: 'ناقص (بدون خروج)', absent: 'غایب', leave: 'مرخصی', mission: 'مأموریت',
@@ -21,6 +21,10 @@ const APPROVAL = { not_required: 'نیاز به تأیید ندارد', none: '�
 const FLAG = {
   missing_checkout: 'بدون خروج', invalid_time: 'زمان نامعتبر', long_open_break: 'استراحت بسته‌نشده', outside_shift: 'خارج از شیفت',
 };
+
+const WEEKDAYS = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
+const weekday = (iso) => { try { return iso ? WEEKDAYS[(new Date(`${iso}T00:00:00Z`).getUTCDay() + 1) % 7] : ''; } catch (_) { return ''; } };
+const pct = (a, b) => (b > 0 ? Math.round((a / b) * 1000) / 10 : '');
 
 const hhmm = (m) => (m === null || m === undefined || Number.isNaN(m) ? '' : minutesToHHMM(m));
 const num = (v) => (v === null || v === undefined || Number.isNaN(v) ? '' : v);
@@ -60,7 +64,47 @@ const MAIN_COLUMNS = [
   ['روز دورکاری تأییدشده', 'روزهایی که حداقل یک نشست دورکاری تأییدشده دارند (جدا از ستون‌های بالا نیست؛ در «روز حضور» هم شمرده شده‌اند). نشست‌های منتظر/ردشده شمرده نمی‌شوند.', (u) => num(u.remote && u.remote.approvedDays)],
   ['دقیقه دورکاری تأییدشده', 'مجموع مدت نشست‌های دورکاری تأییدشده (دقیقه).', (u) => num(u.remote && u.remote.approvedMinutes)],
   ['ساعت دورکاری تأییدشده (ساعت:دقیقه)', 'همان «دقیقه دورکاری تأییدشده» به‌صورت ساعت:دقیقه.', (u) => (u.remote ? hhmm(u.remote.approvedMinutes) : '')],
+  // شاخص‌های مشتق (انتهای ستون‌ها؛ فقط از ستون‌های بالا حساب می‌شوند، برای ردیف جمع هم معتبرند)
+  ['درصد حضور', 'روز حضور ÷ (روز حضور + روز غیبت).', (u) => pct(u.attendance.presentDays, u.attendance.presentDays + u.attendance.absentDays)],
+  ['درصد وقت‌شناسی', '(روز حضور − روز تأخیر) ÷ روز حضور.', (u) => pct(u.attendance.presentDays - u.attendance.lateDays, u.attendance.presentDays)],
+  ['درصد تحقق ساعت کاری', 'دقیقه مفید ÷ دقیقه مورد انتظار.', (u) => pct(u.time.effectiveMinutes, u.time.expectedMinutes)],
+  ['میانگین مفید هر روز حضور (دقیقه)', 'دقیقه مفید ÷ روز حضور.', (u) => (u.attendance.presentDays ? Math.round(u.time.effectiveMinutes / u.attendance.presentDays) : '')],
+  ['میانگین تأخیر هر روز تأخیر (دقیقه)', 'دقیقه تأخیر ÷ روز تأخیر.', (u) => (u.attendance.lateDays ? Math.round(u.time.lateMinutes / u.attendance.lateDays) : '')],
+  ['اضافه‌کاری قابل‌پرداخت (ساعت:دقیقه)', 'همان «اضافه‌کاری قابل‌پرداخت (دقیقه)» به‌صورت ساعت:دقیقه.', (u) => hhmm(u.overtime.payableMinutes)],
+  ['مجموع دقیقه مرخصی و مأموریت', 'جمع دقیقه‌ی پنجره‌های مرخصی/مأموریت همه‌ی نوع‌ها.', (u) => (u.leave && u.leave.byType ? u.leave.byType.reduce((t, x) => t + (x.minutes || 0), 0) : '')],
 ];
+
+const DEPT_COLUMNS = [
+  ['دپارتمان', 'نام دپارتمان (بدون دپارتمان جداست).', (r) => r.department],
+  ['تعداد کارمند', 'کارمندان این گزارش در دپارتمان.', (r) => r.employees],
+  ['روز حضور', 'مجموع روز حضور.', (r) => r.present],
+  ['روز غیبت', 'مجموع روز غیبت.', (r) => r.absent],
+  ['روز مرخصی', 'مجموع روز مرخصی.', (r) => r.leave],
+  ['روز تأخیر', 'مجموع روز تأخیر.', (r) => r.lateDays],
+  ['دقیقه تأخیر', 'مجموع دقیقه تأخیر.', (r) => r.lateMin],
+  ['دقیقه مورد انتظار', 'مجموع.', (r) => r.expected],
+  ['دقیقه مفید', 'مجموع.', (r) => r.effective],
+  ['ساعت مفید (ساعت:دقیقه)', 'همان «دقیقه مفید» به‌صورت ساعت:دقیقه.', (r) => hhmm(r.effective)],
+  ['دقیقه کسری', 'مجموع.', (r) => r.shortfall],
+  ['اضافه‌کاری قابل‌پرداخت (دقیقه)', 'مجموع.', (r) => r.otPayable],
+  ['درصد حضور', 'حضور ÷ (حضور + غیبت).', (r) => pct(r.present, r.present + r.absent)],
+  ['درصد وقت‌شناسی', '(حضور − تأخیر) ÷ حضور.', (r) => pct(r.present - r.lateDays, r.present)],
+  ['درصد تحقق ساعت کاری', 'مفید ÷ مورد انتظار.', (r) => pct(r.effective, r.expected)],
+  ['میانگین مفید هر نفر (دقیقه)', 'دقیقه مفید ÷ تعداد کارمند.', (r) => (r.employees ? Math.round(r.effective / r.employees) : '')],
+];
+
+function deptRows(users) {
+  const m = new Map();
+  for (const u of users) {
+    const k = (u.user.department || '').trim() || 'بدون دپارتمان';
+    const d = m.get(k) || { department: k, employees: 0, present: 0, absent: 0, leave: 0, lateDays: 0, lateMin: 0, expected: 0, effective: 0, shortfall: 0, otPayable: 0 };
+    d.employees += 1; d.present += u.attendance.presentDays || 0; d.absent += u.attendance.absentDays || 0; d.leave += u.leave.leaveDays || 0;
+    d.lateDays += u.attendance.lateDays || 0; d.lateMin += u.time.lateMinutes || 0; d.expected += u.time.expectedMinutes || 0;
+    d.effective += u.time.effectiveMinutes || 0; d.shortfall += u.time.shortfallMinutes || 0; d.otPayable += u.overtime.payableMinutes || 0;
+    m.set(k, d);
+  }
+  return [...m.values()].sort((a, b) => b.effective - a.effective);
+}
 
 const LEAVE_COLUMNS = [
   ['نام کارمند', 'نام کارمند.', (r) => r.fullName],
@@ -106,6 +150,9 @@ const DAILY_COLUMNS = [
   ['دورکاری', 'اگر آن روز نشست دورکاری تأییدشده داشته «دورکاری» می‌نویسد.', (r) => (r.d.viaRemote ? 'دورکاری' : '')],
   ['دقیقه دورکاری تأییدشده', 'مدت نشست‌های دورکاری تأییدشده‌ی آن روز (دقیقه).', (r) => (r.d.viaRemote ? num(r.d.remoteMinutes) : '')],
   ['استراحت بدون حقوق (دقیقه)', 'بخش بدون حقوقِ استراحت‌های آن روز (از ساعت مفید کم شده).', (r) => (r.d.flags || []).includes('missing_checkout') ? '' : num(r.d.breakUnpaid)],
+  ['روز هفته', 'نام روز هفته.', (r) => weekday(r.d.date)],
+  ['دقیقه مأموریت', 'مدت مأموریت تأییدشده‌ی آن روز (دقیقه)؛ خالی اگر نبوده.', (r) => num(r.d.missionMinutes)],
+  ['دقیقه مفید با مأموریت', 'ساعت مفید + مأموریت؛ مبنای حقوق/عملکرد. خالی برای روز ناقص.', (r) => ((r.d.flags || []).includes('missing_checkout') ? '' : num(r.d.effectiveWithMission))],
 ];
 
 function sheetFrom(name, columns, rows) {
@@ -140,6 +187,7 @@ function buildMonthlySheets(payload, opts = {}) {
     for (const b of u.balances || []) balanceRows.push({ ...id, b });
     for (const d of u.days || []) dailyRows.push({ ...id, d });
   }
+  const dept = sheetFrom(SHEET.dept, DEPT_COLUMNS, deptRows(users));
   const leave = sheetFrom(SHEET.leave, LEAVE_COLUMNS, leaveRows);
   const balances = sheetFrom(SHEET.balances, BALANCE_COLUMNS, balanceRows);
   const daily = sheetFrom(SHEET.daily, DAILY_COLUMNS, dailyRows);
@@ -170,14 +218,14 @@ function buildMonthlySheets(payload, opts = {}) {
   };
 
   const guideRows = [];
-  for (const [sheetName, cols] of [[SHEET.main, MAIN_COLUMNS], [SHEET.leave, LEAVE_COLUMNS], [SHEET.balances, BALANCE_COLUMNS], [SHEET.daily, DAILY_COLUMNS]]) {
+  for (const [sheetName, cols] of [[SHEET.main, MAIN_COLUMNS], [SHEET.dept, DEPT_COLUMNS], [SHEET.leave, LEAVE_COLUMNS], [SHEET.balances, BALANCE_COLUMNS], [SHEET.daily, DAILY_COLUMNS]]) {
     for (const c of cols) guideRows.push([sheetName, c[0], c[1]]);
   }
   guideRows.push([SHEET.main, 'ردیف «جمع»', 'جمع ستون‌های عددی همه‌ی کارمندان نمایش‌داده‌شده (ستون‌های متنی خالی‌اند).']);
   guideRows.push([SHEET.daily, 'خالی بودن مقدار', 'مقدار خالی یعنی آن روز/ستون معنا ندارد (مثلاً مفید برای روز تعطیل) نه صفر.']);
   const guide = { name: SHEET.guide, headers: ['شیت', 'ستون', 'تعریف'], rows: guideRows };
 
-  return [main, leave, balances, daily, meta, guide];
+  return [main, dept, leave, balances, daily, meta, guide];
 }
 
-module.exports = { buildMonthlySheets, SHEET, MAIN_COLUMNS };
+module.exports = { buildMonthlySheets, SHEET, MAIN_COLUMNS, DAY_STATUS };

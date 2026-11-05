@@ -181,7 +181,7 @@
     ].join('');
     const html = `
       <div class="view-header"><div><h2>عملکرد کارمندان</h2><div class="sub">${esc(rangeLabel(data.range))} — روی هر کارمند بزنید تا گزارش کامل او را ببینید.</div></div>
-        <div class="pf-head-actions"><label class="field pf-pick"><span>دپارتمان</span><select id="pf-dept"><option value="">همه</option>${deps.map((x) => `<option ${x === ui.dept ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label><button type="button" class="btn ghost" id="pf-team-csv">${AP.icon('download')} CSV</button></div></div>
+        <div class="pf-head-actions"><label class="field pf-pick"><span>دپارتمان</span><select id="pf-dept"><option value="">همه</option>${deps.map((x) => `<option ${x === ui.dept ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label><button type="button" class="btn ghost" id="pf-team-csv">${AP.icon('download')} CSV</button>${AP.exportBar({ path: '/api/admin/performance/export', params: { range: ui.range, from: ui.range === 'custom' ? ui.from : '', to: ui.range === 'custom' ? ui.to : '', department: ui.dept }, formats: [['xlsx', 'اکسل کامل (چندشیتی)']], print: false })}</div></div>
       ${rangeBar(data.range)}
       <p class="pf-tiles-hint">روی هر کارت بزنید تا آن شاخص روی نمودار نمایش داده یا از آن حذف شود.</p>
       <div class="pf-tiles pf-tiles-team" role="group" aria-label="شاخص‌های تیم؛ برای نمایش روی نمودار کلیک کنید">${tiles}</div>
@@ -615,7 +615,7 @@
       ].join('');
       const html = `
         <div class="view-header"><div><h2>حقوق و دستمزد</h2><div class="sub">${esc(data.label)} — حقوق = نرخ ساعتی × ساعت مفید (همان فرمول «کارکرد تخمینی» کارمند). فقط ادمین این صفحه را می‌بیند.</div></div>
-          <button type="button" class="btn ghost" id="pay-csv">${AP.icon('download')} خروجی CSV</button></div>
+          <div class="header-actions"><button type="button" class="btn ghost" id="pay-csv">${AP.icon('download')} خروجی CSV</button>${AP.exportBar({ path: '/api/admin/payroll/export', params: { year: pay.year, month: pay.month, department: pay.department }, formats: [['xlsx', 'اکسل کامل حقوق (چندشیتی)']], print: false })}</div></div>
         <form class="filters" id="pay-filters">
           <label class="field"><span>سال</span><input type="number" name="year" min="1300" max="1500" value="${esc(pay.year)}" /></label>
           <label class="field"><span>ماه</span><select name="month">${J.MONTH_NAMES.map((n, i) => `<option value="${i + 1}" ${i + 1 === Number(pay.month) ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>

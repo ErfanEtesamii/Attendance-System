@@ -341,6 +341,37 @@ function teamOverview({ users, range, now }) {
   };
 }
 
+// ---------- API: جزئیات کامل هر کارمند در یک بازه (برای خروجی اکسل) ----------
+// همان محاسبه‌ی employeePerformance برای چند نفر (یک‌بار بارگذاری روزها)، با ریز تسک/مرخصی/اعتراض و (اختیاری) حقوق.
+function teamDetailed({ users, range, now, includePayroll = false }) {
+  const nowDate = now === undefined ? new Date() : new Date(now);
+  const ctx = dayService.loadContext();
+  const { byUser, today } = collectDays(users, range.previous.from, range.to, nowDate);
+  const recs = recordsMap(users.map((u) => u.id), range.from, range.to);
+  const people = users.map((u) => {
+    const dayMap = byUser.get(u.id);
+    const cur = rowsFor(u, dayMap, range.from, range.to, today, ctx.settings);
+    const prev = rowsFor(u, dayMap, range.previous.from, range.previous.to, today, ctx.settings, { tasks: false });
+    attachTimes(new Map([[u.id, cur]]), recs, ctx.timezone);
+    const out = {
+      user: { id: u.id, fullName: u.full_name, personnelCode: u.personnel_code, department: u.department || null, role: u.role, isActive: !!u.is_active },
+      series: cur,
+      totals: sumMetrics(cur),
+      previousTotals: sumMetrics(prev),
+      insights: insightsLib.computeInsights(cur, today),
+      tasks: insightsLib.loadTasks(u, range.from, range.to),
+      leaves: insightsLib.loadLeaves(u, range.from, range.to),
+      disputes: insightsLib.loadDisputes(u, range.from, range.to),
+    };
+    if (includePayroll) {
+      out.payroll = payrollOfRows(u, dayMap, range.from, range.to);
+      out.payroll.previousAmountToman = payrollOfRows(u, dayMap, range.previous.from, range.previous.to).amountToman;
+    }
+    return out;
+  });
+  return { range: { key: range.key, from: range.from, to: range.to, days: range.days, previous: range.previous }, today, timezone: ctx.timezone, people };
+}
+
 // ---------- حقوق ----------
 function openDisputeDates(userId, from, to) {
   return new Set(disputeRepository.listOpenInRange(from, to).filter((d) => d.user_id === userId).map((d) => d.record_date).filter(Boolean));
@@ -447,5 +478,5 @@ function monthlyPayrollCompared({ users, year, month, now, withDays = false }) {
 
 module.exports = {
   PerformanceError, PRESETS, resolveRange, monthsCovering, metricsOfDay, hourlyOfDay,
-  employeePerformance, dayInspection, teamOverview, monthlyPayroll, monthlyPayrollCompared, payrollOfRows,
+  employeePerformance, dayInspection, teamOverview, teamDetailed, monthlyPayroll, monthlyPayrollCompared, payrollOfRows,
 };

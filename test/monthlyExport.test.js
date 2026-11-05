@@ -32,7 +32,7 @@ describe('شیت‌های xlsx ماهانه (S5-4a)', () => {
 
   test('ترتیب و ساختار شیت‌ها؛ ردیف‌ها با سرستون هم‌طول؛ ردیف جمع', () => {
     const sheets = buildMonthlySheets(payload, { generatedAt: NOW });
-    assert.deepEqual(sheets.map((s) => s.name), [SHEET.main, SHEET.leave, SHEET.balances, SHEET.daily, SHEET.meta, SHEET.guide]);
+    assert.deepEqual(sheets.map((s) => s.name), [SHEET.main, SHEET.dept, SHEET.leave, SHEET.balances, SHEET.daily, SHEET.meta, SHEET.guide]);
     for (const s of sheets) for (const r of s.rows) assert.equal(r.length, s.headers.length, s.name);
     const main = sheets[0];
     assert.equal(main.rows.length, 3, 'دو کارمند + جمع');
@@ -47,8 +47,8 @@ describe('شیت‌های xlsx ماهانه (S5-4a)', () => {
     assert.equal(total[0], 'جمع');
     assert.equal(total[col('روز حضور')], 2);
     assert.equal(total[col('دقیقه مفید')], payload.totals.time.effectiveMinutes);
-    assert.equal(sheets[3].rows.length, 62, 'ریز روزانه: ۲ کاربر × ۳۱ روز');
-    const day = sheets[3].rows.find((r) => r[2] === '2026-08-25' && r[0] === 'الف');
+    assert.equal(sheets[4].rows.length, 62, 'ریز روزانه: ۲ کاربر × ۳۱ روز');
+    const day = sheets[4].rows.find((r) => r[2] === '2026-08-25' && r[0] === 'الف');
     assert.equal(day[3], '1405/06/03'.replace(/\//g, '/'), 'تاریخ شمسی');
     assert.equal(day[4], 'تأخیر');
   });
@@ -57,7 +57,7 @@ describe('شیت‌های xlsx ماهانه (S5-4a)', () => {
     const sheets = buildMonthlySheets(payload);
     const guide = sheets.find((s) => s.name === SHEET.guide);
     assert.deepEqual(guide.headers, ['شیت', 'ستون', 'تعریف']);
-    for (const s of sheets.filter((x) => [SHEET.main, SHEET.leave, SHEET.balances, SHEET.daily].includes(x.name))) {
+    for (const s of sheets.filter((x) => [SHEET.main, SHEET.dept, SHEET.leave, SHEET.balances, SHEET.daily].includes(x.name))) {
       for (const h of s.headers) {
         const hit = guide.rows.find((g) => g[0] === s.name && g[1] === h);
         assert.ok(hit && hit[2].length > 5, `${s.name} / ${h}`);

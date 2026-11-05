@@ -151,6 +151,9 @@ router.get('/admin/attendance', requirePermission('attendance.read'), (req, res)
   res.json({ from, to, count: rows.length, records: rows });
 });
 
+const EXPORT_WEEKDAYS = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
+const EXPORT_STATUS = { normal: 'عادی', late: 'تأخیر', incomplete: 'ناقص (بدون خروج)', leave: 'مرخصی', holiday: 'تعطیل' };
+
 router.get('/admin/attendance/export', requirePermission('attendance.read'), (req, res) => {
   const { from, to, records, userMap } = filteredAttendance(req);
   const fmt = (iso) => (iso ? new Date(iso).toLocaleString('fa-IR') : '');
@@ -162,6 +165,7 @@ router.get('/admin/attendance/export', requirePermission('attendance.read'), (re
       r.check_out_ip || '', e.breakMinutes, e.summary.effectiveMinutes ?? '', e.summary.lateMinutes,
       e.summary.earlyLeaveMinutes, e.summary.overtimeMinutes, r.status,
       ...(() => { const s = e.summary.effectiveMinutes === null ? null : dayService.breakSplit(r); return [s ? s.paid : '', s ? s.unpaid : '']; })(), // C1
+      EXPORT_WEEKDAYS[(new Date(`${r.record_date}T00:00:00Z`).getUTCDay() + 1) % 7], EXPORT_STATUS[r.status] || r.status || '', e.user?.role || '', r.created_at || '', r.updated_at || '',
     ];
   });
   // S5-1c: audit درست قبل از ارسال بدنه و با قالب واقعاً تحویل‌شده (csv/xlsx/fallback/streamed)
@@ -171,7 +175,8 @@ router.get('/admin/attendance/export', requirePermission('attendance.read'), (re
     `attendance-records_${from}_${to}.csv`,
     ['نام', 'کد پرسنلی', 'دپارتمان', 'تاریخ', 'تاریخ شمسی', 'ورود', 'IP ورود', 'خروج', 'IP خروج',
       'دقیقه استراحت', 'دقیقه مفید', 'دقیقه تأخیر', 'دقیقه خروج زودهنگام', 'دقیقه اضافه‌کاری', 'وضعیت',
-      'استراحت با حقوق (دقیقه)', 'استراحت بدون حقوق (دقیقه)'],
+      'استراحت با حقوق (دقیقه)', 'استراحت بدون حقوق (دقیقه)',
+      'روز هفته', 'وضعیت (فارسی)', 'نقش', 'زمان ایجاد رکورد', 'آخرین ویرایش'],
     rows,
     { onExport: (info) => audit(req, 'attendance_exported', { from, to, count: rows.length, ...exportAuditFields(info) }) }
   );

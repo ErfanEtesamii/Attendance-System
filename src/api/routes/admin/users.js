@@ -17,6 +17,7 @@ const lateLimitService = require('../../../services/lateLimitService');
 const settingsRepository = require('../../../repositories/settingsRepository');
 const { getCalendarDay } = require('../../../engine/calendarService');
 const { todayDateString } = require('../../../utils/serverTime');
+const { isoDateToJalaliString } = require('../../../utils/jalali');
 const { sendMessage } = require('../../../bot/notifier');
 const { sendTable, exportAuditFields } = require('../../../utils/xlsx'); // S5-1a: پیش‌فرض CSV؛ ?format=xlsx ⇒ xlsx (بدون exceljs ⇒ CSV + اعلام fallback)
 const { buildClearCookie } = require('../../../utils/sessionCookie');
@@ -142,8 +143,10 @@ function filterUsersForExport(users, query) {
 
 router.get('/admin/users/export', requirePermission('users.read'), (req, res) => {
   const allowedIds = scopedUserIds(req.adminUser);
-  let users = usersRepository.listUsers({});
+  const allUsers = usersRepository.listUsers({});
+  let users = allUsers;
   if (allowedIds !== null) users = users.filter((u) => allowedIds.includes(u.id));
+  const byId = new Map(allUsers.map((x) => [x.id, x]));
   users = filterUsersForExport(users, req.query); // S5-5b: همان فیلترهای صفحه‌ی کارمندان
 
   const rows = users.map((u) => [
@@ -153,13 +156,17 @@ router.get('/admin/users/export', requirePermission('users.read'), (req, res) =>
     u.role,
     u.telegram_user_id || '',
     u.is_active ? 'فعال' : 'غیرفعال',
+    u.id,
+    (u.manager_id && byId.get(u.manager_id) && byId.get(u.manager_id).full_name) || '',
+    u.created_at || '',
+    u.created_at ? (() => { try { return isoDateToJalaliString(String(u.created_at).slice(0, 10)); } catch (_) { return ''; } })() : '',
   ]);
 
   return sendTable(
     req,
     res,
     'employees.csv',
-    ['نام کارمند', 'کد پرسنلی', 'دپارتمان', 'نقش', 'آیدی تلگرام', 'وضعیت'],
+    ['نام کارمند', 'کد پرسنلی', 'دپارتمان', 'نقش', 'آیدی تلگرام', 'وضعیت', 'شناسه‌ی سیستمی', 'مدیر مستقیم', 'زمان ایجاد', 'تاریخ ایجاد (شمسی)'],
     rows,
     // S5-1c: خروجی فهرست کارمندان (شامل آیدی تلگرام) تا حالا audit نداشت
     { onExport: (info) => audit(req, 'users_exported', { count: rows.length, ...exportAuditFields(info) }) }
