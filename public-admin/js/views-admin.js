@@ -263,8 +263,6 @@
   function setHint(it) {
     const bits = [];
     if (it.type === 'number' && (it.min !== undefined || it.max !== undefined)) bits.push(`بازه: ${it.min !== undefined ? it.min : '…'} تا ${it.max !== undefined ? it.max : '…'}`);
-    if (it.type === 'cron') bits.push('الگوی cron پنج‌بخشی، مثل 0 8 * * *');
-    if (it.type === 'timezone') bits.push('نام IANA، مثل Asia/Tehran');
     return bits.join(' · ');
   }
 
