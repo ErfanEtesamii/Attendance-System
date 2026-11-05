@@ -145,3 +145,185 @@ body:has(.st-layout) .ai-panel { inset-block-end: 148px; height: min(680px, calc
 @media (prefers-reduced-motion: reduce) {
   .st-layout .st-field, .st-layout .st-search input, .st-layout .st-ctl :where(input, select) { transition: none; }
 }
+
+/* =====================================================================
+   کارت تنظیم v2 (بخش ۱): سربرگ با آیکون، توضیح خوانا، «نکته‌ی بیشتر» به‌شکل کادر، پاورقی با چیپ
+   ساختار: .st-head (آیکون + عنوان + توضیح) ← .st-ctl ← .st-aux (بازه + نکته) ← .st-hint ← .st-foot
+   ===================================================================== */
+.st-layout .st-field {
+  position: relative; gap: 14px; padding: 16px 18px 14px; border-radius: 20px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--brand) 4%, var(--card)), var(--card) 46%);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--brand) 6%, transparent);
+  transition: border-color var(--motion-fast), background-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+}
+.st-layout .st-field:hover { border-color: color-mix(in srgb, var(--brand) 34%, var(--border)); box-shadow: 0 14px 26px -22px color-mix(in srgb, var(--brand) 60%, transparent); transform: translateY(-1px); }
+.st-layout .st-field:focus-within { border-color: var(--brand); box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 14%, transparent); transform: none; }
+.st-layout .st-field.dirty { border-color: var(--yellow); background: linear-gradient(180deg, color-mix(in srgb, var(--yellow) 10%, var(--card)), var(--card) 60%); }
+
+/* سربرگ */
+.st-layout .st-head { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+.st-layout .st-ico {
+  flex: none; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 14px;
+  color: var(--brand); background: color-mix(in srgb, var(--brand) 10%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--brand) 16%, transparent);
+  transition: background-color var(--motion-fast), color var(--motion-fast), border-color var(--motion-fast);
+}
+.st-layout .st-ico svg { width: 20px; height: 20px; }
+.st-layout .st-field.changed .st-ico { color: var(--blue); background: color-mix(in srgb, var(--blue) 12%, var(--card)); border-color: color-mix(in srgb, var(--blue) 28%, transparent); }
+.st-layout .st-field.dirty .st-ico { color: var(--yellow); background: var(--yellow-soft); border-color: color-mix(in srgb, var(--yellow) 35%, transparent); }
+.st-layout .st-titles { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.st-layout .st-label { align-items: center; flex-wrap: wrap; gap: 8px; font-size: var(--fs-md); font-weight: 800; line-height: 1.5; }
+.st-layout .st-field.changed .st-label > span:first-child::after { content: none; }
+.st-layout .st-tag {
+  display: inline-flex; align-items: center; gap: 5px; width: auto; height: auto; margin-inline-start: 0; padding: 2px 10px;
+  border-radius: 999px; font-size: 11px; font-weight: 700; line-height: 1.6; overflow: visible;
+  color: var(--yellow); background: var(--yellow-soft); border: 1px solid color-mix(in srgb, var(--yellow) 30%, transparent);
+}
+.st-layout .st-tag::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.st-layout .st-tag[hidden] { display: none; }
+.st-layout .st-sub { margin: 0; color: var(--hint); font-size: var(--fs-sm); font-weight: 500; line-height: 1.85; text-wrap: pretty; }
+
+/* کنترل */
+.st-layout .st-ctl :where(input:not([type="checkbox"]), select) { background: var(--card-2); border-color: transparent; font-weight: 600; }
+.st-layout .st-ctl :where(input:not([type="checkbox"]), select):hover { border-color: color-mix(in srgb, var(--brand) 36%, transparent); }
+.st-layout .st-ctl :where(input:not([type="checkbox"]), select):focus-visible { background: var(--card); }
+.st-layout .st-ctl .st-switch-wrap { padding: 4px 14px 4px 4px; border-radius: 999px; background: var(--card-2); font-weight: 700; }
+
+/* ردیف کمکی: بازه + دکمه‌ی نکته */
+.st-layout .st-aux { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0; }
+.st-layout .st-meta, .st-layout .st-more {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 3px 12px; margin: 0;
+  border-radius: 999px; font-size: 12px; font-weight: 700; line-height: 1.5; text-decoration: none;
+}
+.st-layout .st-meta { color: var(--hint); background: var(--card-2); border: 1px solid transparent; }
+.st-layout .st-meta svg, .st-layout .st-more svg { width: 14px; height: 14px; flex: none; }
+.st-layout .st-more {
+  align-self: auto; cursor: pointer; color: var(--brand); font-family: inherit;
+  background: color-mix(in srgb, var(--accent) 14%, var(--card)); border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
+  transition: background-color var(--motion-fast), border-color var(--motion-fast);
+}
+.st-layout .st-more svg { color: color-mix(in srgb, var(--accent) 80%, var(--brand)); }
+.st-layout .st-more:hover { background: color-mix(in srgb, var(--accent) 24%, var(--card)); }
+.st-layout .st-more[aria-expanded="true"] { background: color-mix(in srgb, var(--brand) 10%, var(--card)); border-color: color-mix(in srgb, var(--brand) 30%, transparent); }
+
+/* کادر نکته */
+.st-layout .st-hint.open {
+  display: flex; align-items: stretch; gap: 12px; padding: 12px 14px; border-radius: 14px;
+  background: color-mix(in srgb, var(--accent) 9%, var(--card)); border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  animation: st-tip-in .2s ease both;
+}
+.st-layout .st-tip-bar { flex: none; width: 3px; border-radius: 3px; background: var(--accent); }
+.st-layout .st-hint p { margin: 0; color: var(--text); font-size: var(--fs-sm); line-height: 1.95; text-wrap: pretty; }
+@keyframes st-tip-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+/* پاورقی */
+.st-layout .st-foot { padding-top: 12px; border-top: 1px dashed color-mix(in srgb, var(--brand) 20%, var(--border)); font-weight: 600; }
+.st-layout .st-def { display: inline-flex; align-items: center; gap: 8px; color: var(--hint); font-size: 12px; }
+.st-layout .st-def-k { font-weight: 600; }
+.st-layout .st-def bdi { padding: 2px 10px; border-radius: 999px; color: var(--text); font-weight: 700; background: var(--card-2); font-variant-numeric: tabular-nums; }
+.st-layout .st-foot .st-reset {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 3px 12px; border-radius: 999px; font-size: 12px;
+  color: var(--blue); border: 1px solid color-mix(in srgb, var(--blue) 30%, transparent); background: color-mix(in srgb, var(--blue) 8%, var(--card));
+}
+.st-layout .st-foot .st-reset svg { width: 14px; height: 14px; }
+.st-layout .st-foot .st-reset:hover { background: color-mix(in srgb, var(--blue) 16%, var(--card)); }
+
+@media (max-width: 600px) {
+  .st-layout .st-field { padding: 14px; border-radius: 18px; }
+  .st-layout .st-ico { width: 36px; height: 36px; border-radius: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .st-layout .st-field, .st-layout .st-ico, .st-layout .st-more { transition: none; }
+  .st-layout .st-field:hover { transform: none; }
+  .st-layout .st-hint.open { animation: none; }
+}
+
+/* =====================================================================
+   پوسته‌ی تنظیمات v2 (بخش ۲): معرفی صفحه، ناوبری، سربرگ بخش، هشدار و نوار ذخیره
+   ===================================================================== */
+.view-header.st-page-header:has(+ .st-layout) { align-items: flex-start; margin-bottom: var(--space-4); }
+.view-header.st-page-header:has(+ .st-layout) h2 { margin-bottom: 4px; }
+.view-header.st-page-header:has(+ .st-layout) .st-page-intro {
+  margin: 0; max-width: 82ch; color: var(--hint); font-size: var(--fs-sm); font-weight: 500; line-height: 1.9; text-wrap: pretty;
+}
+
+/* ناوبری: آیکون و برچسب هم‌تراز، نشان فعال بدون جابه‌جایی */
+.st-layout .st-nav-item { position: relative; gap: 8px; overflow: hidden; text-align: start; transition: color var(--motion-fast), background-color var(--motion-fast); }
+.st-layout .st-nav-item::before { content: ""; position: absolute; inset-block: 7px; left: 0; width: 3px; border-radius: 0 3px 3px 0; background: transparent; }
+.st-layout .st-nav-item:hover { background: color-mix(in srgb, var(--brand) 8%, var(--card)); transform: none; }
+.st-layout .st-nav-item[aria-current="true"] { color: var(--brand); background: color-mix(in srgb, var(--brand) 11%, var(--card)); box-shadow: none; }
+.st-layout .st-nav-item[aria-current="true"]::before { background: var(--brand); }
+.st-layout .st-nav-item-ico { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; flex: none; color: var(--hint); }
+.st-layout .st-nav-item-ico svg { width: 18px; height: 18px; }
+.st-layout .st-nav-item:hover .st-nav-item-ico, .st-layout .st-nav-item[aria-current="true"] .st-nav-item-ico { color: currentColor; }
+.st-layout .st-nav-label { display: inline-flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.st-layout .st-nav-name { overflow: hidden; text-overflow: ellipsis; }
+.st-layout .st-dot { width: 7px; height: 7px; background: var(--yellow); box-shadow: 0 0 0 3px color-mix(in srgb, var(--yellow) 16%, transparent); }
+
+/* سربرگ هر بخش */
+.st-layout .st-panel-head { align-items: flex-start; gap: var(--space-3); }
+.st-layout .st-panel-heading { min-width: 0; flex: 1; }
+.st-layout .st-panel-heading h3 { margin: 0 0 4px; font-size: var(--fs-lg); font-weight: 800; line-height: 1.5; }
+.st-layout .st-panel-heading p { margin: 0; max-width: 70ch; color: var(--hint); font-size: var(--fs-sm); font-weight: 500; line-height: 1.85; text-wrap: pretty; }
+.st-layout .st-panel-actions { display: flex; align-items: center; justify-content: flex-end; flex: none; gap: 8px; min-height: 32px; }
+
+/* بنر هشدار/اطلاع */
+.st-layout .st-banner {
+  display: flex; align-items: flex-start; gap: 12px; margin-top: 14px; padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--blue) 24%, var(--border)); border-left: 4px solid var(--blue);
+  border-radius: var(--r-lg); background: color-mix(in srgb, var(--blue) 8%, var(--card)); color: var(--text);
+}
+.st-layout .st-banner-warn { border-color: color-mix(in srgb, var(--yellow) 34%, var(--border)); border-left-color: var(--yellow); background: var(--yellow-soft); }
+.st-layout .st-banner-ico { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 30px; height: 30px; border-radius: 10px; color: var(--blue); background: color-mix(in srgb, var(--blue) 12%, var(--card)); }
+.st-layout .st-banner-warn .st-banner-ico { color: var(--yellow); background: color-mix(in srgb, var(--yellow) 14%, var(--card)); }
+.st-layout .st-banner-ico svg { width: 17px; height: 17px; }
+.st-layout .st-banner p { min-width: 0; margin: 2px 0 0; font-size: var(--fs-sm); font-weight: 600; line-height: 1.9; text-wrap: pretty; }
+
+/* نوار ذخیره */
+.st-layout .st-actionbar, .st-layout .st-actionbar.dirty {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px;
+  margin-top: 24px; padding: 14px 0 0; border-top: 1px solid var(--border); background: transparent; box-shadow: none;
+}
+.st-layout .st-actionbar.dirty {
+  position: sticky; bottom: 0; z-index: 5; margin-inline: calc(-1 * var(--st-pad)); padding: 12px var(--st-pad);
+  border-top: 2px solid var(--yellow); background: color-mix(in srgb, var(--card) 92%, transparent); box-shadow: var(--lift-up); backdrop-filter: blur(12px);
+}
+.st-layout .st-save-state { display: inline-flex; align-items: center; gap: 8px; min-width: max-content; }
+.st-layout .st-status-dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 14%, transparent); }
+.st-layout .st-actionbar.dirty .st-status-dot { background: var(--yellow); box-shadow: 0 0 0 3px color-mix(in srgb, var(--yellow) 16%, transparent); }
+.st-layout .st-actionbar .st-pending, .st-layout .st-actionbar.dirty .st-pending { padding: 0; border: 0; background: none; color: var(--hint); font-size: var(--fs-sm); font-weight: 700; }
+.st-layout .st-actionbar.dirty .st-pending { color: var(--text); }
+.st-layout .st-actionbar .form-msg { min-width: 0; margin: 0; }
+.st-layout .st-save-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.st-layout .st-save-actions .btn { min-height: 34px; padding: 4px 15px; border-radius: 999px; font-size: 12px; font-weight: 800; }
+.st-layout .st-save-btn { position: relative; min-width: 92px; }
+.st-layout .st-save-btn svg { width: 15px; height: 15px; }
+.st-layout .st-save-btn[aria-busy="true"] svg { display: none; }
+.st-layout .st-save-btn[aria-busy="true"]::before { content: ""; width: 14px; height: 14px; border: 2px solid currentColor; border-inline-end-color: transparent; border-radius: 50%; animation: st-spin .7s linear infinite; }
+.st-layout .st-save-actions .btn:disabled { opacity: .5; box-shadow: none; cursor: not-allowed; }
+@keyframes st-spin { to { transform: rotate(1turn); } }
+
+@media (max-width: 900px) {
+  .st-layout .st-nav-item::before { inset: auto 10px 0; width: auto; height: 3px; border-radius: 3px 3px 0 0; }
+  .st-layout .st-nav-item[aria-current="true"] { border-bottom-color: transparent; }
+}
+@media (max-width: 600px) {
+  .view-header.st-page-header:has(+ .st-layout) .st-page-intro { font-size: var(--fs-xs); line-height: 1.85; }
+  .st-layout .st-panel-head { flex-direction: column; padding: 14px 16px; }
+  .st-layout .st-panel-actions { width: 100%; justify-content: flex-start; min-height: 0; }
+  .st-layout .st-banner { gap: 10px; padding: 11px 12px; border-radius: var(--r-md); }
+  .st-layout .st-banner-ico { width: 28px; height: 28px; }
+  .st-layout .st-actionbar, .st-layout .st-actionbar.dirty { grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
+  .st-layout .st-actionbar .form-msg { grid-column: 1 / -1; grid-row: 2; }
+  .st-layout .st-save-state { min-width: 0; }
+  .st-layout .st-save-actions .btn { min-height: 38px; padding-inline: 14px; }
+}
+@media (max-width: 420px) {
+  .st-layout .st-actionbar, .st-layout .st-actionbar.dirty { grid-template-columns: minmax(0, 1fr); }
+  .st-layout .st-save-actions { width: 100%; }
+  .st-layout .st-save-actions .btn { flex: 1; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .st-layout .st-nav-item { transition: none; }
+  .st-layout .st-save-btn[aria-busy="true"]::before { animation-duration: 1.4s; }
+}

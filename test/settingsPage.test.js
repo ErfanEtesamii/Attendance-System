@@ -73,7 +73,7 @@ describe('صفحه‌های تنظیمات و تعطیلات پنل (S3-9a/9b)',
     assert.match(section('workHours'), /type="time" name="workDayStart"/);
     assert.match(section('schedule'), /type="text" name="cronDailyReport"[^>]*dir="ltr"/);
     assert.match(section('overtime'), /<select name="overtimeRounding"/);
-    assert.match(html, /پیش‌فرض: <bdi dir="ltr">(۱۶:۳۰|16:30)<\/bdi>/);
+    assert.match(html, /class="st-def-k">پیش‌فرض<\/span><bdi dir="ltr">(۱۶:۳۰|16:30)<\/bdi>/);
     // هیچ فرم/لیست تعطیلات در صفحه‌ی تنظیمات نیست
     assert.doesNotMatch(html, /hol-form|تقویم تعطیلات رسمی/);
     // دکمه‌ی ذخیره در ابتدا غیرفعال است و برچسب گمراه‌کننده‌ی قبلی نیست
@@ -183,7 +183,7 @@ describe('صفحه‌های تنظیمات و تعطیلات پنل (S3-9a/9b)',
       const f = field(it.key);
       if (it.label) {
         assert.ok(f.includes(`<span>${esc(it.label)}</span>`), `برچسب ${it.key}`);
-        assert.ok(f.includes(`<div class="st-sub">${esc(it.description)}</div>`), `توضیح ${it.key}`);
+        assert.ok(f.includes(`<p class="st-sub">${esc(it.description)}</p>`), `توضیح ${it.key}`);
       } else {
         assert.ok(f.includes(`<span>${esc(it.description)}</span>`), `توضیح بدون برچسب ${it.key}`);
         assert.doesNotMatch(f, /st-sub/);

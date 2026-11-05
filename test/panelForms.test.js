@@ -148,8 +148,8 @@ describe('T5: کارت کناری تنظیمات', () => {
     assert.doesNotMatch(ADMIN_JS, /ذخیره‌ی همه/);
   });
   test('نوار ذخیره: ذخیره = .btn.primary (نارنجی در T4)، انصراف = ghost', () => {
-    assert.match(ADMIN_JS, /class="btn ghost" data-discard=/);
-    assert.match(ADMIN_JS, /class="btn primary" data-save=/);
+    assert.match(ADMIN_JS, /class="[^"]*\bbtn\b[^"]*\bghost\b[^"]*" data-discard=/);
+    assert.match(ADMIN_JS, /class="[^"]*\bbtn\b[^"]*\bprimary\b[^"]*" data-save=/);
   });
 });
 

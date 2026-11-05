@@ -275,6 +275,41 @@
     return el.value;
   }
 
+
+  // آیکون هر نوع تنظیم (کارت تنظیم)؛ خطی، ۲۴×۲۴، رنگ از currentColor
+  const ST_ICO = {
+    boolean: '<rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="16" cy="12" r="2.6"/>',
+    number: '<path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/>',
+    time: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    enum: '<path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/>',
+    weekdays: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+    date: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+    timezone: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/>',
+    cron: '<path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/>',
+    string: '<path d="M4 7V5h16v2M12 5v14M9 19h6"/>',
+  };
+  const stIco = (t) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${ST_ICO[t] || ST_ICO.string}</svg>`;
+  const ST_TIP_ICO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2v.1h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg>';
+  const ST_RANGE_ICO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4"/></svg>';
+  const ST_RESET_ICO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>';
+  const ST_GROUP_META = {
+    workHours: ['clock', 'ساعات پایه‌ی شروع، پایان و استراحت روز کاری را مدیریت کنید.'],
+    calendar: ['calendar', 'روزهای کاری، تعطیلات هفتگی و قواعد تقویم سازمان را تنظیم کنید.'],
+    overtime: ['trend', 'محاسبه، گرد کردن و محدودیت‌های اضافه‌کاری را تعیین کنید.'],
+    leave: ['leave', 'قواعد مرخصی، مأموریت، مانده و مسیر تأیید را مدیریت کنید.'],
+    reminders: ['alert', 'آستانه‌های تأخیر و زمان ارسال یادآوری‌ها را تنظیم کنید.'],
+    security: ['audit', 'محدودیت‌ها و سیاست‌های امنیتی دسترسی را کنترل کنید.'],
+    retention: ['inbox', 'مدت نگهداری داده‌ها و زمان آرشیو خودکار را تعیین کنید.'],
+    schedule: ['clock', 'زمان اجرای گزارش‌ها و کارهای خودکار سامانه را تنظیم کنید.'],
+    monthClose: ['calendar', 'قواعد و مهلت بستن دوره‌های ماهانه را مدیریت کنید.'],
+    reportDelivery: ['mail', 'زمان و مقصد ارسال خودکار گزارش‌ها را مشخص کنید.'],
+    patterns: ['alert', 'حساسیت و آستانه‌ی هشدار الگوهای رفتاری را تعیین کنید.'],
+    planning: ['attendance', 'قواعد برنامه‌ی هفتگی و گزارش روزانه را تنظیم کنید.'],
+    performance: ['trend', 'وزن‌ها و قواعد محاسبه‌ی امتیاز عملکرد را مدیریت کنید.'],
+    disputes: ['disputes', 'مهلت و روند ثبت و رسیدگی به اعتراض‌ها را تعیین کنید.'],
+  };
+  const stGroupMeta = (g) => ST_GROUP_META[g] || ['settings', 'تنظیمات این بخش را بررسی و مدیریت کنید.'];
+
   AP.view('settings', {
     skeleton: 'settings', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'settings.edit',
@@ -297,33 +332,44 @@
         const dirty = isDirty(it);
         const did = `st-d-${esc(it.key)}`;
         const hint = setHint(it);
+        const ltrDef = ['time', 'timezone', 'cron', 'number', 'date'].includes(it.type);
         return `
-        <div class="st-field${isFull(it) ? ' full' : ''}${dirty ? ' dirty' : ''}${it.isDefault ? '' : ' changed'}" data-row="${esc(it.key)}">
-          <div class="st-label" title="${esc(it.description)}"><span>${esc(short)}</span><span class="st-tag" data-dirty${dirty ? '' : ' hidden'}>ذخیره‌نشده</span></div>
+        <div class="st-field${isFull(it) ? ' full' : ''}${dirty ? ' dirty' : ''}${it.isDefault ? '' : ' changed'}" data-row="${esc(it.key)}" data-type="${esc(it.type)}">
+          <div class="st-head">
+            <span class="st-ico" aria-hidden="true">${stIco(it.type)}</span>
+            <div class="st-titles">
+              <div class="st-label" title="${esc(it.description)}"><span>${esc(short)}</span><span class="st-tag" data-dirty${dirty ? '' : ' hidden'}>ذخیره‌نشده</span></div>
+              ${sub ? `<p class="st-sub">${esc(sub)}</p>` : ''}
+            </div>
+          </div>
           <div class="st-ctl">${setInput(it, draftOf(it))}</div>
-          ${sub ? `<div class="st-sub">${esc(sub)}</div>` : ''}
-          ${more ? `<div class="st-desc st-hint" id="${did}">${esc(it.hint.trim())}</div><button type="button" class="st-more" data-more aria-expanded="false" aria-controls="${did}">بیشتر</button>` : ''}
-          ${hint ? `<div class="st-meta">${esc(hint)}</div>` : ''}
-          <div class="st-foot"><span class="st-def" title="${esc(it.key)}">پیش‌فرض: <bdi dir="${['time', 'timezone', 'cron', 'number', 'date'].includes(it.type) ? 'ltr' : 'auto'}">${esc(setShow(it, it.default))}</bdi></span>${it.isDefault ? '' : `<button type="button" class="btn ghost small" data-reset="${esc(it.key)}" title="بازگشت به پیش‌فرض" aria-label="بازگشت «${esc(short)}» به پیش‌فرض">بازنشانی</button>`}</div>
+          ${more || hint ? `<div class="st-aux">
+            ${hint ? `<span class="st-meta" title="بازه‌ی مجاز">${ST_RANGE_ICO}<span>${esc(hint)}</span></span>` : ''}
+            ${more ? `<button type="button" class="st-more" data-more aria-expanded="false" aria-controls="${did}">${ST_TIP_ICO}<span class="st-more-t">نکته‌ی بیشتر</span></button>` : ''}
+          </div>` : ''}
+          ${more ? `<div class="st-desc st-hint" id="${did}"><span class="st-tip-bar" aria-hidden="true"></span><p>${esc(it.hint.trim())}</p></div>` : ''}
+          <div class="st-foot"><span class="st-def" title="${esc(it.key)}"><span class="st-def-k">پیش‌فرض</span><bdi dir="${ltrDef ? 'ltr' : 'auto'}">${esc(setShow(it, it.default))}</bdi></span>${it.isDefault ? '' : `<button type="button" class="btn ghost small st-reset" data-reset="${esc(it.key)}" title="بازگشت به پیش‌فرض" aria-label="بازگشت «${esc(short)}» به پیش‌فرض">${ST_RESET_ICO}<span>بازنشانی</span></button>`}</div>
         </div>`;
       };
 
       const groupBody = (g) => {
         const list = items.filter((i) => i.group === g);
         const notes = [];
-        if (IMPACT_GROUPS.has(g)) notes.push(`<div class="note warn">${icon('alert')}<span>${esc(IMPACT_SHORT)}</span></div>`);
-        if (g === 'schedule') notes.push(`<div class="note">${icon('clock')}<span>تغییر زمان‌بندی بدون ری‌استارت و بلافاصله اعمال می‌شود. مقدار پیش‌فرض از فایل <code class="ltr">.env</code> می‌آید.</span></div>`);
+        if (IMPACT_GROUPS.has(g)) notes.push(`<div class="st-banner st-banner-warn" role="note"><span class="st-banner-ico" aria-hidden="true">${icon('alert')}</span><p>${esc(IMPACT_SHORT)}</p></div>`);
+        if (g === 'schedule') notes.push(`<div class="st-banner st-banner-info" role="note"><span class="st-banner-ico" aria-hidden="true">${icon('clock')}</span><p>تغییر زمان‌بندی بدون ری‌استارت و بلافاصله اعمال می‌شود. مقدار پیش‌فرض از فایل <code class="ltr">.env</code> می‌آید.</p></div>`);
         return `${notes.join('')}<div class="st-fields">${list.map(rowHtml).join('')}</div>
           <div class="st-actionbar" data-bar="${esc(g)}">
-            <span class="st-pending" data-pending="${esc(g)}" aria-live="polite">تغییری ذخیره‌نشده نیست</span>
+            <div class="st-save-state"><span class="st-status-dot" aria-hidden="true"></span><span class="st-pending" data-pending="${esc(g)}" aria-live="polite">تغییری ذخیره‌نشده نیست</span></div>
             <div class="form-msg" data-msg></div>
-            <button type="button" class="btn ghost" data-discard="${esc(g)}" disabled>انصراف</button>
-            <button type="button" class="btn primary" data-save="${esc(g)}" disabled>ذخیره‌ی تغییرات</button>
+            <div class="st-save-actions">
+              <button type="button" class="btn ghost small" data-discard="${esc(g)}" disabled>انصراف</button>
+              <button type="button" class="btn primary small st-save-btn" data-save="${esc(g)}" disabled>${icon('check')}<span class="st-save-label">ذخیره</span></button>
+            </div>
           </div>`;
       };
 
       const html = `
-        <div class="view-header"><div><h2>تنظیمات</h2><div class="sub">هر تغییر با دلیل ذخیره و در «گزارش رویدادها» ثبت می‌شود. تعطیلات در صفحه‌ی «تعطیلات» است.</div></div></div>
+        <div class="view-header st-page-header"><div><h2>تنظیمات</h2><p class="sub st-page-intro">تنظیمات اصلی سامانه را به تفکیک بخش مدیریت کنید. هر تغییر با دلیل ذخیره و در «گزارش رویدادها» ثبت می‌شود؛ تعطیلات در صفحه‌ی «تعطیلات» است.</p></div></div>
         <div class="st-layout">
           <aside class="card st-nav">
             <div class="st-nav-head">
@@ -333,8 +379,8 @@
             <label class="field st-search"><span class="sr-only">جستجو در تنظیمات</span><input type="search" id="set-q" placeholder="جستجو در تنظیمات…" autocomplete="off" /></label>
             <nav aria-label="بخش‌های تنظیمات">${groupKeys.map((g, i) => `
               <button type="button" class="st-nav-item" data-go="${esc(g)}"${i === 0 ? ' aria-current="true"' : ''}>
-                <span class="st-nav-name">${esc(data.groups[g])}</span>
-                <span class="st-dot" data-dot="${esc(g)}" hidden></span>
+                <span class="st-nav-item-ico" aria-hidden="true">${icon(stGroupMeta(g)[0])}</span>
+                <span class="st-nav-label"><span class="st-nav-name">${esc(data.groups[g])}</span><span class="st-dot" data-dot="${esc(g)}" hidden></span></span>
                 <span class="badge st-count" data-count="${esc(g)}">${fmt.num(items.filter((x) => x.group === g).length)}</span>
               </button>`).join('')}
             </nav>
@@ -346,7 +392,7 @@
           </aside>
           <div class="st-main">${groupKeys.map((g, i) => `
             <section class="card st-panel" data-group="${esc(g)}" aria-labelledby="st-h-${esc(g)}"${i === 0 ? '' : ' hidden'}>
-              <header class="st-panel-head"><h3 id="st-h-${esc(g)}" tabindex="-1">${esc(data.groups[g])}</h3><span class="muted small">${fmt.num(items.filter((x) => x.group === g).length)} تنظیم</span></header>
+              <header class="st-panel-head"><div class="st-panel-heading"><h3 id="st-h-${esc(g)}" tabindex="-1">${esc(data.groups[g])}</h3><p>${esc(stGroupMeta(g)[1])}</p></div><div class="st-panel-actions"><span class="muted small">${fmt.num(items.filter((x) => x.group === g).length)} تنظیم</span></div></header>
               <div class="st-body">${groupBody(g)}</div>
             </section>`).join('')}
             <div id="set-none" class="hidden">${emptyBox('تنظیمی پیدا نشد. عبارت دیگری را امتحان کنید.')}</div>
@@ -410,7 +456,7 @@
               const d = $(`#${CSS.escape(b.getAttribute('aria-controls'))}`, card);
               const open = b.getAttribute('aria-expanded') !== 'true';
               b.setAttribute('aria-expanded', String(open));
-              b.textContent = open ? 'کمتر' : 'بیشتر';
+              const bt = $('.st-more-t', b); if (bt) bt.textContent = open ? 'بستن نکته' : 'نکته‌ی بیشتر';
               if (d) d.classList.toggle('open', open);
             }));
             $$('[data-reset]', card).forEach((b) => b.addEventListener('click', async () => {
@@ -452,6 +498,10 @@
               confirmText: 'ذخیره', placeholder: 'مثلاً: تغییر ساعت کار طبق ابلاغیه‌ی مدیریت',
             });
             if (reason === null) return;
+            const saveBtn = $(`[data-save="${CSS.escape(g)}"]`, page);
+            const saveLabel = saveBtn && $('.st-save-label', saveBtn);
+            if (saveBtn) { saveBtn.disabled = true; saveBtn.setAttribute('aria-busy', 'true'); }
+            if (saveLabel) saveLabel.textContent = 'در حال ذخیره…';
             const errors = [];
             let saved = 0;
             for (const it of dirty) {
