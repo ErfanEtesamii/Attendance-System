@@ -118,5 +118,7 @@ body:has(#ai-fab) .ux-back-to-top { bottom: calc(max(16px, env(safe-area-inset-b
   .ai-panel { inset-inline-start: 12px; inset-inline-end: 12px; inset-block-end: 72px; width: auto; height: calc(100vh - 96px); }
   body:has(#ai-fab) .ux-back-to-top { bottom: 72px; }
 }
+/* صفحه‌ی تنظیمات: ai-fab به ۹۲px بالا می‌رود (27-settings.css)؛ «بازگشت به بالا» باید بالاتر از آن بنشیند وگرنه موقع اسکرول روی هم می‌افتند. */
+body:has(.st-layout) .ux-back-to-top { bottom: 150px; }
 @media (prefers-reduced-motion: reduce) { .ai-fab::after { animation: none; } .ai-fab:hover .ai-fab-ico { transform: none; } }
 @media print { .ai-fab::after { display: none; } }
