@@ -137,7 +137,7 @@ const ROUTES_2 = [
   ['POST', '/api/admin/suspicious/999999/review', [M, A]],
   ['GET', '/api/admin/system', [A]],
   ['GET', '/api/admin/system/status', [A]],
-  ['POST', '/api/admin/broadcast', [O], 'skip'],
+  ['POST', '/api/admin/broadcast', [M, A], 'skip'], // پیام گروهی: سرپرست (فقط تیم خودش) و admin/owner
   ['POST', '/api/admin/system/revoke-all-sessions', [O], 'skip'],
   ['GET', '/api/admin/system/backup', [O], 'skip'],
   ['GET', '/api/admin/system/reset/options', [O]], // B3

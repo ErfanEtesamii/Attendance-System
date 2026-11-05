@@ -18,8 +18,8 @@ const PANEL_FILES = ['jalali.js', 'core.js', 'exports.js', 'range-bar.js', 'view
 // منوی هر نقش پیش از S4-4b (admin: همه؛ manager: همه‌ی غیر‌ادمینی؛ employee: صفحه‌های employee:true + پروفایل من) + hr جدید.
 const NAV = {
   owner: ['attendance', 'audit', 'broadcast', 'checkin_permissions', 'dashboard', 'disputes', 'employees', 'holidays', 'leave', 'live', 'nightly', 'profile', 'reports', 'settings', 'shifts', 'status', 'suspicious', 'system', 'teamCalendar'],
-  admin: ['attendance', 'audit', 'checkin_permissions', 'dashboard', 'disputes', 'employees', 'holidays', 'leave', 'live', 'nightly', 'reports', 'settings', 'shifts', 'status', 'suspicious', 'system', 'teamCalendar'],
-  manager: ['attendance', 'checkin_permissions', 'dashboard', 'disputes', 'employees', 'leave', 'live', 'nightly', 'reports', 'suspicious', 'teamCalendar'],
+  admin: ['attendance', 'audit', 'broadcast', 'checkin_permissions', 'dashboard', 'disputes', 'employees', 'holidays', 'leave', 'live', 'nightly', 'reports', 'settings', 'shifts', 'status', 'suspicious', 'system', 'teamCalendar'],
+  manager: ['attendance', 'broadcast', 'checkin_permissions', 'dashboard', 'disputes', 'employees', 'leave', 'live', 'nightly', 'reports', 'suspicious', 'teamCalendar'],
   employee: ['attendance', 'disputes', 'leave', 'profile', 'reports'],
   hr: ['attendance', 'checkin_permissions', 'dashboard', 'disputes', 'employees', 'leave', 'live', 'nightly', 'reports', 'teamCalendar'],
 };

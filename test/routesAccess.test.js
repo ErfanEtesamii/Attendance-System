@@ -116,7 +116,6 @@ describe('ماتریس نقش × route (/api/admin/*)', { skip: hasDeps ? false 
     for (const [m, u] of [
       ['POST', '/api/admin/users'], ['PATCH', `/api/admin/users/${empA1.id}`], ['DELETE', `/api/admin/users/${empA1.id}`],
       ['PATCH', '/api/admin/settings'], ['GET', '/api/admin/audit-log'], ['GET', '/api/admin/system'],
-      ['POST', '/api/admin/broadcast'],
     ]) {
       assert.equal((await hit('managerA', m, u)).status, 403, `${m} ${u}`);
     }

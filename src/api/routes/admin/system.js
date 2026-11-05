@@ -1,4 +1,4 @@
-// سیستم: پیام گروهی، وضعیت سیستم و پشتیبان‌گیری (فقط ادمین کل).
+// سیستم: پیام گروهی (ادمین/owner همه، سرپرست فقط تیم خودش)، وضعیت سیستم و پشتیبان‌گیری (فقط ادمین کل).
 // (تقسیم‌شده از admin.js/adminPanel.js؛ URLها و رفتار بدون تغییر. احراز هویت در index.js یک‌بار اعمال می‌شود.)
 
 const express = require('express');
@@ -15,7 +15,7 @@ const { nowIso } = require('../../../utils/serverTime');
 const { sendMessage } = require('../../../bot/notifier');
 const settingsRepository = require('../../../repositories/settingsRepository');
 const { buildClearCookie } = require('../../../utils/sessionCookie');
-const { audit, auditChange, requireReason } = require('./common');
+const { audit, auditChange, requireReason, scopedUserIds } = require('./common');
 const systemHealth = require('../../../utils/systemHealth');
 const jobRunsRepository = require('../../../repositories/jobRunsRepository');
 const monitorRepository = require('../../../repositories/monitorRepository');
@@ -39,14 +39,20 @@ function effectiveCrons() {
   return Object.fromEntries(Object.keys(config.cron).map((name) => [name, all[name] || config.cron[name]]));
 }
 
-// ---------- ارسال پیام گروهی (فقط ادمین کل) ----------
+// ---------- ارسال پیام گروهی (admin/owner: همه‌ی کارمندان؛ سرپرست: فقط اعضای تیم خودش) ----------
 
-router.post('/admin/broadcast', requirePermission('system.manage'), async (req, res) => {
+router.post('/admin/broadcast', requirePermission('broadcast.send'), async (req, res) => {
   const { scope, department, userIds, text } = req.body || {};
   const message = (text || '').trim();
   if (!message) return res.status(400).json({ error: 'متن پیام خالی است.' });
 
   let targets = usersRepository.listUsers({ onlyActive: true });
+  // اسکوپ نقش: null ⇒ همه (admin/owner)؛ در غیر این صورت فقط تیم خودش (سرپرست)
+  const allowedIds = scopedUserIds(req.adminUser);
+  if (allowedIds !== null) {
+    const allowedSet = new Set(allowedIds);
+    targets = targets.filter((u) => allowedSet.has(u.id));
+  }
   if (scope === 'department') targets = targets.filter((u) => (u.department || '') === (department || ''));
   else if (scope === 'users') {
     const set = new Set((userIds || []).map(Number));

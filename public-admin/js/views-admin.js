@@ -154,7 +154,7 @@
   // ======================================================
   AP.view('broadcast', {
     skeleton: 'list', // شکل skeleton هنگام بارگذاری (S5-9c)
-    perm: 'system.manage',
+    perm: 'broadcast.send',
     nav: { icon: 'broadcast', label: 'ارسال پیام گروهی', group: 'مدیریت' },
     async render() {
       const users = (await AP.loadUsers()).filter((u) => u.isActive);
@@ -164,7 +164,7 @@
         <div class="view-header"><div><h2>ارسال پیام گروهی</h2><div class="sub">پیام از طریق بات تلگرام برای کارمندانِ دارای آیدی تلگرام ارسال می‌شود (${fmt.num(withTg.length)} نفر)</div></div></div>
         <div class="card"><form class="form" id="bc-form">
           <div class="form-grid">
-            <label class="field"><span>گیرندگان</span><select name="scope" id="bc-scope"><option value="all">همه‌ی کارمندان فعال</option><option value="department">یک دپارتمان</option><option value="users">انتخاب دستی</option></select></label>
+            <label class="field"><span>گیرندگان</span><select name="scope" id="bc-scope"><option value="all">${AP.can('users.write') ? 'همه‌ی کارمندان فعال' : 'همه‌ی اعضای تیم من'}</option><option value="department">یک دپارتمان</option><option value="users">انتخاب دستی</option></select></label>
             <label class="field hidden" id="bc-dept-wrap"><span>دپارتمان</span><select name="department">${depts.map((d) => `<option>${esc(d)}</option>`).join('')}</select></label>
           </div>
           <div class="recipients hidden" id="bc-users">${withTg.map((u) => `<label class="check-row"><input type="checkbox" value="${u.id}" /> ${esc(u.fullName)}</label>`).join('')}</div>
