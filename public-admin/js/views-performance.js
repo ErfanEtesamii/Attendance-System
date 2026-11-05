@@ -253,7 +253,11 @@
       const list = rows.filter((r) => !term || r.name.includes(term) || String(r.user.personnelCode || '').includes(term));
       const sorted = list.slice().sort((a, b) => (s === 'name' ? a.name.localeCompare(b.name, 'fa') * -ui.dir : ((a[s] == null ? -1 : a[s]) - (b[s] == null ? -1 : b[s])) * ui.dir));
       const maxUseful = Math.max(0, ...rows.map((r) => r.useful));
-      const rate = (v, good, ok) => (v == null ? '<span class="muted">—</span>' : `<span class="pf-rate ${v >= good ? 'good' : v >= ok ? 'warn' : 'bad'}">${pctText(v)}</span>`);
+      const rate = (v, good, ok) => {
+        if (v == null) return '<span class="muted">—</span>';
+        const tone = v >= good ? 'good' : v >= ok ? 'warn' : 'bad';
+        return `<span class="pf-score ${tone}"><b>${pctText(v)}</b>${bar(v, tone)}</span>`;
+      };
       const tag = (v, tone) => (v ? `<span class="pf-tag ${tone}">${fmt.min(v)}</span>` : '<span class="muted">—</span>');
       body.innerHTML = sorted.map((r, i) => {
         const p = r.chg == null ? null : Math.round(r.chg * 100);

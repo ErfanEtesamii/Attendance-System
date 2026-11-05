@@ -2,6 +2,26 @@
    زبان بصری مشترک با کارت‌ها/کاشی‌های پنل: گرادیان نیمه‌شفاف، هاله‌ی رنگی گوشه، خط رنگی بالا، سایه‌ی درخشان هم‌رنگ، ورود نرم.
    فقط توکن‌های tokens.css؛ رنگ هر شاخص با --mc (کلاس pf-m-*)؛ بدون استایل درون‌خطی. */
 
+/* توکن‌های مشترک کارت‌های عملکرد و حقوق */
+:root {
+  --pf-card-radius: 18px;
+  --pf-card-pad: 18px;
+  --pf-card-gap: 12px;
+  --pf-card-border: color-mix(in srgb, var(--brand) 11%, var(--border));
+  --pf-card-bg: color-mix(in srgb, var(--card) 88%, transparent);
+  --pf-card-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 8%, transparent), 0 18px 42px -28px color-mix(in srgb, var(--brand) 40%, transparent);
+  --pf-stat-bg: color-mix(in srgb, var(--card-2) 32%, transparent);
+  --pf-positive: var(--green);
+  --pf-negative: var(--red-text, var(--red));
+  --pf-warning: var(--orange);
+}
+:root[data-theme="dark"] {
+  --pf-card-border: color-mix(in srgb, white 9%, var(--border));
+  --pf-card-bg: color-mix(in srgb, var(--card) 84%, transparent);
+  --pf-card-shadow: 0 1px 2px rgba(0, 0, 0, .28), 0 22px 48px -28px rgba(0, 0, 0, .72);
+  --pf-stat-bg: color-mix(in srgb, var(--card-2) 54%, transparent);
+}
+
 .pf-m-useful { --mc: var(--brand); }
 .pf-m-overtime { --mc: var(--orange); }
 .pf-m-shortfall { --mc: var(--red); }
@@ -630,4 +650,327 @@ tr.clickable[data-date], tr.clickable[data-id] { cursor: pointer; }
   #page .pf-paytable-pay[data-stack] tfoot > tr > td[colspan] { grid-column: 1 / -1; font-size: 15px; }
   #page .pf-paytable-pay[data-stack] tfoot > tr > td:not([colspan]):not([data-label]) { display: none; }
   #page .pf-paytable-pay[data-stack] tfoot > tr > td[data-label] { border-top: 0; padding-top: 0; }
+}
+
+/* ===== ۳۸-ع) کارت‌های یکپارچه‌ی کارمند — عملکرد و حقوق ===== */
+.pf-team, .pf-paycard {
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.pf-team > .card-head, .pf-paycard > .card-head {
+  margin-bottom: var(--space-3);
+  padding: 0;
+}
+.pf-team > .card-head + .table-wrap, .pf-paycard > .card-head + .table-wrap {
+  overflow: visible;
+  border: 0;
+}
+.pf-teamtable, .pf-paytable-pay {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+}
+.pf-teamtable thead, .pf-paytable-pay thead {
+  display: block;
+  margin-bottom: var(--space-3);
+  padding: 6px;
+  border: 1px solid var(--pf-card-border);
+  border-radius: 14px;
+  background: var(--pf-card-bg);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+.pf-teamtable thead tr, .pf-paytable-pay thead tr {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.pf-teamtable thead th, .pf-paytable-pay thead th {
+  display: block;
+  padding: 0;
+  border-radius: 10px;
+  background: transparent;
+}
+.pf-teamtable thead th:last-child, .pf-paytable-pay thead th:last-child { display: none; }
+.pf-teamtable .pf-sort, .pf-paytable-pay .pf-sort {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 11px;
+  color: var(--hint);
+  font-size: 11.5px;
+  font-weight: 700;
+  border-radius: 9px;
+}
+.pf-teamtable .pf-sort:hover, .pf-paytable-pay .pf-sort:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--brand) 8%, transparent);
+}
+.pf-teamtable tbody, .pf-paytable-pay tbody {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 16px;
+}
+.pf-teamtable tbody > tr, .pf-paytable-pay tbody > tr {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-content: start;
+  gap: var(--pf-card-gap);
+  min-width: 0;
+  margin: 0;
+  padding: var(--pf-card-pad);
+  overflow: hidden;
+  border: 1px solid var(--pf-card-border);
+  border-radius: var(--pf-card-radius);
+  background:
+    radial-gradient(220px 120px at 100% 0%, color-mix(in srgb, var(--brand) 7%, transparent), transparent 72%),
+    var(--pf-card-bg);
+  box-shadow: var(--pf-card-shadow);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  animation: pf-rise 280ms var(--ease-out) both;
+  transition: transform var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out), border-color var(--motion-fast);
+}
+.pf-paytable-pay tbody > tr {
+  background:
+    radial-gradient(220px 120px at 100% 0%, color-mix(in srgb, var(--green) 7%, transparent), transparent 72%),
+    var(--pf-card-bg);
+}
+.pf-teamtable tbody > tr:nth-child(2), .pf-paytable-pay tbody > tr:nth-child(2) { animation-delay: 35ms; }
+.pf-teamtable tbody > tr:nth-child(3), .pf-paytable-pay tbody > tr:nth-child(3) { animation-delay: 70ms; }
+.pf-teamtable tbody > tr:nth-child(4), .pf-paytable-pay tbody > tr:nth-child(4) { animation-delay: 105ms; }
+@media (hover: hover) and (pointer: fine) {
+  .pf-teamtable tbody > tr.clickable:hover, .pf-paytable-pay tbody > tr.clickable:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--brand) 22%, var(--border));
+    box-shadow: 0 2px 5px color-mix(in srgb, var(--brand) 9%, transparent), 0 26px 48px -28px color-mix(in srgb, var(--brand) 50%, transparent);
+  }
+  .pf-paytable-pay tbody > tr.clickable:hover { border-color: color-mix(in srgb, var(--green) 24%, var(--border)); }
+}
+.pf-teamtable tbody > tr > td, .pf-paytable-pay tbody > tr > td {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 11px;
+  white-space: normal;
+  border: 0;
+  border-radius: 12px;
+  background: var(--pf-stat-bg);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.pf-teamtable tbody > tr > td::before, .pf-paytable-pay tbody > tr > td::before {
+  content: attr(data-label);
+  display: block;
+  min-height: 17px;
+  color: var(--hint);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.pf-teamtable tbody > tr > td:first-child, .pf-paytable-pay tbody > tr > td:first-child {
+  grid-column: 1 / -1;
+  display: block;
+  padding: 0 0 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--hint) 16%, transparent);
+  border-radius: 0;
+  background: transparent;
+}
+.pf-teamtable tbody > tr > td:first-child::before, .pf-paytable-pay tbody > tr > td:first-child::before { display: none; }
+.pf-teamtable .pf-person, .pf-paytable-pay .pf-person { width: 100%; gap: 11px; }
+.pf-teamtable .pf-person > div, .pf-paytable-pay .pf-person > div { min-width: 0; flex: 1; }
+.pf-teamtable .pf-person b, .pf-paytable-pay .pf-person b { display: block; font-size: 15px; line-height: 1.55; }
+.pf-teamtable .pf-person small, .pf-paytable-pay .pf-person small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pf-teamtable .pf-person .avatar, .pf-paytable-pay .pf-person .avatar { width: 44px; height: 44px; }
+.pf-teamtable .pf-rankdot, .pf-paytable-pay .pf-rankdot { order: 2; margin-inline-start: auto; }
+
+/* عدد کلیدی */
+.pf-teamtable tbody > tr > td:nth-child(2) {
+  grid-column: 1 / -1;
+  min-height: 82px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--green) 7%, var(--pf-stat-bg));
+}
+.pf-teamtable .pf-usefulcell { width: 100%; min-width: 0; gap: 8px; }
+.pf-teamtable .pf-usefulcell strong { color: var(--text); font-size: clamp(20px, 2.2vw, 26px); line-height: 1.35; }
+.pf-paytable-pay tbody > tr > td:nth-child(7) {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  min-height: 82px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--green) 8%, var(--pf-stat-bg));
+}
+.pf-paytable-pay tbody > tr > td:nth-child(7) .pf-amtcell {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--pf-positive);
+  font-size: clamp(20px, 2.2vw, 26px);
+  line-height: 1.45;
+}
+.pf-paytable-pay tbody > tr > td:nth-child(2) { grid-row: 3; }
+
+/* درصدها نوار باریک‌اند؛ رنگ فقط معنای وضعیت دارد. */
+.pf-score { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.pf-score b { color: var(--text); font-size: 14px; font-weight: 800; }
+.pf-score.good b { color: var(--pf-positive); }
+.pf-score.warn b { color: var(--pf-warning); }
+.pf-score.bad b { color: var(--pf-negative); }
+.pf-score .pf-meter { width: 100%; min-width: 0; height: 5px; margin: 0; background: color-mix(in srgb, var(--hint) 14%, transparent); }
+.pf-score.good .pf-meter > i { background: var(--pf-positive); box-shadow: none; }
+.pf-score.warn .pf-meter > i { background: var(--pf-warning); box-shadow: none; }
+.pf-score.bad .pf-meter > i { background: var(--pf-negative); box-shadow: none; }
+.pf-teamtable .pf-tag, .pf-teamtable .pf-rate, .pf-teamtable .pf-ratechip,
+.pf-paytable-pay .pf-ratechip, .pf-paytable-pay .pf-tag, .pf-teamtable .pf-delta, .pf-paytable-pay .pf-delta {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-weight: 800;
+}
+.pf-teamtable .pf-ratechip, .pf-paytable-pay .pf-ratechip { color: var(--text); font-weight: 700; }
+.pf-tag.good, .pf-delta.good { color: var(--pf-positive); }
+.pf-tag.warn { color: var(--pf-warning); }
+.pf-tag.bad, .pf-delta.bad { color: var(--pf-negative); }
+.pf-delta.flat { color: var(--hint); }
+
+/* فوتر کارت */
+.pf-teamtable tbody > tr > td:nth-child(12), .pf-paytable-pay tbody > tr > td:nth-child(10) {
+  grid-column: 1 / -1;
+  padding: 11px 0 0;
+  border-top: 1px solid color-mix(in srgb, var(--hint) 16%, transparent);
+  border-radius: 0;
+  background: transparent;
+}
+.pf-teamtable tbody > tr > td:nth-child(12)::before { content: "روند کارکرد"; }
+.pf-paytable-pay tbody > tr > td:nth-child(10)::before { content: "سهم از کل"; }
+.pf-teamtable .pf-spark { width: 100%; height: 36px; filter: none; }
+.pf-teamtable .pf-spark polyline { stroke: var(--pf-positive); vector-effect: non-scaling-stroke; }
+.pf-paytable-pay .pf-sharecell { width: 100%; min-width: 0; }
+.pf-paytable-pay .pf-sharecell .pf-meter { height: 6px; background: color-mix(in srgb, var(--hint) 14%, transparent); }
+.pf-paytable-pay .pf-sharecell .pf-meter > i { background: var(--pf-positive); box-shadow: none; }
+.pf-paytable-pay tfoot {
+  display: block;
+  margin-top: 16px;
+}
+.pf-paytable-pay tfoot > tr {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--green) 18%, var(--border));
+  border-radius: var(--pf-card-radius);
+  background: color-mix(in srgb, var(--green) 7%, var(--pf-card-bg));
+}
+.pf-paytable-pay tfoot td { display: none; padding: 0; border: 0; background: transparent; }
+.pf-paytable-pay tfoot td[colspan], .pf-paytable-pay tfoot td[data-label] { display: flex; flex-direction: column; gap: 4px; }
+.pf-paytable-pay tfoot td[colspan] { grid-column: 1 / -1; }
+.pf-paytable-pay tfoot td[data-label]::before { content: attr(data-label); color: var(--hint); font-size: 11px; font-weight: 600; }
+
+/* کنترل‌های شناور روی محتوای انتهای این دو صفحه نمی‌افتند. */
+body:has(.pf-team, .pf-paycard) .page { padding-bottom: 132px; }
+body:has(.pf-team, .pf-paycard) .ux-back-to-top {
+  width: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  overflow: hidden;
+  color: transparent;
+  font-size: 0;
+}
+body:has(.pf-team, .pf-paycard) .ux-back-to-top::before {
+  content: "↑";
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1;
+}
+
+@media (min-width: 1180px) {
+  .pf-teamtable tbody, .pf-paytable-pay tbody { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  :root { --pf-card-pad: 15px; --pf-card-gap: 9px; --pf-card-radius: 17px; }
+  .pf-teamtable thead, .pf-paytable-pay thead { display: none; }
+  .pf-teamtable tbody, .pf-paytable-pay tbody { grid-template-columns: 1fr; gap: 12px; }
+  #page .pf-teamtable[data-stack] tbody > tr,
+  #page .pf-paytable-pay[data-stack] tbody > tr {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--pf-card-gap);
+    margin: 0;
+    padding: var(--pf-card-pad);
+    border: 1px solid var(--pf-card-border);
+    border-radius: var(--pf-card-radius);
+    background: var(--pf-card-bg);
+  }
+  #page .pf-teamtable[data-stack] tbody > tr > td,
+  #page .pf-paytable-pay[data-stack] tbody > tr > td {
+    grid-column: auto;
+    min-width: 0;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: 11px;
+    background: var(--pf-stat-bg);
+    font-size: 12.5px;
+  }
+  #page .pf-teamtable[data-stack] tbody > tr > td:first-child,
+  #page .pf-paytable-pay[data-stack] tbody > tr > td:first-child {
+    grid-column: 1 / -1;
+    padding: 0 0 10px;
+    border-bottom: 1px solid color-mix(in srgb, var(--hint) 16%, transparent);
+    border-radius: 0;
+    background: transparent;
+  }
+  #page .pf-teamtable[data-stack] tbody > tr > td:nth-child(2) {
+    grid-column: 1 / -1;
+    order: 1;
+    min-height: 76px;
+    padding: 11px 12px;
+  }
+  #page .pf-paytable-pay[data-stack] tbody > tr > td:nth-child(7) {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    order: 1;
+    min-height: 76px;
+    padding: 11px 12px;
+  }
+  #page .pf-paytable-pay[data-stack] tbody > tr > td:nth-child(2) { grid-row: auto; order: 2; }
+  #page .pf-teamtable[data-stack] tbody > tr > td:nth-child(4),
+  #page .pf-teamtable[data-stack] tbody > tr > td:nth-child(5),
+  #page .pf-teamtable[data-stack] tbody > tr > td:nth-child(6),
+  #page .pf-paytable-pay[data-stack] tbody > tr > td:nth-child(2) { grid-column: auto; }
+  #page .pf-teamtable[data-stack] tbody > tr > td:nth-child(n+3):nth-child(-n+11),
+  #page .pf-paytable-pay[data-stack] tbody > tr > td:is(:nth-child(3), :nth-child(4), :nth-child(5), :nth-child(6), :nth-child(8), :nth-child(9)) { order: 2; }
+  #page .pf-teamtable[data-stack] tbody > tr > td:nth-child(12),
+  #page .pf-paytable-pay[data-stack] tbody > tr > td:nth-child(10) {
+    grid-column: 1 / -1;
+    order: 3;
+    padding: 10px 0 0;
+    border-top: 1px solid color-mix(in srgb, var(--hint) 16%, transparent);
+    border-radius: 0;
+    background: transparent;
+  }
+  #page .pf-teamtable[data-stack] tbody > tr > td::before,
+  #page .pf-paytable-pay[data-stack] tbody > tr > td::before { min-height: 15px; font-size: 10px; }
+  #page .pf-teamtable[data-stack] .pf-person .avatar,
+  #page .pf-paytable-pay[data-stack] .pf-person .avatar { width: 42px; height: 42px; }
+  #page .pf-teamtable[data-stack] .pf-usefulcell strong,
+  #page .pf-paytable-pay[data-stack] tbody > tr > td:nth-child(7) .pf-amtcell { font-size: 20px; }
+  .pf-team > .card-head, .pf-paycard > .card-head { align-items: stretch; }
+  .pf-team > .card-head .pf-search, .pf-paycard > .card-head .pf-search { min-height: 44px; }
+  body:has(.pf-team, .pf-paycard) .page { padding-bottom: 142px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pf-teamtable tbody > tr, .pf-paytable-pay tbody > tr { animation: none; transition: none; }
 }
