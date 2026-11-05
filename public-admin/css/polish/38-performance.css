@@ -596,3 +596,38 @@ tr.clickable[data-date], tr.clickable[data-id] { cursor: pointer; }
   #page .pf-teamtable[data-stack] .pf-spark { width: 100%; height: 34px; }
   #page .pf-teamtable[data-stack] .pf-spark polyline { vector-effect: non-scaling-stroke; }
 }
+
+/* ===== ۳۸-س) جدول «ریز هر کارمند» (حقوق) در موبایل: هر کارمند یک کارت مرتب (همان علتِ جدول تیم) ===== */
+@media (max-width: 600px) {
+  #page .pf-paytable-pay[data-stack] { padding: 0; border-spacing: 0; width: 100%; }
+  #page .pf-paytable-pay[data-stack] :is(tbody, tfoot) > tr {
+    grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px 8px; margin: 0 0 10px; padding: 12px;
+    border: 1px solid color-mix(in srgb, var(--brand) 12%, var(--border)); background: color-mix(in srgb, var(--card) 97%, var(--brand));
+  }
+  #page .pf-paytable-pay[data-stack] :is(tbody, tfoot) > tr > td {
+    grid-column: span 3; min-width: 0; padding: 0; white-space: normal; background: none; border: 0; border-radius: 0; align-items: flex-start; gap: 4px; font-size: 13px;
+  }
+  #page .pf-paytable-pay[data-stack] tbody > tr:hover > td { background: none; }
+  #page .pf-paytable-pay[data-stack] :is(tbody, tfoot) > tr > td::before { color: var(--hint); font-size: 11px; font-weight: 700; }
+  #page .pf-paytable-pay[data-stack] tbody > tr > td[colspan] { grid-column: 1 / -1; }
+  #page .pf-paytable-pay[data-stack] .pf-person { gap: 10px; min-width: 0; width: 100%; }
+  #page .pf-paytable-pay[data-stack] .pf-person > div { min-width: 0; flex: 1; }
+  #page .pf-paytable-pay[data-stack] .pf-person b { display: block; font-size: 15px; overflow-wrap: anywhere; }
+  #page .pf-paytable-pay[data-stack] .pf-rankdot { order: 2; margin-inline-start: auto; }
+  #page .pf-paytable-pay[data-stack] .pf-ratechip, #page .pf-paytable-pay[data-stack] .pf-delta { max-width: 100%; white-space: normal; line-height: 1.6; }
+
+  /* ۷ حقوق (بزرگ) + ۲ نرخ ساعتی: ردیف اول؛ بقیه دوتایی؛ ۱۰ سهم: تمام‌عرض پایین */
+  #page .pf-paytable-pay[data-stack] tbody > tr > td:nth-child(7) { grid-column: span 4; order: 1; }
+  #page .pf-paytable-pay[data-stack] tbody > tr > td:nth-child(7) .pf-amtcell { font-size: 15px; white-space: normal; }
+  #page .pf-paytable-pay[data-stack] tbody > tr > td:nth-child(2) { grid-column: span 2; order: 2; }
+  #page .pf-paytable-pay[data-stack] tbody > tr > td:is(:nth-child(3), :nth-child(4), :nth-child(5), :nth-child(6), :nth-child(8), :nth-child(9)) { order: 3; }
+  #page .pf-paytable-pay[data-stack] tbody > tr > td:nth-child(10) { grid-column: 1 / -1; order: 4; padding-top: 8px; border-top: 1px dashed color-mix(in srgb, var(--hint) 22%, transparent); }
+  #page .pf-paytable-pay[data-stack] tbody > tr > td:nth-child(10)::before { content: "سهم از کل"; }
+  #page .pf-paytable-pay[data-stack] .pf-sharecell { width: 100%; min-width: 0; }
+
+  /* ردیف «جمع کل»: یک کارت با دو مقدار */
+  #page .pf-paytable-pay[data-stack] tfoot { display: block; }
+  #page .pf-paytable-pay[data-stack] tfoot > tr > td[colspan] { grid-column: 1 / -1; font-size: 15px; }
+  #page .pf-paytable-pay[data-stack] tfoot > tr > td:not([colspan]):not([data-label]) { display: none; }
+  #page .pf-paytable-pay[data-stack] tfoot > tr > td[data-label] { border-top: 0; padding-top: 0; }
+}
