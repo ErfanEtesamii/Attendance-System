@@ -113,6 +113,16 @@ body:has(.nav-item.active[data-view="settings"]) #page[aria-busy="true"] .skelet
   background: linear-gradient(180deg, var(--card), color-mix(in srgb, var(--card) 96%, var(--brand)));
 }
 
+/* ===== ناوبری: فقط فهرست اسکرول می‌شود ===== */
+/* پیش‌تر کل کارت (سربرگ، جستجو، آمار) با max-height برش می‌خورد و آیتم‌های آخر («بستن ماه» و …) نصفه زیر لبه‌ی کادر می‌ماندند. حالا سربرگ و آمار ثابت‌اند و فقط فهرست بخش‌ها داخل کادر اسکرول می‌خورد. */
+@media (min-width: 901px) {
+  .st-layout .st-nav { display: flex; flex-direction: column; overflow: hidden; max-height: calc(100vh - var(--st-sticky-top, 72px) - 28px); max-height: calc(100dvh - var(--st-sticky-top, 72px) - 28px); }
+  .st-layout .st-nav > :not(nav) { flex: none; }
+  .st-layout .st-nav > nav { flex: 1 1 auto; min-height: 132px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding-block-end: 8px; scroll-padding-block: 8px; }
+  .st-layout .st-nav > nav .st-nav-item { flex: none; }
+  .st-layout .st-nav > .st-stats { margin-top: 10px; }
+}
+
 /* ===== واکنش‌گرا ===== */
 @media (max-width: 900px) {
   .st-layout .st-nav-item { border-radius: var(--r-md) var(--r-md) 0 0; }
