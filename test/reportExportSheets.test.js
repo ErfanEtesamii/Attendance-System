@@ -215,7 +215,10 @@ describe('route گزارش و خروجی‌ها: اسکوپ، CSV قدیمی، a
       const summary = wb.worksheets[0];
       assert.equal(summary.rowCount, 2, 'سرستون + فقط کارمند تیم سرپرست');
       assert.equal(summary.getCell(2, 1).value, "'=cmd|calc");
-      assert.equal(wb.worksheets[2].getCell(2, wb.worksheets[2].columnCount).value, "'@evil");
+      const leaveWs = wb.worksheets[2];
+      const reasonCol = leaveWs.getRow(1).values.indexOf('دلیل'); // «دلیل» دیگر آخرین ستون نیست (ستون‌های تکمیلی در انتها)
+      assert.ok(reasonCol > 0);
+      assert.equal(leaveWs.getCell(2, reasonCol).value, "'@evil");
       assert.equal(details.format, 'xlsx');
       assert.equal(details.sheets.length, 6);
     } else {

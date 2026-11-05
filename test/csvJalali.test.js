@@ -58,8 +58,10 @@ describe('CSVها با ستون شمسی (S3-11c)', { skip: hasDeps ? false : 'e
     const head = r.rows[0];
     assert.deepEqual(head.slice(0, 6), ['نام', 'کد پرسنلی', 'دپارتمان', 'تاریخ', 'تاریخ شمسی', 'ورود']);
     // C1: دو ستون «استراحت با/بدون حقوق» در انتهای خروجی اضافه شده‌اند؛ «وضعیت» همچنان سر جای قبلی (ستون ۱۵م) است
-    assert.deepEqual(head.slice(-3), ['وضعیت', 'استراحت با حقوق (دقیقه)', 'استراحت بدون حقوق (دقیقه)']);
-    assert.equal(head.length, 17);
+    assert.deepEqual(head.slice(-8, -5), ['وضعیت', 'استراحت با حقوق (دقیقه)', 'استراحت بدون حقوق (دقیقه)']);
+    // ستون‌های تکمیلی (اکسل با جزئیات بیشتر) فقط در انتها اضافه شده‌اند
+    assert.deepEqual(head.slice(-5), ['روز هفته', 'وضعیت (فارسی)', 'نقش', 'زمان ایجاد رکورد', 'آخرین ویرایش']);
+    assert.equal(head.length, 22);
     const byDate = Object.fromEntries(r.rows.slice(1).map((c) => [c[3], c]));
     assert.equal(byDate['2025-03-20'][4], '1403/12/30');
     assert.equal(byDate['2025-03-21'][4], '1404/01/01');
@@ -80,7 +82,8 @@ describe('CSVها با ستون شمسی (S3-11c)', { skip: hasDeps ? false : 'e
 
   test('بقیه‌ی CSVها (کارمندان، خلاصه‌ی گزارش) تاریخی ندارند ⇒ قالبشان بدون تغییر', async () => {
     const u = await get('/api/admin/users/export');
-    assert.deepEqual(u.rows[0], ['نام کارمند', 'کد پرسنلی', 'دپارتمان', 'نقش', 'آیدی تلگرام', 'وضعیت']);
+    assert.deepEqual(u.rows[0].slice(0, 6), ['نام کارمند', 'کد پرسنلی', 'دپارتمان', 'نقش', 'آیدی تلگرام', 'وضعیت']); // ستون‌های قبلی سر جایشان
+    assert.deepEqual(u.rows[0].slice(6), ['شناسه‌ی سیستمی', 'مدیر مستقیم', 'زمان ایجاد', 'تاریخ ایجاد (شمسی)']); // تکمیلی‌ها در انتها
     const rep = await get('/api/admin/reports/export?from=2025-03-01&to=2025-04-01');
     assert.equal(rep.status, 200);
     assert.ok(!rep.rows[0].includes('تاریخ شمسی'));
