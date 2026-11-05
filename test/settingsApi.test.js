@@ -48,12 +48,12 @@ describe('API تنظیمات (S3-1b)', { skip: hasDeps ? false : 'express نصب
       { ...item('lateCheckinGraceMinutes'), updatedAt: null },
       {
         key: 'lateCheckinGraceMinutes', type: 'number', group: 'reminders', groupLabel: r.json.groups.reminders,
-        description: item('lateCheckinGraceMinutes').description, value: 15, default: 15, isDefault: true, updatedAt: null, min: 0, max: 720,
+        label: item('lateCheckinGraceMinutes').label, description: item('lateCheckinGraceMinutes').description, hint: item('lateCheckinGraceMinutes').hint, value: 15, default: 15, isDefault: true, updatedAt: null, min: 0, max: 720,
       },
     );
     assert.equal(item('workDayStart').type, 'time');
     assert.equal(item('blockOnSharedDevice').default, false);
-    r.json.items.forEach((i) => assert.ok(i.description && i.groupLabel && 'value' in i && 'default' in i, i.key));
+    r.json.items.forEach((i) => assert.ok(i.label && i.description && i.groupLabel && 'value' in i && 'default' in i, i.key));
 
     const flat = await hit('admin', 'GET', '/api/admin/settings');
     assert.equal(flat.status, 200);

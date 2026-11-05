@@ -65,15 +65,15 @@ describe('صفحه‌های تنظیمات و تعطیلات پنل (S3-9a/9b)',
     assert.doesNotMatch(section('workHours'), /data-row="overtimeEnabled"/);
     for (const it of items) assert.equal(html.split(`data-row="${it.key}"`).length - 1, 1, `${it.key} فقط یک بار`);
     // هشدار اثر روی گذشته
-    for (const g of ['workHours', 'calendar', 'overtime']) assert.match(section(g), /ماه‌های گذشته/, g);
-    for (const g of ['reminders', 'security', 'retention', 'schedule']) assert.doesNotMatch(section(g), /ماه‌های گذشته/, g);
+    for (const g of ['workHours', 'calendar', 'overtime']) assert.match(section(g), /خلاصه‌های همه‌ی روزها/, g);
+    for (const g of ['reminders', 'security', 'retention', 'schedule']) assert.doesNotMatch(section(g), /خلاصه‌های همه‌ی روزها/, g);
     assert.match(section('schedule'), /بدون ری‌استارت/);
     // نوع‌ها: انتخاب روز هفته، ساعت، cron، بازگشت‌ناپذیر نبودن مقدار پیش‌فرض
     assert.match(section('calendar'), /class="chk-row" data-key="weekendDays"/);
     assert.match(section('workHours'), /type="time" name="workDayStart"/);
     assert.match(section('schedule'), /type="text" name="cronDailyReport"[^>]*dir="ltr"/);
     assert.match(section('overtime'), /<select name="overtimeRounding"/);
-    assert.match(html, /پیش‌فرض: ۱۶:۳۰|پیش‌فرض: 16:30/);
+    assert.match(html, /پیش‌فرض: <bdi dir="ltr">(۱۶:۳۰|16:30)<\/bdi>/);
     // هیچ فرم/لیست تعطیلات در صفحه‌ی تنظیمات نیست
     assert.doesNotMatch(html, /hol-form|تقویم تعطیلات رسمی/);
     // دکمه‌ی ذخیره در ابتدا غیرفعال است و برچسب گمراه‌کننده‌ی قبلی نیست
@@ -177,12 +177,19 @@ describe('صفحه‌های تنظیمات و تعطیلات پنل (S3-9a/9b)',
     assert.match(field('weekendDays'), /<label class="chk st-pill"><input type="checkbox" value="\d"[^>]*\/><span>/);
     assert.match(field('cronDailyReport'), /ltr-in/);
     assert.match(html, /<div class="st-fields">/);
-    // متن کامل توضیح (حتی اگر با CSS کوتاه شود) در DOM است و دکمه‌ی بیشتر فقط برای توضیح بلند
+    // برچسب کوتاه عنوان است، توضیح یک‌خطی زیرش؛ hint بلند فقط با دکمه‌ی «بیشتر»
     for (const it of items) {
       const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-      assert.ok(field(it.key).includes(esc(it.description)), `توضیح کامل ${it.key}`);
-      const short = it.description.split(/[؛(]/)[0].trim();
-      assert.equal(/data-more/.test(field(it.key)), it.description.trim() !== short, `بیشتر ${it.key}`);
+      const f = field(it.key);
+      if (it.label) {
+        assert.ok(f.includes(`<span>${esc(it.label)}</span>`), `برچسب ${it.key}`);
+        assert.ok(f.includes(`<div class="st-sub">${esc(it.description)}</div>`), `توضیح ${it.key}`);
+      } else {
+        assert.ok(f.includes(`<span>${esc(it.description)}</span>`), `توضیح بدون برچسب ${it.key}`);
+        assert.doesNotMatch(f, /st-sub/);
+      }
+      assert.equal(/data-more/.test(f), !!it.hint, `بیشتر ${it.key}`);
+      if (it.hint) assert.ok(f.includes(esc(it.hint)), `hint ${it.key}`);
     }
     assert.match(html, /aria-expanded="false" aria-controls="st-d-/);
     // فیلد بدون تغییر: «پیش‌فرض» و بدون دکمه‌ی بازگشت
@@ -209,7 +216,7 @@ describe('صفحه‌های تنظیمات و تعطیلات پنل (S3-9a/9b)',
     assert.doesNotMatch(out.html, /class="filters"/);
     out.mount(dom.page);
     const q = 'اضافه‌کار';
-    const expect = (g) => items.filter((i) => i.group === g && (i.description.toLowerCase().includes(q) || i.key.toLowerCase().includes(q))).length;
+    const expect = (g) => items.filter((i) => i.group === g && (i.description.toLowerCase().includes(q) || (i.label || '').toLowerCase().includes(q) || i.key.toLowerCase().includes(q))).length;
     assert.ok(gk.some((g) => expect(g) > 0));
     dom.q.value = q; dom.q.fire('input');
     for (const g of gk) {
@@ -250,7 +257,7 @@ describe('صفحه‌های تنظیمات و تعطیلات پنل (S3-9a/9b)',
     dom.discards.workHours.fire('click');
     assert.equal(dom.saves.workHours.disabled, true);
     assert.equal(dom.bars.workHours.classList.contains('dirty'), false);
-    assert.equal(dom.pend.workHours.textContent, 'بدون تغییر ذخیره‌نشده');
+    assert.equal(dom.pend.workHours.textContent, 'تغییری ذخیره‌نشده نیست');
     assert.equal(dom.saves.overtime.disabled, false, 'گروه دیگر دست‌نخورده');
     assert.equal(dom.stats.dirty.textContent, '1');
     assert.equal(changed0.textContent, String(items.filter((i) => !i.isDefault).length));

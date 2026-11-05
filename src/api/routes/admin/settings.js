@@ -154,7 +154,7 @@ router.patch('/admin/settings', requirePermission('settings.edit'), (req, res) =
 // ---------- API تنظیمات با متادیتا (S3-1b) ----------
 // UI فعلی همچنان از GET/PATCH /admin/settings بالا استفاده می‌کند؛ این سه مسیر برای صفحه‌ی تنظیمات جدید (S3-9a) است.
 
-// GET /admin/settings/items → { items: [{ key, type, group, groupLabel, description, value, default, isDefault, updatedAt, min?, max?, values? }] }
+// GET /admin/settings/items → { items: [{ key, type, group, groupLabel, label, description, hint, value, default, isDefault, updatedAt, min?, max?, values? }] }
 router.get('/admin/settings/items', requirePermission('settings.read'), (req, res) => {
   res.json({ items: settingsRepository.getItems(), groups: registry.GROUP_LABELS });
 });

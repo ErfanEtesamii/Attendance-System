@@ -210,13 +210,19 @@
     planSubmissionWeekday: { auto: 'خودکار (آخرین روز کاریِ هفته)', 0: 'یکشنبه', 1: 'دوشنبه', 2: 'سه‌شنبه', 3: 'چهارشنبه', 4: 'پنجشنبه', 5: 'جمعه', 6: 'شنبه' },
     planGateWarnWeekday: { off: 'خاموش', 0: 'یکشنبه', 1: 'دوشنبه', 2: 'سه‌شنبه', 3: 'چهارشنبه', 4: 'پنجشنبه', 5: 'جمعه', 6: 'شنبه' },
     overtimeRounding: { down: 'به پایین', nearest: 'نزدیک‌ترین', up: 'به بالا' },
+    lateLimitGateMode: { off: 'بی‌اثر', soft: 'هشدار (ورود مجاز است)', enforce: 'الزامی (بدون اجازه‌ی سرپرست ثبت نمی‌شود)' },
+    crossMidnightMode: { legacy: 'سازگار با گذشته', by_shift_day: 'بر پایه‌ی روز شیفت' },
+    leaveBalancePolicy: { block: 'مسدود', warn: 'هشدار', allow_negative: 'مانده‌ی منفی' },
+    leaveApprovalExtraStepRole: { admin: 'ادمین', hr: 'منابع انسانی' },
   };
   // گروه‌هایی که محاسبه‌ی روز را عوض می‌کنند ⇒ روی عدد روزها/ماه‌های گذشته هم اثر دارند (گزارش‌ها همیشه با تنظیمات فعلی محاسبه می‌شوند)
   const IMPACT_GROUPS = new Set(['workHours', 'calendar', 'overtime']);
-  const IMPACT_TEXT = 'گزارش‌ها و خلاصه‌ها همیشه با مقدار «فعلی» تنظیمات محاسبه می‌شوند؛ پس با تغییر این بخش، عددهای روزها و ماه‌های گذشته (ساعت مفید، تأخیر، اضافه‌کاری، غیبت) هم عوض می‌شود. خودِ رکوردهای تردد تغییری نمی‌کنند.';
+  const IMPACT_TEXT = 'این تغییر روی گزارش‌ها و خلاصه‌های همه‌ی روزها و ماه‌های گذشته اثر می‌گذارد؛ رکوردهای تردد عوض نمی‌شود.';
 
-  // عنوان کوتاه یک تنظیم (بخش اول توضیح تا اولین «؛» یا «(») برای پیام‌ها و دیالوگ‌ها
-  const setShort = (it) => it.description.split(/[؛(]/)[0].trim();
+  const IMPACT_SHORT = 'تغییر این بخش روی گزارش‌ها و خلاصه‌های همه‌ی روزها اثر می‌گذارد؛ رکوردهای تردد عوض نمی‌شود.';
+
+  // عنوان یک تنظیم برای کارت، پیام‌ها و دیالوگ‌ها: برچسب کوتاه؛ اگر نبود خودِ توضیح (بدون برش)
+  const setShort = (it) => (it.label && it.label.trim()) || it.description.trim();
   function setEnumLabel(it, v) { return (ENUM_LABELS[it.key] && ENUM_LABELS[it.key][v]) || v; }
 
   // مقدار قابل‌نمایش (برای «پیش‌فرض: …»)
@@ -255,7 +261,7 @@
   }
 
   function setHint(it) {
-    const bits = [`پیش‌فرض: ${setShow(it, it.default)}`];
+    const bits = [];
     if (it.type === 'number' && (it.min !== undefined || it.max !== undefined)) bits.push(`بازه: ${it.min !== undefined ? it.min : '…'} تا ${it.max !== undefined ? it.max : '…'}`);
     if (it.type === 'cron') bits.push('الگوی cron پنج‌بخشی، مثل 0 8 * * *');
     if (it.type === 'timezone') bits.push('نام IANA، مثل Asia/Tehran');
@@ -288,42 +294,45 @@
       const isFull = (it) => ['weekdays', 'cron', 'string'].includes(it.type) || (it.type === 'enum' && it.values.some((o) => setEnumLabel(it, o).length > 24));
       const rowHtml = (it) => {
         const short = setShort(it);
+        const sub = it.label ? it.description.trim() : ''; // توضیح یک‌خطی زیر عنوان؛ بدون برچسب، خودِ توضیح عنوان است
+        const more = !!(it.hint && it.hint.trim()); // توضیح بلندتر فقط با «بیشتر»
         const dirty = isDirty(it);
         const did = `st-d-${esc(it.key)}`;
+        const hint = setHint(it);
         return `
-        <div class="st-field${isFull(it) ? ' full' : ''}${dirty ? ' dirty' : ''}" data-row="${esc(it.key)}">
-          <div class="st-label"><span>${esc(short)}</span><span class="st-tag" data-dirty${dirty ? '' : ' hidden'}>ذخیره‌نشده</span></div>
+        <div class="st-field${isFull(it) ? ' full' : ''}${dirty ? ' dirty' : ''}${it.isDefault ? '' : ' changed'}" data-row="${esc(it.key)}">
+          <div class="st-label" title="${esc(it.description)}"><span>${esc(short)}</span><span class="st-tag" data-dirty${dirty ? '' : ' hidden'}>ذخیره‌نشده</span></div>
           <div class="st-ctl">${setInput(it, draftOf(it))}</div>
-          <div class="st-desc" id="${did}">${esc(it.description)}</div>
-          ${it.description.trim() !== short ? `<button type="button" class="st-more" data-more aria-expanded="false" aria-controls="${did}">بیشتر</button>` : ''}
-          <div class="st-meta"><code class="ltr">${esc(it.key)}</code> · ${esc(setHint(it))}</div>
-          <div class="st-state">${it.isDefault ? '<span class="muted small">پیش‌فرض</span>' : `${AP.badge('blue', 'تغییر‌یافته')} <button type="button" class="btn ghost small" data-reset="${esc(it.key)}">بازگشت به پیش‌فرض</button>`}</div>
+          ${sub ? `<div class="st-sub">${esc(sub)}</div>` : ''}
+          ${more ? `<div class="st-desc st-hint" id="${did}">${esc(it.hint.trim())}</div><button type="button" class="st-more" data-more aria-expanded="false" aria-controls="${did}">بیشتر</button>` : ''}
+          ${hint ? `<div class="st-meta">${esc(hint)}</div>` : ''}
+          <div class="st-foot"><span class="st-def" title="${esc(it.key)}">پیش‌فرض: <bdi dir="${['time', 'timezone', 'cron', 'number', 'date'].includes(it.type) ? 'ltr' : 'auto'}">${esc(setShow(it, it.default))}</bdi></span>${it.isDefault ? '' : `<button type="button" class="btn ghost small" data-reset="${esc(it.key)}" title="بازگشت به پیش‌فرض" aria-label="بازگشت «${esc(short)}» به پیش‌فرض">بازنشانی</button>`}</div>
         </div>`;
       };
 
       const groupBody = (g) => {
         const list = items.filter((i) => i.group === g);
         const notes = [];
-        if (IMPACT_GROUPS.has(g)) notes.push(`<div class="note warn">${icon('alert')}<span>${esc(IMPACT_TEXT)}</span></div>`);
+        if (IMPACT_GROUPS.has(g)) notes.push(`<div class="note warn">${icon('alert')}<span>${esc(IMPACT_SHORT)}</span></div>`);
         if (g === 'schedule') notes.push(`<div class="note">${icon('clock')}<span>تغییر زمان‌بندی بدون ری‌استارت و بلافاصله اعمال می‌شود. مقدار پیش‌فرض از فایل <code class="ltr">.env</code> می‌آید.</span></div>`);
         return `${notes.join('')}<div class="st-fields">${list.map(rowHtml).join('')}</div>
           <div class="st-actionbar" data-bar="${esc(g)}">
-            <span class="st-pending" data-pending="${esc(g)}" aria-live="polite">بدون تغییر ذخیره‌نشده</span>
+            <span class="st-pending" data-pending="${esc(g)}" aria-live="polite">تغییری ذخیره‌نشده نیست</span>
             <div class="form-msg" data-msg></div>
             <button type="button" class="btn ghost" data-discard="${esc(g)}" disabled>انصراف</button>
-            <button type="button" class="btn primary" data-save="${esc(g)}" disabled>ذخیره‌ی تغییرات این بخش</button>
+            <button type="button" class="btn primary" data-save="${esc(g)}" disabled>ذخیره‌ی تغییرات</button>
           </div>`;
       };
 
       const html = `
-        <div class="view-header"><div><h2>تنظیمات</h2><div class="sub">هر تغییر با ذکر دلیل ذخیره و در «گزارش رویدادها» ثبت می‌شود · تعطیلات در صفحه‌ی «تعطیلات» است</div></div></div>
+        <div class="view-header"><div><h2>تنظیمات</h2><div class="sub">هر تغییر با دلیل ذخیره و در «گزارش رویدادها» ثبت می‌شود. تعطیلات در صفحه‌ی «تعطیلات» است.</div></div></div>
         <div class="st-layout">
           <aside class="card st-nav">
             <div class="st-nav-head">
               <span class="st-nav-ico" aria-hidden="true">${icon('settings')}</span>
               <div><h3>تنظیمات سیستم</h3><div class="muted small">${fmt.num(items.length)} تنظیم در ${fmt.num(groupKeys.length)} بخش</div></div>
             </div>
-            <label class="field st-search"><span class="sr-only">جستجو در تنظیمات</span><input type="search" id="set-q" placeholder="جستجو: اضافه‌کاری، تأخیر، cron …" autocomplete="off" /></label>
+            <label class="field st-search"><span class="sr-only">جستجو در تنظیمات</span><input type="search" id="set-q" placeholder="جستجو در تنظیمات…" autocomplete="off" /></label>
             <nav aria-label="بخش‌های تنظیمات">${groupKeys.map((g, i) => `
               <button type="button" class="st-nav-item" data-go="${esc(g)}"${i === 0 ? ' aria-current="true"' : ''}>
                 <span class="st-nav-name">${esc(data.groups[g])}</span>
@@ -332,7 +341,7 @@
               </button>`).join('')}
             </nav>
             <dl class="st-stats">
-              <div><dt>تغییر‌یافته از پیش‌فرض</dt><dd data-stat="changed">${fmt.num(items.filter((x) => !x.isDefault).length)}</dd></div>
+              <div><dt>تغییرکرده از پیش‌فرض</dt><dd data-stat="changed">${fmt.num(items.filter((x) => !x.isDefault).length)}</dd></div>
               <div><dt>ذخیره‌نشده</dt><dd data-stat="dirty">0</dd></div>
             </dl>
             ${AP.viewAllowed && AP.viewAllowed(AP.views.audit) ? `<button type="button" class="btn ghost small st-audit" data-audit>${icon('audit')} گزارش رویدادها</button>` : ''}
@@ -342,7 +351,7 @@
               <header class="st-panel-head"><h3 id="st-h-${esc(g)}" tabindex="-1">${esc(data.groups[g])}</h3><span class="muted small">${fmt.num(items.filter((x) => x.group === g).length)} تنظیم</span></header>
               <div class="st-body">${groupBody(g)}</div>
             </section>`).join('')}
-            <div id="set-none" class="hidden">${emptyBox('تنظیمی با این عبارت پیدا نشد.')}</div>
+            <div id="set-none" class="hidden">${emptyBox('تنظیمی پیدا نشد. عبارت دیگری را امتحان کنید.')}</div>
           </div>
         </div>`;
 
@@ -362,7 +371,7 @@
             const bar = $(`[data-bar="${CSS.escape(g)}"]`, page);
             if (bar) bar.classList.toggle('dirty', n > 0);
             const pend = $(`[data-pending="${CSS.escape(g)}"]`, page);
-            if (pend) pend.textContent = n ? `${fmt.num(n)} تغییر ذخیره‌نشده` : 'بدون تغییر ذخیره‌نشده';
+            if (pend) pend.textContent = n ? `${fmt.num(n)} تغییر ذخیره‌نشده` : 'تغییری ذخیره‌نشده نیست';
             const dis = $(`[data-discard="${CSS.escape(g)}"]`, page);
             if (dis) dis.disabled = n === 0;
             refreshStats();
@@ -470,7 +479,7 @@
               let shown = 0;
               $$('.st-field', card).forEach((row) => {
                 const it = byKey[row.dataset.row];
-                const hit = !q || it.description.toLowerCase().includes(q) || it.key.toLowerCase().includes(q);
+                const hit = !q || it.description.toLowerCase().includes(q) || (it.label || '').toLowerCase().includes(q) || it.key.toLowerCase().includes(q);
                 row.classList.toggle('hidden', !hit);
                 if (hit) shown += 1;
               });

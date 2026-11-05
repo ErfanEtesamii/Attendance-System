@@ -28,7 +28,11 @@ describe('رجیستری تنظیمات (S3-1a)', () => {
     );
     assert.equal(registry.getDef('workDayStart').dbKey, 'work_day_start');
     assert.equal(registry.getDef('rateLimitRetentionDays').dbKey, 'rate_limit_retention_days');
-    registry.REGISTRY.forEach((d) => assert.ok(d.description && registry.GROUP_LABELS[d.group], d.key));
+    registry.REGISTRY.forEach((d) => {
+      assert.ok(d.label && d.description && registry.GROUP_LABELS[d.group], d.key);
+      assert.ok(d.description.length <= 90, `توضیح کوتاه ${d.key}`);
+      assert.ok(!d.hint || d.hint.length <= 260, `hint کوتاه ${d.key}`);
+    });
     const actualSettings = settings.getAll();
     assert.deepEqual({ maxReEntriesPerDay: actualSettings.maxReEntriesPerDay, paidBreakCount: actualSettings.paidBreakCount, paidBreakMinutes: actualSettings.paidBreakMinutes, paidBreakCountUnlimited: actualSettings.paidBreakCountUnlimited, remoteWorkBotEnabled: actualSettings.remoteWorkBotEnabled, remoteWorkBotBlockOnsiteToday: actualSettings.remoteWorkBotBlockOnsiteToday, remoteWorkAllowAfterOnsiteCheckout: actualSettings.remoteWorkAllowAfterOnsiteCheckout }, { maxReEntriesPerDay: 1, paidBreakCount: 3, paidBreakMinutes: 45, paidBreakCountUnlimited: false, remoteWorkBotEnabled: true, remoteWorkBotBlockOnsiteToday: true, remoteWorkAllowAfterOnsiteCheckout: true });
     delete actualSettings.maxReEntriesPerDay;
@@ -155,7 +159,8 @@ describe('رجیستری تنظیمات (S3-1a)', () => {
     assert.equal(def.dbKey, 'show_earnings_card');
     assert.equal(def.group, 'performance');
     assert.equal(def.default, false);
-    assert.match(def.description, /کارکرد تخمینی ماه/);
+    assert.match(def.description, /کارکرد این ماه/);
+    assert.ok(def.label && def.hint, 'برچسب و توضیح کامل');
     assert.equal(settings.getAll().showEarningsCard, false);
     assert.equal(settings.update({ showEarningsCard: true }).showEarningsCard, true);
     assert.equal(db.prepare('SELECT value FROM settings WHERE key = ?').get('show_earnings_card').value, '1');
