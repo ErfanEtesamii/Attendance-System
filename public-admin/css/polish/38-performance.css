@@ -659,11 +659,13 @@ tr.clickable[data-date], tr.clickable[data-id] { cursor: pointer; }
   background: transparent;
   box-shadow: none;
 }
+.card.flush.pf-paycard { overflow: visible; }
 .pf-team > .card-head, .pf-paycard > .card-head {
   margin-bottom: var(--space-3);
   padding: 0;
 }
 .pf-team > .card-head + .table-wrap, .pf-paycard > .card-head + .table-wrap {
+  max-height: none;
   overflow: visible;
   border: 0;
 }
@@ -714,6 +716,11 @@ tr.clickable[data-date], tr.clickable[data-id] { cursor: pointer; }
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
   gap: 16px;
 }
+.pf-paytable-pay tbody {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  align-items: start;
+  padding-bottom: 32px;
+}
 .pf-teamtable tbody > tr, .pf-paytable-pay tbody > tr {
   position: relative;
   display: grid;
@@ -736,6 +743,7 @@ tr.clickable[data-date], tr.clickable[data-id] { cursor: pointer; }
   transition: transform var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out), border-color var(--motion-fast);
 }
 .pf-paytable-pay tbody > tr {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   background:
     radial-gradient(220px 120px at 100% 0%, color-mix(in srgb, var(--green) 7%, transparent), transparent 72%),
     var(--pf-card-bg);
@@ -815,6 +823,7 @@ tr.clickable[data-date], tr.clickable[data-id] { cursor: pointer; }
   color: var(--pf-positive);
   font-size: clamp(20px, 2.2vw, 26px);
   line-height: 1.45;
+  white-space: nowrap;
 }
 .pf-paytable-pay tbody > tr > td:nth-child(2) { grid-row: 3; }
 
@@ -837,6 +846,11 @@ tr.clickable[data-date], tr.clickable[data-id] { cursor: pointer; }
   font-weight: 800;
 }
 .pf-teamtable .pf-ratechip, .pf-paytable-pay .pf-ratechip { color: var(--text); font-weight: 700; }
+.pf-paytable-pay .pf-nowrap, .pf-paytable-pay .pf-money-sm { white-space: nowrap; }
+.pf-paytable-pay .pf-money-sm { font-size: 11.5px; letter-spacing: -.25px; }
+.pf-paytable-pay .pf-projection { font-size: 11px; }
+.pf-pay-count { display: inline-flex; color: var(--hint); font-size: 11px; font-weight: 600; white-space: nowrap; }
+.pf-paycard-error > td[colspan] { grid-column: 1 / -1; }
 .pf-tag.good, .pf-delta.good { color: var(--pf-positive); }
 .pf-tag.warn { color: var(--pf-warning); }
 .pf-tag.bad, .pf-delta.bad { color: var(--pf-negative); }
@@ -898,7 +912,7 @@ body:has(.pf-team, .pf-paycard) .ux-back-to-top::before {
 }
 
 @media (min-width: 1180px) {
-  .pf-teamtable tbody, .pf-paytable-pay tbody { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .pf-teamtable tbody { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 600px) {
   :root { --pf-card-pad: 15px; --pf-card-gap: 9px; --pf-card-radius: 17px; }
@@ -974,3 +988,126 @@ body:has(.pf-team, .pf-paycard) .ux-back-to-top::before {
 @media (prefers-reduced-motion: reduce) {
   .pf-teamtable tbody > tr, .pf-paytable-pay tbody > tr { animation: none; transition: none; }
 }
+
+/* ===== ۳۸-ف) «همه‌ی کارمندان»: کارت‌های واقعی (بدون جدول) =====
+   قبلاً این بخش جدولی بود که با CSS به کارت تبدیل می‌شد (داخل .card.flush با overflow:hidden و ظرف اسکرول‌دار .table-wrap
+   و سلول‌های nowrap) و برای همین کارمندان بریده می‌شدند و متن‌های بلند («۵۰ ساعت و ۳۱ دقیقه») روی هم می‌افتادند.
+   حالا هر کارمند یک <article> مستقل است؛ هیچ ظرفی ارتفاع یا سرریز را محدود نمی‌کند و همه‌ی کارت‌ها همیشه دیده می‌شوند. */
+.pf-team-v2 { display: block; overflow: visible; border: 0; background: transparent; box-shadow: none; animation: none; }
+.pf-team-v2 > .card-head { padding: 0; margin-bottom: var(--space-3); }
+
+/* نوار مرتب‌سازی */
+.pe-sortbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: var(--space-4); padding: 8px 10px;
+  border: 1px solid var(--pf-card-border); border-radius: 16px; background: var(--pf-card-bg);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+}
+.pe-sort-label { margin-inline-end: 4px; color: var(--hint); font-size: 11.5px; font-weight: 700; }
+.pe-sort {
+  display: inline-flex; align-items: center; gap: 5px; min-height: 34px; padding: 0 13px; border: 1px solid transparent; border-radius: 999px;
+  background: transparent; color: var(--hint); font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  transition: background var(--motion-fast), color var(--motion-fast), border-color var(--motion-fast);
+}
+.pe-sort:hover { color: var(--text); background: color-mix(in srgb, var(--brand) 8%, transparent); }
+.pe-sort.on { color: var(--brand); border-color: color-mix(in srgb, var(--brand) 30%, transparent); background: color-mix(in srgb, var(--brand) 11%, transparent); }
+.pe-dir { font-style: normal; font-size: 9px; line-height: 1; }
+.pe-dir:empty { display: none; }
+
+/* شبکه: همه‌ی کارت‌ها، بدون محدودیت ارتفاع */
+.pe-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 16px; align-items: stretch;
+  max-height: none; overflow: visible; padding-bottom: 8px;
+}
+.pe-grid > .empty { grid-column: 1 / -1; }
+
+.pe-card {
+  position: relative; display: flex; flex-direction: column; gap: 14px; min-width: 0; padding: 16px; overflow: hidden; cursor: pointer;
+  border: 1px solid var(--pf-card-border); border-radius: var(--pf-card-radius);
+  background: radial-gradient(260px 140px at 100% 0%, color-mix(in srgb, var(--brand) 8%, transparent), transparent 74%), var(--pf-card-bg);
+  box-shadow: var(--pf-card-shadow); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  animation: pf-rise 280ms var(--ease-out) both;
+  transition: transform var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out), border-color var(--motion-fast);
+}
+.pe-card:nth-child(2) { animation-delay: 35ms; } .pe-card:nth-child(3) { animation-delay: 70ms; } .pe-card:nth-child(4) { animation-delay: 105ms; }
+.pe-card:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) {
+  .pe-card:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--brand) 24%, var(--border)); box-shadow: 0 2px 5px color-mix(in srgb, var(--brand) 9%, transparent), 0 26px 48px -28px color-mix(in srgb, var(--brand) 50%, transparent); }
+  .pe-card:hover .pe-who b { color: var(--brand); }
+}
+
+/* سر کارت */
+.pe-head { display: flex; align-items: center; gap: 11px; min-width: 0; padding-bottom: 12px; border-bottom: 1px solid color-mix(in srgb, var(--hint) 16%, transparent); }
+.pe-av { flex: none; display: inline-flex; }
+.pe-av .avatar { width: 44px; height: 44px; box-shadow: 0 8px 14px -8px color-mix(in srgb, var(--brand) 65%, transparent); }
+.pe-who { flex: 1; min-width: 0; }
+.pe-who b { display: block; font-size: 15px; font-weight: 800; line-height: 1.5; overflow-wrap: anywhere; transition: color var(--motion-fast); }
+.pe-who small { display: block; margin-top: 1px; color: var(--hint); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pe-rank {
+  flex: none; display: grid; place-items: center; min-width: 28px; height: 28px; padding: 0 6px; border-radius: 9px;
+  font-size: 12px; font-weight: 800; color: var(--hint); background: color-mix(in srgb, var(--hint) 12%, transparent);
+}
+.pe-rank.top1 { color: #5a3b00; background: linear-gradient(145deg, #ffd978, #f0a92c); box-shadow: 0 4px 10px -3px rgba(240, 169, 44, .6); }
+.pe-rank.top2 { color: #2f3a48; background: linear-gradient(145deg, #eef2f7, #b7c1cf); box-shadow: 0 4px 10px -3px rgba(120, 135, 155, .55); }
+.pe-rank.top3 { color: #4a2508; background: linear-gradient(145deg, #f0b98a, #c9783a); box-shadow: 0 4px 10px -3px rgba(201, 120, 58, .55); }
+
+/* عدد کلیدی */
+.pe-lbl { color: var(--hint); font-size: 11px; font-weight: 700; line-height: 1.4; }
+.pe-hero {
+  display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 14px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--green) 12%, var(--pf-stat-bg)), color-mix(in srgb, var(--green) 4%, var(--pf-stat-bg)));
+  border: 1px solid color-mix(in srgb, var(--green) 16%, transparent);
+}
+.pe-hero-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pe-hero-val { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; color: var(--text); line-height: 1.4; }
+.pe-hero-val .pf-v { font-size: clamp(22px, 2.4vw, 28px); font-weight: 800; }
+.pe-hero-val .pf-u { color: var(--hint); font-size: 12px; font-weight: 700; margin-inline-end: 4px; }
+.pe-hero .pf-delta { padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 800; background: color-mix(in srgb, currentColor 11%, transparent); }
+.pe-hero .pf-meter { margin: 0; min-width: 0; height: 5px; background: color-mix(in srgb, var(--hint) 16%, transparent); }
+.pe-hero .pf-meter > i { background: var(--pf-positive); box-shadow: none; }
+
+/* حضور | وقت‌شناسی | تحقق */
+.pe-rates { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.pe-rate { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 9px 10px; border-radius: 12px; background: var(--pf-stat-bg); }
+.pe-rate-v { color: var(--text); font-size: 15px; font-weight: 800; line-height: 1.4; }
+.pe-rate.good .pe-rate-v { color: var(--pf-positive); } .pe-rate.warn .pe-rate-v { color: var(--pf-warning); } .pe-rate.bad .pe-rate-v { color: var(--pf-negative); }
+.pe-rate .pf-meter { height: 4px; margin: 2px 0 0; min-width: 0; background: color-mix(in srgb, var(--hint) 16%, transparent); }
+.pe-rate.good .pf-meter > i { background: var(--pf-positive); } .pe-rate.warn .pf-meter > i { background: var(--pf-warning); } .pe-rate.bad .pf-meter > i { background: var(--pf-negative); }
+.pe-rate .pf-meter > i { box-shadow: none; }
+
+/* آمار ریز: ردیف «برچسب ← مقدار»؛ متن بلند می‌شکند و هرگز روی هم نمی‌افتد */
+.pe-stats { display: grid; grid-template-columns: 1fr; gap: 0; margin: 0; padding: 2px 12px; border-radius: 12px; background: var(--pf-stat-bg); }
+.pe-stat { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-width: 0; padding: 7px 0; border-bottom: 1px dashed color-mix(in srgb, var(--hint) 20%, transparent); }
+.pe-stat:last-child { border-bottom: 0; }
+.pe-stat dt { flex: none; margin: 0; color: var(--hint); font-size: 11.5px; font-weight: 600; }
+.pe-stat dd { margin: 0; min-width: 0; color: var(--text); font-size: 12.5px; font-weight: 800; text-align: end; overflow-wrap: anywhere; }
+.pe-stat.good dd { color: var(--pf-positive); } .pe-stat.warn dd { color: var(--pf-warning); } .pe-stat.bad dd { color: var(--pf-negative); }
+.pe-stat .pf-ratechip { padding: 0; border: 0; background: transparent; color: var(--text); font-weight: 800; }
+
+/* روند */
+.pe-foot { display: flex; flex-direction: column; gap: 4px; margin-top: auto; padding-top: 10px; border-top: 1px solid color-mix(in srgb, var(--hint) 16%, transparent); }
+.pe-foot .pf-spark { width: 100%; height: 36px; filter: none; }
+.pe-foot .pf-spark polyline { stroke: var(--pf-positive); vector-effect: non-scaling-stroke; }
+
+@media (max-width: 600px) {
+  .pe-grid { grid-template-columns: 1fr; gap: 12px; }
+  .pe-card { padding: 15px; border-radius: 17px; }
+  .pe-sortbar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .pe-sortbar::-webkit-scrollbar { display: none; }
+  .pe-sort-label { flex: none; }
+  .pf-team-v2 > .card-head { align-items: stretch; }
+  .pf-team-v2 > .card-head .pf-search { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) { .pe-card { animation: none; transition: none; } }
+
+/* ===== ۳۸-ق) «ریز هر کارمند» (حقوق): همان کارت‌های مستقل بدون جدول ===== */
+.pe-grid-pay { grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+.pe-grid-pay .pe-hero-val { display: block; color: var(--pf-positive); font-size: clamp(20px, 2.2vw, 26px); font-weight: 800; white-space: normal; overflow-wrap: anywhere; }
+.pe-share { color: var(--hint); font-size: 11px; font-weight: 600; }
+.pe-hero .pf-warn { display: block; color: var(--pf-warning); font-size: 11px; font-weight: 700; }
+.pe-total {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 16px; padding: 14px 18px;
+  border: 1px solid color-mix(in srgb, var(--green) 20%, var(--border)); border-radius: var(--pf-card-radius);
+  background: color-mix(in srgb, var(--green) 7%, var(--pf-card-bg));
+}
+.pe-total > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pe-total strong { color: var(--text); font-size: 18px; font-weight: 800; overflow-wrap: anywhere; }

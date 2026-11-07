@@ -190,11 +190,13 @@
         <div class="pf-chart" id="pf-chart"></div><p class="chart-note" id="pf-note"></p></figure>
       <div class="pf-leaders" id="pf-leaders"></div>
       <section class="pf-block"><h3 class="pf-sec-title">${AP.icon('employees')} دپارتمان‌ها</h3>${deptCards(data.departments, { title: 'دپارتمان‌ها', mainLabel: 'ساعت مفید', main: (x) => fmt.min(x.useful), share: (x) => (t.useful ? (x.useful / t.useful) * 100 : 0), stats: (x) => [['اضافه‌کاری', fmt.min(x.overtime)], ['کسری', fmt.min(x.shortfall)], ['تأخیر', fmt.min(x.late)], ['روز غیبت', fmt.num(x.absentDays)]] })}</section>
-      <div class="card flush pf-team pf-block"><div class="card-head"><h3>${AP.icon('employees')} همه‌ی کارمندان</h3><label class="field pf-search"><input type="search" id="pf-search" placeholder="جستجوی نام…" value="${esc(ui.search)}" aria-label="جستجوی کارمند" /></label></div><div class="table-wrap"><table class="pf-paytable pf-teamtable">
-        <thead><tr>${[['name', 'کارمند'], ['useful', 'ساعت مفید'], ['chg', 'تغییر'], ['attendanceRate', 'حضور'], ['punctualityRate', 'وقت‌شناسی'], ['fulfillmentRate', 'تحقق'], ['avgCheckIn', 'میانگین ورود'], ['overtime', 'اضافه‌کاری'], ['shortfall', 'کسری'], ['late', 'تأخیر'], ['absentDays', 'غیبت']].map(([k, l]) => `<th><button type="button" class="pf-sort" data-sort="${k}">${l}${ui.sort === k ? (ui.dir < 0 ? ' ▼' : ' ▲') : ''}</button></th>`).join('')}<th>روند</th></tr></thead>
-        <tbody id="pf-team-body"></tbody></table></div></div>`;
+      <section class="pf-team pf-team-v2 pf-block" aria-label="همه‌ی کارمندان"><div class="card-head"><h3>${AP.icon('employees')} همه‌ی کارمندان <small class="pf-pay-count" id="pf-team-count" aria-live="polite"></small></h3><label class="field pf-search"><input type="search" id="pf-search" placeholder="جستجوی نام…" value="${esc(ui.search)}" aria-label="جستجوی کارمند" /></label></div>
+        <div class="pe-sortbar" role="group" aria-label="مرتب‌سازی کارمندان"><span class="pe-sort-label">مرتب‌سازی:</span>${TEAM_SORTS.map(([k, l]) => `<button type="button" class="pf-sort pe-sort${ui.sort === k ? ' on' : ''}" data-sort="${k}" aria-pressed="${ui.sort === k}">${l}<i class="pe-dir" aria-hidden="true">${ui.sort === k ? (ui.dir < 0 ? '▼' : '▲') : ''}</i></button>`).join('')}</div>
+        <div class="pe-grid" id="pf-team-body"></div></section>`;
     return { html, mount: (page) => { bindRange(page); mountTeam(page, data); } };
   }
+
+  const TEAM_SORTS = [['name', 'نام'], ['useful', 'ساعت مفید'], ['chg', 'تغییر'], ['attendanceRate', 'حضور'], ['punctualityRate', 'وقت‌شناسی'], ['fulfillmentRate', 'تحقق'], ['avgCheckIn', 'میانگین ورود'], ['overtime', 'اضافه‌کاری'], ['shortfall', 'کسری'], ['late', 'تأخیر'], ['absentDays', 'غیبت']];
 
   function spark(vals) {
     const W = 96; const H = 30; const max = Math.max(1, ...vals);
@@ -246,37 +248,46 @@
     ].join('');
     applyProgress($('#pf-leaders', page));
     $$('.pf-leader', page).forEach((b) => b.addEventListener('click', () => AP.go('performance', b.dataset.id)));
-    // جدول
+    // کارت‌های کارمندان (هر کارمند یک کارت؛ بدون جدول و بدون ظرف اسکرول‌دار تا همه‌ی کارمندان همیشه دیده شوند)
     const body = $('#pf-team-body', page);
+    const count = $('#pf-team-count', page);
     const paint = () => {
       const s = ui.sort; const term = ui.search.trim();
       const list = rows.filter((r) => !term || r.name.includes(term) || String(r.user.personnelCode || '').includes(term));
       const sorted = list.slice().sort((a, b) => (s === 'name' ? a.name.localeCompare(b.name, 'fa') * -ui.dir : ((a[s] == null ? -1 : a[s]) - (b[s] == null ? -1 : b[s])) * ui.dir));
       const maxUseful = Math.max(0, ...rows.map((r) => r.useful));
-      const rate = (v, good, ok) => {
-        if (v == null) return '<span class="muted">—</span>';
+      count.textContent = term ? `${fmt.num(sorted.length)} از ${fmt.num(rows.length)}` : `${fmt.num(rows.length)} نفر`;
+      const rate = (label, v, good, ok) => {
+        if (v == null) return `<div class="pe-rate"><span class="pe-lbl">${label}</span><b class="pe-rate-v muted">—</b></div>`;
         const tone = v >= good ? 'good' : v >= ok ? 'warn' : 'bad';
-        return `<span class="pf-score ${tone}"><b>${pctText(v)}</b>${bar(v, tone)}</span>`;
+        return `<div class="pe-rate ${tone}"><span class="pe-lbl">${label}</span><b class="pe-rate-v">${pctText(v)}</b>${bar(v, tone)}</div>`;
       };
-      const tag = (v, tone) => (v ? `<span class="pf-tag ${tone}">${fmt.min(v)}</span>` : '<span class="muted">—</span>');
+      const stat = (label, value, tone) => `<div class="pe-stat${tone ? ` ${tone}` : ''}"><dt>${label}</dt><dd>${value}</dd></div>`;
+      const dash = '<span class="muted">—</span>';
       body.innerHTML = sorted.map((r, i) => {
         const p = r.chg == null ? null : Math.round(r.chg * 100);
         const chg = p == null ? '<span class="pf-delta flat">جدید</span>' : `<span class="pf-delta ${p > 0 ? 'good' : p < 0 ? 'bad' : 'flat'}">${p === 0 ? 'بدون تغییر' : `${p > 0 ? '▲' : '▼'} ${fa(Math.abs(p))}٪`}</span>`;
-        return `<tr class="clickable" data-id="${r.user.id}" tabindex="0"><td><div class="pf-person"><span class="pf-rankdot${i < 3 && ui.sort === 'useful' && ui.dir < 0 && !term ? ` top${i + 1}` : ''}">${fa(i + 1)}</span>${AP.avatar(r.user.fullName, 'sm', r.user.id)}<div><b>${esc(r.user.fullName)}</b><small>${esc(r.user.department || 'بدون دپارتمان')}</small></div></div></td>
-          <td class="num"><div class="pf-sharecell pf-usefulcell"><strong>${fmt.min(r.useful)}</strong>${bar(maxUseful ? (r.useful / maxUseful) * 100 : 0, 'green')}</div></td>
-          <td class="num">${chg}</td>
-          <td class="num">${rate(r.attendanceRate, 95, 80)}</td><td class="num">${rate(r.punctualityRate, 90, 70)}</td><td class="num">${rate(r.fulfillmentRate, 100, 90)}</td><td class="num">${r.avgCheckIn == null ? '<span class="muted">—</span>' : `<span class="pf-ratechip">${clock(r.avgCheckIn)}</span>`}</td>
-          <td class="num">${tag(r.overtime, 'good')}</td><td class="num">${tag(r.shortfall, 'bad')}</td><td class="num">${tag(r.late, 'warn')}</td><td class="num">${r.absentDays ? `<span class="pf-tag bad">${fmt.num(r.absentDays)} روز</span>` : '<span class="muted">—</span>'}</td>
-          <td>${spark(r.spark)}</td></tr>`;
-      }).join('') || `<tr><td colspan="12">${emptyBox('کارمندی برای نمایش نیست.')}</td></tr>`;
+        const medal = i < 3 && ui.sort === 'useful' && ui.dir < 0 && !term ? ` top${i + 1}` : '';
+        const sp = spark(r.spark);
+        return `<article class="pe-card clickable" data-id="${r.user.id}" tabindex="0" role="link" aria-label="گزارش کامل ${esc(r.user.fullName)}">
+          <header class="pe-head"><span class="pe-av">${AP.avatar(r.user.fullName, '', r.user.id)}</span><div class="pe-who"><b>${esc(r.user.fullName)}</b><small>${esc(r.user.department || 'بدون دپارتمان')}</small></div><span class="pe-rank${medal}">${fa(i + 1)}</span></header>
+          <div class="pe-hero"><div class="pe-hero-top"><span class="pe-lbl">ساعت مفید</span>${chg}</div><strong class="pe-hero-val">${unitize(fmt.min(r.useful))}</strong>${bar(maxUseful ? (r.useful / maxUseful) * 100 : 0, 'green')}</div>
+          <div class="pe-rates">${rate('حضور', r.attendanceRate, 95, 80)}${rate('وقت‌شناسی', r.punctualityRate, 90, 70)}${rate('تحقق', r.fulfillmentRate, 100, 90)}</div>
+          <dl class="pe-stats">${stat('میانگین ورود', r.avgCheckIn == null ? dash : `<span class="pf-ratechip">${clock(r.avgCheckIn)}</span>`)}${stat('اضافه‌کاری', r.overtime ? fmt.min(r.overtime) : dash, r.overtime ? 'good' : '')}${stat('کسری', r.shortfall ? fmt.min(r.shortfall) : dash, r.shortfall ? 'bad' : '')}${stat('تأخیر', r.late ? fmt.min(r.late) : dash, r.late ? 'warn' : '')}${stat('غیبت', r.absentDays ? `${fmt.num(r.absentDays)} روز` : dash, r.absentDays ? 'bad' : '')}</dl>
+          ${sp ? `<footer class="pe-foot"><span class="pe-lbl">روند کارکرد</span>${sp}</footer>` : ''}</article>`;
+      }).join('') || emptyBox('کارمندی برای نمایش نیست.');
       applyProgress(body);
     };
     paint();
     $('#pf-search', page).addEventListener('input', (e) => { ui.search = e.target.value; paint(); });
-    $$('.pf-sort', page).forEach((b) => b.addEventListener('click', () => { if (ui.sort === b.dataset.sort) ui.dir *= -1; else { ui.sort = b.dataset.sort; ui.dir = -1; } AP.refresh(); }));
-    const go = (tr) => { if (tr && tr.dataset.id) AP.go('performance', tr.dataset.id); };
-    body.addEventListener('click', (e) => go(e.target.closest('tr')));
-    body.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(e.target.closest('tr')); });
+    $$('.pf-sort', page).forEach((b) => b.addEventListener('click', () => {
+      if (ui.sort === b.dataset.sort) ui.dir *= -1; else { ui.sort = b.dataset.sort; ui.dir = -1; }
+      $$('.pf-sort', page).forEach((x) => { const on = x.dataset.sort === ui.sort; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); x.querySelector('.pe-dir').textContent = on ? (ui.dir < 0 ? '▼' : '▲') : ''; });
+      paint();
+    }));
+    const go = (el) => { if (el && el.dataset.id) AP.go('performance', el.dataset.id); };
+    body.addEventListener('click', (e) => go(e.target.closest('.pe-card')));
+    body.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(e.target.closest('.pe-card')); });
   }
 
   // =====================================================================
@@ -594,6 +605,7 @@
   // =====================================================================
   // حقوق و دستمزد
   // =====================================================================
+  const PAY_SORTS = [['name', 'نام'], ['amount', 'حقوق'], ['rate', 'نرخ ساعتی'], ['useful', 'ساعت مفید'], ['ot', 'اضافه‌کاری'], ['days', 'روز کاری'], ['avgDay', 'میانگین روز'], ['mom', 'نسبت به ماه قبل'], ['proj', 'پیش‌بینی ماه']];
   const pay = { year: null, month: null, department: '', search: '', sort: 'amount', dir: -1 };
 
   AP.view('payroll', {
@@ -628,9 +640,10 @@
         <div class="pf-kpis">${kpis}</div>
         <figure class="chart-fig pf-chartcard"><figcaption>حقوق هر کارمند<small class="heat-sub">${esc(data.label)}</small></figcaption><div class="pf-chart" id="pay-chart"></div></figure>
         <section class="pf-block"><h3 class="pf-sec-title">${AP.icon('employees')} تفکیک دپارتمان</h3>${deptCards(data.departments, { title: 'تفکیک دپارتمان', mainLabel: 'مجموع حقوق', main: (x) => toman(x.amountToman), share: (x) => (t.amountToman ? (x.amountToman / t.amountToman) * 100 : 0), stats: (x) => [['میانگین هر نفر', x.employees ? toman(Math.round(x.amountToman / x.employees)) : '—'], ['ساعت مفید', fmt.min(x.usefulMinutes)], ['هر ساعت', x.usefulMinutes ? toman(Math.round(x.amountToman / (x.usefulMinutes / 60))) : '—']] })}</section>
-        <div class="card flush pf-block pf-paycard"><div class="card-head"><h3>${AP.icon('wallet')} ریز هر کارمند</h3><label class="field pf-search"><input type="search" id="pay-search" placeholder="جستجوی نام…" value="${esc(pay.search)}" aria-label="جستجوی کارمند" /></label></div><div class="table-wrap"><table class="pf-paytable pf-paytable-pay"><thead><tr>
-          ${[['name', 'کارمند'], ['rate', 'نرخ ساعتی'], ['useful', 'ساعت مفید'], ['ot', 'اضافه‌کاری'], ['days', 'روز کاری'], ['avgDay', 'میانگین روز'], ['amount', 'حقوق'], ['mom', 'نسبت به ماه قبل'], ['proj', 'پیش‌بینی ماه']].map(([k, l]) => `<th><button type="button" class="pf-sort" data-sort="${k}">${l}${pay.sort === k ? (pay.dir < 0 ? ' ▼' : ' ▲') : ''}</button></th>`).join('')}<th>سهم</th></tr></thead><tbody id="pay-body"></tbody>
-          <tfoot><tr><td colspan="6"><b>جمع کل</b></td><td class="num" data-label="جمع حقوق"><b>${toman(t.amountToman)}</b></td><td></td><td class="num" data-label="پیش‌بینی ماه">${t.projectedAmountToman != null ? toman(t.projectedAmountToman) : '—'}</td><td></td></tr></tfoot></table></div></div>
+        <section class="pf-block pf-team pf-team-v2 pf-paycard-v2" aria-label="ریز هر کارمند"><div class="card-head"><h3>${AP.icon('wallet')} ریز هر کارمند <small class="pf-pay-count" id="pay-count" aria-live="polite"></small></h3><label class="field pf-search"><input type="search" id="pay-search" placeholder="جستجوی نام…" value="${esc(pay.search)}" aria-label="جستجوی کارمند" /></label></div>
+          <div class="pe-sortbar" role="group" aria-label="مرتب‌سازی کارمندان"><span class="pe-sort-label">مرتب‌سازی:</span>${PAY_SORTS.map(([k, l]) => `<button type="button" class="pf-sort pe-sort${pay.sort === k ? ' on' : ''}" data-sort="${k}" aria-pressed="${pay.sort === k}">${l}<i class="pe-dir" aria-hidden="true">${pay.sort === k ? (pay.dir < 0 ? '▼' : '▲') : ''}</i></button>`).join('')}</div>
+          <div class="pe-grid pe-grid-pay" id="pay-body"></div>
+          <div class="pe-total"><div><span class="pe-lbl">جمع کل حقوق</span><strong>${toman(t.amountToman)}</strong></div><div><span class="pe-lbl">پیش‌بینی ماه</span><strong>${t.projectedAmountToman != null ? toman(t.projectedAmountToman) : '—'}</strong></div></div></section>
         <p class="chart-note">جمع هر کارمند از «کل دقیقه‌ها» محاسبه می‌شود (مثل Mini App)؛ مبلغ هر روز جدا گرد می‌شود و ممکن است با جمع چند تومان اختلاف گرد‌کردن داشته باشد. پیش‌بینی فقط برای ماه جاری است: میانگین روزانه‌ی تاکنون × کل روزهای کاری ماه.</p>`;
       return { html, mount: (page) => mountPayroll(page, data) };
     },
@@ -642,38 +655,62 @@
     $$('input, select', f).forEach((x) => x.addEventListener('change', () => { Object.assign(pay, AP.formData(f)); AP.refresh(); }));
     AP.monthStepper(f); // ماه قبل/بعد/ماه جاری
     const t = data.totals;
-    const rows = data.rows.map((r) => ({
-      ...r, name: r.user.fullName, rate: r.rateKt == null ? -1 : r.rateKt, useful: r.usefulMinutes, ot: r.overtimeMinutes, days: r.workedDays, avgDay: r.avgPerWorkedDayToman == null ? -1 : r.avgPerWorkedDayToman,
-      amount: r.amountToman == null ? -1 : r.amountToman, proj: r.projectedAmountToman == null ? -1 : r.projectedAmountToman,
-      mom: r.previousAmountToman ? (r.amountToman - r.previousAmountToman) / r.previousAmountToman : -999,
-    }));
+    const rows = data.rows.map((row, index) => {
+      const r = row || {}; const user = r.user || {};
+      return {
+        ...r,
+        user: { ...user, fullName: user.fullName || 'کارمند بدون نام', department: user.department || '', personnelCode: user.personnelCode || '' },
+        excludedDays: Array.isArray(r.excludedDays) ? r.excludedDays : [],
+        name: user.fullName || `کارمند بدون نام ${index + 1}`, rate: r.rateKt == null ? -1 : r.rateKt, useful: r.usefulMinutes ?? -1, ot: r.overtimeMinutes ?? -1, days: r.workedDays ?? -1, avgDay: r.avgPerWorkedDayToman == null ? -1 : r.avgPerWorkedDayToman,
+        amount: r.amountToman == null ? -1 : r.amountToman, proj: r.projectedAmountToman == null ? -1 : r.projectedAmountToman,
+        mom: r.previousAmountToman && r.amountToman != null ? (r.amountToman - r.previousAmountToman) / r.previousAmountToman : -999,
+      };
+    });
     // نمودار میله‌ایِ سهم هر نفر
     PC.barsChart($('#pay-chart', page), rows.filter((r) => r.amount > 0).sort((a, b) => b.amount - a.amount).map((r) => ({ label: r.name, short: r.name.split(' ')[0], value: r.amount, sub: r.user.department || '' })), { unit: 'money', tone: 'green', valueLabel: 'حقوق', aria: 'حقوق هر کارمند' });
     const body = $('#pay-body', page);
+    const count = $('#pay-count', page);
+    const shortMin = (value) => {
+      if (value == null || !Number.isFinite(Number(value)) || Number(value) < 0) return '—';
+      const minutes = Math.round(Number(value));
+      return `${fmt.num(Math.floor(minutes / 60))}:${fa(String(minutes % 60).padStart(2, '0'))}`;
+    };
     const paint = () => {
       const term = pay.search.trim();
       const list = rows.filter((r) => !term || r.name.includes(term) || String(r.user.personnelCode || '').includes(term));
       const s = pay.sort;
       list.sort((a, b) => (s === 'name' ? a.name.localeCompare(b.name, 'fa') * -pay.dir : (a[s] - b[s]) * pay.dir));
-      const maxAmt = Math.max(1, ...rows.map((x) => x.amount));
+      if (count) count.textContent = `نمایش ${fmt.num(list.length)} از ${fmt.num(rows.length)} کارمند`;
+      const maxAmt = Math.max(1, ...rows.map((x) => Math.max(0, x.amount)));
       body.innerHTML = list.map((r, i) => {
-        const mom = r.mom === -999 ? '<span class="muted">—</span>' : `<span class="pf-delta ${r.mom > 0 ? 'good' : r.mom < 0 ? 'bad' : 'flat'}">${r.mom === 0 ? '—' : `${r.mom > 0 ? '▲' : '▼'} ${fa(Math.abs(Math.round(r.mom * 100)))}٪`}</span>`;
-        const sharePct = t.amountToman && r.amountToman ? Math.round((r.amountToman / t.amountToman) * 1000) / 10 : 0;
-        return `<tr class="clickable" data-id="${r.user.id}" tabindex="0"><td><div class="pf-person"><span class="pf-rankdot${i < 3 && pay.sort === 'amount' && pay.dir < 0 ? ` top${i + 1}` : ''}">${fa(i + 1)}</span>${AP.avatar(r.user.fullName, 'sm', r.user.id)}<div><b>${esc(r.user.fullName)}</b><small>${esc(r.user.department || '')}</small></div></div></td>
-          <td class="num">${r.rateKt == null ? '<span class="muted">ثبت نشده</span>' : `<span class="pf-ratechip">${fmt.num(r.rateKt)} هزار</span>`}</td><td class="num">${fmt.min(r.usefulMinutes)}</td><td class="num">${r.overtimeMinutes ? fmt.min(r.overtimeMinutes) : '—'}</td><td class="num">${fmt.num(r.workedDays)}</td>
-          <td class="num">${r.avgPerWorkedDayToman == null ? '—' : toman(r.avgPerWorkedDayToman)}</td>
-          <td class="num"><span class="pf-amtcell">${r.amountToman == null ? '—' : toman(r.amountToman)}</span>${r.excludedDays.length ? `<small class="pf-warn">${fmt.num(r.excludedDays.length)} روز خارج</small>` : ''}</td><td class="num">${mom}</td>
-          <td class="num">${r.projectedAmountToman == null ? '—' : toman(r.projectedAmountToman)}</td>
-          <td><div class="pf-sharecell">${bar(r.amountToman ? (r.amountToman / maxAmt) * 100 : 0, 'green')}<small>${sharePct ? pctText(sharePct) : '—'}</small></div></td></tr>`;
-      }).join('') || `<tr><td colspan="10">${emptyBox('کارمندی نیست.')}</td></tr>`;
+        try {
+          const mom = r.mom === -999 ? '<span class="muted">—</span>' : `<span class="pf-delta ${r.mom > 0 ? 'good' : r.mom < 0 ? 'bad' : 'flat'}">${r.mom === 0 ? '—' : `${r.mom > 0 ? '▲' : '▼'} ${fa(Math.abs(Math.round(r.mom * 100)))}٪`}</span>`;
+          const sharePct = t.amountToman && r.amountToman > 0 ? Math.round((r.amountToman / t.amountToman) * 1000) / 10 : 0;
+          const clickable = r.user.id != null;
+          const medal = i < 3 && pay.sort === 'amount' && pay.dir < 0 ? ` top${i + 1}` : '';
+          const stat = (l, v) => `<div class="pe-stat"><dt>${l}</dt><dd>${v}</dd></div>`;
+          const dash = '<span class="muted">—</span>';
+          return `<article class="pe-card${clickable ? ' clickable' : ''}"${clickable ? ` data-id="${esc(r.user.id)}" tabindex="0" role="link" aria-label="ریز حقوق ${esc(r.user.fullName)}"` : ''}>
+            <header class="pe-head"><span class="pe-av">${AP.avatar(r.user.fullName, '', r.user.id)}</span><div class="pe-who"><b>${esc(r.user.fullName)}</b><small>${esc(r.user.department || 'بدون دپارتمان')}</small></div><span class="pe-rank${medal}">${fa(i + 1)}</span></header>
+            <div class="pe-hero"><div class="pe-hero-top"><span class="pe-lbl">حقوق</span>${mom}</div><strong class="pe-hero-val pe-amount">${r.amountToman == null ? '—' : toman(r.amountToman)}</strong>${bar(r.amountToman > 0 ? (r.amountToman / maxAmt) * 100 : 0, 'green')}<small class="pe-share">${sharePct ? `${pctText(sharePct)} از کل` : 'بدون سهم'}</small>${r.excludedDays.length ? `<small class="pf-warn">${fmt.num(r.excludedDays.length)} روز خارج از محاسبه</small>` : ''}</div>
+            <dl class="pe-stats">${stat('نرخ ساعتی', r.rateKt == null ? dash : `${fmt.num(r.rateKt)} هزار`)}${stat('ساعت مفید', r.usefulMinutes == null ? dash : esc(fmt.min(r.usefulMinutes)))}${stat('اضافه‌کاری', r.overtimeMinutes ? esc(fmt.min(r.overtimeMinutes)) : dash)}${stat('روز کاری', r.workedDays == null ? dash : fmt.num(r.workedDays))}${stat('میانگین روز', r.avgPerWorkedDayToman == null ? dash : toman(r.avgPerWorkedDayToman))}${stat('پیش‌بینی ماه', r.projectedAmountToman == null ? dash : toman(r.projectedAmountToman))}</dl></article>`;
+        } catch (err) {
+          console.error('payroll card render failed', err, r);
+          return `<article class="pe-card"><header class="pe-head"><span class="pe-rank">${fa(i + 1)}</span><div class="pe-who"><b>${esc(r.name || 'کارمند بدون نام')}</b><small>اطلاعات این کارت ناقص است</small></div></header></article>`;
+        }
+      }).join('') || emptyBox('کارمندی نیست.');
       applyProgress(body);
     };
     paint();
     $('#pay-search', page).addEventListener('input', (e) => { pay.search = e.target.value; paint(); });
-    $$('.pf-sort', page).forEach((b) => b.addEventListener('click', () => { if (pay.sort === b.dataset.sort) pay.dir *= -1; else { pay.sort = b.dataset.sort; pay.dir = -1; } AP.refresh(); }));
-    const open = (tr) => { if (tr && tr.dataset.id) openPayDetail(tr.dataset.id, data); };
-    body.addEventListener('click', (e) => open(e.target.closest('tr.clickable')));
-    body.addEventListener('keydown', (e) => { if (e.key === 'Enter') open(e.target.closest('tr.clickable')); });
+    $$('.pf-sort', page).forEach((b) => b.addEventListener('click', () => {
+      if (pay.sort === b.dataset.sort) pay.dir *= -1; else { pay.sort = b.dataset.sort; pay.dir = -1; }
+      $$('.pf-sort', page).forEach((x) => { const on = x.dataset.sort === pay.sort; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); x.querySelector('.pe-dir').textContent = on ? (pay.dir < 0 ? '▼' : '▲') : ''; });
+      paint();
+    }));
+    const open = (el) => { if (el && el.dataset.id) openPayDetail(el.dataset.id, data); };
+    body.addEventListener('click', (e) => open(e.target.closest('.pe-card.clickable')));
+    body.addEventListener('keydown', (e) => { if (e.key === 'Enter') open(e.target.closest('.pe-card.clickable')); });
     $('#pay-csv', page).addEventListener('click', () => downloadCsv(`payroll-${data.year}-${String(data.month).padStart(2, '0')}.csv`,
       ['کارمند', 'کد پرسنلی', 'دپارتمان', 'نرخ ساعتی (هزار تومان)', 'ساعت مفید (دقیقه)', 'اضافه‌کاری (دقیقه)', 'روز کاری', 'میانگین هر روز (تومان)', 'حقوق (تومان)', 'حقوق ماه قبل (تومان)', 'پیش‌بینی پایان ماه (تومان)', 'روز خارج‌شده'],
       data.rows.map((r) => [r.user.fullName, r.user.personnelCode, r.user.department, r.rateKt, r.usefulMinutes, r.overtimeMinutes, r.workedDays, r.avgPerWorkedDayToman, r.amountToman, r.previousAmountToman, r.projectedAmountToman, r.excludedDays.length])));
