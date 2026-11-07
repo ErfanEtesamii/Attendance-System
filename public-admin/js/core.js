@@ -928,6 +928,7 @@
   async function setupLoginWidget() {
     try {
       const cfg = await AP.api('/admin/public-config');
+      if (cfg.platform === 'bale') return; // ویجت تلگرام در بله نیست؛ فقط کد ورود/لینک بات
       if (!cfg.botUsername) {
         $('#login-error').textContent = 'TELEGRAM_BOT_USERNAME روی سرور تنظیم نشده است؛ ویجت ورود قابل نمایش نیست.';
         return;

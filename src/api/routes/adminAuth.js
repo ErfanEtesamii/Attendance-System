@@ -3,6 +3,7 @@
 //   2) token   — لینک یک‌بارمصرف «باز کردن در مرورگر» از بات
 //   3) code    — کد ۸ رقمی یک‌بارمصرف از بات (منو ← «🖥 پنل»؛ دستور /panel هنوز کار می‌کند)
 //   4) telegram — Telegram Login Widget (روی شبکه‌های فیلتر ممکن است لود نشود)
+// در نسخه‌ی بله (BALE_BOT_TOKEN ست و TELEGRAM_BOT_TOKEN خالی) راه‌های ۱ و ۴ غیرفعال‌اند (۴۰۴)؛ ورود با token/code انجام می‌شود.
 
 const express = require('express');
 const router = express.Router();
@@ -49,8 +50,17 @@ function usableUser(user) {
   return !!user && !!user.is_active && ROLES.includes(user.role);
 }
 
+// نسخه‌ی بله: بدون توکن تلگرام، ورودهای مخصوص تلگرام (Web App / Login Widget) در دسترس نیستند.
+function isBalePlatform() {
+  return !!config.baleBotToken;
+}
+function telegramLoginUnavailable(res) {
+  return res.status(404).json({ error: 'این روش ورود در بله فعال نیست. از «لینک مرورگر» یا کد ورود بات استفاده کنید.' });
+}
+
 // ورود با دکمه‌ی «پنل» داخل بات (Web App)
 router.post('/admin/auth/webapp', panelAutoLoginLimiter, (req, res) => {
+  if (isBalePlatform() && !config.telegramBotToken) return telegramLoginUnavailable(res);
   if (!config.telegramBotToken) {
     return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN روی سرور تنظیم نشده است.' });
   }
@@ -88,11 +98,13 @@ router.post('/admin/auth/code', (req, res) => {
 });
 
 router.get('/admin/public-config', (req, res) => {
-  res.json({ botUsername: config.telegramBotUsername });
+  const bale = isBalePlatform();
+  res.json({ platform: bale ? 'bale' : 'telegram', botUsername: bale ? config.baleBotUsername : config.telegramBotUsername });
 });
 
 // فاز ۹: rate limiting روی لاگین (ضد brute-force)
 router.post('/admin/auth/telegram', (req, res) => {
+  if (isBalePlatform() && !config.telegramBotToken) return telegramLoginUnavailable(res);
   if (!config.telegramBotToken) {
     return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN روی سرور تنظیم نشده است.' });
   }

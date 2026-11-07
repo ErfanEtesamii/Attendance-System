@@ -1,6 +1,6 @@
 // «🖥 پنل» — ورود به پنل وب برای هر سه نقش (ادمین / سرپرست / کارمند)، فقط در چت خصوصی.
 // سه راه ورود در یک پیام:
-//   ۱) دکمه‌ی «ورود به پنل» (Web App داخل تلگرام — بدون کد)
+//   ۱) دکمه‌ی «ورود به پنل» (Web App داخل پیام‌رسان — بدون کد؛ در بله ساخته نمی‌شود)
 //   ۲) دکمه‌ی «باز کردن در مرورگر» (لینک یک‌بارمصرف ۵ دقیقه‌ای)
 //   ۳) کد ۸ رقمی یک‌بارمصرف (برای تایپ دستی در صفحه‌ی ورود)
 const { getRegisteredUser, notRegisteredMessage } = require('../auth');
@@ -29,9 +29,10 @@ async function handlePanelLogin(bot, msg) {
   auditRepository.logEvent({ userId: user.id, action: 'admin_panel_code_issued', details: { role: user.role } });
 
   const buttons = [];
-  const webApp = panelWebAppButton();
+  const isBale = bot.platform === 'bale';
+  const webApp = isBale ? null : panelWebAppButton();
   if (webApp) buttons.push([webApp]);
-  else warnInsecureMiniAppUrl('«🖥 پنل»'); // H3: بدون https دکمه‌ی ورود داخل تلگرام ساخته نمی‌شود؛ به‌جای سکوت، در متن هم می‌گوییم
+  else if (!isBale) warnInsecureMiniAppUrl('«🖥 پنل»'); // H3: بدون https دکمه‌ی ورود داخل تلگرام ساخته نمی‌شود؛ به‌جای سکوت، در متن هم می‌گوییم
   buttons.push([{ text: '🌐 باز کردن در مرورگر', url: panelUrl({ token }) }]);
 
   const text = [
@@ -39,7 +40,7 @@ async function handlePanelLogin(bot, msg) {
     ROLE_ACCESS[user.role] || '',
     '',
     'برای ورود یکی از دکمه‌های زیر را بزنید.',
-    ...(webApp ? [] : ['⚠️ ورود داخل تلگرام فعال نیست (آدرس برنامه باید https باشد؛ به ادمین اطلاع دهید). فعلاً از «باز کردن در مرورگر» یا کد ورود استفاده کنید.']),
+    ...(webApp || isBale ? [] : ['⚠️ ورود داخل پیام‌رسان فعال نیست (آدرس برنامه باید https باشد؛ به ادمین اطلاع دهید). فعلاً از «باز کردن در مرورگر» یا کد ورود استفاده کنید.']),
     `لینک مرورگر ${linkTtl / 60} دقیقه اعتبار دارد و فقط یک‌بار کار می‌کند؛ آن را برای کسی نفرستید.`,
     '',
     `کد ورود دستی (برای صفحه‌ی ورود): \`${code}\` — ${codeTtl / 60} دقیقه اعتبار.`,
