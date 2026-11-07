@@ -291,7 +291,7 @@
     const abs = Math.max(0, Math.round(totalMinutes));
     const h = Math.floor(abs / 60);
     const m = abs % 60;
-    const fa = (n) => n.toLocaleString('fa-IR');
+    const fa = (n) => n.toLocaleString('en-US');
     if (h > 0 && m > 0) return `${fa(h)} ساعت و ${fa(m)} دقیقه`;
     if (h > 0) return `${fa(h)} ساعت`;
     return `${fa(m)} دقیقه`;

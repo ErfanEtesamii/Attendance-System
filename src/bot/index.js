@@ -1,4 +1,4 @@
-﻿const BaleBot = require('./baleBot');
+const BaleBot = require('./baleBot');
 const config = require('../config');
 const session = require('./session');
 const { routeMenuText, handleMenuCallback } = require('./menu/menuRouter');
