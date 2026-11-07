@@ -41,14 +41,34 @@ class BaleBot extends EventEmitter {
     return payload.result;
   }
 
-  // بله از web_app پشتیبانی می‌کند؛ فقط فیلدهای نمایشی اختصاصی تلگرام حذف می‌شوند.
-  normalizeMarkup(markup) {
+  // در بله web_app به لینک یک‌بارمصرف (url) تبدیل می‌شود: /admin/ ⇒ توکن پنل (t)، غیر از آن ⇒ توکن مینی‌اپ (bale_token).
+  // فقط چت خصوصی با کاربر ثبت‌شده؛ در غیر این صورت دکمه حذف می‌شود. فیلدهای نمایشی اختصاصی تلگرام (style) هم حذف می‌شوند.
+  webAppToUrlButton(button, chatId) {
+    let target;
+    try { target = new URL(button.web_app.url); } catch (_) { return null; }
+    if (target.protocol !== 'https:') return null;
+    const usersRepository = require('../repositories/usersRepository');
+    const codes = require('../utils/panelLoginCodes');
+    const user = chatId == null ? null : usersRepository.findByTelegramId(String(chatId));
+    if (!user || !user.is_active) return null;
+    if (target.pathname.startsWith('/admin/')) target.searchParams.set('t', codes.issueLinkToken(user.id).token);
+    else target.searchParams.set('bale_token', codes.issueMiniAppToken(user.id).token);
+    const { web_app: _w, ...rest } = button;
+    return { ...rest, url: target.toString() };
+  }
+
+  normalizeMarkup(markup, chatId) {
     if (!markup || typeof markup !== 'object') return markup;
     const clone = JSON.parse(JSON.stringify(markup));
-    for (const row of clone.inline_keyboard || []) {
-      for (const button of row) {
-        delete button.style;
-      }
+    if (Array.isArray(clone.inline_keyboard)) {
+      clone.inline_keyboard = clone.inline_keyboard
+        .map((row) => row
+          .map((button) => {
+            delete button.style;
+            return button.web_app ? this.webAppToUrlButton(button, chatId) : button;
+          })
+          .filter(Boolean))
+        .filter((row) => row.length > 0);
     }
     return clone;
   }
@@ -58,7 +78,7 @@ class BaleBot extends EventEmitter {
       chat_id: chatId,
       text,
       ...options,
-      ...(options.reply_markup ? { reply_markup: JSON.stringify(this.normalizeMarkup(options.reply_markup)) } : {}),
+      ...(options.reply_markup ? { reply_markup: JSON.stringify(this.normalizeMarkup(options.reply_markup, chatId)) } : {}),
     });
   }
 
@@ -70,7 +90,7 @@ class BaleBot extends EventEmitter {
     return this.call('editMessageReplyMarkup', {
       chat_id: options.chat_id,
       message_id: options.message_id,
-      reply_markup: JSON.stringify(this.normalizeMarkup(markup)),
+      reply_markup: JSON.stringify(this.normalizeMarkup(markup, options.chat_id)),
     });
   }
 
@@ -79,7 +99,7 @@ class BaleBot extends EventEmitter {
       chat_id: options.chat_id,
       message_id: options.message_id,
       text,
-      ...(options.reply_markup ? { reply_markup: JSON.stringify(this.normalizeMarkup(options.reply_markup)) } : {}),
+      ...(options.reply_markup ? { reply_markup: JSON.stringify(this.normalizeMarkup(options.reply_markup, options.chat_id)) } : {}),
     });
   }
 
@@ -89,6 +109,11 @@ class BaleBot extends EventEmitter {
   // بله منوی فرمانِ تلگرام ندارد؛ برای سازگاری با راه‌اندازی قبلی عمداً no-op است.
   async setMyCommands() { return true; }
 
+  // نشانگر «در حال تایپ»؛ شکستش نباید جریان اصلی را بشکند.
+  async sendChatAction(chatId, action = 'typing') {
+    try { return await this.call('sendChatAction', { chat_id: chatId, action }); } catch (_) { return true; }
+  }
+
   async sendDocument(chatId, document, options = {}, fileOptions = {}) {
     // گزارش‌های ماهانه از Buffer ارسال می‌شوند؛ برای آن multipart لازم است.
     if (Buffer.isBuffer(document) || document instanceof Uint8Array) {
@@ -96,7 +121,7 @@ class BaleBot extends EventEmitter {
       form.set('chat_id', String(chatId));
       form.set('document', new Blob([document], { type: fileOptions.contentType || 'application/octet-stream' }), fileOptions.filename || 'report.xlsx');
       for (const [key, value] of Object.entries(options || {})) {
-        if (value !== undefined) form.set(key, key === 'reply_markup' ? JSON.stringify(this.normalizeMarkup(value)) : String(value));
+        if (value !== undefined) form.set(key, key === 'reply_markup' ? JSON.stringify(this.normalizeMarkup(value, chatId)) : String(value));
       }
       const response = await fetch(this.apiUrl('sendDocument'), { method: 'POST', body: form });
       const payload = await response.json();

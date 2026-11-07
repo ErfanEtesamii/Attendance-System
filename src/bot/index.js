@@ -179,7 +179,7 @@ async function configureBotUi(bot) {
 
   // دکمه منو برای باز کردن Mini App - فقط اگر آدرس واقعی در .env تنظیم شده باشد.
   // Mini App واقعی در فاز ۴ ساخته می‌شود؛ تا آن زمان این دکمه عمداً تنظیم نمی‌شود.
-  // API بله معادل setMyCommands / setChatMenuButton و Web App را ندارد.
+  // بله setMyCommands / setChatMenuButton ندارد؛ دکمه‌های web_app هم در BaleBot.normalizeMarkup به لینک یک‌بارمصرف تبدیل می‌شوند.
 }
 
 function startBot() {
