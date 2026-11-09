@@ -132,6 +132,77 @@ function removeReEntrySegment(attendanceRecordId, seq) {
   return tx();
 }
 
+// اصلاح دستی توسط ادمین: افزودن «نوبت بعدی» (مثلاً نوبت دوم) به رکوردی که قبلاً خروج خورده است.
+// برخلاف startReEntry (ورود زنده‌ی کارمند) زمان‌ها از ادمین می‌آیند و سقف maxReEntriesPerDay اعمال نمی‌شود.
+// خروجی: { segment } یا { error: CODE, message }
+function addManualSegment(attendanceRecordId, { checkInTime, checkOutTime = null } = {}) {
+  const db = getDb();
+  const tx = db.transaction(() => {
+    const record = findById(attendanceRecordId);
+    if (!record || !record.check_in_time) return { error: 'NO_CHECKIN', message: 'این رکورد ورود ندارد؛ ابتدا ساعت ورود را ثبت کنید.' };
+    const segs = listSegments(attendanceRecordId);
+    const last = segs[segs.length - 1];
+    if (!last.check_out_time) return { error: 'OPEN_SEGMENT', message: 'نوبت قبلی هنوز خروج ندارد؛ ابتدا خروج آن را ثبت کنید.' };
+    const inMs = new Date(checkInTime).getTime();
+    const outMs = checkOutTime ? new Date(checkOutTime).getTime() : null;
+    if (inMs < new Date(last.check_out_time).getTime()) return { error: 'OVERLAP', message: 'ورود نوبت جدید نمی‌تواند قبل از خروج نوبت قبلی باشد.' };
+    if (outMs !== null && outMs < inMs) return { error: 'ORDER', message: 'ساعت خروج نمی‌تواند قبل از ورود باشد.' };
+    const count = db.prepare('SELECT COUNT(*) AS n FROM attendance_segments WHERE attendance_record_id = ?').get(attendanceRecordId).n;
+    if (!count) {
+      db.prepare(`INSERT INTO attendance_segments (attendance_record_id, seq, check_in_time, check_in_ip, check_out_time, check_out_ip)
+        VALUES (?, 1, ?, ?, ?, ?)`).run(attendanceRecordId, record.check_in_time, record.check_in_ip, record.check_out_time, record.check_out_ip);
+    }
+    const seq = segs.length + 1;
+    const info = db.prepare('INSERT INTO attendance_segments (attendance_record_id, seq, check_in_time, check_out_time) VALUES (?, ?, ?, ?)')
+      .run(attendanceRecordId, seq, checkInTime, checkOutTime || null);
+    db.prepare(`UPDATE attendance_records SET check_out_time = ?, check_out_ip = NULL, check_out_device = NULL, check_out_ua = NULL, updated_at = datetime('now') WHERE id = ?`)
+      .run(checkOutTime || null, attendanceRecordId);
+    return { segment: db.prepare('SELECT * FROM attendance_segments WHERE id = ?').get(info.lastInsertRowid) };
+  });
+  return tx();
+}
+
+// اصلاح دستی ساعت‌های یک نوبت (seq=1 هم مجاز است). فیلد undefined ⇒ بدون تغییر؛ خروجِ null فقط برای آخرین نوبت (باز کردن مجدد).
+// نوبت‌ها نباید با هم هم‌پوشانی داشته باشند. رکورد والد (check_in/check_out) با نوبت اول/آخر همگام می‌ماند.
+function updateSegmentManual(attendanceRecordId, seq, { checkInTime, checkOutTime } = {}) {
+  const db = getDb();
+  const tx = db.transaction(() => {
+    const record = findById(attendanceRecordId);
+    if (!record || !record.check_in_time) return { error: 'NOT_FOUND', message: 'نوبت یافت نشد.' };
+    let segs = listSegments(attendanceRecordId);
+    const target = segs.find((s) => s.seq === seq);
+    if (!target) return { error: 'NOT_FOUND', message: 'نوبت یافت نشد.' };
+    const isLast = target.seq === segs[segs.length - 1].seq;
+    const newIn = checkInTime !== undefined ? checkInTime : target.check_in_time;
+    const newOut = checkOutTime !== undefined ? checkOutTime : target.check_out_time;
+    if (!newIn) return { error: 'ORDER', message: 'ساعت ورود نوبت الزامی است.' };
+    if (!newOut && !isLast) return { error: 'OPEN_SEGMENT', message: 'فقط آخرین نوبت می‌تواند بدون خروج (باز) باشد.' };
+    const inMs = new Date(newIn).getTime();
+    const outMs = newOut ? new Date(newOut).getTime() : null;
+    if (outMs !== null && outMs < inMs) return { error: 'ORDER', message: 'ساعت خروج نمی‌تواند قبل از ورود باشد.' };
+    const prev = segs.find((s) => s.seq === seq - 1);
+    const next = segs.find((s) => s.seq === seq + 1);
+    if (prev && prev.check_out_time && inMs < new Date(prev.check_out_time).getTime()) return { error: 'OVERLAP', message: 'ورود این نوبت با خروج نوبت قبلی هم‌پوشانی دارد.' };
+    if (next && outMs !== null && outMs > new Date(next.check_in_time).getTime()) return { error: 'OVERLAP', message: 'خروج این نوبت با ورود نوبت بعدی هم‌پوشانی دارد.' };
+
+    const count = db.prepare('SELECT COUNT(*) AS n FROM attendance_segments WHERE attendance_record_id = ?').get(attendanceRecordId).n;
+    if (!count) {
+      // مدل قدیمی (بدون ردیف نوبت): فقط خودِ رکورد
+      db.prepare(`UPDATE attendance_records SET check_in_time = ?, check_out_time = ?, updated_at = datetime('now') WHERE id = ?`)
+        .run(newIn, newOut || null, attendanceRecordId);
+    } else {
+      db.prepare('UPDATE attendance_segments SET check_in_time = ?, check_out_time = ? WHERE attendance_record_id = ? AND seq = ?')
+        .run(newIn, newOut || null, attendanceRecordId, seq);
+      segs = db.prepare('SELECT * FROM attendance_segments WHERE attendance_record_id = ? ORDER BY seq').all(attendanceRecordId);
+      const first = segs[0]; const last = segs[segs.length - 1];
+      db.prepare(`UPDATE attendance_records SET check_in_time = ?, check_out_time = ?, check_out_ip = ?, updated_at = datetime('now') WHERE id = ?`)
+        .run(first.check_in_time, last.check_out_time || null, last.check_out_time ? last.check_out_ip : null, attendanceRecordId);
+    }
+    return { segment: listSegments(attendanceRecordId).find((s) => s.seq === seq) };
+  });
+  return tx();
+}
+
 function updateStatus(attendanceRecordId, status) {
   const db = getDb();
   db.prepare(
@@ -296,6 +367,8 @@ module.exports = {
   startReEntry,
   closeLastSegment,
   removeReEntrySegment,
+  addManualSegment,
+  updateSegmentManual,
   updateStatus,
   manualUpdate,
   listAllToday,

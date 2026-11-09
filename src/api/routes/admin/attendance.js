@@ -224,6 +224,73 @@ router.delete('/admin/attendance-records/:id/segments/:seq', requirePermission('
   return res.json({ ok: true, segments: attendanceRepository.listSegments(record.id) });
 });
 
+// ---------- اصلاح دستی نوبت‌ها: افزودن نوبت دوم/بعدی و ویرایش ساعت‌های هر نوبت ----------
+
+function segmentErrorStatus(code) { return code === 'NOT_FOUND' ? 404 : 409; }
+
+function notifySegmentChange(req, record, reason, what) {
+  const employee = usersRepository.findById(record.user_id);
+  if (employee?.telegram_user_id) {
+    notifyUser(employee.telegram_user_id, `${what} در رکورد تردد شما (${record.record_date}) توسط ${isAdmin(req.adminUser) ? 'ادمین' : 'سرپرست'} ثبت/اصلاح شد.${reason ? `\nدلیل: ${reason}` : ''}`);
+  }
+}
+
+router.post('/admin/attendance-records/:id/segments', requirePermission('records.edit'), (req, res) => {
+  const reason = requireReason(req, res);
+  if (reason === null) return undefined;
+  const record = attendanceRepository.findById(parseInt(req.params.id, 10));
+  if (!record) return res.status(404).json({ error: 'رکورد یافت نشد.' });
+  if (!canAccessUser(req.adminUser, record.user_id)) return res.status(403).json({ error: 'به این کارمند دسترسی ندارید.' });
+  const ci = isoOrNull((req.body || {}).checkInTime);
+  const co = isoOrNull((req.body || {}).checkOutTime);
+  if (!ci || ci === 'INVALID' || co === 'INVALID') return res.status(400).json({ error: 'ساعت ورود (و در صورت وجود خروج) باید معتبر باشد.' });
+  if (co && new Date(co) < new Date(ci)) return res.status(400).json({ error: 'ساعت خروج نمی‌تواند قبل از ورود باشد.' });
+  const lock = monthLock.guard(req, res, { from: record.record_date, reason });
+  if (lock === false) return undefined;
+  const result = attendanceRepository.addManualSegment(record.id, { checkInTime: ci, checkOutTime: co || null });
+  if (result.error) return res.status(segmentErrorStatus(result.error)).json({ code: result.error, error: result.message });
+  const seg = result.segment;
+  monthLock.adjust(req, lock, { action: 'attendance_segment_manually_created', entityType: 'attendance_segment', entityId: seg.id, userId: record.user_id, date: record.record_date });
+  auditChange(req, {
+    action: 'attendance_segment_manually_created', entityType: 'attendance_segment', entityId: seg.id,
+    before: null, after: { seq: seg.seq, check_in_time: seg.check_in_time, check_out_time: seg.check_out_time }, reason,
+    meta: { recordId: record.id, segmentId: seg.id, segmentSeq: seg.seq, targetUserId: record.user_id },
+  });
+  notifySegmentChange(req, record, reason, `نوبت ${seg.seq}`);
+  return res.status(201).json({ ok: true, segment: seg, segments: attendanceRepository.listSegments(record.id), record: enrichRecord(attendanceRepository.findById(record.id)) });
+});
+
+router.patch('/admin/attendance-records/:id/segments/:seq', requirePermission('records.edit'), (req, res) => {
+  const reason = requireReason(req, res);
+  if (reason === null) return undefined;
+  const record = attendanceRepository.findById(parseInt(req.params.id, 10));
+  const seq = parseInt(req.params.seq, 10);
+  if (!record) return res.status(404).json({ error: 'رکورد یافت نشد.' });
+  if (!canAccessUser(req.adminUser, record.user_id)) return res.status(403).json({ error: 'به این کارمند دسترسی ندارید.' });
+  if (!Number.isInteger(seq) || seq < 1) return res.status(400).json({ error: 'شماره نوبت نامعتبر است.' });
+  const ci = isoOrNull((req.body || {}).checkInTime);
+  const co = isoOrNull((req.body || {}).checkOutTime);
+  if (ci === 'INVALID' || co === 'INVALID') return res.status(400).json({ error: 'ساعت نامعتبر است.' });
+  if (ci === null) return res.status(400).json({ error: 'ساعت ورود نوبت نمی‌تواند خالی باشد.' });
+  if (ci === undefined && co === undefined) return res.status(400).json({ error: 'ساعتی برای اصلاح ارسال نشده است.' });
+  const before = attendanceRepository.listSegments(record.id).find((s) => s.seq === seq);
+  if (!before) return res.status(404).json({ error: 'نوبت یافت نشد.' });
+  const lock = monthLock.guard(req, res, { from: record.record_date, reason });
+  if (lock === false) return undefined;
+  const result = attendanceRepository.updateSegmentManual(record.id, seq, { checkInTime: ci, checkOutTime: co });
+  if (result.error) return res.status(segmentErrorStatus(result.error)).json({ code: result.error, error: result.message });
+  const seg = result.segment;
+  monthLock.adjust(req, lock, { action: 'attendance_segment_manually_edited', entityType: 'attendance_segment', entityId: seg.id ?? null, userId: record.user_id, date: record.record_date, details: { seq } });
+  auditChange(req, {
+    action: 'attendance_segment_manually_edited', entityType: 'attendance_segment', entityId: seg.id ?? record.id,
+    before: { seq, check_in_time: before.check_in_time, check_out_time: before.check_out_time },
+    after: { seq, check_in_time: seg.check_in_time, check_out_time: seg.check_out_time }, reason,
+    meta: { recordId: record.id, segmentId: seg.id ?? null, segmentSeq: seq, targetUserId: record.user_id },
+  });
+  notifySegmentChange(req, record, reason, `نوبت ${seq}`);
+  return res.json({ ok: true, segment: seg, segments: attendanceRepository.listSegments(record.id), record: enrichRecord(attendanceRepository.findById(record.id)) });
+});
+
 router.post('/admin/attendance-records', requirePermission('records.edit'), (req, res) => {
   const reason = requireReason(req, res);
   if (reason === null) return undefined;

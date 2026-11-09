@@ -69,9 +69,16 @@
     };
 
     const segmentRow = (s) => `<tr data-segment="${s.seq}">
-      <td>نوبت ${fmt.num(s.seq)}</td><td>${fmt.clock(s.check_in_time)}</td><td>${s.check_out_time ? fmt.clock(s.check_out_time) : AP.badge('present', 'باز')}</td>
+      <td>نوبت ${fmt.num(s.seq)}</td>
+      <td>${admin ? `<input type="datetime-local" data-f="seg-in" aria-label="ورود نوبت ${s.seq}" value="${fmt.toLocalInput(s.check_in_time)}" />` : fmt.clock(s.check_in_time)}</td>
+      <td>${admin ? `<input type="datetime-local" data-f="seg-out" aria-label="خروج نوبت ${s.seq}" value="${fmt.toLocalInput(s.check_out_time)}" />` : (s.check_out_time ? fmt.clock(s.check_out_time) : AP.badge('present', 'باز'))}</td>
       <td class="ltr">${esc(s.check_in_ip || '—')} / ${esc(s.check_out_ip || '—')}</td>
-      ${admin ? `<td>${s.seq > 1 ? `<button type="button" class="btn danger small" data-del-segment>${icon('trash')} حذف نوبت</button>` : ''}</td>` : ''}</tr>`;
+      ${admin ? `<td><div class="row-actions"><button type="button" class="btn ghost small" data-save-segment>${icon('check')} ذخیره</button>${s.seq > 1 ? `<button type="button" class="btn danger small" data-del-segment>${icon('trash')} حذف نوبت</button>` : ''}</div></td>` : ''}</tr>`;
+
+    // افزودن نوبت دوم/بعدی: فقط وقتی رکورد ورود دارد و آخرین نوبت بسته است (خروج خورده)
+    const segList = r.segments || [];
+    const lastSeg = segList[segList.length - 1];
+    const canAddSegment = admin && Boolean(r.check_in_time) && Boolean(lastSeg && lastSeg.check_out_time);
 
     const tile = (tone, ic, label, value, sub) => `
       <div class="rec-tile" data-tone="${tone}">
@@ -108,6 +115,13 @@
           <h4 class="rec-title"><span class="rec-title-icon">${icon('attendance')}</span>نوبت‌های حضور<span class="rec-count">${fmt.num((r.segments || []).length)}</span></h4>
           <div class="rec-card"><div class="table-wrap"><table><thead><tr><th>نوبت</th><th>ورود</th><th>خروج</th><th>IP ورود / خروج</th>${admin ? '<th></th>' : ''}</tr></thead>
             <tbody>${(r.segments || []).map(segmentRow).join('')}</tbody></table></div></div>
+          ${canAddSegment ? `<form class="rec-card rec-add add-segment-form" id="add-segment">
+            <div class="rec-card-title">${icon('plus')} افزودن نوبت ${fmt.num(segList.length + 1)}</div>
+            <div class="rec-add-grid">
+              <label class="field"><span>ورود</span><input type="datetime-local" name="checkInTime" required /></label>
+              <label class="field"><span>خروج (اختیاری)</span><input type="datetime-local" name="checkOutTime" /></label>
+            </div>
+            <button class="btn ghost small" type="submit">${icon('plus')} افزودن نوبت</button></form>` : ''}
         </section>
 
         <section class="rec-section">
@@ -181,7 +195,26 @@
           if (ok) reopen();
         });
 
+        const addSeg = $('#add-segment', b);
+        if (addSeg) addSeg.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const f = AP.formData(e.target);
+          const reason = await AP.askReason({ title: 'افزودن نوبت حضور', message: 'نوبت جدید به همین رکورد اضافه می‌شود و در ساعت مفید حساب می‌شود.', confirmText: 'افزودن' });
+          if (reason === null) return;
+          const ok = await AP.attempt(() => AP.api(`/admin/attendance-records/${id}/segments`, { method: 'POST', body: {
+            checkInTime: fmt.fromLocalInput(f.checkInTime), checkOutTime: fmt.fromLocalInput(f.checkOutTime), reason } }), 'نوبت اضافه شد.');
+          if (ok) reopen();
+        });
+
         $$('tr[data-segment]', b).forEach((tr) => {
+          const saveBtn = $('[data-save-segment]', tr);
+          if (saveBtn) saveBtn.addEventListener('click', async () => {
+            const reason = await AP.askReason({ title: 'ویرایش نوبت', confirmText: 'ذخیره' });
+            if (reason === null) return;
+            const ok = await AP.attempt(() => AP.api(`/admin/attendance-records/${id}/segments/${tr.dataset.segment}`, { method: 'PATCH', body: {
+              checkInTime: fmt.fromLocalInput($('[data-f="seg-in"]', tr).value), checkOutTime: fmt.fromLocalInput($('[data-f="seg-out"]', tr).value), reason } }), 'نوبت اصلاح شد.');
+            if (ok) reopen();
+          });
           const button = $('[data-del-segment]', tr);
           if (!button) return;
           button.addEventListener('click', async () => {
