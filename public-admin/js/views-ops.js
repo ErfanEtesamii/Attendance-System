@@ -53,6 +53,7 @@
     const statusOpts = Object.entries(AP.STATUS_LABEL)
       .map(([k, v]) => `<option value="${k}" ${r.status === k ? 'selected' : ''}>${v}</option>`).join('');
 
+    const SAVE_NOTE = (what) => `<p class="rec-save-note">${icon('info')}<span>${what} فقط با زدن دکمه‌ی <b>ذخیره</b> در همین باکس ثبت می‌شود.</span></p>`;
     const breakRow = (b) => {
       const isLunch = b.break_type === 'lunch';
       const typeLabel = isLunch ? 'ناهار' : 'نماز / استراحت کوتاه';
@@ -64,16 +65,37 @@
           <label class="rec-f"><span>شروع</span>${admin ? `<input type="datetime-local" data-f="start" aria-label="شروع استراحت" value="${fmt.toLocalInput(b.start_time)}" />` : `<b class="num">${fmt.clock(b.start_time)}</b>`}</label>
           <label class="rec-f"><span>پایان</span>${admin ? `<input type="datetime-local" data-f="end" aria-label="پایان استراحت" value="${fmt.toLocalInput(b.end_time)}" />` : (b.end_time ? `<b class="num">${fmt.clock(b.end_time)}</b>` : AP.badge('on_break', 'در جریان'))}</label>
         </div>
-        ${admin ? `<div class="row-actions rec-break-actions"><button type="button" class="btn ghost small" data-save-break>${icon('check')} ذخیره</button><button type="button" class="btn danger small" data-del-break aria-label="حذف استراحت">${icon('trash')}</button></div>` : ''}
+        ${admin ? `<div class="row-actions rec-break-actions"><button type="button" class="btn ghost small" data-save-break>${icon('check')} ذخیره</button><button type="button" class="btn danger small" data-del-break aria-label="حذف استراحت">${icon('trash')}</button></div>
+        ${SAVE_NOTE('تغییر این استراحت')}` : ''}
       </div>`;
     };
 
-    const segmentRow = (s) => `<tr data-segment="${s.seq}">
-      <td>نوبت ${fmt.num(s.seq)}</td>
-      <td>${admin ? `<input type="datetime-local" data-f="seg-in" aria-label="ورود نوبت ${s.seq}" value="${fmt.toLocalInput(s.check_in_time)}" />` : fmt.clock(s.check_in_time)}</td>
-      <td>${admin ? `<input type="datetime-local" data-f="seg-out" aria-label="خروج نوبت ${s.seq}" value="${fmt.toLocalInput(s.check_out_time)}" />` : (s.check_out_time ? fmt.clock(s.check_out_time) : AP.badge('present', 'باز'))}</td>
-      <td class="ltr">${esc(s.check_in_ip || '—')} / ${esc(s.check_out_ip || '—')}</td>
-      ${admin ? `<td><div class="row-actions"><button type="button" class="btn ghost small" data-save-segment>${icon('check')} ذخیره</button>${s.seq > 1 ? `<button type="button" class="btn danger small" data-del-segment>${icon('trash')} حذف نوبت</button>` : ''}</div></td>` : ''}</tr>`;
+    const segMinutes = (s) => {
+      if (!s.check_in_time || !s.check_out_time) return null;
+      const d = (Date.parse(s.check_out_time) - Date.parse(s.check_in_time)) / 60000;
+      return Number.isFinite(d) && d >= 0 ? Math.round(d) : null;
+    };
+    const segmentRow = (s) => {
+      const open = !s.check_out_time;
+      const dur = segMinutes(s);
+      return `
+      <div class="rec-seg ${open ? 'is-open' : 'is-closed'}" data-segment="${s.seq}">
+        <div class="rec-seg-head">
+          <span class="rec-seg-num">${fmt.num(s.seq)}</span>
+          <b class="rec-seg-title">نوبت ${fmt.num(s.seq)}</b>
+          ${open ? AP.badge('present', 'باز') : (dur != null ? `<span class="rec-seg-dur">${icon('clock')}${fmt.min(dur)}</span>` : '')}
+          <span class="rec-seg-ip ltr" title="IP ورود / خروج">${esc(s.check_in_ip || '—')} / ${esc(s.check_out_ip || '—')}</span>
+        </div>
+        <div class="rec-seg-fields">
+          <label class="rec-f rec-f-in"><span>${icon('in')} ورود</span>${admin ? `<input type="datetime-local" data-f="seg-in" aria-label="ورود نوبت ${s.seq}" value="${fmt.toLocalInput(s.check_in_time)}" />` : `<b class="num">${fmt.clock(s.check_in_time)}</b>`}</label>
+          <label class="rec-f rec-f-out"><span>${icon('out')} خروج</span>${admin ? `<input type="datetime-local" data-f="seg-out" aria-label="خروج نوبت ${s.seq}" value="${fmt.toLocalInput(s.check_out_time)}" />` : (s.check_out_time ? `<b class="num">${fmt.clock(s.check_out_time)}</b>` : AP.badge('present', 'باز'))}</label>
+        </div>
+        ${admin ? `<div class="rec-seg-foot">
+          ${SAVE_NOTE('تغییر ساعت‌های این نوبت')}
+          <div class="row-actions"><button type="button" class="btn ghost small" data-save-segment>${icon('check')} ذخیره</button>${s.seq > 1 ? `<button type="button" class="btn danger small" data-del-segment aria-label="حذف نوبت">${icon('trash')} حذف نوبت</button>` : ''}</div>
+        </div>` : ''}
+      </div>`;
+    };
 
     // افزودن نوبت دوم/بعدی: فقط وقتی رکورد ورود دارد و آخرین نوبت بسته است (خروج خورده)
     const segList = r.segments || [];
@@ -113,14 +135,14 @@
 
         <section class="rec-section">
           <h4 class="rec-title"><span class="rec-title-icon">${icon('attendance')}</span>نوبت‌های حضور<span class="rec-count">${fmt.num((r.segments || []).length)}</span></h4>
-          <div class="rec-card"><div class="table-wrap"><table><thead><tr><th>نوبت</th><th>ورود</th><th>خروج</th><th>IP ورود / خروج</th>${admin ? '<th></th>' : ''}</tr></thead>
-            <tbody>${(r.segments || []).map(segmentRow).join('')}</tbody></table></div></div>
+          <div class="rec-segs">${(r.segments || []).map(segmentRow).join('')}</div>
           ${canAddSegment ? `<form class="rec-card rec-add add-segment-form" id="add-segment">
             <div class="rec-card-title">${icon('plus')} افزودن نوبت ${fmt.num(segList.length + 1)}</div>
             <div class="rec-add-grid">
               <label class="field"><span>ورود</span><input type="datetime-local" name="checkInTime" required /></label>
               <label class="field"><span>خروج (اختیاری)</span><input type="datetime-local" name="checkOutTime" /></label>
             </div>
+            <p class="rec-save-note">${icon('info')}<span>نوبت جدید فقط با زدن دکمه‌ی <b>افزودن نوبت</b> در همین باکس ثبت می‌شود.</span></p>
             <button class="btn ghost small" type="submit">${icon('plus')} افزودن نوبت</button></form>` : ''}
         </section>
 
@@ -134,6 +156,7 @@
               <label class="field"><span>شروع</span><input type="datetime-local" name="startTime" required /></label>
               <label class="field"><span>پایان</span><input type="datetime-local" name="endTime" /></label>
             </div>
+            <p class="rec-save-note">${icon('info')}<span>استراحت جدید فقط با زدن دکمه‌ی <b>افزودن استراحت</b> در همین باکس ثبت می‌شود.</span></p>
             <button class="btn ghost small add-break-submit" type="submit">${icon('plus')} افزودن استراحت</button></form>` : ''}
         </section>
 
@@ -147,6 +170,7 @@
               <label class="field full"><span>${AP.reasonOptional() ? 'دلیل اصلاح (اختیاری — در صورت نوشتن، به کارمند در تلگرام اطلاع داده می‌شود)' : 'دلیل اصلاح (اجباری — به کارمند در تلگرام اطلاع داده می‌شود)'}</span><textarea name="reason" rows="2" ${AP.reasonOptional() ? '' : 'required'}></textarea></label>
             </div>
             <div class="form-msg"></div>
+            <p class="rec-save-note">${icon('info')}<span>تغییرات این باکس فقط با زدن دکمه‌ی <b>ذخیره اصلاح</b> ثبت می‌شود.</span></p>
             <div class="modal-actions"><button class="btn primary" type="submit">${icon('check')} ذخیره اصلاح</button>
               <button class="btn danger" type="button" id="del-rec">${icon('trash')} حذف رکورد</button></div>
           </form>
@@ -206,7 +230,7 @@
           if (ok) reopen();
         });
 
-        $$('tr[data-segment]', b).forEach((tr) => {
+        $$('.rec-seg[data-segment]', b).forEach((tr) => {
           const saveBtn = $('[data-save-segment]', tr);
           if (saveBtn) saveBtn.addEventListener('click', async () => {
             const reason = await AP.askReason({ title: 'ویرایش نوبت', confirmText: 'ذخیره' });
