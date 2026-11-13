@@ -56,8 +56,8 @@ describe('دورکاری: شمارنده، منوی بات و یادآوری ه�
 
   test('منوی بات: «📥 درخواست‌های منتظر» با نشانگر تعداد (دورکاری‌ها هم شمرده می‌شوند)؛ کارمند ندارد؛ بدون صف ⇒ بدون عدد', () => {
     const texts = (u) => menu.buildMenuInline(u).inline_keyboard.flat().map((b) => b.text);
-    assert.ok(texts(U.m1).includes(`📥 درخواست‌های منتظر (${(3).toLocaleString('fa-IR')})`));
-    assert.ok(texts(U.admin).some((x) => x.startsWith('📥 درخواست‌های منتظر (')));
+    assert.ok(texts(U.m1).includes(`📥 درخواست‌های منتظر • ${(3).toLocaleString('fa-IR')}`));
+    assert.ok(texts(U.admin).some((x) => x.startsWith('📥 درخواست‌های منتظر • ')));
     assert.ok(!texts(U.emp).some((x) => x.includes('درخواست‌های منتظر')));
     const calm = F.makeUser({ role: 'manager' });
     assert.ok(texts(calm).includes('📥 درخواست‌های منتظر')); // صف خالی ⇒ متن ساده

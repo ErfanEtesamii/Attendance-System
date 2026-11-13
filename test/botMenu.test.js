@@ -115,16 +115,16 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
       assert.deepEqual(headerTexts(kb), []);
     });
 
-    test('سرپرست: پایه + ۵ آیتم تیم (بدون آیتم ادمین) با یک سرتیتر', () => {
+    test('سرپرست: پایه + ۵ آیتم تیم (بدون آیتم ادمین) و بدون ردیف سرتیتر', () => {
       const kb = menu.buildMenuInline(mgr);
       assert.deepEqual(sorted(itemTexts(kb)), sorted([...EMP, ...MGR]));
-      assert.deepEqual(headerTexts(kb), ['──── 👥 مدیریت تیم ────']);
+      assert.deepEqual(headerTexts(kb), []);
     });
 
-    test('ادمین: همه‌ی ۱۵ آیتم با دو سرتیتر؛ ترتیب گروه‌ها: من ← تیم ← ادمین', () => {
+    test('ادمین: همه‌ی ۱۵ آیتم؛ ترتیب گروه‌ها: من ← تیم ← ادمین؛ بدون ردیف سرتیتر', () => {
       const kb = menu.buildMenuInline(admin);
       assert.deepEqual(sorted(itemTexts(kb)), sorted([...EMP, ...MGR, ...ADM]));
-      assert.deepEqual(headerTexts(kb), ['──── 👥 مدیریت تیم ────', '──── 🛡 ادمین ────']);
+      assert.deepEqual(headerTexts(kb), []);
       const order = itemTexts(kb);
       const pos = (t) => order.indexOf(t);
       assert.ok(pos('❓ راهنما') < pos('👥 گزارش تیم') && pos('👥 گزارش تیم') < pos('🛠 اصلاح رکورد'));
@@ -137,6 +137,21 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
         assert.equal(first[0].text, '🖥 ورود به پنل');
         assert.equal(first[0].style, 'primary');
       }
+    });
+
+    test('«درخواست‌های منتظر» و «تحلیلگر هوشمند» تمام‌عرضند و هیچ ردیفی با یک دکمه‌ی تنها (جز تمام‌عرض‌ها) نیست', () => {
+      const rows = menu.buildMenuInline(admin).inline_keyboard;
+      const singles = rows.filter((r) => r.length === 1).map((r) => r[0].text);
+      assert.deepEqual(singles.sort(), ['✖️ بستن منو', '🖥 ورود به پنل', '🤖 تحلیلگر هوشمند', '📥 درخواست‌های منتظر'].sort());
+    });
+
+    test('متن منو: خوش‌آمد با نام کوچک + راهنمای رنگ فقط برای رنگ‌های همان نقش؛ همیشه با «📂 منو» شروع می‌شود', () => {
+      const t = (u) => menu.menuText(u);
+      assert.ok(t(admin).startsWith('📂 منو') && t(emp).startsWith('📂 منو'));
+      assert.match(t(emp), /🟢/); assert.doesNotMatch(t(emp), /🔵|🔴/);
+      assert.match(t(mgr), /🔵/); assert.doesNotMatch(t(mgr), /🔴/);
+      assert.match(t(admin), /🔴/);
+      assert.ok(menu.isMenuMessage({ text: t(admin) }));
     });
 
     test('چیدمان: بقیه‌ی آیتم‌ها ۲ ستونه، سرتیتر تک‌دکمه‌ای و آخرین ردیف «✖️ بستن منو»', () => {
@@ -156,6 +171,10 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
       assert.equal(by('🖥 ورود به پنل').style, 'primary');
       assert.equal(by('🕒 ثبت تردد').style, 'success');
       assert.equal(by('📥 درخواست‌های منتظر').style, 'primary');
+      assert.equal(by('👥 گزارش تیم').style, 'primary');
+      assert.equal(by('🏠 ثبت دورکاری').style, 'success');
+      assert.equal(by('🛠 اصلاح رکورد').style, 'danger');
+      assert.equal(by('📊 وضعیت و گزارش من').style, undefined);
       assert.equal(by('✖️ بستن منو').style, undefined);
       assert.ok(btns(kb).filter((b) => b.callback_data === 'mn:_').every((b) => b.style === undefined));
     });
