@@ -11,14 +11,8 @@ function daysAgoDateString(days) {
   return d.toISOString().slice(0, 10);
 }
 
-async function handleReport(bot, msg) {
-  const chatId = msg.chat.id;
-  const user = getRegisteredUser(msg.from.id);
-  if (!user) {
-    await bot.sendMessage(chatId, notRegisteredMessage(msg.from.id), { parse_mode: 'Markdown' });
-    return;
-  }
-
+/** متن گزارش شخصی (۷ روز اخیر + از ابتدای ماه شمسی)؛ خالص و بدون ارسال. */
+function buildReportText(user) {
   const today = todayDateString();
   const jalaliMonth = jalaliMonthToDateRange();
   const weekRecords = attendanceRepository.listByUserAndRange(user.id, daysAgoDateString(6), today);
@@ -27,7 +21,7 @@ async function handleReport(bot, msg) {
   const weekSummary = summarizeRange(weekRecords);
   const monthSummary = summarizeRange(monthRecords);
 
-  const lines = [
+  return [
     `📊 گزارش شخصی — ${user.full_name}`,
     '',
     '🗓 هفت روز اخیر:',
@@ -41,9 +35,17 @@ async function handleReport(bot, msg) {
     `  تعداد تأخیر: ${monthSummary.lateCount}`,
     `  تعداد خروج زودهنگام: ${monthSummary.earlyLeaveCount}`,
     `  رکورد ناقص: ${monthSummary.incompleteCount}`,
-  ];
-
-  await bot.sendMessage(chatId, lines.join('\n'));
+  ].join('\n');
 }
 
-module.exports = { handleReport };
+async function handleReport(bot, msg) {
+  const chatId = msg.chat.id;
+  const user = getRegisteredUser(msg.from.id);
+  if (!user) {
+    await bot.sendMessage(chatId, notRegisteredMessage(msg.from.id), { parse_mode: 'Markdown' });
+    return;
+  }
+  await bot.sendMessage(chatId, buildReportText(user));
+}
+
+module.exports = { handleReport, buildReportText };

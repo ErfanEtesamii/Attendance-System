@@ -25,7 +25,6 @@ describe('تسک فوری از بات و پنل (E3)', () => {
   const queryOf = (user, c, data) => ({ id: `q${(seq += 1)}`, data, from: { id: Number(user.telegram_user_id) }, message: { message_id: 5, chat: { id: c, type: 'private' } } });
   const say = (bot, user, c, text) => flow.handleUrgentTaskText(bot, msgOf(user, c, text), session.get(c));
   const press = (bot, user, c, data) => router.handlePickerCallback(bot, queryOf(user, c, data));
-  const confirm = (bot, user, c) => flow.handleUrgentTaskCallback(bot, queryOf(user, c, 'ut_ok'), session.get(c));
 
   before(() => {
     resetDb();
@@ -71,7 +70,7 @@ describe('تسک فوری از بات و پنل (E3)', () => {
     assert.match(last(bot).text, /فقط برای ادمین و سرپرست/);
   });
 
-  test('مسیر کامل سرپرست: کارمند ← عنوان ← تاریخ ← مهلت ← تأیید ⇒ تسک فوری در برنامه‌ی همان روز', async () => {
+  test('مسیر کامل سرپرست: کارمند ← روز ← متن ⇒ بلافاصله ذخیره و در برنامه‌ی همان روز ثبت می‌شود (بدون مرحله‌ی تأیید/مهلت)', async () => {
     const bot = mockBot(); const c = chat();
     await flow.handleUrgentTaskCommand(bot, msgOf(mgr, c, '/urgent_task'));
     assert.equal(session.get(c).flow, 'urgent_task');
@@ -79,70 +78,72 @@ describe('تسک فوری از بات و پنل (E3)', () => {
 
     await press(bot, mgr, c, `ep:u:${emp.id}`);
     assert.equal(session.get(c).step, 1);
-    await say(bot, mgr, c, 'ارسال پیش‌فاکتور');
-    assert.equal(session.get(c).step, 2);
+    assert.match(last(bot).text, /کدام روز/); // اول روز پرسیده می‌شود
     assert.ok(datas(bot).includes(`dp:d:${TODAY}`)); // دکمه‌ی «امروز»
     await press(bot, mgr, c, `dp:d:${TODAY}`);
-    assert.equal(session.get(c).step, 3);
-    await say(bot, mgr, c, '۲۳:۵۹'); // ارقام فارسی
-    assert.equal(session.get(c).step, 4);
-    assert.match(last(bot).text, /ارسال پیش‌فاکتور/);
-    assert.match(last(bot).text, /۲۳:۵۹/);
+    assert.equal(session.get(c).step, 2);
+    assert.match(last(bot).text, /متن تسک فوری/);
 
-    await confirm(bot, mgr, c);
-    assert.equal(session.get(c), null);
-    assert.match(last(bot).text, /ثبت شد/);
+    await say(bot, mgr, c, 'ارسال پیش‌فاکتور');
+    assert.equal(session.get(c), null); // ذخیره شد؛ مرحله‌ی تأیید ندارد
+    assert.match(last(bot).text, /تسک فوری ثبت شد/);
+    assert.match(last(bot).text, /ارسال پیش‌فاکتور/);
     const items = svc.list({ userId: emp.id });
     assert.equal(items.length, 1);
     assert.equal(items[0].title, 'ارسال پیش‌فاکتور');
     assert.equal(items[0].date, TODAY);
-    assert.equal(items[0].deadlineTime, '23:59');
+    assert.equal(items[0].deadlineTime, null);
     assert.equal(items[0].assignedBy, mgr.id);
   });
 
-  test('ساعت مهلت اختیاری: «رد شدن» بدون مهلت ثبت می‌کند؛ ساعت نامعتبر در همان مرحله می‌ماند', async () => {
+  test('تاریخ با تایپ هم قبول می‌شود و ادمین برای هر کارمندی تسک می‌دهد', async () => {
     const bot = mockBot(); const c = chat();
     await flow.handleUrgentTaskCommand(bot, msgOf(admin, c, '/urgent_task'));
-    await press(bot, admin, c, `ep:u:${emp.id}`);
+    await press(bot, admin, c, `ep:u:${outsider.id}`);
+    await say(bot, admin, c, TODAY);
     await say(bot, admin, c, 'کار دوم');
+    assert.equal(session.get(c), null);
+    assert.ok(svc.list({ userId: outsider.id }).some((t) => t.title === 'کار دوم' && t.date === TODAY));
+  });
+
+  test('متن خالی/بلند رد می‌شود و جریان در همان مرحله می‌ماند', async () => {
+    const bot = mockBot(); const c = chat();
+    await flow.handleUrgentTaskCommand(bot, msgOf(admin, c, '/urgent_task'));
+    await press(bot, admin, c, `ep:u:${emp.id}`);
     await press(bot, admin, c, `dp:d:${TODAY}`);
-    await say(bot, admin, c, '25:99');
-    assert.equal(session.get(c).step, 3);
-    assert.match(last(bot).text, /ساعت نامعتبر/);
-    await press(bot, admin, c, ui.CB.SKIP);
-    assert.equal(session.get(c).step, 4);
-    await confirm(bot, admin, c);
-    const mine = svc.list({ userId: emp.id }).find((t) => t.title === 'کار دوم');
-    assert.ok(mine);
-    assert.equal(mine.deadlineTime, null);
-  });
-
-  test('عنوان خالی/بلند رد می‌شود و مرحله جلو نمی‌رود', async () => {
-    const bot = mockBot(); const c = chat();
-    await flow.handleUrgentTaskCommand(bot, msgOf(admin, c, '/urgent_task'));
-    await press(bot, admin, c, `ep:u:${emp.id}`);
     await say(bot, admin, c, 'x'.repeat(svc.TITLE_MAX + 1));
-    assert.equal(session.get(c).step, 1);
+    assert.equal(session.get(c).step, 2);
     assert.match(last(bot).text, /حداکثر/);
+    await say(bot, admin, c, '   ');
+    assert.equal(session.get(c).step, 2);
+    assert.match(last(bot).text, /الزامی/);
   });
 
-  test('خطای تاریخ در تأیید (گذشته) ⇒ برگشت به مرحله‌ی تاریخ؛ عنوان و کارمند حفظ می‌شود', async () => {
+  test('تاریخ تایپی نامعتبر در همان مرحله می‌ماند', async () => {
     const bot = mockBot(); const c = chat();
     await flow.handleUrgentTaskCommand(bot, msgOf(admin, c, '/urgent_task'));
     await press(bot, admin, c, `ep:u:${emp.id}`);
-    await say(bot, admin, c, 'کار گذشته');
+    await say(bot, admin, c, 'فردا');
+    assert.equal(session.get(c).step, 1);
+    assert.match(last(bot).text, /فرمت تاریخ/);
+  });
+
+  test('خطای تاریخ هنگام ذخیره (گذشته) ⇒ برگشت به مرحله‌ی روز؛ متن و کارمند حفظ می‌شود و با روز درست خودکار ذخیره می‌شود', async () => {
+    const bot = mockBot(); const c = chat();
+    await flow.handleUrgentTaskCommand(bot, msgOf(admin, c, '/urgent_task'));
+    await press(bot, admin, c, `ep:u:${emp.id}`);
     await say(bot, admin, c, '2026-03-01'); // تایپ تاریخ گذشته
-    await say(bot, admin, c, '-');
     const before = svc.list({ userId: emp.id }).length;
-    await confirm(bot, admin, c);
+    await say(bot, admin, c, 'کار گذشته');
     const s = session.get(c);
-    assert.equal(s.step, 2);
+    assert.equal(s.step, 1);
     assert.equal(s.data.title, 'کار گذشته');
     assert.equal(s.data.employeeId, emp.id);
     assert.ok(bot.sent.some((m) => /گذشته/.test(m.text)));
     assert.equal(svc.list({ userId: emp.id }).length, before); // چیزی ثبت نشده
     await press(bot, admin, c, `dp:d:${TODAY}`);
-    assert.equal(session.get(c).step, 3);
+    assert.equal(session.get(c), null); // متن از قبل هست ⇒ مستقیم ذخیره
+    assert.ok(svc.list({ userId: emp.id }).some((t) => t.title === 'کار گذشته' && t.date === TODAY));
   });
 
   test('نقش وسط مکالمه عوض شود ⇒ ثبت نمی‌شود', async () => {
@@ -152,21 +153,12 @@ describe('تسک فوری از بات و پنل (E3)', () => {
     const bot = mockBot(); const c = chat();
     await flow.handleUrgentTaskCommand(bot, msgOf(m2, c, '/urgent_task'));
     await press(bot, m2, c, `ep:u:${e2.id}`);
-    await say(bot, m2, c, 'کار');
     await press(bot, m2, c, `dp:d:${TODAY}`);
-    await say(bot, m2, c, '-');
     usersRepo.updateUser(m2.id, { role: 'employee' });
-    await confirm(bot, m2, c);
+    await say(bot, m2, c, 'کار');
     assert.equal(session.get(c), null);
     assert.match(last(bot).text, /فقط برای ادمین و سرپرست/);
     assert.equal(svc.list({ userId: e2.id }).length, 0);
-  });
-
-  test('دکمه‌ی تأیید قدیمی/بدون جریان ⇒ «منقضی شده» و چیزی ثبت نمی‌شود', async () => {
-    const bot = mockBot(); const c = chat();
-    await flow.handleUrgentTaskCallback(bot, queryOf(admin, c, 'ut_ok'), null);
-    assert.equal(bot.answers.length, 1);
-    assert.equal(bot.answers[0].show_alert, true);
   });
 
   test('پنل: دکمه‌ی «⚡ تسک فوری» با مجوز tasks.assign_urgent، فرم به API E1 وصل است', () => {

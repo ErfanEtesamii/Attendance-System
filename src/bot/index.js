@@ -13,6 +13,8 @@ const { handlePanelLogin } = require('./commands/panelLogin');
 const { handleHelp } = require('./commands/help');
 const { handleStatus } = require('./commands/status');
 const { handleReport } = require('./commands/report');
+const { handleMyStatusCallback } = require('./commands/myStatus');
+const { handleWeeklyPlanCallback } = require('./commands/weeklyPlan');
 const { handleLeaveCommand, handleLeaveText, handleLeaveCallback, handleLeaveAttachment } = require('./commands/leave');
 const {
   handleAddEmployeeCommand,
@@ -20,13 +22,14 @@ const {
   handleAddEmployeeCallback,
 } = require('./commands/addEmployee');
 const { handleListEmployees } = require('./commands/listEmployees');
-const { handleTeamReport } = require('./commands/teamReport');
-const { handleUrgentTaskCommand, handleUrgentTaskText, handleUrgentTaskCallback } = require('./commands/urgentTask');
+const { handleTeamReport, handleTeamReportCallback } = require('./commands/teamReport');
+const { handleUrgentTaskCommand, handleUrgentTaskText } = require('./commands/urgentTask');
 const { handlePendingLeaves, handlePendingLeavesCallback } = require('./commands/pendingLeaves');
 const { startMissionReject, startMissionEdit, handleMissionRejectText, handleMissionEditText } = require('./commands/missionApproval');
 const { handleReportReviewCallback, handleReportCommentText } = require('./commands/reportReview');
 const { handleCheckinPermissionCallback } = require('./commands/checkinPermission');
 const { handleRemoteWorkCallback } = require('./commands/remoteWork');
+const { handleRemoteDecisionCallback, handleRemoteRejectText } = require('./commands/pendingRemote');
 const { handlePendingDisputes, handleDisputeCallback, handleDisputeReplyText } = require('./commands/pendingDisputes');
 const {
   handleFixRecordCommand,
@@ -88,6 +91,7 @@ function createBot() {
     if (sess.flow === 'fix_record') return handleFixRecordText(bot, msg, sess);
     if (sess.flow === 'dispute_reply') return handleDisputeReplyText(bot, msg, sess);
     if (sess.flow === 'urgent_task') return handleUrgentTaskText(bot, msg, sess);
+    if (sess.flow === 'remote_reject') return handleRemoteRejectText(bot, msg, sess);
     if (sess.flow === 'mission_reject') return handleMissionRejectText(bot, msg, sess);
     if (sess.flow === 'mission_edit') return handleMissionEditText(bot, msg, sess);
     if (sess.flow === 'report_comment') return handleReportCommentText(bot, msg, sess);
@@ -108,6 +112,10 @@ function createBot() {
 
       if (data.startsWith('aic:') || data.startsWith('aix:')) return await require('./commands/aiChat').handleAiCallback(bot, query);
       if (data.startsWith('rw:')) return await handleRemoteWorkCallback(bot, query);
+      if (data.startsWith('rr:')) return await handleRemoteDecisionCallback(bot, query); // تأیید/رد دورکاری از «📥 درخواست‌های منتظر»
+      if (data.startsWith('tr:')) return await handleTeamReportCallback(bot, query); // گزارش تیم: تیم ← عضو ← فایل متنی
+      if (data.startsWith('wp:')) return await handleWeeklyPlanCallback(bot, query); // برنامه هفتگی: انتخاب هفته
+      if (data === 'st:r') return await handleMyStatusCallback(bot, query); // وضعیت و گزارش من: به‌روزرسانی
 
       if (data.startsWith('rvs:') || data.startsWith('rvc:')) return await handleReportReviewCallback(bot, query);
       if (data.startsWith('cp_ok:') || data.startsWith('cp_no:')) return await handleCheckinPermissionCallback(bot, query); // D3: تأیید/رد اجازه‌ی ورود
@@ -131,10 +139,6 @@ function createBot() {
       if (data.startsWith('fix_field:') || data === 'fix_cancel') {
         if (!sess || sess.flow !== 'fix_record') return await ui.expire(bot, query);
         return await handleFixRecordCallback(bot, query, sess);
-      }
-      if (data === 'ut_ok') {
-        if (!sess || sess.flow !== 'urgent_task') return await ui.expire(bot, query);
-        return await handleUrgentTaskCallback(bot, query, sess);
       }
       if (data.startsWith('fix_status:')) {
         if (!sess || sess.flow !== 'fix_record') return await ui.expire(bot, query);

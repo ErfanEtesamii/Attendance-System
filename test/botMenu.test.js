@@ -56,17 +56,18 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
       assert.equal(n(null), '');
     });
 
-    test('هر ۱۸ دکمه‌ی منو برچسب نرمال‌شده‌ی یکتا دارند', () => {
+    test('هر ۱۵ دکمه‌ی منو برچسب نرمال‌شده‌ی یکتا دارند', () => {
       const labels = menu.ITEMS.map((it) => menu.normalizeLabel(it.label));
-      assert.equal(menu.ITEMS.length, 19);
+      assert.equal(menu.ITEMS.length, 15);
       assert.equal(new Set(labels).size, labels.length);
       assert.ok(labels.every(Boolean));
     });
   });
 
-  const EMP = ['🕒 ثبت تردد', '🏠 ثبت دورکاری', '📊 وضعیت من', '📈 گزارش من', '🏖 مرخصی / 🚗 ماموریت', '📋 برنامه هفتگی', '🖥 پنل', '❓ راهنما'];
-  const MGR = ['👥 گزارش تیم', '📥 درخواست‌های منتظر', '💬 اعتراض‌ها', '🏠 دورکاری‌های منتظر', '📝 گزارش‌های دیروز تیم', '👤 لیست اعضا', '⚡ تسک فوری'];
-  const ADM = ['➕ افزودن کارمند', '🛠 اصلاح رکورد', '🤖 تحلیلگر هوشمند', '⚙️ پنل مدیریت'];
+  const EMP = ['🖥 ورود به پنل', '🕒 ثبت تردد', '🏠 ثبت دورکاری', '📊 وضعیت و گزارش من', '📋 برنامه هفتگی', '🏖 مرخصی / 🚗 ماموریت', '❓ راهنما'];
+  const MGR = ['📥 درخواست‌های منتظر', '👥 گزارش تیم', '⚡ تسک فوری', '💬 اعتراض‌ها', '👤 لیست اعضا'];
+  const ADM = ['➕ افزودن کارمند', '🛠 اصلاح رکورد', '🤖 تحلیلگر هوشمند'];
+  const sorted = (a) => [...a].sort();
 
   describe('buildMainKeyboard — فقط «📂 منو» (H2)', () => {
     test('هر سه نقش: دقیقاً یک دکمه‌ی متنی «📂 منو» (بدون web_app)، resize و persistent', () => {
@@ -110,23 +111,35 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
 
     test('کارمند: ۷ آیتم پایه و بدون سرتیتر', () => {
       const kb = menu.buildMenuInline(emp);
-      assert.deepEqual(itemTexts(kb), EMP);
+      assert.deepEqual(sorted(itemTexts(kb)), sorted(EMP));
       assert.deepEqual(headerTexts(kb), []);
     });
 
-    test('سرپرست: پایه + ۷ آیتم تیم (بدون آیتم ادمین) با دو سرتیتر', () => {
+    test('سرپرست: پایه + ۵ آیتم تیم (بدون آیتم ادمین) با یک سرتیتر', () => {
       const kb = menu.buildMenuInline(mgr);
-      assert.deepEqual(itemTexts(kb), [...EMP, ...MGR]);
-      assert.deepEqual(headerTexts(kb), ['— کارهای من —', '— تیم —']);
+      assert.deepEqual(sorted(itemTexts(kb)), sorted([...EMP, ...MGR]));
+      assert.deepEqual(headerTexts(kb), ['──── 👥 مدیریت تیم ────']);
     });
 
-    test('ادمین: همه‌ی ۱۸ آیتم به ترتیب با سه سرتیتر', () => {
+    test('ادمین: همه‌ی ۱۵ آیتم با دو سرتیتر؛ ترتیب گروه‌ها: من ← تیم ← ادمین', () => {
       const kb = menu.buildMenuInline(admin);
-      assert.deepEqual(itemTexts(kb), [...EMP, ...MGR, ...ADM]);
-      assert.deepEqual(headerTexts(kb), ['— کارهای من —', '— تیم —', '— مدیریت —']);
+      assert.deepEqual(sorted(itemTexts(kb)), sorted([...EMP, ...MGR, ...ADM]));
+      assert.deepEqual(headerTexts(kb), ['──── 👥 مدیریت تیم ────', '──── 🛡 ادمین ────']);
+      const order = itemTexts(kb);
+      const pos = (t) => order.indexOf(t);
+      assert.ok(pos('❓ راهنما') < pos('👥 گزارش تیم') && pos('👥 گزارش تیم') < pos('🛠 اصلاح رکورد'));
     });
 
-    test('چیدمان: آیتم‌ها ۲ ستونه، سرتیتر تک‌دکمه‌ای و آخرین ردیف «✖️ بستن منو»', () => {
+    test('«🖥 ورود به پنل» اصلی‌ترین دکمه است: ردیف اولِ منو، تنها در ردیف (تمام‌عرض)، آبی', () => {
+      for (const user of [emp, mgr, admin]) {
+        const first = menu.buildMenuInline(user).inline_keyboard[0];
+        assert.equal(first.length, 1);
+        assert.equal(first[0].text, '🖥 ورود به پنل');
+        assert.equal(first[0].style, 'primary');
+      }
+    });
+
+    test('چیدمان: بقیه‌ی آیتم‌ها ۲ ستونه، سرتیتر تک‌دکمه‌ای و آخرین ردیف «✖️ بستن منو»', () => {
       for (const user of [emp, mgr, admin]) {
         const rows = menu.buildMenuInline(user).inline_keyboard;
         for (const row of rows) {
@@ -137,53 +150,56 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
       }
     });
 
-    test('رنگ هر بخش: کارهای من آبی، تیم سبز، مدیریت قرمز؛ «بستن منو» بدون رنگ', () => {
+    test('رنگ: پنل آبی، ثبت تردد سبز، درخواست‌های منتظر آبی؛ «بستن منو» و سرتیترها بدون رنگ', () => {
       const kb = menu.buildMenuInline(admin);
       const by = (t) => btns(kb).find((b) => b.text === t);
-      for (const t of ['— کارهای من —', '🕒 ثبت تردد', '📊 وضعیت من', '❓ راهنما']) assert.equal(by(t).style, 'primary', t);
-      for (const t of ['— تیم —', '👥 گزارش تیم', '⚡ تسک فوری']) assert.equal(by(t).style, 'success', t);
-      for (const t of ['— مدیریت —', '➕ افزودن کارمند', '⚙️ پنل مدیریت']) assert.equal(by(t).style, 'danger', t);
+      assert.equal(by('🖥 ورود به پنل').style, 'primary');
+      assert.equal(by('🕒 ثبت تردد').style, 'success');
+      assert.equal(by('📥 درخواست‌های منتظر').style, 'primary');
       assert.equal(by('✖️ بستن منو').style, undefined);
+      assert.ok(btns(kb).filter((b) => b.callback_data === 'mn:_').every((b) => b.style === undefined));
     });
 
-    test('ثبت تردد/برنامه هفتگی/پنل مدیریت دکمه‌ی inline از نوع web_app‌اند؛ بقیه callback به شکل mn:<id>', () => {
+    test('ورود به پنل و ثبت تردد دکمه‌ی inline از نوع web_app‌اند؛ بقیه callback به شکل mn:<id>', () => {
       const kb = menu.buildMenuInline(admin);
       const by = (t) => btns(kb).find((b) => b.text === t);
+      assert.equal(by('🖥 ورود به پنل').web_app.url, 'https://attendance.example.com/admin/');
       assert.equal(by('🕒 ثبت تردد').web_app.url, 'https://attendance.example.com/app/');
-      assert.equal(by('📋 برنامه هفتگی').web_app.url, 'https://attendance.example.com/app/?view=plan');
-      assert.equal(by('⚙️ پنل مدیریت').web_app.url, 'https://attendance.example.com/admin/');
-      for (const t of ['🕒 ثبت تردد', '📋 برنامه هفتگی', '⚙️ پنل مدیریت']) assert.equal(by(t).callback_data, undefined);
-      assert.equal(by('📊 وضعیت من').callback_data, 'mn:status');
-      assert.equal(by('🖥 پنل').callback_data, 'mn:panel');
+      for (const t of ['🖥 ورود به پنل', '🕒 ثبت تردد']) assert.equal(by(t).callback_data, undefined);
+      assert.equal(by('📊 وضعیت و گزارش من').callback_data, 'mn:status');
+      assert.equal(by('📋 برنامه هفتگی').callback_data, 'mn:plan');
       assert.equal(by('➕ افزودن کارمند').callback_data, 'mn:add_employee');
-      for (const t of ['📊 وضعیت من', '🖥 پنل', '➕ افزودن کارمند']) assert.equal(by(t).web_app, undefined);
+      for (const t of ['📊 وضعیت و گزارش من', '📋 برنامه هفتگی', '➕ افزودن کارمند']) assert.equal(by(t).web_app, undefined);
     });
 
-    test('callback_data همه ≤ ۶۴ بایت و هر id یکی از آیتم‌های handlerدار یا _ / _close است', () => {
+    test('حذف‌شده‌ها: «گزارش‌های دیروز تیم»، «پنل مدیریت» و «دورکاری‌های منتظر» (ادغام در درخواست‌های منتظر) در منو نیستند', () => {
+      const texts = itemTexts(menu.buildMenuInline(admin)).join('|');
+      for (const gone of ['گزارش‌های دیروز تیم', 'پنل مدیریت', 'دورکاری‌های منتظر', 'وضعیت من', 'گزارش من']) assert.ok(!texts.includes(gone) || gone === 'وضعیت من' || gone === 'گزارش من', gone);
+      assert.ok(!texts.includes('گزارش‌های دیروز تیم') && !texts.includes('پنل مدیریت') && !texts.includes('دورکاری‌های منتظر'));
+    });
+
+    test('callback_data همه ≤ ۶۴ بایت و هر id یکی از آیتم‌ها یا _ / _close است', () => {
       for (const user of [emp, mgr, admin]) {
         for (const b of btns(menu.buildMenuInline(user))) {
           if (b.web_app) continue;
           assert.ok(Buffer.byteLength(b.callback_data) <= 64, b.callback_data);
           const id = b.callback_data.slice(3);
-          assert.ok(id === '_' || id === '_close' || menu.ITEMS.some((it) => it.id === id && !it.url), b.callback_data);
+          assert.ok(id === '_' || id === '_close' || menu.ITEMS.some((it) => it.id === id), b.callback_data);
         }
       }
     });
 
-    test('بدون https (H3): آیتم‌های web_app می‌مانند ولی دکمه‌ی callback می‌شوند (نه web_app)', () => {
+    test('بدون https (H3): آیتم‌ها می‌مانند ولی دکمه‌ی callback می‌شوند (نه web_app)', () => {
       const httpsTexts = itemTexts(menu.buildMenuInline(admin));
       config.miniAppUrl = 'http://192.168.1.5/app/';
       try {
         const kb = menu.buildMenuInline(admin);
         const texts = itemTexts(kb);
-        assert.deepEqual(texts, httpsTexts, 'فهرست آیتم‌ها با http همان فهرست https است');
-        assert.ok(texts.includes('🕒 ثبت تردد') && texts.includes('📋 برنامه هفتگی') && texts.includes('⚙️ پنل مدیریت'));
-        assert.ok(texts.includes('📊 وضعیت من') && texts.includes('🖥 پنل'));
+        assert.deepEqual(sorted(texts), sorted(httpsTexts), 'فهرست آیتم‌ها با http همان فهرست https است');
         assert.ok(!btns(kb).some((b) => b.web_app));
         const by = (t) => btns(kb).find((b) => b.text === t);
         assert.equal(by('🕒 ثبت تردد').callback_data, 'mn:checkin');
-        assert.equal(by('📋 برنامه هفتگی').callback_data, 'mn:plan');
-        assert.equal(by('⚙️ پنل مدیریت').callback_data, 'mn:admin_panel');
+        assert.equal(by('🖥 ورود به پنل').callback_data, 'mn:panel');
       } finally { config.miniAppUrl = 'https://attendance.example.com/app/'; }
     });
 
@@ -195,10 +211,11 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
 
   describe('routeMenuText — اتصال به handlerها و چک نقش سمت سرور', () => {
     const ROUTES = [
-      ['📊 وضعیت من', 'status', null], ['📈 گزارش من', 'report', null], ['🏖 مرخصی / 🚗 ماموریت', 'leave', null],
-      ['🖥 پنل', 'panel', null], ['❓ راهنما', 'help', null],
-      ['👥 گزارش تیم', 'teamReport', 'manager'], ['📥 درخواست‌های منتظر', 'pendingLeaves', 'manager'],
-      ['💬 اعتراض‌ها', 'pendingDisputes', 'manager'], ['📝 گزارش‌های دیروز تیم', 'yesterdayReports', 'manager'],
+      ['📊 وضعیت و گزارش من', 'myStatus', null], ['📊 وضعیت من', 'myStatus', null], ['📈 گزارش من', 'myStatus', null],
+      ['🏖 مرخصی / 🚗 ماموریت', 'leave', null], ['📋 برنامه هفتگی', 'weeklyPlan', null],
+      ['🖥 ورود به پنل', 'panel', null], ['🖥 پنل', 'panel', null], ['❓ راهنما', 'help', null],
+      ['👥 گزارش تیم', 'teamReport', 'manager'], ['📥 درخواست‌های منتظر', 'pendingLeaves', 'manager'], ['🏠 دورکاری‌های منتظر', 'pendingLeaves', 'manager'],
+      ['💬 اعتراض‌ها', 'pendingDisputes', 'manager'], ['📝 گزارش‌های دیروز تیم', 'teamReport', 'manager'],
       ['👤 لیست اعضا', 'listEmployees', 'manager'], ['⚡ تسک فوری', 'urgentTask', 'manager'],
       ['➕ افزودن کارمند', 'addEmployee', 'admin'], ['🛠 اصلاح رکورد', 'fixRecord', 'admin'],
     ];
@@ -224,11 +241,11 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
       assert.equal(await menu.routeMenuText(bot, msgFrom(emp, '➕ افزودن کارمند', c)), true);
       assert.equal(session.get(c), null);
       assert.match(bot.sent[0].text, /در دسترس نیست/);
-      for (const t of ['🛠 اصلاح رکورد', 'اصلاح رکورد', '⚙️ پنل مدیریت']) {
+      for (const t of ['🛠 اصلاح رکورد', 'اصلاح رکورد']) {
         await menu.routeMenuText(bot, msgFrom(emp, t, c));
         assert.equal(session.get(c), null);
       }
-      assert.equal(bot.sent.length, 4);
+      assert.equal(bot.sent.length, 3);
     });
 
     test('ادمین با handler واقعی: «➕ افزودن کارمند» جریان add_employee را شروع می‌کند', async () => {
@@ -284,7 +301,7 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
       const { calls, h } = spies();
       await menu.routeMenuText(mockBot(), msgFrom(emp, 'وضعيت  من'), h);
       await menu.routeMenuText(mockBot(), msgFrom(emp, 'مرخصي/ماموريت'), h);
-      assert.deepEqual(calls, ['status', 'leave']);
+      assert.deepEqual(calls, ['myStatus', 'leave']);
     });
 
     test('فقط چت خصوصی: در گروه هیچ دکمه‌ای اجرا نمی‌شود', async () => {
@@ -296,8 +313,8 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
     test('زدن دکمه‌ی منو مکالمه‌ی نیمه‌کاره را لغو می‌کند', async () => {
       const c = chat(); const { calls, h } = spies();
       session.start(c, 'leave', { userId: emp.id });
-      await menu.routeMenuText(mockBot(), msgFrom(emp, '📊 وضعیت من', c), h);
-      assert.deepEqual(calls, ['status']);
+      await menu.routeMenuText(mockBot(), msgFrom(emp, '📊 وضعیت و گزارش من', c), h);
+      assert.deepEqual(calls, ['myStatus']);
       assert.equal(session.get(c), null);
     });
 
@@ -314,8 +331,8 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
 
     test('دکمه‌ی web_app اگر متنش تایپ شود: همان دکمه به‌صورت inline فرستاده می‌شود؛ بدون https پیام خطا', async () => {
       const bot = mockBot();
-      await menu.routeMenuText(bot, msgFrom(emp, '📋 برنامه هفتگی'));
-      assert.equal(lastMsg(bot).opts.reply_markup.inline_keyboard[0][0].web_app.url, 'https://attendance.example.com/app/?view=plan');
+      await menu.routeMenuText(bot, msgFrom(emp, '🕒 ثبت تردد'));
+      assert.equal(lastMsg(bot).opts.reply_markup.inline_keyboard[0][0].web_app.url, 'https://attendance.example.com/app/');
       config.miniAppUrl = 'http://x.local/app/';
       try {
         const b2 = mockBot();
@@ -325,12 +342,10 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
       } finally { config.miniAppUrl = 'https://attendance.example.com/app/'; }
     });
 
-    test('«📝 گزارش‌های دیروز تیم» (handler واقعی): دکمه‌ی web_app به صفحه‌ی teamreports پنل', async () => {
-      const bot = mockBot();
-      await menu.routeMenuText(bot, msgFrom(mgr, '📝 گزارش‌های دیروز تیم'));
-      const url = new URL(lastMsg(bot).opts.reply_markup.inline_keyboard[0][0].web_app.url);
-      assert.equal(url.pathname, '/admin/');
-      assert.equal(url.searchParams.get('go'), 'teamreports');
+    test('«📝 گزارش‌های دیروز تیم» (کیبورد قدیمی) به «گزارش تیم» می‌رود و دیگر لینک پنل نمی‌فرستد', async () => {
+      const bot = mockBot(); const { calls, h } = spies();
+      await menu.routeMenuText(bot, msgFrom(mgr, '📝 گزارش‌های دیروز تیم'), h);
+      assert.deepEqual(calls, ['teamReport']);
     });
   });
 
@@ -338,7 +353,7 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
     const itemLabels = (kb) => kb.inline_keyboard.flat().filter((b) => b.callback_data !== 'mn:_' && b.callback_data !== 'mn:_close').map((b) => b.text);
 
     test('هر نقش پیام منوی inline همان نقش را می‌گیرد؛ handler اجرا نمی‌شود و پیام کیبورد قدیمی نمی‌رود', async () => {
-      for (const [user, n] of [[emp, 8], [mgr, 15], [admin, 19]]) {
+      for (const [user, n] of [[emp, 7], [mgr, 12], [admin, 15]]) {
         const bot = mockBot(); const { calls, h } = spies();
         assert.equal(await menu.routeMenuText(bot, msgFrom(user, '📂 منو'), h), true);
         assert.deepEqual(calls, []);
@@ -386,7 +401,7 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
     test('دکمه‌ی قدیمی: کیبورد جدید (فقط «📂 منو») پیش از handler می‌رود و handler اجرا می‌شود', async () => {
       const order = []; const bot = mockBot(); const origSend = bot.sendMessage.bind(bot);
       bot.sendMessage = async (c, t, o) => { order.push('send'); return origSend(c, t, o); };
-      const h = { status: async () => { order.push('handler'); } };
+      const h = { myStatus: async () => { order.push('handler'); } };
       assert.equal(await menu.routeMenuText(bot, msgFrom(emp, '📊 وضعیت من'), h), true);
       assert.deepEqual(order, ['send', 'handler']);
       assert.deepEqual(bot.sent[0].opts.reply_markup.keyboard, [[{ text: '📂 منو' }]]);
@@ -395,7 +410,7 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
 
     test('دکمه‌ی web_app تایپ‌شده: اول پیام کیبورد جدید، بعد دکمه‌ی inline', async () => {
       const bot = mockBot();
-      await menu.routeMenuText(bot, msgFrom(emp, '📋 برنامه هفتگی'));
+      await menu.routeMenuText(bot, msgFrom(emp, '🕒 ثبت تردد'));
       assert.equal(bot.sent.length, 2);
       assert.deepEqual(bot.sent[0].opts.reply_markup.keyboard, [[{ text: '📂 منو' }]]);
       assert.ok(bot.sent[1].opts.reply_markup.inline_keyboard[0][0].web_app);
@@ -414,7 +429,7 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
       const bot = mockBot(); bot.sendMessage = async () => { throw new Error('boom'); };
       const { calls, h } = spies(); const prev = console.error; console.error = () => {};
       try { assert.equal(await menu.routeMenuText(bot, msgFrom(emp, '📊 وضعیت من'), h), true); } finally { console.error = prev; }
-      assert.deepEqual(calls, ['status']);
+      assert.deepEqual(calls, ['myStatus']);
     });
   });
 
@@ -428,7 +443,7 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
     test('انتخاب آیتم handlerدار: یک‌بار answer، پیام منو پاک و handler اجرا می‌شود', async () => {
       const bot = mockBot(); const { calls, h } = spies();
       await menu.handleMenuCallback(bot, cbQuery(emp, 'mn:status'), h);
-      assert.deepEqual(calls, ['status']);
+      assert.deepEqual(calls, ['myStatus']);
       assert.equal(bot.answers.length, 1);
       assert.deepEqual(bot.deleted.map((d) => d.m), [77]);
     });
@@ -483,7 +498,7 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
       const bot = mockBot(); bot.deleteMessage = async () => { throw new Error('message can\'t be deleted'); };
       const { calls, h } = spies();
       await menu.handleMenuCallback(bot, cbQuery(emp, 'mn:status'), h);
-      assert.deepEqual(calls, ['status']);
+      assert.deepEqual(calls, ['myStatus']);
       assert.equal(bot.answers.length, 1);
     });
 
@@ -534,16 +549,14 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
       }
     });
 
-    test('https: پیام منو برای هر نقش دکمه‌ی inline web_app با view درست دارد', () => {
+    test('https: پیام منو برای هر نقش دکمه‌ی inline web_app «ورود به پنل» (/admin/) و «ثبت تردد» دارد', () => {
       const find = (kb, t) => btns(kb).find((b) => b.text === t);
       for (const user of [emp, mgr, admin]) {
         const kb = menu.buildMenuInline(user);
         assert.equal(find(kb, '🕒 ثبت تردد').web_app.url, HTTPS);
-        assert.equal(new URL(find(kb, '📋 برنامه هفتگی').web_app.url).searchParams.get('view'), 'plan');
+        assert.equal(new URL(find(kb, '🖥 ورود به پنل').web_app.url).pathname, '/admin/');
+        assert.equal(find(kb, '⚙️ پنل مدیریت'), undefined);
       }
-      assert.equal(find(menu.buildMenuInline(emp), '⚙️ پنل مدیریت'), undefined);
-      assert.equal(find(menu.buildMenuInline(mgr), '⚙️ پنل مدیریت'), undefined);
-      assert.equal(new URL(find(menu.buildMenuInline(admin), '⚙️ پنل مدیریت').web_app.url).pathname, '/admin/');
     });
 
     test('panelWebAppButton مقصد go را حفظ می‌کند؛ بدون https دکمه ساخته نمی‌شود', async () => {
@@ -557,40 +570,47 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
 
     test('http: لمس «ثبت تردد» (mn:checkin) ⇒ یک‌بار answer، پیام منو پاک، پیام راهنمای ادمین (https/MINI_APP_URL)، بدون web_app، با هشدار لاگ', async () => {
       await withUrl('http://192.168.1.5/app/', async (warn) => {
-        for (const [user, id] of [[emp, 'mn:checkin'], [emp, 'mn:plan'], [admin, 'mn:admin_panel']]) {
-          const bot = mockBot(); const { calls, h } = spies();
-          const before = warn.mock.calls.length;
-          await menu.handleMenuCallback(bot, cbQuery(user, id), h);
-          assert.equal(bot.answers.length, 1, id);
-          assert.equal(bot.answers[0].show_alert, undefined, id);
-          assert.deepEqual(calls, [], id);
-          assert.equal(bot.deleted.length, 1, id);
-          assert.match(lastMsg(bot).text, /https/, id);
-          assert.match(lastMsg(bot).text, /MINI_APP_URL/, id);
-          assert.equal(lastMsg(bot).opts, undefined, id);
-          assert.ok(warn.mock.calls.length > before, `${id}: باید هشدار لاگ بیاید`);
-          assert.match(String(warn.mock.calls[warn.mock.calls.length - 1].arguments[0]), /MINI_APP_URL/);
-        }
+        const bot = mockBot(); const { calls, h } = spies();
+        const before = warn.mock.calls.length;
+        await menu.handleMenuCallback(bot, cbQuery(emp, 'mn:checkin'), h);
+        assert.equal(bot.answers.length, 1);
+        assert.equal(bot.answers[0].show_alert, undefined);
+        assert.deepEqual(calls, []);
+        assert.equal(bot.deleted.length, 1);
+        assert.match(lastMsg(bot).text, /https/);
+        assert.match(lastMsg(bot).text, /MINI_APP_URL/);
+        assert.equal(lastMsg(bot).opts, undefined);
+        assert.ok(warn.mock.calls.length > before, 'باید هشدار لاگ بیاید');
+        assert.match(String(warn.mock.calls[warn.mock.calls.length - 1].arguments[0]), /MINI_APP_URL/);
       });
     });
 
-    test('https: لمس mn:checkin/mn:plan/mn:admin_panel ⇒ دکمه‌ی inline web_app با آدرس درست (دکمه‌ی قدیمی/اعلان هم منقضی نیست)', async () => {
-      const cases = [[emp, 'mn:checkin', (u) => u.href === HTTPS], [emp, 'mn:plan', (u) => u.searchParams.get('view') === 'plan'], [admin, 'mn:admin_panel', (u) => u.pathname === '/admin/']];
-      for (const [user, id, ok] of cases) {
+    test('http: «ورود به پنل» (mn:panel) به handler ورود می‌رود (لینک مرورگر + کد)، نه به پیام خطای https', async () => {
+      await withUrl('http://192.168.1.5/app/', async () => {
         const bot = mockBot(); const { calls, h } = spies();
-        await menu.handleMenuCallback(bot, cbQuery(user, id), h);
-        assert.equal(bot.answers.length, 1, id);
-        assert.deepEqual(calls, [], id);
-        assert.equal(bot.deleted.length, 1, id);
-        const btn = lastMsg(bot).opts.reply_markup.inline_keyboard[0][0];
-        assert.ok(ok(new URL(btn.web_app.url)), `${id}: ${btn.web_app.url}`);
-        assert.equal(lastMsg(bot).opts.reply_markup.keyboard, undefined, 'هیچ دکمه‌ی web_app در کیبورد پاسخ نیست');
+        await menu.handleMenuCallback(bot, cbQuery(emp, 'mn:panel'), h);
+        assert.deepEqual(calls, ['panel']);
+      });
+    });
+
+    test('https: لمس mn:checkin ⇒ دکمه‌ی inline web_app با آدرس درست؛ mn:panel و mn:admin_panel (قدیمی) ⇒ handler ورود به پنل', async () => {
+      const bot = mockBot(); const { calls, h } = spies();
+      await menu.handleMenuCallback(bot, cbQuery(emp, 'mn:checkin'), h);
+      assert.equal(bot.answers.length, 1);
+      assert.deepEqual(calls, []);
+      assert.equal(bot.deleted.length, 1);
+      assert.equal(new URL(lastMsg(bot).opts.reply_markup.inline_keyboard[0][0].web_app.url).href, HTTPS);
+      assert.equal(lastMsg(bot).opts.reply_markup.keyboard, undefined, 'هیچ دکمه‌ی web_app در کیبورد پاسخ نیست');
+      for (const id of ['mn:panel', 'mn:admin_panel']) {
+        const r = spies();
+        await menu.handleMenuCallback(mockBot(), cbQuery(admin, id), r.h);
+        assert.deepEqual(r.calls, ['panel'], id);
       }
     });
 
-    test('نقش‌ها سمت سرور چک می‌شوند: کارمند با mn:admin_panel رد می‌شود و پیامی نمی‌رود', async () => {
+    test('نقش‌ها سمت سرور چک می‌شوند: کارمند با mn:add_employee رد می‌شود و پیامی نمی‌رود', async () => {
       const bot = mockBot(); const { calls, h } = spies();
-      await menu.handleMenuCallback(bot, cbQuery(emp, 'mn:admin_panel'), h);
+      await menu.handleMenuCallback(bot, cbQuery(emp, 'mn:add_employee'), h);
       assert.equal(bot.answers.length, 1);
       assert.equal(bot.answers[0].show_alert, true);
       assert.deepEqual(bot.sent, []);

@@ -83,7 +83,7 @@ function calendarRows(pick, today = todayDateString()) {
   const { jy, jm, min = null, max = null, quick = [] } = pick;
   const rows = [];
 
-  const quickBtns = quick.filter((q) => isIsoDate(q.date) && inRange(q.date, min, max)).map((q) => btn(q.text, `dp:d:${q.date}`));
+  const quickBtns = quick.filter((q) => isIsoDate(q.date) && inRange(q.date, min, max)).map((q) => btn(`📅 ${q.text}`, `dp:d:${q.date}`));
   if (quickBtns.length) rows.push(quickBtns);
 
   const prev = shiftMonth(jy, jm, -1);
@@ -91,9 +91,9 @@ function calendarRows(pick, today = todayDateString()) {
   const prevOk = !min || jalaliMonthRangeOf(prev.jy, prev.jm).to >= min;
   const nextOk = !max || jalaliMonthRangeOf(next.jy, next.jm).from <= max;
   rows.push(rtl([
-    prevOk ? btn('▸ ماه قبل', `dp:m:${prev.jy}:${prev.jm}`) : btn(' ', CB.NOOP),
-    btn(`${MONTH_NAMES[jm - 1]} ${faDigits(jy)}`, CB.NOOP),
-    nextOk ? btn('ماه بعد ◂', `dp:m:${next.jy}:${next.jm}`) : btn(' ', CB.NOOP),
+    prevOk ? btn('▶️ ماه قبل', `dp:m:${prev.jy}:${prev.jm}`) : btn(' ', CB.NOOP),
+    btn(`🗓 ${MONTH_NAMES[jm - 1]} ${faDigits(jy)}`, CB.NOOP),
+    nextOk ? btn('ماه بعد ◀️', `dp:m:${next.jy}:${next.jm}`) : btn(' ', CB.NOOP),
   ]));
   rows.push(rtl(WEEKDAY_SHORT.map((w) => btn(w, CB.NOOP))));
 
@@ -105,7 +105,7 @@ function calendarRows(pick, today = todayDateString()) {
       if (!iso) return btn(' ', CB.NOOP);
       const jd = jalaliPartsOfDateString(iso).jd;
       if (!inRange(iso, min, max)) return btn('·', CB.NOOP);
-      return btn(iso === today ? `•${faDigits(jd)}` : faDigits(jd), `dp:d:${iso}`);
+      return btn(iso === today ? `📍${faDigits(jd)}` : faDigits(jd), `dp:d:${iso}`);
     })));
   }
   return rows;
@@ -166,21 +166,24 @@ function candidateUsers(filter, pick = {}) {
 }
 
 function employeeLabel(u) {
-  const role = u.role === 'manager' ? ' — سرپرست' : isAdmin(u) ? ' — ادمین' : '';
-  return `${u.is_active ? '' : '🔴 '}${u.full_name}${role}`.slice(0, 48);
+  const icon = !u.is_active ? '🔴' : u.role === 'manager' ? '👔' : isAdmin(u) ? '👑' : '👤';
+  const role = u.role === 'manager' ? ' (سرپرست)' : isAdmin(u) ? ' (ادمین)' : '';
+  return `${icon} ${u.full_name}${role}`.slice(0, 40);
 }
 
 function employeeRows(pick) {
   const all = candidateUsers(pick.filter || 'any', pick);
   const pages = Math.max(1, Math.ceil(all.length / EMP_PAGE_SIZE));
   const page = Math.min(Math.max(Number(pick.page) || 0, 0), pages - 1);
-  const rows = all.slice(page * EMP_PAGE_SIZE, (page + 1) * EMP_PAGE_SIZE).map((u) => [btn(employeeLabel(u), `ep:u:${u.id}`)]);
+  const buttons = all.slice(page * EMP_PAGE_SIZE, (page + 1) * EMP_PAGE_SIZE).map((u) => btn(employeeLabel(u), `ep:u:${u.id}`));
+  const rows = [];
+  for (let i = 0; i < buttons.length; i += 2) rows.push(rtl(buttons.slice(i, i + 2))); // دو ستونه؛ اولی سمت راست (فارسی)
   if (!all.length) rows.push([btn('کاربری برای انتخاب نیست', CB.NOOP)]);
   if (pages > 1) {
     rows.push(rtl([
-      page > 0 ? btn('▸ قبلی', `ep:p:${page - 1}`) : btn(' ', CB.NOOP),
-      btn(`${faDigits(page + 1)} از ${faDigits(pages)}`, CB.NOOP),
-      page < pages - 1 ? btn('بعدی ◂', `ep:p:${page + 1}`) : btn(' ', CB.NOOP),
+      page > 0 ? btn('▶️ قبلی', `ep:p:${page - 1}`) : btn(' ', CB.NOOP),
+      btn(`📄 ${faDigits(page + 1)} از ${faDigits(pages)}`, CB.NOOP),
+      page < pages - 1 ? btn('بعدی ◀️', `ep:p:${page + 1}`) : btn(' ', CB.NOOP),
     ]));
   }
   if (pick.allowNone) rows.push([btn(pick.noneText || 'بدون انتخاب', 'ep:none')]);
@@ -195,7 +198,7 @@ function employeeRows(pick) {
 function navRows({ cancelData = CB.CANCEL, skip = false, skipText = '⏭ رد شدن' } = {}) {
   const rows = [];
   if (skip) rows.push([btn(skipText, CB.SKIP)]);
-  rows.push([btn('❌ انصراف', cancelData), btn('🏠 منوی اصلی', CB.HOME)]);
+  rows.push([btn('✖️ انصراف', cancelData), btn('🏠 منوی اصلی', CB.HOME)]);
   return rows;
 }
 

@@ -6,6 +6,40 @@ const notificationEvents = require('../../services/notificationEvents');
 const leaveApprovalService = require('../../services/leaveApprovalService');
 
 const { isAdmin } = require('../../utils/roles');
+const { isoDateToJalaliString } = require('../../utils/jalali');
+const pendingRemote = require('./pendingRemote');
+
+const LINE = '━━━━━━━━━━━━━━';
+const fa = (n) => Number(n).toLocaleString('fa-IR');
+
+/** مرخصی/ماموریت‌های منتظرِ «نوبت همین کاربر». سرپرست فقط مرحله‌ی خودش و زیردستان مستقیم؛ ادمین همه‌ی pendingها. */
+function leavesFor(user) {
+  const pending = leaveRepository.listPending();
+  if (isAdmin(user)) return pending;
+  return pending.filter((r) => usersRepository.findById(r.user_id)?.manager_id === user.id && leaveApprovalService.awaitingRole(r) === 'manager');
+}
+
+/** تعداد کل درخواست‌های منتظر (مرخصی/ماموریت + دورکاری) برای نشانگر دکمه‌ی منو؛ ⇒ { ok, total } */
+function pendingTotal(user) {
+  try {
+    return { ok: true, total: leavesFor(user).length + pendingRemote.pendingCount(user) };
+  } catch (err) {
+    return { ok: false, error: err && err.message };
+  }
+}
+
+function leaveCardText(request, employee) {
+  const isMission = request.kind === 'mission';
+  const range = request.start_date === request.end_date ? isoDateToJalaliString(request.start_date) || request.start_date : `${isoDateToJalaliString(request.start_date) || request.start_date} تا ${isoDateToJalaliString(request.end_date) || request.end_date}`;
+  return [
+    `${isMission ? '🚗 ماموریت' : '🏖 مرخصی'} #${request.id}`,
+    LINE,
+    `👤 ${employee ? employee.full_name : `#${request.user_id}`}`,
+    `📅 ${range}`,
+    request.reason ? `📝 ${request.reason}` : null,
+  ].filter(Boolean).join('\n');
+}
+
 async function handlePendingLeaves(bot, msg) {
   const chatId = msg.chat.id;
   const user = getRegisteredUser(msg.from.id);
@@ -18,43 +52,33 @@ async function handlePendingLeaves(bot, msg) {
     return;
   }
 
-  const pending = leaveRepository.listPending();
-  // S4-11a: سرپرست فقط درخواست‌هایی را می‌بیند که «نوبت مرحله‌ی سرپرست» است؛ ادمین همه‌ی pendingها (هر مرحله) را
-  const scoped =
-    isAdmin(user)
-      ? pending
-      : pending.filter((r) => usersRepository.findById(r.user_id)?.manager_id === user.id && leaveApprovalService.awaitingRole(r) === 'manager');
+  const scoped = leavesFor(user);
+  const remoteCount = pendingRemote.pendingCount(user);
 
-  if (scoped.length === 0) {
-    await bot.sendMessage(chatId, 'هیچ درخواست در انتظاری وجود ندارد.');
+  if (scoped.length === 0 && remoteCount === 0) {
+    await bot.sendMessage(chatId, `📥 درخواست‌های منتظر\n${LINE}\n✅ هیچ درخواست در انتظاری وجود ندارد.`);
     return;
   }
 
+  await bot.sendMessage(chatId, [`📥 درخواست‌های منتظر تأیید — ${fa(scoped.length + remoteCount)} مورد`, LINE, `🏖 مرخصی / 🚗 ماموریت: ${fa(scoped.length)}`, `🏠 دورکاری: ${fa(remoteCount)}`, '', 'هر درخواست را همین‌جا تأیید یا رد کنید 👇'].join('\n'));
+
   for (const request of scoped) {
     const employee = usersRepository.findById(request.user_id);
-    const typeLabel = request.kind === 'mission' ? 'مأموریت' : 'مرخصی';
-    const text = [
-      `درخواست #${request.id} — ${typeLabel}`,
-      `کارمند: ${employee ? employee.full_name : `#${request.user_id}`}`,
-      `بازه: ${request.start_date} تا ${request.end_date}`,
-      request.reason ? `توضیح: ${request.reason}` : null,
-    ]
-      .filter(Boolean)
-      .join('\n');
-
-    await bot.sendMessage(chatId, text, {
+    await bot.sendMessage(chatId, leaveCardText(request, employee), {
       reply_markup: {
         inline_keyboard: [
           request.kind === 'mission'
             ? require('../../services/missionDecisionService').missionKeyboardRow(request) // C4: ماموریت ⇒ + «اصلاح ساعت»
             : [
-              { text: '✅ تأیید', callback_data: `leave_approve:${request.id}` },
-              { text: '❌ رد', callback_data: `leave_reject:${request.id}` },
+              { text: '✅ تأیید', callback_data: `leave_approve:${request.id}`, style: 'success' },
+              { text: '❌ رد', callback_data: `leave_reject:${request.id}`, style: 'danger' },
             ],
         ],
       },
     });
   }
+
+  if (remoteCount > 0) await pendingRemote.sendRemoteCards(bot, chatId, user);
 }
 
 async function handlePendingLeavesCallback(bot, query) {
@@ -122,4 +146,4 @@ async function handlePendingLeavesCallback(bot, query) {
   }
 }
 
-module.exports = { handlePendingLeaves, handlePendingLeavesCallback };
+module.exports = { handlePendingLeaves, handlePendingLeavesCallback, pendingTotal, leavesFor };

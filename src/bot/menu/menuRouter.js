@@ -1,6 +1,6 @@
 // E1/E2 (فاز ۱۰): منوی دکمه‌ایِ نقش‌محور بات.
 //   • buildMainKeyboard(user): کیبورد ثابت پایین چت؛ H2: فقط یک دکمه‌ی «📂 منو» (فقط چت خصوصی).
-//   • buildMenuInline(user) / sendMenu: با لمس «📂 منو» یک پیام با inline_keyboard نقش‌محور (۲ ستونه، گروه‌بندی‌شده، «✖️ بستن منو»)
+//   • buildMenuInline(user) / sendMenu: با لمس «📂 منو» یک پیام با inline_keyboard نقش‌محور (ردیف اول: «🖥 ورود به پنل» تمام‌عرض؛ بقیه ۲ ستونه، گروه‌بندی‌شده، «✖️ بستن منو»)
 //     فرستاده می‌شود؛ آیتم‌های handler با callback «mn:<id>» و آیتم‌های web_app با دکمه‌ی inline از نوع web_app (https).
 //   • routeMenuText(bot, msg): تشخیص متنِ دکمه با «تطبیق دقیق» (نرمال‌سازی ی/ک، حذف ایموجی و فاصله‌ی اضافه) و اتصال آن
 //     به handlerهای موجود — بدون کپی منطق. نقش هر بار از دیتابیس خوانده و سمت سرور دوباره چک می‌شود؛
@@ -16,44 +16,45 @@ const ADMIN_ONLY = ['admin', 'owner'];
 
 // H2: تنها دکمه‌ی کیبورد پایین چت و پیام منوی inline
 const MENU_LABEL = '📂 منو';
-const MENU_TEXT = '📂 منو — یکی از گزینه‌ها را انتخاب کنید:';
+const MENU_TEXT = '📂 منوی اصلی\n━━━━━━━━━━━━━━\nیکی از گزینه‌ها را انتخاب کنید 👇';
 const MENU_NOOP_ID = '_'; // دکمه‌ی سرتیتر گروه (بدون عمل)
 const MENU_CLOSE_ID = '_close'; // «✖️ بستن منو»
 const LEGACY_KEYBOARD_NOTE = 'منوی ربات ساده‌تر شد 👇 همه‌ی گزینه‌ها حالا پشت دکمه‌ی «📂 منو» هستند.';
 // style: رنگ دکمه‌های گروه (Bot API 9.4+؛ فقط همین سه مقدار مجاز است): primary آبی، success سبز، danger قرمز.
 // کلاینت‌های قدیمی فیلد را نادیده می‌گیرند و دکمه با رنگ پیش‌فرض نمایش داده می‌شود.
 const MENU_GROUPS = [
-  { key: 'me', title: 'کارهای من', style: 'primary' },
-  { key: 'team', title: 'تیم', style: 'success' },
-  { key: 'admin', title: 'مدیریت', style: 'danger' },
+  { key: 'me', title: '👤 کارهای من' },
+  { key: 'team', title: '👥 مدیریت تیم' },
+  { key: 'admin', title: '🛡 ادمین' },
 ];
 
 // roles = null ⇒ هر کاربر ثبت‌شده. url = تابعِ آدرسِ web_app (دکمه‌ی web_app، نه متنی).
-// ترتیب آرایه همان ترتیب نمایش است: کارمند، سپس افزوده‌های سرپرست، سپس افزوده‌های ادمین (ادمین همه را دارد).
+// ترتیب آرایه همان ترتیب نمایش است: «ورود به پنل» (اصلی‌ترین دکمه، تمام‌عرض و اول)، سپس کارمند، افزوده‌های سرپرست، افزوده‌های ادمین.
+// فلسفه‌ی دکمه‌ها: اگر کسی نمی‌تواند پنل را باز کند (مثلاً IP او در شبکه‌ی شرکت نیست) هر کار را با دکمه‌ی خودش از همین منو انجام می‌دهد.
+// wide = ردیف تمام‌عرض · style = رنگ دکمه (Bot API 9.4+: primary آبی، success سبز، danger قرمز؛ کلاینت قدیمی نادیده می‌گیرد)
+// aliases = برچسب‌های قدیمی (کیبورد ۱۵ دکمه‌ای قدیمی) که همچنان تطبیق می‌خورند.
 const ITEMS = [
-  { id: 'checkin', label: '🕒 ثبت تردد', roles: null, url: () => panelLinks.miniAppLink() },
+  { id: 'panel', label: '🖥 ورود به پنل', roles: null, url: () => panelLinks.panelUrl(), handler: 'panel', wide: true, style: 'primary', aliases: ['🖥 پنل', '⚙️ پنل مدیریت'] },
+  { id: 'checkin', label: '🕒 ثبت تردد', roles: null, url: () => panelLinks.miniAppLink(), style: 'success' },
   { id: 'remote_work', label: '🏠 ثبت دورکاری', roles: null, handler: 'remoteWork' },
-  { id: 'status', label: '📊 وضعیت من', roles: null, handler: 'status' },
-  { id: 'report', label: '📈 گزارش من', roles: null, handler: 'report' },
+  { id: 'status', label: '📊 وضعیت و گزارش من', roles: null, handler: 'myStatus', aliases: ['📊 وضعیت من', '📈 گزارش من'] },
+  { id: 'plan', label: '📋 برنامه هفتگی', roles: null, handler: 'weeklyPlan' },
   { id: 'leave', label: '🏖 مرخصی / 🚗 ماموریت', roles: null, handler: 'leave' },
-  { id: 'plan', label: '📋 برنامه هفتگی', roles: null, url: () => panelLinks.miniAppLink({ view: 'plan' }) },
-  { id: 'panel', label: '🖥 پنل', roles: null, handler: 'panel' },
   { id: 'help', label: '❓ راهنما', roles: null, handler: 'help' },
 
+  { id: 'pending_leaves', label: '📥 درخواست‌های منتظر', roles: MANAGER_UP, handler: 'pendingLeaves', badge: (user) => require('../commands/pendingLeaves').pendingTotal(user), style: 'primary', aliases: ['🏠 دورکاری‌های منتظر'] },
   { id: 'team_report', label: '👥 گزارش تیم', roles: MANAGER_UP, handler: 'teamReport' },
-  { id: 'pending_leaves', label: '📥 درخواست‌های منتظر', roles: MANAGER_UP, handler: 'pendingLeaves' },
-  { id: 'pending_disputes', label: '💬 اعتراض‌ها', roles: MANAGER_UP, handler: 'pendingDisputes' },
-  // R6 (فاز ۱۴): badge = تعداد دورکاری منتظر بررسی؛ در متن دکمه‌ی منوی inline می‌آید («… (۳)»)، صفر ⇒ بدون عدد
-  { id: 'pending_remote', label: '🏠 دورکاری‌های منتظر', roles: MANAGER_UP, handler: 'pendingRemote', badge: (user) => require('../../services/remoteWorkAdminService').pendingSummary(user) },
-  { id: 'yesterday_reports', label: '📝 گزارش‌های دیروز تیم', roles: MANAGER_UP, handler: 'yesterdayReports' },
-  { id: 'list_members', label: '👤 لیست اعضا', roles: MANAGER_UP, handler: 'listEmployees' },
   { id: 'urgent_task', label: '⚡ تسک فوری', roles: MANAGER_UP, handler: 'urgentTask' },
+  { id: 'pending_disputes', label: '💬 اعتراض‌ها', roles: MANAGER_UP, handler: 'pendingDisputes' },
+  { id: 'list_members', label: '👤 لیست اعضا', roles: MANAGER_UP, handler: 'listEmployees' },
 
   { id: 'add_employee', label: '➕ افزودن کارمند', roles: ADMIN_ONLY, handler: 'addEmployee' },
   { id: 'fix_record', label: '🛠 اصلاح رکورد', roles: ADMIN_ONLY, handler: 'fixRecord' },
   { id: 'ai_chat', label: '🤖 تحلیلگر هوشمند', roles: ADMIN_ONLY, handler: 'aiChat' },
-  { id: 'admin_panel', label: '⚙️ پنل مدیریت', roles: ADMIN_ONLY, url: () => panelLinks.panelUrl() },
 ];
+
+// شناسه‌ی callbackهای قدیمی (پیام‌های منو/اعلان‌هایی که پیش از این نسخه فرستاده شده‌اند) ⇒ آیتم جدید
+const LEGACY_IDS = { report: 'status', pending_remote: 'pending_leaves', yesterday_reports: 'team_report', admin_panel: 'panel' };
 
 const EMOJI_RE = /[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji_Modifier}\u20E3\uFE00-\uFE0F\u200D]/gu;
 
@@ -78,7 +79,9 @@ function hasEmoji(text) {
   return new RegExp(EMOJI_RE.source, 'u').test(String(text || ''));
 }
 
-const ITEM_BY_LABEL = new Map(ITEMS.map((it) => [normalizeLabel(it.label), it]));
+const ITEM_BY_LABEL = new Map(ITEMS.flatMap((it) => [it.label, ...(it.aliases || [])].map((l) => [normalizeLabel(l), it])));
+// «گزارش‌های دیروز تیم» حذف شد؛ دکمه‌ی کیبورد قدیمی‌اش به «گزارش تیم» می‌رود
+ITEM_BY_LABEL.set(normalizeLabel('📝 گزارش‌های دیروز تیم'), ITEMS.find((it) => it.id === 'team_report'));
 // «📂 منو» آیتم واقعی نیست (handler/url ندارد)؛ فقط برای این‌که routeMenuText با همان قواعد (ثبت‌نام، چت خصوصی، قاعده‌ی session) تشخیصش دهد
 const MENU_ITEM = { id: 'menu_open', label: MENU_LABEL, roles: null };
 ITEM_BY_LABEL.set(normalizeLabel(MENU_LABEL), MENU_ITEM);
@@ -133,11 +136,20 @@ function buildMenuInline(user) {
   if (items.length === 0) return null;
   const buckets = MENU_GROUPS.map((g) => ({ ...g, items: items.filter((it) => groupOf(it) === g.key) })).filter((b) => b.items.length > 0);
   const withHeads = buckets.length > 1;
+  const button = (it) => {
+    const style = it.style ? { style: it.style } : {};
+    return it.url && panelLinks.canUseWebApp(it.url())
+      ? { text: it.label, web_app: { url: it.url() }, ...style }
+      : { text: labelWithBadge(it, user), callback_data: `mn:${it.id}`, ...style };
+  };
   const rows = [];
   for (const b of buckets) {
-    if (withHeads) rows.push([{ text: `— ${b.title} —`, callback_data: `mn:${MENU_NOOP_ID}`, style: b.style }]);
-    const buttons = b.items.map((it) => (it.url && panelLinks.canUseWebApp(it.url()) ? { text: it.label, web_app: { url: it.url() }, style: b.style } : { text: labelWithBadge(it, user), callback_data: `mn:${it.id}`, style: b.style }));
-    for (let i = 0; i < buttons.length; i += 2) rows.push(buttons.slice(i, i + 2));
+    const wide = b.items.filter((it) => it.wide);
+    const normal = b.items.filter((it) => !it.wide);
+    for (const it of wide) rows.push([button(it)]); // اصلی‌ترین دکمه: تمام‌عرض و بالای همه
+    if (withHeads && b.key !== 'me') rows.push([{ text: `──── ${b.title} ────`, callback_data: `mn:${MENU_NOOP_ID}` }]);
+    const buttons = normal.map(button);
+    for (let i = 0; i < buttons.length; i += 2) rows.push(buttons.slice(i, i + 2).reverse()); // اولی سمت راست (فارسی)
   }
   rows.push([{ text: '✖️ بستن منو', callback_data: `mn:${MENU_CLOSE_ID}` }]);
   return { inline_keyboard: rows };
@@ -181,21 +193,11 @@ async function deleteMenuMessage(bot, message) {
   }
 }
 
-// «📝 گزارش‌های دیروز تیم»: منطق گزارش تسک‌ها فقط در پنل است (صفحه‌ی «گزارش‌های تیم»)؛ بات همان صفحه را باز می‌کند.
-async function sendTeamReportsLink(bot, msg) {
-  const btn = panelLinks.panelWebAppButton({ view: 'teamreports', text: '🖥 گزارش‌های تیم' });
-  if (!btn) {
-    await bot.sendMessage(msg.chat.id, 'گزارش‌های تیم در پنل است. با دکمه‌ی «🖥 پنل» وارد شوید و صفحه‌ی «گزارش‌های تیم» را باز کنید.');
-    return;
-  }
-  await bot.sendMessage(msg.chat.id, '📝 گزارش‌های تسک‌های دیروز تیم را در پنل ببینید:', { reply_markup: { inline_keyboard: [[btn]] } });
-}
-
 /** handlerهای موجود (lazy تا چرخه‌ی require پیش نیاید). تست می‌تواند نسخه‌ی جایگزین بدهد. */
 function defaultHandlers() {
   return {
-    status: require('../commands/status').handleStatus,
-    report: require('../commands/report').handleReport,
+    myStatus: require('../commands/myStatus').handleMyStatus,
+    weeklyPlan: require('../commands/weeklyPlan').handleWeeklyPlan,
     leave: require('../commands/leave').handleLeaveCommand,
     panel: require('../commands/panelLogin').handlePanelLogin,
     help: require('../commands/help').handleHelp,
@@ -206,9 +208,7 @@ function defaultHandlers() {
     addEmployee: require('../commands/addEmployee').handleAddEmployeeCommand,
     fixRecord: require('../commands/fixRecord').handleFixRecordCommand,
     aiChat: require('../commands/aiChat').handleAiChat,
-    yesterdayReports: sendTeamReportsLink,
     urgentTask: require('../commands/urgentTask').handleUrgentTaskCommand,
-    pendingRemote: require('../commands/pendingRemote').handlePendingRemote,
     remoteWork: require('../commands/remoteWork').handleRemoteWork,
   };
 }
@@ -259,7 +259,8 @@ async function routeMenuText(bot, msg, handlers) {
   session.clear(chatId); // دکمه‌ی منو = شروع تازه؛ مکالمه‌ی قبلی (مثلاً ثبت مرخصیِ نیمه‌کاره) لغو می‌شود
   // متنِ دکمه‌ی عادی فقط از کیبورد قدیمی می‌آید (کیبورد جدید فقط «📂 منو» می‌فرستد)؛ کیبورد جدید را پیش از handler می‌فرستیم تا پیام خودِ handler آخرین پیام چت بماند
   await replaceLegacyKeyboard(bot, chatId, user);
-  if (item.url) {
+  // آیتمِ دارای handler (مثل «ورود به پنل»: لینک مرورگر + کد) از handler اجرا می‌شود؛ آیتم فقط‌web_app (ثبت تردد) لینک inline می‌گیرد
+  if (!item.handler && item.url) {
     await sendWebAppLink(bot, chatId, item);
     return true;
   }
@@ -273,7 +274,8 @@ async function routeMenuText(bot, msg, handlers) {
  * نقش هر بار از دیتابیس خوانده می‌شود؛ دکمه‌ی ناشناخته ⇒ «این دکمه منقضی شده»؛ آیتم web_app ⇒ لینک inline یا راهنمای https (H3). هر callback دقیقاً یک‌بار answer می‌شود.
  */
 async function handleMenuCallback(bot, query, handlers) {
-  const id = String(query.data || '').slice(3);
+  const rawId = String(query.data || '').slice(3);
+  const id = LEGACY_IDS[rawId] || rawId;
   // H2: سرتیتر گروه (بی‌عمل) و «✖️ بستن منو» — بدون چک نقش
   if (id === MENU_NOOP_ID) {
     await bot.answerCallbackQuery(query.id);
@@ -302,7 +304,7 @@ async function handleMenuCallback(bot, query, handlers) {
   await bot.answerCallbackQuery(query.id);
   session.clear(chat.id);
   if (isMenuMessage(query.message)) await deleteMenuMessage(bot, query.message); // H2: بعد از انتخاب، پیام منو پاک می‌شود
-  if (item.url) {
+  if (!item.handler && item.url) {
     // H3: آیتم web_app که به‌جای دکمه‌ی web_app callback شده (MINI_APP_URL بدون https) یا دکمه‌ی قدیمی: https ⇒ دکمه‌ی inline web_app؛ وگرنه راهنمای ادمین
     await sendWebAppLink(bot, chat.id, item);
     return;

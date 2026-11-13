@@ -65,7 +65,7 @@ describe('انتخابگرهای دکمه‌ای بات و حذف ارجاع ب�
     test('تقویم: ماه شمسی درست، دکمه‌ی روز = تاریخ میلادی، خارج از بازه غیرفعال', () => {
       const rows = ui.calendarRows({ jy: 1405, jm: 10, min: '2027-01-04', max: '2027-01-10', quick: [] }, '2027-01-04');
       const flat = rows.flat();
-      assert.ok(flat.some((b) => b.callback_data === 'dp:d:2027-01-04' && b.text === '•۱۴')); // امروز نشانه‌دار
+      assert.ok(flat.some((b) => b.callback_data === 'dp:d:2027-01-04' && b.text === '📍۱۴')); // امروز نشانه‌دار
       assert.ok(flat.some((b) => b.callback_data === 'dp:d:2027-01-10'));
       assert.ok(!flat.some((b) => b.callback_data === 'dp:d:2027-01-03'));
       assert.ok(!flat.some((b) => b.callback_data === 'dp:d:2027-01-11'));
@@ -81,7 +81,8 @@ describe('انتخابگرهای دکمه‌ای بات و حذف ارجاع ب�
     test('کارمند: صفحه‌بندی ۸تایی و «بدون سرپرست»', () => {
       for (let i = 0; i < 10; i += 1) F.makeUser();
       const rows = ui.employeeRows({ page: 0, filter: 'any', allowNone: true, noneText: 'بدون سرپرست' });
-      assert.equal(rows.filter((r) => r[0].callback_data.startsWith('ep:u:')).length, ui.EMP_PAGE_SIZE);
+      assert.equal(rows.flat().filter((b) => b.callback_data.startsWith('ep:u:')).length, ui.EMP_PAGE_SIZE);
+      assert.ok(rows.filter((r) => r[0].callback_data.startsWith('ep:u:')).every((r) => r.length <= 2), 'فهرست کارمند دو ستونه است');
       assert.ok(rows.flat().some((b) => b.callback_data === 'ep:p:1'));
       assert.ok(rows.flat().some((b) => b.callback_data === 'ep:none'));
       const managers = ui.candidateUsers('managers');
@@ -397,7 +398,9 @@ describe('انتخابگرهای دکمه‌ای بات و حذف ارجاع ب�
         assert.doesNotMatch(last(b2).text, /\/\w+/, `start/${name}`);
       }
       for (const t of Object.values(texts)) assert.doesNotMatch(t, /(^|\s)\/[a-z_]+/);
-      assert.match(texts.emp, /وضعیت من/);
+      assert.match(texts.emp, /وضعیت و گزارش من/);
+      assert.match(texts.emp, /ورود به پنل/);
+      assert.doesNotMatch(texts.mgr, /گزارش‌های دیروز تیم|پنل مدیریت/);
       assert.doesNotMatch(texts.emp, /افزودن کارمند|اعتراض‌ها/);
       assert.match(texts.mgr, /اعتراض‌ها/);
       assert.doesNotMatch(texts.mgr, /افزودن کارمند/);
