@@ -182,12 +182,13 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
       assert.equal(by('✖️ بستن منو').style, undefined);
     });
 
-    test('ورود به پنل و ثبت تردد دکمه‌ی inline از نوع web_app‌اند؛ بقیه callback به شکل mn:<id>', () => {
+    test('ثبت تردد دکمه‌ی inline از نوع web_app است؛ «ورود به پنل» و بقیه callback به شکل mn:<id> (تا پیام ورود ارسال شود)', () => {
       const kb = menu.buildMenuInline(admin);
       const by = (t) => btns(kb).find((b) => b.text === t);
-      assert.equal(by('🖥 ورود به پنل').web_app.url, 'https://attendance.example.com/admin/');
       assert.equal(by('🕒 ثبت تردد').web_app.url, 'https://attendance.example.com/app/');
-      for (const t of ['🖥 ورود به پنل', '🕒 ثبت تردد']) assert.equal(by(t).callback_data, undefined);
+      assert.equal(by('🕒 ثبت تردد').callback_data, undefined);
+      assert.equal(by('🖥 ورود به پنل').callback_data, 'mn:panel');
+      assert.equal(by('🖥 ورود به پنل').web_app, undefined);
       assert.equal(by('📊 وضعیت و گزارش من').callback_data, 'mn:status');
       assert.equal(by('📋 برنامه هفتگی').callback_data, 'mn:plan');
       assert.equal(by('➕ افزودن کارمند').callback_data, 'mn:add_employee');
@@ -571,12 +572,13 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
       }
     });
 
-    test('https: پیام منو برای هر نقش دکمه‌ی inline web_app «ورود به پنل» (/admin/) و «ثبت تردد» دارد', () => {
+    test('https: پیام منو برای هر نقش دکمه‌ی callback «ورود به پنل» (mn:panel) و web_app «ثبت تردد» دارد', () => {
       const find = (kb, t) => btns(kb).find((b) => b.text === t);
       for (const user of [emp, mgr, admin]) {
         const kb = menu.buildMenuInline(user);
         assert.equal(find(kb, '🕒 ثبت تردد').web_app.url, HTTPS);
-        assert.equal(new URL(find(kb, '🖥 ورود به پنل').web_app.url).pathname, '/admin/');
+        assert.equal(find(kb, '🖥 ورود به پنل').callback_data, 'mn:panel');
+        assert.equal(find(kb, '🖥 ورود به پنل').web_app, undefined);
         assert.equal(find(kb, '⚙️ پنل مدیریت'), undefined);
       }
     });

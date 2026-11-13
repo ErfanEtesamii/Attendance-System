@@ -55,13 +55,14 @@ const MENU_GROUPS = [
   { key: 'footer', title: '' },
 ];
 
+// «ورود به پنل» عمداً url ندارد: دکمه‌ی callback است تا پیام ورود (دکمه‌ی پنل + لینک مرورگر + کد دستی) ارسال شود، نه اینکه مستقیم web_app باز شود.
 // roles = null ⇒ هر کاربر ثبت‌شده. url = تابعِ آدرسِ web_app (دکمه‌ی web_app، نه متنی).
 // ترتیب آرایه همان ترتیب نمایش است: «ورود به پنل» (اصلی‌ترین دکمه، تمام‌عرض و اول)، سپس کارمند، افزوده‌های سرپرست، افزوده‌های ادمین.
 // فلسفه‌ی دکمه‌ها: اگر کسی نمی‌تواند پنل را باز کند (مثلاً IP او در شبکه‌ی شرکت نیست) هر کار را با دکمه‌ی خودش از همین منو انجام می‌دهد.
 // wide = ردیف تمام‌عرض · style = رنگ دکمه (Bot API 9.4+: primary آبی، success سبز، danger قرمز؛ کلاینت قدیمی نادیده می‌گیرد)
 // aliases = برچسب‌های قدیمی (کیبورد ۱۵ دکمه‌ای قدیمی) که همچنان تطبیق می‌خورند.
 const ITEMS = [
-  { id: 'panel', label: '🖥 ورود به پنل', roles: null, url: () => panelLinks.panelUrl(), handler: 'panel', wide: true, style: 'success', aliases: ['🖥 پنل', '⚙️ پنل مدیریت'] },
+  { id: 'panel', label: '🖥 ورود به پنل', roles: null, handler: 'panel', wide: true, style: 'success', aliases: ['🖥 پنل', '⚙️ پنل مدیریت'] },
   { id: 'checkin', label: '🕒 ثبت تردد', roles: null, url: () => panelLinks.miniAppLink(), style: 'primary' },
   { id: 'remote_work', label: '🏠 ثبت دورکاری', roles: null, handler: 'remoteWork', style: 'primary' },
   { id: 'status', label: '📊 وضعیت و گزارش من', roles: null, handler: 'myStatus', style: 'primary', aliases: ['📊 وضعیت من', '📈 گزارش من'] },
