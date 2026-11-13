@@ -19,11 +19,29 @@ const MENU_LABEL = '📂 منو';
 
 /** متن منو: خوش‌آمد + راهنمای رنگ‌ها (فقط رنگ‌هایی که این نقش واقعاً در منویش دارد). همیشه با «📂 منو» شروع می‌شود (isMenuMessage). */
 function menuText(user) {
-  const first = String((user && user.full_name) || '').trim().split(/\s+/)[0];
-  const legend = ['🟢 ثبت تردد و دورکاری'];
-  if (user && (user.role === 'manager' || user.role === 'admin' || user.role === 'owner')) legend.push('🔵 مدیریت تیم');
-  if (user && (user.role === 'admin' || user.role === 'owner')) legend.push('🔴 ابزار حساس ادمین');
-  return ['📂 منوی اصلی', '━━━━━━━━━━━━━━', first ? `👋 ${first} عزیز، خوش آمدید` : '👋 خوش آمدید', '', legend.join('  ·  '), '', 'یکی از گزینه‌ها را انتخاب کنید 👇'].join('\n');
+  const legend = ['🟢 ورود به پنل', '🔵 امکانات بات'];
+  if (user && (user.role === 'admin' || user.role === 'owner')) legend.push('🔴 ابزار ادمین');
+  return [
+    '📂 منوی اصلی',
+    '━━━━━━━━━━━━━━',
+    greeting(user),
+    '',
+    legend.join('  ·  '),
+    '',
+    '💡 اگر پنل به هر دلیلی برایتان باز نمی‌شود (مثلاً از شبکه‌ی شرکت وصل نیستید)، همه‌ی کارها را می‌توانید با دکمه‌های همین بات انجام دهید.',
+    '',
+    'یکی از گزینه‌ها را انتخاب کنید 👇',
+  ].join('\n');
+}
+
+const TITLES = new Set(['آقای', 'خانم', 'سرکار', 'جناب', 'دکتر', 'مهندس', 'استاد', 'حاج', 'حاجی', 'حاج‌آقا', 'سرکارخانم']);
+/** «👋 آقای اعتصامی عزیز»: عنوان (آقای/خانم/دکتر…) اگر در نام هست + «فامیل» (آخرین بخش نام)؛ وگرنه فقط فامیل. */
+function greeting(user) {
+  const parts = String((user && user.full_name) || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '👋 خوش آمدید';
+  const family = parts[parts.length - 1];
+  const title = parts.length > 1 && TITLES.has(parts[0]) ? `${parts[0]} ` : '';
+  return `👋 ${title}${family} عزیز، خوش آمدید`;
 }
 const MENU_NOOP_ID = '_'; // دکمه‌ی سرتیتر گروه (بدون عمل)
 const MENU_CLOSE_ID = '_close'; // «✖️ بستن منو»
@@ -34,6 +52,7 @@ const MENU_GROUPS = [
   { key: 'me', title: '👤 کارهای من' },
   { key: 'team', title: '👥 مدیریت تیم' },
   { key: 'admin', title: '🛡 ادمین' },
+  { key: 'footer', title: '' },
 ];
 
 // roles = null ⇒ هر کاربر ثبت‌شده. url = تابعِ آدرسِ web_app (دکمه‌ی web_app، نه متنی).
@@ -42,13 +61,12 @@ const MENU_GROUPS = [
 // wide = ردیف تمام‌عرض · style = رنگ دکمه (Bot API 9.4+: primary آبی، success سبز، danger قرمز؛ کلاینت قدیمی نادیده می‌گیرد)
 // aliases = برچسب‌های قدیمی (کیبورد ۱۵ دکمه‌ای قدیمی) که همچنان تطبیق می‌خورند.
 const ITEMS = [
-  { id: 'panel', label: '🖥 ورود به پنل', roles: null, url: () => panelLinks.panelUrl(), handler: 'panel', wide: true, style: 'primary', aliases: ['🖥 پنل', '⚙️ پنل مدیریت'] },
-  { id: 'checkin', label: '🕒 ثبت تردد', roles: null, url: () => panelLinks.miniAppLink(), style: 'success' },
-  { id: 'remote_work', label: '🏠 ثبت دورکاری', roles: null, handler: 'remoteWork', style: 'success' },
-  { id: 'status', label: '📊 وضعیت و گزارش من', roles: null, handler: 'myStatus', aliases: ['📊 وضعیت من', '📈 گزارش من'] },
-  { id: 'plan', label: '📋 برنامه هفتگی', roles: null, handler: 'weeklyPlan' },
-  { id: 'leave', label: '🏖 مرخصی / 🚗 ماموریت', roles: null, handler: 'leave' },
-  { id: 'help', label: '❓ راهنما', roles: null, handler: 'help' },
+  { id: 'panel', label: '🖥 ورود به پنل', roles: null, url: () => panelLinks.panelUrl(), handler: 'panel', wide: true, style: 'success', aliases: ['🖥 پنل', '⚙️ پنل مدیریت'] },
+  { id: 'checkin', label: '🕒 ثبت تردد', roles: null, url: () => panelLinks.miniAppLink(), style: 'primary' },
+  { id: 'remote_work', label: '🏠 ثبت دورکاری', roles: null, handler: 'remoteWork', style: 'primary' },
+  { id: 'status', label: '📊 وضعیت و گزارش من', roles: null, handler: 'myStatus', style: 'primary', aliases: ['📊 وضعیت من', '📈 گزارش من'] },
+  { id: 'plan', label: '📋 برنامه هفتگی', roles: null, handler: 'weeklyPlan', style: 'primary' },
+  { id: 'leave', label: '🏖 مرخصی / 🚗 ماموریت', roles: null, handler: 'leave', wide: true, style: 'primary' },
 
   { id: 'pending_leaves', label: '📥 درخواست‌های منتظر', roles: MANAGER_UP, handler: 'pendingLeaves', badge: (user) => require('../commands/pendingLeaves').pendingTotal(user), wide: true, style: 'primary', aliases: ['🏠 دورکاری‌های منتظر'] },
   { id: 'team_report', label: '👥 گزارش تیم', roles: MANAGER_UP, handler: 'teamReport', style: 'primary' },
@@ -56,9 +74,12 @@ const ITEMS = [
   { id: 'pending_disputes', label: '💬 اعتراض‌ها', roles: MANAGER_UP, handler: 'pendingDisputes', style: 'primary' },
   { id: 'list_members', label: '👤 لیست اعضا', roles: MANAGER_UP, handler: 'listEmployees', style: 'primary' },
 
-  { id: 'add_employee', label: '➕ افزودن کارمند', roles: ADMIN_ONLY, handler: 'addEmployee' },
+  { id: 'add_employee', label: '➕ افزودن کارمند', roles: ADMIN_ONLY, handler: 'addEmployee', style: 'danger' },
   { id: 'fix_record', label: '🛠 اصلاح رکورد', roles: ADMIN_ONLY, handler: 'fixRecord', style: 'danger' },
-  { id: 'ai_chat', label: '🤖 تحلیلگر هوشمند', roles: ADMIN_ONLY, handler: 'aiChat', wide: true },
+  { id: 'ai_chat', label: '🤖 تحلیلگر هوشمند', roles: ADMIN_ONLY, handler: 'aiChat', wide: true, style: 'danger' },
+
+  // «راهنما» همیشه آخرین دکمه‌ی منوست (گروه footer)
+  { id: 'help', label: '❓ راهنما', roles: null, handler: 'help', wide: true, footer: true },
 ];
 
 // شناسه‌ی callbackهای قدیمی (پیام‌های منو/اعلان‌هایی که پیش از این نسخه فرستاده شده‌اند) ⇒ آیتم جدید
@@ -115,6 +136,7 @@ function buildMainKeyboard(user, { chatType } = {}) {
 }
 
 function groupOf(item) {
+  if (item.footer) return 'footer';
   if (!item.roles) return 'me';
   return item.roles === MANAGER_UP ? 'team' : 'admin';
 }
@@ -149,7 +171,7 @@ function buildMenuInline(user) {
       ? { text: it.label, web_app: { url: it.url() }, ...style }
       : { text: labelWithBadge(it, user), callback_data: `mn:${it.id}`, ...style };
   };
-  // گروه‌ها با «رنگ» از هم جدا می‌شوند (نه ردیف سرتیتر): پنل/تیم آبی، ثبت‌ها سبز، ابزار حساس ادمین قرمز، بقیه پیش‌فرض.
+  // رنگ‌ها (تلگرام فقط سه رنگ می‌دهد): ورود به پنل سبز (یکتا) · امکانات بات (کارمند و تیم) آبی · ابزار ادمین قرمز · راهنما بی‌رنگ.
   // دکمه‌ی wide تمام‌عرض است؛ بقیه دو‌تا‌دو (اولی سمت راست). ترتیب همان ترتیب ITEMS است.
   const rows = [];
   for (const b of buckets) {

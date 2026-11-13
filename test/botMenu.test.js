@@ -127,30 +127,37 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
       assert.deepEqual(headerTexts(kb), []);
       const order = itemTexts(kb);
       const pos = (t) => order.indexOf(t);
-      assert.ok(pos('❓ راهنما') < pos('👥 گزارش تیم') && pos('👥 گزارش تیم') < pos('🛠 اصلاح رکورد'));
+      assert.ok(pos('🏖 مرخصی / 🚗 ماموریت') < pos('👥 گزارش تیم') && pos('👥 گزارش تیم') < pos('🛠 اصلاح رکورد'));
+      assert.equal(order[order.length - 1], '❓ راهنما', 'راهنما آخرین دکمه است');
     });
 
-    test('«🖥 ورود به پنل» اصلی‌ترین دکمه است: ردیف اولِ منو، تنها در ردیف (تمام‌عرض)، آبی', () => {
+    test('«🖥 ورود به پنل» اصلی‌ترین دکمه است: ردیف اولِ منو، تنها در ردیف (تمام‌عرض)، سبز و یکتا', () => {
       for (const user of [emp, mgr, admin]) {
         const first = menu.buildMenuInline(user).inline_keyboard[0];
         assert.equal(first.length, 1);
         assert.equal(first[0].text, '🖥 ورود به پنل');
-        assert.equal(first[0].style, 'primary');
+        assert.equal(first[0].style, 'success');
+        const greens = btns(menu.buildMenuInline(user)).filter((b) => b.style === 'success');
+        assert.equal(greens.length, 1, 'رنگ سبز فقط برای پنل است');
       }
     });
 
     test('«درخواست‌های منتظر» و «تحلیلگر هوشمند» تمام‌عرضند و هیچ ردیفی با یک دکمه‌ی تنها (جز تمام‌عرض‌ها) نیست', () => {
       const rows = menu.buildMenuInline(admin).inline_keyboard;
       const singles = rows.filter((r) => r.length === 1).map((r) => r[0].text);
-      assert.deepEqual(singles.sort(), ['✖️ بستن منو', '🖥 ورود به پنل', '🤖 تحلیلگر هوشمند', '📥 درخواست‌های منتظر'].sort());
+      assert.deepEqual(singles.sort(), ['✖️ بستن منو', '🖥 ورود به پنل', '🤖 تحلیلگر هوشمند', '📥 درخواست‌های منتظر', '🏖 مرخصی / 🚗 ماموریت', '❓ راهنما'].sort());
+      assert.equal(rows[rows.length - 2][0].text, '❓ راهنما', 'راهنما درست قبل از «بستن منو»');
     });
 
-    test('متن منو: خوش‌آمد با نام کوچک + راهنمای رنگ فقط برای رنگ‌های همان نقش؛ همیشه با «📂 منو» شروع می‌شود', () => {
+    test('متن منو: خوش‌آمد با عنوان + فامیل، راهنمای رنگ بر اساس نقش، توضیح «اگر پنل باز نشد»؛ همیشه با «📂 منو» شروع می‌شود', () => {
       const t = (u) => menu.menuText(u);
       assert.ok(t(admin).startsWith('📂 منو') && t(emp).startsWith('📂 منو'));
-      assert.match(t(emp), /🟢/); assert.doesNotMatch(t(emp), /🔵|🔴/);
-      assert.match(t(mgr), /🔵/); assert.doesNotMatch(t(mgr), /🔴/);
+      assert.match(t({ ...emp, full_name: 'آقای اعتصامی' }), /👋 آقای اعتصامی عزیز/);
+      assert.match(t({ ...emp, full_name: 'خانم زهرا کریمی' }), /👋 خانم کریمی عزیز/);
+      assert.match(t({ ...emp, full_name: 'علی رضایی' }), /👋 رضایی عزیز/);
+      assert.match(t(emp), /🟢/); assert.match(t(emp), /🔵/); assert.doesNotMatch(t(emp), /🔴/);
       assert.match(t(admin), /🔴/);
+      assert.match(t(emp), /اگر پنل به هر دلیلی برایتان باز نمی‌شود/);
       assert.ok(menu.isMenuMessage({ text: t(admin) }));
     });
 
@@ -165,18 +172,14 @@ describe('منوی دکمه‌ایِ بات (E1/E2)', () => {
       }
     });
 
-    test('رنگ: پنل آبی، ثبت تردد سبز، درخواست‌های منتظر آبی؛ «بستن منو» و سرتیترها بدون رنگ', () => {
+    test('رنگ: پنل سبز (یکتا)؛ امکانات بات (کارمند و تیم) آبی؛ ابزار ادمین قرمز؛ راهنما، «بستن» و سرتیترها بی‌رنگ', () => {
       const kb = menu.buildMenuInline(admin);
       const by = (t) => btns(kb).find((b) => b.text === t);
-      assert.equal(by('🖥 ورود به پنل').style, 'primary');
-      assert.equal(by('🕒 ثبت تردد').style, 'success');
-      assert.equal(by('📥 درخواست‌های منتظر').style, 'primary');
-      assert.equal(by('👥 گزارش تیم').style, 'primary');
-      assert.equal(by('🏠 ثبت دورکاری').style, 'success');
-      assert.equal(by('🛠 اصلاح رکورد').style, 'danger');
-      assert.equal(by('📊 وضعیت و گزارش من').style, undefined);
+      assert.equal(by('🖥 ورود به پنل').style, 'success');
+      for (const t of ['🕒 ثبت تردد', '🏠 ثبت دورکاری', '📊 وضعیت و گزارش من', '📋 برنامه هفتگی', '🏖 مرخصی / 🚗 ماموریت', '📥 درخواست‌های منتظر', '👥 گزارش تیم', '⚡ تسک فوری', '💬 اعتراض‌ها', '👤 لیست اعضا']) assert.equal(by(t).style, 'primary', t);
+      for (const t of ADM) assert.equal(by(t).style, 'danger', t);
+      assert.equal(by('❓ راهنما').style, undefined);
       assert.equal(by('✖️ بستن منو').style, undefined);
-      assert.ok(btns(kb).filter((b) => b.callback_data === 'mn:_').every((b) => b.style === undefined));
     });
 
     test('ورود به پنل و ثبت تردد دکمه‌ی inline از نوع web_app‌اند؛ بقیه callback به شکل mn:<id>', () => {
