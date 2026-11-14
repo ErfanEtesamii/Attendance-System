@@ -59,7 +59,7 @@ function buildJobs(bot) {
     { name: 'dailyBackup', run: () => runDailyBackup() },
     // آرشیو ماهانه‌ی audit (S2-6b/6c): تنظیم auditArchiveEnabled خاموش ⇒ dry-run (شمارش + لاگ)، روشن ⇒ انتقال واقعی با batch
     { name: 'auditArchive', run: () => runAuditArchive() },
-    // یادآوری/ارجاع تأیید مرخصی (S4-11c): تنظیمات leaveApprovalReminderHours/leaveApprovalEscalateHours/leaveEscalateWhenApproverOnLeave؛ همه خاموش ⇒ بی‌اثر
+    // یادآوری تأیید مرخصی/ماموریت (بدون ارجاع خودکار): تنظیم leaveApprovalReminderHours؛ خاموش ⇒ فقط یادآوری ثابت ماموریت
     { name: 'leaveApprovalReminder', run: () => runLeaveApprovalReminder() },
     // یادآوری مهلت ساعتیِ تسک فوری (E1): فقط تسک‌های فوریِ امروزِ بی‌پاسخ؛ بدون تسک فوری ⇒ بی‌اثر
     { name: 'urgentTaskReminder', run: () => runUrgentTaskReminder() },

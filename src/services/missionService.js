@@ -73,15 +73,15 @@ function create(input = {}, { now } = {}) {
   return result;
 }
 
-// یادداشت سرپرست = آخرین یادداشت مرحله‌های تصمیم‌گرفته‌شده
+// یادداشت = یادداشت تصمیم‌گیرنده؛ decidedBy = چه کسی (سرپرست/ادمین) تأیید یا رد کرد
 function presentMission(r) {
-  const chain = leaveApprovalService.getChain(r.id);
-  const decided = chain.filter((s) => s.status !== 'pending' && s.note);
+  const decidedBy = leaveApprovalService.decisionInfo(r);
   return {
     id: r.id, status: r.status, unit: r.unit, startDate: r.start_date, endDate: r.end_date,
     halfDayPart: r.half_day_part, startTime: r.start_time, endTime: r.end_time, durationMinutes: r.duration_minutes,
     reason: r.reason, destination: r.destination || null, hasAttachment: !!r.attachment_id,
-    managerNote: decided.length ? decided[decided.length - 1].note : null,
+    managerNote: decidedBy ? decidedBy.note : null, // یادداشت تصمیم‌گیرنده (سرپرست یا ادمین)
+    decidedBy, // { id, fullName, role, roleLabel, decidedAt, note } | null
     createdAt: r.created_at,
     openNow: r.source === 'miniapp_now_open', // C6: پایانِ باز (ساعت پایان موقت = پایان شیفت)
     autoEnded: r.source === 'miniapp_now_auto',

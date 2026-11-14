@@ -474,6 +474,7 @@
             <div class="title"><a class="u-link-inherit" href="#/profile/${l.employee ? l.employee.id : ''}">${esc(l.employee ? l.employee.fullName : '—')}</a>
               ${AP.badge(l.leaveType === 'mission' ? 'mission' : 'leave', AP.LEAVE_TYPE[l.leaveType])} ${AP.badge(l.status, AP.LEAVE_STATUS[l.status])}</div>
             <div class="meta">${esc(fmt.dateLong(l.startDate))} تا ${esc(fmt.dateLong(l.endDate))} · ثبت: ${esc(fmt.dateTime(l.createdAt))}</div>
+            ${l.decidedBy ? `<div class="meta">${l.status === 'approved' ? 'تأییدکننده' : 'ردکننده'}: ${esc(l.decidedBy.roleLabel)} ${esc(l.decidedBy.fullName)}</div>` : ''}
             ${l.reason ? `<p class="text">${esc(l.reason)}</p>` : ''}
           </div>
           <div class="row-actions">
@@ -509,7 +510,6 @@
   const queueUi = { status: 'pending', kind: '', leaveTypeId: '', team: '', from: '', to: '', decidable: false, offset: 0 };
   const queueSel = new Set(); // شناسه‌ی درخواست‌های انتخاب‌شده (فقط قابل‌تصمیم‌های همین صفحه)
   const ROLE_STEP = { manager: 'سرپرست', admin: 'ادمین', hr: 'منابع انسانی' };
-  const STEP_STATUS = { pending: 'در انتظار', approved: 'تأیید', rejected: 'رد' };
   const BULK_ERR = { NOT_FOUND: 'یافت نشد', ALREADY_DECIDED: 'قبلاً بررسی شده', FORBIDDEN: 'مجاز به تصمیم نیستید', INTERNAL: 'خطای داخلی' };
 
   const queueQs = () => {
@@ -529,9 +529,11 @@
     return `<div class="meta">مانده‌ی سال ${esc(String(b.jalaliYear))}: ${esc(b.display && b.display.remaining ? b.display.remaining.text : '—')}${afterTxt}${warn}</div>`;
   };
 
+  // چه کسی (سرپرست/ادمین) تأیید یا رد کرد
   const queueChainHtml = (it) => {
-    if (!it.chain || it.chain.length < 2) return '';
-    return `<div class="meta">زنجیره‌ی تأیید: ${it.chain.map((s) => `${esc(ROLE_STEP[s.approverRole] || s.approverRole)} (${esc(STEP_STATUS[s.status] || s.status)})`).join(' ← ')}</div>`;
+    const d = it.decidedBy;
+    if (!d || !d.fullName || it.status === 'pending') return '';
+    return `<div class="meta">${it.status === 'approved' ? 'تأییدکننده' : 'ردکننده'}: ${esc(d.roleLabel || ROLE_STEP[d.role] || '')} ${esc(d.fullName)}${d.note ? ` — ${esc(d.note)}` : ''}</div>`;
   };
 
   const queueItemHtml = (it) => {
@@ -1022,6 +1024,7 @@
             <div class="title"><a class="u-link-inherit" href="#/profile/${l.employee ? l.employee.id : ''}">${esc(l.employee ? l.employee.fullName : '—')}</a>
               ${AP.badge(l.leaveType === 'mission' ? 'mission' : 'leave', AP.LEAVE_TYPE[l.leaveType])}</div>
             <div class="meta">${esc(fmt.dateLong(l.startDate))} تا ${esc(fmt.dateLong(l.endDate))} · ثبت: ${esc(fmt.dateTime(l.createdAt))}</div>
+            ${l.decidedBy ? `<div class="meta">${l.status === 'approved' ? 'تأییدکننده' : 'ردکننده'}: ${esc(l.decidedBy.roleLabel)} ${esc(l.decidedBy.fullName)}</div>` : ''}
             ${l.reason ? `<p class="text">${esc(l.reason)}</p>` : ''}
           </div>
           <div class="row-actions">

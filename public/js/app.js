@@ -1558,6 +1558,11 @@
         const when = document.createElement('span');
         when.textContent = leaveWhenText(it);
         top.appendChild(kind); top.appendChild(badge); bottom.appendChild(when); el.appendChild(top); el.appendChild(bottom);
+        if (it.decidedBy && it.decidedBy.fullName) {
+          const by = document.createElement('div'); by.className = 'mission-note';
+          by.textContent = (it.status === 'approved' ? 'تأییدکننده: ' : 'ردکننده: ') + it.decidedBy.roleLabel + ' ' + it.decidedBy.fullName + (it.decidedBy.note ? ' — ' + it.decidedBy.note : '');
+          el.appendChild(by);
+        }
         list.appendChild(el);
       });
     } catch (err) {
@@ -1657,8 +1662,13 @@
         el.appendChild(top); el.appendChild(bottom);
         const reason = document.createElement('div'); reason.className = 'mission-note'; reason.textContent = m.reason || '';
         el.appendChild(reason);
+        if (m.decidedBy && m.decidedBy.fullName) {
+          const by = document.createElement('div'); by.className = 'mission-note';
+          by.textContent = (m.status === 'approved' ? 'تأییدکننده: ' : 'ردکننده: ') + m.decidedBy.roleLabel + ' ' + m.decidedBy.fullName;
+          el.appendChild(by);
+        }
         if (m.managerNote) {
-          const note = document.createElement('div'); note.className = 'mission-note'; note.textContent = 'یادداشت سرپرست: ' + m.managerNote;
+          const note = document.createElement('div'); note.className = 'mission-note'; note.textContent = 'یادداشت ' + (m.decidedBy ? m.decidedBy.roleLabel : 'سرپرست') + ': ' + m.managerNote;
           el.appendChild(note);
         }
         if (m.status === 'pending') {

@@ -40,10 +40,11 @@ function isValidDate(str) {
 }
 
 async function notifyApprovers(bot, employee, request) {
-  // مدیر مستقیم اگر تعریف شده، وگرنه همه ادمین‌ها
-  const approvers = employee.manager_id
-    ? [usersRepository.findById(employee.manager_id)].filter(Boolean)
-    : usersRepository.listUsers({ onlyActive: true, includeOwner: true }).filter((u) => isAdmin(u));
+  // سرپرست مستقیم (اگر تعریف شده و فعال است) + همه‌ی ادمین‌های فعال؛ هر دو می‌توانند تصمیم بگیرند. بدون تکرار و بدون خودِ کارمند.
+  const manager = employee.manager_id ? usersRepository.findById(employee.manager_id) : null;
+  const seen = new Set();
+  const approvers = [...(manager && manager.is_active ? [manager] : []), ...usersRepository.listUsers({ onlyActive: true, includeOwner: true }).filter((u) => isAdmin(u))]
+    .filter((u) => u.id !== employee.id && !seen.has(u.id) && seen.add(u.id));
 
   const typeLabel = request.kind === 'mission' ? 'مأموریت' : 'مرخصی';
   const text = [

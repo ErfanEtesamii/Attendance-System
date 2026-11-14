@@ -42,6 +42,7 @@ const dayService = require('../../engine/dayService');
 const { extractDeviceInfo } = require('../../utils/deviceInfo');
 const fraudRunner = require('../../utils/fraudRunner');
 const notificationEvents = require('../../services/notificationEvents');
+const leaveApprovalService = require('../../services/leaveApprovalService');
 const { todayDateString } = require('../../utils/serverTime');
 const { addDays } = require('../../utils/shiftDay');
 const { earningsForUser } = require('../../services/earningsService');
@@ -538,7 +539,8 @@ router.get('/miniapp/leave/:id/attachment', (req, res) => {
 });
 
 router.get('/miniapp/leave', (req, res) => {
-  res.json(leaveRepository.listByUser(req.miniAppUser.id));
+  // هر ردیف + decidedBy { id, fullName, role, roleLabel, decidedAt, note } برای درخواست‌های تصمیم‌گرفته‌شده (کارمند ببیند چه کسی تأیید/رد کرد)
+  res.json(leaveRepository.listByUser(req.miniAppUser.id).map((r) => ({ ...r, decidedBy: leaveApprovalService.decisionInfo(r) })));
 });
 
 // ---------- ماموریت (C1) ----------

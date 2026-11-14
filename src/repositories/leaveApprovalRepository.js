@@ -26,9 +26,9 @@ function setCurrentStep(requestId, step) {
   getDb().prepare('UPDATE leave_requests SET current_step = ? WHERE id = ?').run(step, requestId);
 }
 
-// ارجاع (S4-11c): نقش تأییدکننده‌ی یک مرحله‌ی «در انتظار» عوض می‌شود
-function setApproverRole(requestId, step, role) {
-  getDb().prepare("UPDATE leave_approvals SET approver_role = ? WHERE leave_request_id = ? AND step = ? AND status = 'pending'").run(role, requestId, step);
+// مرحله‌های هنوز «در انتظار» (باقی‌مانده‌ی زنجیره‌های چندمرحله‌ایِ قدیمی) بعد از تصمیم نهایی حذف می‌شوند
+function deletePendingSteps(requestId) {
+  getDb().prepare("DELETE FROM leave_approvals WHERE leave_request_id = ? AND status = 'pending'").run(requestId);
 }
 
-module.exports = { listByRequest, deleteByRequest, insertSteps, decideStep, setCurrentStep, setApproverRole };
+module.exports = { listByRequest, deleteByRequest, insertSteps, decideStep, setCurrentStep, deletePendingSteps };

@@ -134,7 +134,7 @@ router.post('/admin/disputes/:id/:action(resolve|reopen)', requirePermission('di
     reason: note || null, // یادداشت بستن/بازگشایی = دلیل
     meta: { disputeId: dispute.id, targetUserId: dispute.user_id },
   });
-  if (resolving) notificationEvents.disputeResolved(updated, { note }); // اعلان پنل برای کارمند (S4-6b)
+  if (resolving) notificationEvents.disputeResolved(updated, { note, actor: req.adminUser }); // اعلان پنل برای کارمند (S4-6b)
   else if (r.message) notificationEvents.disputeAdminMessage(updated, r.message, { actor: req.adminUser }); // بازگشایی همراه پیام ⇒ مثل پاسخ (D4)
   if (resolving) notificationEvents.disputeResolvedTelegram(updated, { note, actor: req.adminUser }); // تلگرام + دکمه‌ی گفت‌وگو (مسیر مشترک با بات)
   res.json(attendanceCorrection ? { ...updated, attendanceCorrection } : updated);

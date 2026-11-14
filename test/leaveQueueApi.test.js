@@ -4,7 +4,7 @@ const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 
 describe('API صف تأیید مرخصی (S4-13a)', () => {
-  let server; let base; let cookies; let U; let db; let annual; let mission; let leaveRepo; let approvals; let settingsRepo;
+  let server; let base; let cookies; let U; let db; let annual; let mission; let leaveRepo; let approvals;
   const telegramSent = []; // پیام‌های تلگرامی که notifier می‌فرستاد (شبکه‌ی واقعی در تست نیست)
 
   before(async () => {
@@ -15,7 +15,6 @@ describe('API صف تأیید مرخصی (S4-13a)', () => {
     notifier.sendMessage = async (to, text) => { telegramSent.push({ to: String(to), text }); return true; };
     const F = require('./helpers/factories');
     const typesRepo = require('../src/repositories/leaveTypesRepository');
-    settingsRepo = require('../src/repositories/settingsRepository');
     approvals = require('../src/services/leaveApprovalService');
     leaveRepo = require('../src/repositories/leaveRepository');
     const balances = require('../src/services/leaveBalanceService');
@@ -61,7 +60,7 @@ describe('API صف تأیید مرخصی (S4-13a)', () => {
     else approvals.initChain(r.id);
     return leaveRepo.findById(r.id);
   }
-  const reset = () => { for (const k of ['leaveApprovalExtraStepDays', 'leaveApprovalExtraStepTypes', 'leaveApprovalExtraStepRole']) settingsRepo.resetValue(k); };
+  const reset = () => {}; // مرحله‌ی تأیید اضافه حذف شده؛ نقطه‌ی بازنشانی برای سازگاری با تست‌ها می‌ماند
 
   test('دسترسی: بدون نشست ۴۰۱؛ کارمند ۴۰۳ (GET و POST)؛ بدون هدر CSRF در POST ۴۰۳؛ سرپرست/hr/admin مجاز', async () => {
     reset();
@@ -190,24 +189,22 @@ describe('API صف تأیید مرخصی (S4-13a)', () => {
 
   test('decidable=1: فقط pendingهایی که همین کاربر همین الان می‌تواند تصمیم بگیرد (با total درست)', async () => {
     reset();
-    settingsRepo.setValue('leaveApprovalExtraStepDays', 2);
-    settingsRepo.setValue('leaveApprovalExtraStepRole', 'hr');
-    const longReq = make(U.e1b, { days: 3 });          // مرحله ۱ manager، مرحله ۲ hr
+    const longReq = make(U.e1b, { days: 3 });
     const shortReq = make(U.e1b, { days: 1 });
-    const solo = make(U.loner);                         // مرحله‌ی admin
+    const solo = make(U.loner);                         // بدون سرپرست ⇒ فقط ادمین
     const dec = async (role) => idsOf(await queue(role, '?decidable=1&limit=100')).filter((i) => [longReq.id, shortReq.id, solo.id].includes(i));
     assert.deepEqual(await dec('m1'), [longReq.id, shortReq.id].sort((a, b) => a - b));
-    assert.deepEqual(await dec('hr'), [], 'مرحله‌ی فعال هنوز manager است');
+    assert.deepEqual(await dec('hr'), [], 'hr فقط‌خواندنی است');
     assert.deepEqual(await dec('admin'), [longReq.id, shortReq.id, solo.id].sort((a, b) => a - b));
     const r = await queue('m1', '?decidable=1&limit=1');
     assert.deepEqual([r.json.items.length, r.json.total >= 2], [1, true]);
-    // مرحله‌ی ۱ تأیید ⇒ نوبت hr
+    // تصمیم سرپرست نهایی است (مرحله‌ی دومی نیست)
     const step = await bulk('m1', { action: 'approve', ids: [longReq.id] });
-    assert.deepEqual([step.json.results[0].ok, step.json.results[0].completed, step.json.results[0].nextRole], [true, false, 'hr']);
-    assert.deepEqual(await dec('hr'), [longReq.id]);
+    assert.deepEqual([step.json.results[0].ok, step.json.results[0].completed, step.json.results[0].nextRole], [true, true, null]);
+    assert.deepEqual(await dec('admin'), [shortReq.id, solo.id].sort((a, b) => a - b));
     assert.deepEqual((await dec('m1')).includes(longReq.id), false);
     reset();
-    for (const id of [longReq.id, shortReq.id, solo.id]) leaveRepo.setStatus(id, 'rejected', U.admin.id);
+    for (const id of [shortReq.id, solo.id]) leaveRepo.setStatus(id, 'rejected', U.admin.id);
   });
 
   test('تصمیم دسته‌جمعی — تأیید: همه‌ی درخواست‌ها approved، audit با bulk، اعلان کارمند، پاسخ خلاصه', async () => {
@@ -269,22 +266,20 @@ describe('API صف تأیید مرخصی (S4-13a)', () => {
     assert.equal((await bulk('admin', { action: 'approve', ids: [foreign.id] })).json.summary.succeeded, 1);
   });
 
-  test('تصمیم دسته‌جمعی با زنجیره: مرحله‌ی میانی completed=false و بدون اعلان به کارمند؛ hr روی مرحله‌ی manager ⇒ FORBIDDEN (route مجاز است)', async () => {
+  test('تصمیم دسته‌جمعی: سرپرست نهایی تأیید می‌کند (بدون مرحله‌ی دوم)؛ hr ⇒ FORBIDDEN؛ کارمند اعلان با نام سرپرست می‌گیرد و ادمین‌ها خبر می‌شوند', async () => {
     reset();
-    settingsRepo.setValue('leaveApprovalExtraStepDays', 2);
-    settingsRepo.setValue('leaveApprovalExtraStepRole', 'admin');
     const req = make(U.e1b, { days: 3 });
     const notif = () => db.prepare("SELECT COUNT(*) n FROM notifications WHERE user_id = ? AND type IN ('leave_approved','leave_rejected')").get(U.e1b.id).n;
     const n0 = notif();
     const hrTry = await bulk('hr', { action: 'approve', ids: [req.id] });
     assert.deepEqual([hrTry.status, hrTry.json.results[0].ok, hrTry.json.results[0].code], [200, false, 'FORBIDDEN']);
     const s1 = await bulk('m1', { action: 'approve', ids: [req.id] });
-    assert.deepEqual([s1.json.results[0].ok, s1.json.results[0].status, s1.json.results[0].completed, s1.json.results[0].nextRole], [true, 'pending', false, 'admin']);
-    assert.equal(notif(), n0, 'تأیید مرحله‌ی میانی اعلان نهایی نمی‌سازد');
-    assert.equal((await bulk('m1', { action: 'approve', ids: [req.id] })).json.results[0].code, 'FORBIDDEN', 'مرحله‌ی ۲ فقط admin');
-    const s2 = await bulk('admin', { action: 'approve', ids: [req.id] });
-    assert.deepEqual([s2.json.results[0].status, s2.json.results[0].completed], ['approved', true]);
+    assert.deepEqual([s1.json.results[0].ok, s1.json.results[0].status, s1.json.results[0].completed], [true, 'approved', true]);
     assert.equal(notif(), n0 + 1);
+    const empNote = db.prepare("SELECT body FROM notifications WHERE user_id = ? AND type = 'leave_approved' ORDER BY id DESC LIMIT 1").get(U.e1b.id);
+    assert.match(empNote.body, new RegExp(U.m1.full_name));
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM notifications WHERE user_id = ? AND type = 'leave_supervisor_decided'").get(U.admin.id).n >= 1, true, 'ادمین از تصمیم سرپرست باخبر می‌شود');
+    assert.equal((await bulk('m1', { action: 'approve', ids: [req.id] })).json.results[0].code, 'ALREADY_DECIDED');
     reset();
   });
 

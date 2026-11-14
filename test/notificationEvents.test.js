@@ -85,7 +85,7 @@ describe('اتصال رویدادها به اعلان‌ها (S4-6b)', { skip: h
   });
   after(() => { if (server) server.close(); cleanup(); });
 
-  test('مرخصی جدید (Mini App و بات): مدیر مستقیم؛ بدون مدیر ⇒ ادمین‌های فعال؛ نه کارمند/ادمین غیرفعال؛ لینک و data درست', async () => {
+  test('مرخصی جدید (Mini App و بات): مدیر مستقیم + ادمین‌های فعال؛ نه کارمند/ادمین غیرفعال؛ لینک و data درست', async () => {
     const r1 = await miniapp(U.emp, 'leave', { startDate: '2026-11-01', endDate: '2026-11-03', leaveType: 'leave', reason: 'سفر' });
     assert.equal(r1.status, 201);
     const n = notifs(U.manager, 'leave_requested');
@@ -96,7 +96,8 @@ describe('اتصال رویدادها به اعلان‌ها (S4-6b)', { skip: h
     assert.match(n[0].body, /2026-11-01 تا 2026-11-03/);
     assert.equal(n[0].dedupe_key, `leave_requested:${r1.json.id}`);
     assert.equal(n[0].telegram_status, 'none', 'تلگرام از مسیر قبلی است، نه notify');
-    assert.equal(notifs(U.admin, 'leave_requested').length, 0, 'ادمین وقتی مدیر دارد اعلان نمی‌گیرد');
+    assert.equal(notifs(U.admin, 'leave_requested').length, 1, 'ادمین هم از لحظه‌ی ثبت تأییدکننده است');
+    assert.equal(notifs(U.inactiveAdmin, 'leave_requested').length, 0);
 
     // بدون مدیر مستقیم + مأموریت ⇒ همه‌ی ادمین‌های «فعال»
     const r2 = await miniapp(U.loner, 'leave', { startDate: '2026-11-05', endDate: '2026-11-05', leaveType: 'mission' });
@@ -122,7 +123,9 @@ describe('اتصال رویدادها به اعلان‌ها (S4-6b)', { skip: h
     assert.equal(n[0].title, 'درخواست مرخصی شما تأیید شد');
     assert.match(n[0].body, /پاسخ: موافقم/);
     assert.equal(n[0].link, '#/leave');
-    assert.deepEqual(n[0].data, { requestId: a.id, status: 'approved' });
+    assert.deepEqual(n[0].data, { requestId: a.id, status: 'approved', decidedBy: { id: U.manager.id, fullName: U.manager.full_name, role: 'manager' } });
+    assert.match(n[0].body, new RegExp(`تأییدکننده — سرپرست: ${U.manager.full_name}`));
+    assert.equal(notifs(U.admin, 'leave_supervisor_decided').length, 1, 'ادمین از تصمیم سرپرست باخبر می‌شود');
     assert.equal((await panel(U.manager, 'POST', `/api/admin/leave-requests/${a.id}/approve`)).status, 400, 'تصمیم دوباره رد می‌شود');
     assert.equal(notifs(U.emp, 'leave_approved').length, 1);
 
@@ -172,7 +175,9 @@ describe('اتصال رویدادها به اعلان‌ها (S4-6b)', { skip: h
     await handleDisputeCallback(mockBot(), callback(U.manager, `dispute_close:${d.id}`));
     const res2 = notifs(U.emp2, 'dispute_resolved');
     assert.equal(res2.length, 1);
-    assert.equal(res2[0].body, null, 'بستن بدون پاسخ ⇒ بدون بدنه');
+    assert.match(res2[0].body, /بررسی‌کننده — سرپرست/);
+    assert.doesNotMatch(res2[0].body, /پاسخ:/, 'بستن بدون پاسخ ⇒ فقط نام بررسی‌کننده');
+    assert.equal(notifs(U.admin, 'dispute_supervisor_resolved').length, 2, 'ادمین از بسته‌شدن اعتراض توسط سرپرست باخبر می‌شود');
   });
 
   test('هشدار سیستم: فقط ادمین‌های فعال؛ یک اعلان برای هر دوره‌ی هشدار (تکرار چرخه/یادآوری ⇒ نه)؛ دوره‌ی تازه ⇒ اعلان تازه', async () => {

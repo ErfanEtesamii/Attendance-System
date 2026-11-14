@@ -5,18 +5,16 @@ const auditRepository = require('../../repositories/auditRepository');
 const notificationEvents = require('../../services/notificationEvents');
 const leaveApprovalService = require('../../services/leaveApprovalService');
 
-const { isAdmin } = require('../../utils/roles');
 const { isoDateToJalaliString } = require('../../utils/jalali');
 const pendingRemote = require('./pendingRemote');
 
 const LINE = '━━━━━━━━━━━━━━';
 const fa = (n) => Number(n).toLocaleString('fa-IR');
 
-/** مرخصی/ماموریت‌های منتظرِ «نوبت همین کاربر». سرپرست فقط مرحله‌ی خودش و زیردستان مستقیم؛ ادمین همه‌ی pendingها. */
+/** مرخصی/ماموریت‌های pending که همین کاربر می‌تواند تصمیم بگیرد (leaveApprovalService.canDecide): سرپرست = زیردستان مستقیم؛ ادمین = همه. */
 function leavesFor(user) {
   const pending = leaveRepository.listPending();
-  if (isAdmin(user)) return pending;
-  return pending.filter((r) => usersRepository.findById(r.user_id)?.manager_id === user.id && leaveApprovalService.awaitingRole(r) === 'manager');
+  return pending.filter((r) => leaveApprovalService.canDecide(user, r));
 }
 
 /** تعداد کل درخواست‌های منتظر (مرخصی/ماموریت + دورکاری) برای نشانگر دکمه‌ی منو؛ ⇒ { ok, total } */
@@ -107,21 +105,13 @@ async function handlePendingLeavesCallback(bot, query) {
   }
   const newStatus = result.finalStatus;
   const updated = result.request;
-  if (result.completed) notificationEvents.leaveDecided(updated); // اعلان پنل برای کارمند فقط روی تصمیم نهایی (S4-6b/S4-11a)
+  notificationEvents.leaveDecided(updated); // اعلان پنل برای کارمند (با نام تصمیم‌گیرنده) + اعلان به ادمین‌ها اگر سرپرست تصمیم گرفت
 
   auditRepository.logEvent({
     userId: approver.id,
-    action: !result.completed ? 'leave_request_step_approved' : newStatus === 'approved' ? 'leave_request_approved' : 'leave_request_rejected',
-    details: { requestId, employeeId: request.user_id, step: result.step, nextRole: result.nextRole },
+    action: newStatus === 'approved' ? 'leave_request_approved' : 'leave_request_rejected',
+    details: { requestId, employeeId: request.user_id, step: result.step, decidedByRole: approver.role },
   });
-
-  if (!result.completed) {
-    notificationEvents.leaveStepAdvanced(updated); // اعلان به تأییدکننده‌ی مرحله‌ی بعد (S4-11b)
-    await bot.answerCallbackQuery(query.id, { text: 'مرحله‌ی شما تأیید شد؛ منتظر تأیید مرحله‌ی بعد.' });
-    await bot.editMessageReplyMarkup({ inline_keyboard: [] }, { chat_id: chatId, message_id: query.message.message_id });
-    await bot.sendMessage(chatId, `درخواست #${requestId} ✅ در مرحله‌ی شما تأیید شد و برای مرحله‌ی بعد (${{ admin: 'ادمین', hr: 'منابع انسانی' }[result.nextRole] || result.nextRole}) ارسال شد.`);
-    return;
-  }
 
   await bot.answerCallbackQuery(query.id, { text: newStatus === 'approved' ? 'تأیید شد.' : 'رد شد.' });
   await bot.editMessageReplyMarkup(
@@ -136,9 +126,11 @@ async function handlePendingLeavesCallback(bot, query) {
   if (employee?.telegram_user_id) {
     try {
       const statusLabel = newStatus === 'approved' ? 'تأیید شد ✅' : 'رد شد ❌';
+      const who = leaveApprovalService.decisionInfo(updated);
       await bot.sendMessage(
         employee.telegram_user_id,
-        `درخواست ${request.kind === 'mission' ? 'مأموریت' : 'مرخصی'} شما (${request.start_date} تا ${request.end_date}) ${statusLabel}`
+        `درخواست ${request.kind === 'mission' ? 'مأموریت' : 'مرخصی'} شما (${request.start_date} تا ${request.end_date}) ${statusLabel}` +
+          (who ? `\n${newStatus === 'approved' ? 'تأییدکننده' : 'ردکننده'} — ${who.roleLabel}: ${who.fullName}` : '')
       );
     } catch (err) {
       console.error('[bot] خطا در اطلاع‌رسانی وضعیت مرخصی به کارمند:', err.message);

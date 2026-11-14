@@ -110,7 +110,7 @@ function confirm(admin, id, { ip = null } = {}) {
         const r = disputeService.resolveAsAdmin(admin, d.id, { note: p.note });
         if (!r.ok) throw new ActionError(r.error || 'بستن اعتراض ناموفق بود.');
         auditChange(req, { action: 'dispute_resolved', entityType: 'dispute', entityId: d.id, before: disputeView(d), after: disputeView(r.updated), reason: r.note || null, meta: { disputeId: d.id, targetUserId: d.user_id, via: 'ai_agent' } });
-        notificationEvents.disputeResolved(r.updated, { note: r.note });
+        notificationEvents.disputeResolved(r.updated, { note: r.note, actor: admin });
         notificationEvents.disputeResolvedTelegram(r.updated, { note: r.note, actor: admin });
         message = 'اعتراض بسته شد.';
       }

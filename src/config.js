@@ -190,7 +190,7 @@ const config = {
     // نگهداری ماهانه‌ی دیتابیس (S2-7b: cleanup جدول‌های فرعی + ANALYZE/optimize + VACUUM)؛ پیش‌فرض روز دوم هر ماه میلادی ساعت ۰۴:۰۰
     // (بعد از بک‌آپ ۰۲:۳۰ و آرشیو audit ۰۳:۰۰، کم‌ترافیک‌ترین ساعت؛ VACUUM قفل نوشتن می‌گیرد)
     dbMaintenance: process.env.CRON_DB_MAINTENANCE || '0 4 2 * *',
-    // یادآوری/ارجاع تأیید مرخصی (S4-11c): هر ساعت (دقیقه‌ی ۱۵)؛ تا وقتی تنظیمات leaveApprovalReminderHours/leaveEscalate* صفرند کاری نمی‌کند
+    // یادآوری تأیید مرخصی/ماموریت: هر ساعت (دقیقه‌ی ۱۵)؛ تا وقتی leaveApprovalReminderHours صفر است فقط یادآوری ثابت ماموریت اجرا می‌شود
     leaveApprovalReminder: process.env.CRON_LEAVE_APPROVAL_REMINDER || '15 * * * *',
     // یادآوری مهلتِ ساعتیِ «تسک فوری» (E1): هر ۱۰ دقیقه؛ فقط برای تسک‌های فوریِ امروز که مهلت ساعتی دارند و هنوز پاسخ ندارند
     urgentTaskReminder: process.env.CRON_URGENT_TASK_REMINDER || '*/10 * * * *',

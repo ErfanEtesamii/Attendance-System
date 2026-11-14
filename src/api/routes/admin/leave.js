@@ -39,8 +39,8 @@ router.get('/admin/leave-requests', requirePermission('leave.read'), (req, res) 
       hasAttachment: !!r.attachment_id, // S4-12b: دانلود با GET /admin/leave-requests/:id/attachment
       attachmentMime: r.attachment_mime || null,
       attachmentName: r.attachment_name || null,
-      currentStep: r.current_step || null, // S4-11a: مرحله‌ی فعال زنجیره (null = بدون زنجیره)
-      awaitingRole: leaveApprovalService.awaitingRole(r), // manager|admin|hr (فقط pending)
+      awaitingRole: leaveApprovalService.awaitingRole(r), // نقش نمایشی: manager|admin (فقط pending؛ هر دو می‌توانند تصمیم بگیرند)
+      decidedBy: leaveApprovalService.decisionInfo(r), // چه کسی تأیید/رد کرد (فقط تصمیم‌گرفته‌شده‌ها)
       createdAt: r.created_at,
       employee: employee ? { id: employee.id, fullName: employee.full_name } : null,
     };
@@ -57,9 +57,9 @@ router.get('/admin/leave-requests/:id/attachment', requirePermission('leave.read
   return sendAttachment(res, request);
 });
 
-// تصمیم روی درخواست (S4-11a: زنجیره‌ی چندمرحله‌ای). مجوز: leave.approve (سرپرست/ادمین) یا leave.approve.hr (فقط مرحله‌ی hr)؛
-// اینکه «این کاربر این مرحله را» می‌تواند تصمیم بگیرد با leaveApprovalService.canDecide (۴۰۳ با متن فارسی).
-// تأیید مرحله‌ی میانی هنوز «تصمیم نهایی» نیست: پاسخ { completed:false, nextRole } و بدون اعلان به کارمند.
+// تصمیم روی درخواست (تک‌مرحله‌ای): سرپرست مستقیم کارمند یا ادمین؛ تصمیم اول نهایی است و تأیید مجدد ندارد.
+// مجوز: leave.approve؛ اینکه «این کاربر» می‌تواند با leaveApprovalService.canDecide سنجیده می‌شود (۴۰۳ با متن فارسی). hr فقط‌خواندنی است.
+// اگر سرپرست تصمیم بگیرد، ادمین‌ها اعلان می‌گیرند و کارمند نام تصمیم‌گیرنده را می‌بیند (notificationEvents.leaveDecided).
 router.post('/admin/leave-requests/:id/:decision(approve|reject)', requireAnyPermission('leave.approve', 'leave.approve.hr'), (req, res) => {
   const requestId = parseInt(req.params.id, 10);
   const decision = req.params.decision;
@@ -70,8 +70,7 @@ router.post('/admin/leave-requests/:id/:decision(approve|reject)', requireAnyPer
   const note = normalizeNote(req.body && req.body.note);
   const done = applyDecision(req, { requestId, decision, note });
   if (!done.ok) return res.status(done.status).json({ error: done.error, code: done.code });
-  if (!done.result.completed) return res.json({ ...done.request, completed: false, nextRole: done.result.nextRole });
-  res.json({ ...done.request, completed: true });
+  res.json({ ...done.request, completed: true, decidedBy: leaveApprovalService.decisionInfo(done.request) });
 });
 
 const monthLock = require('./monthLock'); // S5-3c: قفل ماه بسته

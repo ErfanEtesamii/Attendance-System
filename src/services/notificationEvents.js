@@ -2,7 +2,7 @@
 //
 // رویدادها و گیرنده‌ها:
 //   leaveRequested(request)          درخواست مرخصی/مأموریت جدید   ⇒ تأییدکننده‌ها (مدیر مستقیم‌ِ فعال؛ وگرنه همه‌ی ادمین‌های فعال)
-//   leaveStepAdvanced(request)       تأیید مرحله‌ی میانی زنجیره       ⇒ تأییدکننده‌های «مرحله‌ی بعد» (admin‌ها / hr‌های فعال)؛ تلگرام هم می‌رود (S4-11b)
+//   (حذف شد) leaveStepAdvanced — تأیید تک‌مرحله‌ای است؛ leaveDecided به ادمین‌ها هم خبر می‌دهد اگر سرپرست تصمیم گرفت
 //   leaveDecided(request, {note})    تأیید/رد درخواست              ⇒ خودِ کارمند (+ در تأیید: جانشین، اگر ثبت شده)
 //   disputeOpened(dispute)           اعتراض جدید به رکورد          ⇒ همان تأییدکننده‌ها
 //   disputeResolved(dispute, {note}) بسته‌شدن اعتراض               ⇒ خودِ کارمند
@@ -92,12 +92,13 @@ function period(request) {
   return request.start_date === request.end_date ? request.start_date : `${request.start_date} تا ${request.end_date}`;
 }
 
-// تأییدکننده‌های «مرحله‌ی فعال» درخواست (S4-11b): manager ⇒ همان قاعده‌ی handlersOf؛ admin ⇒ ادمین‌های فعال؛ hr ⇒ hrهای فعال
-function approversOf(request, employee) {
-  const role = leaveApprovalService.awaitingRole(request);
-  if (role === 'admin') return activeAdmins().filter((u) => u.id !== employee.id);
-  if (role === 'hr') return usersRepository.listUsers({ onlyActive: true }).filter((u) => u.role === 'hr' && u.id !== employee.id);
-  return handlersOf(employee);
+// تأییدکننده‌های یک درخواست مرخصی/ماموریت: سرپرست مستقیمِ فعال + همه‌ی ادمین‌های فعال (هر دو می‌توانند تصمیم بگیرند)؛
+// بدون خودِ کارمند و بدون تکرار. کارمندِ بدون سرپرست ⇒ فقط ادمین‌ها.
+function approversOf(employee) {
+  const manager = employee.manager_id ? usersRepository.findById(employee.manager_id) : null;
+  const list = [...(manager && manager.is_active ? [manager] : []), ...activeAdmins()];
+  const seen = new Set();
+  return list.filter((u) => u.id !== employee.id && !seen.has(u.id) && seen.add(u.id));
 }
 
 function leaveRequested(request) {
@@ -105,7 +106,7 @@ function leaveRequested(request) {
     const employee = usersRepository.findById(request.user_id);
     if (!employee) return [];
     const label = leaveLabel(request.kind);
-    return approversOf(request, employee).map((h) =>
+    return approversOf(employee).map((h) =>
       send('leaveRequested', h.id, {
         type: 'leave_requested',
         title: `درخواست ${label} جدید`,
@@ -118,22 +119,45 @@ function leaveRequested(request) {
   });
 }
 
-/** @param {object} request ردیف «پس از تصمیم» (status = approved|rejected). غیر از این دو ⇒ بی‌اثر. */
+/**
+ * @param {object} request ردیف «پس از تصمیم» (status = approved|rejected). غیر از این دو ⇒ بی‌اثر.
+ * اعلان کارمند شامل «چه کسی» (نقش + نام تصمیم‌گیرنده) است. اگر تصمیم‌گیرنده سرپرست بود (نه ادمین)، به همه‌ی ادمین‌های فعال
+ * هم اعلان می‌رود: «سرپرست X درخواست کارمند Y را تأیید/رد کرد، به این علت: …».
+ */
 function leaveDecided(request, { note = null } = {}) {
   return guard('leaveDecided', () => {
     if (!request || !['approved', 'rejected'].includes(request.status)) return [];
     const label = leaveLabel(request.kind);
     const approved = request.status === 'approved';
+    const decider = leaveApprovalService.decisionInfo(request);
+    const byLine = decider ? `${decider.roleLabel}: ${decider.fullName}` : null;
     const jobs = [
       send('leaveDecided', request.user_id, {
         type: approved ? 'leave_approved' : 'leave_rejected',
         title: `درخواست ${label} شما ${approved ? 'تأیید شد' : 'رد شد'}`,
-        body: `${period(request)}${note ? `\nپاسخ: ${sanitizeText(note, 300)}` : ''}`,
+        body: `${period(request)}${byLine ? `\n${approved ? 'تأییدکننده' : 'ردکننده'} — ${byLine}` : ''}${note ? `\nپاسخ: ${sanitizeText(note, 300)}` : ''}`,
         link: '#/leave',
-        data: { requestId: request.id, status: request.status },
+        data: { requestId: request.id, status: request.status, decidedBy: decider ? { id: decider.id, fullName: decider.fullName, role: decider.role } : null },
         dedupeKey: `leave_decided:${request.id}:${request.status}:${request.updated_at || ''}`,
       }),
     ];
+    if (decider && decider.role === 'manager') {
+      const employee = usersRepository.findById(request.user_id);
+      for (const a of activeAdmins()) {
+        if (a.id === decider.id || (employee && a.id === employee.id)) continue;
+        jobs.push(
+          notify(a.id, {
+            type: 'leave_supervisor_decided',
+            title: `سرپرست ${decider.fullName} درخواست ${label} را ${approved ? 'تأیید' : 'رد'} کرد`,
+            body: `${employee ? employee.full_name : `کاربر ${request.user_id}`} — ${period(request)}\nعلت/توضیح: ${note ? sanitizeText(note, 300) : 'بدون توضیح'}`,
+            link: '#/leave',
+            data: { requestId: request.id, status: request.status, supervisorId: decider.id, employeeId: request.user_id },
+            dedupeKey: `leave_supervisor_decided:${request.id}:${request.status}:${request.updated_at || ''}`,
+            telegram: true,
+          }).catch((err) => { logError('leaveSupervisorDecided', err); return null; })
+        );
+      }
+    }
     // جانشین فقط وقتی مرخصی «قطعی» شد خبردار می‌شود (S4-11b)
     if (approved && request.substitute_user_id) {
       const employee = usersRepository.findById(request.user_id);
@@ -149,27 +173,6 @@ function leaveDecided(request, { note = null } = {}) {
       );
     }
     return jobs;
-  });
-}
-
-/** پس از تأیید مرحله‌ی میانی؛ request = ردیف «پس از تصمیم» (هنوز pending با current_step بعدی). */
-function leaveStepAdvanced(request) {
-  return guard('leaveStepAdvanced', () => {
-    if (!request || request.status !== 'pending' || !request.current_step) return [];
-    const employee = usersRepository.findById(request.user_id);
-    if (!employee) return [];
-    const label = leaveLabel(request.kind);
-    return approversOf(request, employee).map((a) =>
-      notify(a.id, {
-        type: 'leave_requested',
-        title: `درخواست ${label} منتظر تأیید شماست`,
-        body: `${employee.full_name} — ${period(request)} (مرحله ${request.current_step})`,
-        link: '#/leave',
-        data: { requestId: request.id, employeeId: employee.id, step: request.current_step },
-        dedupeKey: `leave_step:${request.id}:${request.current_step}`,
-        telegram: true,
-      }).catch((err) => { logError('leaveStepAdvanced', err); return null; })
-    );
   });
 }
 
@@ -191,19 +194,39 @@ function disputeOpened(dispute) {
 }
 
 /** @param {object} dispute ردیف «پس از بسته‌شدن» (status = resolved). غیر از آن ⇒ بی‌اثر. */
-function disputeResolved(dispute, { note = null } = {}) {
+function disputeResolved(dispute, { note = null, actor = null } = {}) {
   return guard('disputeResolved', () => {
     if (!dispute || dispute.status !== 'resolved') return [];
-    return [
+    const byLine = actor ? `${isAdmin(actor) ? 'ادمین' : 'سرپرست'}: ${actor.full_name}` : null;
+    const jobs = [
       send('disputeResolved', dispute.user_id, {
         type: 'dispute_resolved',
         title: 'اعتراض شما بررسی و بسته شد',
-        body: note ? `پاسخ: ${sanitizeText(note, 300)}` : null,
+        body: [byLine ? `بررسی‌کننده — ${byLine}` : null, note ? `پاسخ: ${sanitizeText(note, 300)}` : null].filter(Boolean).join('\n') || null,
         link: '#/disputes',
-        data: { disputeId: dispute.id },
+        data: { disputeId: dispute.id, resolvedBy: actor ? { id: actor.id, fullName: actor.full_name } : null },
         dedupeKey: `dispute_resolved:${dispute.id}:${dispute.updated_at || ''}`,
       }),
     ];
+    // سرپرست (نه ادمین) اعتراض تیمش را بست ⇒ اعلان به همه‌ی ادمین‌ها
+    if (actor && !isAdmin(actor)) {
+      const employee = usersRepository.findById(dispute.user_id);
+      for (const a of activeAdmins()) {
+        if (a.id === actor.id || (employee && a.id === employee.id)) continue;
+        jobs.push(
+          notify(a.id, {
+            type: 'dispute_supervisor_resolved',
+            title: `سرپرست ${actor.full_name} اعتراض را بست`,
+            body: `${employee ? employee.full_name : `کاربر ${dispute.user_id}`}\nعلت/توضیح: ${note ? sanitizeText(note, 300) : 'بدون توضیح'}`,
+            link: '#/disputes',
+            data: { disputeId: dispute.id, supervisorId: actor.id, employeeId: dispute.user_id },
+            dedupeKey: `dispute_supervisor_resolved:${dispute.id}:${dispute.updated_at || ''}`,
+            telegram: true,
+          }).catch((err) => { logError('disputeSupervisorResolved', err); return null; })
+        );
+      }
+    }
+    return jobs;
   });
 }
 
@@ -211,14 +234,14 @@ function disputeResolved(dispute, { note = null } = {}) {
  * پیام تلگرامِ «اعتراض شما بسته شد» به کارمند (مسیر مشترکِ پنل و بات؛ همان متن قبلی) + دکمه‌ی باز کردن مستقیم همان گفت‌وگو.
  * خطا هرگز استثنا نمی‌دهد. اعلان درون‌پنلی جدا با disputeResolved است.
  * @param {{id: number, user_id: number}} dispute
- * @param {{note?: string|null, actor?: {role?: string}}} [opts]
+ * @param {{note?: string|null, actor?: {role?: string, full_name?: string}}} [opts]
  */
 function disputeResolvedTelegram(dispute, { note = null, actor = null } = {}) {
   return guard('disputeResolvedTelegram', () => {
     const employee = dispute ? usersRepository.findById(dispute.user_id) : null;
     if (!employee || !employee.telegram_user_id) return [];
     const who = actor && isAdmin(actor) ? 'ادمین' : 'سرپرست';
-    const text = `اعتراض شما بررسی و بسته شد ✅${note ? `\nپاسخ ${who}: ${note}` : ''}`;
+    const text = `اعتراض شما بررسی و بسته شد ✅${actor && actor.full_name ? `\nبررسی‌کننده — ${who}: ${actor.full_name}` : ''}${note ? `\nپاسخ ${who}: ${note}` : ''}`;
     const btn = panelLinks.disputeButton(dispute.id);
     const options = btn ? { reply_markup: { inline_keyboard: [[btn]] } } : undefined;
     return [Promise.resolve(sendMessage(employee.telegram_user_id, text, options)).catch((err) => { logError('disputeResolvedTelegram', err); return null; })];
@@ -720,4 +743,4 @@ function remoteWorkRejected(session, { note = null, actor = null } = {}) {
   });
 }
 
-module.exports = { remoteWorkSubmitted, remoteWorkApproved, remoteWorkBatchApproved, remoteWorkRejected, urgentTaskAssigned, selfUrgentTaskAdded, urgentTaskReminder, breakOverrun, weeklyPlanEditedByManager, checkinPermissionRequested, checkinPermissionDecided, reportCommented, weeklyPlanChanged, leaveRequested, leaveStepAdvanced, leaveDecided, disputeOpened, disputeResolved, disputeResolvedTelegram, disputeAdminMessage, disputeUserMessage, systemAlert, suspiciousCreated };
+module.exports = { remoteWorkSubmitted, remoteWorkApproved, remoteWorkBatchApproved, remoteWorkRejected, urgentTaskAssigned, selfUrgentTaskAdded, urgentTaskReminder, breakOverrun, weeklyPlanEditedByManager, checkinPermissionRequested, checkinPermissionDecided, reportCommented, weeklyPlanChanged, leaveRequested, leaveDecided, disputeOpened, disputeResolved, disputeResolvedTelegram, disputeAdminMessage, disputeUserMessage, systemAlert, suspiciousCreated };

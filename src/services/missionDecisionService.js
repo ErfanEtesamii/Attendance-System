@@ -1,5 +1,5 @@
 // C4: تصمیم‌گیری سرپرست روی ماموریت از بات (مرور شبانه): فهرست منتظرها، رد با علتِ اجباری، اصلاح ساعت.
-// روی leaveApprovalService.decide سوار است (همان زنجیره/مجوزها)؛ هیچ مسیر تصمیم تازه‌ای نمی‌سازد.
+// روی leaveApprovalService.decide سوار است (همان مجوزها: سرپرست مستقیم یا ادمین)؛ هیچ مسیر تصمیم تازه‌ای نمی‌سازد.
 
 const usersRepository = require('../repositories/usersRepository');
 const leaveRepository = require('../repositories/leaveRepository');
@@ -16,12 +16,12 @@ const pad = (n) => String(n).padStart(2, '0');
 
 const cleanText = (v, max) => sanitizeText(v, max + 1).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
 
-// ماموریت‌های pending که «نوبت مرحله‌ی سرپرست» است و کارمندشان زیردست مستقیم همین سرپرست است (قدیمی‌ترین اول)
+// ماموریت‌های pending که کارمندشان زیردست مستقیم همین سرپرست است (قدیمی‌ترین اول)
 function pendingForSupervisor(supervisor, { limit = null } = {}) {
   const rows = leaveRepository.listQueue({ status: 'pending', kind: 'mission', limit: null }).rows;
   const out = rows.filter((r) => {
     const emp = usersRepository.findById(r.user_id);
-    return emp && emp.manager_id === supervisor.id && leaveApprovalService.awaitingRole(r) === 'manager';
+    return emp && emp.manager_id === supervisor.id && leaveApprovalService.canDecide(supervisor, r);
   });
   return limit ? out.slice(0, limit) : out;
 }
@@ -57,7 +57,7 @@ function rejectMission({ requestId, actor, reason }) {
   if (!request || request.kind !== 'mission') return { ok: false, code: 'NOT_FOUND', error: 'ماموریت یافت نشد.' };
   const result = leaveApprovalService.decide({ requestId, actor, decision: 'reject', note: text || undefined });
   if (!result.ok) return result;
-  auditRepository.logEvent({ userId: actor.id, action: 'leave_request_rejected', details: { requestId, employeeId: request.user_id, step: result.step, via: 'nightly_review', reasonLength: text.length } });
+  auditRepository.logEvent({ userId: actor.id, action: 'leave_request_rejected', details: { requestId, employeeId: request.user_id, step: result.step, decidedByRole: actor.role, via: 'nightly_review', reasonLength: text.length } });
   notificationEvents.leaveDecided(result.request, text ? { note: text } : {});
   return { ...result, reason: text };
 }
@@ -69,11 +69,10 @@ function approveMission({ requestId, actor }) {
   if (!result.ok) return result;
   auditRepository.logEvent({
     userId: actor.id,
-    action: !result.completed ? 'leave_request_step_approved' : 'leave_request_approved',
-    details: { requestId, employeeId: request.user_id, step: result.step, nextRole: result.nextRole, via: 'nightly_review' },
+    action: 'leave_request_approved',
+    details: { requestId, employeeId: request.user_id, step: result.step, decidedByRole: actor.role, via: 'nightly_review' },
   });
-  if (result.completed) notificationEvents.leaveDecided(result.request);
-  else notificationEvents.leaveStepAdvanced(result.request);
+  notificationEvents.leaveDecided(result.request);
   return result;
 }
 
@@ -92,8 +91,7 @@ function adjustTimes({ requestId, actor, text }) {
   if (!request || request.kind !== 'mission') return { ok: false, code: 'NOT_FOUND', error: 'ماموریت یافت نشد.' };
   if (request.status !== 'pending') return { ok: false, code: 'ALREADY_DECIDED', error: 'این درخواست قبلاً بررسی شده است.' };
   if (request.unit !== 'hour') return { ok: false, code: 'NOT_HOURLY', error: 'اصلاح ساعت فقط برای ماموریت ساعتی ممکن است.' };
-  const role = leaveApprovalService.awaitingRole(request);
-  if (!leaveApprovalService.canDecide(actor, request, role) || (actor.id === request.user_id)) return { ok: false, code: 'FORBIDDEN', error: 'اجازه‌ی اصلاح این ماموریت را ندارید.' };
+  if (!leaveApprovalService.canDecide(actor, request) || (actor.id === request.user_id)) return { ok: false, code: 'FORBIDDEN', error: 'اجازه‌ی اصلاح این ماموریت را ندارید.' };
   const range = parseTimeRange(text);
   if (!range) return { ok: false, code: 'BAD_FORMAT', error: 'قالب ساعت درست نیست؛ مثال: 09:30-12:00' };
   const prep = leaveDurationService.prepare({

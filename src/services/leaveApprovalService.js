@@ -1,34 +1,21 @@
-// زنجیره‌ی تأیید مرخصی (S4-11a).
-// مراحل: گام ۱ = سرپرست مستقیم کارمند (کارمندِ بدون سرپرست ⇒ admin). گام اضافه (قابل‌تنظیم، پیش‌فرض خاموش) وقتی:
-//   • طول بازه (روز تقویمی) بیشتر از leaveApprovalExtraStepDays باشد (۰ = خاموش)، یا
-//   • کد نوع درخواست در leaveApprovalExtraStepTypes (جداشده با ویرگول) باشد.
-//   نقش گام اضافه = leaveApprovalExtraStepRole (admin|hr)؛ اگر با گام ۱ یکی باشد (مثلاً هر دو admin) گام تکراری ساخته نمی‌شود.
-// تصمیم: admin هر مرحله را می‌تواند؛ سرپرست فقط مرحله‌ی «manager» برای زیرمجموعه‌ی مستقیم خودش؛ hr فقط مرحله‌ی «hr».
-//   رد در هر مرحله ⇒ کل درخواست رد. تأیید مرحله‌ی آخر ⇒ approved (تنها همان لحظه «تصمیم نهایی» است و اعلان کارمند می‌رود).
-// درخواستِ بدون زنجیره (current_step = NULL، مثل درخواست‌های قبل از این مرحله) تک‌مرحله‌ای می‌ماند: admin یا سرپرست مستقیم.
-// اعلان به تأییدکننده‌ی مرحله‌ی بعد/جانشین: S4-11b.
+// تأیید مرخصی/ماموریت (S4-11a؛ بازطراحی «تصمیم تک‌مرحله‌ای»).
+// قانون: هر درخواست «یک» مرحله‌ی تأیید دارد و هم سرپرست مستقیم کارمند (users.manager_id فعلی) و هم هر ادمین می‌تواند تأیید/رد کند.
+//   • تصمیم اولِ هرکدام نهایی است؛ تأیید مجدد، مرحله‌ی اضافه و ارجاع خودکار به ادمین وجود ندارد.
+//   • مجوز «زنده» از manager_id فعلیِ کارمند محاسبه می‌شود و به نقشِ ذخیره‌شده در ردیف زنجیره وابسته نیست
+//     (ردیف leave_approvals فقط برای تاریخچه‌ی تصمیم نگه داشته می‌شود: چه کسی، کی، با چه یادداشتی).
+//   • کارمندِ بدون سرپرست: فقط ادمین‌ها.
+//   • درخواستِ بدون زنجیره (current_step = NULL، قدیمی) هم با همین قاعده تصمیم‌پذیر است.
 
 const { getDb } = require('../db/connection');
 const leaveRepository = require('../repositories/leaveRepository');
 const leaveApprovalRepository = require('../repositories/leaveApprovalRepository');
-const leaveTypesRepository = require('../repositories/leaveTypesRepository');
 const usersRepository = require('../repositories/usersRepository');
-const settingsRepository = require('../repositories/settingsRepository');
-const { dayDiff } = require('../utils/shiftDay');
 
 const { isAdmin } = require('../utils/roles');
-// نقش‌های مراحل برای یک درخواست (آرایه‌ی ۱ یا ۲ عضوی)
+// نقش «نمایشی» مرحله‌ی تصمیم: سرپرست مستقیم اگر تعریف شده، وگرنه ادمین. (هر دو می‌توانند تصمیم بگیرند؛ فقط برای نمایش/اعلان)
 function planRoles(request) {
-  const settings = settingsRepository.getAll();
   const employee = usersRepository.findById(request.user_id);
-  const roles = [employee && employee.manager_id ? 'manager' : 'admin'];
-  const type = leaveTypesRepository.findById(request.leave_type_id);
-  const codes = settings.leaveApprovalExtraStepTypes.split(',').map((s) => s.trim()).filter(Boolean);
-  const spanDays = dayDiff(request.end_date, request.start_date) + 1;
-  const byDays = settings.leaveApprovalExtraStepDays > 0 && spanDays > settings.leaveApprovalExtraStepDays;
-  const byType = !!type && codes.includes(type.code);
-  if ((byDays || byType) && !roles.includes(settings.leaveApprovalExtraStepRole)) roles.push(settings.leaveApprovalExtraStepRole);
-  return roles;
+  return [employee && employee.manager_id ? 'manager' : 'admin'];
 }
 
 // ساخت زنجیره برای درخواستِ تازه/بازگشته به pending (مراحل قبلی پاک می‌شوند). درخواست غیر pending ⇒ هیچ.
@@ -52,12 +39,11 @@ function clearChain(requestId) {
 
 const getChain = (requestId) => leaveApprovalRepository.listByRequest(requestId);
 
-// نقشِ منتظرِ تصمیم؛ بدون زنجیره (قدیمی) ⇒ 'manager' (admin هم می‌تواند)؛ غیر pending ⇒ null
+// نقشِ «نمایشیِ» منتظرِ تصمیم (live از manager_id)؛ غیر pending ⇒ null. نقش ذخیره‌شده در ردیف زنجیره نادیده گرفته می‌شود.
 function awaitingRole(request) {
   if (!request || request.status !== 'pending') return null;
-  if (!request.current_step) return 'manager';
-  const row = getChain(request.id).find((r) => r.step === request.current_step);
-  return row ? row.approverRole : 'manager';
+  const employee = usersRepository.findById(request.user_id);
+  return employee && employee.manager_id ? 'manager' : 'admin';
 }
 
 // تنها ادمین فعال سیستم؟ (استثنای خودتأییدی ماموریت)
@@ -66,12 +52,14 @@ function isSoleActiveAdmin(user) {
   return !usersRepository.listUsers({ onlyActive: true, includeOwner: true }).some((u) => isAdmin(u) && u.id !== user.id);
 }
 
-function canDecide(actor, request, role) {
-  if (!actor) return false;
+// ادمین: هر درخواست. سرپرست: فقط کارمندِ مستقیمِ فعلی خودش. بقیه (از جمله hr): خیر.
+// پارامتر سوم (role) فقط برای سازگاری با فراخوان‌های قدیمی است و نادیده گرفته می‌شود.
+function canDecide(actor, request) {
+  if (!actor || !request) return false;
   if (isAdmin(actor)) return true;
-  if (role === 'hr') return actor.role === 'hr';
+  if (actor.role !== 'manager') return false;
   const employee = usersRepository.findById(request.user_id);
-  return role === 'manager' && actor.role === 'manager' && !!employee && employee.manager_id === actor.id;
+  return !!employee && employee.manager_id === actor.id;
 }
 
 // decision: 'approve' | 'reject'؛ actor: ردیف کاربر (id, role)
@@ -86,27 +74,16 @@ function decide({ requestId, actor, decision, note }) {
   if (selfDecision && !isSoleActiveAdmin(actor)) {
     return { ok: false, code: 'SELF_APPROVAL', role, error: 'تصمیم درباره‌ی ماموریتِ خودتان ممکن نیست؛ سرپرست یا ادمین دیگری باید تصمیم بگیرد.' };
   }
-  if (!canDecide(actor, request, role)) {
-    const who = { manager: 'سرپرست مستقیم کارمند یا ادمین', admin: 'ادمین', hr: 'منابع انسانی یا ادمین' }[role];
-    return { ok: false, code: 'FORBIDDEN', role, error: `تصمیم این مرحله با ${who} است.` };
+  if (!canDecide(actor, request)) {
+    return { ok: false, code: 'FORBIDDEN', role, error: 'تصمیم این درخواست با سرپرست مستقیم کارمند یا ادمین است.' };
   }
-  const chain = getChain(requestId);
   const step = request.current_step || null;
   const result = getDb().transaction(() => {
     if (step) leaveApprovalRepository.decideStep(requestId, step, decision === 'approve' ? 'approved' : 'rejected', actor.id, note);
-    if (decision === 'reject') {
-      leaveRepository.setStatus(requestId, 'rejected', actor.id);
-      leaveApprovalRepository.setCurrentStep(requestId, null);
-      return { completed: true, finalStatus: 'rejected', nextRole: null };
-    }
-    const next = chain.find((r) => r.step > (step || 0) && r.status === 'pending');
-    if (next) {
-      leaveApprovalRepository.setCurrentStep(requestId, next.step);
-      return { completed: false, finalStatus: 'pending', nextRole: next.approverRole };
-    }
-    leaveRepository.setStatus(requestId, 'approved', actor.id);
+    leaveApprovalRepository.deletePendingSteps(requestId); // مرحله‌های باقی‌مانده‌ی زنجیره‌های قدیمی: تصمیم اول نهایی است
+    leaveRepository.setStatus(requestId, decision === 'approve' ? 'approved' : 'rejected', actor.id);
     leaveApprovalRepository.setCurrentStep(requestId, null);
-    return { completed: true, finalStatus: 'approved', nextRole: null };
+    return { completed: true, finalStatus: decision === 'approve' ? 'approved' : 'rejected', nextRole: null };
   })();
   if (selfDecision) {
     try {
@@ -116,14 +93,18 @@ function decide({ requestId, actor, decision, note }) {
   return { ok: true, request: leaveRepository.findById(requestId), step, role, ...result };
 }
 
-// ارجاع مرحله‌ی فعالِ «manager» به admin (S4-11c). فقط وقتی مرحله‌ی فعال manager و pending باشد؛ ⇒ { ok, request } یا { ok:false }
-function escalateToAdmin(requestId) {
-  const request = leaveRepository.findById(requestId);
-  if (!request || request.status !== 'pending' || !request.current_step) return { ok: false };
-  const row = getChain(requestId).find((r) => r.step === request.current_step);
-  if (!row || row.approverRole !== 'manager' || row.status !== 'pending') return { ok: false };
-  leaveApprovalRepository.setApproverRole(requestId, row.step, 'admin');
-  return { ok: true, request: leaveRepository.findById(requestId), step: row.step };
+const ROLE_LABELS = { manager: 'سرپرست', admin: 'ادمین', owner: 'ادمین', hr: 'منابع انسانی' };
+
+// «چه کسی تصمیم گرفت» برای درخواستِ تصمیم‌گرفته‌شده (approved|rejected)؛ وگرنه null.
+// ⇒ { id, fullName, role: 'manager'|'admin'|'hr'..., roleLabel, decidedAt, note }
+// (role برای owner هم 'admin' برمی‌گردد؛ منبع: leave_requests.approver_id + ردیف تاریخچه‌ی leave_approvals در صورت وجود)
+function decisionInfo(request) {
+  if (!request || !['approved', 'rejected'].includes(request.status) || !request.approver_id) return null;
+  const user = usersRepository.findById(request.approver_id);
+  if (!user) return null;
+  const row = getChain(request.id).filter((s) => s.status !== 'pending' && s.decidedBy === user.id).pop() || null;
+  const role = isAdmin(user) ? 'admin' : user.role;
+  return { id: user.id, fullName: user.full_name, role, roleLabel: ROLE_LABELS[user.role] || ROLE_LABELS[role] || 'تأییدکننده', decidedAt: (row && row.decidedAt) || request.updated_at || null, note: (row && row.note) || null };
 }
 
-module.exports = { planRoles, initChain, clearChain, getChain, awaitingRole, canDecide, decide, escalateToAdmin };
+module.exports = { planRoles, initChain, clearChain, getChain, awaitingRole, canDecide, decide, decisionInfo };

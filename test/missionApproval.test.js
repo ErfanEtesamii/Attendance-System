@@ -1,4 +1,4 @@
-// C4: تأیید شبانه‌ی ماموریت — پیام مرور شبانه + دکمه‌ها، رد با علت اجباری، اصلاح ساعت، یادآوری ۱۰ صبح و ارجاع ۴۸ ساعته.
+// C4: تأیید شبانه‌ی ماموریت — پیام مرور شبانه + دکمه‌ها، رد با علت اجباری، اصلاح ساعت، یادآوری ۱۰ صبح (بدون ارجاع خودکار به ادمین).
 const { resetDb, cleanup } = require('./helpers/testEnv');
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
@@ -92,12 +92,12 @@ describe('تأیید ماموریت (C4)', () => {
     assert.equal(decisions.adjustTimes({ requestId: r.id, actor: mgr, text: '09:00-10:00' }).code, 'ALREADY_DECIDED');
   });
 
-  describe('یادآوری و ارجاع', () => {
+  describe('یادآوری (بدون ارجاع)', () => {
     let r; let key;
     before(() => {
       db.exec('DELETE FROM notifications; DELETE FROM leave_approvals; DELETE FROM leave_requests;');
       r = mk(emp, { startDate: D(10) });
-      key = `mission_reminder:${r.id}:1`;
+      key = `mission_reminder:${r.id}`;
     });
 
     test('همان روز ثبت: یادآوری نمی‌رود؛ قبل از ساعت ۱۰ روز بعد هم نه', async () => {
@@ -112,20 +112,22 @@ describe('تأیید ماموریت (C4)', () => {
       const now = new Date('2026-08-03T07:00:00Z'); // ۱۰:۳۰ تهران
       const a = await runMissionApprovalReminder({ now });
       assert.equal(a.reminded, 1);
-      assert.ok(notificationsRepo.findByDedupe(mgr.id, key));
+      assert.ok(notificationsRepo.findByDedupe(mgr.id, key), 'سرپرست یادآوری می‌گیرد');
+      assert.ok(notificationsRepo.findByDedupe(admin.id, key), 'ادمین هم یادآوری می‌گیرد');
       const b = await runMissionApprovalReminder({ now });
       assert.equal(b.reminded, 0);
       assert.equal(leaveRepo.findById(r.id).status, 'pending');
     });
 
-    test('۴۸ ساعت ⇒ ارجاع به ادمین؛ تصمیم خودکار نیست', async () => {
+    test('۴۸ ساعت و بیشتر ⇒ ارجاعی در کار نیست: درخواست همان است و سرپرست همچنان می‌تواند تصمیم بگیرد', async () => {
       const out = await runMissionApprovalReminder({ now: new Date('2026-08-04T06:00:00Z') });
-      assert.equal(out.escalated, 1);
-      assert.equal(approval.awaitingRole(leaveRepo.findById(r.id)), 'admin');
-      assert.equal(leaveRepo.findById(r.id).status, 'pending');
-      assert.ok(notificationsRepo.findByDedupe(admin.id, `mission_escalated:${r.id}:1`));
-      const again = await runMissionApprovalReminder({ now: new Date('2026-08-05T06:00:00Z') });
-      assert.equal(again.escalated, 0);
+      assert.equal(out.escalated, undefined);
+      const cur = leaveRepo.findById(r.id);
+      assert.equal(cur.status, 'pending');
+      assert.equal(approval.awaitingRole(cur), 'manager');
+      assert.equal(approval.canDecide(mgr, cur), true);
+      assert.equal(approval.canDecide(admin, cur), true);
+      assert.ok(!notificationsRepo.findByDedupe(admin.id, `mission_escalated:${r.id}:1`));
     });
   });
 });

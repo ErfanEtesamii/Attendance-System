@@ -1,7 +1,7 @@
 // صف تأیید مرخصی/مأموریت (S4-13a): فهرست فیلترشده با مانده‌ی کارمند و لینک پیوست + تأیید/رد دسته‌جمعی.
 // مجوز: leave.approve (سرپرست/ادمین) یا leave.approve.hr (hr). کارمند ⇒ ۴۰۳ (گارد مجوز + لیست سفید کارمند).
 // اسکوپ سمت سرور (مثل بقیه‌ی routeها با scopedUserIds):
-//   سرپرست = فقط تیم مستقیم خودش | admin و hr = همه (hr فقط‌خواندنی؛ تصمیم او فقط روی مرحله‌ی hr و با leaveApprovalService.canDecide).
+//   سرپرست = فقط تیم مستقیم خودش | admin و hr = همه (hr فقط‌خواندنی؛ canDecide برای او همیشه false است).
 // این route جایگزین GET /admin/leave-requests نیست؛ آن بدون تغییر برای فهرست ساده و کارمند می‌ماند.
 // تصمیم دسته‌جمعی «بخشی‌موفق» است: هر درخواست مستقل (تراکنش خودش، audit و اعلان خودش) و نتیجه‌ی هر یک جدا برمی‌گردد؛
 // یک درخواست ممنوع/تمام‌شده بقیه را نمی‌اندازد. تصمیم هر درخواست دقیقاً مثل route تکی است (leaveDecision.applyDecision).
@@ -120,8 +120,9 @@ function toItem(r, ctx) {
       : null,
     currentStep: r.current_step || null,
     awaitingRole, // manager|admin|hr (فقط pending؛ غیر pending ⇒ null)
-    canDecide: r.status === 'pending' && leaveApprovalService.canDecide(ctx.actor, r, awaitingRole), // آیا «همین کاربر» همین الان می‌تواند تصمیم بگیرد
+    canDecide: r.status === 'pending' && leaveApprovalService.canDecide(ctx.actor, r), // آیا «همین کاربر» همین الان می‌تواند تصمیم بگیرد
     chain: leaveApprovalService.getChain(r.id),
+    decidedBy: leaveApprovalService.decisionInfo(r), // چه کسی تأیید/رد کرد (null = هنوز pending)
     attachment: r.attachment_id
       ? { url: `/api/admin/leave-requests/${r.id}/attachment`, mime: r.attachment_mime || null, name: r.attachment_name || null, size: r.attachment_size || null }
       : null, // دانلود با route سرو پیوست (S4-12b؛ اسکوپ و مجوز همان‌جا)
@@ -156,7 +157,7 @@ router.get('/admin/leave-queue', requireAnyPermission(...QUEUE_PERMS), (req, res
   let total;
   if (f.decidable) {
     // canDecide به نقش مرحله و سرپرستِ کارمند بستگی دارد (نه ستون SQL)؛ پس پیش از صفحه‌بندی در JS فیلتر می‌شود (صف pending محدود است)
-    const all = leaveRepository.listQueue({ ...base, limit: null }).rows.filter((r) => leaveApprovalService.canDecide(me, r, leaveApprovalService.awaitingRole(r)));
+    const all = leaveRepository.listQueue({ ...base, limit: null }).rows.filter((r) => leaveApprovalService.canDecide(me, r));
     total = all.length;
     rows = all.slice(f.offset, f.offset + f.limit);
   } else {

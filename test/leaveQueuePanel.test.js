@@ -156,7 +156,7 @@ describe('UI صف تأیید مرخصی (S4-13b)', () => {
   test('رندر: درخواست به API صف با پیش‌فرض pending/limit می‌رود؛ چک‌باکس و دکمه فقط برای canDecide؛ مانده و هشدار کافی‌نبودن', async () => {
     const items = [
       item({ id: 1, balance: { ...item().balance, remainingAfterApproval: -480, insufficient: true, display: { remaining: minText('۱ روز'), remainingAfterApproval: minText('منفی ۱ روز') } } }),
-      item({ id: 2, canDecide: false, awaitingRole: 'hr', employee: { id: 8, fullName: 'کارمند ب', personnelCode: null, department: null, managerId: 3 }, chain: [{ step: 1, approverRole: 'manager', status: 'approved' }, { step: 2, approverRole: 'hr', status: 'pending' }], balance: { tracked: false } }),
+      item({ id: 2, canDecide: false, awaitingRole: 'admin', employee: { id: 8, fullName: 'کارمند ب', personnelCode: null, department: null, managerId: null }, chain: [{ step: 1, approverRole: 'admin', status: 'pending' }], balance: { tracked: false } }),
     ];
     const { def, calls } = setup({ queue: { items, total: 2, limit: 50, offset: 0 } });
     const { html } = await def.render();
@@ -173,8 +173,8 @@ describe('UI صف تأیید مرخصی (S4-13b)', () => {
     assert.match(html, /مانده کافی نیست/);
     assert.match(html, /منفی ۱ روز/);
     assert.match(html, /این نوع از مانده کسر نمی‌شود/);
-    assert.match(html, /منتظر منابع انسانی/);
-    assert.match(html, /سرپرست \(تأیید\) ← منابع انسانی \(در انتظار\)/, 'زنجیره‌ی دو مرحله‌ای نمایش داده می‌شود');
+    assert.match(html, /منتظر ادمین/);
+    assert.doesNotMatch(html, /زنجیره‌ی تأیید/, 'دیگر زنجیره‌ی چندمرحله‌ای نمایش داده نمی‌شود');
     assert.match(html, /id="q-all"/);
     assert.doesNotMatch(html, /id="q-prev"/, 'زیر یک صفحه ⇒ بدون صفحه‌بندی');
   });

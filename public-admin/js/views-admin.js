@@ -213,7 +213,6 @@
     lateLimitGateMode: { off: 'بی‌اثر', soft: 'هشدار (ورود مجاز است)', enforce: 'الزامی (بدون اجازه‌ی سرپرست ثبت نمی‌شود)' },
     crossMidnightMode: { legacy: 'سازگار با گذشته', by_shift_day: 'بر پایه‌ی روز شیفت' },
     leaveBalancePolicy: { block: 'مسدود', warn: 'هشدار', allow_negative: 'مانده‌ی منفی' },
-    leaveApprovalExtraStepRole: { admin: 'ادمین', hr: 'منابع انسانی' },
   };
   // گروه‌هایی که محاسبه‌ی روز را عوض می‌کنند ⇒ روی عدد روزها/ماه‌های گذشته هم اثر دارند (گزارش‌ها همیشه با تنظیمات فعلی محاسبه می‌شوند)
   const IMPACT_GROUPS = new Set(['workHours', 'calendar', 'overtime']);

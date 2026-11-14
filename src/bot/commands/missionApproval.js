@@ -13,7 +13,7 @@ const CANCEL_WORD = 'انصراف';
 function canAct(actor, request) {
   if (!actor || !hasRole(actor, ['admin', 'manager'])) return false;
   if (actor.id === request.user_id && !isAdmin(actor)) return false;
-  return leaveApprovalService.canDecide(actor, request, leaveApprovalService.awaitingRole(request));
+  return leaveApprovalService.canDecide(actor, request);
 }
 
 async function startFlow(bot, query, flow, prompt) {

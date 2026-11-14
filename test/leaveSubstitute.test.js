@@ -1,17 +1,16 @@
-// S4-11b: جانشین مرخصی (ستون substitute_user_id) و اعلان‌ها — جانشین پس از تأیید قطعی، تأییدکننده‌ی مرحله‌ی بعد پس از تأیید میانی، بدون اعلان تکراری، اعتبارسنجی جانشین.
+// S4-11b: جانشین مرخصی (ستون substitute_user_id) و اعلان‌ها — جانشین پس از تأیید قطعی، اعلان به سرپرست/ادمین‌ها هنگام ثبت و پس از تصمیم سرپرست، بدون اعلان تکراری، اعتبارسنجی جانشین.
 const { resetDb, cleanup } = require('./helpers/testEnv');
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 
 describe('جانشین و اعلان‌های مرخصی (S4-11b)', () => {
-  let db; let U; let annual; let leaveService; let approvals; let events; let settingsRepo; let leaveRepo;
+  let db; let U; let annual; let leaveService; let approvals; let events; let leaveRepo;
   before(() => {
     db = resetDb();
     const F = require('./helpers/factories');
     leaveService = require('../src/services/leaveService');
     approvals = require('../src/services/leaveApprovalService');
     events = require('../src/services/notificationEvents');
-    settingsRepo = require('../src/repositories/settingsRepository');
     leaveRepo = require('../src/repositories/leaveRepository');
     annual = require('../src/repositories/leaveTypesRepository').findByCode('annual');
     const manager = F.makeUser({ role: 'manager' });
@@ -68,33 +67,31 @@ describe('جانشین و اعلان‌های مرخصی (S4-11b)', () => {
     assert.equal(notes(U.sub.id, 'leave_substitute').length, 1, 'رد ⇒ جانشین خبر نمی‌شود');
   });
 
-  test('تأیید مرحله‌ی میانی ⇒ اعلان به همه‌ی ادمین‌های فعال (و فقط آن‌ها)؛ کارمند و سرپرست نه؛ مرحله‌ی hr ⇒ hrها', async () => {
-    settingsRepo.setValue('leaveApprovalExtraStepTypes', 'annual');
+  test('اعلان‌ها: ثبت ⇒ سرپرست و همه‌ی ادمین‌ها؛ تصمیم سرپرست ⇒ کارمند (با نام) + ادمین‌ها (با علت)؛ تصمیم ادمین ⇒ ادمین‌ها خبر نمی‌شوند', async () => {
+    const mine = (userId, type, id) => notes(userId, type).filter((x) => x.data.includes(`"requestId":${id}`));
     const r = create({}).request;
-    assert.deepEqual(notes(U.admin.id, 'leave_requested').filter((x) => x.data.includes(`"requestId":${r.id}`)), [], 'مرحله‌ی ۱ سرپرست است نه ادمین');
-    const s1 = approvals.decide({ requestId: r.id, actor: U.manager, decision: 'approve' });
-    assert.equal(s1.completed, false);
-    await events.leaveStepAdvanced(s1.request);
-    for (const a of [U.admin, U.admin2]) {
-      const mine = notes(a.id, 'leave_requested').filter((x) => x.data.includes(`"requestId":${r.id}`));
-      assert.equal(mine.length, 1, `admin ${a.id}`);
-      assert.match(mine[0].body, /مرحله 2/);
-    }
-    assert.equal(notes(U.emp.id, 'leave_requested').length, 0);
-    await events.leaveStepAdvanced(s1.request);
-    assert.equal(notes(U.admin.id, 'leave_requested').filter((x) => x.data.includes(`"requestId":${r.id}`)).length, 1, 'dedupe');
+    await events.leaveRequested(r);
+    for (const u of [U.manager, U.admin, U.admin2]) assert.equal(mine(u.id, 'leave_requested', r.id).length, 1, `گیرنده ${u.id}`);
+    assert.equal(mine(U.emp.id, 'leave_requested', r.id).length, 0);
+    assert.equal(mine(U.hr.id, 'leave_requested', r.id).length, 0);
 
-    settingsRepo.setValue('leaveApprovalExtraStepRole', 'hr');
-    const h = create({}).request;
-    const hs = approvals.decide({ requestId: h.id, actor: U.manager, decision: 'approve' });
-    await events.leaveStepAdvanced(hs.request);
-    assert.equal(notes(U.hr.id, 'leave_requested').filter((x) => x.data.includes(`"requestId":${h.id}`)).length, 1);
-    assert.equal(notes(U.admin.id, 'leave_requested').filter((x) => x.data.includes(`"requestId":${h.id}`)).length, 0);
-    // رویداد برای درخواست نهایی/بدون زنجیره بی‌اثر است
-    const done = approvals.decide({ requestId: r.id, actor: U.admin, decision: 'approve' });
-    assert.equal(done.completed, true);
-    assert.deepEqual(await events.leaveStepAdvanced(done.request), []);
-    settingsRepo.resetValue('leaveApprovalExtraStepTypes');
-    settingsRepo.resetValue('leaveApprovalExtraStepRole');
+    const res = approvals.decide({ requestId: r.id, actor: U.manager, decision: 'approve', note: 'موافقم' });
+    assert.equal(res.completed, true);
+    await events.leaveDecided(res.request, { note: 'موافقم' });
+    const empNote = mine(U.emp.id, 'leave_approved', r.id)[0];
+    assert.match(empNote.body, new RegExp(U.manager.full_name), 'کارمند نام تأییدکننده را می‌بیند');
+    for (const a of [U.admin, U.admin2]) {
+      const got = mine(a.id, 'leave_supervisor_decided', r.id);
+      assert.equal(got.length, 1);
+      assert.match(got[0].title, new RegExp(U.manager.full_name));
+      assert.match(got[0].body, /موافقم/);
+    }
+    assert.equal(mine(U.manager.id, 'leave_supervisor_decided', r.id).length, 0);
+
+    const r2 = create({}).request;
+    const byAdmin = approvals.decide({ requestId: r2.id, actor: U.admin, decision: 'reject', note: 'ظرفیت' });
+    await events.leaveDecided(byAdmin.request, { note: 'ظرفیت' });
+    assert.equal(mine(U.emp.id, 'leave_rejected', r2.id).length, 1);
+    assert.equal(mine(U.admin2.id, 'leave_supervisor_decided', r2.id).length, 0, 'تصمیم ادمین اعلان «سرپرست» ندارد');
   });
 });

@@ -22,7 +22,7 @@ function canHandle(actor, dispute) {
 async function closeDispute(bot, actor, dispute, note) {
   const r = disputeService.resolveAsAdmin(actor, dispute.id, { note });
   if (!r.ok) return r;
-  notificationEvents.disputeResolved(r.updated, { note: r.note }); // اعلان پنل برای کارمند (S4-6b)
+  notificationEvents.disputeResolved(r.updated, { note: r.note, actor }); // اعلان پنل برای کارمند (S4-6b)
   auditRepository.logEvent({
     userId: actor.id,
     action: 'dispute_resolved',

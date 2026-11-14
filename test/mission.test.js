@@ -140,10 +140,10 @@ describe('ماموریت (C1)', () => {
     db.prepare("UPDATE users SET is_active = 1 WHERE id = ?").run(admin2.id);
   });
 
-  test('اعلان leaveRequested برای تأییدکننده‌ی درست (مدیر مستقیم / ادمینِ غیر از خود)', async () => {
+  test('اعلان leaveRequested برای تأییدکننده‌های درست (مدیر مستقیم + همه‌ی ادمین‌های فعالِ غیر از خود)', async () => {
     const r = mk(F.makeUser({ managerId: mgr.id }), { startDate: D(21) }).request;
     const n = await notificationEvents.leaveRequested(r);
-    assert.deepEqual(n.map((x) => x.notification.user_id), [mgr.id]);
+    assert.deepEqual(n.map((x) => x.notification.user_id).sort((a, b) => a - b), [mgr.id, admin.id, admin2.id].sort((a, b) => a - b));
     const ra = mk(admin, { startDate: D(22) }).request;
     const na = await notificationEvents.leaveRequested(ra);
     assert.deepEqual(na.map((x) => x.notification.user_id), [admin2.id]);
