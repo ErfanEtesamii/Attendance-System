@@ -1,0 +1,33 @@
+/* «آخرین رویدادها» در داشبورد — تایم‌لاینِ مرتب: آیکن دسته، عنوان فارسی، «چه‌کسی · کِی» در یک خط.
+   فقط توکن‌ها؛ منطق و ساختار داده دست نخورده. */
+.act-list { gap: 2px; }
+.act-list .act-item {
+  --tone: var(--hint);
+  grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 10px 10px;
+}
+.act-list .act-item--green { --tone: var(--green); }
+.act-list .act-item--yellow { --tone: var(--yellow); }
+.act-list .act-item--red { --tone: var(--red); }
+.act-list .act-item--blue { --tone: var(--blue); }
+/* خط اتصال بین آیکن‌ها (وسطِ تراشه‌ی ۳۶px) */
+.act-list .act-item + .act-item::before {
+  inset-inline-start: 27px; top: -6px; height: 12px; width: 2px; background: color-mix(in srgb, var(--hint) 28%, transparent);
+}
+.act-list .act-ico {
+  display: grid; place-items: center; flex: none; width: 36px; height: 36px; border-radius: 12px; font-size: 17px; line-height: 1;
+  background: color-mix(in srgb, var(--tone) 14%, var(--card)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 28%, transparent);
+}
+.act-list .act-main { gap: 3px; }
+.act-list .act-title { font-size: var(--fs-sm); font-weight: 800; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.act-list .act-title .ltr { font-weight: 600; font-size: var(--fs-xs); color: var(--hint); }
+.act-list .act-sub { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; min-width: 0; font-size: var(--fs-xs); color: var(--hint); }
+.act-list .act-who { font-weight: 700; color: var(--text); opacity: .78; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.act-list .act-arrow, .act-list .act-sep { opacity: .55; }
+/* ساعت: متن ساده‌ی کم‌رنگ (نه قرص)، جهت چپ‌به‌راست تا «۱۴۰۵/۰۸/۲۳ ۱۵:۱۴» درست خوانده شود */
+.act-list .act-time {
+  padding: 0; background: transparent; border-radius: 0; font-size: var(--fs-xs); font-weight: 600; color: var(--hint);
+  font-variant-numeric: tabular-nums; unicode-bidi: isolate; white-space: nowrap;
+}
+@media (max-width: 480px) {
+  .act-list .act-time { grid-column: auto; justify-self: auto; }
+}

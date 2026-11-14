@@ -211,10 +211,22 @@ router.get('/admin/overview', requirePermission('dashboard.read'), (req, res) =>
 
   let recentActivity = [];
   if (isAdmin(req.adminUser)) {
-    recentActivity = auditRepository.listRecent(8).map((r) => ({
-      ...r,
-      userFullName: r.user_id ? userMap.get(r.user_id)?.full_name || null : null,
-    }));
+    // نام کاربر: اول از map، وگرنه مستقیم از DB (مثلاً کاربری که در لیست پیش‌فرض نیست)
+    const nameOf = (id) => (id ? userMap.get(id)?.full_name || usersRepository.findById(id)?.full_name || null : null);
+    // کارمندِ هدفِ رویداد (meta.targetUserId در جزئیات ممیزی)؛ جزئیات خراب/متنی ⇒ null
+    const targetOf = (details) => {
+      try {
+        const d = typeof details === 'string' ? JSON.parse(details) : details;
+        const t = d && d.meta && d.meta.targetUserId !== undefined ? d.meta.targetUserId : d && d.targetUserId;
+        return t !== undefined && t !== null && Number.isInteger(Number(t)) ? Number(t) : null;
+      } catch (_) {
+        return null;
+      }
+    };
+    recentActivity = auditRepository.listRecent(8).map((r) => {
+      const target = targetOf(r.details);
+      return { ...r, userFullName: nameOf(r.user_id), targetFullName: target && target !== r.user_id ? nameOf(target) : null };
+    });
   }
 
   res.json({

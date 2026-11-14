@@ -56,9 +56,59 @@
   // «آخرین رویدادها» در داشبورد: برچسب فارسی برای رویدادهای رایج (بقیه با نام خودشان) و رنگ نشان؛ فقط نمایشی
   const ACT_LABEL = {
     admin_panel_login: 'ورود به پنل مدیریت', admin_panel_code_issued: 'صدور کد ورود پنل', admin_panel_logout: 'خروج از پنل مدیریت',
+    all_sessions_revoked: 'خروج همه‌ی نشست‌ها', user_sessions_revoked: 'خروج نشست‌های یک کاربر',
     remote_break_start: 'شروع استراحت دورکاری', remote_break_end: 'پایان استراحت دورکاری',
+    remote_work_start: 'شروع دورکاری', remote_work_end: 'پایان دورکاری', remote_work_approve: 'تأیید دورکاری', remote_work_reject: 'رد دورکاری',
+    remote_work_rejected: 'رد دورکاری', remote_work_batch_approve: 'تأیید گروهی دورکاری', remote_work_adjust: 'اصلاح دورکاری',
+    remote_work_manual_create: 'ثبت دستی دورکاری', remote_work_auto_closed: 'بسته‌شدن خودکار دورکاری', remote_work_overlap_decision: 'تصمیم هم‌پوشانی دورکاری',
     manager_alerted_repeated_lateness: 'هشدار تأخیر مکرر به مدیر',
+    payroll_viewed: 'مشاهده‌ی حقوق', payroll_exported: 'خروجی حقوق', performance_exported: 'خروجی عملکرد', report_exported: 'خروجی گزارش',
+    employee_hourly_rate_changed: 'تغییر نرخ ساعتی', employee_profile_edited: 'ویرایش پروفایل کارمند', employee_added: 'افزودن کارمند', employee_added_via_bot: 'افزودن کارمند (بات)', employee_deleted: 'حذف کارمند',
+    avatar_updated: 'تغییر عکس پروفایل', avatar_removed: 'حذف عکس پروفایل', avatar_updated_by_admin: 'تغییر عکس توسط ادمین', avatar_removed_by_admin: 'حذف عکس توسط ادمین',
+    attendance_record_manually_fixed: 'اصلاح دستی رکورد تردد', attendance_record_manually_created: 'ثبت دستی رکورد تردد', attendance_record_deleted: 'حذف رکورد تردد',
+    attendance_segment_manually_edited: 'ویرایش دستی بازه‌ی حضور', attendance_segment_manually_created: 'افزودن دستی بازه‌ی حضور', attendance_segment_deleted: 'حذف بازه‌ی حضور',
+    break_record_manually_created: 'ثبت دستی استراحت', break_record_manually_edited: 'ویرایش دستی استراحت', break_record_deleted: 'حذف استراحت',
+    record_manually_fixed: 'اصلاح دستی رکورد (بات)', record_auto_marked_incomplete: 'رکورد خودکار ناقص شد', record_auto_marked_non_working_day: 'روز غیرکاری خودکار ثبت شد',
+    check_in: 'ثبت ورود', check_out: 'ثبت خروج', re_check_in: 'ورود مجدد', check_in_with_permission: 'ورود با اجازه', check_in_blocked: 'ورود مسدود شد', check_out_blocked: 'خروج مسدود شد',
+    check_in_late_limit_warning: 'هشدار سقف تأخیر', attendance_rejected_ip: 'ورود از IP غیرمجاز', attendance_allowed_via_mission: 'ورود با ماموریت', attendance_allowed_via_pending_mission: 'ورود با ماموریت در انتظار',
+    checkin_permission_requested: 'درخواست اجازه‌ی ورود',
+    leave_requested: 'درخواست مرخصی', mission_requested: 'درخواست ماموریت', leave_request_created: 'ثبت درخواست مرخصی', leave_request_approved: 'تأیید درخواست مرخصی', leave_request_rejected: 'رد درخواست مرخصی',
+    leave_request_created_by_admin: 'ثبت مرخصی توسط ادمین', leave_request_edited_by_admin: 'ویرایش مرخصی توسط ادمین', leave_request_deleted_by_admin: 'حذف مرخصی توسط ادمین',
+    mission_cancelled: 'لغو ماموریت', mission_self_decided: 'تصمیم ماموریت توسط خود فرد', mission_time_adjusted: 'اصلاح زمان ماموریت', mission_started_now: 'شروع ماموریت', mission_ended_now: 'پایان ماموریت', mission_auto_ended: 'پایان خودکار ماموریت',
+    leave_type_created: 'ایجاد نوع مرخصی', leave_type_updated: 'ویرایش نوع مرخصی', leave_type_deleted: 'حذف نوع مرخصی', leave_balance_entitlement_set: 'تنظیم سهم مرخصی', leave_balance_adjusted: 'اصلاح مانده‌ی مرخصی',
+    record_dispute_submitted: 'ثبت اعتراض', record_dispute_message_sent: 'پیام جدید اعتراض', record_dispute_reopened_by_user: 'بازگشایی اعتراض', record_dispute_closed_by_user: 'بستن اعتراض', dispute_resolved: 'رسیدگی به اعتراض', dispute_message_sent: 'پاسخ به اعتراض',
+    month_closed: 'بستن ماه', month_reopened: 'بازگشایی ماه', closed_month_adjustment: 'اصلاح ماه بسته',
+    settings_updated: 'تغییر تنظیمات', settings_reset: 'بازنشانی تنظیمات', holidays_imported: 'وارد کردن تعطیلات', holiday_added: 'افزودن تعطیلی', holiday_updated: 'ویرایش تعطیلی', holiday_removed: 'حذف تعطیلی',
+    daily_report_submitted: 'ارسال گزارش روزانه', task_report_sent: 'ارسال گزارش تسک', report_reviewed: 'بررسی گزارش', task_answer_undone: 'بازگردانی پاسخ تسک', task_done_note_edited: 'ویرایش یادداشت تسک',
+    weekly_plan_changed: 'تغییر برنامه‌ی هفتگی', weekly_plan_submitted: 'ثبت برنامه‌ی هفتگی', weekly_plan_supervisor_comment: 'نظر سرپرست روی برنامه',
+    urgent_task_assigned: 'ارجاع تسک فوری', urgent_task_removed: 'حذف تسک فوری', self_urgent_task_added: 'افزودن تسک فوری شخصی', self_urgent_task_edited: 'ویرایش تسک فوری شخصی', self_urgent_task_removed: 'حذف تسک فوری شخصی',
+    plan_gate_exemption_granted: 'معافیت از قفل برنامه', plan_gate_exemption_used: 'استفاده از معافیت برنامه',
+    ai_assistant_query: 'پرسش از تحلیلگر هوشمند', ai_action_executed: 'اجرای اقدام هوشمند', ai_action_cancelled: 'لغو اقدام هوشمند',
+    audit_archived: 'آرشیو گزارش رویدادها', historical_data_purged: 'پاکسازی داده‌های قدیمی', system_reset: 'بازنشانی سیستم', system_reset_failed: 'بازنشانی سیستم ناموفق',
+    owner_promoted: 'ارتقا به مالک', owner_created: 'ایجاد مالک', admin_bootstrapped_via_script: 'ساخت ادمین با اسکریپت',
   };
+  // آیکن دسته‌ی رویداد (فقط نمایشی)
+  function actIcon(action) {
+    const a = String(action || '').toLowerCase();
+    if (/login|logout|session|code_issued|bootstrap|owner/.test(a)) return '🔐';
+    if (/payroll|hourly|rate/.test(a)) return '💰';
+    if (/remote/.test(a)) return '🏠';
+    if (/leave|mission/.test(a)) return '🏖';
+    if (/dispute/.test(a)) return '💬';
+    if (/attendance|check_|record|segment|break/.test(a)) return '🕒';
+    if (/task|plan|report/.test(a)) return '📋';
+    if (/employee|user|avatar/.test(a)) return '👤';
+    if (/ai_/.test(a)) return '🤖';
+    if (/setting|holiday|month|system|archive|purge/.test(a)) return '⚙️';
+    return '🔔';
+  }
+  // «امروز ۱۵:۱۴» برای رویدادهای امروز؛ وگرنه «۱۴۰۵/۰۸/۲۲ ۱۵:۱۴»
+  function actTime(v) {
+    const s = fmt.dateTime(v);
+    const now = fmt.dateTime(new Date().toISOString()).split(' ');
+    const parts = s.split(' ');
+    return parts.length === 2 && parts[0] === now[0] ? `امروز ${parts[1]}` : s;
+  }
   function actTone(action) {
     const a = String(action || '').toLowerCase();
     if (/delet|remov|reject|revok|reset|purge|fail|denied|block|lock/.test(a)) return 'red';
@@ -135,9 +185,9 @@
 
           <div class="card"><h3>${AP.can('audit.read') ? 'آخرین رویدادها' : 'ساعت کاری'}</h3>
             ${AP.can('audit.read') ? ((d.recentActivity || []).length ? `<div class="act-list">${(d.recentActivity || []).map((r) => `
-              <div class="act-item act-item--${actTone(r.action)}"><span class="act-dot" aria-hidden="true"></span>
-                <div class="act-main"><b class="act-user">${esc(r.userFullName || '—')}</b><span class="act-text" title="${esc(r.action)}">${esc(ACT_LABEL[r.action] || r.action)}</span></div>
-                <time class="act-time">${esc(fmt.dateTime(r.occurred_at))}</time></div>`).join('')}</div>
+              <div class="act-item act-item--${actTone(r.action)}" title="${esc(r.action)}"><span class="act-ico" aria-hidden="true">${actIcon(r.action)}</span>
+                <div class="act-main"><b class="act-title">${ACT_LABEL[r.action] ? esc(ACT_LABEL[r.action]) : `<span class="ltr">${esc(r.action)}</span>`}</b>
+                  <span class="act-sub"><span class="act-who">${esc(r.userFullName || 'سیستم')}</span>${r.targetFullName ? `<span class="act-arrow" aria-hidden="true">←</span><span class="act-who">${esc(r.targetFullName)}</span>` : ''}<span class="act-sep" aria-hidden="true">·</span><time class="act-time" dir="ltr">${esc(actTime(r.occurred_at))}</time></span></div></div>`).join('')}</div>
               <div class="mt"><button class="btn ghost small" data-go="audit">مشاهده‌ی همه</button></div>` : emptyBox('رویدادی ثبت نشده است.'))
               : `<div class="kv"><div class="kv-row"><span>شروع کار</span><span class="ltr">${esc(d.settings.workDayStart)}</span></div>
                  <div class="kv-row"><span>پایان کار</span><span class="ltr">${esc(d.settings.workDayEnd)}</span></div>
