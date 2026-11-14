@@ -84,7 +84,8 @@
 .emp-v2 .emp-card-meta em { font-style: normal; font-size: var(--fs-xs); font-weight: 700; color: var(--hint); }
 .emp-v2 .emp-card-meta b { font-size: var(--fs-sm); font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .emp-v2 .emp-card-meta b i { font-style: normal; color: var(--hint); font-weight: 500; font-size: var(--fs-xs); }
-.emp-v2 .emp-card-off { position: absolute; inset-block-start: 8px; inset-inline-end: 10px; }
+.emp-v2 .emp-card-badges { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.emp-v2 .emp-card-badges .badge { white-space: nowrap; }
 
 /* ===== جدول (حالت جدولی) هم‌خانواده با بقیه ===== */
 .emp-v2 .emp-table { border-radius: var(--r-lg); }

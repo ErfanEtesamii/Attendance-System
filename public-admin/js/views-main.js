@@ -354,7 +354,7 @@
                 <span class="emp-card-top">
                   ${AP.avatar(u.fullName, 'sm', u.id)}
                   <span class="emp-card-id"><b>${esc(u.fullName)}</b><span class="muted">${esc(u.department || 'بدون دپارتمان')}</span></span>
-                  ${AP.stateBadge(st)}
+                  <span class="emp-card-badges">${AP.stateBadge(st)}${u.isActive ? '' : AP.badge('red', 'حساب غیرفعال')}</span>
                 </span>
                 <span class="emp-card-meta">
                   <span><em>کد پرسنلی</em><b>${esc(faD(u.personnelCode || '—'))}</b></span>
@@ -362,7 +362,6 @@
                   <span><em>سرپرست</em><b>${esc(mgr)}</b></span>
                   <span><em>شیفت امروز</em><b>${u.shiftName ? `${esc(u.shiftName)} <i class="ltr">${esc(u.shiftTime)}</i>` : 'پیش‌فرض'}</b></span>
                 </span>
-                ${u.isActive ? '' : `<span class="emp-card-off">${AP.badge('red', 'حساب غیرفعال')}</span>`}
               </button>`;
             }).join('') : emptyBox('کارمندی با این فیلتر پیدا نشد.');
           };
