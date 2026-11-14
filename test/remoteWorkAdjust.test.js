@@ -81,6 +81,22 @@ describe('اصلاح ساعت دورکاری در رکورد تردد', () => {
     assert.equal(db.prepare('SELECT via_remote FROM attendance_records WHERE user_id = ?').get(e.id).via_remote, 0);
   });
 
+  test('ادمین و مالک روی هر کارمندی (حتی بدون سرپرستی مستقیم) می‌توانند ساعت را اصلاح کنند؛ خود ممنوع', () => {
+    const owner = F.makeUser({ role: 'owner' });
+    for (const [i, actor] of [U.admin, owner].entries()) {
+      const e = F.makeUser({ managerId: U.other.id });
+      const d = `2026-10-0${i + 1}`;
+      const s = mk(e, d, '05:00:00', '08:00:00');
+      assert.ok(svc.approve(actor, s, {}, { now }).ok);
+      const r = svc.adjustApproved(actor, s, { endAt: `${d}T07:00:00Z`, note: i ? undefined : 'ادمین' }, { now });
+      assert.ok(r.ok, `${actor.role}: ${r.code}`);
+      assert.equal(svc.listQueue(actor, { status: 'approved', week: 'all', userId: String(e.id) }).items[0].canAdjust, true);
+    }
+    const own = mk(U.admin, '2026-10-05', '05:00:00', '06:00:00');
+    repo.markApproved(own, { reviewedBy: owner.id, reviewedAt: now.toISOString(), reviewNote: null, approvedStartAt: null, approvedEndAt: null, attendanceRecordId: null });
+    assert.equal(svc.adjustApproved(U.admin, own, { endAt: '2026-10-05T05:30:00Z', note: 'x' }, { now }).code, 'SELF_NOT_ALLOWED');
+  });
+
   test('ماه بسته ⇒ MONTH_CLOSED', () => {
     const e = F.makeUser({ managerId: U.mgr.id });
     const s = mk(e, '2026-09-05', '05:00:00', '07:00:00');
