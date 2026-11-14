@@ -19,6 +19,7 @@ const { DATE_RE, STATUSES, scopedUserIds, visibleUsers, canAccessUser, parseRang
 const { attendanceRecordView, breakView } = require('../../../utils/auditViews');
 const monthLock = require('./monthLock'); // S5-3c: قفل ماه بسته
 const remoteRepo = require('../../../repositories/remoteWorkRepository');
+const { reviewScopeFailure } = require('../../../services/remoteWorkAdminService');
 
 const { isAdmin, isOwner } = require('../../../utils/roles');
 // ---------- اصلاح دستی رکورد تردد (فقط ادمین کل) ----------
@@ -200,7 +201,18 @@ router.get('/admin/attendance-records/:id', requirePermission('attendance.read')
     .listByUser(record.user_id)
     .filter((d) => d.attendance_record_id === record.id);
   const segments = attendanceRepository.listSegments(record.id);
-  res.json({ ...enrichRecord(record), history, disputes, segments, segmentCount: segments.length });
+  // دورکاری همان روز (همه‌ی وضعیت‌ها) برای اصلاح ساعت در مودال رکورد؛ بدون IP. canReview = مجوز و اسکوپ تأیید/اصلاح (سرور دوباره بررسی می‌کند)
+  const target = usersRepository.findById(record.user_id) || null;
+  const canReview = !reviewScopeFailure(req.adminUser, target);
+  const onsiteOverlap = record.via_remote === 0 && Boolean(record.check_in_time);
+  const remoteSessions = remoteRepo.listForUserDate(record.user_id, record.record_date)
+    .filter((x) => x.work_date === record.record_date)
+    .map((x) => ({
+      id: x.id, status: x.status, autoClosed: x.auto_closed === 1, open: !x.end_at,
+      startAt: x.start_at, endAt: x.end_at, approvedStartAt: x.approved_start_at, approvedEndAt: x.approved_end_at,
+      reviewNote: x.review_note || null, overlapsOnsite: onsiteOverlap, canReview,
+    }));
+  res.json({ ...enrichRecord(record), history, disputes, segments, segmentCount: segments.length, remoteSessions });
 });
 
 router.delete('/admin/attendance-records/:id/segments/:seq', requirePermission('records.edit'), (req, res) => {

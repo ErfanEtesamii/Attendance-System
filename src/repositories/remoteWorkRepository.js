@@ -215,6 +215,11 @@ function markRejected(id, { reviewedBy, reviewedAt, reviewNote }) {
 }
 
 // ساعت ورود/خروج هر رکورد رسمی (حضوری هم) — فقط برای «ادغام» (R5-۶) که تصمیم صریح سرپرست است
+// اصلاح ساعتِ نشستِ تأییدشده (NULL = همان start_at/end_at). فقط approved
+function updateApprovedTimes(id, { approvedStartAt, approvedEndAt }) {
+  return getDb().prepare("UPDATE remote_work_sessions SET approved_start_at = ?, approved_end_at = ? WHERE id = ? AND status = 'approved'").run(approvedStartAt, approvedEndAt, id).changes;
+}
+
 function updateRecordTimes(id, { checkIn, checkOut }) {
   getDb().prepare("UPDATE attendance_records SET check_in_time = ?, check_out_time = ?, updated_at = datetime('now') WHERE id = ?").run(checkIn, checkOut, id);
 }
@@ -240,7 +245,7 @@ function pendingClosedByUser({ userIds = null, excludeUserId = null } = {}) {
 
 module.exports = {
   listQueue, listBreaksForSessions,
-  findSessionFull, listInRangeForRecords, listApprovedForDay, listApprovedInRange, listClosedInRange, findOfficialRecord, insertRemoteRecord, updateRemoteRecord, adoptPlaceholder, replaceRemoteBreaks, markApproved, markRejected, updateRecordTimes, insertRemoteBreaks, pendingClosedByUser,
+  findSessionFull, listInRangeForRecords, listApprovedForDay, listApprovedInRange, listClosedInRange, findOfficialRecord, insertRemoteRecord, updateRemoteRecord, adoptPlaceholder, replaceRemoteBreaks, markApproved, markRejected, updateApprovedTimes, updateRecordTimes, insertRemoteBreaks, pendingClosedByUser,
   findOpenSession, findSessionById, listForUserDate, listForUserRange, insertSession, insertClosedSession, closeSession, listStaleOpenSessions,
   listBreaks, findOpenBreak, insertBreak, closeBreak,
 };

@@ -102,6 +102,38 @@
     const lastSeg = segList[segList.length - 1];
     const canAddSegment = admin && Boolean(r.check_in_time) && Boolean(lastSeg && lastSeg.check_out_time);
 
+    // دورکاریِ همان روز: ساعت مؤثر (اصلاح‌شده یا اصلی) قابل ویرایش؛ نشستِ در انتظار با «تأیید/رد» (و تصمیم هم‌پوشانی با حضوری)، نشستِ تأییدشده با «ذخیره»
+    const remoteList = r.remoteSessions || [];
+    const REMOTE_ST_LABEL = { pending: ['pending', 'در انتظار'], approved: ['approved', 'تأییدشده'], rejected: ['rejected', 'ردشده'] };
+    const remoteRow = (x) => {
+      const st = REMOTE_ST_LABEL[x.status] || [x.status, x.status];
+      const effS = x.approvedStartAt || x.startAt;
+      const effE = x.approvedEndAt || x.endAt;
+      const editable = x.canReview && !x.open && x.status !== 'rejected';
+      const mins = !x.open && effE ? Math.round((Date.parse(effE) - Date.parse(effS)) / 60000) : null;
+      return `
+      <div class="rec-seg ${x.open ? 'is-open' : 'is-closed'}" data-remote="${x.id}" data-rstatus="${esc(x.status)}">
+        <div class="rec-seg-head">
+          <span class="rec-seg-num">${icon('clock')}</span>
+          <b class="rec-seg-title">دورکاری</b>
+          ${AP.badge(st[0], st[1])}${x.overlapsOnsite ? AP.badge('orange', 'هم‌پوشانی با حضور حضوری') : ''}${x.autoClosed ? AP.badge('gray', 'بسته‌شده‌ی خودکار') : ''}
+          ${mins != null && mins >= 0 ? `<span class="rec-seg-dur">${icon('clock')}${fmt.min(mins)}</span>` : ''}
+        </div>
+        <div class="rec-seg-fields">
+          <label class="rec-f rec-f-in"><span>${icon('in')} شروع</span>${editable ? `<input type="datetime-local" data-f="rem-in" aria-label="شروع دورکاری" value="${fmt.toLocalInput(effS)}" />` : `<b class="num">${fmt.clock(effS)}</b>`}</label>
+          <label class="rec-f rec-f-out"><span>${icon('out')} پایان</span>${editable ? `<input type="datetime-local" data-f="rem-out" aria-label="پایان دورکاری" value="${fmt.toLocalInput(effE)}" />` : (x.open ? AP.badge('present', 'در جریان') : `<b class="num">${fmt.clock(effE)}</b>`)}</label>
+          ${editable && x.status === 'pending' && x.overlapsOnsite ? `<label class="rec-f"><span>تصمیم هم‌پوشانی</span><select data-f="rem-decision" aria-label="تصمیم هم‌پوشانی"><option value="merge">ادغام با حضوری (جمع ساعت‌ها)</option><option value="keep_onsite">حضوری بماند (دورکاری رد شود)</option></select></label>` : ''}
+        </div>
+        ${x.reviewNote ? `<p class="muted small">${esc(x.reviewNote)}</p>` : ''}
+        ${editable ? `<div class="rec-seg-foot">
+          ${x.status === 'approved' ? SAVE_NOTE('تغییر ساعت‌های این دورکاری') : `<p class="rec-save-note">${icon('info')}<span>برای ثبت در رکورد، این دورکاری را <b>تأیید</b> کنید (ساعت‌ها در صورت تغییر اعمال می‌شود).</span></p>`}
+          <div class="row-actions">${x.status === 'approved'
+    ? `<button type="button" class="btn ghost small" data-save-remote>${icon('check')} ذخیره</button>`
+    : `<button type="button" class="btn ghost small" data-approve-remote>${icon('check')} تأیید</button><button type="button" class="btn danger small" data-reject-remote>${icon('x')} رد</button>`}</div>
+        </div>` : ''}
+      </div>`;
+    };
+
     const tile = (tone, ic, label, value, sub) => `
       <div class="rec-tile" data-tone="${tone}">
         <span class="rec-tile-icon">${icon(ic)}</span>
@@ -159,6 +191,11 @@
             <p class="rec-save-note">${icon('info')}<span>استراحت جدید فقط با زدن دکمه‌ی <b>افزودن استراحت</b> در همین باکس ثبت می‌شود.</span></p>
             <button class="btn ghost small add-break-submit" type="submit">${icon('plus')} افزودن استراحت</button></form>` : ''}
         </section>
+
+        ${remoteList.length ? `<section class="rec-section" id="rec-remote">
+          <h4 class="rec-title"><span class="rec-title-icon">${icon('clock')}</span>دورکاری این روز<span class="rec-count">${fmt.num(remoteList.length)}</span></h4>
+          <div class="rec-segs">${remoteList.map(remoteRow).join('')}</div>
+        </section>` : ''}
 
         ${admin ? `<section class="rec-section">
           <h4 class="rec-title"><span class="rec-title-icon">${icon('edit')}</span>اصلاح رکورد</h4>
@@ -246,6 +283,36 @@
             if (reason === null) return;
             const ok = await AP.attempt(() => AP.api(`/admin/attendance-records/${id}/segments/${tr.dataset.segment}`, { method: 'DELETE', body: { reason } }), 'نوبت ورود مجدد حذف شد.');
             if (ok) reopen();
+          });
+        });
+
+        // ---- دورکاری همان روز (اصلاح ساعت / تأیید / رد) ----
+        const remoteCall = async (fn, okMsg) => {
+          try { const res = await fn(); AP.toast(res && res.recordUnchanged ? `${okMsg} ساعت رکورد حضوری تغییر نکرد؛ در صورت نیاز از «اصلاح رکورد» دستی اصلاحش کنید.` : okMsg); reopen(); } catch (err) { AP.toast(err.message, true); }
+        };
+        $$('.rec-seg[data-remote]', b).forEach((tr) => {
+          const sid = tr.dataset.remote;
+          const times = () => ({ s: fmt.fromLocalInput(($('[data-f="rem-in"]', tr) || {}).value), e: fmt.fromLocalInput(($('[data-f="rem-out"]', tr) || {}).value) });
+          const save = $('[data-save-remote]', tr);
+          if (save) save.addEventListener('click', async () => {
+            const reason = await AP.askReason({ title: 'اصلاح ساعت دورکاری', message: 'رکورد و استراحت‌های دورکاری این روز دوباره محاسبه می‌شود.', confirmText: 'ذخیره' });
+            if (reason === null) return;
+            const t = times();
+            await remoteCall(() => AP.api(`/admin/remote-work/${sid}`, { method: 'PATCH', body: { start_at: t.s, end_at: t.e, review_note: reason } }), 'ساعت دورکاری اصلاح شد.');
+          });
+          const approveBtn = $('[data-approve-remote]', tr);
+          if (approveBtn) approveBtn.addEventListener('click', async () => {
+            const dec = $('[data-f="rem-decision"]', tr);
+            const reason = await AP.askReason({ title: 'تأیید دورکاری', message: dec ? 'این روز حضور حضوری هم دارد؛ تصمیم انتخاب‌شده اعمال می‌شود.' : undefined, confirmText: 'تأیید' });
+            if (reason === null) return;
+            const t = times();
+            await remoteCall(() => AP.api(`/admin/remote-work/${sid}/approve`, { method: 'POST', body: { approved_start_at: t.s, approved_end_at: t.e, review_note: reason, overlap_decision: dec ? dec.value : undefined } }), 'دورکاری تأیید شد.');
+          });
+          const rejectBtn = $('[data-reject-remote]', tr);
+          if (rejectBtn) rejectBtn.addEventListener('click', async () => {
+            const reason = await AP.askReason({ title: 'رد دورکاری', confirmText: 'رد', danger: true });
+            if (reason === null) return;
+            await remoteCall(() => AP.api(`/admin/remote-work/${sid}/reject`, { method: 'POST', body: { review_note: reason } }), 'دورکاری رد شد.');
           });
         });
 

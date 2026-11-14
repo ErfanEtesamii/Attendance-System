@@ -86,4 +86,15 @@ router.post('/admin/remote-work/:id/reject', requirePermission('remote_work.revi
   return send(res, service.reject(req.adminUser, req.params.id, { reviewNote: pickFrom(b, 'review_note', 'reviewNote') }, { ip: req.ip }));
 });
 
+// اصلاح ساعت نشستِ تأییدشده (مودال رکورد تردد): body = { start_at?, end_at? (ISO)، review_note (الزامی) } — camelCase هم پذیرفته می‌شود.
+//   ⇒ ۲۰۰ { ok, session, attendanceRecordId, recordUpdated, recordUnchanged }؛ خطاها: ۴۰۹ NOT_APPROVED|SESSION_OPEN|MONTH_CLOSED|TIME_CONFLICT، ۴۰۰ INVALID_TIME|REVIEW_NOTE_REQUIRED|INVALID_NOTE.
+router.patch('/admin/remote-work/:id', requirePermission('remote_work.review'), (req, res) => {
+  const b = bodyOf(req);
+  return send(res, service.adjustApproved(req.adminUser, req.params.id, {
+    startAt: pickFrom(b, 'start_at', 'startAt'),
+    endAt: pickFrom(b, 'end_at', 'endAt'),
+    note: pickFrom(b, 'review_note', 'reviewNote'),
+  }, { ip: req.ip }));
+});
+
 module.exports = router;

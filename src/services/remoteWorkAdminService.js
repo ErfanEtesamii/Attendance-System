@@ -37,7 +37,7 @@ const PERM_CREATE = 'remote_work.create';
 
 const ERROR_STATUS = {
   FORBIDDEN: 403, SELF_NOT_ALLOWED: 403, NOT_IN_SCOPE: 403,
-  USER_NOT_FOUND: 404, SESSION_NOT_FOUND: 404,
+  USER_NOT_FOUND: 404, SESSION_NOT_FOUND: 404, NOT_APPROVED: 409,
   SESSION_OPEN: 409, NOT_PENDING: 409, MONTH_CLOSED: 409, ONSITE_OVERLAP: 409, TIME_CONFLICT: 409, NO_OVERLAP: 409, ONSITE_NOT_CLOSED: 409,
 };
 const statusOf = (code) => ERROR_STATUS[code] || 400;
@@ -165,6 +165,8 @@ function toQueueItem(row, breaks, employee, actor) {
     onsiteRecord: row.onsite_record_id ? { id: row.onsite_record_id, checkInTime: row.onsite_check_in, checkOutTime: row.onsite_check_out } : null,
     // آیا «همین کاربر» می‌تواند این ثبت را تأیید/رد کند (فقط pending و در اسکوپ تصمیم؛ hr و خود ⇒ false)؛ برای فعال/غیرفعال کردن دکمه‌ها در UI
     canReview: row.status === 'pending' && !!employee && reviewScopeFailure(actor, employee) === null,
+    // آیا همین کاربر می‌تواند ساعتِ نشستِ «تأییدشده» را اصلاح کند (PATCH /admin/remote-work/:id): approved، بسته‌شده، در اسکوپ تصمیم
+    canAdjust: row.status === 'approved' && !!row.end_at && !!employee && reviewScopeFailure(actor, employee) === null,
   };
 }
 
@@ -558,6 +560,79 @@ function presentSession(r) {
   };
 }
 
+// ---------- اصلاح ساعت نشستِ «تأییدشده» (پنل: مودال رکورد تردد) ----------
+// فقط نشست approved و بسته‌شده. دلیل (note) الزامی است (مالک معاف). قواعد زمان مثل approve: پایان بعد از شروع، حداکثر ۲۴ ساعت، نه در آینده،
+// ماه بسته ⇒ MONTH_CLOSED، هم‌پوشانی ساعت با نشست تأییدشده‌ی دیگرِ همان روز ⇒ TIME_CONFLICT.
+//   • رکورد رسمی دورکاری (via_remote = 1): رکورد و استراحت‌ها از روی همه‌ی نشست‌های approved دوباره ساخته می‌شود (syncOfficialRecord).
+//   • نشستِ ادغام‌شده در رکورد حضوری (via_remote = 0): ساعت حضوری اصلی دیگر جدا ذخیره نیست، پس رکورد فقط «گسترش» می‌یابد
+//     (ورود زودتر/خروج دیرتر)؛ کوتاه‌کردن بازه رکورد را تغییر نمی‌دهد (recordUnchanged = true) و باید در «اصلاح رکورد» دستی اصلاح شود.
+// ⇒ { ok, session, attendanceRecordId, recordUpdated, recordUnchanged } | fail
+function adjustApproved(actor, sessionId, input = {}, { ip = null, now = new Date() } = {}) {
+  if (!actor || !hasPermission(actor.role, PERM_REVIEW)) return fail('FORBIDDEN', 'برای اصلاح دورکاری مجوز لازم را ندارید.');
+  if (!isId(sessionId) || Number(sessionId) < 1) return fail('SESSION_NOT_FOUND', 'ثبت دورکاری یافت نشد.');
+  const body = input && typeof input === 'object' ? input : {};
+  const startIn = normalizeIso(body.startAt);
+  const endIn = normalizeIso(body.endAt);
+  if (startIn === undefined || endIn === undefined || (!startIn && !endIn)) return fail('INVALID_TIME', 'ساعت شروع/پایان نامعتبر است (قالب ISO مثل 2026-10-14T08:30:00Z).');
+  const noteR = normalizeNote(body.note);
+  if (!noteR.ok) return fail('INVALID_NOTE', `دلیل باید رشته و حداکثر ${MAX_NOTE} نویسه باشد.`);
+  if (!noteR.note && !isOwnerActor(actor)) return fail('REVIEW_NOTE_REQUIRED', 'برای اصلاح ساعت دورکاری نوشتن دلیل الزامی است.');
+  const nowIso = now.toISOString();
+
+  return getDb().transaction(() => {
+    const row = remoteRepo.findSessionFull(Number(sessionId));
+    if (!row) return fail('SESSION_NOT_FOUND', 'ثبت دورکاری یافت نشد.');
+    const denied = reviewScopeFailure(actor, usersRepository.findById(row.user_id) || null);
+    if (denied) return denied;
+    if (row.status !== 'approved') return fail('NOT_APPROVED', 'فقط دورکاریِ تأییدشده با این مسیر اصلاح می‌شود؛ ثبتِ در انتظار را با «تأیید با ساعت اصلاح‌شده» تعیین‌تکلیف کنید.');
+    if (!row.end_at) return fail('SESSION_OPEN', 'این نشست هنوز بسته نشده است.');
+    if (monthClosuresRepository.findClosedOverlapping(row.work_date, row.work_date).length > 0) {
+      return fail('MONTH_CLOSED', 'روز این دورکاری در ماهِ بسته‌شده است و اصلاح آن ممکن نیست.');
+    }
+    const start = startIn || effStart(row);
+    const end = endIn || effEnd(row);
+    if (end <= start) return fail('INVALID_TIME', 'پایان باید بعد از شروع باشد.');
+    if (Date.parse(end) - Date.parse(start) > MAX_SPAN_MS) return fail('INVALID_TIME', 'بازه‌ی نشست نباید بیش از ۲۴ ساعت باشد.');
+    if (end > nowIso) return fail('INVALID_TIME', 'پایان نمی‌تواند در آینده باشد.');
+    const clash = remoteRepo.listApprovedForDay(row.user_id, row.work_date).some((o) => o.id !== row.id && start < effEnd(o) && effStart(o) < end);
+    if (clash) return fail('TIME_CONFLICT', 'ساعت این نشست با نشست تأییدشده‌ی دیگری در همان روز هم‌پوشانی دارد.');
+
+    const approvedStartAt = start !== row.start_at ? start : null;
+    const approvedEndAt = end !== row.end_at ? end : null;
+    const changed = remoteRepo.updateApprovedTimes(row.id, { approvedStartAt, approvedEndAt });
+    if (changed !== 1) return fail('NOT_APPROVED', 'وضعیت این ثبت هم‌زمان تغییر کرد؛ صفحه را تازه کنید.');
+
+    const existing = remoteRepo.findOfficialRecord(row.user_id, row.work_date);
+    let recordId = row.attendance_record_id || (existing && existing.id) || null;
+    let recordUpdated = false;
+    let recordUnchanged = false;
+    if (existing && existing.via_remote === 0 && existing.check_in_time) { // ادغام‌شده در رکورد حضوری
+      recordId = existing.id;
+      const inT = existing.check_in_time; const outT = existing.check_out_time;
+      const newIn = start < inT ? start : inT;
+      const newOut = outT && end > outT ? end : outT;
+      if (newIn !== inT || newOut !== outT) { remoteRepo.updateRecordTimes(existing.id, { checkIn: newIn, checkOut: newOut }); recordUpdated = true; }
+      recordUnchanged = !recordUpdated && (start > effStart(row) || end < effEnd(row));
+    } else {
+      const synced = syncOfficialRecord(row.user_id, row.work_date, ip);
+      if (!synced.ok) rollbackWith(synced);
+      recordId = synced.recordId;
+      recordUpdated = true;
+      getDb().prepare("UPDATE remote_work_sessions SET attendance_record_id = ? WHERE user_id = ? AND work_date = ? AND status = 'approved'").run(recordId, row.user_id, row.work_date);
+    }
+
+    const after = remoteRepo.findSessionFull(row.id);
+    auditRepository.logChange({
+      actor: actor.id, action: 'remote_work_adjust', entityType: 'remote_work_session', entityId: row.id,
+      before: { status: 'approved', startAt: effStart(row), endAt: effEnd(row), attendanceRecordId: row.attendance_record_id || null },
+      after: { status: 'approved', startAt: effStart(after), endAt: effEnd(after), attendanceRecordId: recordId },
+      reason: noteR.note, ip,
+      meta: { source: 'admin_panel', targetUserId: row.user_id, sessionId: row.id, workDate: row.work_date, recordId, recordUpdated, recordUnchanged },
+    });
+    return { ok: true, session: presentSession(after), attendanceRecordId: recordId, recordUpdated, recordUnchanged };
+  })();
+}
+
 // ---------- ثبت دستی دورکاری توسط ادمین ----------
 // فقط remote_work.create (فقط admin). ساخت نشست «بسته» + تأیید در «یک» تراکنش با همان approveInner (همان قواعد: ماه بسته، آینده/۲۴ ساعت،
 // TIME_CONFLICT، هم‌پوشانی با حضوری که فقط با overlap_decision = merge ممکن است). هر شکستی ⇒ rollback کامل (نه نشستی می‌ماند نه رکوردی).
@@ -650,4 +725,4 @@ function reminderTargets() {
   return out;
 }
 
-module.exports = { PERM_READ, PERM_REVIEW, PERM_CREATE, createManual, statusOf, readScopeFailure, reviewScopeFailure, queueScope, checkRead, checkReview, listQueue, approve, reject, approveBatch, pendingSummary, reminderTargets };
+module.exports = { PERM_READ, PERM_REVIEW, PERM_CREATE, createManual, adjustApproved, statusOf, readScopeFailure, reviewScopeFailure, queueScope, checkRead, checkReview, listQueue, approve, reject, approveBatch, pendingSummary, reminderTargets };

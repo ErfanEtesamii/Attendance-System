@@ -43,6 +43,7 @@
   }
 
   function actions(it) {
+    if (it.canAdjust) return `<button type="button" class="btn ghost small" data-act="edit" data-id="${it.id}">اصلاح ساعت</button>`;
     if (!it.canReview) return '';
     if (!it.endAt) return '<span class="muted">پس از ثبت خروج قابل بررسی است</span>';
     if (it.overlapsOnsite) {
@@ -108,6 +109,43 @@
           const r = await AP.attempt(() => AP.api(`/admin/remote-work/${it.id}/approve`, { method: 'POST', body: { approved_start_at: start, approved_end_at: end, ...(f.note ? { review_note: f.note } : {}) } }), 'دورکاری با ساعت اصلاح‌شده تأیید شد.', $('button[type=submit]', form));
           if (!r) return;
           m.close();
+          after();
+        });
+      },
+    });
+  }
+
+  // اصلاح ساعتِ دورکاریِ «تأییدشده» (PATCH /admin/remote-work/:id): رکورد و استراحت‌های آن روز دوباره محاسبه می‌شود؛ دلیل الزامی (مالک معاف)
+  function edit(it) {
+    const eff = { s: it.approvedStartAt || it.startAt, e: it.approvedEndAt || it.endAt };
+    AP.modal({
+      title: 'اصلاح ساعت دورکاری',
+      body: `<form class="form" id="rw-edit">
+        <p class="muted">${esc(it.employee ? it.employee.fullName : 'کارمند')} — ${esc(fmt.date(it.workDate))}. ساعت ثبت‌شده‌ی کارمند: ${esc(fmt.clock(it.startAt))} تا ${esc(fmt.clock(it.endAt))}. با ذخیره، رکورد و استراحت‌های این روز دوباره محاسبه می‌شود.${it.overlapsOnsite ? ' <b>این روز حضور حضوری هم دارد؛ ساعت رکورد حضوری فقط گسترش می‌یابد و کوتاه‌کردن بازه باید از «رکوردهای تردد» دستی اصلاح شود.</b>' : ''}</p>
+        <div class="form-grid">
+          <label class="field"><span>شروع</span><input type="datetime-local" name="start" required value="${esc(fmt.toLocalInput(eff.s))}" /></label>
+          <label class="field"><span>پایان</span><input type="datetime-local" name="end" required value="${esc(fmt.toLocalInput(eff.e))}" /></label>
+          <label class="field full"><span>${AP.reasonOptional() ? 'دلیل اصلاح (اختیاری)' : 'دلیل اصلاح (الزامی)'}</span><textarea name="note" rows="2" maxlength="500" ${AP.reasonOptional() ? '' : 'required'}></textarea></label>
+        </div>
+        <div class="form-msg"></div>
+        <div class="modal-actions"><button class="btn primary" type="submit">ذخیره اصلاح</button><button class="btn ghost" type="button" data-cancel>انصراف</button></div>
+      </form>`,
+      onMount(body, m) {
+        AP.dates.mount(body);
+        const form = $('#rw-edit', body);
+        const msg = (t) => { const e = $('.form-msg', form); e.className = 'form-msg err'; e.textContent = t; };
+        $('[data-cancel]', form).addEventListener('click', () => m.close());
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const f = AP.formData(form);
+          const start = fmt.fromLocalInput(f.start);
+          const end = fmt.fromLocalInput(f.end);
+          if (!start || !end) return msg('ساعت شروع و پایان را کامل وارد کنید.');
+          if (!AP.reasonOptional() && !String(f.note || '').trim()) return msg('دلیل اصلاح را بنویسید.');
+          const r = await AP.attempt(() => AP.api(`/admin/remote-work/${it.id}`, { method: 'PATCH', body: { start_at: start, end_at: end, review_note: String(f.note || '').trim() } }), 'ساعت دورکاری اصلاح شد.', $('button[type=submit]', form));
+          if (!r) return;
+          m.close();
+          if (r.recordUnchanged) AP.toast('ساعت رکورد حضوری تغییر نکرد؛ در صورت نیاز از «رکوردهای تردد» دستی اصلاحش کنید.');
           after();
         });
       },
@@ -185,7 +223,7 @@
       box.innerHTML = `${readOnly}<div class="card flush"><div class="table-wrap"><table>
         <thead><tr><th>کارمند</th><th>روز</th><th>ساعت ثبت‌شده</th><th>کار خالص</th><th>وضعیت</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>${pager}`;
       const byId = new Map(r.items.map((i) => [String(i.id), i]));
-      const handlers = { approve, reject, adjust, overlap };
+      const handlers = { approve, reject, adjust, overlap, edit };
       $$('[data-act]', box).forEach((b) => b.addEventListener('click', () => handlers[b.dataset.act](byId.get(b.dataset.id))));
       $$('[data-page]', box).forEach((b) => b.addEventListener('click', () => {
         ui.offset = Math.max(0, ui.offset + (b.dataset.page === 'next' ? PAGE_SIZE : -PAGE_SIZE));
