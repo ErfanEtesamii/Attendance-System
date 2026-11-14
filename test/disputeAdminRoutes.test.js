@@ -247,9 +247,11 @@ describe('routeهای ادمین اعتراض (D3/D4)', { skip: hasDeps ? false 
       assert.equal(n.length, 1);
       assert.match(n[0].body, /اصلاح شد/);
       assert.equal(notifs(emp, 'dispute_admin_message').length, 0, 'پیام پایانی دوبار اعلام نمی‌شود');
-      assert.equal(telegram.length, 1);
-      assert.match(telegram[0].text, /اعتراض شما بررسی و بسته شد/);
-      assert.match(telegram[0].text, /پاسخ سرپرست: اصلاح شد/);
+      // وقتی «سرپرست» اعتراض را می‌بندد، ادمین‌ها هم خبر می‌شوند؛ پس فقط پیام مستقیم کارمند را بررسی می‌کنیم
+      const toEmp = telegram.filter((t) => t.to === String(emp.telegram_user_id));
+      assert.equal(toEmp.length, 1);
+      assert.match(toEmp[0].text, /اعتراض شما بررسی و بسته شد/);
+      assert.match(toEmp[0].text, /پاسخ سرپرست: اصلاح شد/);
     });
 
     test('resolve بدون یادداشت: بدون پیام و بدون «پاسخ»ِ تلگرام؛ audit بدون reason', async () => {
