@@ -225,6 +225,17 @@ function setOnsiteSpan(id, inAt, outAt) {
   return getDb().prepare('UPDATE remote_work_sessions SET onsite_in_at = ?, onsite_out_at = ? WHERE id = ?').run(inAt, outAt, id).changes;
 }
 
+// اگر رکورد «بازه‌ی ورود/خروج» (attendance_segments: ورود مجدد یا ویرایش دستی) دارد، محاسبه‌ی ساعت‌ها (computeDay) از همان‌ها انجام می‌شود نه از
+// ساعت‌های خودِ رکورد؛ پس ورودِ اولین بازه و خروجِ آخرین بازه هم با رکورد هم‌گام می‌شود (مثل attendanceRepository.manualUpdate). ⇒ تعداد بازه‌ها
+function syncRecordSegments(recordId, { checkIn, checkOut }) {
+  const db = getDb();
+  const n = db.prepare('SELECT COUNT(*) AS c FROM attendance_segments WHERE attendance_record_id = ?').get(recordId).c;
+  if (!n) return 0;
+  db.prepare('UPDATE attendance_segments SET check_in_time = ? WHERE attendance_record_id = ? AND seq = 1').run(checkIn, recordId);
+  db.prepare('UPDATE attendance_segments SET check_out_time = ? WHERE attendance_record_id = ? AND seq = (SELECT MAX(seq) FROM attendance_segments WHERE attendance_record_id = ?)').run(checkOut, recordId, recordId);
+  return n;
+}
+
 function updateRecordTimes(id, { checkIn, checkOut }) {
   getDb().prepare("UPDATE attendance_records SET check_in_time = ?, check_out_time = ?, updated_at = datetime('now') WHERE id = ?").run(checkIn, checkOut, id);
 }
@@ -250,7 +261,7 @@ function pendingClosedByUser({ userIds = null, excludeUserId = null } = {}) {
 
 module.exports = {
   listQueue, listBreaksForSessions,
-  findSessionFull, listInRangeForRecords, listApprovedForDay, listApprovedInRange, listClosedInRange, findOfficialRecord, insertRemoteRecord, updateRemoteRecord, adoptPlaceholder, replaceRemoteBreaks, markApproved, markRejected, updateApprovedTimes, setOnsiteSpan, updateRecordTimes, insertRemoteBreaks, pendingClosedByUser,
+  findSessionFull, listInRangeForRecords, listApprovedForDay, listApprovedInRange, listClosedInRange, findOfficialRecord, insertRemoteRecord, updateRemoteRecord, adoptPlaceholder, replaceRemoteBreaks, markApproved, markRejected, updateApprovedTimes, setOnsiteSpan, syncRecordSegments, updateRecordTimes, insertRemoteBreaks, pendingClosedByUser,
   findOpenSession, findSessionById, listForUserDate, listForUserRange, insertSession, insertClosedSession, closeSession, listStaleOpenSessions,
   listBreaks, findOpenBreak, insertBreak, closeBreak,
 };

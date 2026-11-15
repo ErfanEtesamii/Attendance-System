@@ -334,6 +334,7 @@ function rebuildMergedRecord(recordId, onsite, sessions) {
     for (const b of clippedBreaks(x.s, x.start, x.end)) if (b.end <= onsite.start || b.start >= onsite.end) breaks.push(b);
   }
   remoteRepo.updateRecordTimes(recordId, { checkIn, checkOut });
+  remoteRepo.syncRecordSegments(recordId, { checkIn, checkOut }); // رکورد با بازه‌های ورود/خروج: ساعت‌ها از بازه‌ها حساب می‌شود
   remoteRepo.replaceRemoteBreaks(recordId, breaks);
   return { checkIn, checkOut };
 }

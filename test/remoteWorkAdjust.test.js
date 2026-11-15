@@ -120,6 +120,19 @@ describe('اصلاح ساعت دورکاری در رکورد تردد', () => {
     assert.equal(db.prepare('SELECT check_out_time FROM attendance_records WHERE id = ?').get(recId).check_out_time, iso('2026-10-07', '14:00:00'));
   });
 
+  test('رکورد حضوری با بازه‌ی ورود/خروج (segments): ادغام و کوتاه‌کردن، بازه‌ها را هم‌گام می‌کند (محاسبه‌ی ساعت از segments است)', () => {
+    const e = F.makeUser({ managerId: U.mgr.id });
+    const rid = db.prepare("INSERT INTO attendance_records (user_id, record_date, check_in_time, check_out_time, status) VALUES (?, ?, ?, ?, 'normal')").run(e.id, '2026-10-05', iso('2026-10-05', '06:00:00'), iso('2026-10-05', '10:00:00')).lastInsertRowid;
+    db.prepare('INSERT INTO attendance_segments (attendance_record_id, seq, check_in_time, check_out_time) VALUES (?, 1, ?, ?)').run(rid, iso('2026-10-05', '06:00:00'), iso('2026-10-05', '10:00:00'));
+    const s = mk(e, '2026-10-05', '10:30:00', '12:00:00');
+    assert.ok(svc.approve(U.mgr, s, { overlapDecision: 'merge', reviewNote: 'ادغام' }, { now }).ok);
+    const seg = () => db.prepare('SELECT check_in_time, check_out_time FROM attendance_segments WHERE attendance_record_id = ? ORDER BY seq').all(rid);
+    assert.deepEqual(seg().map((x) => [x.check_in_time, x.check_out_time]), [[iso('2026-10-05', '06:00:00'), iso('2026-10-05', '12:00:00')]]);
+    assert.ok(svc.adjustApproved(U.mgr, s, { endAt: '2026-10-05T11:00:00Z', note: 'کوتاه' }, { now }).ok);
+    assert.deepEqual(seg().map((x) => [x.check_in_time, x.check_out_time]), [[iso('2026-10-05', '06:00:00'), iso('2026-10-05', '11:00:00')]]);
+    assert.equal(db.prepare('SELECT check_out_time FROM attendance_records WHERE id = ?').get(rid).check_out_time, iso('2026-10-05', '11:00:00'));
+  });
+
   test('ادغامِ قدیمی (بدون بازه‌ی حضوریِ ذخیره‌شده): رفتار قبلی؛ کوتاه‌کردن ⇒ recordUnchanged و legacyMerge', () => {
     const e = F.makeUser({ managerId: U.mgr.id });
     db.prepare("INSERT INTO attendance_records (user_id, record_date, check_in_time, check_out_time, status) VALUES (?, ?, ?, ?, 'normal')").run(e.id, '2026-10-06', iso('2026-10-06', '06:00:00'), iso('2026-10-06', '10:00:00'));

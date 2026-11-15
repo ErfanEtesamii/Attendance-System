@@ -90,6 +90,18 @@ function deriveOnsite(db, g, { overrides, tz }) {
   return { onsite: cand, source, edited: false };
 }
 
+// ساعت مفیدِ (دقیقه) روزِ یک رکورد با همان موتور محاسبه‌ی حقوق؛ خطا/نبودن ⇒ null
+function usefulMinutes(recordId) {
+  try {
+    const dayService = require('../src/engine/dayService');
+    const attendanceRepository = require('../src/repositories/attendanceRepository');
+    const rec = attendanceRepository.findById(recordId);
+    const d = rec ? dayService.computeRecordDay(rec, { context: dayService.loadContext() }) : null;
+    return d && typeof d.effective === 'number' ? d.effective : null;
+  } catch (_) { return null; }
+}
+const fmtMin = (m) => (m === null || m === undefined ? '؟' : `${Math.floor(m / 60)} ساعت و ${m % 60} دقیقه`);
+
 function validate(g, onsite) {
   if (!onsite) return 'بدون بازه‌ی حضوری';
   if (!(onsite.start < onsite.end)) return 'بازه‌ی حضوری نامعتبر (پایان بعد از شروع نیست)';
@@ -115,12 +127,14 @@ function run({ apply = false, overrides = new Map(), db = getDb(), tz = null, no
     if (!d.onsite) { item.reason = d.note; continue; }
     const bad = validate(g, d.onsite);
     if (bad) { item.reason = bad; continue; }
+    item.beforeUseful = usefulMinutes(g.recordId);
     // پیش‌نمایش: همان منطقِ بازسازی، بدون نوشتن (در تراکنشِ برگشتی)
     const tx = db.transaction(() => {
       for (const id of g.sessionIds) remoteRepo.setOnsiteSpan(id, d.onsite.start, d.onsite.end);
       const r = svc.rebuildMergedRecord(g.recordId, d.onsite, remoteRepo.listApprovedForDay(g.userId, g.workDate));
       const br = db.prepare('SELECT start_time, end_time FROM break_records WHERE attendance_record_id = ? AND via_remote = 1 ORDER BY start_time').all(g.recordId);
       item.proposed = { checkIn: r.checkIn, checkOut: r.checkOut, remoteBreaks: br.map((b) => [b.start_time, b.end_time]) };
+      item.afterUseful = usefulMinutes(g.recordId);
       if (!apply) throw new Error('__rollback__');
       auditRepository.logEvent({ userId: null, action: 'remote_work_merge_repaired', details: { userId: g.userId, workDate: g.workDate, recordId: g.recordId, sessionIds: g.sessionIds, onsite: d.onsite, source: d.source, before: { checkIn: g.recIn, checkOut: g.recOut }, after: { checkIn: r.checkIn, checkOut: r.checkOut }, at: now.toISOString() } });
     });
@@ -152,6 +166,7 @@ function main(argv) {
     if (r.proposed) {
       console.log(`  ${r.status === 'applied' ? 'اعمال شد' : 'پیشنهاد'}: رکورد ${hm(r.proposed.checkIn)} تا ${hm(r.proposed.checkOut)}؛ استراحت‌های دورکاری: ${r.proposed.remoteBreaks.length ? r.proposed.remoteBreaks.map((b) => `${hm(b[0])}–${hm(b[1])}`).join('، ') : 'ندارد'}`);
     }
+    if (r.proposed) console.log(`  ساعت مفیدِ همان روز: قبل ${fmtMin(r.beforeUseful)} ← بعد ${fmtMin(r.afterUseful)}`);
     if (r.status === 'skipped') console.log(`  رد شد: ${r.reason}`);
   }
   const ready = results.filter((r) => r.status === 'ready').length;
