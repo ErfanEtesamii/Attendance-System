@@ -123,7 +123,7 @@ function listBreaksForSessions(sessionIds) {
 
 // ---------- R5-۴: تأیید (نوشتن؛ فقط SQL — قواعد، تراکنش و audit در remoteWorkAdminService) ----------
 // ستون‌های کامل یک نشست برای تصمیم (شامل ip_address که فقط به سرپرست/ادمین می‌رسد و در رکورد رسمی به‌عنوان IP ورود/خروج می‌نشیند)
-const FULL_COLS = 'id, user_id, work_date, start_at, end_at, status, source, ip_address, auto_closed, reviewed_by, reviewed_at, review_note, approved_start_at, approved_end_at, attendance_record_id';
+const FULL_COLS = 'id, user_id, work_date, start_at, end_at, status, source, ip_address, auto_closed, reviewed_by, reviewed_at, review_note, approved_start_at, approved_end_at, attendance_record_id, onsite_in_at, onsite_out_at';
 
 function findSessionFull(id) {
   return getDb().prepare(`SELECT ${FULL_COLS} FROM remote_work_sessions WHERE id = ?`).get(id) || null;
@@ -220,6 +220,11 @@ function updateApprovedTimes(id, { approvedStartAt, approvedEndAt }) {
   return getDb().prepare("UPDATE remote_work_sessions SET approved_start_at = ?, approved_end_at = ? WHERE id = ? AND status = 'approved'").run(approvedStartAt, approvedEndAt, id).changes;
 }
 
+// ساعت حضوریِ اصلیِ رکورد پیش از ادغام (برای بازسازی رکورد هنگام اصلاح ساعت دورکاری)
+function setOnsiteSpan(id, inAt, outAt) {
+  return getDb().prepare('UPDATE remote_work_sessions SET onsite_in_at = ?, onsite_out_at = ? WHERE id = ?').run(inAt, outAt, id).changes;
+}
+
 function updateRecordTimes(id, { checkIn, checkOut }) {
   getDb().prepare("UPDATE attendance_records SET check_in_time = ?, check_out_time = ?, updated_at = datetime('now') WHERE id = ?").run(checkIn, checkOut, id);
 }
@@ -245,7 +250,7 @@ function pendingClosedByUser({ userIds = null, excludeUserId = null } = {}) {
 
 module.exports = {
   listQueue, listBreaksForSessions,
-  findSessionFull, listInRangeForRecords, listApprovedForDay, listApprovedInRange, listClosedInRange, findOfficialRecord, insertRemoteRecord, updateRemoteRecord, adoptPlaceholder, replaceRemoteBreaks, markApproved, markRejected, updateApprovedTimes, updateRecordTimes, insertRemoteBreaks, pendingClosedByUser,
+  findSessionFull, listInRangeForRecords, listApprovedForDay, listApprovedInRange, listClosedInRange, findOfficialRecord, insertRemoteRecord, updateRemoteRecord, adoptPlaceholder, replaceRemoteBreaks, markApproved, markRejected, updateApprovedTimes, setOnsiteSpan, updateRecordTimes, insertRemoteBreaks, pendingClosedByUser,
   findOpenSession, findSessionById, listForUserDate, listForUserRange, insertSession, insertClosedSession, closeSession, listStaleOpenSessions,
   listBreaks, findOpenBreak, insertBreak, closeBreak,
 };

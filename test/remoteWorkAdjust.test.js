@@ -68,17 +68,67 @@ describe('اصلاح ساعت دورکاری در رکورد تردد', () => {
     assert.ok(svc.adjustApproved(U.mgr, q, { startAt: '2026-10-10T08:00:00Z', note: 'x' }, { now }).ok);
   });
 
-  test('نشستِ ادغام‌شده در رکورد حضوری: رکورد گسترش می‌یابد؛ کوتاه‌کردن ⇒ recordUnchanged', () => {
+  test('نشستِ ادغام‌شده در رکورد حضوری: تمدید و کوتاه‌کردن هر دو روی رکورد و استراحت‌های فاصله اعمال می‌شود', () => {
     const e = F.makeUser({ managerId: U.mgr.id });
     db.prepare("INSERT INTO attendance_records (user_id, record_date, check_in_time, check_out_time, status) VALUES (?, ?, ?, ?, 'normal')").run(e.id, '2026-10-09', iso('2026-10-09', '06:00:00'), iso('2026-10-09', '10:00:00'));
     const s = mk(e, '2026-10-09', '10:30:00', '12:00:00');
     assert.ok(svc.approve(U.mgr, s, { overlapDecision: 'merge', reviewNote: 'ادغام' }, { now }).ok);
+    const recOf = () => db.prepare('SELECT * FROM attendance_records WHERE user_id = ?').get(e.id);
+    const remBreaks = () => db.prepare('SELECT start_time, end_time FROM break_records WHERE attendance_record_id = ? AND via_remote = 1 ORDER BY start_time').all(recOf().id).map((x) => [x.start_time, x.end_time]);
+    const sess = repo.findSessionFull(s);
+    assert.deepEqual([sess.onsite_in_at, sess.onsite_out_at], [iso('2026-10-09', '06:00:00'), iso('2026-10-09', '10:00:00')]);
     const widen = svc.adjustApproved(U.mgr, s, { endAt: '2026-10-09T13:00:00Z', note: 'تمدید' }, { now });
-    assert.ok(widen.ok && widen.recordUpdated);
-    assert.equal(db.prepare('SELECT check_out_time FROM attendance_records WHERE user_id = ?').get(e.id).check_out_time, iso('2026-10-09', '13:00:00'));
+    assert.ok(widen.ok && widen.recordUpdated && !widen.recordUnchanged && !widen.legacyMerge);
+    assert.equal(recOf().check_out_time, iso('2026-10-09', '13:00:00'));
     const shrink = svc.adjustApproved(U.mgr, s, { endAt: '2026-10-09T11:00:00Z', note: 'کوتاه' }, { now });
-    assert.ok(shrink.ok && shrink.recordUnchanged && !shrink.recordUpdated);
-    assert.equal(db.prepare('SELECT via_remote FROM attendance_records WHERE user_id = ?').get(e.id).via_remote, 0);
+    assert.ok(shrink.ok && shrink.recordUpdated && !shrink.recordUnchanged);
+    assert.deepEqual([recOf().check_in_time, recOf().check_out_time], [iso('2026-10-09', '06:00:00'), iso('2026-10-09', '11:00:00')]);
+    assert.deepEqual(remBreaks(), [[iso('2026-10-09', '10:00:00'), iso('2026-10-09', '10:30:00')]]);
+    assert.equal(recOf().via_remote, 0);
+  });
+
+  test('ادغام: نشستِ طولانی که کوتاه می‌شود، خروجِ کشیده‌شده و استراحت‌های اضافی را پس می‌گیرد؛ بازه‌ی حضوری برمی‌گردد', () => {
+    const e = F.makeUser({ managerId: U.mgr.id });
+    db.prepare("INSERT INTO attendance_records (user_id, record_date, check_in_time, check_out_time, status) VALUES (?, ?, ?, ?, 'normal')").run(e.id, '2026-10-08', iso('2026-10-08', '07:44:00'), iso('2026-10-08', '15:00:00'));
+    const s = mk(e, '2026-10-08', '03:00:00', '09:00:00');
+    db.prepare('INSERT INTO remote_work_breaks (session_id, start_at, end_at) VALUES (?, ?, ?)').run(s, iso('2026-10-08', '04:00:00'), iso('2026-10-08', '04:30:00'));
+    assert.ok(svc.approve(U.mgr, s, { overlapDecision: 'merge', reviewNote: 'ادغام' }, { now }).ok);
+    const rec = () => db.prepare('SELECT * FROM attendance_records WHERE user_id = ?').get(e.id);
+    assert.equal(rec().check_in_time, iso('2026-10-08', '03:00:00'));
+    // دورکاری واقعاً فقط ۰۳:۰۰ تا ۰۴:۰۰ بوده
+    const r = svc.adjustApproved(U.mgr, s, { endAt: '2026-10-08T04:00:00Z', note: 'اصلاح' }, { now });
+    assert.ok(r.ok && r.recordUpdated);
+    assert.deepEqual([rec().check_in_time, rec().check_out_time], [iso('2026-10-08', '03:00:00'), iso('2026-10-08', '15:00:00')]);
+    const br = db.prepare('SELECT start_time, end_time FROM break_records WHERE attendance_record_id = ? AND via_remote = 1 ORDER BY start_time').all(rec().id).map((x) => [x.start_time, x.end_time]);
+    assert.deepEqual(br, [[iso('2026-10-08', '04:00:00'), iso('2026-10-08', '07:44:00')]]);
+  });
+
+  test('ادغام دو نشست در یک روز: بازه‌ی حضوری از نشست اول حفظ می‌شود و اصلاح یکی استراحت‌ها را درست بازسازی می‌کند', () => {
+    const e = F.makeUser({ managerId: U.mgr.id });
+    db.prepare("INSERT INTO attendance_records (user_id, record_date, check_in_time, check_out_time, status) VALUES (?, ?, ?, ?, 'normal')").run(e.id, '2026-10-07', iso('2026-10-07', '06:00:00'), iso('2026-10-07', '10:00:00'));
+    const s1 = mk(e, '2026-10-07', '10:30:00', '11:30:00');
+    const s2 = mk(e, '2026-10-07', '13:00:00', '14:00:00');
+    assert.ok(svc.approve(U.mgr, s1, { overlapDecision: 'merge', reviewNote: 'ادغام ۱' }, { now }).ok);
+    assert.ok(svc.approve(U.mgr, s2, { overlapDecision: 'merge', reviewNote: 'ادغام ۲' }, { now }).ok);
+    const sess2 = repo.findSessionFull(s2);
+    assert.deepEqual([sess2.onsite_in_at, sess2.onsite_out_at], [iso('2026-10-07', '06:00:00'), iso('2026-10-07', '10:00:00')]);
+    const recId = db.prepare('SELECT id FROM attendance_records WHERE user_id = ?').get(e.id).id;
+    const remBreaks = () => db.prepare('SELECT start_time, end_time FROM break_records WHERE attendance_record_id = ? AND via_remote = 1 ORDER BY start_time').all(recId).map((x) => [x.start_time, x.end_time]);
+    assert.deepEqual(remBreaks(), [[iso('2026-10-07', '10:00:00'), iso('2026-10-07', '10:30:00')], [iso('2026-10-07', '11:30:00'), iso('2026-10-07', '13:00:00')]]);
+    assert.ok(svc.adjustApproved(U.mgr, s1, { endAt: '2026-10-07T11:00:00Z', note: 'کوتاه' }, { now }).ok);
+    assert.deepEqual(remBreaks(), [[iso('2026-10-07', '10:00:00'), iso('2026-10-07', '10:30:00')], [iso('2026-10-07', '11:00:00'), iso('2026-10-07', '13:00:00')]]);
+    assert.equal(db.prepare('SELECT check_out_time FROM attendance_records WHERE id = ?').get(recId).check_out_time, iso('2026-10-07', '14:00:00'));
+  });
+
+  test('ادغامِ قدیمی (بدون بازه‌ی حضوریِ ذخیره‌شده): رفتار قبلی؛ کوتاه‌کردن ⇒ recordUnchanged و legacyMerge', () => {
+    const e = F.makeUser({ managerId: U.mgr.id });
+    db.prepare("INSERT INTO attendance_records (user_id, record_date, check_in_time, check_out_time, status) VALUES (?, ?, ?, ?, 'normal')").run(e.id, '2026-10-06', iso('2026-10-06', '06:00:00'), iso('2026-10-06', '10:00:00'));
+    const s = mk(e, '2026-10-06', '10:30:00', '12:00:00');
+    assert.ok(svc.approve(U.mgr, s, { overlapDecision: 'merge', reviewNote: 'ادغام' }, { now }).ok);
+    db.prepare('UPDATE remote_work_sessions SET onsite_in_at = NULL, onsite_out_at = NULL WHERE id = ?').run(s); // شبیه‌سازی ردیف قبل از migration 051
+    const shrink = svc.adjustApproved(U.mgr, s, { endAt: '2026-10-06T11:00:00Z', note: 'کوتاه' }, { now });
+    assert.ok(shrink.ok && shrink.legacyMerge && shrink.recordUnchanged && !shrink.recordUpdated);
+    assert.equal(db.prepare('SELECT check_out_time FROM attendance_records WHERE user_id = ?').get(e.id).check_out_time, iso('2026-10-06', '12:00:00'));
   });
 
   test('ادمین و مالک روی هر کارمندی (حتی بدون سرپرستی مستقیم) می‌توانند ساعت را اصلاح کنند؛ خود ممنوع', () => {

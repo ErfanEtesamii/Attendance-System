@@ -302,6 +302,42 @@ function syncOfficialRecord(userId, workDate, ip) {
   return { ok: true, recordId };
 }
 
+// ---- ادغام در رکورد حضوری ----
+// بازه‌ی حضوریِ اصلی هنگام ادغام روی نشست ذخیره می‌شود (onsite_in_at/_out_at)؛ همه‌ی نشست‌های ادغام‌شده‌ی یک روز همان بازه را دارند.
+function knownOnsiteSpan(sessions) {
+  const s = sessions.find((o) => o.onsite_in_at && o.onsite_out_at);
+  return s ? { start: s.onsite_in_at, end: s.onsite_out_at } : null;
+}
+
+/**
+ * رکورد رسمیِ ادغام‌شده را از «بازه‌ی حضوری + همه‌ی نشست‌های تأییدشده‌ی همان روز» از نو می‌سازد:
+ * ورود = کمترین، خروج = بیشترین؛ فاصله‌های بین بازه‌ها و استراحت‌های دورکاریِ بیرون از بازه‌ی حضوری ⇒ استراحت‌های دورکاری (via_remote = 1).
+ * استراحت‌های حضوری دست نمی‌خورند. داخل تراکنشِ فراخواننده اجرا شود.
+ */
+function rebuildMergedRecord(recordId, onsite, sessions) {
+  const spans = sessions.map((x) => ({ s: x, start: effStart(x), end: effEnd(x) }));
+  let checkIn = onsite.start;
+  let checkOut = onsite.end;
+  for (const x of spans) {
+    if (x.start < checkIn) checkIn = x.start;
+    if (x.end > checkOut) checkOut = x.end;
+  }
+  const cover = [{ start: onsite.start, end: onsite.end }, ...spans.map((x) => ({ start: x.start, end: x.end }))]
+    .sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
+  const breaks = [];
+  let reach = cover[0].end;
+  for (let i = 1; i < cover.length; i += 1) {
+    if (cover[i].start > reach) breaks.push({ start: reach, end: cover[i].start });
+    if (cover[i].end > reach) reach = cover[i].end;
+  }
+  for (const x of spans) {
+    for (const b of clippedBreaks(x.s, x.start, x.end)) if (b.end <= onsite.start || b.start >= onsite.end) breaks.push(b);
+  }
+  remoteRepo.updateRecordTimes(recordId, { checkIn, checkOut });
+  remoteRepo.replaceRemoteBreaks(recordId, breaks);
+  return { checkIn, checkOut };
+}
+
 const DECISIONS = ['merge', 'keep_onsite'];
 const KEEP_ONSITE_PREFIX = 'حضور حضوری معتبر ماند: ';
 
@@ -404,15 +440,24 @@ function approveInner(actor, sessionId, input = {}, { ip = null, now = new Date(
     let recordId;
     if (overlap) { // merge
       if (!existing.check_out_time) return fail('ONSITE_NOT_CLOSED', 'خروج حضوریِ همان روز هنوز ثبت نشده؛ ادغام ممکن نیست.');
+      // بازه‌ی حضوریِ اصلی: از نشست‌های قبلاً ادغام‌شده‌ی همان روز؛ اگر هیچ‌کدام ادغام نشده‌اند همین رکوردِ دست‌نخورده؛ ادغامِ قدیمیِ بدون بازه‌ی ذخیره‌شده ⇒ نامعلوم (رفتار قبلی)
+      const sibs = remoteRepo.listApprovedForDay(row.user_id, row.work_date);
+      let onsite = knownOnsiteSpan(sibs);
+      if (!onsite && !sibs.some((o) => o.attendance_record_id === existing.id)) onsite = { start: existing.check_in_time, end: existing.check_out_time };
       const changedM = remoteRepo.markApproved(row.id, { reviewedBy: actor.id, reviewedAt: nowIso, reviewNote: noteR.note, approvedStartAt, approvedEndAt, attendanceRecordId: existing.id });
       if (changedM !== 1) return fail('NOT_PENDING', 'وضعیت این ثبت هم‌زمان تغییر کرد؛ صفحه را تازه کنید.');
-      const inT = existing.check_in_time; const outT = existing.check_out_time;
-      const breaks = [];
-      if (start > outT) breaks.push({ start: outT, end: start });
-      if (end < inT) breaks.push({ start: end, end: inT });
-      for (const b of clippedBreaks(row, start, end)) if (b.end <= inT || b.start >= outT) breaks.push(b);
-      remoteRepo.updateRecordTimes(existing.id, { checkIn: start < inT ? start : inT, checkOut: end > outT ? end : outT });
-      remoteRepo.insertRemoteBreaks(existing.id, breaks);
+      if (onsite) {
+        remoteRepo.setOnsiteSpan(row.id, onsite.start, onsite.end);
+        rebuildMergedRecord(existing.id, onsite, remoteRepo.listApprovedForDay(row.user_id, row.work_date));
+      } else {
+        const inT = existing.check_in_time; const outT = existing.check_out_time;
+        const breaks = [];
+        if (start > outT) breaks.push({ start: outT, end: start });
+        if (end < inT) breaks.push({ start: end, end: inT });
+        for (const b of clippedBreaks(row, start, end)) if (b.end <= inT || b.start >= outT) breaks.push(b);
+        remoteRepo.updateRecordTimes(existing.id, { checkIn: start < inT ? start : inT, checkOut: end > outT ? end : outT });
+        remoteRepo.insertRemoteBreaks(existing.id, breaks);
+      }
       recordId = existing.id;
     } else {
       const changed = remoteRepo.markApproved(row.id, { reviewedBy: actor.id, reviewedAt: nowIso, reviewNote: noteR.note, approvedStartAt, approvedEndAt, attendanceRecordId: null });
@@ -564,9 +609,10 @@ function presentSession(r) {
 // فقط نشست approved و بسته‌شده. دلیل (note) الزامی است (مالک معاف). قواعد زمان مثل approve: پایان بعد از شروع، حداکثر ۲۴ ساعت، نه در آینده،
 // ماه بسته ⇒ MONTH_CLOSED، هم‌پوشانی ساعت با نشست تأییدشده‌ی دیگرِ همان روز ⇒ TIME_CONFLICT.
 //   • رکورد رسمی دورکاری (via_remote = 1): رکورد و استراحت‌ها از روی همه‌ی نشست‌های approved دوباره ساخته می‌شود (syncOfficialRecord).
-//   • نشستِ ادغام‌شده در رکورد حضوری (via_remote = 0): ساعت حضوری اصلی دیگر جدا ذخیره نیست، پس رکورد فقط «گسترش» می‌یابد
-//     (ورود زودتر/خروج دیرتر)؛ کوتاه‌کردن بازه رکورد را تغییر نمی‌دهد (recordUnchanged = true) و باید در «اصلاح رکورد» دستی اصلاح شود.
-// ⇒ { ok, session, attendanceRecordId, recordUpdated, recordUnchanged } | fail
+//   • نشستِ ادغام‌شده در رکورد حضوری (via_remote = 0): ساعت حضوریِ اصلی هنگام ادغام روی نشست ذخیره شده (onsite_in_at/_out_at، migration 051)،
+//     پس رکورد و استراحت‌های دورکاری از «بازه‌ی حضوری + همه‌ی نشست‌های تأییدشده‌ی روز» از نو ساخته می‌شود؛ هم تمدید و هم کوتاه‌کردن اعمال می‌شود.
+//     ادغام‌های قبل از migration 051 (بازه‌ی حضوری ذخیره نشده، legacyMerge = true): فقط گسترش؛ کوتاه‌کردن ⇒ recordUnchanged و اصلاح دستیِ رکورد.
+// ⇒ { ok, session, attendanceRecordId, recordUpdated, recordUnchanged, legacyMerge } | fail
 function adjustApproved(actor, sessionId, input = {}, { ip = null, now = new Date() } = {}) {
   if (!actor || !hasPermission(actor.role, PERM_REVIEW)) return fail('FORBIDDEN', 'برای اصلاح دورکاری مجوز لازم را ندارید.');
   if (!isId(sessionId) || Number(sessionId) < 1) return fail('SESSION_NOT_FOUND', 'ثبت دورکاری یافت نشد.');
@@ -606,13 +652,22 @@ function adjustApproved(actor, sessionId, input = {}, { ip = null, now = new Dat
     let recordId = row.attendance_record_id || (existing && existing.id) || null;
     let recordUpdated = false;
     let recordUnchanged = false;
+    let legacyMerge = false;
     if (existing && existing.via_remote === 0 && existing.check_in_time) { // ادغام‌شده در رکورد حضوری
       recordId = existing.id;
-      const inT = existing.check_in_time; const outT = existing.check_out_time;
-      const newIn = start < inT ? start : inT;
-      const newOut = outT && end > outT ? end : outT;
-      if (newIn !== inT || newOut !== outT) { remoteRepo.updateRecordTimes(existing.id, { checkIn: newIn, checkOut: newOut }); recordUpdated = true; }
-      recordUnchanged = !recordUpdated && (start > effStart(row) || end < effEnd(row));
+      const sibs = remoteRepo.listApprovedForDay(row.user_id, row.work_date);
+      const onsite = knownOnsiteSpan(sibs);
+      if (onsite) { // رکورد و استراحت‌های دورکاری از بازه‌ی حضوریِ اصلی + همه‌ی نشست‌ها از نو ساخته می‌شود (کوتاه‌کردن هم اعمال می‌شود)
+        rebuildMergedRecord(existing.id, onsite, sibs);
+        recordUpdated = true;
+      } else { // ادغامِ قدیمی (بازه‌ی حضوری ذخیره نشده): فقط گسترش؛ کوتاه‌کردن ⇒ recordUnchanged و اصلاح دستی رکورد
+        legacyMerge = true;
+        const inT = existing.check_in_time; const outT = existing.check_out_time;
+        const newIn = start < inT ? start : inT;
+        const newOut = outT && end > outT ? end : outT;
+        if (newIn !== inT || newOut !== outT) { remoteRepo.updateRecordTimes(existing.id, { checkIn: newIn, checkOut: newOut }); recordUpdated = true; }
+        recordUnchanged = !recordUpdated && (start > effStart(row) || end < effEnd(row));
+      }
     } else {
       const synced = syncOfficialRecord(row.user_id, row.work_date, ip);
       if (!synced.ok) rollbackWith(synced);
@@ -627,9 +682,9 @@ function adjustApproved(actor, sessionId, input = {}, { ip = null, now = new Dat
       before: { status: 'approved', startAt: effStart(row), endAt: effEnd(row), attendanceRecordId: row.attendance_record_id || null },
       after: { status: 'approved', startAt: effStart(after), endAt: effEnd(after), attendanceRecordId: recordId },
       reason: noteR.note, ip,
-      meta: { source: 'admin_panel', targetUserId: row.user_id, sessionId: row.id, workDate: row.work_date, recordId, recordUpdated, recordUnchanged },
+      meta: { source: 'admin_panel', targetUserId: row.user_id, sessionId: row.id, workDate: row.work_date, recordId, recordUpdated, recordUnchanged, legacyMerge },
     });
-    return { ok: true, session: presentSession(after), attendanceRecordId: recordId, recordUpdated, recordUnchanged };
+    return { ok: true, session: presentSession(after), attendanceRecordId: recordId, recordUpdated, recordUnchanged, legacyMerge };
   })();
 }
 
@@ -725,4 +780,4 @@ function reminderTargets() {
   return out;
 }
 
-module.exports = { PERM_READ, PERM_REVIEW, PERM_CREATE, createManual, adjustApproved, statusOf, readScopeFailure, reviewScopeFailure, queueScope, checkRead, checkReview, listQueue, approve, reject, approveBatch, pendingSummary, reminderTargets };
+module.exports = { PERM_READ, PERM_REVIEW, PERM_CREATE, createManual, adjustApproved, statusOf, readScopeFailure, reviewScopeFailure, queueScope, checkRead, checkReview, listQueue, approve, reject, approveBatch, pendingSummary, reminderTargets, rebuildMergedRecord, knownOnsiteSpan};
