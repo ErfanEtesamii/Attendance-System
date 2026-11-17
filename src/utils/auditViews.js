@@ -10,6 +10,8 @@ function pick(row, fields) {
 }
 
 const userView = (u) => pick(u, ['full_name', 'personnel_code', 'department', 'role', 'manager_id', 'is_active', 'telegram_user_id']);
+// فاز C: جابه‌جایی عضو بین سرپرست‌ها (entityType='supervisor')؛ فقط manager_id تغییر می‌کند
+const supervisorView = (u) => pick(u, ['manager_id']);
 const attendanceRecordView = (r) => pick(r, ['record_date', 'check_in_time', 'check_out_time', 'status']);
 const breakView = (b) => pick(b, ['break_type', 'start_time', 'end_time']);
 const leaveRequestView = (l) => pick(l, ['leave_type', 'start_date', 'end_date', 'status', 'reason', 'unit', 'half_day_part', 'start_time', 'end_time', 'duration_minutes', 'substitute_user_id', 'attachment_id']);
@@ -20,4 +22,4 @@ const leaveTypeView = (t) => pick(t, ['code', 'title', 'kind', 'isPaid', 'requir
 // علامت‌های سیستمی (managerLocked/editedAt/...) عمداً نیستند تا در diff نویز نشوند.
 const planTaskView = (t) => pick(t, ['title', 'description', 'plannedDate', 'priority']);
 
-module.exports = { pick, userView, attendanceRecordView, breakView, leaveRequestView, disputeView, leaveTypeView, planTaskView };
+module.exports = { pick, userView, supervisorView, attendanceRecordView, breakView, leaveRequestView, disputeView, leaveTypeView, planTaskView };

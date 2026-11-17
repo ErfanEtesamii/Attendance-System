@@ -58,6 +58,7 @@ Employee check-in / check-out / break tracking through a **Telegram bot** and a 
 - Admins/supervisors can edit employees' next-week plans in a "notebook"-style UI, with concurrency control (`PLAN_CONFLICT`)
 - Nightly task report for supervisors/admins and task KPIs
 - Admin-configurable supervisor capability matrix (Settings → Supervisors): each supervisor capability (leave approval, record edits, urgent tasks, …) can be switched off for all supervisors; scope rules are unchanged
+- Supervisor & team management (Settings → Supervisors, admin/owner only via `supervisors.manage`): list of supervisors with team size, pending requests, yesterday-report review state and last login; add members or transfer a whole team (dry-run preview, mandatory reason, audit entries `supervisor_members_added` / `supervisor_team_transferred`, loop/role validation)
 
 **Reports, analytics and control**
 - Daily / weekly / monthly reports (Jalali calendar), CSV export (and `.xlsx` if `exceljs` is installed), print view

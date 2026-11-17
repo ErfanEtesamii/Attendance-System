@@ -238,3 +238,215 @@ describe('API تنظیمات سرپرست‌ها — فاز A', { skip: hasDeps 
     assert.equal(settingsRepository.getAll().teamReviewCommentMax, 200, 'تلاش manager اثری نداشت');
   });
 });
+
+
+// ---------- فاز C: مدیریت سرپرست‌ها و تیم‌ها (مرحله ۴) ----------
+describe('API مدیریت سرپرست‌ها و تیم‌ها — فاز C', { skip: hasDeps ? false : 'express نصب نیست (npm install)' }, () => {
+  let server; let base; let db; let cookies; let u; let teamReview;
+  const mk = (...a) => require('./helpers/factories').makeUser(...a);
+  before(async () => {
+    db = resetDb();
+    const { sessionCookie } = require('./helpers/factories');
+    const { createApp } = require('../src/server');
+    teamReview = require('../src/services/teamReviewService');
+    u = {
+      admin: mk({ role: 'admin' }), owner: mk({ role: 'owner' }), hr: mk({ role: 'hr' }), employee: mk({ role: 'employee' }),
+      sup1: mk({ role: 'manager', name: 'سرپرست یک' }), sup2: mk({ role: 'manager', name: 'سرپرست دو' }), supOff: mk({ role: 'manager', active: false }),
+    };
+    u.e1 = mk({ managerId: u.sup1.id }); u.e2 = mk({ managerId: u.sup1.id }); u.e3 = mk({ managerId: null });
+    cookies = { admin: sessionCookie(u.admin.id), owner: sessionCookie(u.owner.id), manager: sessionCookie(u.sup1.id), hr: sessionCookie(u.hr.id), employee: sessionCookie(u.employee.id) };
+    server = createApp().listen(0);
+    await new Promise((r) => server.once('listening', r));
+    base = `http://127.0.0.1:${server.address().port}`;
+  });
+  after(() => { if (server) server.close(); cleanup(); });
+
+  async function hit(role, method, url, body) {
+    const headers = { 'content-type': 'application/json', 'x-requested-with': 'AttendancePanel', cookie: cookies[role] };
+    const res = await fetch(base + url, { method, headers, body: body && method !== 'GET' ? JSON.stringify(body) : undefined });
+    let json = null;
+    try { json = await res.json(); } catch (_) { /* بدنه خالی */ }
+    return { status: res.status, json };
+  }
+  const mgr = (id) => db.prepare('SELECT manager_id FROM users WHERE id = ?').get(id).manager_id;
+  const auditRows = (action) => db.prepare('SELECT * FROM audit_log WHERE action = ?').all(action);
+
+  test('دسترسی: فقط admin/owner؛ manager/hr/employee ⇒ ۴۰۳ روی هر چهار route', async () => {
+    for (const role of ['manager', 'hr', 'employee']) {
+      for (const [m, url] of [['GET', '/api/admin/supervisors'], ['GET', `/api/admin/supervisors/${u.sup1.id}`], ['POST', `/api/admin/supervisors/${u.sup1.id}/members`], ['POST', `/api/admin/supervisors/${u.sup1.id}/transfer`]]) {
+        assert.equal((await hit(role, m, url, { userIds: [u.e3.id], reason: 'x' })).status, 403, `${role} ${m} ${url}`);
+      }
+    }
+    assert.equal((await hit('owner', 'GET', '/api/admin/supervisors')).status, 200);
+    const perms = require('../src/middleware/permissions');
+    assert.ok(perms.hasPermission('admin', 'supervisors.manage') && perms.hasPermission('owner', 'supervisors.manage'));
+    for (const r of ['manager', 'hr', 'employee']) assert.ok(!perms.hasPermission(r, 'supervisors.manage'), r);
+  });
+
+  test('فهرست: سرپرست‌ها با شمارش اعضا و بدون owner؛ کارمندان بدون سرپرست جدا (نه سرپرست/ادمین)', async () => {
+    const r = await hit('admin', 'GET', '/api/admin/supervisors');
+    assert.equal(r.status, 200);
+    const by = Object.fromEntries(r.json.supervisors.map((s) => [s.id, s]));
+    assert.equal(by[u.sup1.id].totalMembers, 2);
+    assert.equal(by[u.sup1.id].activeMembers, 2);
+    assert.equal(by[u.sup2.id].totalMembers, 0);
+    assert.equal(by[u.supOff.id].isActive, false);
+    assert.ok(!(u.owner.id in by), 'owner در فهرست نیست');
+    assert.ok(!('hourlyRateKt' in by[u.sup1.id]) && !JSON.stringify(r.json).includes('hourly'), 'نرخ ساعتی درز نمی‌کند');
+    const unIds = r.json.unassigned.users.map((x) => x.id);
+    assert.ok(unIds.includes(u.e3.id) && !unIds.includes(u.sup1.id) && !unIds.includes(u.owner.id));
+    assert.equal(r.json.unassigned.count, r.json.unassigned.users.length);
+  });
+
+  test('ادمین دارای زیردست هم در فهرست می‌آید (با برچسب)', async () => {
+    const e = mk({ managerId: u.admin.id });
+    const r = await hit('admin', 'GET', '/api/admin/supervisors');
+    const a = r.json.supervisors.find((s) => s.id === u.admin.id);
+    assert.ok(a && a.totalMembers >= 1 && a.label === 'ادمین دارای تیم');
+    assert.equal(e.manager_id, u.admin.id);
+  });
+
+  test('GET :id اعضای تیم؛ ناموجود ⇒ ۴۰۴', async () => {
+    const r = await hit('admin', 'GET', `/api/admin/supervisors/${u.sup1.id}`);
+    assert.deepEqual(r.json.members.map((m) => m.id).sort(), [u.e1.id, u.e2.id].sort());
+    assert.equal((await hit('admin', 'GET', '/api/admin/supervisors/999999')).status, 404);
+  });
+
+  test('افزودن عضو: دلیل اجباری؛ dryRun چیزی نمی‌نویسد؛ موفق ⇒ manager_id + audit + refresh تسک واجب', async () => {
+    const url = `/api/admin/supervisors/${u.sup2.id}/members`;
+    assert.equal((await hit('admin', 'POST', url, { userIds: [u.e3.id] })).status, 400, 'بدون دلیل');
+    assert.equal(mgr(u.e3.id), null);
+    const dry = await hit('admin', 'POST', url, { userIds: [u.e3.id, u.e1.id], dryRun: true });
+    assert.equal(dry.status, 200);
+    assert.equal(dry.json.dryRun, true);
+    assert.equal(dry.json.count, 2);
+    assert.equal(typeof dry.json.pendingRequests, 'number');
+    assert.equal(mgr(u.e3.id), null, 'dryRun ننوشت');
+
+    const calls = [];
+    const orig = teamReview.refreshReviewersOf;
+    teamReview.refreshReviewersOf = (ids) => { calls.push(ids); return orig(ids); };
+    try {
+      const before = auditRows('supervisor_members_added').length;
+      const ok = await hit('admin', 'POST', url, { userIds: [u.e3.id, u.e1.id], reason: 'جابه‌جایی تست' });
+      assert.equal(ok.status, 200);
+      assert.equal(ok.json.moved, 2);
+      assert.equal(mgr(u.e3.id), u.sup2.id);
+      assert.equal(mgr(u.e1.id), u.sup2.id);
+      assert.equal(auditRows('supervisor_members_added').length, before + 2);
+      const d = JSON.parse(auditRows('supervisor_members_added').pop().details);
+      assert.equal(d.entityType, 'supervisor');
+      assert.equal(d.reason, 'جابه‌جایی تست');
+      assert.ok(calls.length === 1 && [u.sup2.id, u.sup1.id, u.e3.id, u.e1.id].every((id) => calls[0].includes(id)), 'refresh برای قدیم/جدید/کاربر');
+    } finally { teamReview.refreshReviewersOf = orig; }
+  });
+
+  test('اعتبارسنجی افزودن: خودش، owner، سرپرست غیرفعال/کارمند، حلقه، ناموجود', async () => {
+    const url = (id) => `/api/admin/supervisors/${id}/members`;
+    assert.equal((await hit('admin', 'POST', url(u.sup1.id), { userIds: [u.sup1.id], reason: 'x' })).status, 400, 'خودش');
+    assert.equal((await hit('admin', 'POST', url(u.sup1.id), { userIds: [u.owner.id], reason: 'x' })).status, 400, 'owner عضو نمی‌شود');
+    assert.equal((await hit('admin', 'POST', url(u.supOff.id), { userIds: [u.e2.id], reason: 'x' })).status, 400, 'سرپرست غیرفعال');
+    assert.equal((await hit('admin', 'POST', url(u.employee.id), { userIds: [u.e2.id], reason: 'x' })).status, 400, 'هدف کارمند');
+    assert.equal((await hit('admin', 'POST', url(u.sup1.id), { userIds: [999999], reason: 'x' })).status, 404);
+    assert.equal((await hit('admin', 'POST', url(u.sup1.id), { userIds: [], reason: 'x' })).status, 400);
+    assert.equal((await hit('admin', 'POST', url(u.sup1.id), { reason: 'x' })).status, 400);
+    // حلقه: sup1 زیردست sup2 می‌شود؛ سپس sup2 نمی‌تواند زیردست sup1 شود
+    assert.equal((await hit('admin', 'POST', url(u.sup2.id), { userIds: [u.sup1.id], reason: 'x' })).status, 200);
+    const loop = await hit('admin', 'POST', url(u.sup1.id), { userIds: [u.sup2.id], reason: 'x' });
+    assert.equal(loop.status, 400);
+    assert.match(loop.json.error, /حلقه/);
+    assert.equal(mgr(u.sup2.id), null);
+    await hit('admin', 'POST', url(u.sup2.id), { userIds: [u.sup1.id], dryRun: true });
+    db.prepare('UPDATE users SET manager_id = NULL WHERE id = ?').run(u.sup1.id); // پاکسازی برای تست‌های بعد
+  });
+
+  test('جابه‌جایی ادمین فقط با owner (admins.manage)', async () => {
+    const adm2 = mk({ role: 'admin' });
+    const url = `/api/admin/supervisors/${u.sup1.id}/members`;
+    assert.equal((await hit('admin', 'POST', url, { userIds: [adm2.id], reason: 'x' })).status, 403);
+    assert.equal((await hit('owner', 'POST', url, { userIds: [adm2.id] })).status, 200, 'owner بدون دلیل هم مجاز است');
+    assert.equal(mgr(adm2.id), u.sup1.id);
+  });
+
+  test('انتقال گروهی: all، انتخابی، null، مقصد نامعتبر، دلیل اجباری، audit', async () => {
+    const url = `/api/admin/supervisors/${u.sup2.id}/transfer`;
+    const team2 = db.prepare('SELECT id FROM users WHERE manager_id = ?').all(u.sup2.id).map((r) => r.id);
+    assert.ok(team2.length >= 2);
+    assert.equal((await hit('admin', 'POST', url, { toSupervisorId: u.sup1.id, all: true })).status, 400, 'بدون دلیل');
+    assert.equal((await hit('admin', 'POST', url, { all: true, reason: 'x' })).status, 400, 'مقصد مشخص نیست');
+    assert.equal((await hit('admin', 'POST', url, { toSupervisorId: u.sup2.id, all: true, reason: 'x' })).status, 400, 'مقصد = مبدأ');
+    assert.equal((await hit('admin', 'POST', url, { toSupervisorId: u.supOff.id, all: true, reason: 'x' })).status, 400, 'مقصد غیرفعال');
+    assert.equal((await hit('admin', 'POST', url, { toSupervisorId: u.sup1.id, userIds: [u.e2.id], reason: 'x' })).status, 400, 'عضو تیم مبدأ نیست');
+    const dry = await hit('admin', 'POST', url, { toSupervisorId: u.sup1.id, all: true, dryRun: true });
+    assert.equal(dry.json.count, team2.length);
+    assert.equal(team2.every((id) => mgr(id) === u.sup2.id), true, 'dryRun ننوشت');
+
+    const part = await hit('admin', 'POST', url, { toSupervisorId: u.sup1.id, userIds: [team2[0]], reason: 'انتقال بخشی' });
+    assert.equal(part.json.moved, 1);
+    assert.equal(mgr(team2[0]), u.sup1.id);
+    const all = await hit('admin', 'POST', url, { toSupervisorId: null, all: true, reason: 'استعفا' });
+    assert.equal(all.status, 200);
+    assert.equal(db.prepare('SELECT COUNT(*) n FROM users WHERE manager_id = ?').get(u.sup2.id).n, 0);
+    const moved = team2.slice(1);
+    assert.ok(moved.every((id) => mgr(id) === null), 'null ⇒ بدون سرپرست');
+    const rows = auditRows('supervisor_team_transferred');
+    assert.ok(rows.length >= team2.length);
+    const d = JSON.parse(rows[rows.length - 1].details);
+    assert.equal(d.entityType, 'supervisor');
+    assert.equal(d.reason, 'استعفا');
+  });
+
+  test('درخواست در انتظارِ کارمند منتقل‌شده به سرپرست جدید می‌رود (مجوز از manager_id زنده)', async () => {
+    const { workdayDate } = require('./helpers/factories');
+    const leaveRepository = require('../src/repositories/leaveRepository');
+    const emp = mk({ managerId: u.sup1.id });
+    leaveRepository.createLeaveRequest({ userId: emp.id, startDate: workdayDate(40), endDate: workdayDate(40), leaveType: 'leave', reason: 'تست' });
+    const dry = await hit('admin', 'POST', `/api/admin/supervisors/${u.sup1.id}/transfer`, { toSupervisorId: u.sup2.id, userIds: [emp.id], dryRun: true });
+    assert.equal(dry.json.pendingRequests, 1);
+    await hit('admin', 'POST', `/api/admin/supervisors/${u.sup1.id}/transfer`, { toSupervisorId: u.sup2.id, userIds: [emp.id], reason: 'تست' });
+    const list = (await hit('admin', 'GET', '/api/admin/supervisors')).json.supervisors;
+    assert.equal(list.find((s) => s.id === u.sup2.id).pendingRequests, 1);
+    assert.equal(list.find((s) => s.id === u.sup1.id).pendingRequests, 0);
+  });
+});
+
+// ---------- فاز C: فرانت (بدون مرورگر) ----------
+describe('پنل سرپرست‌ها در تنظیمات — فاز C (فرانت)', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const vm = require('vm');
+  const read = (f) => fs.readFileSync(path.join(__dirname, '..', 'public-admin', 'js', f), 'utf8');
+  const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+  function loadPanel(perms = ['supervisors.manage']) {
+    const AP = {
+      state: { perms: new Set(perms), me: { id: 1, role: 'admin' } }, esc, $: () => null, $$: () => [],
+      fmt: { num: (n) => String(n), dateTime: (d) => String(d) },
+      icon: () => '', badge: (cls, text) => `<span class="badge ${cls}">${esc(text)}</span>`,
+      can: (...p) => p.every((x) => AP.state.perms.has(x)), isOwnerMe: () => false,
+    };
+    vm.runInNewContext(read('supervisors-panel.js'), { window: { AP }, document: {}, console });
+    return AP;
+  }
+
+  test('کامپوننت ثبت می‌شود و html پنل نقطه‌ی اتصال امن دارد', () => {
+    const AP = loadPanel();
+    assert.ok(AP.supervisorsPanel && typeof AP.supervisorsPanel.mount === 'function');
+    assert.match(AP.supervisorsPanel.html(), /data-sup-panel/);
+  });
+
+  test('views-admin: پنل فقط با مجوز supervisors.manage و فقط در گروه supervisors و بعد از repaint دوباره mount می‌شود', () => {
+    const src = read('views-admin.js');
+    assert.match(src, /g === 'supervisors' && AP\.supervisorsPanel && AP\.can\('supervisors\.manage'\)/);
+    assert.match(src, /if \(g === 'supervisors'\) mountSupervisors\(\)/);
+    assert.match(src, /supervisor: 'سرپرست\/تیم'/, 'فیلتر ممیزی');
+    assert.match(fs.readFileSync(path.join(__dirname, '..', 'public-admin', 'index.html'), 'utf8'), /supervisors-panel\.js/);
+  });
+
+  test('پنل: داده‌ی کاربر با esc وارد DOM می‌شود و innerHTML خام ندارد', () => {
+    const src = read('supervisors-panel.js');
+    assert.doesNotMatch(src, /[>"=]\s*\$\{[a-z]+\.(fullName|department|supName|fromSupervisor)\}/, 'داده‌ی کاربر داخل HTML بدون esc (title/message مودال‌ها داخل AP.modal/askReason esc می‌شوند)');
+    assert.match(src, /dryRun: true/, 'پیش‌نمایش');
+    assert.match(src, /AP\.askReason/, 'دلیل');
+  });
+});

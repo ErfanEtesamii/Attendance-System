@@ -2482,3 +2482,14 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
 .st-section { margin: var(--space-5) 0 var(--space-3); font-size: var(--fs-md); font-weight: 700; color: var(--text); }
 .rec-quota { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-2); color: var(--text); font-size: var(--fs-sm); }
 .rec-quota.is-out { border-color: var(--red); }
+
+/* فاز C: فهرست سرپرست‌ها و تیم‌ها در تنظیمات */
+.st-sup { margin-bottom: var(--space-5); padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-2); }
+.st-sup-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
+.st-sup-head h4 { margin: 0; font-size: var(--fs-md); }
+.st-sup-un { margin-top: var(--space-3); display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.sup-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.sup-pick { max-height: 320px; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-2); }
+.sup-pick-row { display: flex; align-items: center; gap: 8px; padding: 6px 4px; cursor: pointer; }
+.sup-pick-row[hidden] { display: none; }
+.sup-prev-list { max-height: 220px; overflow: auto; margin: var(--space-2) 0; padding-inline-start: 20px; }

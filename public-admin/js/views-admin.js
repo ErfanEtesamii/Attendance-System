@@ -406,6 +406,7 @@
         const notes = [];
         if (IMPACT_GROUPS.has(g)) notes.push(`<div class="st-banner st-banner-warn" role="note"><span class="st-banner-ico" aria-hidden="true">${icon('alert')}</span><p>${esc(IMPACT_SHORT)}</p></div>`);
         if (g === 'schedule') notes.push(`<div class="st-banner st-banner-info" role="note"><span class="st-banner-ico" aria-hidden="true">${icon('clock')}</span><p>تغییر زمان‌بندی بدون ری‌استارت و بلافاصله اعمال می‌شود. مقدار پیش‌فرض از فایل <code class="ltr">.env</code> می‌آید.</p></div>`);
+        if (g === 'supervisors' && AP.supervisorsPanel && AP.can('supervisors.manage')) notes.push(AP.supervisorsPanel.html()); // فاز C
         return `${notes.join('')}<div class="st-fields">${list.map((it, i) => (it.section && (i === 0 || list[i - 1].section !== it.section) ? `<h4 class="st-section" id="st-sec-${esc(g)}-${i}">${esc(it.section)}</h4>` : '') + rowHtml(it)).join('')}</div>${relatedCard(g)}
           <div class="st-actionbar" data-bar="${esc(g)}">
             <div class="st-save-state"><span class="st-status-dot" aria-hidden="true"></span><span class="st-pending" data-pending="${esc(g)}" aria-live="polite">تغییری ذخیره‌نشده نیست</span></div>
@@ -452,6 +453,8 @@
         html,
         mount(page) {
           let active = groupKeys[0];
+          const mountSupervisors = () => { if (AP.supervisorsPanel && AP.can('supervisors.manage') && $('[data-sup-panel]', page)) AP.supervisorsPanel.mount(page); }; // فاز C؛ بعد از هر repaint گروه دوباره
+          mountSupervisors();
           const stickyTop = $('.topbar');
           if (stickyTop && page.style) page.style.setProperty('--st-sticky-top', `${stickyTop.offsetHeight}px`);
           const msgOf = (g) => $(`.st-panel[data-group="${CSS.escape(g)}"] [data-msg]`, page);
@@ -479,6 +482,7 @@
             const body = $(`.st-panel[data-group="${CSS.escape(g)}"] .st-body`, page);
             body.innerHTML = groupBody(g);
             bind(g);
+            if (g === 'supervisors') mountSupervisors();
             refreshSave(g);
             applyFilter();
           };
@@ -821,7 +825,7 @@
   // ======================================================
   // S4-2b: نمایش خوانای diff قبل/بعد برای ورودی‌های جدید (details استاندارد logChange: { entityType, entityId, changes, reason?, redacted? }).
   // هر چیز دیگر (ورودی قدیمی، متن ساده، JSON بدون changes) همان جعبه‌ی متنی قبلی است. همه‌ی مقدارها esc می‌شوند.
-  const AU_ENTITY = { user: 'کاربر', attendance_record: 'رکورد تردد', break_record: 'استراحت', leave_request: 'مرخصی/مأموریت', holiday: 'تعطیلی', dispute: 'اعتراض', settings: 'تنظیمات', session: 'نشست' };
+  const AU_ENTITY = { user: 'کاربر', attendance_record: 'رکورد تردد', break_record: 'استراحت', leave_request: 'مرخصی/مأموریت', holiday: 'تعطیلی', dispute: 'اعتراض', settings: 'تنظیمات', session: 'نشست', supervisor: 'سرپرست/تیم' };
   const AU_FIELD = {
     full_name: 'نام', personnel_code: 'کد پرسنلی', department: 'دپارتمان', role: 'نقش', manager_id: 'مدیر (شناسه)', is_active: 'وضعیت حساب', telegram_user_id: 'آیدی تلگرام',
     record_date: 'تاریخ رکورد', check_in_time: 'ورود', check_out_time: 'خروج', status: 'وضعیت', break_type: 'نوع استراحت', start_time: 'شروع', end_time: 'پایان',

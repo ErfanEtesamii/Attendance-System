@@ -39,6 +39,7 @@ router.use(require('./monthClosures')); // S5-3: بستن ماه (چک‌لیس�
 router.use(require('./analytics')); // S5-6a: روند/مقایسه‌ی تأخیر (فقط‌خواندنی؛ کارمند ممنوع)
 router.use(require('./performance')); // نمودار عملکرد کارمند (مثل Search Console) + حقوق دقیق (فقط admin)
 router.use(require('./settings'));
+router.use(require('./supervisors')); // فاز C: مدیریت سرپرست‌ها و تیم‌ها (فقط admin/owner)
 router.use(require('./shifts'));
 router.use(require('./userSchedule')); // B2: برنامه‌ی کاری روزبه‌روز هر کارمند
 router.use(require('./audit'));

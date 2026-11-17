@@ -63,7 +63,7 @@
     remote_work_manual_create: 'ثبت دستی دورکاری', remote_work_auto_closed: 'بسته‌شدن خودکار دورکاری', remote_work_overlap_decision: 'تصمیم هم‌پوشانی دورکاری',
     manager_alerted_repeated_lateness: 'هشدار تأخیر مکرر به مدیر',
     payroll_viewed: 'مشاهده‌ی حقوق', payroll_exported: 'خروجی حقوق', performance_exported: 'خروجی عملکرد', report_exported: 'خروجی گزارش',
-    employee_hourly_rate_changed: 'تغییر نرخ ساعتی', employee_profile_edited: 'ویرایش پروفایل کارمند', employee_added: 'افزودن کارمند', employee_added_via_bot: 'افزودن کارمند (بات)', employee_deleted: 'حذف کارمند',
+    employee_hourly_rate_changed: 'تغییر نرخ ساعتی', employee_profile_edited: 'ویرایش پروفایل کارمند', supervisor_members_added: 'افزودن عضو به تیم سرپرست', supervisor_team_transferred: 'انتقال تیم سرپرست', employee_added: 'افزودن کارمند', employee_added_via_bot: 'افزودن کارمند (بات)', employee_deleted: 'حذف کارمند',
     avatar_updated: 'تغییر عکس پروفایل', avatar_removed: 'حذف عکس پروفایل', avatar_updated_by_admin: 'تغییر عکس توسط ادمین', avatar_removed_by_admin: 'حذف عکس توسط ادمین',
     attendance_record_manually_fixed: 'اصلاح دستی رکورد تردد', attendance_record_manually_created: 'ثبت دستی رکورد تردد', attendance_record_deleted: 'حذف رکورد تردد',
     attendance_segment_manually_edited: 'ویرایش دستی بازه‌ی حضور', attendance_segment_manually_created: 'افزودن دستی بازه‌ی حضور', attendance_segment_deleted: 'حذف بازه‌ی حضور',

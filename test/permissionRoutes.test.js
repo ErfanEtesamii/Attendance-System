@@ -117,6 +117,10 @@ const ROUTES_2 = [
   ['PUT', '/api/admin/holidays/999999', [A]],
   ['DELETE', '/api/admin/holidays/999999', [A]],
   ['PATCH', '/api/admin/settings', [A]],
+  ['GET', '/api/admin/supervisors', [A]], // فاز C: supervisors.manage فقط admin/owner
+  ['GET', '/api/admin/supervisors/999999', [A]],
+  ['POST', '/api/admin/supervisors/999999/members', [A]],
+  ['POST', '/api/admin/supervisors/999999/transfer', [A]],
   ['PUT', '/api/admin/settings/no_such_key', [A]],
   ['POST', '/api/admin/settings/no_such_key/reset', [A]],
   ['GET', '/api/admin/shifts', [M, A]],

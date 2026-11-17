@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## Unreleased — بخش سرپرست‌ها در تنظیمات (فاز C: مدیریت سرپرست‌ها و تیم‌ها)
+- جدید: مجوز `supervisors.manage` (فقط در `PERMISSIONS`؛ admin و owner می‌گیرند، سرپرست/hr/کارمند نه). هیچ تغییر رفتاری برای نقش‌های دیگر.
+- API (`src/api/routes/admin/supervisors.js`): `GET /admin/supervisors` (سرپرست‌ها و ادمین‌های دارای تیم؛ اعضای فعال/کل، درخواست‌های در انتظار، مشاهده‌ی گزارش روز قبل، «اصلاح این ماه used/limit»، آخرین ورود؛ owner نمی‌آید؛ کارمندان بدون سرپرست جدا)، `GET /admin/supervisors/:id`، `POST …/:id/members`، `POST …/:id/transfer` (`toSupervisorId=null` ⇒ بدون سرپرست؛ `all:true` یا `userIds`).
+- هر دو POST با `dryRun:true` فقط پیش‌نمایش می‌دهند (تعداد، سرپرست قبلی هر نفر، تعداد درخواست‌های در انتظار)؛ نوشتن واقعی: دلیل اجباری (جز owner)، تراکنش، `auditChange` با action های `supervisor_members_added / supervisor_team_transferred` و `entityType: 'supervisor'`، و `teamReviewService.refreshReviewersOf([قدیم، جدید، کاربر])`.
+- اعتبارسنجی: سرپرست عضو تیم خودش نمی‌شود؛ مقصد باید manager/admin/owner فعال باشد؛ حلقه‌ی سرپرستی رد می‌شود؛ owner عضو نمی‌شود؛ جابه‌جایی ادمین فقط با `admins.manage`؛ حداکثر ۵۰۰ نفر در هر درخواست.
+- UI: `public-admin/js/supervisors-panel.js` — جدول واکنش‌گرا بالای بخش «سرپرست‌ها» (مشاهده‌ی تیم، افزودن عضو، انتقال تیم، نقش/وضعیت با همان `PATCH /admin/users/:id`، لینک پروفایل)؛ پیش‌نمایش ← دلیل ← ارسال؛ فیلتر ممیزی «سرپرست/تیم».
+- تست: بخش فاز C در test/supervisorSettings.test.js و چهار ردیف جدید در ماتریس permissionRoutes.test.js.
+
 ## Unreleased — ماتریس قابلیت‌های سرپرست (فاز B بخش سرپرست‌ها)
 - جدید: نوع تنظیم `multiselect` در رجیستری (آرایه‌ی یکتا به ترتیب `values`؛ ذخیره با کاما؛ خالی با `allowEmpty` مجاز) و کلید `supervisorEnabledCapabilities` (گروه `supervisors`، بخش «قابلیت‌های سرپرست») با ۱۶ قابلیت خاموش‌شدنی؛ پیش‌فرض = همه (رفتار فعلی). فهرست و برچسب‌های فارسی در `utils/supervisorCapabilities.js`. مجوزهای پایه (`*.read`، `users.read`، `reviews.read`، `team.week_view`…) خاموش‌شدنی نیستند.
 - سرور: `ROLE_PERMISSIONS.manager` «سقف» می‌ماند؛ مجوز مؤثر سرپرست (`permissionsFor/permissionsForRole/hasPermission`) = سقف منهای قابلیت‌های خاموش، با کش ۵ ثانیه‌ای که روی `setValue/resetValue/update` در `settingsRepository` باطل می‌شود. خطا یا بسته‌بودن دیتابیس ⇒ لیست کامل (نه خالی). نقش‌های دیگر بدون تغییر.
