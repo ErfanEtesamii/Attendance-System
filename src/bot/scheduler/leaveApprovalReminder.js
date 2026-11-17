@@ -20,7 +20,8 @@ const toMs = (s) => (typeof s === 'string' ? Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.t
 function recipientsOf(employee) {
   const active = usersRepository.listUsers({ onlyActive: true, includeOwner: true });
   const manager = require('../../services/leaveApprovalService').decidingSupervisorOf(employee); // فاز B: بدون leave.approve ⇒ فقط ادمین‌ها
-  const list = [...(manager ? [manager] : []), ...active.filter((u) => isAdmin(u))];
+  const deputy = require('../../services/leaveApprovalService').decidingDeputyOf(employee); // فاز D (بخش ۲): جانشینِ فعال علاوه بر سرپرست
+  const list = [...(manager ? [manager] : []), ...(deputy ? [deputy] : []), ...active.filter((u) => isAdmin(u))];
   const seen = new Set();
   return list.filter((u) => u.id !== employee.id && !seen.has(u.id) && seen.add(u.id));
 }

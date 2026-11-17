@@ -9,6 +9,7 @@ const leaveRepository = require('../../repositories/leaveRepository');
 const holidaysRepository = require('../../repositories/holidaysRepository');
 const { getCalendarDay } = require('../../engine/calendarService');
 const settingsRepository = require('../../repositories/settingsRepository');
+const supervisorOverrides = require('../../services/supervisorOverrideService');
 const auditRepository = require('../../repositories/auditRepository');
 const { hhmmToMinutes } = require('../../engine/computeDay');
 const { summarizeRange } = require('../../engine/dayService');
@@ -74,7 +75,9 @@ async function checkRepeatedLateness(bot, { now = new Date() } = {}) {
   const activeUsers = usersRepository.listUsers({ onlyActive: true });
   // S3-8a: Job اکنون هر روز اجرا می‌شود؛ مثل قبل (cron فقط روزهای کاری) فقط در «روز کاریِ همین کارمند» هشدار می‌دهیم
   const settings = settingsRepository.getAll();
-  if (settings.repeatedLatenessAlertSupervisor === false) return; // تنظیم «هشدار تأخیر مکرر به سرپرست»
+  // تنظیم «هشدار تأخیر مکرر به سرپرست»؛ فاز D: استثنای هر سرپرست اولویت دارد (خاموشِ سراسری فقط وقتی همه را می‌بندد که استثنای «روشن» وجود نداشته باشد)
+  const alertGlobalOn = settings.repeatedLatenessAlertSupervisor !== false;
+  if (!alertGlobalOn && !supervisorOverrides.anyOverrideEquals('repeatedLatenessAlertSupervisor', true)) return;
   const holidays = holidaysRepository.listByDate(today);
 
   for (const user of activeUsers) {
@@ -82,6 +85,7 @@ async function checkRepeatedLateness(bot, { now = new Date() } = {}) {
     if (!getCalendarDay(user, today, { settings, holidays }).isWorkingDay) continue;
     const manager = usersRepository.findById(user.manager_id);
     if (!manager || !manager.telegram_user_id) continue;
+    if (supervisorOverrides.effective(manager, 'repeatedLatenessAlertSupervisor', alertGlobalOn) === false) continue;
 
     const alertKey = `${monthKey}:${user.id}`;
     if (alertedManagerThisMonth.has(alertKey)) continue;

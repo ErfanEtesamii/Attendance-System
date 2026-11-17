@@ -27,13 +27,21 @@
     return `<bdi dir="ltr">${esc(num(q.used))}/${esc(q.unlimited ? '∞' : num(q.limit))}</bdi>`;
   }
 
+  // جانشین ثبت‌شده زیر نام سرپرست (فقط نمایش)؛ covering = همین الان جایگزین است
+  function deputyLine(s) {
+    if (!s.deputy) return '';
+    return `<div class="muted small">جانشین: ${esc(s.deputy.fullName)}${!s.deputy.isActive ? ` ${AP.badge('gray', 'غیرفعال', true)}` : ''}${s.deputy.covering ? ` ${AP.badge('orange', 'در حال جانشینی', true)}` : ''}</div>`;
+  }
+
+  const boolLabel = (v) => (v === true ? 'روشن' : v === false ? 'خاموش' : '—');
+
   function rowHtml(s) {
     const nameBadges = [
       s.label && s.role !== 'manager' ? AP.badge('blue', s.label) : '',
       !s.isActive ? AP.badge('gray', 'غیرفعال') : '',
     ].join(' ');
     return `<tr data-sup="${esc(s.id)}">
-      <td data-label="سرپرست"><a class="u-link-inherit" href="#/profile/${esc(s.id)}">${esc(s.fullName)}</a> ${nameBadges}<div class="muted small">${esc(ROLE_LABEL[s.role] || s.role)}</div></td>
+      <td data-label="سرپرست"><a class="u-link-inherit" href="#/profile/${esc(s.id)}">${esc(s.fullName)}</a> ${nameBadges}<div class="muted small">${esc(ROLE_LABEL[s.role] || s.role)}</div>${deputyLine(s)}</td>
       <td data-label="دپارتمان">${esc(s.department || '—')}</td>
       <td data-label="اعضا">${esc(num(s.activeMembers))} <span class="muted small">از ${esc(num(s.totalMembers))}</span></td>
       <td data-label="در انتظار تأیید">${s.pendingRequests ? AP.badge('orange', num(s.pendingRequests)) : '<span class="muted">۰</span>'}</td>
@@ -45,6 +53,7 @@
         <button type="button" class="btn ghost small" data-act="add">افزودن عضو</button>
         <button type="button" class="btn ghost small" data-act="transfer"${s.totalMembers ? '' : ' disabled'}>انتقال تیم</button>
         <button type="button" class="btn ghost small" data-act="role">نقش/وضعیت</button>
+        ${s.role === 'manager' ? '<button type="button" class="btn ghost small" data-act="deputy">جانشین</button><button type="button" class="btn ghost small" data-act="overrides">استثناها</button>' : ''}
         <a class="btn ghost small" href="#/profile/${esc(s.id)}">ویرایش پروفایل</a>
       </td>
     </tr>`;
@@ -264,6 +273,82 @@
         return m;
       }
 
+      // تعیین/حذف جانشین سرپرست (GET/PUT /admin/supervisors/:id/deputy)
+      async function actDeputy(s) {
+        const d = await AP.api(`/admin/supervisors/${s.id}/deputy`);
+        const cur = d.deputy && d.deputy.id;
+        const opts = d.candidates.map((c) => `<option value="${esc(c.id)}" ${cur === c.id ? 'selected' : ''}>${esc(c.fullName)}</option>`).join('');
+        AP.modal({
+          title: `جانشین «${s.fullName}»`,
+          body: `<form class="form">
+            <p class="muted small">جانشین فقط وقتی فعال می‌شود که سرپرست غیرفعال یا تمام‌روز در مرخصی/ماموریتِ تأییدشده باشد؛ آن‌وقت اعلان‌ها و صف تأیید (مرخصی/ماموریت، اجازه‌ی ورود) و تعیین تسک فوری برای تیم این سرپرست به جانشین هم می‌رسد. سرپرست و ادمین‌ها مثل قبل دسترسی دارند.</p>
+            ${d.absent ? '<p class="muted small">این سرپرست امروز در دسترس نیست.</p>' : ''}
+            <label class="field"><span>جانشین</span><select name="deputy"><option value="">— بدون جانشین —</option>${opts}</select></label>
+            <div class="modal-actions"><button type="submit" class="btn primary">ادامه</button>
+            <button type="button" class="btn ghost" data-cancel>انصراف</button></div></form>`,
+          onMount(body, h) {
+            $('[data-cancel]', body).addEventListener('click', () => h.close());
+            $('form', body).addEventListener('submit', async (e) => {
+              e.preventDefault();
+              const v = $('[name=deputy]', body).value;
+              const deputyId = v ? Number(v) : null;
+              if (deputyId === (cur || null)) { h.close(); return; }
+              h.close();
+              const reason = await AP.askReason({ title: 'تغییر جانشین', message: `${s.fullName} — ${deputyId ? 'جانشین: ' + ((d.candidates.find((c) => c.id === deputyId) || {}).fullName || '') : 'حذف جانشین'}`, confirmText: 'اعمال', placeholder: 'دلیل تغییر' });
+              if (reason === null) return;
+              try {
+                await AP.api(`/admin/supervisors/${s.id}/deputy`, { method: 'PUT', body: { deputyId, reason } });
+                toast('جانشین ثبت شد.');
+                await load();
+              } catch (err) { toast(err.message, true); }
+            });
+          },
+        });
+      }
+
+      // استثناهای یک سرپرست (GET/PUT/DELETE /admin/supervisors/:id/overrides[/:key])؛ اولویت: استثنا > تنظیم سراسری
+      async function actOverrides(s) {
+        const d = await AP.api(`/admin/supervisors/${s.id}/overrides`);
+        const ctl = (it) => {
+          if (it.type === 'boolean') {
+            const v = it.hasOverride ? String(it.override) : '';
+            return `<select name="v" aria-label="${esc(it.label)}"><option value="" ${v === '' ? 'selected' : ''}>بدون استثنا (سراسری)</option><option value="true" ${v === 'true' ? 'selected' : ''}>روشن</option><option value="false" ${v === 'false' ? 'selected' : ''}>خاموش</option></select>`;
+          }
+          return `<input type="number" name="v" min="${esc(it.min)}" max="${esc(it.max)}" step="1" inputmode="numeric" placeholder="بدون استثنا" value="${it.hasOverride ? esc(it.override) : ''}" aria-label="${esc(it.label)}" />`;
+        };
+        const m = AP.modal({
+          title: `استثناهای «${s.fullName}»`, wide: true,
+          body: `<p class="muted small">مقدارِ استثنا بر تنظیم سراسری اولویت دارد؛ خالی/«بدون استثنا» یعنی همان مقدار سراسری. هر تغییر با دلیل ثبت می‌شود.</p>
+            <div class="table-wrap"><table data-stack><thead><tr><th>مورد</th><th>مقدار سراسری</th><th>استثنا</th><th></th></tr></thead><tbody>
+            ${d.items.map((it) => `<tr data-key="${esc(it.key)}" data-type="${esc(it.type)}" data-had="${it.hasOverride ? '1' : ''}"><td data-label="مورد">${esc(it.label)}</td><td data-label="مقدار سراسری">${esc(it.type === 'boolean' ? boolLabel(it.global) : (it.global === null ? '—' : num(it.global)))}</td><td data-label="استثنا">${ctl(it)}</td><td><button type="button" class="btn primary small" data-save>ثبت</button></td></tr>`).join('')}
+            </tbody></table></div><div class="form-msg" data-msg aria-live="polite"></div>`,
+          onMount(body, h) {
+            body.addEventListener('click', async (e) => {
+              const btn = e.target.closest('[data-save]');
+              if (!btn) return;
+              const tr = btn.closest('[data-key]');
+              const key = tr.dataset.key;
+              const raw = $('[name=v]', tr).value;
+              const msg = $('[data-msg]', body);
+              msg.className = 'form-msg'; msg.textContent = '';
+              let value;
+              if (raw !== '') value = tr.dataset.type === 'boolean' ? raw === 'true' : Number(raw);
+              if (raw === '' && !tr.dataset.had) return;
+              const label = $('td', tr).textContent;
+              h.close();
+              const reason = await AP.askReason({ title: raw === '' ? 'حذف استثنا' : 'ثبت استثنا', message: `${s.fullName} — ${label}`, confirmText: raw === '' ? 'حذف' : 'ثبت', placeholder: 'دلیل تغییر' });
+              if (reason === null) return;
+              try {
+                if (raw === '') await AP.api(`/admin/supervisors/${s.id}/overrides/${key}`, { method: 'DELETE', body: { reason } });
+                else await AP.api(`/admin/supervisors/${s.id}/overrides/${key}`, { method: 'PUT', body: { value, reason } });
+                toast(raw === '' ? 'استثنا حذف شد.' : 'استثنا ثبت شد.');
+              } catch (err) { toast(err.message, true); }
+            });
+          },
+        });
+        return m;
+      }
+
       async function actUnassigned() {
         const users = await usersWithSup((u) => !u.managerId && u.isActive !== false && !['manager', 'admin', 'owner'].includes(u.role));
         const ids = await pickUsers({ title: 'کارمندان بدون سرپرست', users, hint: 'کارمندان انتخاب‌شده را به یک سرپرست تخصیص دهید.', confirmText: 'انتخاب سرپرست' });
@@ -287,6 +372,8 @@
           else if (btn.dataset.act === 'add') await actAdd(s);
           else if (btn.dataset.act === 'transfer') await actTransfer(s);
           else if (btn.dataset.act === 'role') actRole(s);
+          else if (btn.dataset.act === 'deputy') await actDeputy(s);
+          else if (btn.dataset.act === 'overrides') await actOverrides(s);
         } catch (err) { toast(err.message, true); }
       });
 

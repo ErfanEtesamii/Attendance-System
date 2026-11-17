@@ -34,6 +34,12 @@ function findById(id) {
   return db.prepare(`SELECT ${userColumns(db)} FROM users WHERE id = ?`).get(id);
 }
 
+// سرپرستانی که این کاربر جانشینشان است (ردیف خام؛ فعال‌بودن/غیبت در supervisorDeputyService سنجیده می‌شود)
+function listByDeputy(deputyId) {
+  const db = getDb();
+  return db.prepare(`SELECT ${userColumns(db)} FROM users WHERE deputy_id = ?`).all(deputyId);
+}
+
 function findByTelegramId(telegramUserId) {
   const db = getDb();
   return db.prepare(`SELECT ${userColumns(db)} FROM users WHERE telegram_user_id = ?`).get(telegramUserId);
@@ -52,7 +58,7 @@ function createUser({ telegramUserId, fullName, personnelCode, department, role,
 
 function updateUser(id, fields) {
   const db = getDb();
-  const allowed = ['telegram_user_id', 'full_name', 'personnel_code', 'department', 'role', 'manager_id', 'is_active'];
+  const allowed = ['telegram_user_id', 'full_name', 'personnel_code', 'department', 'role', 'manager_id', 'deputy_id', 'is_active'];
   const keys = Object.keys(fields).filter((k) => allowed.includes(k));
   if (keys.length === 0) return findById(id);
 
@@ -130,6 +136,7 @@ function deleteUserPermanently(id) {
   const db = getDb();
   const tx = db.transaction((userId) => {
     db.prepare('UPDATE users SET manager_id = NULL WHERE manager_id = ?').run(userId);
+    db.prepare('UPDATE users SET deputy_id = NULL WHERE deputy_id = ?').run(userId);
     db.prepare('UPDATE leave_requests SET approver_id = NULL WHERE approver_id = ?').run(userId);
     db.prepare(
       `DELETE FROM record_disputes WHERE user_id = ?
@@ -150,6 +157,7 @@ function deleteUserPermanently(id) {
 module.exports = {
   listUsers,
   findById,
+  listByDeputy,
   findByTelegramId,
   createUser,
   updateUser,

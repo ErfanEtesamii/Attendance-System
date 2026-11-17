@@ -16,6 +16,7 @@ const { runFraudChecksSafe } = require('../../utils/fraudRunner');
 const suspiciousRepository = require('../../repositories/suspiciousRepository');
 const missionDecisionService = require('../../services/missionDecisionService');
 const nightlyTaskReportService = require('../../services/nightlyTaskReportService');
+const supervisorOverrides = require('../../services/supervisorOverrideService');
 
 // پیش‌فرض‌ها؛ مقدار مؤثر از تنظیمات «سرپرست‌ها» (nightlyReviewMaxAttentionLines / nightlyReviewMaxMissions) خوانده می‌شود. خرابی خواندن ⇒ پیش‌فرض
 const MAX_ATTENTION_LINES = 25;
@@ -166,10 +167,11 @@ async function sendNightlyReview(bot) {
   runFraudChecksSafe({ date: today });
 
   // تنظیم nightlyReviewSendEnabled: خاموش ⇒ فقط پیام مرور شبانه برای سرپرست‌ها نمی‌رود (گزارش تسک‌ها و جاروی مشکوک ادامه دارد)
+  // فاز D: استثنای هر سرپرست (supervisor_overrides) روی این تنظیم اولویت دارد
   const sendToSupervisors = limit('nightlyReviewSendEnabled', true) !== false;
-  const supervisors = !sendToSupervisors ? [] : usersRepository
+  const supervisors = usersRepository
     .listUsers({ onlyActive: true })
-    .filter((u) => u.role === 'manager' && u.telegram_user_id);
+    .filter((u) => u.role === 'manager' && u.telegram_user_id && supervisorOverrides.effective(u, 'nightlyReviewSendEnabled', sendToSupervisors) !== false);
 
   // دکمه‌ی Web App: بدون کد/لینک، مستقیم وارد پنل و صفحه‌ی مرور شبانه می‌شود
   const button = panelWebAppButton({ view: 'nightly', text: '🖥 باز کردن مرور شبانه در پنل' });

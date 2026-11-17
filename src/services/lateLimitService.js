@@ -144,7 +144,10 @@ function requestPermission(user, reason, now = new Date()) {
 // آیا actor حق تصمیم روی درخواستِ این کارمند را دارد؟ admin همیشه؛ سرپرست فقط مستقیمِ همان کارمند؛ کارمندِ بدون سرپرست فقط ادمین؛ hr/employee هرگز.
 function canDecide(actor, employee) {
   if (isAdmin(actor)) return true;
-  return actor.role === 'manager' && hasPermission(actor.role, 'checkin_permissions.decide') && employee.manager_id !== null && employee.manager_id !== undefined && employee.manager_id === actor.id;
+  if (actor.role !== 'manager' || !hasPermission(actor.role, 'checkin_permissions.decide')) return false;
+  if (employee.manager_id !== null && employee.manager_id !== undefined && employee.manager_id === actor.id) return true;
+  // فاز D (بخش ۲): جانشینِ فعالِ سرپرستِ مستقیم (نه برای درخواست خودش)
+  return employee.id !== actor.id && require('./supervisorDeputyService').actsFor(actor, employee.manager_id);
 }
 
 // تصمیم سرپرست/ادمین ⇒ { ok, permission }

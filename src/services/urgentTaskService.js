@@ -47,7 +47,7 @@ function scopeFailure(actor, target) {
   if (!isAssigner(actor)) return fail('FORBIDDEN', 'برای تعیین تسک فوری مجوز لازم را ندارید.');
   if (!target) return fail('USER_NOT_FOUND', 'کارمند یافت نشد.');
   if (target.id === actor.id) return fail('SELF_NOT_ALLOWED', 'برای خودتان نمی‌توانید تسک فوری تعیین کنید.');
-  if (actor.role === 'manager' && target.manager_id !== actor.id) return fail('NOT_IN_SCOPE', 'این کارمند در تیم شما نیست.');
+  if (actor.role === 'manager' && target.manager_id !== actor.id && !require('./supervisorDeputyService').actsFor(actor, target.manager_id)) return fail('NOT_IN_SCOPE', 'این کارمند در تیم شما نیست.');
   return null;
 }
 

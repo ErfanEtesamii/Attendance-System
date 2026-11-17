@@ -33,6 +33,7 @@ const { notify } = require('./notificationService');
 const { sendMessage } = require('../bot/notifier');
 const panelLinks = require('../bot/panelLinks');
 const leaveApprovalService = require('./leaveApprovalService');
+const deputyService = require('./supervisorDeputyService');
 const { hasPermission } = require('../middleware/permissions');
 const { sanitizeText } = require('../utils/sanitize');
 const { isoDateToJalaliString } = require('../utils/jalali');
@@ -67,7 +68,17 @@ function handlersOf(employee, perm) {
     if (manager && manager.is_active && allowed) list = [manager];
   }
   if (list.length === 0) list = activeAdmins();
+  // فاز D (بخش ۲): جانشینِ فعالِ سرپرست «علاوه بر» گیرنده‌های بالا (بدون جانشین ⇒ دقیقاً رفتار قبلی)
+  const deputy = deputyOfEmployee(employee, perm);
+  if (deputy && !list.some((u) => u.id === deputy.id)) list = [...list, deputy];
   return list.filter((u) => u.id !== employee.id);
+}
+
+function deputyOfEmployee(employee, perm) {
+  if (!employee.manager_id) return null;
+  const manager = usersRepository.findById(employee.manager_id);
+  const deputy = manager ? deputyService.activeDeputyOf(manager) : null;
+  return deputy && (!perm || hasPermission(deputy.role, perm)) ? deputy : null;
 }
 
 /** ثبت یک اعلان بدون شکستن فراخواننده. @returns {Promise<object|null>} */
@@ -99,7 +110,8 @@ function period(request) {
 // بدون خودِ کارمند و بدون تکرار. کارمندِ بدون سرپرست ⇒ فقط ادمین‌ها.
 function approversOf(employee) {
   const manager = leaveApprovalService.decidingSupervisorOf(employee); // فاز B: بدون leave.approve ⇒ فقط ادمین‌ها
-  const list = [...(manager ? [manager] : []), ...activeAdmins()];
+  const deputy = leaveApprovalService.decidingDeputyOf(employee); // فاز D (بخش ۲)
+  const list = [...(manager ? [manager] : []), ...(deputy ? [deputy] : []), ...activeAdmins()];
   const seen = new Set();
   return list.filter((u) => u.id !== employee.id && !seen.has(u.id) && seen.add(u.id));
 }

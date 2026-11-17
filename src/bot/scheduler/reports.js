@@ -3,6 +3,7 @@ const attendanceRepository = require('../../repositories/attendanceRepository');
 const holidaysRepository = require('../../repositories/holidaysRepository');
 const leaveRepository = require('../../repositories/leaveRepository');
 const settingsRepository = require('../../repositories/settingsRepository');
+const supervisorOverrides = require('../../services/supervisorOverrideService');
 const { getCalendarDay } = require('../../engine/calendarService');
 const { summarizeRange, summarizeRecord } = require('../../engine/dayService');
 const { formatMinutes } = require('../../utils/workHours');
@@ -39,7 +40,8 @@ function recipientsFor(manager) {
 async function sendToManagersAndAdmins(bot, buildMessage) {
   // تنظیم supervisorTeamReportEnabled: خاموش ⇒ فقط سرپرستان (نقش manager) گزارش دوره‌ای نمی‌گیرند؛ ادمین/مالک مثل قبل
   const toSupervisors = settingsRepository.getAll().supervisorTeamReportEnabled !== false;
-  const recipients = usersRepository.listUsers({ onlyActive: true, includeOwner: true }).filter((u) => ['manager', 'admin', 'owner'].includes(u.role) && (toSupervisors || u.role !== 'manager'));
+  // فاز D: استثنای هر سرپرست (supervisor_overrides) روی این تنظیم اولویت دارد
+  const recipients = usersRepository.listUsers({ onlyActive: true, includeOwner: true }).filter((u) => ['manager', 'admin', 'owner'].includes(u.role) && (u.role !== 'manager' || supervisorOverrides.effective(u, 'supervisorTeamReportEnabled', toSupervisors) !== false));
 
   for (const recipient of recipients) {
     if (!recipient.telegram_user_id) continue;

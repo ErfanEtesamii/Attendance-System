@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## Unreleased — بخش سرپرست‌ها در تنظیمات (فاز D بخش ۲: جانشین سرپرست + رابط استثناها)
+- جدید: migration `054_supervisor_deputy` (ستون `users.deputy_id`، NULL = بدون جانشین؛ حذف کاربر ⇒ NULL). بدون تعیین جانشین، رفتار دقیقاً مثل قبل است.
+- قاعده: جانشین باید `role = manager` و فعال باشد و فقط وقتی «فعال می‌شود» که سرپرست غیرفعال یا امروز تمام‌روز در مرخصی/ماموریتِ تأییدشده باشد (`calendarService.fullyOnApprovedLeave`). جانشین «علاوه بر» سرپرست و ادمین‌هاست؛ تصمیمِ اول نهایی می‌ماند و هیچ‌کس برای خودش تصمیم نمی‌گیرد.
+- اتصال (`services/supervisorDeputyService.js`): تصمیم مرخصی/ماموریت (`leaveApprovalService.canDecide` ⇒ بات، پنل و صف)، اعلان و یادآوری تأیید (`notificationEvents.approversOf/handlersOf`، `leaveApprovalReminder`)، تصمیم اجازه‌ی ورود (`lateLimitService.canDecide`) و تعیین تسک فوری (`urgentTaskService`).
+- API (فقط `supervisors.manage`): `GET /admin/supervisors/:id/deputy`، `PUT /admin/supervisors/:id/deputy` (`{ deputyId|null, reason }`؛ دلیل اجباری جز owner؛ audit با `supervisor_deputy_set/cleared`). `GET /admin/supervisors` فیلد `deputy` (با `covering`) هم دارد.
+- پنل: در «فهرست سرپرست‌ها» دکمه‌های «جانشین» و «استثناها» (فقط برای نقش سرپرست) و نمایش جانشین/«در حال جانشینی» زیر نام.
+- هنوز نیامده: جانشین برای سرپرست با نقش admin/owner (آن‌ها خودشان به همه‌چیز دسترسی دارند)، و رساندن مرور شبانه/خلاصه‌ی صبحگاهی به جانشین.
+- تست: test/supervisorDeputy.test.js (جدید).
+
+## Unreleased — بخش سرپرست‌ها در تنظیمات (فاز D بخش ۱: استثنا برای هر سرپرست)
+- جدید: migration `053_supervisor_overrides` (جدول `supervisor_overrides(user_id, key, value, updated_at)`؛ کلید اصلی `(user_id, key)`؛ حذف کاربر ⇒ CASCADE). شماره‌ی ۰۵۲ قبلاً به ایندکس ممیزی رسیده بود، پس شماره‌ی ۰۵۳ گرفت. بدون هیچ سطری، رفتار دقیقاً مثل قبل است.
+- اولویت: استثنای سرپرست > تنظیم سراسری، فقط برای `role = manager`. پنج کلید مجاز (`utils/supervisorOverrideKeys.js`): `nightlyReviewSendEnabled`، `morningDigestEnabled`، `supervisorTeamReportEnabled`، `repeatedLatenessAlertSupervisor` (روشن/خاموش) و `supervisorRecordEditMonthlyLimit` (۰–۱۰۰). مقدار خراب یا خارج از بازه نادیده گرفته می‌شود و مقدار سراسری می‌ماند.
+- سرور: `services/supervisorOverrideService.js` و `repositories/supervisorOverridesRepository.js`. اتصال به `nightlyReview`، `morningDigest`، `reports` (گزارش‌های دوره‌ای)، `lateCheckinReminder` و `recordEditQuotaService`. خاموشِ سراسری، job را فقط وقتی کامل می‌بندد که هیچ سرپرستی استثنای «روشن» نداشته باشد.
+- API (فقط `supervisors.manage`، یعنی admin/owner): `GET /admin/supervisors/:id/overrides`، `PUT …/overrides/:key` (`{ value, reason }`)، `DELETE …/overrides/:key`. دلیل اجباری (جز owner)، `auditChange` با `supervisor_override_set / supervisor_override_cleared` و `entityType: 'supervisor_override'`؛ ثبت دوباره‌ی همان مقدار و حذفِ استثنای ناموجود audit نمی‌سازند. هدف باید سرپرست (`manager`) باشد.
+- (به‌روزرسانی) رابط پنل استثناها و جانشین در همین نسخه آمد؛ فقط «استثنا روی قابلیت‌های ماتریس مجوز» هنوز نیامده (نیازمند عبور کاربر به `hasPermission` در همه‌ی نقاط).
+- تست: test/supervisorOverrides.test.js (جدید).
+
 ## Unreleased — بخش سرپرست‌ها در تنظیمات (فاز C: مدیریت سرپرست‌ها و تیم‌ها)
 - جدید: مجوز `supervisors.manage` (فقط در `PERMISSIONS`؛ admin و owner می‌گیرند، سرپرست/hr/کارمند نه). هیچ تغییر رفتاری برای نقش‌های دیگر.
 - API (`src/api/routes/admin/supervisors.js`): `GET /admin/supervisors` (سرپرست‌ها و ادمین‌های دارای تیم؛ اعضای فعال/کل، درخواست‌های در انتظار، مشاهده‌ی گزارش روز قبل، «اصلاح این ماه used/limit»، آخرین ورود؛ owner نمی‌آید؛ کارمندان بدون سرپرست جدا)، `GET /admin/supervisors/:id`، `POST …/:id/members`، `POST …/:id/transfer` (`toSupervisorId=null` ⇒ بدون سرپرست؛ `all:true` یا `userIds`).

@@ -7,6 +7,7 @@
 //   پس دو درخواست هم‌زمان نمی‌توانند هر دو از سقف رد شوند. درخواستِ ردشده audit نمی‌شود و شمرده نمی‌شود.
 
 const settingsRepository = require('../repositories/settingsRepository');
+const supervisorOverrides = require('./supervisorOverrideService');
 const auditRepository = require('../repositories/auditRepository');
 const { getDb } = require('../db/connection');
 const { todayInZone, zonedTimeToUtc } = require('../utils/time');
@@ -26,7 +27,7 @@ const CODE = 'RECORD_EDIT_LIMIT_REACHED';
 const has = (v) => v !== null && v !== undefined;
 const isManager = (actor) => !!actor && actor.role === 'manager';
 
-function readConfig() {
+function readConfig(actor = null) {
   let limit = DEFAULT_LIMIT;
   let mode = DEFAULT_MODE;
   let timezone = 'Asia/Tehran';
@@ -37,6 +38,8 @@ function readConfig() {
     if (all.supervisorRecordEditCountMode === 'record' || all.supervisorRecordEditCountMode === 'operation') mode = all.supervisorRecordEditCountMode;
     if (typeof all.timezone === 'string' && all.timezone) timezone = all.timezone;
   } catch (_) { /* پیش‌فرض‌ها */ }
+  // فاز D: استثنای همین سرپرست (supervisor_overrides) روی سقف سراسری اولویت دارد؛ فقط برای role=manager
+  limit = supervisorOverrides.effective(actor, 'supervisorRecordEditMonthlyLimit', limit);
   return { limit, mode, timezone };
 }
 
@@ -81,7 +84,7 @@ function usageOf(actor, now, cfg) {
 
 // ⇒ { exempt, limit, used, remaining, monthStart, monthEnd, jalaliYear, jalaliMonth, mode }
 function getUsage(actor, now = new Date()) {
-  const cfg = readConfig();
+  const cfg = readConfig(actor);
   const win = monthWindow(now, cfg.timezone);
   const base = { monthStart: win.start.toISOString(), monthEnd: new Date(win.end.getTime() - 1000).toISOString(), jalaliYear: win.jy, jalaliMonth: win.jm, mode: cfg.mode };
   if (!isManager(actor)) return { ...base, exempt: true, limit: null, used: 0, remaining: null };
@@ -98,7 +101,7 @@ function limitMessage(limit) {
 // ⇒ { ok: true } | { ok: false, status: 409, code, error, limit, used }
 function assertCanEdit(actor, { recordId = null, sessionId = null, targetUserId = null, ip = null } = {}, { now = new Date() } = {}) {
   if (!isManager(actor)) return { ok: true };
-  const cfg = readConfig();
+  const cfg = readConfig(actor);
   if (cfg.limit === 0) return { ok: true };
   const { keys, used } = usageOf(actor, now, cfg);
   if (used < cfg.limit) return { ok: true };

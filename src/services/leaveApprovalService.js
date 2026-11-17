@@ -13,6 +13,7 @@ const usersRepository = require('../repositories/usersRepository');
 
 const { isAdmin } = require('../utils/roles');
 const { hasPermission } = require('../middleware/permissions');
+const deputyService = require('./supervisorDeputyService');
 // نقش «نمایشی» مرحله‌ی تصمیم: سرپرست مستقیم اگر تعریف شده، وگرنه ادمین. (هر دو می‌توانند تصمیم بگیرند؛ فقط برای نمایش/اعلان)
 function planRoles(request) {
   const employee = usersRepository.findById(request.user_id);
@@ -61,6 +62,14 @@ function decidingSupervisorOf(employee) {
   return manager && manager.is_active && supervisorHolds(manager) ? manager : null;
 }
 
+// فاز D (بخش ۲): جانشینِ فعالِ سرپرستِ مستقیمِ کارمند (سرپرست غیرفعال/تمام‌روز در مرخصی)؛ وگرنه null. علاوه بر سرپرست و ادمین‌ها گیرنده‌ی اعلان و تصمیم‌گیرنده است.
+function decidingDeputyOf(employee) {
+  const manager = employee && employee.manager_id ? usersRepository.findById(employee.manager_id) : null;
+  if (!manager || !supervisorHolds(manager)) return null;
+  const deputy = deputyService.activeDeputyOf(manager);
+  return deputy && deputy.id !== employee.id && hasPermission(deputy.role, 'leave.approve') ? deputy : null;
+}
+
 // کارمندِ این درخواست سرپرست (manager_id) دارد؟ (برای انتخاب متن خطا وقتی سرپرست مجوز تصمیم ندارد)
 function employeeHasManager(request) {
   const employee = usersRepository.findById(request.user_id);
@@ -80,7 +89,10 @@ function canDecide(actor, request) {
   if (isAdmin(actor)) return true;
   if (actor.role !== 'manager' || !hasPermission(actor.role, 'leave.approve')) return false;
   const employee = usersRepository.findById(request.user_id);
-  return !!employee && employee.manager_id === actor.id;
+  if (!employee) return false;
+  if (employee.manager_id === actor.id) return true;
+  // فاز D (بخش ۲): جانشینِ فعالِ سرپرستِ مستقیم (هیچ‌کس برای خودش تصمیم نمی‌گیرد)
+  return employee.id !== actor.id && deputyService.actsFor(actor, employee.manager_id);
 }
 
 // decision: 'approve' | 'reject'؛ actor: ردیف کاربر (id, role)
@@ -128,4 +140,4 @@ function decisionInfo(request) {
   return { id: user.id, fullName: user.full_name, role, roleLabel: ROLE_LABELS[user.role] || ROLE_LABELS[role] || 'تأییدکننده', decidedAt: (row && row.decidedAt) || request.updated_at || null, note: (row && row.note) || null };
 }
 
-module.exports = { planRoles, initChain, clearChain, getChain, awaitingRole, canDecide, decidingSupervisorOf, decide, decisionInfo };
+module.exports = { planRoles, initChain, clearChain, getChain, awaitingRole, canDecide, decidingSupervisorOf, decidingDeputyOf, decide, decisionInfo };

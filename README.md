@@ -147,7 +147,7 @@ Most business rules (lunch, breaks, lateness limit, remote work, plan/report gat
 
 ## Database and Migrations
 
-Database schema changes are made **only** through migrations (`src/db/migrations/`, numbered files; currently `001` to `042`):
+Database schema changes are made **only** through migrations (`src/db/migrations/`, numbered files; currently `001` to `054`):
 
 ```bash
 npm run migrate           # apply pending migrations (takes a backup first)

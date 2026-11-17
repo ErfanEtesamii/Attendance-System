@@ -7,6 +7,7 @@ const reviewsRepo = require('../../repositories/reportReviewRepository');
 const calendarService = require('../../engine/calendarService');
 const { taskDayTally } = require('../../services/taskDayTally');
 const nightlyTaskReportService = require('../../services/nightlyTaskReportService');
+const supervisorOverrides = require('../../services/supervisorOverrideService');
 const { panelWebAppButton } = require('../panelLinks');
 const { todayInZone, zonedTimeToUtc } = require('../../utils/time');
 const { addDays } = require('../../utils/shiftDay');
@@ -78,8 +79,10 @@ function buildMorningDigests({ now = new Date() } = {}) {
 }
 
 async function sendMorningDigest(bot, { now = new Date() } = {}) {
-  if (settingsRepository.getAll().morningDigestEnabled === false) return { sent: 0, candidates: 0, disabled: true }; // تنظیم «ارسال خلاصه‌ی صبحگاهی»
-  const digests = buildMorningDigests({ now });
+  // تنظیم «ارسال خلاصه‌ی صبحگاهی»؛ فاز D: استثنای هر سرپرست اولویت دارد (خاموشِ سراسری فقط وقتی کل job را می‌بندد که هیچ سرپرستی استثنای «روشن» نداشته باشد)
+  const globalOn = settingsRepository.getAll().morningDigestEnabled !== false;
+  if (!globalOn && !supervisorOverrides.anyOverrideEquals('morningDigestEnabled', true)) return { sent: 0, candidates: 0, disabled: true };
+  const digests = buildMorningDigests({ now }).filter((d) => supervisorOverrides.effective(d.reviewer, 'morningDigestEnabled', globalOn) !== false);
   const btn = panelWebAppButton({ view: 'teamreports', text: '🖥 گزارش‌های تیم' });
   let sent = 0;
   for (const d of digests) {

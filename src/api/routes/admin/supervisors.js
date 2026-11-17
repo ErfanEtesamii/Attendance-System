@@ -6,6 +6,13 @@
 // هر دو POST با body.dryRun=true فقط «پیش‌نمایش» می‌دهند (بدون نوشتن و بدون نیاز به دلیل).
 // نوشتن واقعی: دلیل اجباری (جز owner)، تراکنش، auditChange (entityType='supervisor') و بازسازی تسک واجب سرپرست‌ها.
 // تغییر نقش/فعال‌بودن سرپرست از همان PATCH /admin/users/:id انجام می‌شود (این فایل به آن دست نمی‌زند).
+// فاز D (بخش ۱) — استثنا برای هر سرپرست (فقط role=manager؛ اولویت: استثنا > تنظیم سراسری):
+//   GET    /admin/supervisors/:id/overrides        کلیدهای مجاز + مقدار سراسری/استثنا/مؤثر
+//   PUT    /admin/supervisors/:id/overrides/:key   body: { value, reason } (دلیل اجباری جز owner)
+//   DELETE /admin/supervisors/:id/overrides/:key   body|query: { reason } ⇒ برگشت به تنظیم سراسری
+// فاز D (بخش ۲) — جانشین سرپرست (فقط role=manager؛ جانشین هم manager فعال):
+//   GET /admin/supervisors/:id/deputy   جانشین فعلی + وضعیت «در حال جانشینی» + گزینه‌های ممکن
+//   PUT /admin/supervisors/:id/deputy   body: { deputyId|null, reason } (null ⇒ حذف جانشین؛ دلیل اجباری جز owner)
 
 const express = require('express');
 const router = express.Router();
@@ -16,7 +23,11 @@ const usersRepository = require('../../../repositories/usersRepository');
 const teamReviewService = require('../../../services/teamReviewService');
 const recordEditQuota = require('../../../services/recordEditQuotaService');
 const { sanitizeText } = require('../../../utils/sanitize');
-const { supervisorView } = require('../../../utils/auditViews');
+const { supervisorView, supervisorOverrideView, supervisorDeputyView } = require('../../../utils/auditViews');
+const deputyService = require('../../../services/supervisorDeputyService');
+const overridesRepository = require('../../../repositories/supervisorOverridesRepository');
+const settingsRepository = require('../../../repositories/settingsRepository');
+const { SUPERVISOR_OVERRIDE_DEFS, isKey, validateOverride } = require('../../../utils/supervisorOverrideKeys');
 const { auditChange, requireReason } = require('./common');
 
 const SUPERVISOR_ROLES = ['manager', 'admin', 'owner'];
@@ -77,6 +88,15 @@ function recordEditOf(user) {
 
 function brief(u) {
   return { id: u.id, fullName: u.full_name, personnelCode: u.personnel_code || null, department: u.department || null, role: u.role, isActive: !!u.is_active, managerId: u.manager_id || null };
+}
+
+// جانشین ثبت‌شده‌ی یک سرپرست برای نمایش: { id, fullName, isActive, covering } یا null (covering = همین الان جایگزین است)
+function deputyBrief(u) {
+  if (!u || u.role !== 'manager' || !u.deputy_id) return null;
+  const d = usersRepository.findById(u.deputy_id);
+  if (!d) return null;
+  const active = deputyService.activeDeputyOf(u);
+  return { id: d.id, fullName: d.full_name, isActive: !!d.is_active, covering: !!active };
 }
 
 // ---------- اعتبارسنجی ----------
@@ -186,6 +206,7 @@ router.get('/admin/supervisors', requirePermission('supervisors.manage'), (req, 
         pendingRequests: pending.get(u.id) || 0,
         review: u.is_active ? reviewOf(u) : { applicable: false, viewed: null, reviewDate: null },
         recordEdit: recordEditOf(u),
+        deputy: deputyBrief(u),
         lastLoginAt: logins.get(u.id) || null,
       };
     });
@@ -261,6 +282,126 @@ router.post('/admin/supervisors/:id/transfer', requirePermission('supervisors.ma
   if (reason === null) return undefined;
   const moved = applyMove(req, { members: r.members, to, fromHint: from.id, reason: sanitizeText(reason, 500), action: 'supervisor_team_transferred' });
   return res.json({ ok: true, moved: moved.length, fromSupervisorId: from.id, toSupervisorId: to ? to.id : null });
+});
+
+// ---------- استثنا برای هر سرپرست (فاز D، بخش ۱) ----------
+
+// هدف باید کاربرِ role=manager باشد (غیرفعال هم مجاز است تا قبل از فعال‌سازی قابل تنظیم باشد)
+function overrideTarget(req, res) {
+  const id = parseId(req.params.id);
+  const sup = id ? usersRepository.findById(id) : null;
+  if (!sup) { res.status(404).json({ error: 'سرپرست یافت نشد.' }); return null; }
+  if (sup.role !== 'manager') { res.status(400).json({ error: 'استثنا فقط برای کاربرانِ با نقش سرپرست تعریف می‌شود.' }); return null; }
+  return sup;
+}
+
+function globalValueOf(key) {
+  try { return settingsRepository.getAll()[key]; } catch (_) { return undefined; }
+}
+
+router.get('/admin/supervisors/:id/overrides', requirePermission('supervisors.manage'), (req, res) => {
+  const sup = overrideTarget(req, res);
+  if (!sup) return undefined;
+  const current = overridesRepository.listByUser(sup.id);
+  const items = Object.keys(SUPERVISOR_OVERRIDE_DEFS).map((key) => {
+    const def = SUPERVISOR_OVERRIDE_DEFS[key];
+    const has = Object.prototype.hasOwnProperty.call(current, key) && validateOverride(key, current[key]).ok;
+    const global = globalValueOf(key);
+    return { key, label: def.label, type: def.type, min: def.min ?? null, max: def.max ?? null, global: global === undefined ? null : global, override: has ? current[key] : null, hasOverride: has, effective: has ? current[key] : (global === undefined ? null : global) };
+  });
+  return res.json({ supervisor: brief(sup), items });
+});
+
+router.put('/admin/supervisors/:id/overrides/:key', requirePermission('supervisors.manage'), (req, res) => {
+  const sup = overrideTarget(req, res);
+  if (!sup) return undefined;
+  const key = req.params.key;
+  if (!isKey(key)) return res.status(400).json({ error: 'کلید استثنا نامعتبر است.' });
+  const v = validateOverride(key, (req.body || {}).value);
+  if (!v.ok) return res.status(400).json({ error: v.error });
+  const reason = requireReason(req, res);
+  if (reason === null) return undefined;
+  const before = overridesRepository.get(sup.id, key);
+  if (before === v.value) return res.json({ ok: true, key, value: v.value, changed: false });
+  getDb().transaction(() => {
+    overridesRepository.set(sup.id, key, v.value);
+    auditChange(req, {
+      action: 'supervisor_override_set',
+      entityType: 'supervisor_override',
+      entityId: sup.id,
+      before: before === undefined ? null : supervisorOverrideView({ value: before }),
+      after: supervisorOverrideView({ value: v.value }),
+      reason: sanitizeText(reason, 500) || null,
+      meta: { targetUserId: sup.id, key },
+    });
+  })();
+  return res.json({ ok: true, key, value: v.value, changed: true });
+});
+
+router.delete('/admin/supervisors/:id/overrides/:key', requirePermission('supervisors.manage'), (req, res) => {
+  const sup = overrideTarget(req, res);
+  if (!sup) return undefined;
+  const key = req.params.key;
+  if (!isKey(key)) return res.status(400).json({ error: 'کلید استثنا نامعتبر است.' });
+  const reason = requireReason(req, res);
+  if (reason === null) return undefined;
+  const before = overridesRepository.get(sup.id, key);
+  if (before === undefined) return res.json({ ok: true, key, removed: false });
+  getDb().transaction(() => {
+    overridesRepository.remove(sup.id, key);
+    auditChange(req, {
+      action: 'supervisor_override_cleared',
+      entityType: 'supervisor_override',
+      entityId: sup.id,
+      before: supervisorOverrideView({ value: before }),
+      after: null,
+      reason: sanitizeText(reason, 500) || null,
+      meta: { targetUserId: sup.id, key },
+    });
+  })();
+  return res.json({ ok: true, key, removed: true });
+});
+
+// ---------- جانشین سرپرست (فاز D، بخش ۲) ----------
+
+router.get('/admin/supervisors/:id/deputy', requirePermission('supervisors.manage'), (req, res) => {
+  const sup = overrideTarget(req, res);
+  if (!sup) return undefined;
+  const candidates = usersRepository.listUsers({ onlyActive: true }).filter((u) => u.role === 'manager' && u.id !== sup.id).map(brief);
+  return res.json({ supervisor: brief(sup), deputy: deputyBrief(sup), absent: deputyService.isAbsent(sup), candidates });
+});
+
+router.put('/admin/supervisors/:id/deputy', requirePermission('supervisors.manage'), (req, res) => {
+  const sup = overrideTarget(req, res);
+  if (!sup) return undefined;
+  const raw = (req.body || {}).deputyId;
+  const clearing = raw === null;
+  let deputy = null;
+  if (!clearing) {
+    const did = parseId(raw);
+    if (!did) return res.status(400).json({ error: 'شناسه‌ی جانشین نامعتبر است.' });
+    deputy = usersRepository.findById(did);
+    const bad = deputyService.validateDeputy(sup, deputy);
+    if (bad) return res.status(deputy ? 400 : 404).json({ error: bad });
+  }
+  const reason = requireReason(req, res);
+  if (reason === null) return undefined;
+  const beforeId = sup.deputy_id || null;
+  const afterId = deputy ? deputy.id : null;
+  if (beforeId === afterId) return res.json({ ok: true, deputyId: afterId, changed: false });
+  getDb().transaction(() => {
+    usersRepository.updateUser(sup.id, { deputy_id: afterId });
+    auditChange(req, {
+      action: afterId ? 'supervisor_deputy_set' : 'supervisor_deputy_cleared',
+      entityType: 'supervisor_deputy',
+      entityId: sup.id,
+      before: supervisorDeputyView({ deputy_id: beforeId }),
+      after: supervisorDeputyView({ deputy_id: afterId }),
+      reason: sanitizeText(reason, 500) || null,
+      meta: { targetUserId: sup.id, deputyId: afterId, previousDeputyId: beforeId },
+    });
+  })();
+  return res.json({ ok: true, deputyId: afterId, changed: true });
 });
 
 module.exports = router;
