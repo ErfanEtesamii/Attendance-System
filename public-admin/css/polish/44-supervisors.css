@@ -155,40 +155,94 @@
 }
 
 /* ===== «تنظیمات مرتبط در بخش‌های دیگر» ===== */
-/* فقط CSS؛ هر مورد یک کارت کوچک: نام + بخش مبدأ ← مقدار فعلی ← دکمه‌ی رفتن. سه‌تا در ردیف، با همان منطق ردیف آخر. */
+/* هر بخش مبدأ یک رنگ ثابت دارد (data-tone از views-admin.js)؛ رنگ‌ها فقط از توکن‌ها. سه‌تا در ردیف، ردیف آخر کشیده می‌شود. */
 .st-related {
   container-type: inline-size; container-name: rel;
-  margin-top: var(--space-5); padding: var(--space-4);
-  border-radius: var(--r-xl); border: 1px solid var(--admin-line, var(--border));
-  background: linear-gradient(160deg, color-mix(in srgb, var(--brand) 6%, var(--card)), var(--card));
-  box-shadow: var(--lift-sm), var(--shadow-1);
+  position: relative; isolation: isolate; overflow: hidden;
+  margin-top: var(--space-5); padding: var(--space-4) var(--space-4) var(--space-5);
+  border-radius: var(--r-xl); border: 1px solid color-mix(in srgb, var(--brand) 22%, var(--border));
+  background:
+    radial-gradient(520px 220px at 100% 0, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%),
+    radial-gradient(420px 200px at 0 100%, color-mix(in srgb, var(--purple) 12%, transparent), transparent 70%),
+    linear-gradient(160deg, color-mix(in srgb, var(--brand) 7%, var(--card)), var(--card));
+  box-shadow: var(--lift-sm), var(--shadow-1), inset 0 1px 0 color-mix(in srgb, white 55%, transparent);
 }
-.st-related h4 { margin: 0 0 4px; font-size: var(--fs-lg); font-weight: 800; }
-.st-related > p { margin: 0 0 var(--space-3); line-height: 1.9; max-width: 78ch; }
+.st-related h4 {
+  display: flex; align-items: center; gap: 10px; margin: 0 0 4px; font-size: var(--fs-lg); font-weight: 800; color: var(--brand);
+}
+.st-related h4::before {
+  content: ""; flex: none; width: 10px; height: 22px; border-radius: 999px;
+  background: linear-gradient(180deg, var(--accent), var(--purple));
+  box-shadow: 0 6px 12px -6px color-mix(in srgb, var(--accent) 80%, transparent);
+}
+.st-related > p { margin: 0 0 var(--space-4); line-height: 1.9; max-width: 78ch; }
 
-.st-rel-list { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
+.st-rel-list { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; margin: 0; padding: 0; list-style: none; }
+
 .st-rel-item {
+  --tone: var(--brand);
   grid-column: span 2;
+  position: relative; isolation: isolate; overflow: hidden;
   display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "main main" "val go";
-  align-items: center; gap: 12px var(--space-3);
-  padding: 14px 16px; border-top: 0; border-radius: var(--r-lg);
-  border: 1px solid var(--admin-line, var(--border)); background: var(--card); box-shadow: var(--shadow-1);
-  transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
+  align-items: center; gap: 14px var(--space-3);
+  padding: 16px 18px 16px; border-top: 0; border-radius: var(--r-lg);
+  border: 1px solid color-mix(in srgb, var(--tone) 26%, var(--border));
+  background:
+    radial-gradient(200px 120px at 100% 0, color-mix(in srgb, var(--tone) 20%, transparent), transparent 72%),
+    linear-gradient(180deg, color-mix(in srgb, var(--tone) 7%, var(--card)), var(--card) 70%);
+  box-shadow: 0 10px 22px -16px color-mix(in srgb, var(--tone) 70%, transparent), var(--shadow-1), inset 0 1px 0 color-mix(in srgb, white 60%, transparent);
+  transition: transform var(--motion-fast) var(--ease-out), border-color var(--motion-fast), box-shadow var(--motion-fast);
 }
-.st-rel-item:hover, .st-rel-item:focus-within { border-color: color-mix(in srgb, var(--brand) 32%, var(--border)); box-shadow: var(--lift-sm), var(--shadow-1); }
+.st-rel-item[data-tone="0"] { --tone: var(--brand); }
+.st-rel-item[data-tone="1"] { --tone: var(--teal-text, var(--accent)); }
+.st-rel-item[data-tone="2"] { --tone: var(--blue); }
+.st-rel-item[data-tone="3"] { --tone: var(--green); }
+.st-rel-item[data-tone="4"] { --tone: var(--orange); }
+.st-rel-item[data-tone="5"] { --tone: var(--purple-text, var(--purple)); }
+/* نوار رنگی باریک روی لبه‌ی شروع کارت */
+.st-rel-item::before {
+  content: ""; position: absolute; inset-block: 14px; inset-inline-start: 0; width: 4px; border-radius: 0 999px 999px 0;
+  background: linear-gradient(180deg, var(--tone), color-mix(in srgb, var(--tone) 40%, transparent));
+}
+[dir="rtl"] .st-rel-item::before { border-radius: 999px 0 0 999px; }
+.st-rel-item:hover, .st-rel-item:focus-within {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--tone) 50%, var(--border));
+  box-shadow: 0 16px 28px -16px color-mix(in srgb, var(--tone) 80%, transparent), var(--shadow-1), inset 0 1px 0 color-mix(in srgb, white 60%, transparent);
+}
 .st-rel-item:nth-of-type(3n+1):last-of-type { grid-column: span 6; }
 .st-rel-item:nth-of-type(3n+1):nth-last-of-type(2),
 .st-rel-item:nth-of-type(3n+2):last-of-type { grid-column: span 3; }
 
-.st-rel-main { grid-area: main; flex: none; display: grid; gap: 6px; justify-items: start; }
+.st-rel-main { grid-area: main; flex: none; display: grid; gap: 8px; justify-items: start; }
 .st-rel-name { font-size: var(--fs-md); font-weight: 800; line-height: 1.6; }
-.st-rel-group { padding: 2px 10px; border-radius: 999px; background: var(--card-2); font-size: var(--fs-xs); font-weight: 600; }
+.st-rel-group {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 11px 3px 10px; border-radius: 999px;
+  background: color-mix(in srgb, var(--tone) 14%, var(--card)); color: var(--tone);
+  border: 1px solid color-mix(in srgb, var(--tone) 24%, transparent);
+  font-size: var(--fs-xs); font-weight: 700;
+}
+.st-rel-group::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--tone); }
+
+/* مقدار فعلی: قرص رنگی براق */
 .st-rel-val {
   grid-area: val; justify-self: start; max-width: 100%;
-  padding: 5px 14px; border-radius: 999px; background: var(--brand-soft); color: var(--brand);
-  font-size: var(--fs-sm); font-weight: 800; overflow-wrap: anywhere;
+  padding: 6px 16px; border-radius: 999px; overflow-wrap: anywhere;
+  color: var(--tone); font-size: var(--fs-sm); font-weight: 800;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tone) 22%, var(--card)), color-mix(in srgb, var(--tone) 12%, var(--card)));
+  border: 1px solid color-mix(in srgb, var(--tone) 34%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 55%, transparent), 0 6px 12px -8px color-mix(in srgb, var(--tone) 70%, transparent);
 }
-.st-rel-item .btn { grid-area: go; }
+
+/* دکمه: خطی با رنگ بخش؛ روی hover پر می‌شود */
+.st-rel-item .btn {
+  grid-area: go; background: var(--card); color: var(--tone);
+  border: 1px solid color-mix(in srgb, var(--tone) 40%, transparent); font-weight: 700;
+}
+.st-rel-item .btn:hover, .st-rel-item .btn:focus-visible {
+  background: var(--tone); color: var(--card); background-image: none; border-color: var(--tone);
+}
+.st-rel-item .btn:focus-visible { outline: 2px solid var(--tone); outline-offset: 2px; }
 
 @container rel (max-width: 760px) {
   .st-rel-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -205,9 +259,11 @@
 
 @media (prefers-reduced-motion: reduce) {
   .sup-card, .sup-bar > i, .st-rel-item { transition: none; }
+  .st-rel-item:hover, .st-rel-item:focus-within { transform: none; }
 }
 @media (forced-colors: active) {
   .sup-card, .sup-menu-list, .sup-un, .sup-sum > div, .st-rel-item { border: 1px solid CanvasText; }
+  .st-rel-item::before { background: Highlight; }
   .sup-bar { border: 1px solid CanvasText; }
   .sup-bar > i { background: Highlight; }
 }

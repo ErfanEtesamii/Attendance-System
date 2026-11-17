@@ -386,10 +386,11 @@
 
       // کارت «تنظیمات مرتبط در بخش‌های دیگر»: فقط نمایش + رفتن به ردیف اصلی (ویرایش دوبل نمی‌کند تا drafts به‌هم نخورد)
       const relatedOf = (g) => items.filter((i) => Array.isArray(i.related) && i.related.includes(g) && i.group !== g);
+      const relTone = (k) => [...String(k || '')].reduce((a, c) => a + c.charCodeAt(0), 0) % 6; // رنگ ثابت برای هر بخش مبدأ (فقط ظاهر)
       const relatedInner = (g) => relatedOf(g).map((it) => {
         const v = it.key in drafts ? drafts[it.key] : it.value;
         const ltr = ['time', 'timezone', 'cron', 'number', 'date'].includes(it.type);
-        return `<li class="st-rel-item">
+        return `<li class="st-rel-item" data-tone="${relTone(it.group)}">
           <div class="st-rel-main"><span class="st-rel-name">${esc(setShort(it))}</span><span class="st-rel-group muted small">${esc(it.groupLabel || data.groups[it.group] || '')}</span></div>
           <bdi class="st-rel-val" dir="${ltr ? 'ltr' : 'auto'}">${esc(setShow(it, setNorm(it, v) === setNorm(it, it.value) ? it.value : v))}${it.key in drafts && isDirty(it) ? ' <span class="st-tag">ذخیره‌نشده</span>' : ''}</bdi>
           <button type="button" class="btn ghost small" data-goto="${esc(it.key)}" aria-label="رفتن به تنظیم «${esc(setShort(it))}» در بخش ${esc(it.groupLabel || '')}">رفتن به تنظیم</button>
