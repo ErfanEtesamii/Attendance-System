@@ -32,6 +32,7 @@ const calendarService = require('../engine/calendarService');
 const { sanitizeText } = require('../utils/sanitize');
 const { addDays, dayNumber } = require('../utils/shiftDay');
 const { isAdmin } = require('../utils/roles');
+const { hasPermission } = require('../middleware/permissions');
 const logErr = (label, err) => console.error(`[teamReview] ${label} (نادیده گرفته شد):`, sanitizeText(err && err.message ? err.message : String(err), 200));
 
 const REVIEW_KEY = 'review_team_reports';
@@ -47,7 +48,10 @@ const lookbackDays = (settings = settingsRepository.getAll()) => settings.teamRe
 const fail = (code, error, extra = {}) => ({ ok: false, code, error, ...extra });
 const clean = (v, max) => sanitizeText(v == null ? '' : String(v), max + 1).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
 
-const isReviewer = (user) => !!user && (user.role === 'manager' || isAdmin(user));
+// نوشتن (ثبت «مشاهده شد»/کامنت، تسک واجب بررسی): ادمین یا مجوز reviews.write (فاز B: برای سرپرست‌ها قابل‌خاموش‌شدن)
+const isReviewer = (user) => !!user && (isAdmin(user) || hasPermission(user.role, 'reviews.write'));
+// خواندن گزارش تیم: ادمین یا مجوز reviews.read (پایه؛ خاموش‌نشدنی) ⇒ با خاموش‌شدن reviews.write سرپرست همچنان فقط می‌بیند
+const canViewTeam = (user) => !!user && (isAdmin(user) || hasPermission(user.role, 'reviews.read'));
 
 // کد خطا ⇒ وضعیت HTTP (مشترک بین Mini App و پنل)
 const ERROR_STATUS = { FORBIDDEN: 403, SUBJECT_NOT_IN_SCOPE: 403, USER_NOT_FOUND: 404, NO_REPORT: 404, MONTH_CLOSED: 409 };
@@ -55,7 +59,7 @@ const statusOf = (code) => ERROR_STATUS[code] || 400;
 
 /** زیردست‌های مستقیمِ فعال (فقط برای manager/admin). */
 function teamOf(user) {
-  if (!isReviewer(user)) return [];
+  if (!canViewTeam(user)) return [];
   return usersRepository.listUsers({ onlyActive: true, managerId: user.id }).filter((u) => u.id !== user.id);
 }
 
@@ -292,7 +296,7 @@ function reportDateBounds(user, now, settings = settingsRepository.getAll()) {
 
 /** GET /miniapp/team-review?date= — وضعیت مشاهده‌ی گزارش‌های تیم (پیش‌فرض: «روز قبل» نسبت به امروزِ سرپرست). */
 function getTeamReview(user, { date, now = new Date(), detail = false } = {}) {
-  if (!isReviewer(user)) return fail('FORBIDDEN', 'فقط سرپرست یا ادمین به گزارش‌های تیم دسترسی دارد.');
+  if (!canViewTeam(user)) return fail('FORBIDDEN', 'فقط سرپرست یا ادمین به گزارش‌های تیم دسترسی دارد.');
   const settings = settingsRepository.getAll();
   const { cur, oldest } = reportDateBounds(user, now, settings);
   let reviewDate;

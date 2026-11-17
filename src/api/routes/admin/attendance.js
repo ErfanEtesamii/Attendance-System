@@ -17,6 +17,8 @@ const { sendTable, exportAuditFields } = require('../../../utils/xlsx'); // S5-1
 const { isoDateToJalaliString } = require('../../../utils/jalali');
 const { DATE_RE, STATUSES, scopedUserIds, visibleUsers, canAccessUser, parseRange, isoOrNull, enrichRecord, requireReason, audit, auditChange } = require('./common');
 const { attendanceRecordView, breakView } = require('../../../utils/auditViews');
+const quotaGuard = require('./recordEditQuota'); // مرحله ۲: سقف ماهانه‌ی اصلاح رکورد سرپرست
+const recordEditQuotaService = require('../../../services/recordEditQuotaService');
 const monthLock = require('./monthLock'); // S5-3c: قفل ماه بسته
 const remoteRepo = require('../../../repositories/remoteWorkRepository');
 const { reviewScopeFailure } = require('../../../services/remoteWorkAdminService');
@@ -24,7 +26,7 @@ const { reviewScopeFailure } = require('../../../services/remoteWorkAdminService
 const { isAdmin, isOwner } = require('../../../utils/roles');
 // ---------- اصلاح دستی رکورد تردد (فقط ادمین کل) ----------
 
-router.patch('/admin/attendance-records/:id', requirePermission('records.edit'), (req, res) => {
+router.patch('/admin/attendance-records/:id', requirePermission('records.edit'), quotaGuard.forRecord, (req, res) => {
   const id = parseInt(req.params.id, 10);
   const record = attendanceRepository.findById(id);
   if (!record) return res.status(404).json({ error: 'رکورد یافت نشد.' });
@@ -77,6 +79,11 @@ router.patch('/admin/attendance-records/:id', requirePermission('records.edit'),
   }
 
   res.json(updated);
+});
+
+// سهمیه‌ی باقی‌مانده‌ی اصلاح رکورد در ماه شمسی جاری (برای نوار مودال رکورد). ادمین/مالک: exempt=true.
+router.get('/admin/me/record-edit-quota', requirePermission('records.edit'), (req, res) => {
+  res.json({ ok: true, ...recordEditQuotaService.getUsage(req.adminUser) });
 });
 
 // ---------- جستجو و مرور همه‌ی رکوردهای تردد ----------
@@ -215,7 +222,7 @@ router.get('/admin/attendance-records/:id', requirePermission('attendance.read')
   res.json({ ...enrichRecord(record), history, disputes, segments, segmentCount: segments.length, remoteSessions });
 });
 
-router.delete('/admin/attendance-records/:id/segments/:seq', requirePermission('records.edit'), (req, res) => {
+router.delete('/admin/attendance-records/:id/segments/:seq', requirePermission('records.edit'), quotaGuard.forRecord, (req, res) => {
   const reason = requireReason(req, res);
   if (reason === null) return undefined;
   const record = attendanceRepository.findById(parseInt(req.params.id, 10));
@@ -247,7 +254,7 @@ function notifySegmentChange(req, record, reason, what) {
   }
 }
 
-router.post('/admin/attendance-records/:id/segments', requirePermission('records.edit'), (req, res) => {
+router.post('/admin/attendance-records/:id/segments', requirePermission('records.edit'), quotaGuard.forRecord, (req, res) => {
   const reason = requireReason(req, res);
   if (reason === null) return undefined;
   const record = attendanceRepository.findById(parseInt(req.params.id, 10));
@@ -272,7 +279,7 @@ router.post('/admin/attendance-records/:id/segments', requirePermission('records
   return res.status(201).json({ ok: true, segment: seg, segments: attendanceRepository.listSegments(record.id), record: enrichRecord(attendanceRepository.findById(record.id)) });
 });
 
-router.patch('/admin/attendance-records/:id/segments/:seq', requirePermission('records.edit'), (req, res) => {
+router.patch('/admin/attendance-records/:id/segments/:seq', requirePermission('records.edit'), quotaGuard.forRecord, (req, res) => {
   const reason = requireReason(req, res);
   if (reason === null) return undefined;
   const record = attendanceRepository.findById(parseInt(req.params.id, 10));
@@ -303,7 +310,7 @@ router.patch('/admin/attendance-records/:id/segments/:seq', requirePermission('r
   return res.json({ ok: true, segment: seg, segments: attendanceRepository.listSegments(record.id), record: enrichRecord(attendanceRepository.findById(record.id)) });
 });
 
-router.post('/admin/attendance-records', requirePermission('records.edit'), (req, res) => {
+router.post('/admin/attendance-records', requirePermission('records.edit'), quotaGuard.forNewRecord, (req, res) => {
   const reason = requireReason(req, res);
   if (reason === null) return undefined;
   const { userId, date, checkInTime, checkOutTime, status } = req.body || {};
@@ -342,7 +349,7 @@ router.post('/admin/attendance-records', requirePermission('records.edit'), (req
   res.status(201).json(enrichRecord(created));
 });
 
-router.delete('/admin/attendance-records/:id', requirePermission('records.edit'), (req, res) => {
+router.delete('/admin/attendance-records/:id', requirePermission('records.edit'), quotaGuard.forRecord, (req, res) => {
   const reason = requireReason(req, res);
   if (reason === null) return undefined;
   const record = attendanceRepository.findById(parseInt(req.params.id, 10));
@@ -366,7 +373,7 @@ router.delete('/admin/attendance-records/:id', requirePermission('records.edit')
 
 // ---------- استراحت‌ها ----------
 
-router.post('/admin/attendance-records/:id/breaks', requirePermission('records.edit'), (req, res) => {
+router.post('/admin/attendance-records/:id/breaks', requirePermission('records.edit'), quotaGuard.forRecord, (req, res) => {
   const reason = requireReason(req, res);
   if (reason === null) return undefined;
   const record = attendanceRepository.findById(parseInt(req.params.id, 10));
@@ -398,7 +405,7 @@ router.post('/admin/attendance-records/:id/breaks', requirePermission('records.e
   res.status(201).json(created);
 });
 
-router.patch('/admin/break-records/:id', requirePermission('records.edit'), (req, res) => {
+router.patch('/admin/break-records/:id', requirePermission('records.edit'), quotaGuard.forBreak, (req, res) => {
   const reason = requireReason(req, res);
   if (reason === null) return undefined;
   const br = breakRepository.findById(parseInt(req.params.id, 10));
@@ -435,7 +442,7 @@ router.patch('/admin/break-records/:id', requirePermission('records.edit'), (req
   res.json(updated);
 });
 
-router.delete('/admin/break-records/:id', requirePermission('records.edit'), (req, res) => {
+router.delete('/admin/break-records/:id', requirePermission('records.edit'), quotaGuard.forBreak, (req, res) => {
   const reason = requireReason(req, res);
   if (reason === null) return undefined;
   const br = breakRepository.findById(parseInt(req.params.id, 10));

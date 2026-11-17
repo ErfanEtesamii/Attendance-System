@@ -29,7 +29,7 @@ async function handleStart(bot, msg) {
     try {
       await sendMenu(bot, chatId, user);
     } catch (err) {
-      console.error('[bot] ارسال منو بعد از /start ناموفق بود:', err.message);
+      console.error('[bot] ارسال منو بعد از دستور start ناموفق بود:', err.message);
     }
   }
 }

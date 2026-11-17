@@ -143,8 +143,18 @@
     const late = r.summary.lateMinutes;
     const eff = r.summary.effectiveMinutes;
 
+    // مرحله ۲: سهمیه‌ی ماهانه‌ی اصلاح (فقط سرپرست؛ ادمین/مالک exempt). خطا ⇒ بدون نوار (سرور همچنان سقف را اعمال می‌کند).
+    let quota = null;
+    if (admin) { try { quota = await AP.api('/admin/me/record-edit-quota'); } catch (_) { quota = null; } }
+    const quotaShown = !!quota && !quota.exempt && !quota.unlimited && quota.limit != null;
+    const quotaOut = quotaShown && quota.remaining === 0;
+    const quotaBar = quotaShown
+      ? `<div class="rec-quota${quotaOut ? ' is-out' : ''}" role="status" id="rec-quota">${icon('info')}<span>اصلاح باقی‌مانده این ماه: <b>${fmt.num(quota.remaining)}</b> از ${fmt.num(quota.limit)}${quotaOut ? ' — سقف اصلاح این ماه تمام شده است؛ برای اصلاح بیشتر با ادمین هماهنگ کنید.' : ''}</span></div>`
+      : '';
+
     const body = `
       <div class="record-modal" data-status="${esc(r.status)}">
+        ${quotaBar}
         <header class="rec-hero">
           ${AP.avatar(u.fullName, '', u.id)}
           <div class="rec-hero-text">
@@ -225,6 +235,11 @@
         const reopen = () => { h.close(); AP.openRecord(id); AP.refresh(); };
         const link = $('[data-close-link]', b); if (link) link.addEventListener('click', () => h.close());
         if (!admin) return;
+        if (quotaOut) { // سقف تمام شده: عملیات اصلاح غیرفعال (سرور هم ۴۰۹ می‌دهد)
+          $$('#fix-form button, #del-rec, #add-segment button, #add-break button, [data-save-break], [data-del-break], [data-save-segment], [data-del-segment], [data-save-remote]', b).forEach((el) => {
+            el.disabled = true; el.setAttribute('aria-disabled', 'true'); el.title = 'سقف اصلاح رکورد در این ماه تمام شده است.';
+          });
+        }
         AP.dates.mount(b); // قبل از listenerها: datetime-localها ⇒ تاریخ شمسی + ساعت (S3-11a)
 
         $('#fix-form', b).addEventListener('submit', async (e) => {

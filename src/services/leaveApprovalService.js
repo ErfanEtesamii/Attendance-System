@@ -12,6 +12,7 @@ const leaveApprovalRepository = require('../repositories/leaveApprovalRepository
 const usersRepository = require('../repositories/usersRepository');
 
 const { isAdmin } = require('../utils/roles');
+const { hasPermission } = require('../middleware/permissions');
 // نقش «نمایشی» مرحله‌ی تصمیم: سرپرست مستقیم اگر تعریف شده، وگرنه ادمین. (هر دو می‌توانند تصمیم بگیرند؛ فقط برای نمایش/اعلان)
 function planRoles(request) {
   const employee = usersRepository.findById(request.user_id);
@@ -43,7 +44,27 @@ const getChain = (requestId) => leaveApprovalRepository.listByRequest(requestId)
 function awaitingRole(request) {
   if (!request || request.status !== 'pending') return null;
   const employee = usersRepository.findById(request.user_id);
-  return employee && employee.manager_id ? 'manager' : 'admin';
+  if (!employee || !employee.manager_id) return 'admin';
+  // فاز B: سرپرستی که مجوز leave.approve ندارد (خاموش‌شده در «قابلیت‌های سرپرست») مثل «بدون سرپرست» است ⇒ فقط ادمین‌ها
+  return supervisorHolds(usersRepository.findById(employee.manager_id)) ? 'manager' : 'admin';
+}
+
+// آیا این کاربرِ سرپرست‌شده اختیار تصمیمِ مرخصی/ماموریت دارد؟ فقط نقش manager با مجوز خاموش‌شده ⇒ false؛ بقیه (ادمین/مالک/ناموجود/…) مثل قبل.
+function supervisorHolds(manager) {
+  if (!manager || manager.role !== 'manager') return true;
+  return hasPermission('manager', 'leave.approve');
+}
+
+// سرپرست مستقیمِ فعالِ کارمند که می‌تواند تصمیم بگیرد (برای گیرنده‌ی اعلان/یادآوری)؛ وگرنه null ⇒ فقط ادمین‌ها
+function decidingSupervisorOf(employee) {
+  const manager = employee && employee.manager_id ? usersRepository.findById(employee.manager_id) : null;
+  return manager && manager.is_active && supervisorHolds(manager) ? manager : null;
+}
+
+// کارمندِ این درخواست سرپرست (manager_id) دارد؟ (برای انتخاب متن خطا وقتی سرپرست مجوز تصمیم ندارد)
+function employeeHasManager(request) {
+  const employee = usersRepository.findById(request.user_id);
+  return !!(employee && employee.manager_id);
 }
 
 // تنها ادمین فعال سیستم؟ (استثنای خودتأییدی ماموریت)
@@ -57,7 +78,7 @@ function isSoleActiveAdmin(user) {
 function canDecide(actor, request) {
   if (!actor || !request) return false;
   if (isAdmin(actor)) return true;
-  if (actor.role !== 'manager') return false;
+  if (actor.role !== 'manager' || !hasPermission(actor.role, 'leave.approve')) return false;
   const employee = usersRepository.findById(request.user_id);
   return !!employee && employee.manager_id === actor.id;
 }
@@ -75,7 +96,7 @@ function decide({ requestId, actor, decision, note }) {
     return { ok: false, code: 'SELF_APPROVAL', role, error: 'تصمیم درباره‌ی ماموریتِ خودتان ممکن نیست؛ سرپرست یا ادمین دیگری باید تصمیم بگیرد.' };
   }
   if (!canDecide(actor, request)) {
-    return { ok: false, code: 'FORBIDDEN', role, error: 'تصمیم این درخواست با سرپرست مستقیم کارمند یا ادمین است.' };
+    return { ok: false, code: 'FORBIDDEN', role, error: role === 'manager' ? 'تصمیم این درخواست با سرپرست مستقیم کارمند یا ادمین است.' : (employeeHasManager(request) ? 'تصمیم این درخواست فعلاً فقط با ادمین است.' : 'تصمیم این درخواست با سرپرست مستقیم کارمند یا ادمین است.') };
   }
   const step = request.current_step || null;
   const result = getDb().transaction(() => {
@@ -107,4 +128,4 @@ function decisionInfo(request) {
   return { id: user.id, fullName: user.full_name, role, roleLabel: ROLE_LABELS[user.role] || ROLE_LABELS[role] || 'تأییدکننده', decidedAt: (row && row.decidedAt) || request.updated_at || null, note: (row && row.note) || null };
 }
 
-module.exports = { planRoles, initChain, clearChain, getChain, awaitingRole, canDecide, decide, decisionInfo };
+module.exports = { planRoles, initChain, clearChain, getChain, awaitingRole, canDecide, decidingSupervisorOf, decide, decisionInfo };

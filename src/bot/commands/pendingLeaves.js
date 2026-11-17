@@ -1,4 +1,4 @@
-const { getRegisteredUser, notRegisteredMessage, hasRole } = require('../auth');
+const { getRegisteredUser, notRegisteredMessage, hasRole, hasAnyPermission } = require('../auth');
 const usersRepository = require('../../repositories/usersRepository');
 const leaveRepository = require('../../repositories/leaveRepository');
 const auditRepository = require('../../repositories/auditRepository');
@@ -20,11 +20,15 @@ function leavesFor(user) {
 /** تعداد کل درخواست‌های منتظر (مرخصی/ماموریت + دورکاری) برای نشانگر دکمه‌ی منو؛ ⇒ { ok, total } */
 function pendingTotal(user) {
   try {
-    return { ok: true, total: leavesFor(user).length + pendingRemote.pendingCount(user) };
+    return { ok: true, total: leavesFor(user).length + (canReviewRemote(user) ? pendingRemote.pendingCount(user) : 0) };
   } catch (err) {
     return { ok: false, error: err && err.message };
   }
 }
+
+// فاز B: دورکاری فقط برای دارندگان remote_work.review؛ صف مرخصی/ماموریت با canDecide (leave.approve) فیلتر می‌شود.
+const canReviewRemote = (user) => hasAnyPermission(user, ['remote_work.review']);
+const canUsePending = (user) => hasRole(user, ['admin']) || hasAnyPermission(user, ['leave.approve', 'remote_work.review']);
 
 function leaveCardText(request, employee) {
   const isMission = request.kind === 'mission';
@@ -45,13 +49,13 @@ async function handlePendingLeaves(bot, msg) {
     await bot.sendMessage(chatId, notRegisteredMessage(msg.from.id), { parse_mode: 'Markdown' });
     return;
   }
-  if (!hasRole(user, ['admin', 'manager'])) {
+  if (!canUsePending(user)) {
     await bot.sendMessage(chatId, '⛔️ این گزینه فقط برای سرپرستان و ادمین در دسترس است.');
     return;
   }
 
   const scoped = leavesFor(user);
-  const remoteCount = pendingRemote.pendingCount(user);
+  const remoteCount = canReviewRemote(user) ? pendingRemote.pendingCount(user) : 0;
 
   if (scoped.length === 0 && remoteCount === 0) {
     await bot.sendMessage(chatId, `📥 درخواست‌های منتظر\n${LINE}\n✅ هیچ درخواست در انتظاری وجود ندارد.`);
@@ -82,7 +86,7 @@ async function handlePendingLeaves(bot, msg) {
 async function handlePendingLeavesCallback(bot, query) {
   const chatId = query.message.chat.id;
   const approver = getRegisteredUser(query.from.id);
-  if (!approver || !hasRole(approver, ['admin', 'manager'])) {
+  if (!approver || !canUsePending(approver)) {
     await bot.answerCallbackQuery(query.id, { text: 'اجازه این عملیات را ندارید.', show_alert: true });
     return;
   }

@@ -1,6 +1,6 @@
 // C4: رد ماموریت با علتِ اجباری و اصلاح ساعت از دکمه‌های مرور شبانه (callbackهای leave_approve:/leave_reject: موجود دست‌نخورده‌اند؛
 // فقط «رد» ماموریت به این جریان دو مرحله‌ای می‌رود). نتیجه همیشه از leaveApprovalService.decide می‌گذرد.
-const { getRegisteredUser, hasRole } = require('../auth');
+const { getRegisteredUser, hasRole, hasAnyPermission } = require('../auth');
 const session = require('../session');
 const usersRepository = require('../../repositories/usersRepository');
 const leaveRepository = require('../../repositories/leaveRepository');
@@ -11,7 +11,7 @@ const { isAdmin } = require('../../utils/roles');
 const CANCEL_WORD = 'انصراف';
 
 function canAct(actor, request) {
-  if (!actor || !hasRole(actor, ['admin', 'manager'])) return false;
+  if (!actor || !(hasRole(actor, ['admin']) || hasAnyPermission(actor, ['leave.approve']))) return false; // فاز B
   if (actor.id === request.user_id && !isAdmin(actor)) return false;
   return leaveApprovalService.canDecide(actor, request);
 }

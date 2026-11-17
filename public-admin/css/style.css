@@ -2479,3 +2479,6 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
 .day-task.dt-row.is-mandatory .rv-progress-text { margin-top: 2px; font-size: 11px; font-weight: 600; line-height: 1.6; color: var(--hint); }
 .day-task.dt-row.is-mandatory .rv-progress { height: 4px; margin-top: 4px; }
 .day-task.dt-row.is-mandatory .rv-open { margin-top: 4px; }
+.st-section { margin: var(--space-5) 0 var(--space-3); font-size: var(--fs-md); font-weight: 700; color: var(--text); }
+.rec-quota { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-2); color: var(--text); font-size: var(--fs-sm); }
+.rec-quota.is-out { border-color: var(--red); }

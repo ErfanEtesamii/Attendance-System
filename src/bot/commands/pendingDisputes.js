@@ -1,5 +1,6 @@
 // «💬 اعتراض‌ها» — اعتراض‌های باز کارمندان تیم (ادمین: همه) با امکان پاسخ و بستن از داخل بات.
-const { getRegisteredUser, notRegisteredMessage, hasRole } = require('../auth');
+const { getRegisteredUser, notRegisteredMessage, hasRole, hasAnyPermission } = require('../auth');
+const canResolve = (u) => hasRole(u, ['admin']) || hasAnyPermission(u, ['disputes.resolve']); // فاز B
 const session = require('../session');
 const usersRepository = require('../../repositories/usersRepository');
 const disputeRepository = require('../../repositories/disputeRepository');
@@ -39,7 +40,7 @@ async function handlePendingDisputes(bot, msg) {
     await bot.sendMessage(chatId, notRegisteredMessage(msg.from.id), { parse_mode: 'Markdown' });
     return;
   }
-  if (!hasRole(user, ['admin', 'manager'])) {
+  if (!canResolve(user)) {
     await bot.sendMessage(chatId, '⛔️ این گزینه فقط برای سرپرستان و ادمین در دسترس است.');
     return;
   }
@@ -75,7 +76,7 @@ async function handlePendingDisputes(bot, msg) {
 async function handleDisputeCallback(bot, query) {
   const chatId = query.message.chat.id;
   const actor = getRegisteredUser(query.from.id);
-  if (!actor || !hasRole(actor, ['admin', 'manager'])) {
+  if (!actor || !canResolve(actor)) {
     await bot.answerCallbackQuery(query.id, { text: 'اجازه این عملیات را ندارید.', show_alert: true });
     return;
   }
@@ -125,7 +126,7 @@ async function handleDisputeReplyText(bot, msg, sess) {
   }
 
   const dispute = disputeRepository.findById(sess.data.disputeId);
-  if (!actor || !hasRole(actor, ['admin', 'manager']) || !dispute || dispute.status !== 'open' || !canHandle(actor, dispute)) {
+  if (!actor || !canResolve(actor) || !dispute || dispute.status !== 'open' || !canHandle(actor, dispute)) {
     session.clear(chatId);
     await bot.sendMessage(chatId, 'این اعتراض دیگر قابل پاسخ نیست.');
     return;

@@ -205,7 +205,7 @@ function companySummary(date, settings, allReports) {
     lines.push(`• ${team}: ${t ? `${pct(d, t)}٪` : '—'} (${rs.length} نفر)${p ? ` · ⏳ ${p} بدون وضعیت` : ''}`);
   }
   const noReview = [];
-  for (const u of all.filter((x) => x.role === 'manager')) {
+  for (const u of all.filter((x) => x.role === 'manager' && teamReview.isReviewer(x))) { // فاز B: سرپرستِ بدون reviews.write بررسی‌ای ندارد که «انجام‌نشده» حساب شود
     const members = allReports.filter((r) => r.member.manager_id === u.id && r.hasReport);
     if (members.length && members.every((r) => !reviewsRepo.find(u.id, r.member.id, date))) noReview.push(u.full_name);
   }

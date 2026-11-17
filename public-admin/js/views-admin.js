@@ -213,7 +213,33 @@
     lateLimitGateMode: { off: 'بی‌اثر', soft: 'هشدار (ورود مجاز است)', enforce: 'الزامی (بدون اجازه‌ی سرپرست ثبت نمی‌شود)' },
     crossMidnightMode: { legacy: 'سازگار با گذشته', by_shift_day: 'بر پایه‌ی روز شیفت' },
     leaveBalancePolicy: { block: 'مسدود', warn: 'هشدار', allow_negative: 'مانده‌ی منفی' },
+    supervisorRecordEditCountMode: { operation: 'هر عملیات یک بار', record: 'هر رکورد یک بار' },
   };
+  // فاز B: برچسب فارسی قابلیت‌های قابل‌خاموش‌شدنِ سرپرست (کلیدها با src/utils/supervisorCapabilities.js یکی است)
+  const ST_CAP_LABELS = {
+    'leave.approve': 'تأیید/رد مرخصی و ماموریت',
+    'leave.edit': 'ثبت و ویرایش مرخصی برای کارمند',
+    'records.edit': 'اصلاح رکورد تردد',
+    'disputes.resolve': 'تصمیم درباره‌ی اعتراض‌ها',
+    'overtime.approve': 'تأیید اضافه‌کاری',
+    'suspicious.review': 'بررسی تردد مشکوک',
+    'plans.exempt': 'معافیت از گیت برنامه‌ی هفتگی',
+    'reviews.write': 'مشاهده و کامنت روی گزارش تیم',
+    'checkin_permissions.decide': 'تصمیم درباره‌ی اجازه‌ی ورود',
+    'tasks.assign_urgent': 'تعیین تسک فوری',
+    'plan.edit_team': 'ویرایش برنامه‌ی هفته‌های آینده‌ی تیم',
+    'remote_work.review': 'تأیید/رد ساعت دورکاری',
+    'schedule.manage': 'مدیریت برنامه‌ی روزبه‌روز تیم',
+    'broadcast.send': 'ارسال پیام گروهی به تیم',
+    'users.message': 'ارسال پیام به کارمند',
+    'analytics.read': 'تحلیل‌ها و روند تأخیر تیم',
+  };
+  const stCapLabel = (v) => ST_CAP_LABELS[v] || v;
+  const ST_CAP_KEY = 'supervisorEnabledCapabilities';
+  const ST_CAP_WARN = 'این تغییر فوراً روی همه‌ی سرپرست‌ها اعمال می‌شود و درخواست‌های در انتظار فقط برای ادمین‌ها دیده می‌شود.';
+  // قابلیت‌هایی که با این پیش‌نویس نسبت به مقدار ذخیره‌شده «خاموش» می‌شوند
+  const stCapsTurnedOff = (it, draft) => (it.value || []).filter((c) => !(draft || []).includes(c));
+
   // گروه‌هایی که محاسبه‌ی روز را عوض می‌کنند ⇒ روی عدد روزها/ماه‌های گذشته هم اثر دارند (گزارش‌ها همیشه با تنظیمات فعلی محاسبه می‌شوند)
   const IMPACT_GROUPS = new Set(['workHours', 'calendar', 'overtime']);
   const IMPACT_TEXT = 'این تغییر روی گزارش‌ها و خلاصه‌های همه‌ی روزها و ماه‌های گذشته اثر می‌گذارد؛ رکوردهای تردد عوض نمی‌شود.';
@@ -229,6 +255,7 @@
     if (it.type === 'boolean') return v ? 'روشن' : 'خاموش';
     if (it.type === 'weekdays') return (v || []).length ? WEEKDAY_ORDER.filter(([d]) => v.includes(d)).map(([, n]) => n).join('، ') : 'هیچ‌کدام';
     if (it.type === 'enum') return setEnumLabel(it, v);
+    if (it.type === 'multiselect') { const a = v || []; return a.length === (it.values || []).length ? `همه (${a.length} مورد)` : (a.length ? a.map(stCapLabel).join('، ') : 'هیچ‌کدام'); }
     return String(v);
   }
 
@@ -237,6 +264,7 @@
     if (it.type === 'boolean') return v === true || v === 'true' ? 'true' : 'false';
     if (it.type === 'number') { const n = Number(v); return v === '' || Number.isNaN(n) ? `?${v}` : String(n); }
     if (it.type === 'weekdays') return JSON.stringify([...(v || [])].map(Number).sort((a, b) => a - b));
+    if (it.type === 'multiselect') return JSON.stringify([...(v || [])].map(String).sort());
     return String(v == null ? '' : v).trim();
   }
 
@@ -254,6 +282,8 @@
         return `<select name="${k}" data-key="${k}" ${al}>${it.values.map((o) => `<option value="${esc(o)}"${o === v ? ' selected' : ''}>${esc(setEnumLabel(it, o))}</option>`).join('')}</select>`;
       case 'weekdays':
         return `<div class="chk-row" data-key="${k}" role="group" ${al}>${WEEKDAY_ORDER.map(([d, n]) => `<label class="chk st-pill"><input type="checkbox" value="${d}"${(v || []).includes(d) ? ' checked' : ''} /><span>${n}</span></label>`).join('')}</div>`;
+      case 'multiselect':
+        return `<div class="chk-row st-multi" data-key="${k}" role="group" ${al}>${(it.values || []).map((o) => `<label class="chk st-pill"><input type="checkbox" value="${esc(o)}"${(v || []).includes(o) ? ' checked' : ''} /><span>${esc(stCapLabel(o))}</span></label>`).join('')}</div>`;
       default: // cron | string | timezone
         return `<input type="text" name="${k}" data-key="${k}" ${al} value="${esc(v)}" dir="ltr" class="ltr-in" autocomplete="off" spellcheck="false" />`;
     }
@@ -270,6 +300,7 @@
     if (!el) return undefined;
     if (it.type === 'boolean') return el.checked ? 'true' : 'false';
     if (it.type === 'weekdays') return $$('input:checked', el).map((c) => Number(c.value));
+    if (it.type === 'multiselect') return $$('input:checked', el).map((c) => c.value);
     if (it.type === 'time' && window.TimeInput) { const t = window.TimeInput.parse(el.value); return t.ok ? t.value : el.value; } // H4: ساعت تایپی همیشه HH:MM
     return el.value;
   }
@@ -282,6 +313,7 @@
     time: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     enum: '<path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/>',
     weekdays: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+    multiselect: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="m8 12 3 3 5-6"/>',
     date: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>',
     timezone: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/>',
     cron: '<path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/>',
@@ -324,7 +356,7 @@
       const isDirty = (it) => it.key in drafts && setNorm(it, drafts[it.key]) !== setNorm(it, it.value);
 
       // فیلد عریض: روز هفته، cron، رشته و enum با برچسب گزینه‌ی بلند
-      const isFull = (it) => ['weekdays', 'cron', 'string'].includes(it.type) || (it.type === 'enum' && it.values.some((o) => setEnumLabel(it, o).length > 24));
+      const isFull = (it) => ['weekdays', 'multiselect', 'cron', 'string'].includes(it.type) || (it.type === 'enum' && it.values.some((o) => setEnumLabel(it, o).length > 24));
       const rowHtml = (it) => {
         const short = setShort(it);
         const sub = it.label ? it.description.trim() : ''; // توضیح یک‌خطی زیر عنوان؛ بدون برچسب، خودِ توضیح عنوان است
@@ -374,7 +406,7 @@
         const notes = [];
         if (IMPACT_GROUPS.has(g)) notes.push(`<div class="st-banner st-banner-warn" role="note"><span class="st-banner-ico" aria-hidden="true">${icon('alert')}</span><p>${esc(IMPACT_SHORT)}</p></div>`);
         if (g === 'schedule') notes.push(`<div class="st-banner st-banner-info" role="note"><span class="st-banner-ico" aria-hidden="true">${icon('clock')}</span><p>تغییر زمان‌بندی بدون ری‌استارت و بلافاصله اعمال می‌شود. مقدار پیش‌فرض از فایل <code class="ltr">.env</code> می‌آید.</p></div>`);
-        return `${notes.join('')}<div class="st-fields">${list.map(rowHtml).join('')}</div>${relatedCard(g)}
+        return `${notes.join('')}<div class="st-fields">${list.map((it, i) => (it.section && (i === 0 || list[i - 1].section !== it.section) ? `<h4 class="st-section" id="st-sec-${esc(g)}-${i}">${esc(it.section)}</h4>` : '') + rowHtml(it)).join('')}</div>${relatedCard(g)}
           <div class="st-actionbar" data-bar="${esc(g)}">
             <div class="st-save-state"><span class="st-status-dot" aria-hidden="true"></span><span class="st-pending" data-pending="${esc(g)}" aria-live="polite">تغییری ذخیره‌نشده نیست</span></div>
             <div class="form-msg" data-msg></div>
@@ -509,9 +541,13 @@
           async function saveGroup(g) {
             const dirty = items.filter((i) => i.group === g && isDirty(i));
             if (!dirty.length) return;
+            // فاز B: خاموش‌کردن قابلیتِ سرپرست‌ها ⇒ هشدار صریح (فوری، و صف فقط برای ادمین‌ها)
+            const capIt = dirty.find((i) => i.key === ST_CAP_KEY);
+            const off = capIt ? stCapsTurnedOff(capIt, drafts[capIt.key]) : [];
+            const capWarn = off.length ? ` خاموش می‌شود: ${off.map(stCapLabel).join('، ')}. ${ST_CAP_WARN}` : '';
             const reason = await AP.askReason({
               title: 'ذخیره‌ی تنظیمات',
-              message: `${fmt.num(dirty.length)} تنظیم تغییر می‌کند: ${dirty.map(setShort).join('؛ ')}.${IMPACT_GROUPS.has(g) ? ` ${IMPACT_TEXT}` : ''}`,
+              message: `${fmt.num(dirty.length)} تنظیم تغییر می‌کند: ${dirty.map(setShort).join('؛ ')}.${IMPACT_GROUPS.has(g) ? ` ${IMPACT_TEXT}` : ''}${capWarn}`,
               confirmText: 'ذخیره', placeholder: 'مثلاً: تغییر ساعت کار طبق ابلاغیه‌ی مدیریت',
             });
             if (reason === null) return;

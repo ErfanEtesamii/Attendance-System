@@ -3,7 +3,7 @@
 // هیچ منطق کسب‌وکاری اینجا نیست: همه‌ی اعتبارسنجی/اسکوپ/قفل ماه/audit/اعلان در urgentTaskService (E1) است؛
 // بات فقط لایه‌ی تعامل است و نقش هر مرحله دوباره از دیتابیس خوانده می‌شود.
 
-const { getRegisteredUser, notRegisteredMessage } = require('../auth');
+const { getRegisteredUser, notRegisteredMessage, hasAnyPermission } = require('../auth');
 const session = require('../session');
 const usersRepository = require('../../repositories/usersRepository');
 const settingsRepository = require('../../repositories/settingsRepository');
@@ -12,7 +12,8 @@ const ui = require('../ui/pickers');
 const { todayDateString } = require('../../utils/serverTime');
 const { addDays } = require('../../utils/shiftDay');
 
-const { isAdmin, isManagerUp } = require('../../utils/roles');
+const { isAdmin } = require('../../utils/roles');
+const canAssign = (u) => isAdmin(u) || hasAnyPermission(u, ['tasks.assign_urgent']); // فاز B: قابل‌خاموش‌شدن برای سرپرست‌ها
 const FLOW = 'urgent_task';
 const CANCEL = 'fl:x';
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -24,7 +25,7 @@ const { faDigits } = ui;
 /** کاربرِ تعیین‌کننده‌ی همین مکالمه؛ هر بار از دیتابیس (نقش/فعال‌بودن ممکن است عوض شده باشد). */
 function sessionActor(sess) {
   const u = sess && sess.data && sess.data.actorId ? usersRepository.findById(sess.data.actorId) : null;
-  return u && u.is_active && (isAdmin(u) || u.role === 'manager') ? u : null;
+  return u && u.is_active && canAssign(u) ? u : null;
 }
 
 async function denyAndClear(bot, chatId) {
@@ -50,7 +51,7 @@ async function handleUrgentTaskCommand(bot, msg) {
     await bot.sendMessage(chatId, notRegisteredMessage(msg.from.id), { parse_mode: 'Markdown' });
     return;
   }
-  if (!isManagerUp(user)) {
+  if (!canAssign(user)) {
     await bot.sendMessage(chatId, '⛔️ تعیین تسک فوری فقط برای ادمین و سرپرست مجاز است.');
     return;
   }

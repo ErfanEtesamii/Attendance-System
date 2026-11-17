@@ -1,5 +1,5 @@
 // «❓ راهنما»: توضیح گزینه‌های «📂 منو» بر اساس نقش (E4: بدون ارجاع به /دستور؛ H2: پشت دکمه‌ی «📂 منو»).
-const { getRegisteredUser, notRegisteredMessage } = require('../auth');
+const { getRegisteredUser, notRegisteredMessage, hasAnyPermission } = require('../auth');
 
 const { isAdmin } = require('../../utils/roles');
 const EMPLOYEE_BUTTONS = [
@@ -13,12 +13,13 @@ const EMPLOYEE_BUTTONS = [
   'اگر پنل برایتان باز نمی‌شود (مثلاً از شبکه‌ی شرکت وصل نیستید)، همه‌ی کارها با همین دکمه‌ها قابل انجام است.',
 ];
 
+// perm (فاز B): دکمه فقط وقتی در راهنما بیاید که کاربر حداقل یکی از این مجوزها را (مؤثر) داشته باشد؛ بدون perm ⇒ همیشه
 const MANAGER_BUTTONS = [
-  '📥 درخواست‌های منتظر — مرخصی، ماموریت و دورکاری‌های منتظر؛ همان‌جا تأیید یا رد کنید (ادمین: همه)',
-  '👥 گزارش تیم — تیم و عضو را انتخاب کنید؛ گزارش به‌صورت فایل متنی می‌آید',
-  '⚡ تسک فوری — کارمند ← روز ← متن؛ بلافاصله در پنل ثبت می‌شود (ادمین: همه)',
-  '💬 اعتراض‌ها — اعتراض‌های باز (پاسخ و بستن)',
-  '👤 لیست اعضا — اعضای تیم من (ادمین: همه)',
+  { perm: ['leave.approve', 'remote_work.review'], text: '📥 درخواست‌های منتظر — مرخصی، ماموریت و دورکاری‌های منتظر؛ همان‌جا تأیید یا رد کنید (ادمین: همه)' },
+  { text: '👥 گزارش تیم — تیم و عضو را انتخاب کنید؛ گزارش به‌صورت فایل متنی می‌آید' },
+  { perm: ['tasks.assign_urgent'], text: '⚡ تسک فوری — کارمند ← روز ← متن؛ بلافاصله در پنل ثبت می‌شود (ادمین: همه)' },
+  { perm: ['disputes.resolve'], text: '💬 اعتراض‌ها — اعتراض‌های باز (پاسخ و بستن)' },
+  { text: '👤 لیست اعضا — اعضای تیم من (ادمین: همه)' },
 ];
 
 const ADMIN_BUTTONS = [
@@ -39,7 +40,7 @@ async function handleHelp(bot, msg) {
   const lines = ['برای دیدن همه‌ی کارها دکمه‌ی «📂 منو» (پایین صفحه) را بزنید؛ گزینه‌های آن:', '', 'گزینه‌های کارمندی:', ...EMPLOYEE_BUTTONS];
 
   if (user.role === 'manager' || isAdmin(user)) {
-    lines.push('', 'گزینه‌های تیم:', ...MANAGER_BUTTONS);
+    lines.push('', 'گزینه‌های تیم:', ...MANAGER_BUTTONS.filter((b) => !b.perm || hasAnyPermission(user, b.perm)).map((b) => b.text));
   }
   if (isAdmin(user)) {
     lines.push('', 'گزینه‌های ادمین:', ...ADMIN_BUTTONS);

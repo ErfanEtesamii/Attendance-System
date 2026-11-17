@@ -19,8 +19,8 @@ const toMs = (s) => (typeof s === 'string' ? Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.t
 // گیرنده‌ها: سرپرست مستقیمِ فعال + همه‌ی ادمین‌های فعال (بدون خودِ کارمند و بدون تکرار)
 function recipientsOf(employee) {
   const active = usersRepository.listUsers({ onlyActive: true, includeOwner: true });
-  const manager = employee.manager_id ? usersRepository.findById(employee.manager_id) : null;
-  const list = [...(manager && manager.is_active ? [manager] : []), ...active.filter((u) => isAdmin(u))];
+  const manager = require('../../services/leaveApprovalService').decidingSupervisorOf(employee); // فاز B: بدون leave.approve ⇒ فقط ادمین‌ها
+  const list = [...(manager ? [manager] : []), ...active.filter((u) => isAdmin(u))];
   const seen = new Set();
   return list.filter((u) => u.id !== employee.id && !seen.has(u.id) && seen.add(u.id));
 }

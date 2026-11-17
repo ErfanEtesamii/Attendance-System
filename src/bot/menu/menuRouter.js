@@ -10,6 +10,7 @@
 const session = require('../session');
 const { getRegisteredUser, notRegisteredMessage, hasRole } = require('../auth');
 const panelLinks = require('../panelLinks');
+const { hasPermission } = require('../../middleware/permissions');
 
 const MANAGER_UP = ['manager', 'admin', 'owner'];
 const ADMIN_ONLY = ['admin', 'owner'];
@@ -69,10 +70,10 @@ const ITEMS = [
   { id: 'plan', label: '📋 برنامه هفتگی', roles: null, handler: 'weeklyPlan', style: 'primary' },
   { id: 'leave', label: '🏖 مرخصی / 🚗 ماموریت', roles: null, handler: 'leave', wide: true, style: 'primary' },
 
-  { id: 'pending_leaves', label: '📥 درخواست‌های منتظر', roles: MANAGER_UP, handler: 'pendingLeaves', badge: (user) => require('../commands/pendingLeaves').pendingTotal(user), wide: true, style: 'primary', aliases: ['🏠 دورکاری‌های منتظر'] },
+  { id: 'pending_leaves', label: '📥 درخواست‌های منتظر', roles: MANAGER_UP, anyPerm: ['leave.approve', 'remote_work.review'], handler: 'pendingLeaves', badge: (user) => require('../commands/pendingLeaves').pendingTotal(user), wide: true, style: 'primary', aliases: ['🏠 دورکاری‌های منتظر'] },
   { id: 'team_report', label: '👥 گزارش تیم', roles: MANAGER_UP, handler: 'teamReport', style: 'primary' },
-  { id: 'urgent_task', label: '⚡ تسک فوری', roles: MANAGER_UP, handler: 'urgentTask', style: 'primary' },
-  { id: 'pending_disputes', label: '💬 اعتراض‌ها', roles: MANAGER_UP, handler: 'pendingDisputes', style: 'primary' },
+  { id: 'urgent_task', label: '⚡ تسک فوری', roles: MANAGER_UP, anyPerm: ['tasks.assign_urgent'], handler: 'urgentTask', style: 'primary' },
+  { id: 'pending_disputes', label: '💬 اعتراض‌ها', roles: MANAGER_UP, anyPerm: ['disputes.resolve'], handler: 'pendingDisputes', style: 'primary' },
   { id: 'list_members', label: '👤 لیست اعضا', roles: MANAGER_UP, handler: 'listEmployees', style: 'primary' },
 
   { id: 'add_employee', label: '➕ افزودن کارمند', roles: ADMIN_ONLY, handler: 'addEmployee', style: 'danger' },
@@ -116,8 +117,12 @@ ITEM_BY_LABEL.set(normalizeLabel('📝 گزارش‌های دیروز تیم'), 
 const MENU_ITEM = { id: 'menu_open', label: MENU_LABEL, roles: null };
 ITEM_BY_LABEL.set(normalizeLabel(MENU_LABEL), MENU_ITEM);
 
+// فاز B: anyPerm = دکمه‌ی سرپرستی فقط وقتی دیده/اجرا شود که نقش مجاز باشد و «حداقل یکی» از مجوزهای مؤثر کاربر را داشته باشد
+// (ادمین/مالک همه‌ی مجوزها را دارند؛ سرپرست طبق «قابلیت‌های سرپرست» در تنظیمات). این چک هر بار سمت سرور هم تکرار می‌شود.
 function roleAllowed(item, user) {
-  return !item.roles || hasRole(user, item.roles);
+  if (item.roles && !hasRole(user, item.roles)) return false;
+  if (item.anyPerm && !item.anyPerm.some((p) => hasPermission(user.role, p))) return false;
+  return true;
 }
 
 /** آیتم‌های قابل‌نمایش برای کاربر (بر اساس نقش). H3: آیتم web_app بدون https پنهان نمی‌شود؛ لمس دکمه‌اش راهنمای ادمین را نشان می‌دهد. */

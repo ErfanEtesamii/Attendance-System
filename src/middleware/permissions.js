@@ -11,6 +11,8 @@
 //     مجوزهای کارمند اینجا فقط همان خواندنی‌های «خود کارمند» هستند.
 //   - اضافه‌شدن نقش جدید (مثل hr در S4-4a) فقط یک کلید تازه در ROLE_PERMISSIONS است (+ migration برای CHECK جدول users).
 
+const { SUPERVISOR_TOGGLEABLE_CAPABILITIES } = require('../utils/supervisorCapabilities');
+
 // فهرست کامل مجوزها (نام‌گذاری: «حوزه.عمل»).
 const PERMISSIONS = Object.freeze([
   'me.read',
@@ -146,18 +148,55 @@ const ROLES = Object.freeze(Object.keys(ROLE_PERMISSIONS));
 
 const PERMISSION_SET = new Set(PERMISSIONS);
 
-// آیا این نقش این مجوز را دارد؟ ورودی نامعتبر ⇒ false (default-deny).
-function hasPermission(role, permission) {
-  if (typeof role !== 'string' || typeof permission !== 'string') return false;
-  if (!Object.prototype.hasOwnProperty.call(ROLE_PERMISSIONS, role)) return false;
-  return ROLE_PERMISSIONS[role].has(permission);
+// ---------- مجوزهای پویای سرپرست (فاز B) ----------
+// ROLE_PERMISSIONS.manager «سقف» ثابت است (همه‌ی مجوزهای ممکن سرپرست). مجوز مؤثر = سقف منهای قابلیت‌هایی که
+// ادمین در تنظیم supervisorEnabledCapabilities خاموش کرده است. فقط قابلیت‌های SUPERVISOR_TOGGLEABLE_CAPABILITIES خاموش می‌شوند.
+// کش کوتاه (۵ ثانیه) + ابطال هنگام ذخیره‌ی تنظیم (settingsRepository). خطای DB یا دیتابیسِ باز‌نشده ⇒ لیست کامل (نه خالی).
+const MANAGER_CACHE_TTL_MS = 5000;
+const FULL_MANAGER_SET = ROLE_PERMISSIONS.manager;
+let managerCache = null; // { db, at, set }
+
+function invalidateManagerPermissionsCache() {
+  managerCache = null;
 }
 
-// فهرست مجوزهای یک نقش (نقش ناشناخته ⇒ آرایه‌ی خالی).
-function permissionsFor(role) {
-  if (typeof role !== 'string' || !Object.prototype.hasOwnProperty.call(ROLE_PERMISSIONS, role)) return [];
-  return PERMISSIONS.filter((p) => ROLE_PERMISSIONS[role].has(p));
+function effectiveManagerSet() {
+  try {
+    const { peekDb } = require('../db/connection');
+    const db = peekDb();
+    if (!db) return FULL_MANAGER_SET; // هرگز برای خواندن مجوز، دیتابیس باز/ساخته نمی‌شود
+    const now = Date.now();
+    if (managerCache && managerCache.db === db && now - managerCache.at < MANAGER_CACHE_TTL_MS) return managerCache.set;
+    const enabled = new Set(require('../repositories/settingsRepository').getSupervisorEnabledCapabilities());
+    const set = Object.freeze(new Set(MANAGER_PERMISSIONS.filter((p) => !SUPERVISOR_TOGGLEABLE_CAPABILITIES.includes(p) || enabled.has(p))));
+    managerCache = { db, at: now, set };
+    return set;
+  } catch (_) {
+    return FULL_MANAGER_SET;
+  }
 }
+
+// مجموعه‌ی مجوزهای مؤثر یک نقش (نقش ناشناخته ⇒ null)
+function permissionSetFor(role) {
+  if (typeof role !== 'string' || !Object.prototype.hasOwnProperty.call(ROLE_PERMISSIONS, role)) return null;
+  return role === 'manager' ? effectiveManagerSet() : ROLE_PERMISSIONS[role];
+}
+
+// آیا این نقش این مجوز را دارد؟ ورودی نامعتبر ⇒ false (default-deny).
+function hasPermission(role, permission) {
+  if (typeof permission !== 'string') return false;
+  const set = permissionSetFor(role);
+  return set ? set.has(permission) : false;
+}
+
+// فهرست مجوزهای مؤثر یک نقش (نقش ناشناخته ⇒ آرایه‌ی خالی).
+function permissionsFor(role) {
+  const set = permissionSetFor(role);
+  return set ? PERMISSIONS.filter((p) => set.has(p)) : [];
+}
+
+// همان permissionsFor با نام صریح فاز B (سرپرست ⇒ سقف منهای قابلیت‌های خاموش)
+const permissionsForRole = permissionsFor;
 
 // middleware: همه‌ی مجوزهای داده‌شده لازم است. باید بعد از requireAdminAuth بیاید (req.adminUser).
 // نام مجوز ناشناخته در زمان ثبت route خطا می‌دهد تا اشتباه تایپی بی‌صدا همه را رد/قبول نکند.
@@ -190,4 +229,4 @@ function requireAnyPermission(...anyOf) {
   };
 }
 
-module.exports = { PERMISSIONS, OWNER_ONLY_PERMISSIONS, ROLES, ROLE_PERMISSIONS, hasPermission, permissionsFor, requirePermission, requireAnyPermission };
+module.exports = { PERMISSIONS, OWNER_ONLY_PERMISSIONS, ROLES, ROLE_PERMISSIONS, hasPermission, permissionsFor, permissionsForRole, invalidateManagerPermissionsCache, requirePermission, requireAnyPermission };

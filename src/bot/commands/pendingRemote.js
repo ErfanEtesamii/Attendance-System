@@ -1,6 +1,7 @@
 // R6 (فاز ۱۴): «🏠 دورکاری‌های منتظر» — خلاصه‌ی صف بررسی دورکاری برای سرپرست/ادمین و دکمه‌ی باز کردن همان صف در پنل.
 // تأیید/رد در پنل انجام می‌شود (اصلاح ساعت و تصمیم هم‌پوشانی با حضوری از بات ممکن نیست)؛ اسکوپ را remoteWorkAdminService.pendingSummary اعمال می‌کند.
-const { getRegisteredUser, notRegisteredMessage, hasRole } = require('../auth');
+const { getRegisteredUser, notRegisteredMessage, hasRole, hasAnyPermission } = require('../auth');
+const canReviewRemote = (u) => hasRole(u, ['admin']) || hasAnyPermission(u, ['remote_work.review']); // فاز B
 const remoteAdmin = require('../../services/remoteWorkAdminService');
 const { panelWebAppButton } = require('../panelLinks');
 const { isoDateToJalaliString } = require('../../utils/jalali');
@@ -29,7 +30,7 @@ async function handlePendingRemote(bot, msg) {
     await bot.sendMessage(chatId, notRegisteredMessage(msg.from.id), { parse_mode: 'Markdown' });
     return;
   }
-  if (!hasRole(user, ['admin', 'manager'])) {
+  if (!canReviewRemote(user)) {
     await bot.sendMessage(chatId, '⛔️ این گزینه فقط برای سرپرستان و ادمین در دسترس است.');
     return;
   }
@@ -115,7 +116,7 @@ async function handleRemoteDecisionCallback(bot, query) {
     await bot.answerCallbackQuery(query.id, { text: 'شما در سیستم ثبت نیستید.', show_alert: true });
     return;
   }
-  if (!hasRole(actor, ['admin', 'manager'])) {
+  if (!canReviewRemote(actor)) {
     await bot.answerCallbackQuery(query.id, { text: 'اجازه‌ی این عملیات را ندارید.', show_alert: true });
     return;
   }
@@ -151,7 +152,7 @@ async function handleRemoteRejectText(bot, msg, sess) {
   const actor = getRegisteredUser(msg.from.id);
   const text = (msg.text || '').trim();
   if (text === CANCEL_WORD) { session.clear(chatId); await bot.sendMessage(chatId, 'انصراف داده شد. دورکاری همچنان منتظر تصمیم است.'); return; }
-  if (!actor || !hasRole(actor, ['admin', 'manager'])) { session.clear(chatId); await bot.sendMessage(chatId, '⛔️ اجازه‌ی این عملیات را ندارید.'); return; }
+  if (!actor || !canReviewRemote(actor)) { session.clear(chatId); await bot.sendMessage(chatId, '⛔️ اجازه‌ی این عملیات را ندارید.'); return; }
   const note = actor.role === 'owner' && text === '-' ? '' : text;
   if (note.length < REJECT_MIN && actor.role !== 'owner') {
     await bot.sendMessage(chatId, `علت رد الزامی است (حداقل ${REJECT_MIN.toLocaleString('fa-IR')} نویسه). دوباره بنویسید یا «${CANCEL_WORD}» بفرستید.`);

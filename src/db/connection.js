@@ -51,6 +51,11 @@ function getDb() {
   return dbInstance;
 }
 
+// اتصال فعلی بدون باز کردن/ساختن دیتابیس (null اگر هنوز باز نشده)؛ برای خواندن‌های اختیاری مثل مجوزهای پویا
+function peekDb() {
+  return dbInstance;
+}
+
 // بستن اتصال singleton (خاموشی مرتب و ایزوله‌سازی تست‌ها)
 function closeDb() {
   if (dbInstance) {
@@ -59,4 +64,4 @@ function closeDb() {
   }
 }
 
-module.exports = { getDb, openDatabase, closeDb };
+module.exports = { getDb, openDatabase, closeDb, peekDb };

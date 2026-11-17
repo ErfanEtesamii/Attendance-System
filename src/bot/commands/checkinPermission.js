@@ -1,7 +1,7 @@
 // D3 (فاز ۱۲): دکمه‌های «✅ اجازه می‌دهم / ❌ رد» روی پیام تلگرامِ درخواست اجازه‌ی ورود (callback: cp_ok:<id> | cp_no:<id>).
 // فقط لایه‌ی تعامل است؛ قواعد (سرپرست مستقیم/ادمین، فقط pending، TTL) و اثرهای جانبی در checkinPermissionDecisionService
 // (همان مسیرِ پنل) است. hr/کارمند ⇒ ردِ صریح. دکمه‌ی پیام قدیمی/تصمیم‌گرفته‌شده ⇒ هشدار و حذف دکمه‌ها.
-const { getRegisteredUser, hasRole } = require('../auth');
+const { getRegisteredUser, hasRole, hasAnyPermission } = require('../auth');
 const usersRepository = require('../../repositories/usersRepository');
 const { decideAndNotify } = require('../../services/checkinPermissionDecisionService');
 
@@ -13,7 +13,7 @@ async function removeButtons(bot, query) {
 
 async function handleCheckinPermissionCallback(bot, query) {
   const actor = getRegisteredUser(query.from.id);
-  if (!actor || !hasRole(actor, ['admin', 'manager'])) {
+  if (!actor || !(hasRole(actor, ['admin']) || hasAnyPermission(actor, ['checkin_permissions.decide']))) { // فاز B
     await bot.answerCallbackQuery(query.id, { text: 'اجازه این عملیات را ندارید.', show_alert: true });
     return;
   }

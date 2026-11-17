@@ -31,6 +31,7 @@
 const express = require('express');
 const { requirePermission } = require('../../../middleware/permissions');
 const service = require('../../../services/remoteWorkAdminService');
+const quotaGuard = require('./recordEditQuota'); // مرحله ۲: سقف ماهانه‌ی اصلاح (فقط اصلاح ساعت)
 
 const router = express.Router();
 
@@ -88,7 +89,7 @@ router.post('/admin/remote-work/:id/reject', requirePermission('remote_work.revi
 
 // اصلاح ساعت نشستِ تأییدشده (مودال رکورد تردد): body = { start_at?, end_at? (ISO)، review_note (الزامی) } — camelCase هم پذیرفته می‌شود.
 //   ⇒ ۲۰۰ { ok, session, attendanceRecordId, recordUpdated, recordUnchanged }؛ خطاها: ۴۰۹ NOT_APPROVED|SESSION_OPEN|MONTH_CLOSED|TIME_CONFLICT، ۴۰۰ INVALID_TIME|REVIEW_NOTE_REQUIRED|INVALID_NOTE.
-router.patch('/admin/remote-work/:id', requirePermission('remote_work.review'), (req, res) => {
+router.patch('/admin/remote-work/:id', requirePermission('remote_work.review'), quotaGuard.forRemoteSession, (req, res) => {
   const b = bodyOf(req);
   return send(res, service.adjustApproved(req.adminUser, req.params.id, {
     startAt: pickFrom(b, 'start_at', 'startAt'),

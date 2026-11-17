@@ -20,7 +20,7 @@ const dayService = require('../../../engine/dayService');
 const dayReview = require('../../../utils/dayReview');
 const { todayDateString, nowIso } = require('../../../utils/serverTime');
 const { DATE_RE, scopedUserIds, visibleUsers, shiftDate, userBrief, safeSummary, makeUserMap, classifyToday } = require('./common');
-const { requirePermission, permissionsFor } = require('../../../middleware/permissions');
+const { requirePermission, permissionsFor, hasPermission } = require('../../../middleware/permissions');
 
 const { isAdmin } = require('../../../utils/roles');
 router.get('/admin/me', requirePermission('me.read'), (req, res) => {
@@ -91,16 +91,20 @@ router.get('/admin/dashboard', requirePermission('dashboard.read'), (req, res) =
 // D1: inbox فقط‌خواندنی؛ cache کوتاه کلیدشده با کاربر تا بین درخواست‌های داشبورد فشار اضافی ایجاد نشود.
 const inboxCache = new Map();
 router.get('/admin/inbox', requirePermission('dashboard.read'), (req, res) => {
-  const cached = inboxCache.get(req.adminUser.id); if (cached && cached.until > Date.now()) return res.json(cached.value);
+  // فاز B: فقط مواردی که کاربر همین الان مجوز تصمیمشان را دارد (قابلیت‌های خاموش‌شده‌ی سرپرست نمایش داده نمی‌شوند)؛ امضای مجوزها در کش هم هست تا تغییر تنظیم بلافاصله اثر کند.
+  const can = ['leave.approve', 'remote_work.review', 'disputes.resolve', 'checkin_permissions.decide'].map((p) => hasPermission(req.adminUser.role, p));
+  const sig = can.join();
+  const cached = inboxCache.get(req.adminUser.id); if (cached && cached.until > Date.now() && cached.sig === sig) return res.json(cached.value);
+  const [canLeave, canRemote, canDispute, canCheckin] = can;
   const ids = scopedUserIds(req.adminUser);
   const within = (row) => ids === null || ids.includes(row.user_id);
   const pendingLeave = leaveRepository.listPending().filter(within);
   const buckets = [
-    ['leave', pendingLeave.filter((row) => row.kind !== 'mission')],
-    ['mission', pendingLeave.filter((row) => row.kind === 'mission')],
-    ['remoteWork', remoteWorkRepository.listQueue({ userIds: ids, status: 'pending', limit: 5 }).rows],
-    ['dispute', disputeRepository.listOpen().filter(within)],
-    ['checkinPermission', checkinPermissionRepository.list({ status: 'pending', userIds: ids, limit: 200 })],
+    ['leave', canLeave ? pendingLeave.filter((row) => row.kind !== 'mission') : []],
+    ['mission', canLeave ? pendingLeave.filter((row) => row.kind === 'mission') : []],
+    ['remoteWork', canRemote ? remoteWorkRepository.listQueue({ userIds: ids, status: 'pending', limit: 5 }).rows : []],
+    ['dispute', canDispute ? disputeRepository.listOpen().filter(within) : []],
+    ['checkinPermission', canCheckin ? checkinPermissionRepository.list({ status: 'pending', userIds: ids, limit: 200 }) : []],
   ];
   if (teamReviewService.isReviewer(req.adminUser)) {
     const reviewDate = teamReviewService.reviewDateFor(req.adminUser, todayDateString());
@@ -110,7 +114,7 @@ router.get('/admin/inbox', requirePermission('dashboard.read'), (req, res) => {
   const userMap = makeUserMap();
   const out = {};
   buckets.forEach(([key, rows]) => { out[key] = { count: rows.length, items: rows.slice(0, 5).map((row) => ({ id: row.id, userId: row.user_id, name: userMap.get(row.user_id)?.full_name || '—', createdAt: row.created_at || row.requested_at || row.start_at || null, reportDate: key === 'reportReview' ? row.created_at : undefined })) }; });
-  inboxCache.set(req.adminUser.id, { until: Date.now() + 15000, value: out });
+  inboxCache.set(req.adminUser.id, { until: Date.now() + 15000, sig, value: out });
   res.json(out);
 });
 

@@ -57,6 +57,7 @@ Employee check-in / check-out / break tracking through a **Telegram bot** and a 
 - Urgent tasks (assigned by a supervisor/admin or created personally) with deadline reminders; a mandatory "review yesterday's report" task for supervisors
 - Admins/supervisors can edit employees' next-week plans in a "notebook"-style UI, with concurrency control (`PLAN_CONFLICT`)
 - Nightly task report for supervisors/admins and task KPIs
+- Admin-configurable supervisor capability matrix (Settings → Supervisors): each supervisor capability (leave approval, record edits, urgent tasks, …) can be switched off for all supervisors; scope rules are unchanged
 
 **Reports, analytics and control**
 - Daily / weekly / monthly reports (Jalali calendar), CSV export (and `.xlsx` if `exceljs` is installed), print view

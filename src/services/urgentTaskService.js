@@ -26,6 +26,7 @@ const { addDays, dayNumber } = require('../utils/shiftDay');
 const { getDb } = require('../db/connection');
 
 const { isAdmin } = require('../utils/roles');
+const { hasPermission } = require('../middleware/permissions');
 const TITLE_MAX = 120;
 const DESC_MAX = 500;
 const NOTE_MAX = 500;
@@ -39,7 +40,7 @@ const statusOf = (code) => ERROR_STATUS[code] || 400;
 const fail = (code, error, extra = {}) => ({ ok: false, code, error, status: statusOf(code), ...extra });
 const clean = (v, max) => sanitizeText(v == null ? '' : String(v), max + 1).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
 
-const isAssigner = (actor) => !!actor && (isAdmin(actor) || actor.role === 'manager');
+const isAssigner = (actor) => !!actor && (isAdmin(actor) || hasPermission(actor.role, 'tasks.assign_urgent'));
 
 /** آیا actor مجاز است برای target تسک فوری بگذارد/حذف کند؟ → null (مجاز) یا fail(...) */
 function scopeFailure(actor, target) {

@@ -169,6 +169,7 @@ describe('اصلاح ساعت دورکاری در رکورد تردد', () => {
   });
 
   test('route ها: GET رکورد دورکاریِ همان روز را می‌دهد (با علامت هم‌پوشانی)، PATCH ساعت را اصلاح می‌کند', async () => {
+    require('../src/repositories/settingsRepository').setValue('supervisorRecordEditMonthlyLimit', 0); // این تست سقف اصلاح سرپرست را نمی‌سنجد (مرحله ۲)
     const e = F.makeUser({ managerId: U.mgr.id });
     const rec = db.prepare("INSERT INTO attendance_records (user_id, record_date, check_in_time, check_out_time, status) VALUES (?, '2026-10-08', ?, ?, 'normal')").run(e.id, iso('2026-10-08', '06:00:00'), iso('2026-10-08', '10:00:00'));
     const pend = mk(e, '2026-10-08', '11:00:00', '12:00:00');

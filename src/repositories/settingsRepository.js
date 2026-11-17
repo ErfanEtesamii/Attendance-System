@@ -13,6 +13,14 @@ const registry = require('../utils/settingsRegistry');
 const UPSERT_SQL = `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`;
 
+// فاز B: مجوزهای سرپرست از تنظیم supervisorEnabledCapabilities محاسبه و کوتاه‌مدت کش می‌شوند (middleware/permissions.js).
+// هر نوشتنِ این کلید (setValue/resetValue/update) کش را همان لحظه باطل می‌کند. require تنبل: چرخه‌ی وابستگی نسازد.
+const CAPABILITIES_KEY = 'supervisorEnabledCapabilities';
+function invalidatePermissionsCache(camelKey) {
+  if (camelKey !== CAPABILITIES_KEY) return;
+  try { require('../middleware/permissions').invalidateManagerPermissionsCache(); } catch (_) { /* کش اختیاری است */ }
+}
+
 function dbKeyOf(camelKey) {
   return registry.getDef(camelKey).dbKey;
 }
@@ -44,6 +52,7 @@ function update(fields) {
     const result = registry.validate(camelKey, fields[camelKey]);
     if (!result.ok) return; // نامعتبر/خالی نادیده گرفته می‌شود
     upsert.run(dbKeyOf(camelKey), registry.serialize(camelKey, result.value));
+    invalidatePermissionsCache(camelKey);
   });
   return getAll();
 }
@@ -70,6 +79,7 @@ function buildItem(def, stored) {
   if (def.max !== undefined) item.max = def.max;
   if (def.values !== undefined) item.values = def.values;
   if (def.related) item.related = def.related;
+  if (def.section) item.section = def.section;
   return item;
 }
 
@@ -91,13 +101,20 @@ function setValue(camelKey, value) {
   const result = registry.validate(camelKey, value);
   if (!result.ok) throw new Error(`مقدار نامعتبر برای ${camelKey}: ${result.error}`);
   getDb().prepare(UPSERT_SQL).run(dbKeyOf(camelKey), registry.serialize(camelKey, result.value));
+  invalidatePermissionsCache(camelKey);
   return getItem(camelKey);
 }
 
 // بازگشت به پیش‌فرض = حذف ردیف ذخیره‌شده (تا اگر پیش‌فرضِ .env عوض شد، همان دنبال شود). خروجی: آیا ردیفی حذف شد
 function resetValue(camelKey) {
   const info = getDb().prepare('DELETE FROM settings WHERE key = ?').run(dbKeyOf(camelKey));
+  invalidatePermissionsCache(camelKey);
   return info.changes > 0;
+}
+
+// قابلیت‌های روشنِ سرپرست‌ها (فاز B): آرایه‌ی مرتب؛ نبودن/خرابی مقدار ⇒ همه‌ی قابلیت‌ها (پیش‌فرض = رفتار فعلی)
+function getSupervisorEnabledCapabilities() {
+  return registry.deserialize(CAPABILITIES_KEY, readRaw(CAPABILITIES_KEY));
 }
 
 // منطقه‌ی زمانی مؤثر شرکت (S3-2a). نبودن/خرابی مقدار ⇒ پیش‌فرض (config.timezone یا Asia/Tehran)، هرگز پرتاب خطا
@@ -181,5 +198,5 @@ function bumpResetEpoch() {
 
 module.exports = {
   getResetEpoch, bumpResetEpoch,
-  getAll, update, getTimezone, getCronExpressions, getItems, getItem, setValue, resetValue, isBlockOnSharedDeviceEnabled, isAuditArchiveEnabled, getAuditRetentionMonths, getCleanupRetention, getGlobalSessionEpoch, bumpGlobalSessionEpoch,
+  getAll, update, getTimezone, getCronExpressions, getItems, getItem, setValue, resetValue, isBlockOnSharedDeviceEnabled, isAuditArchiveEnabled, getSupervisorEnabledCapabilities, getAuditRetentionMonths, getCleanupRetention, getGlobalSessionEpoch, bumpGlobalSessionEpoch,
 };

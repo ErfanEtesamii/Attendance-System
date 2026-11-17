@@ -6,12 +6,14 @@
 // انواع: number (عدد صحیح، مگر integer:false) | boolean | time (HH:MM) | cron (با node-cron validate)
 //        | enum (values) | string (minLength/maxLength اختیاری) | timezone (نام IANA، مثل Asia/Tehran)
 //        | weekdays (آرایه‌ی روزهای هفته ۰=یکشنبه … ۶=شنبه؛ ورودی آرایه یا متن «4,5»؛ مقدار نرمال = آرایه‌ی مرتب و یکتا)
+//        | multiselect (زیرمجموعه‌ای از values؛ ورودی آرایه یا متن جداشده با کاما؛ مقدار نرمال = آرایه‌ی یکتا به ترتیب values؛ allowEmpty اختیاری)
 
 const cron = require('node-cron');
 const config = require('../config');
 const time = require('./time');
+const { SUPERVISOR_TOGGLEABLE_CAPABILITIES } = require('./supervisorCapabilities');
 
-const TYPES = ['number', 'boolean', 'time', 'cron', 'enum', 'string', 'timezone', 'weekdays', 'date'];
+const TYPES = ['number', 'boolean', 'time', 'cron', 'enum', 'string', 'timezone', 'weekdays', 'multiselect', 'date'];
 
 // برچسب فارسی گروه‌ها (برای صفحه‌ی تنظیمات گروه‌بندی‌شده در S3-9a)
 const GROUP_LABELS = {
@@ -100,6 +102,17 @@ function validateValue(def, raw) {
       if (days.length < (def.allowEmpty ? 0 : 1)) return bad('حداقل یک روز لازم است.');
       if (days.length > (def.maxDays || 7)) return bad(`حداکثر ${def.maxDays || 7} روز مجاز است.`);
       return { ok: true, value: days };
+    }
+    case 'multiselect': {
+      // آرایه‌ی رشته‌ها یا متن جداشده با کاما؛ عضو ناشناخته ⇒ خطا؛ مقدار نرمال یکتا و به ترتیب def.values
+      let list;
+      if (Array.isArray(raw)) list = raw;
+      else if (typeof raw === 'string') list = raw.trim() === '' ? [] : raw.split(',').map((x) => x.trim());
+      else return bad('باید فهرستی از گزینه‌ها باشد.');
+      if (!list.every((x) => typeof x === 'string' && def.values.includes(x))) return bad('فهرست شامل گزینه‌ی ناشناخته است.');
+      const picked = def.values.filter((v) => list.includes(v));
+      if (picked.length < (def.allowEmpty ? 0 : 1)) return bad('حداقل یک گزینه لازم است.');
+      return { ok: true, value: picked };
     }
     default:
       return bad('نوع تنظیم ناشناخته است.');
@@ -279,6 +292,10 @@ defCron('dbMaintenance', 'cronDbMaintenance', 'cron_db_maintenance', () => confi
 defCron('leaveApprovalReminder', 'cronLeaveApprovalReminder', 'cron_leave_approval_reminder', () => config.cron.leaveApprovalReminder, '15 * * * *', 'یادآوری تأیید مرخصی');
 defCron('urgentTaskReminder', 'cronUrgentTaskReminder', 'cron_urgent_task_reminder', () => config.cron.urgentTaskReminder, '*/10 * * * *', 'یادآوری مهلت تسک فوری');
 defCron('teamReviewEnsure', 'cronTeamReviewEnsure', 'cron_team_review_ensure', () => config.cron.teamReviewEnsure, '10 0 * * *', 'تسک بررسی گزارش تیم', 'تسک واجب بررسی گزارش تیم را برای سرپرست‌ها می‌سازد.', 'supervisors');
+// مرحله ۲: سقف ماهانه‌ی اصلاح رکورد توسط سرپرست (section = عنوان زیربخش «سقف‌ها» در پنل). ادمین/مالک معاف‌اند؛ ۰ = بدون سقف.
+def('supervisorRecordEditMonthlyLimit', 'supervisor_record_edit_monthly_limit', 'number', { group: 'supervisors', section: 'سقف‌ها', min: 0, max: 100, default: 3, label: 'سقف اصلاح رکورد در ماه', description: 'هر سرپرست در هر ماه شمسی حداکثر چند بار رکورد تردد کارمندانش را اصلاح کند. (۰ = بدون سقف)', hint: 'ادمین و مالک سقف ندارند. برای ممنوع‌کردن کامل اصلاح، مجوز «اصلاح رکورد» سرپرست را خاموش کنید.' });
+def('supervisorEnabledCapabilities', 'supervisor_enabled_capabilities', 'multiselect', { group: 'supervisors', section: 'قابلیت‌های سرپرست', values: SUPERVISOR_TOGGLEABLE_CAPABILITIES, allowEmpty: true, default: SUPERVISOR_TOGGLEABLE_CAPABILITIES, label: 'قابلیت‌های فعال سرپرست‌ها', description: 'کارهایی که همه‌ی سرپرست‌ها می‌توانند انجام دهند؛ موردِ خاموش برای همه‌ی سرپرست‌ها بسته می‌شود.', hint: 'اسکوپ تیم (فقط کارمندان مستقیم) و قانون «نه برای خود» همچنان برقرار است. ادمین و مالک تحت‌تأثیر نیستند. اگر «تأیید/رد مرخصی و ماموریت» خاموش شود، درخواست‌ها فقط برای ادمین‌ها دیده می‌شود.' });
+def('supervisorRecordEditCountMode', 'supervisor_record_edit_count_mode', 'enum', { group: 'supervisors', section: 'سقف‌ها', values: ['operation', 'record'], default: 'operation', label: 'نحوه‌ی شمارش اصلاح', description: 'هر عملیات یک بار شمرده شود یا هر رکوردِ اصلاح‌شده.', hint: '«هر عملیات» هر اصلاح موفق را می‌شمارد؛ «هر رکورد» چند اصلاح روی یک رکورد در همان ماه را یک بار می‌شمارد.' });
 defCron('watchdog', 'cronWatchdog', 'cron_watchdog', () => config.monitor.watchdogCron, '*/5 * * * *', 'پایش سلامت سیستم', 'روشن یا خاموش بودنش با WATCHDOG_ENABLED در فایل .env است.');
 
 // ---------- توابع عمومی ----------
@@ -329,7 +346,7 @@ function deserialize(key, raw) {
 function serialize(key, value) {
   const d = BY_KEY.get(key);
   if (d.type === 'boolean') return value ? '1' : '0';
-  if (d.type === 'weekdays') return value.join(',');
+  if (d.type === 'weekdays' || d.type === 'multiselect') return value.join(',');
   return String(value);
 }
 
@@ -354,7 +371,7 @@ function selfCheck() {
     if (!d.description) problems.push(`توضیح خالی: ${d.key}`);
     if (!GROUP_LABELS[d.group]) problems.push(`گروه نامعتبر: ${d.key}`);
     if (!d.label) problems.push(`برچسب خالی: ${d.key}`);
-    if (d.type === 'enum' && !(Array.isArray(d.values) && d.values.length)) problems.push(`values خالی: ${d.key}`);
+    if ((d.type === 'enum' || d.type === 'multiselect') && !(Array.isArray(d.values) && d.values.length)) problems.push(`values خالی: ${d.key}`);
     if (d.type === 'cron' && !d.job) problems.push(`نام Job برای تنظیم cron نیست: ${d.key}`);
     if (d.min !== undefined && d.max !== undefined && d.min > d.max) problems.push(`min>max: ${d.key}`);
     const raw = typeof d.default === 'function' ? d.default() : d.default;

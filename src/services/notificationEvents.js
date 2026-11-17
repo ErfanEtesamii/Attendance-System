@@ -33,6 +33,7 @@ const { notify } = require('./notificationService');
 const { sendMessage } = require('../bot/notifier');
 const panelLinks = require('../bot/panelLinks');
 const leaveApprovalService = require('./leaveApprovalService');
+const { hasPermission } = require('../middleware/permissions');
 const { sanitizeText } = require('../utils/sanitize');
 const { isoDateToJalaliString } = require('../utils/jalali');
 const crypto = require('crypto');
@@ -57,11 +58,13 @@ function activeAdmins() {
 }
 
 // مدیر مستقیم‌ِ فعال اگر هست، وگرنه ادمین‌های فعال (همان قاعده‌ی notifyApprovers بات). خودِ درخواست‌دهنده حذف می‌شود.
-function handlersOf(employee) {
+// perm (اختیاری، فاز B): اگر سرپرستِ مستقیم نقش manager است و این قابلیت برایش خاموش شده، مثل «بدون سرپرست» رفتار می‌شود ⇒ ادمین‌ها.
+function handlersOf(employee, perm) {
   let list = [];
   if (employee.manager_id) {
     const manager = usersRepository.findById(employee.manager_id);
-    if (manager && manager.is_active) list = [manager];
+    const allowed = !perm || !manager || manager.role !== 'manager' || hasPermission(manager.role, perm);
+    if (manager && manager.is_active && allowed) list = [manager];
   }
   if (list.length === 0) list = activeAdmins();
   return list.filter((u) => u.id !== employee.id);
@@ -95,8 +98,8 @@ function period(request) {
 // تأییدکننده‌های یک درخواست مرخصی/ماموریت: سرپرست مستقیمِ فعال + همه‌ی ادمین‌های فعال (هر دو می‌توانند تصمیم بگیرند)؛
 // بدون خودِ کارمند و بدون تکرار. کارمندِ بدون سرپرست ⇒ فقط ادمین‌ها.
 function approversOf(employee) {
-  const manager = employee.manager_id ? usersRepository.findById(employee.manager_id) : null;
-  const list = [...(manager && manager.is_active ? [manager] : []), ...activeAdmins()];
+  const manager = leaveApprovalService.decidingSupervisorOf(employee); // فاز B: بدون leave.approve ⇒ فقط ادمین‌ها
+  const list = [...(manager ? [manager] : []), ...activeAdmins()];
   const seen = new Set();
   return list.filter((u) => u.id !== employee.id && !seen.has(u.id) && seen.add(u.id));
 }
@@ -185,7 +188,7 @@ function disputeOpened(dispute) {
   return guard('disputeOpened', () => {
     const employee = usersRepository.findById(dispute.user_id);
     if (!employee) return [];
-    return handlersOf(employee).map((h) =>
+    return handlersOf(employee, 'disputes.resolve').map((h) =>
       send('disputeOpened', h.id, {
         type: 'dispute_opened',
         title: 'اعتراض جدید به رکورد',
@@ -291,7 +294,7 @@ function disputeUserMessage(dispute, message, { reopened = false } = {}) {
     if (!dispute || !message || message.id == null) return [];
     const employee = usersRepository.findById(dispute.user_id);
     if (!employee) return [];
-    return handlersOf(employee).map((h) =>
+    return handlersOf(employee, 'disputes.resolve').map((h) =>
       send('disputeUserMessage', h.id, {
         type: 'dispute_user_message',
         title: reopened ? 'کارمند اعتراض را ادامه داد' : 'پیام تازه در اعتراض',
@@ -540,7 +543,7 @@ function checkinPermissionRequested(permission) {
       { text: '✅ اجازه می‌دهم', callback_data: `cp_ok:${permission.id}` },
       { text: '❌ رد', callback_data: `cp_no:${permission.id}` },
     ]];
-    return handlersOf(employee).map((h) =>
+    return handlersOf(employee, 'checkin_permissions.decide').map((h) =>
       send('checkinPermissionRequested', h.id, {
         type: 'checkin_permission_requested',
         title: 'درخواست اجازه‌ی ورود',
@@ -642,7 +645,7 @@ function remoteWorkSubmitted(sessionId) {
     if (s.auto_closed) lines.push('⚠️ این ثبت را سیستم خودکار بسته است؛ ساعت پایان را با دقت بررسی کنید.');
     lines.push(REMOTE_LINE, '⏳ تا تأیید شما در حضور و غیاب و حقوق حساب نمی‌شود.');
     const button = panelLinks.panelWebAppButton({ view: 'remote', text: '🖥 بررسی در صف دورکاری' });
-    return handlersOf(employee).map((h) => send('remoteWorkSubmitted', h.id, {
+    return handlersOf(employee, 'remote_work.review').map((h) => send('remoteWorkSubmitted', h.id, {
       type: 'remote_work_submitted',
       title: '🏠 دورکاری جدید برای بررسی',
       body: lines.join('\n'),
