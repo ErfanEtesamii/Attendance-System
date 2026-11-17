@@ -35,28 +35,50 @@
 
   const boolLabel = (v) => (v === true ? 'روشن' : v === false ? 'خاموش' : '—');
 
+  const pct = (a, b) => (b > 0 ? Math.max(0, Math.min(100, Math.round((a / b) * 100))) : 0);
+  const metric = (label, html) => `<div class="sup-metric"><dt>${esc(label)}</dt><dd>${html}</dd></div>`;
+  const menuItem = (act, text, extra = '') => `<button type="button" role="menuitem" class="sup-menu-item" data-act="${act}"${extra}>${esc(text)}</button>`;
+  const meter = (value, total, full) => `<span class="sup-bar${full ? ' is-full' : ''}" aria-hidden="true"><i style="width:${pct(value, total)}%"></i></span>`;
+
+  // هر سرپرست یک کارت: هویت ← شاخص‌ها ← عملیات (دو کار پرتکرار بیرون، بقیه داخل منوی «⋯»)
   function rowHtml(s) {
-    const nameBadges = [
+    const badges = [
       s.label && s.role !== 'manager' ? AP.badge('blue', s.label) : '',
       !s.isActive ? AP.badge('gray', 'غیرفعال') : '',
     ].join(' ');
-    return `<tr data-sup="${esc(s.id)}">
-      <td data-label="سرپرست"><a class="u-link-inherit" href="#/profile/${esc(s.id)}">${esc(s.fullName)}</a> ${nameBadges}<div class="muted small">${esc(ROLE_LABEL[s.role] || s.role)}</div>${deputyLine(s)}</td>
-      <td data-label="دپارتمان">${esc(s.department || '—')}</td>
-      <td data-label="اعضا">${esc(num(s.activeMembers))} <span class="muted small">از ${esc(num(s.totalMembers))}</span></td>
-      <td data-label="در انتظار تأیید">${s.pendingRequests ? AP.badge('orange', num(s.pendingRequests)) : '<span class="muted">۰</span>'}</td>
-      <td data-label="گزارش روز قبل">${reviewCell(s.review)}</td>
-      <td data-label="اصلاح این ماه">${editCell(s.recordEdit)}</td>
-      <td data-label="آخرین ورود">${esc(lastLogin(s.lastLoginAt))}</td>
-      <td data-label="عملیات" class="sup-actions">
-        <button type="button" class="btn ghost small" data-act="view">مشاهده‌ی تیم</button>
-        <button type="button" class="btn ghost small" data-act="add">افزودن عضو</button>
-        <button type="button" class="btn ghost small" data-act="transfer"${s.totalMembers ? '' : ' disabled'}>انتقال تیم</button>
-        <button type="button" class="btn ghost small" data-act="role">نقش/وضعیت</button>
-        ${s.role === 'manager' ? '<button type="button" class="btn ghost small" data-act="deputy">جانشین</button><button type="button" class="btn ghost small" data-act="overrides">استثناها</button>' : ''}
-        <a class="btn ghost small" href="#/profile/${esc(s.id)}">ویرایش پروفایل</a>
-      </td>
-    </tr>`;
+    const q = s.recordEdit;
+    const quotaBar = q && !q.unlimited && q.limit > 0 ? meter(q.used, q.limit, q.used >= q.limit) : '';
+    const membersBar = s.totalMembers ? meter(s.activeMembers, s.totalMembers) : '';
+    const menu = [
+      menuItem('transfer', 'انتقال تیم', s.totalMembers ? '' : ' disabled'),
+      menuItem('role', 'نقش و وضعیت'),
+      s.role === 'manager' ? `${menuItem('deputy', 'تعیین جانشین')}${menuItem('overrides', 'استثناهای سرپرست')}` : '',
+      `<a role="menuitem" class="sup-menu-item" href="#/profile/${esc(s.id)}">ویرایش پروفایل</a>`,
+    ].join('');
+    return `<li class="sup-card${s.isActive ? '' : ' is-inactive'}" data-sup="${esc(s.id)}">
+      <div class="sup-who">${AP.avatar(s.fullName, '', s.id)}
+        <div class="sup-id">
+          <div class="sup-name"><a class="u-link-inherit" href="#/profile/${esc(s.id)}">${esc(s.fullName)}</a></div>
+          <div class="sup-sub"><span>${esc(ROLE_LABEL[s.role] || s.role)}</span>${badges}</div>
+          ${deputyLine(s)}
+        </div>
+      </div>
+      <dl class="sup-metrics">
+        ${metric('اعضا', `<span class="sup-big">${esc(num(s.activeMembers))}</span> <span class="muted small">از ${esc(num(s.totalMembers))}</span>${membersBar}`)}
+        ${metric('در انتظار تأیید', s.pendingRequests ? AP.badge('orange', num(s.pendingRequests)) : '<span class="muted">۰</span>')}
+        ${metric('گزارش روز قبل', reviewCell(s.review))}
+        ${metric('اصلاح این ماه', `${editCell(s.recordEdit)}${quotaBar}`)}
+        ${metric('آخرین ورود', `<span class="small">${esc(lastLogin(s.lastLoginAt))}</span>`)}
+      </dl>
+      <div class="sup-actions">
+        <button type="button" class="btn primary small" data-act="view">${icon('employees')} مشاهده‌ی تیم</button>
+        <button type="button" class="btn ghost small" data-act="add">${icon('plus')} افزودن عضو</button>
+        <div class="sup-menu">
+          <button type="button" class="icon-btn sup-more" data-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="گزینه‌های بیشتر برای ${esc(s.fullName)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5h.01M12 12h.01M12 19h.01"/></svg></button>
+          <div class="sup-menu-list" role="menu" hidden>${menu}</div>
+        </div>
+      </div>
+    </li>`;
   }
 
   // ---------- پیش‌نمایش ----------
@@ -175,11 +197,15 @@
 
       function paint() {
         const un = data.unassigned;
-        body.innerHTML = `${data.supervisors.length ? `<div class="table-wrap"><table data-stack>
-            <thead><tr><th>سرپرست</th><th>دپارتمان</th><th>اعضا</th><th>در انتظار تأیید</th><th>گزارش روز قبل</th><th>اصلاح این ماه</th><th>آخرین ورود</th><th>عملیات</th></tr></thead>
-            <tbody>${data.supervisors.map(rowHtml).join('')}</tbody></table></div>` : '<div class="empty">سرپرستی ثبت نشده است.</div>'}
-          <div class="st-sup-un"><strong>کارمندان بدون سرپرست:</strong> ${esc(num(un.count))} نفر
-            ${un.count ? '<button type="button" class="btn ghost small" data-act-un>نمایش و تخصیص</button>' : ''}</div>`;
+        const sups = data.supervisors;
+        const members = sups.reduce((t, x) => t + (x.activeMembers || 0), 0);
+        const pending = sups.reduce((t, x) => t + (x.pendingRequests || 0), 0);
+        const stat = (label, value, cls = '') => `<div class="${cls}"><dt>${esc(label)}</dt><dd>${esc(num(value))}</dd></div>`;
+        const summary = sups.length ? `<dl class="sup-sum">${stat('سرپرست و ادمین فعال', sups.filter((x) => x.isActive).length)}${stat('کارمند زیر نظر', members)}${stat('درخواست در انتظار', pending, pending ? 'is-warn' : '')}${stat('بدون سرپرست', un.count, un.count ? 'is-warn' : '')}</dl>` : '';
+        const unHtml = un.count
+          ? `<div class="sup-un is-warn" role="status">${icon('alert')}<p><strong>${esc(num(un.count))} کارمند سرپرست ندارند.</strong> تا زمان تخصیص، فقط ادمین‌ها درخواست‌های آن‌ها را تأیید می‌کنند.</p><button type="button" class="btn primary small" data-act-un>نمایش و تخصیص</button></div>`
+          : `<div class="sup-un is-ok" role="status">${icon('check')}<p>همه‌ی کارمندان سرپرست دارند.</p></div>`;
+        body.innerHTML = `${summary}${sups.length ? `<ul class="sup-list">${sups.map(rowHtml).join('')}</ul>` : '<div class="empty">سرپرستی ثبت نشده است.</div>'}${unHtml}`;
       }
 
       async function usersWithSup(filter) {
@@ -358,9 +384,45 @@
         await doMove({ path: `/admin/supervisors/${t.to}/members`, bodyBase: { userIds: ids }, verb: 'به تیم اضافه', title: 'تخصیص سرپرست', confirmText: 'تخصیص', doneMsg: 'تخصیص انجام شد' });
       }
 
+      // منوی «⋯»: یکی‌یکی باز می‌شود؛ بیرون‌کلیک، Esc و انتخاب یک گزینه آن را می‌بندد؛ فلش‌ها بین گزینه‌ها جابه‌جا می‌کنند
+      const setMenu = (m, open) => {
+        m.classList.toggle('is-open', open);
+        $('[data-menu-toggle]', m).setAttribute('aria-expanded', String(open));
+        $('.sup-menu-list', m).hidden = !open;
+      };
+      const closeMenus = (except) => $$('.sup-menu.is-open', root).forEach((m) => { if (m !== except) setMenu(m, false); });
+      const onDocClick = (e) => {
+        if (!root.isConnected) { document.removeEventListener('click', onDocClick); document.removeEventListener('keydown', onDocKey); return; }
+        if (!e.target.closest('.sup-menu')) closeMenus();
+      };
+      const onDocKey = (e) => {
+        if (!root.isConnected) return;
+        const open = $('.sup-menu.is-open', root);
+        if (!open) return;
+        if (e.key === 'Escape') { setMenu(open, false); $('[data-menu-toggle]', open).focus(); return; }
+        if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+        const items = $$('.sup-menu-item:not([disabled])', open);
+        if (!items.length) return;
+        e.preventDefault();
+        const i = items.indexOf(document.activeElement);
+        items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length].focus();
+      };
+      document.addEventListener('click', onDocClick);
+      document.addEventListener('keydown', onDocKey);
+
       root.addEventListener('click', async (e) => {
         const refresh = e.target.closest('[data-sup-refresh]');
         if (refresh) { await load(); return; }
+        const toggle = e.target.closest('[data-menu-toggle]');
+        if (toggle) {
+          const m = toggle.closest('.sup-menu');
+          const open = !m.classList.contains('is-open');
+          closeMenus(m);
+          setMenu(m, open);
+          if (open) { const first = $('.sup-menu-item:not([disabled])', m); if (first) first.focus(); }
+          return;
+        }
+        if (e.target.closest('.sup-menu-item')) closeMenus();
         if (e.target.closest('[data-act-un]')) { try { await actUnassigned(); } catch (err) { toast(err.message, true); } return; }
         const btn = e.target.closest('[data-act]');
         if (!btn) return;

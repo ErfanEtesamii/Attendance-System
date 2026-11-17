@@ -1,0 +1,126 @@
+/* ---------- فهرست سرپرست‌ها و تیم‌ها (تنظیمات ← سرپرست‌ها) ---------- */
+/* فقط CSS؛ هر کارت یک سرپرست است. رنگ‌ها فقط از tokens.css، جهت‌ها منطقی (RTL/LTR). */
+
+/* ===== قاب بخش ===== */
+.st-sup {
+  padding: var(--space-4);
+  border-radius: var(--r-xl);
+  border: 1px solid var(--admin-line, var(--border));
+  background: linear-gradient(160deg, color-mix(in srgb, var(--brand) 6%, var(--card)), var(--card));
+  box-shadow: var(--lift-sm), var(--shadow-1);
+}
+.st-sup-head h4 { font-size: var(--fs-lg); font-weight: 800; }
+.st-sup > .muted.small { margin: var(--space-2) 0 var(--space-3); line-height: 1.9; max-width: 78ch; }
+
+/* ===== خلاصه‌ی بالای فهرست ===== */
+.sup-sum {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-2); margin: 0 0 var(--space-3);
+}
+.sup-sum > div {
+  padding: 12px 16px; border-radius: var(--r-lg);
+  background: var(--card); border: 1px solid var(--admin-line, var(--border));
+}
+.sup-sum dt { margin: 0; color: var(--hint); font-size: var(--fs-xs); font-weight: 600; }
+.sup-sum dd { margin: 2px 0 0; font-size: var(--fs-xl); font-weight: 800; font-variant-numeric: tabular-nums; }
+.sup-sum .is-warn { border-color: color-mix(in srgb, var(--yellow) 40%, var(--border)); background: var(--yellow-soft); }
+
+/* ===== فهرست کارت‌ها ===== */
+.sup-list { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+.sup-card {
+  position: relative;
+  display: grid; grid-template-columns: minmax(220px, 1.1fr) minmax(0, 2.6fr) auto;
+  align-items: center; gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--admin-line, var(--border));
+  background: var(--card);
+  box-shadow: var(--shadow-1);
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
+}
+.sup-card:hover, .sup-card:focus-within { border-color: color-mix(in srgb, var(--brand) 32%, var(--border)); box-shadow: var(--lift-sm), var(--shadow-1); }
+.sup-card:has(.sup-menu.is-open) { z-index: 5; }
+.sup-card.is-inactive .sup-who, .sup-card.is-inactive .sup-metrics { opacity: .62; }
+
+/* هویت */
+.sup-who { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.sup-who .avatar { flex: none; width: 52px; height: 52px; font-size: var(--fs-md); }
+.sup-id { min-width: 0; display: grid; gap: 3px; }
+.sup-name { font-size: var(--fs-md); font-weight: 800; overflow-wrap: anywhere; }
+.sup-name a { text-decoration: none; }
+.sup-name a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.sup-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--hint); font-size: var(--fs-xs); }
+.sup-id .muted.small { font-size: var(--fs-xs); }
+
+/* شاخص‌ها */
+.sup-metrics { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-3); margin: 0; }
+.sup-metric { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.sup-metric dt { color: var(--hint); font-size: var(--fs-xs); font-weight: 600; }
+.sup-metric dd { margin: 0; font-weight: 700; }
+.sup-big { font-size: var(--fs-lg); font-weight: 800; font-variant-numeric: tabular-nums; }
+.sup-metric .small { font-weight: 600; color: var(--hint); }
+
+/* نوار پیشرفت (اعضای فعال، سهمیه‌ی اصلاح) */
+.sup-bar { display: block; width: 100%; max-width: 120px; height: 6px; margin-top: 6px; border-radius: 999px; background: var(--ov-08); overflow: hidden; }
+.sup-bar > i { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width var(--motion-normal) var(--ease-out); }
+.sup-bar.is-full > i { background: var(--yellow); }
+
+/* عملیات */
+.sup-actions { display: flex; align-items: center; gap: 6px; }
+.sup-more { width: 36px; height: 36px; border-radius: var(--r-md); background: var(--card-2); }
+.sup-more svg { width: 20px; height: 20px; stroke-width: 3; }
+.sup-more:hover, .sup-menu.is-open .sup-more { background: var(--brand-soft); color: var(--brand); }
+.sup-more:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* منوی «⋯» */
+.sup-menu { position: relative; }
+.sup-menu-list {
+  position: absolute; inset-block-start: calc(100% + 6px); inset-inline-end: 0; z-index: 30;
+  min-width: 200px; padding: 6px; display: grid; gap: 2px;
+  border-radius: var(--r-md); border: 1px solid var(--admin-line, var(--border));
+  background: var(--card); box-shadow: var(--lift-md), var(--shadow-2);
+}
+.sup-menu-list[hidden] { display: none; }
+.sup-menu-item {
+  display: flex; align-items: center; width: 100%; padding: 10px 12px;
+  border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text);
+  font: inherit; font-size: var(--fs-sm); font-weight: 600; text-align: start; text-decoration: none; cursor: pointer;
+}
+.sup-menu-item:hover { background: color-mix(in srgb, var(--brand) 10%, transparent); }
+.sup-menu-item:focus-visible { outline: none; background: color-mix(in srgb, var(--brand) 12%, transparent); box-shadow: inset 0 0 0 2px var(--brand); }
+.sup-menu-item[disabled] { opacity: .45; cursor: not-allowed; }
+
+/* ===== کارمندان بدون سرپرست ===== */
+.sup-un {
+  display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
+  margin-top: var(--space-3); padding: 12px 16px; border-radius: var(--r-lg);
+}
+.sup-un p { margin: 0; flex: 1 1 240px; line-height: 1.8; }
+.sup-un svg { flex: none; width: 22px; height: 22px; }
+.sup-un.is-warn { border: 1px dashed color-mix(in srgb, var(--yellow) 50%, var(--border)); background: var(--yellow-soft); }
+.sup-un.is-warn svg { color: var(--yellow); }
+.sup-un.is-ok { border: 1px solid color-mix(in srgb, var(--green) 28%, var(--border)); background: var(--green-soft); }
+.sup-un.is-ok svg { color: var(--green); }
+
+/* ===== واکنش‌گرایی ===== */
+@media (max-width: 1180px) {
+  .sup-card { grid-template-columns: minmax(0, 1fr) auto; row-gap: var(--space-3); }
+  .sup-metrics { grid-column: 1 / -1; grid-row: 2; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); padding-top: var(--space-3); border-top: 1px solid var(--admin-line, var(--border)); }
+}
+@media (max-width: 640px) {
+  .st-sup { padding: var(--space-3); }
+  .sup-card { grid-template-columns: minmax(0, 1fr); padding: var(--space-3); }
+  .sup-metrics { grid-row: auto; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sup-actions { flex-wrap: wrap; }
+  .sup-actions .btn { flex: 1 1 auto; justify-content: center; }
+  .sup-menu-list { inset-inline-end: auto; inset-inline-start: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sup-card, .sup-bar > i { transition: none; }
+}
+@media (forced-colors: active) {
+  .sup-card, .sup-menu-list, .sup-un, .sup-sum > div { border: 1px solid CanvasText; }
+  .sup-bar { border: 1px solid CanvasText; }
+  .sup-bar > i { background: Highlight; }
+}
