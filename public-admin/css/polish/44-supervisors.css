@@ -128,11 +128,31 @@
   .sup-metrics { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* ===== کادرهای تنظیمات همین بخش: همه هم‌اندازه ===== */
-/* فیلدهای «تمام‌عرض» (مثل زمان‌بندی cron) هم یک خانه‌ی عادی می‌گیرند؛ auto-fill ستون‌ها را حتی با تعداد کم کارت ثابت نگه می‌دارد؛ ردیف‌ها هم‌قد می‌شوند. */
-.st-panel[data-group="supervisors"] .st-fields { grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); grid-auto-rows: 1fr; }
-.st-panel[data-group="supervisors"] .st-field.full { grid-column: auto; }
-.st-panel[data-group="supervisors"] .st-field > :last-child { margin-top: auto; }
+/* ===== کادرهای تنظیمات همین بخش: سه‌تا در هر ردیف، هم‌اندازه، بدون جای خالی ===== */
+/* شش ستون؛ هر کادر دو ستون. ردیف آخرِ ناقص کشیده می‌شود تا حاشیه‌ی خالی نماند. ردیف‌ها خودبه‌خود هم‌قدِ بلندترین کادرِ همان ردیف‌اند. */
+.st-panel[data-group="supervisors"] { container-type: inline-size; container-name: stp; }
+.st-panel[data-group="supervisors"] .st-fields { grid-template-columns: repeat(6, minmax(0, 1fr)); grid-auto-rows: auto; align-items: stretch; }
+.st-panel[data-group="supervisors"] .st-section { grid-column: 1 / -1; }
+.st-panel[data-group="supervisors"] .st-field, .st-panel[data-group="supervisors"] .st-field.full { grid-column: span 2; }
+.st-panel[data-group="supervisors"] .st-field:nth-of-type(3n+1):last-of-type { grid-column: span 6; }
+.st-panel[data-group="supervisors"] .st-field:nth-of-type(3n+1):nth-last-of-type(2),
+.st-panel[data-group="supervisors"] .st-field:nth-of-type(3n+2):last-of-type { grid-column: span 3; }
+
+/* پنل متوسط: دوتا در هر ردیف */
+@container stp (max-width: 860px) {
+  .st-panel[data-group="supervisors"] .st-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .st-panel[data-group="supervisors"] .st-field,
+  .st-panel[data-group="supervisors"] .st-field.full,
+  .st-panel[data-group="supervisors"] .st-field:nth-of-type(3n+1):nth-last-of-type(2),
+  .st-panel[data-group="supervisors"] .st-field:nth-of-type(3n+2):last-of-type,
+  .st-panel[data-group="supervisors"] .st-field:nth-of-type(3n+1):last-of-type { grid-column: auto; }
+  .st-panel[data-group="supervisors"] .st-field:last-of-type:nth-of-type(odd) { grid-column: 1 / -1; }
+}
+/* پنل باریک: یکی در هر ردیف */
+@container stp (max-width: 520px) {
+  .st-panel[data-group="supervisors"] .st-fields { grid-template-columns: minmax(0, 1fr); }
+  .st-panel[data-group="supervisors"] .st-field:last-of-type:nth-of-type(odd) { grid-column: auto; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .sup-card, .sup-bar > i { transition: none; }
