@@ -154,11 +154,60 @@
   .st-panel[data-group="supervisors"] .st-field:last-of-type:nth-of-type(odd) { grid-column: auto; }
 }
 
+/* ===== «تنظیمات مرتبط در بخش‌های دیگر» ===== */
+/* فقط CSS؛ هر مورد یک کارت کوچک: نام + بخش مبدأ ← مقدار فعلی ← دکمه‌ی رفتن. سه‌تا در ردیف، با همان منطق ردیف آخر. */
+.st-related {
+  container-type: inline-size; container-name: rel;
+  margin-top: var(--space-5); padding: var(--space-4);
+  border-radius: var(--r-xl); border: 1px solid var(--admin-line, var(--border));
+  background: linear-gradient(160deg, color-mix(in srgb, var(--brand) 6%, var(--card)), var(--card));
+  box-shadow: var(--lift-sm), var(--shadow-1);
+}
+.st-related h4 { margin: 0 0 4px; font-size: var(--fs-lg); font-weight: 800; }
+.st-related > p { margin: 0 0 var(--space-3); line-height: 1.9; max-width: 78ch; }
+
+.st-rel-list { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
+.st-rel-item {
+  grid-column: span 2;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "main main" "val go";
+  align-items: center; gap: 12px var(--space-3);
+  padding: 14px 16px; border-top: 0; border-radius: var(--r-lg);
+  border: 1px solid var(--admin-line, var(--border)); background: var(--card); box-shadow: var(--shadow-1);
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
+}
+.st-rel-item:hover, .st-rel-item:focus-within { border-color: color-mix(in srgb, var(--brand) 32%, var(--border)); box-shadow: var(--lift-sm), var(--shadow-1); }
+.st-rel-item:nth-of-type(3n+1):last-of-type { grid-column: span 6; }
+.st-rel-item:nth-of-type(3n+1):nth-last-of-type(2),
+.st-rel-item:nth-of-type(3n+2):last-of-type { grid-column: span 3; }
+
+.st-rel-main { grid-area: main; flex: none; display: grid; gap: 6px; justify-items: start; }
+.st-rel-name { font-size: var(--fs-md); font-weight: 800; line-height: 1.6; }
+.st-rel-group { padding: 2px 10px; border-radius: 999px; background: var(--card-2); font-size: var(--fs-xs); font-weight: 600; }
+.st-rel-val {
+  grid-area: val; justify-self: start; max-width: 100%;
+  padding: 5px 14px; border-radius: 999px; background: var(--brand-soft); color: var(--brand);
+  font-size: var(--fs-sm); font-weight: 800; overflow-wrap: anywhere;
+}
+.st-rel-item .btn { grid-area: go; }
+
+@container rel (max-width: 760px) {
+  .st-rel-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .st-rel-item,
+  .st-rel-item:nth-of-type(3n+1):nth-last-of-type(2),
+  .st-rel-item:nth-of-type(3n+2):last-of-type,
+  .st-rel-item:nth-of-type(3n+1):last-of-type { grid-column: auto; }
+  .st-rel-item:last-of-type:nth-of-type(odd) { grid-column: 1 / -1; }
+}
+@container rel (max-width: 480px) {
+  .st-rel-list { grid-template-columns: minmax(0, 1fr); }
+  .st-rel-item:last-of-type:nth-of-type(odd) { grid-column: auto; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .sup-card, .sup-bar > i { transition: none; }
+  .sup-card, .sup-bar > i, .st-rel-item { transition: none; }
 }
 @media (forced-colors: active) {
-  .sup-card, .sup-menu-list, .sup-un, .sup-sum > div { border: 1px solid CanvasText; }
+  .sup-card, .sup-menu-list, .sup-un, .sup-sum > div, .st-rel-item { border: 1px solid CanvasText; }
   .sup-bar { border: 1px solid CanvasText; }
   .sup-bar > i { background: Highlight; }
 }
