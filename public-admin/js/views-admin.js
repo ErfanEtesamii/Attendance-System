@@ -306,6 +306,7 @@
     planning: ['attendance', 'قواعد برنامه‌ی هفتگی و گزارش روزانه را تنظیم کنید.'],
     performance: ['trend', 'وزن‌ها و قواعد محاسبه‌ی امتیاز عملکرد را مدیریت کنید.'],
     disputes: ['disputes', 'مهلت و روند ثبت و رسیدگی به اعتراض‌ها را تعیین کنید.'],
+    supervisors: ['employees', 'قواعد و محدودیت‌های سرپرست‌ها، مرور شبانه و صف تأییدها را مدیریت کنید.'],
   };
   const stGroupMeta = (g) => ST_GROUP_META[g] || ['settings', 'تنظیمات این بخش را بررسی و مدیریت کنید.'];
 
@@ -351,12 +352,29 @@
         </div>`;
       };
 
+      // کارت «تنظیمات مرتبط در بخش‌های دیگر»: فقط نمایش + رفتن به ردیف اصلی (ویرایش دوبل نمی‌کند تا drafts به‌هم نخورد)
+      const relatedOf = (g) => items.filter((i) => Array.isArray(i.related) && i.related.includes(g) && i.group !== g);
+      const relatedInner = (g) => relatedOf(g).map((it) => {
+        const v = it.key in drafts ? drafts[it.key] : it.value;
+        const ltr = ['time', 'timezone', 'cron', 'number', 'date'].includes(it.type);
+        return `<li class="st-rel-item">
+          <div class="st-rel-main"><span class="st-rel-name">${esc(setShort(it))}</span><span class="st-rel-group muted small">${esc(it.groupLabel || data.groups[it.group] || '')}</span></div>
+          <bdi class="st-rel-val" dir="${ltr ? 'ltr' : 'auto'}">${esc(setShow(it, setNorm(it, v) === setNorm(it, it.value) ? it.value : v))}${it.key in drafts && isDirty(it) ? ' <span class="st-tag">ذخیره‌نشده</span>' : ''}</bdi>
+          <button type="button" class="btn ghost small" data-goto="${esc(it.key)}" aria-label="رفتن به تنظیم «${esc(setShort(it))}» در بخش ${esc(it.groupLabel || '')}">رفتن به تنظیم</button>
+        </li>`;
+      }).join('');
+      const relatedCard = (g) => (relatedOf(g).length ? `<section class="st-related" aria-labelledby="st-rel-h-${esc(g)}">
+          <h4 id="st-rel-h-${esc(g)}">تنظیمات مرتبط در بخش‌های دیگر</h4>
+          <p class="muted small">این موارد روی رفتار سرپرست‌ها اثر دارند ولی در بخش خودشان ویرایش می‌شوند.</p>
+          <ul class="st-rel-list" data-related="${esc(g)}">${relatedInner(g)}</ul>
+        </section>` : '');
+
       const groupBody = (g) => {
         const list = items.filter((i) => i.group === g);
         const notes = [];
         if (IMPACT_GROUPS.has(g)) notes.push(`<div class="st-banner st-banner-warn" role="note"><span class="st-banner-ico" aria-hidden="true">${icon('alert')}</span><p>${esc(IMPACT_SHORT)}</p></div>`);
         if (g === 'schedule') notes.push(`<div class="st-banner st-banner-info" role="note"><span class="st-banner-ico" aria-hidden="true">${icon('clock')}</span><p>تغییر زمان‌بندی بدون ری‌استارت و بلافاصله اعمال می‌شود. مقدار پیش‌فرض از فایل <code class="ltr">.env</code> می‌آید.</p></div>`);
-        return `${notes.join('')}<div class="st-fields">${list.map(rowHtml).join('')}</div>
+        return `${notes.join('')}<div class="st-fields">${list.map(rowHtml).join('')}</div>${relatedCard(g)}
           <div class="st-actionbar" data-bar="${esc(g)}">
             <div class="st-save-state"><span class="st-status-dot" aria-hidden="true"></span><span class="st-pending" data-pending="${esc(g)}" aria-live="polite">تغییری ذخیره‌نشده نیست</span></div>
             <div class="form-msg" data-msg></div>
@@ -541,8 +559,33 @@
             $('#set-none', page).classList.toggle('hidden', anyGroup);
           }
 
+          // مقدار کارت «مرتبط» از items/drafts زنده خوانده می‌شود؛ هنگام ورود به بخش یا ذخیره در بخش‌های دیگر تازه می‌شود
+          function refreshRelated() {
+            $$('[data-related]', page).forEach((ul) => { ul.innerHTML = relatedInner(ul.dataset.related); });
+          }
+          function gotoSetting(key) {
+            const it = byKey[key];
+            if (!it) return;
+            const q = $('#set-q', page);
+            if (q) q.value = ''; // جستجوی فعال ردیف مقصد را پنهان نکند
+            showGroup(it.group);
+            const row = $(`.st-field[data-row="${CSS.escape(key)}"]`, page);
+            if (!row) return;
+            const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (typeof row.scrollIntoView === 'function') row.scrollIntoView({ block: 'center', behavior: calm ? 'auto' : 'smooth' });
+            const ctl = $('input, select', row);
+            if (ctl && typeof ctl.focus === 'function') ctl.focus({ preventScroll: true });
+            row.classList.add('st-flash');
+            setTimeout(() => row.classList.remove('st-flash'), 1800);
+          }
+          page.addEventListener('click', (e) => {
+            const b = e.target.closest && e.target.closest('[data-goto]');
+            if (b) gotoSetting(b.dataset.goto);
+          });
+
           function showGroup(g) {
             active = g;
+            refreshRelated();
             $$('[data-go]', page).forEach((b) => {
               if (b.dataset.go === g) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
             });

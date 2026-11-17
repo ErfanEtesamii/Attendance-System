@@ -69,6 +69,7 @@ function buildItem(def, stored) {
   if (def.min !== undefined) item.min = def.min;
   if (def.max !== undefined) item.max = def.max;
   if (def.values !== undefined) item.values = def.values;
+  if (def.related) item.related = def.related;
   return item;
 }
 

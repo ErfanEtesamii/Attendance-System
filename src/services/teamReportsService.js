@@ -16,7 +16,6 @@ const { isAdmin } = require('../utils/roles');
 const TABS = ['daily', 'plan', 'stuck', 'unreviewed'];
 const STUCK_MIN = 2; // دو بار پشت‌سرهم منتقل‌شده
 const STUCK_LOOKBACK_DAYS = 35;
-const MAX_LOOKBACK_DAYS = teamReview.MAX_LOOKBACK_DAYS;
 
 const fail = (code, error) => ({ ok: false, code, error });
 const ERROR_STATUS = { FORBIDDEN: 403, SUBJECT_NOT_IN_SCOPE: 403 };
@@ -135,7 +134,8 @@ function getReports(viewer, input = {}, { now = new Date() } = {}) {
   } else {
     if (typeof date !== 'string' || dayNumber(date) === null) return fail('INVALID_DATE', 'تاریخ نامعتبر است (قالب YYYY-MM-DD).');
     if (date > cur) return fail('DATE_IN_FUTURE', 'گزارشِ روزِ آینده وجود ندارد.');
-    if (date < addDays(cur, -MAX_LOOKBACK_DAYS)) return fail('DATE_TOO_OLD', `فقط گزارش‌های ${MAX_LOOKBACK_DAYS} روز اخیر قابل مشاهده است.`);
+    const lookback = teamReview.lookbackDays(settings);
+    if (date < addDays(cur, -lookback)) return fail('DATE_TOO_OLD', `فقط گزارش‌های ${lookback} روز اخیر قابل مشاهده است.`);
   }
   let rows = users.map((u) => dailyRow(viewer, u, date, settings));
   const summary = teamSummary(rows);

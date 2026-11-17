@@ -141,7 +141,7 @@ The full reference is in [`PROJECT_STATUS.md`](PROJECT_STATUS.md) (section 7), a
 
 > ⚠️ Never commit `.env`, the `.ssl/` folder, or `data/*.db` files, and never put them in a delivery zip. Use `npm run package` to build the delivery package (it strips secrets automatically), and run `npm run secret-scan` before committing/sending. In production the server will not start if `ADMIN_SESSION_SECRET` is shorter than 32 characters or is a sample value. For the "if a secret leaks" checklist, see the "Secret management" section in [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md).
 
-Most business rules (lunch, breaks, lateness limit, remote work, plan/report gates, …) live in the `settings` table and are changed from the panel's "Settings" page (or `GET/PATCH /api/admin/settings`), not from `.env`.
+Most business rules (lunch, breaks, lateness limit, remote work, plan/report gates, …) live in the `settings` table and are changed from the panel's "Settings" page (or `GET/PATCH /api/admin/settings`), not from `.env`. The "Supervisors" tab groups the global supervisor rules (team-report review window and comment limits, nightly-review caps and on/off switches, supervisor schedules) and links to the supervisor-related settings that live in other tabs.
 
 ## Database and Migrations
 

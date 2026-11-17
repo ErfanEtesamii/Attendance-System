@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## Unreleased — بخش سرپرست‌ها در تنظیمات (فاز A: قوانین سراسری)
+- جدید: گروه «سرپرست‌ها» (`supervisors`) در تنظیمات پنل با ۱۵ کلید که ثابت‌های هاردکدِ سرپرستی را قابل‌تنظیم می‌کنند (پیش‌فرض‌ها دقیقاً همان رفتار قبلی): `teamReviewTaskEnabled`، `teamReviewLookbackDays` (۶۰)، `teamReviewCommentMax` (۳۰۰)، `supervisorPlanCommentMax` (۵۰۰)، `urgentTaskMaxAheadDays` (۶۰)، `missionRejectReasonMin` (۳)، `nightlyReviewMaxParts` (۳)، `nightlyReviewMaxItemsPerMember` (۵)، `nightlyReviewMaxAttentionLines` (۲۵)، `nightlyReviewMaxMissions` (۸) و کلیدهای روشن/خاموش `nightlyReviewSendEnabled`، `morningDigestEnabled`، `supervisorTeamReportEnabled`، `repeatedLatenessAlertSupervisor`، `supervisorDecisionNotifyAdmins`.
+- سرویس‌ها مقدار را در لحظه از `settingsRepository` می‌خوانند (getterهای `teamReviewService.commentMax()/lookbackDays()`، `urgentTaskService.maxAheadDays()`، `missionDecisionService.rejectReasonMin()`)؛ ثابت‌های قبلی به‌عنوان پیش‌فرض صادر می‌مانند. خاموش‌کردن `teamReviewTaskEnabled` فقط ساخت تسک تازه را متوقف می‌کند (تسک‌های موجود بسته می‌شوند).
+- سه cron سرپرستی (`cronNightlyReview`، `cronMorningDigest`، `cronTeamReviewEnsure`) از گروه «زمان‌بندی» به «سرپرست‌ها» منتقل شد (فقط گروه؛ کلید، Job و پیش‌فرض بدون تغییر؛ اعمال بدون ری‌استارت).
+- فیلد اختیاری `related` در رجیستری و در `GET /admin/settings/items`؛ کارت «تنظیمات مرتبط در بخش‌های دیگر» در تب سرپرست‌ها (عنوان + مقدار فعلی + «رفتن به تنظیم») برای ۱۲ کلیدِ مرتبطِ بخش‌های دیگر؛ ویرایش دوبل ندارد.
+- تست: test/supervisorSettings.test.js (جدید)؛ به‌روزرسانی settingsRegistry.test.js و settingsPage.test.js (۱۵ گروه).
+- فازهای بعد (سقف اصلاح رکورد، ماتریس قابلیت‌ها، مدیریت تیم‌ها) در مراحل ۲ تا ۵.
+
 ## Unreleased — اصلاح ساعت دورکاری در مودال «رکورد تردد»
 - مودال رکورد حالا بخش «دورکاری این روز» دارد: همه‌ی نشست‌های دورکاریِ همان کارمند در همان روز (در انتظار/تأییدشده/ردشده) با نشان «هم‌پوشانی با حضور حضوری» وقتی رکورد حضوری دارد. `GET /admin/attendance-records/:id` فیلد `remoteSessions` (بدون IP، با `canReview`) برمی‌گرداند.
 - جدید: `PATCH /admin/remote-work/:id` (`remote_work.review`؛ ادمین همه، سرپرست فقط تیم خودش؛ خود ممنوع) — اصلاح ساعت نشستِ تأییدشده با دلیل اجباری (مالک معاف) + audit `remote_work_adjust`. قواعد: پایان بعد از شروع، حداکثر ۲۴ ساعت، نه آینده، ماه بسته ⇒ `MONTH_CLOSED`، هم‌پوشانی با نشست تأییدشده‌ی دیگر ⇒ `TIME_CONFLICT`، غیرتأییدشده ⇒ `NOT_APPROVED`.

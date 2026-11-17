@@ -74,6 +74,7 @@ async function checkRepeatedLateness(bot, { now = new Date() } = {}) {
   const activeUsers = usersRepository.listUsers({ onlyActive: true });
   // S3-8a: Job اکنون هر روز اجرا می‌شود؛ مثل قبل (cron فقط روزهای کاری) فقط در «روز کاریِ همین کارمند» هشدار می‌دهیم
   const settings = settingsRepository.getAll();
+  if (settings.repeatedLatenessAlertSupervisor === false) return; // تنظیم «هشدار تأخیر مکرر به سرپرست»
   const holidays = holidaysRepository.listByDate(today);
 
   for (const user of activeUsers) {

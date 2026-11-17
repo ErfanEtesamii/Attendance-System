@@ -915,6 +915,18 @@ input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--b
 .st-actionbar.dirty { position: sticky; bottom: 0; z-index: 5; margin-inline: -18px; padding: var(--space-3) 18px; background: var(--card); box-shadow: 0 -6px 16px var(--ov-08); border-top-color: var(--yellow); }
 .st-actionbar.dirty .st-pending { color: var(--yellow); font-weight: 700; }
 .st-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5); padding-top: 14px; }
+/* کارت «تنظیمات مرتبط در بخش‌های دیگر» (سرپرست‌ها) */
+.st-related { margin-top: var(--space-5); padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-2); }
+.st-related h4 { margin: 0 0 4px; font-size: var(--fs-md); }
+.st-related p { margin: 0 0 var(--space-3); }
+.st-rel-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.st-rel-item { display: flex; align-items: center; flex-wrap: wrap; gap: 6px var(--space-3); padding: 9px 0; border-top: 1px solid var(--border); }
+.st-rel-main { flex: 1 1 220px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.st-rel-name { font-weight: 600; font-size: var(--fs-sm); }
+.st-rel-val { font-weight: 700; color: var(--brand); unicode-bidi: isolate; }
+.st-field.st-flash { animation: st-flash 1.8s ease-out; }
+@keyframes st-flash { 0%, 60% { background: var(--yellow-soft); } 100% { background: transparent; } }
+@media (prefers-reduced-motion: reduce) { .st-field.st-flash { animation: none; background: var(--yellow-soft); } }
 .st-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding-inline-start: 10px; border-inline-start: 3px solid transparent; }
 .st-field.full { grid-column: 1 / -1; }
 .st-field.dirty { border-inline-start-color: var(--yellow); }

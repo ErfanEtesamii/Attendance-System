@@ -22,6 +22,7 @@
 //   • سرپرست فقط هفته‌های آینده را ویرایش می‌کند؛ هفته‌ی شروع‌شده ⇒ PLAN_LOCKED، ماه بسته ⇒ MONTH_CLOSED (هر دو ۴۰۹).
 //     ادمین (role=admin) هر هفته‌ای را هر زمان ویرایش می‌کند (جاری/گذشته هم)؛ فقط ماه بسته برای او هم قفل است (lockReasonFor).
 //   • تسک فوری تنها استثنای قفل است و فقط از urgentTaskService (E1) می‌آید؛ این سرویس آن را دور نمی‌زند.
+const settingsRepository = require('../repositories/settingsRepository');
 const usersRepository = require('../repositories/usersRepository');
 const plansRepo = require('../repositories/weeklyPlanRepository');
 const calendarService = require('../engine/calendarService');
@@ -463,8 +464,8 @@ function pendingNotify(actor, employeeId, weekStartInput, { now } = {}) {
 // قفل هفته/ماه اعمال نمی‌شود (یادداشت محتوای برنامه نیست و در هفته‌ی شروع‌شده هم مجاز است) و expectedVersion بررسی نمی‌شود
 // (با ویرایش تسک‌ها تعارض ندارد)؛ پاسخ route وضعیت تازه با version جدید است. متن خالی ⇒ پاک‌شدن یادداشت.
 // برنامه‌ی ناموجود فقط وقتی یادداشتِ غیرخالی ثبت شود به‌صورت draft خالی ساخته می‌شود (مثل addTask). وضعیت draft/submitted عوض نمی‌شود.
-const SUPERVISOR_COMMENT_MAX = 500;
-const cleanComment = (v) => sanitizeText(String(v), SUPERVISOR_COMMENT_MAX + 1).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
+const SUPERVISOR_COMMENT_MAX = 500; // پیش‌فرض؛ مقدار مؤثر = تنظیم supervisorPlanCommentMax
+const cleanComment = (v, max) => sanitizeText(String(v), max + 1).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
 
 function setSupervisorComment(actor, employeeId, weekStartInput, commentInput, { now } = {}) {
   const id = toId(employeeId);
@@ -472,8 +473,9 @@ function setSupervisorComment(actor, employeeId, weekStartInput, commentInput, {
   const denied = scopeFailure(actor, target, 'reviews.write');
   if (denied) return denied;
   if (commentInput !== undefined && commentInput !== null && typeof commentInput !== 'string') return fail('INVALID_COMMENT', 'یادداشت نامعتبر است.');
-  const comment = commentInput ? cleanComment(commentInput) : '';
-  if (comment.length > SUPERVISOR_COMMENT_MAX) return fail('COMMENT_TOO_LONG', `یادداشت حداکثر ${SUPERVISOR_COMMENT_MAX} نویسه است.`);
+  const maxLen = settingsRepository.getAll().supervisorPlanCommentMax;
+  const comment = commentInput ? cleanComment(commentInput, maxLen) : '';
+  if (comment.length > maxLen) return fail('COMMENT_TOO_LONG', `یادداشت حداکثر ${maxLen} نویسه است.`);
 
   const wk = resolveViewWeek(weekStartInput, weeklyPlan.context(now));
   if (!wk.ok) return wk;

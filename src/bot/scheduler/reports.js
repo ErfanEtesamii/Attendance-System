@@ -37,7 +37,9 @@ function recipientsFor(manager) {
 }
 
 async function sendToManagersAndAdmins(bot, buildMessage) {
-  const recipients = usersRepository.listUsers({ onlyActive: true, includeOwner: true }).filter((u) => ['manager', 'admin', 'owner'].includes(u.role));
+  // تنظیم supervisorTeamReportEnabled: خاموش ⇒ فقط سرپرستان (نقش manager) گزارش دوره‌ای نمی‌گیرند؛ ادمین/مالک مثل قبل
+  const toSupervisors = settingsRepository.getAll().supervisorTeamReportEnabled !== false;
+  const recipients = usersRepository.listUsers({ onlyActive: true, includeOwner: true }).filter((u) => ['manager', 'admin', 'owner'].includes(u.role) && (toSupervisors || u.role !== 'manager'));
 
   for (const recipient of recipients) {
     if (!recipient.telegram_user_id) continue;

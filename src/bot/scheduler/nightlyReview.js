@@ -17,15 +17,19 @@ const suspiciousRepository = require('../../repositories/suspiciousRepository');
 const missionDecisionService = require('../../services/missionDecisionService');
 const nightlyTaskReportService = require('../../services/nightlyTaskReportService');
 
+// پیش‌فرض‌ها؛ مقدار مؤثر از تنظیمات «سرپرست‌ها» (nightlyReviewMaxAttentionLines / nightlyReviewMaxMissions) خوانده می‌شود. خرابی خواندن ⇒ پیش‌فرض
 const MAX_ATTENTION_LINES = 25;
 const MAX_MISSIONS = 8; // هر ماموریت یک ردیف دکمه دارد؛ بقیه با دکمه‌ی «📥 درخواست‌های منتظر»
+function limit(key, fallback) {
+  try { const v = settingsRepository.getAll()[key]; return typeof v === typeof fallback ? v : fallback; } catch (_) { return fallback; }
+}
 
 // C4: ماموریت‌های منتظر تأیید این سرپرست ⇒ { lines, shown } (ضدخطا؛ مرور شبانه هرگز نباید بشکند)
 function missionSection(supervisor) {
   try {
     const all = missionDecisionService.pendingForSupervisor(supervisor);
     if (!all.length) return { lines: [], shown: [] };
-    const shown = all.slice(0, MAX_MISSIONS);
+    const shown = all.slice(0, limit('nightlyReviewMaxMissions', MAX_MISSIONS));
     const lines = ['', `🚗 ماموریت‌های منتظر تأیید (${all.length}):`];
     shown.forEach((r) => lines.push(missionDecisionService.describeMission(r, usersRepository.findById(r.user_id))));
     if (all.length > shown.length) lines.push(`… و ${all.length - shown.length} مورد دیگر → «📥 درخواست‌های منتظر» (از «📂 منو»)`);
@@ -93,9 +97,10 @@ function buildNightlyMessage(supervisor, team, today, rows = reviewDay(team, tod
     lines.push('همه‌چیز عادی است ✅');
   } else {
     lines.push('نیازمند بررسی:');
-    attention.slice(0, MAX_ATTENTION_LINES).forEach((r) => lines.push(attentionLine(r)));
-    if (attention.length > MAX_ATTENTION_LINES) {
-      lines.push(`… و ${attention.length - MAX_ATTENTION_LINES} مورد دیگر (در پنل ببینید)`);
+    const maxLines = limit('nightlyReviewMaxAttentionLines', MAX_ATTENTION_LINES);
+    attention.slice(0, maxLines).forEach((r) => lines.push(attentionLine(r)));
+    if (attention.length > maxLines) {
+      lines.push(`… و ${attention.length - maxLines} مورد دیگر (در پنل ببینید)`);
     }
   }
 
@@ -160,7 +165,9 @@ async function sendNightlyReview(bot) {
   // جاروی شبانه‌ی تشخیص مورد مشکوک (S2-4e): ضدخطا؛ شکستش نباید ارسال مرور شبانه را مختل کند
   runFraudChecksSafe({ date: today });
 
-  const supervisors = usersRepository
+  // تنظیم nightlyReviewSendEnabled: خاموش ⇒ فقط پیام مرور شبانه برای سرپرست‌ها نمی‌رود (گزارش تسک‌ها و جاروی مشکوک ادامه دارد)
+  const sendToSupervisors = limit('nightlyReviewSendEnabled', true) !== false;
+  const supervisors = !sendToSupervisors ? [] : usersRepository
     .listUsers({ onlyActive: true })
     .filter((u) => u.role === 'manager' && u.telegram_user_id);
 

@@ -22,8 +22,8 @@ const { addDays } = require('../utils/shiftDay');
 const { isAdmin } = require('../utils/roles');
 const TG_LIMIT = 4096;
 const SAFE_LIMIT = 3900; // حاشیه برای عنوان/پانویس
-const MAX_PARTS = 3; // سرپرست؛ ادمین ⇒ تنظیم taskReportAdminMaxParts
-const MAX_ITEMS_PER_MEMBER = 5;
+const MAX_PARTS = 3; // پیش‌فرض سرپرست (تنظیم nightlyReviewMaxParts)؛ ادمین ⇒ تنظیم taskReportAdminMaxParts
+const MAX_ITEMS_PER_MEMBER = 5; // پیش‌فرض (تنظیم nightlyReviewMaxItemsPerMember)
 const MAX_COMMENT_BUTTONS = 8;
 const NO_TEAM = 'بدون سرپرست';
 const MAX_FOOTER = 1800; // سقف پانویس (خلاصه‌ی تیم/شرکت) در آخرین پیام
@@ -62,7 +62,7 @@ function memberReport(member, date, settings) {
   };
 }
 
-function memberBlock(r, stuckTasks) {
+function memberBlock(r, stuckTasks, { maxItems = MAX_ITEMS_PER_MEMBER } = {}) {
   const lines = [];
   const name = r.member.full_name;
   const t = r.tally || {};
@@ -80,8 +80,8 @@ function memberBlock(r, stuckTasks) {
     ...(r.dropped || []).map((n) => `   ✗ ${n.title}${n.reason ? ` — ${n.reason}` : ''} (${n.carry})`),
     ...r.pending.map((p) => `   ⏳ ${p.isUrgent ? '⚡ ' : (p.priority === 'high' ? '🔴 ' : '')}${p.title}`),
   ];
-  rows.slice(0, MAX_ITEMS_PER_MEMBER).forEach((x) => lines.push(x));
-  if (rows.length > MAX_ITEMS_PER_MEMBER) lines.push(`   … و ${rows.length - MAX_ITEMS_PER_MEMBER} مورد دیگر`);
+  rows.slice(0, maxItems).forEach((x) => lines.push(x));
+  if (rows.length > maxItems) lines.push(`   … و ${rows.length - maxItems} مورد دیگر`);
   if (r.extra > 0 && r.total > 0) lines.push(`   ➕ ${r.extra} کار خارج از برنامه`);
   if (r.noteCount > 0) lines.push(`   📝 ${r.noteCount} توضیح انجام`);
   if (r.stillOpen) lines.push('   ⏳ هنوز خروج نزده — وضعیت لحظه‌ای');
@@ -232,6 +232,8 @@ function buildNightlyTaskReports(date, { settings = settingsRepository.getAll() 
   teamReports.stuckRows(everyReport.map((r) => r.member), date).forEach((s) => stuckAll.set(s.userId, s.tasks));
   const all = usersRepository.listUsers({ onlyActive: true });
   const byId = new Map(all.map((u) => [u.id, u]));
+  const itemOpts = { maxItems: Number.isInteger(settings.nightlyReviewMaxItemsPerMember) ? settings.nightlyReviewMaxItemsPerMember : MAX_ITEMS_PER_MEMBER };
+  const supervisorMax = Number.isInteger(settings.nightlyReviewMaxParts) ? settings.nightlyReviewMaxParts : MAX_PARTS;
   const adminMax = Math.min(10, Math.max(1, Math.floor(Number(settings.taskReportAdminMaxParts)) || 6));
 
   for (const { reviewer, members, scope } of recipients.values()) {
@@ -245,13 +247,13 @@ function buildNightlyTaskReports(date, { settings = settingsRepository.getAll() 
       for (const r of reports) { const k = teamKeyOf(r.member, byId); if (!teams.has(k)) teams.set(k, []); teams.get(k).push(r); }
       blocks = [];
       for (const [team, rs] of [...teams].sort((x, y) => (x[0] === NO_TEAM) - (y[0] === NO_TEAM) || x[0].localeCompare(y[0], 'fa'))) {
-        rs.forEach((r) => blocks.push({ heading: `👥 ${team}`, text: memberBlock(r, stuckAll.get(r.member.id)) }));
+        rs.forEach((r) => blocks.push({ heading: `👥 ${team}`, text: memberBlock(r, stuckAll.get(r.member.id), itemOpts) }));
       }
-    } else blocks = reports.map((r) => memberBlock(r, stuckAll.get(r.member.id)));
+    } else blocks = reports.map((r) => memberBlock(r, stuckAll.get(r.member.id), itemOpts));
     const footer = reports.length ? summaryLines(reports, isAdmin ? 'خلاصه‌ی همه' : 'خلاصه‌ی تیم') : [];
     if (isAdmin && everyReport.length) footer.push('', ...companySummary(date, settings, everyReport));
     if (!blocks.length && !footer.length) continue;
-    const { parts, omitted } = pack(header, blocks, footer, { maxParts: isAdmin ? adminMax : MAX_PARTS });
+    const { parts, omitted } = pack(header, blocks, footer, { maxParts: isAdmin ? adminMax : supervisorMax });
     // دکمه‌ی «مشاهده شد/کامنت» فقط برای زیردست‌های «مستقیمِ» گیرنده (markReviewed همین اسکوپ را اعمال می‌کند)؛ بقیه فقط‌خواندنی
     const canReview = teamReview.isReviewer(reviewer);
     out.push({

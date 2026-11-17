@@ -1,6 +1,7 @@
 // C4: تصمیم‌گیری سرپرست روی ماموریت از بات (مرور شبانه): فهرست منتظرها، رد با علتِ اجباری، اصلاح ساعت.
 // روی leaveApprovalService.decide سوار است (همان مجوزها: سرپرست مستقیم یا ادمین)؛ هیچ مسیر تصمیم تازه‌ای نمی‌سازد.
 
+const settingsRepository = require('../repositories/settingsRepository');
 const usersRepository = require('../repositories/usersRepository');
 const leaveRepository = require('../repositories/leaveRepository');
 const auditRepository = require('../repositories/auditRepository');
@@ -9,7 +10,8 @@ const leaveDurationService = require('./leaveDurationService');
 const notificationEvents = require('./notificationEvents');
 const { sanitizeText } = require('../utils/sanitize');
 
-const REJECT_REASON_MIN = 3;
+const REJECT_REASON_MIN = 3; // پیش‌فرض؛ مقدار مؤثر = تنظیم missionRejectReasonMin (rejectReasonMin)
+const rejectReasonMin = () => settingsRepository.getAll().missionRejectReasonMin;
 const REJECT_REASON_MAX = 300;
 const TIME_RE = /^\s*(\d{1,2}):(\d{2})\s*(?:-|–|تا|to)\s*(\d{1,2}):(\d{2})\s*$/;
 const pad = (n) => String(n).padStart(2, '0');
@@ -52,7 +54,8 @@ function missionKeyboardRow(request) {
 function rejectMission({ requestId, actor, reason }) {
   const text = cleanText(reason, REJECT_REASON_MAX);
   const ownerExempt = actor && actor.role === 'owner'; // مالک: علت رد اختیاری
-  if (text.length < REJECT_REASON_MIN && !ownerExempt) return { ok: false, code: 'REASON_REQUIRED', error: `علت رد الزامی است (حداقل ${REJECT_REASON_MIN} نویسه).` };
+  const minLen = rejectReasonMin();
+  if (text.length < minLen && !ownerExempt) return { ok: false, code: 'REASON_REQUIRED', error: `علت رد الزامی است (حداقل ${minLen} نویسه).` };
   const request = leaveRepository.findById(requestId);
   if (!request || request.kind !== 'mission') return { ok: false, code: 'NOT_FOUND', error: 'ماموریت یافت نشد.' };
   const result = leaveApprovalService.decide({ requestId, actor, decision: 'reject', note: text || undefined });
@@ -108,4 +111,4 @@ function adjustTimes({ requestId, actor, text }) {
   return { ok: true, request: updated, ...range };
 }
 
-module.exports = { pendingForSupervisor, describeMission, missionKeyboardRow, rejectMission, approveMission, adjustTimes, parseTimeRange, REJECT_REASON_MIN };
+module.exports = { pendingForSupervisor, describeMission, missionKeyboardRow, rejectMission, approveMission, adjustTimes, parseTimeRange, REJECT_REASON_MIN, rejectReasonMin };

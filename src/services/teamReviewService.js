@@ -38,8 +38,11 @@ const REVIEW_KEY = 'review_team_reports';
 const TITLE = 'بررسی گزارش روز قبلِ تیم';
 const DESCRIPTION = 'گزارش تسک‌های روز کاریِ قبل اعضای تیم را مشاهده کنید.';
 const REACTIONS = ['like', 'great', 'thanks'];
+// پیش‌فرض‌ها (برابر مقدار رجیستری)؛ مقدار مؤثر از تنظیمات «سرپرست‌ها» خوانده می‌شود (commentMax / lookbackDays)
 const COMMENT_MAX = 300;
 const MAX_LOOKBACK_DAYS = 60;
+const commentMax = (settings = settingsRepository.getAll()) => settings.teamReviewCommentMax;
+const lookbackDays = (settings = settingsRepository.getAll()) => settings.teamReviewLookbackDays;
 
 const fail = (code, error, extra = {}) => ({ ok: false, code, error, ...extra });
 const clean = (v, max) => sanitizeText(v == null ? '' : String(v), max + 1).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -163,6 +166,7 @@ function ensureTask(user, date, settings = settingsRepository.getAll()) {
   if (!isReviewer(user) || dayNumber(date) === null) return null;
   const existing = findTask(user, date, settings);
   if (existing) return existing;
+  if (settings.teamReviewTaskEnabled === false) return null; // تنظیم «تسک واجب بررسی گزارش تیم» خاموش: تسک تازه ساخته نمی‌شود
   if (monthClosuresRepository.findClosedOverlapping(date, date).length > 0) return null;
   const cal = calendarService.getCalendarDay(user, date, { settings });
   if (!cal.isWorkingDay || calendarService.fullyOnApprovedLeave(user, date, cal)) return null;
@@ -281,16 +285,16 @@ function refreshReviewersOf(ids, { now = new Date() } = {}) {
 
 const presentReview = (r) => ({ reviewerId: r.reviewer_id, subjectUserId: r.subject_user_id, reportDate: r.report_date, reviewedAt: r.reviewed_at, comment: r.comment || null, reaction: r.reaction || null });
 
-function reportDateBounds(user, now) {
+function reportDateBounds(user, now, settings = settingsRepository.getAll()) {
   const cur = attendanceRepository.currentRecordDate(user.id, now);
-  return { cur, oldest: addDays(cur, -MAX_LOOKBACK_DAYS) };
+  return { cur, oldest: addDays(cur, -lookbackDays(settings)) };
 }
 
 /** GET /miniapp/team-review?date= — وضعیت مشاهده‌ی گزارش‌های تیم (پیش‌فرض: «روز قبل» نسبت به امروزِ سرپرست). */
 function getTeamReview(user, { date, now = new Date(), detail = false } = {}) {
   if (!isReviewer(user)) return fail('FORBIDDEN', 'فقط سرپرست یا ادمین به گزارش‌های تیم دسترسی دارد.');
   const settings = settingsRepository.getAll();
-  const { cur, oldest } = reportDateBounds(user, now);
+  const { cur, oldest } = reportDateBounds(user, now, settings);
   let reviewDate;
   if (date === undefined || date === null || date === '') {
     reviewDate = reviewDateFor(user, cur, settings);
@@ -298,7 +302,7 @@ function getTeamReview(user, { date, now = new Date(), detail = false } = {}) {
   } else {
     if (typeof date !== 'string' || dayNumber(date) === null) return fail('INVALID_DATE', 'تاریخ نامعتبر است (قالب YYYY-MM-DD).');
     if (date > cur) return fail('DATE_IN_FUTURE', 'گزارشِ روزِ آینده وجود ندارد.');
-    if (date < oldest) return fail('DATE_TOO_OLD', `فقط گزارش‌های ${MAX_LOOKBACK_DAYS} روز اخیر قابل مشاهده است.`);
+    if (date < oldest) return fail('DATE_TOO_OLD', `فقط گزارش‌های ${lookbackDays(settings)} روز اخیر قابل مشاهده است.`);
     reviewDate = date;
   }
   const state = reviewState(user, reviewDate, settings);
@@ -316,9 +320,10 @@ function markReviewed(reviewer, input, { now = new Date(), ip = null } = {}) {
   if (!Number.isInteger(subjectId) || subjectId <= 0) return fail('INVALID_SUBJECT', 'شناسه‌ی کارمند نامعتبر است.');
   const reportDate = b.reportDate;
   if (typeof reportDate !== 'string' || dayNumber(reportDate) === null) return fail('INVALID_DATE', 'تاریخ گزارش نامعتبر است (قالب YYYY-MM-DD).');
-  const { cur, oldest } = reportDateBounds(reviewer, now);
+  const settings = settingsRepository.getAll();
+  const { cur, oldest } = reportDateBounds(reviewer, now, settings);
   if (reportDate > cur) return fail('DATE_IN_FUTURE', 'گزارشِ روزِ آینده وجود ندارد.');
-  if (reportDate < oldest) return fail('DATE_TOO_OLD', `فقط گزارش‌های ${MAX_LOOKBACK_DAYS} روز اخیر قابل مشاهده است.`);
+  if (reportDate < oldest) return fail('DATE_TOO_OLD', `فقط گزارش‌های ${lookbackDays(settings)} روز اخیر قابل مشاهده است.`);
 
   const subject = usersRepository.findById(subjectId);
   if (!subject) return fail('USER_NOT_FOUND', 'کارمند پیدا نشد.');
@@ -327,8 +332,9 @@ function markReviewed(reviewer, input, { now = new Date(), ip = null } = {}) {
 
   let comment;
   if (b.comment !== undefined && b.comment !== null && b.comment !== '') {
-    comment = clean(b.comment, COMMENT_MAX);
-    if (comment.length > COMMENT_MAX) return fail('COMMENT_TOO_LONG', `کامنت حداکثر ${COMMENT_MAX} نویسه است.`);
+    const maxLen = commentMax(settings);
+    comment = clean(b.comment, maxLen);
+    if (comment.length > maxLen) return fail('COMMENT_TOO_LONG', `کامنت حداکثر ${maxLen} نویسه است.`);
   }
   let reaction;
   if (b.reaction !== undefined && b.reaction !== null && b.reaction !== '') {
@@ -351,7 +357,6 @@ function markReviewed(reviewer, input, { now = new Date(), ip = null } = {}) {
       console.error('[teamReview] اعلان کامنت ناموفق (نادیده گرفته شد):', sanitizeText(err && err.message ? err.message : String(err), 200));
     }
   }
-  const settings = settingsRepository.getAll();
   try { // تسکِ «امروز» سرپرست ممکن است با همین مشاهده کامل شده باشد
     ensureTask(reviewer, cur, settings);
     syncCompletion(reviewer, cur, settings);
@@ -361,4 +366,4 @@ function markReviewed(reviewer, input, { now = new Date(), ip = null } = {}) {
   return { ok: true, review: presentReview(row), state: reviewState(reviewer, reportDate, settings) };
 }
 
-module.exports = { ensureWeek, ensureUpcoming, ensureAllReviewers, refreshReviewersOf, teamOf, reviewDateFor, reviewState, reportSummaryOf, gateInfo, statusOf, ERROR_STATUS, ensureTask, syncCompletion, prepareDay, getTeamReview, markReviewed, isReviewer, REVIEW_KEY, TITLE, REACTIONS, COMMENT_MAX, MAX_LOOKBACK_DAYS };
+module.exports = { ensureWeek, ensureUpcoming, ensureAllReviewers, refreshReviewersOf, teamOf, reviewDateFor, reviewState, reportSummaryOf, gateInfo, statusOf, ERROR_STATUS, ensureTask, syncCompletion, prepareDay, getTeamReview, markReviewed, isReviewer, REVIEW_KEY, TITLE, REACTIONS, COMMENT_MAX, MAX_LOOKBACK_DAYS, commentMax, lookbackDays };

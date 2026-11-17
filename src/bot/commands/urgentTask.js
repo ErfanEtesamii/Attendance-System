@@ -6,6 +6,7 @@
 const { getRegisteredUser, notRegisteredMessage } = require('../auth');
 const session = require('../session');
 const usersRepository = require('../../repositories/usersRepository');
+const settingsRepository = require('../../repositories/settingsRepository');
 const urgentTaskService = require('../../services/urgentTaskService');
 const ui = require('../ui/pickers');
 const { todayDateString } = require('../../utils/serverTime');
@@ -37,7 +38,7 @@ async function askDatePicker(bot, chatId, employeeName) {
     text: `📅 تسک فوری ${employeeName ? `برای ${employeeName} ` : ''}مربوط به کدام روز است؟\nاز تقویم انتخاب کنید (یا YYYY-MM-DD تایپ کنید) 👇`,
     label: 'روز تسک',
     min: today,
-    max: addDays(today, urgentTaskService.MAX_AHEAD_DAYS),
+    max: addDays(today, urgentTaskService.maxAheadDays(settingsRepository.getAll())),
     quick: ui.quickDates([0, 1, 2]),
   });
 }

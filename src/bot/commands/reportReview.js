@@ -22,7 +22,7 @@ async function handleReportReviewCallback(bot, query) {
   if (!teamReviewService.isReviewer(actor)) return bot.answerCallbackQuery(query.id, { text: 'اجازه‌ی این عملیات را ندارید.', show_alert: true });
   session.start(query.message.chat.id, 'report_comment', target);
   await bot.answerCallbackQuery(query.id);
-  return bot.sendMessage(query.message.chat.id, `کامنت خود را برای این گزارش بنویسید (حداکثر ${teamReviewService.COMMENT_MAX} نویسه). برای انصراف «${CANCEL_WORD}» بفرستید.`);
+  return bot.sendMessage(query.message.chat.id, `کامنت خود را برای این گزارش بنویسید (حداکثر ${teamReviewService.commentMax()} نویسه). برای انصراف «${CANCEL_WORD}» بفرستید.`);
 }
 
 async function handleReportCommentText(bot, msg, sess) {

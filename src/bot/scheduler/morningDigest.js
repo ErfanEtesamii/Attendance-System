@@ -78,6 +78,7 @@ function buildMorningDigests({ now = new Date() } = {}) {
 }
 
 async function sendMorningDigest(bot, { now = new Date() } = {}) {
+  if (settingsRepository.getAll().morningDigestEnabled === false) return { sent: 0, candidates: 0, disabled: true }; // تنظیم «ارسال خلاصه‌ی صبحگاهی»
   const digests = buildMorningDigests({ now });
   const btn = panelWebAppButton({ view: 'teamreports', text: '🖥 گزارش‌های تیم' });
   let sent = 0;

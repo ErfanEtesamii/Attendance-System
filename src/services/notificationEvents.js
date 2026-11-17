@@ -124,6 +124,11 @@ function leaveRequested(request) {
  * اعلان کارمند شامل «چه کسی» (نقش + نام تصمیم‌گیرنده) است. اگر تصمیم‌گیرنده سرپرست بود (نه ادمین)، به همه‌ی ادمین‌های فعال
  * هم اعلان می‌رود: «سرپرست X درخواست کارمند Y را تأیید/رد کرد، به این علت: …».
  */
+// تنظیم supervisorDecisionNotifyAdmins (پیش‌فرض روشن)؛ خطای خواندن ⇒ رفتار قبلی (اعلان می‌رود)
+function notifyAdminsOfSupervisorDecision() {
+  try { return settingsRepository.getAll().supervisorDecisionNotifyAdmins !== false; } catch (_) { return true; }
+}
+
 function leaveDecided(request, { note = null } = {}) {
   return guard('leaveDecided', () => {
     if (!request || !['approved', 'rejected'].includes(request.status)) return [];
@@ -141,7 +146,7 @@ function leaveDecided(request, { note = null } = {}) {
         dedupeKey: `leave_decided:${request.id}:${request.status}:${request.updated_at || ''}`,
       }),
     ];
-    if (decider && decider.role === 'manager') {
+    if (decider && decider.role === 'manager' && notifyAdminsOfSupervisorDecision()) {
       const employee = usersRepository.findById(request.user_id);
       for (const a of activeAdmins()) {
         if (a.id === decider.id || (employee && a.id === employee.id)) continue;
@@ -209,7 +214,7 @@ function disputeResolved(dispute, { note = null, actor = null } = {}) {
       }),
     ];
     // سرپرست (نه ادمین) اعتراض تیمش را بست ⇒ اعلان به همه‌ی ادمین‌ها
-    if (actor && !isAdmin(actor)) {
+    if (actor && !isAdmin(actor) && notifyAdminsOfSupervisorDecision()) {
       const employee = usersRepository.findById(dispute.user_id);
       for (const a of activeAdmins()) {
         if (a.id === actor.id || (employee && a.id === employee.id)) continue;

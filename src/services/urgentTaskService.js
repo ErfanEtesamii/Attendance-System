@@ -29,7 +29,8 @@ const { isAdmin } = require('../utils/roles');
 const TITLE_MAX = 120;
 const DESC_MAX = 500;
 const NOTE_MAX = 500;
-const MAX_AHEAD_DAYS = 60;
+const MAX_AHEAD_DAYS = 60; // پیش‌فرض؛ مقدار مؤثر = تنظیم urgentTaskMaxAheadDays (maxAheadDays)
+const maxAheadDays = (settings) => (settings && Number.isInteger(settings.urgentTaskMaxAheadDays) ? settings.urgentTaskMaxAheadDays : MAX_AHEAD_DAYS);
 const HHMM_RE = /^([01]?\d|2[0-3]):([0-5]\d)$/;
 
 const ERROR_STATUS = { FORBIDDEN: 403, SELF_NOT_ALLOWED: 403, NOT_IN_SCOPE: 403, USER_NOT_FOUND: 404, TASK_NOT_FOUND: 404, MONTH_CLOSED: 409, HAS_ANSWERS: 409 };
@@ -86,7 +87,8 @@ function checkDate(target, date, { settings, now = new Date(), deadline = null }
   const today = todayInZone(settings.timezone, now);
   if (typeof date !== 'string' || dayNumber(date) === null) return fail('INVALID_DATE', 'تاریخ تسک فوری نامعتبر است (YYYY-MM-DD).');
   if (date < today) return fail('DATE_IN_PAST', 'تاریخ تسک فوری نمی‌تواند گذشته باشد.');
-  if (date > addDays(today, MAX_AHEAD_DAYS)) return fail('DATE_TOO_FAR', `تاریخ تسک فوری حداکثر ${MAX_AHEAD_DAYS} روز آینده می‌تواند باشد.`);
+  const ahead = maxAheadDays(settings);
+  if (date > addDays(today, ahead)) return fail('DATE_TOO_FAR', `تاریخ تسک فوری حداکثر ${ahead} روز آینده می‌تواند باشد.`);
   if (deadline && date === today && minutesSinceMidnight(now, settings.timezone) >= Number(deadline.slice(0, 2)) * 60 + Number(deadline.slice(3))) {
     return fail('DEADLINE_PASSED', 'ساعت مهلت امروز گذشته است.');
   }
@@ -217,4 +219,4 @@ function list({ userIds = null, userId = null, from = null, to = null, now = new
   });
 }
 
-module.exports = { assign, remove, list, statusOf, scopeFailure, createUrgent, checkDate, validateContent, presentTask, fail, clean, ERROR_STATUS, TITLE_MAX, DESC_MAX, NOTE_MAX, MAX_AHEAD_DAYS };
+module.exports = { assign, remove, list, statusOf, scopeFailure, createUrgent, checkDate, validateContent, presentTask, fail, clean, ERROR_STATUS, TITLE_MAX, DESC_MAX, NOTE_MAX, MAX_AHEAD_DAYS, maxAheadDays };
