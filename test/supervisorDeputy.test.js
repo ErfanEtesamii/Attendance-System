@@ -178,7 +178,7 @@ describe('جانشین سرپرست — API', { skip: hasDeps ? false : 'express
     return { status: res.status, json };
   }
   const url = (id) => `/api/admin/supervisors/${id}/deputy`;
-  const audits = () => db.prepare("SELECT action FROM audit_log WHERE action LIKE 'supervisor_deputy_%'").all();
+  const audits = () => db.prepare("SELECT action FROM audit_log WHERE action LIKE 'supervisor_deputy_%' ORDER BY id").all();
 
   test('فقط admin/owner؛ manager/hr/employee ⇒ ۴۰۳', async () => {
     for (const u of [mgr, hr, emp]) {
