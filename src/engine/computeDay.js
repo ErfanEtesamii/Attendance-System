@@ -420,7 +420,13 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
   }
   result.effective = Math.max(0, Math.round(gross - result.breakUnpaid)); // C1: فقط بخش بدون حقوق از ساعت کاری کم می‌شود
   result.effectiveWithMission = result.effective;
-  if (result.missionMinutes > 0) {
+  // روز بدون خروج (missing_checkout): ساعت مفید صفر است، نه «تا الان». فقط امروزِ هنوز بازِ در حال کار تخمین زنده می‌گیرد.
+  const missingCheckout = flagSet.has('missing_checkout');
+  if (missingCheckout) {
+    result.effective = 0;
+    result.effectiveWithMission = result.missionMinutes; // فقط ماموریت تأییدشده
+  }
+  if (result.missionMinutes > 0 && !missingCheckout) {
     // مفید = |P ∪ M'|: P = حضور منهای استراحت‌های واقعی؛ فقط بخشی از ماموریت که با P هم‌پوشان است دوبار شمرده نمی‌شود
     let pres = reversed ? [] : normalizedSegments.map((segment, index) => [
       posOf(segment.in),
