@@ -48,10 +48,17 @@ describe('پیام خودکار استراحت و ناهار (scheduledBreakNoti
     await run({ now: tehran(12, 1) }); // تیک دوباره در همان پنجره ⇒ تکراری نمی‌شود
     assert.equal(notes(u.id, 'scheduled_break_start').length, 1);
 
+    await run({ now: tehran(12, 10) }); // ۵ دقیقه مانده به پایان استراحت
+    assert.equal(notes(u.id, 'scheduled_break_warn').length, 1);
+    assert.match(notes(u.id, 'scheduled_break_warn')[0].title, /۵ دقیقه/);
+
     await run({ now: tehran(12, 15) });
     assert.equal(notes(u.id, 'scheduled_break_end').length, 1);
     assert.equal(notes(u.id, 'scheduled_lunch_start').length, 1);
     assert.match(notes(u.id, 'scheduled_lunch_start')[0].body, /۱۳:۰۰/);
+
+    await run({ now: tehran(12, 55) }); // ۵ دقیقه مانده به پایان ناهار
+    assert.equal(notes(u.id, 'scheduled_lunch_warn').length, 1);
 
     await run({ now: tehran(13, 0) });
     assert.equal(notes(u.id, 'scheduled_lunch_end').length, 1);
@@ -69,7 +76,7 @@ describe('پیام خودکار استراحت و ناهار (scheduledBreakNoti
     assert.equal(notes(mission.id, 'scheduled_break_start').length, 0);
 
     const late = present();
-    const r = await run({ now: tehran(12, 10) }); // نه سر ساعت و نه در پنجره‌ی تحمل
+    const r = await run({ now: tehran(12, 7) }); // نه سر ساعت و نه در پنجره‌ی تحمل
     assert.equal(r.skipped, true);
     assert.equal(notes(late.id, 'scheduled_break_start').length, 0);
   });
@@ -95,6 +102,7 @@ describe('پیام خودکار استراحت و ناهار (scheduledBreakNoti
     assert.equal(registry.defaultOf('cronScheduledBreakNotice'), '* * * * *');
     assert.equal(registry.defaultOf('breakButtonsEnabled'), true);
     assert.deepEqual(registry.validate('scheduledBreakStart', '9:05'), { ok: true, value: '09:05' });
+    assert.equal(registry.defaultOf('scheduledWarnMinutes'), 5);
     ['25:00', 'abc'].forEach((v) => assert.equal(registry.validate('scheduledBreakStart', v).ok, false, v));
     ['0', '121', 'x'].forEach((v) => assert.equal(registry.validate('scheduledBreakMinutes', v).ok, false, v));
   });

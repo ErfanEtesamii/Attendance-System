@@ -490,20 +490,22 @@ function breakOverrun({ employeeId, breakId, breakType, minutes }) {
 
 // ---------- پیام خودکار استراحت/ناهار سر ساعت ----------
 const SCHEDULED_BREAK_TEXT = {
-  break_start: (m, end) => ({ title: '☕ وقت استراحت است', body: `لطفاً استراحت کنید. استراحت ${faNum(m)} دقیقه‌ای شما تا ساعت ${faNum(end)} است.` }),
-  break_end: () => ({ title: '⏰ وقت استراحت تمام شد', body: 'لطفاً به کار برگردید. موفق باشید.' }),
-  lunch_start: (m, end) => ({ title: '🍽 وقت ناهار است', body: `نوش جان! ناهار ${faNum(m)} دقیقه‌ای شما تا ساعت ${faNum(end)} است.` }),
-  lunch_end: () => ({ title: '⏰ وقت ناهار تمام شد', body: 'لطفاً به کار برگردید. موفق باشید.' }),
+  break_start: (m, end) => ({ title: '☕ وقت استراحته!', body: `یه نفس عمیق بکشید و کمی استراحت کنید 🌿 ${faNum(m)} دقیقه وقت دارید، تا ساعت ${faNum(end)}.` }),
+  break_warn: (m, end, warn) => ({ title: `⏳ ${faNum(warn)} دقیقه‌ی دیگه استراحت تموم میشه`, body: `هنوز یه‌کم وقت دارید؛ از این لحظه‌ها لذت ببرید 😊 ساعت ${faNum(end)} با انرژی برمی‌گردیم سر کار.` }),
+  break_end: () => ({ title: '⏰ استراحت تموم شد', body: 'امیدوارم کمی انرژی گرفته باشید 💪 بریم سراغ ادامه‌ی کار. ممنون از همراهی‌تون!' }),
+  lunch_start: (m, end) => ({ title: '🍽 وقت ناهاره!', body: `نوش جان! 😋 ${faNum(m)} دقیقه وقت دارید، تا ساعت ${faNum(end)}. با خیال راحت ناهارتون رو بخورید.` }),
+  lunch_warn: (m, end, warn) => ({ title: `⏳ ${faNum(warn)} دقیقه‌ی دیگه ناهار تموم میشه`, body: `اگه هنوز مشغول ناهارید، آروم و با آرامش بخورید 🙂 ساعت ${faNum(end)} برمی‌گردیم سر کار.` }),
+  lunch_end: () => ({ title: '⏰ ناهار تموم شد', body: 'امیدوارم سیر شده باشید 😊 بریم سراغ ادامه‌ی کار. ممنون از همراهی‌تون!' }),
 };
 /**
- * kind: break_start | break_end | lunch_start | lunch_end (job: scheduledBreakNotice) ⇒ پنل + تلگرام.
+ * kind: break_start | break_warn | break_end | lunch_start | lunch_warn | lunch_end (job: scheduledBreakNotice) ⇒ پنل + تلگرام.
  * dedupeKey = کاربر + تاریخ + نوع ⇒ هر پیام در هر روز برای هر کاربر فقط یک‌بار (حتی بعد از ری‌استارت پروسه).
  */
-function scheduledBreak({ employeeId, kind, date, minutes, endHHMM }) {
+function scheduledBreak({ employeeId, kind, date, minutes, endHHMM, warn }) {
   return guard('scheduledBreak', () => {
     const build = SCHEDULED_BREAK_TEXT[kind];
     if (!employeeId || !build || !date) return [];
-    const text = build(minutes, endHHMM);
+    const text = build(minutes, endHHMM, warn);
     return [send('scheduledBreak', employeeId, {
       type: `scheduled_${kind}`,
       title: text.title,

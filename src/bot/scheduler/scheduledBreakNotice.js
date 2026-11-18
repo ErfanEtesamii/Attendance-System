@@ -1,7 +1,7 @@
 // پیام خودکار استراحت و ناهار سر ساعت (جایگزین دکمه‌ی دستی «ثبت استراحت»).
 //
 // • تنظیمات: scheduledBreakEnabled/Start/Minutes (استراحت)، scheduledLunchEnabled/Start/Minutes (ناهار). هر دو خاموش ⇒ بی‌اثر.
-// • چهار پیام: شروع و پایانِ استراحت، شروع و پایانِ ناهار. هر پیام برای هر کاربر در هر روز «یک‌بار» می‌رود (dedupeKey در DB؛ با ری‌استارت پروسه تکرار نمی‌شود).
+// • شش پیام: شروع، هشدارِ «چند دقیقه مانده» (scheduledWarnMinutes؛ ۰ = خاموش) و پایانِ استراحت و ناهار. هر پیام برای هر کاربر در هر روز «یک‌بار» می‌رود (dedupeKey در DB؛ با ری‌استارت پروسه تکرار نمی‌شود).
 // • گیرنده: کارمند فعالِ دارای تلگرام که امروز «روز کاری» دارد، شیفتش ساعت‌دار و غیرشب است، ساعت پیام داخل بازه‌ی شیفتِ همان روزش
 //   می‌افتد (شروع ≤ ساعت < پایان)، ورودِ امروز را ثبت کرده و هنوز خروج نزده و ماموریت تأییدشده‌ی امروز ندارد.
 // • Job هر دقیقه اجرا می‌شود؛ اگر یک تیک از دست برود، تا WINDOW_MINUTES دقیقه بعد هنوز پیام می‌رود (dedupe جلوی تکرار را می‌گیرد).
@@ -24,7 +24,8 @@ const toHhmm = (minutes) => `${String(Math.floor(minutes / 60) % 24).padStart(2,
 // رویدادهای فعالِ تنظیمات: [{ kind, at (دقیقه از نیمه‌شب), minutes, endHHMM }]
 function eventsFrom(settings) {
   const events = [];
-  const add = (enabled, startKey, minutesKey, startKind, endKind) => {
+  const warn = Number(settings.scheduledWarnMinutes);
+  const add = (enabled, startKey, minutesKey, startKind, warnKind, endKind) => {
     if (enabled !== true) return;
     const minutes = Number(settings[minutesKey]);
     let start;
@@ -32,10 +33,11 @@ function eventsFrom(settings) {
     if (!Number.isFinite(minutes) || minutes <= 0) return;
     const endHHMM = toHhmm(start + minutes);
     events.push({ kind: startKind, at: start, minutes, endHHMM });
+    if (Number.isFinite(warn) && warn > 0 && warn < minutes) events.push({ kind: warnKind, at: start + minutes - warn, minutes, endHHMM, warn }); // هشدار «چند دقیقه مانده»
     events.push({ kind: endKind, at: start + minutes, minutes, endHHMM });
   };
-  add(settings.scheduledBreakEnabled, 'scheduledBreakStart', 'scheduledBreakMinutes', 'break_start', 'break_end');
-  add(settings.scheduledLunchEnabled, 'scheduledLunchStart', 'scheduledLunchMinutes', 'lunch_start', 'lunch_end');
+  add(settings.scheduledBreakEnabled, 'scheduledBreakStart', 'scheduledBreakMinutes', 'break_start', 'break_warn', 'break_end');
+  add(settings.scheduledLunchEnabled, 'scheduledLunchStart', 'scheduledLunchMinutes', 'lunch_start', 'lunch_warn', 'lunch_end');
   return events;
 }
 
@@ -69,7 +71,7 @@ async function runScheduledBreakNotice({ now = new Date() } = {}) {
       if (leaveRepository.hasApprovedMissionOnDate(user.id, date)) continue;
 
       for (const e of mine) {
-        const created = await notificationEvents.scheduledBreak({ employeeId: user.id, kind: e.kind, date, minutes: e.minutes, endHHMM: e.endHHMM });
+        const created = await notificationEvents.scheduledBreak({ employeeId: user.id, kind: e.kind, date, minutes: e.minutes, endHHMM: e.endHHMM, warn: e.warn });
         if (created.some((r) => r && r.created)) out.sent += 1;
       }
     } catch (err) {

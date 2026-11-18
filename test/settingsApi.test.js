@@ -42,7 +42,7 @@ describe('API تنظیمات (S3-1b)', { skip: hasDeps ? false : 'express نصب
   test('لیست با متادیتا: همه‌ی کلیدها با نوع، گروه، توضیح، بازه، پیش‌فرض و مقدار؛ GET قدیمی بدون تغییر', async () => {
     const r = await hit('manager', 'GET', '/api/admin/settings/items');
     assert.equal(r.status, 200);
-    assert.equal(r.json.items.length, 150); // ۸ کلیدِ استراحت/ناهار خودکار؛ ۳ کلید (۲ سقف اصلاح رکورد + ماتریس قابلیت‌ها)؛ ۲ کلید سقف اصلاح رکورد سرپرست (مرحله ۲)؛ ۵ کلیدِ زنجیره‌ی تأیید چندمرحله‌ای (ارجاع/مرحله‌ی اضافه) برداشته شد
+    assert.equal(r.json.items.length, 151); // ۸ کلیدِ استراحت/ناهار خودکار؛ ۳ کلید (۲ سقف اصلاح رکورد + ماتریس قابلیت‌ها)؛ ۲ کلید سقف اصلاح رکورد سرپرست (مرحله ۲)؛ ۵ کلیدِ زنجیره‌ی تأیید چندمرحله‌ای (ارجاع/مرحله‌ی اضافه) برداشته شد
     const item = (k) => r.json.items.find((i) => i.key === k);
     assert.deepEqual(
       { ...item('lateCheckinGraceMinutes'), updatedAt: null },
