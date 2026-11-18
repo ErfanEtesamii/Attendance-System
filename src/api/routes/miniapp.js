@@ -189,7 +189,7 @@ router.get('/miniapp/today', (req, res) => {
   const segments = record ? attendanceRepository.listSegments(record.id) : [];
   const reEntriesUsed = Math.max(0, segments.length - 1);
   const canReEnter = Boolean(record && record.check_out_time && settings.maxReEntriesPerDay > reEntriesUsed);
-  res.json({ record: record || null, openBreak: openBreak || null, breaks, summary, breakPolicy, openBreakPaid, earnings, segments, reEntriesUsed, reEntriesMax: settings.maxReEntriesPerDay, canReEnter });
+  res.json({ record: record || null, openBreak: openBreak || null, breaks, summary, breakPolicy, breakButtonsEnabled: settings.breakButtonsEnabled !== false, openBreakPaid, earnings, segments, reEntriesUsed, reEntriesMax: settings.maxReEntriesPerDay, canReEnter });
 });
 
 router.get('/miniapp/week-strip', (req, res) => {
@@ -387,6 +387,9 @@ router.get('/miniapp/plan-gate', (req, res) => {
 });
 
 router.post('/miniapp/break/start', (req, res) => {
+  if (settingsRepository.getAll().breakButtonsEnabled === false) {
+    return res.status(403).json({ error: 'ثبت دستی استراحت غیرفعال است؛ استراحت و ناهار طبق ساعت ثابت شرکت است.' });
+  }
   const record = attendanceRepository.findTodayRecord(req.miniAppUser.id);
   if (!record) {
     return res.status(400).json({ error: 'ابتدا باید ورود ثبت شود.' });

@@ -12,6 +12,7 @@ const config = require('../../config');
 const { checkLateCheckins, checkRepeatedLateness } = require('./lateCheckinReminder');
 const { checkCheckoutReminders } = require('./checkoutReminder');
 const { runBreakOverrunReminder } = require('./breakOverrunReminder');
+const { runScheduledBreakNotice } = require('./scheduledBreakNotice');
 const { autoCloseIncompleteRecords } = require('./autoCloseIncomplete');
 const { markNonWorkingDays } = require('./markNonWorkingDays');
 const { sendDailyReport, sendWeeklyReport, sendMonthlyReport } = require('./reports');
@@ -41,6 +42,8 @@ function buildJobs(bot) {
     { name: 'checkoutReminderCheck', run: () => checkCheckoutReminders(bot) },
     // یادآوری استراحتِ باز (هر دقیقه ⇒ فقط شکست‌ها در job_runs ثبت می‌شود)؛ هر استراحت فقط یک‌بار پیام می‌گیرد
     { name: 'breakOverrunReminder', opts: { recordSuccess: false }, run: () => runBreakOverrunReminder() },
+    // پیام خودکار شروع/پایان استراحت و ناهار سر ساعت (هر دقیقه؛ تنظیمات خاموش ⇒ بی‌اثر؛ هر پیام برای هر کاربر/روز یک‌بار با dedupe)
+    { name: 'scheduledBreakNotice', opts: { recordSuccess: false }, run: () => runScheduledBreakNotice() },
     { name: 'dailyReport', run: () => sendDailyReport(bot) },
     { name: 'nightlyReview', run: () => sendNightlyReview(bot) },
     // D12: خلاصه‌ی صبحگاهیِ گزارش تسک‌ها (دیرهنگام‌ها + مشاهده‌نشده‌ها)؛ نتیجه‌اش در job_runs ثبت می‌شود

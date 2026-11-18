@@ -488,6 +488,34 @@ function breakOverrun({ employeeId, breakId, breakType, minutes }) {
   });
 }
 
+// ---------- پیام خودکار استراحت/ناهار سر ساعت ----------
+const SCHEDULED_BREAK_TEXT = {
+  break_start: (m, end) => ({ title: '☕ وقت استراحت است', body: `لطفاً استراحت کنید. استراحت ${faNum(m)} دقیقه‌ای شما تا ساعت ${faNum(end)} است.` }),
+  break_end: () => ({ title: '⏰ وقت استراحت تمام شد', body: 'لطفاً به کار برگردید. موفق باشید.' }),
+  lunch_start: (m, end) => ({ title: '🍽 وقت ناهار است', body: `نوش جان! ناهار ${faNum(m)} دقیقه‌ای شما تا ساعت ${faNum(end)} است.` }),
+  lunch_end: () => ({ title: '⏰ وقت ناهار تمام شد', body: 'لطفاً به کار برگردید. موفق باشید.' }),
+};
+/**
+ * kind: break_start | break_end | lunch_start | lunch_end (job: scheduledBreakNotice) ⇒ پنل + تلگرام.
+ * dedupeKey = کاربر + تاریخ + نوع ⇒ هر پیام در هر روز برای هر کاربر فقط یک‌بار (حتی بعد از ری‌استارت پروسه).
+ */
+function scheduledBreak({ employeeId, kind, date, minutes, endHHMM }) {
+  return guard('scheduledBreak', () => {
+    const build = SCHEDULED_BREAK_TEXT[kind];
+    if (!employeeId || !build || !date) return [];
+    const text = build(minutes, endHHMM);
+    return [send('scheduledBreak', employeeId, {
+      type: `scheduled_${kind}`,
+      title: text.title,
+      body: text.body,
+      link: '#/today',
+      data: { kind, date },
+      dedupeKey: `scheduled_${kind}:${employeeId}:${date}`,
+      telegram: true,
+    })];
+  });
+}
+
 // ---------- ویرایش برنامه‌ی هفتگی توسط مدیر (فاز ۱۳، A2-۵) ----------
 /**
  * اعلان تجمیعی تغییرهای مدیر در برنامه‌ی یک هفته ⇒ پنل + تلگرام (با دکمه‌ی باز کردن برنامه‌ی هفتگی در Mini App) به خودِ کارمند.
@@ -763,4 +791,4 @@ function remoteWorkRejected(session, { note = null, actor = null } = {}) {
   });
 }
 
-module.exports = { remoteWorkSubmitted, remoteWorkApproved, remoteWorkBatchApproved, remoteWorkRejected, urgentTaskAssigned, selfUrgentTaskAdded, urgentTaskReminder, breakOverrun, weeklyPlanEditedByManager, checkinPermissionRequested, checkinPermissionDecided, reportCommented, weeklyPlanChanged, leaveRequested, leaveDecided, disputeOpened, disputeResolved, disputeResolvedTelegram, disputeAdminMessage, disputeUserMessage, systemAlert, suspiciousCreated };
+module.exports = { remoteWorkSubmitted, remoteWorkApproved, remoteWorkBatchApproved, remoteWorkRejected, urgentTaskAssigned, selfUrgentTaskAdded, urgentTaskReminder, breakOverrun, scheduledBreak, weeklyPlanEditedByManager, checkinPermissionRequested, checkinPermissionDecided, reportCommented, weeklyPlanChanged, leaveRequested, leaveDecided, disputeOpened, disputeResolved, disputeResolvedTelegram, disputeAdminMessage, disputeUserMessage, systemAlert, suspiciousCreated };

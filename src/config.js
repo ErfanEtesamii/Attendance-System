@@ -168,6 +168,8 @@ const config = {
     checkoutReminderCheck: process.env.CRON_CHECKOUT_REMINDER_CHECK || '*/5 9-18 * * *',
     // یادآوری استراحتِ فراموش‌شده (هر دقیقه؛ آستانه‌ی دقیقه از تنظیمات breakOverrunReminderMinutes، پیش‌فرض ۱۵)
     breakOverrunReminder: process.env.CRON_BREAK_OVERRUN_REMINDER || '* * * * *',
+    // پیام خودکار شروع/پایان استراحت و ناهار (هر دقیقه؛ ساعت‌ها از تنظیمات scheduledBreak*/scheduledLunch*)
+    scheduledBreakNotice: process.env.CRON_SCHEDULED_BREAK_NOTICE || '* * * * *',
     // گزارش پایان روز برای مدیران/ادمین (S3-8b: هر روز؛ کارمندِ روز غیرکاری را خود Job از getCalendarDay کنار می‌گذارد)
     dailyReport: process.env.CRON_DAILY_REPORT || '0 17 * * *',
     // گزارش هفتگی (شروع هفته کاری - شنبه صبح)

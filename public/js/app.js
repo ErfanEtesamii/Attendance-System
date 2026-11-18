@@ -592,10 +592,12 @@
       title: 'ثبت خروج', sub: 'پایان روز کاری', color: 'red', icon: 'out', primary: true, wide: true,
       handler: () => startCheckout(),
     });
-    addTile({
-      title: 'ثبت استراحت', sub: 'شروع وقفه', color: 'orange', icon: 'lunch',
-      handler: () => openBreakSheet(),
-    });
+    if (!state.today || state.today.breakButtonsEnabled !== false) { // تنظیم «دکمه‌ی ثبت استراحت/ناهار» خاموش ⇒ پنهان (استراحت طبق ساعت ثابت و پیام خودکار)
+      addTile({
+        title: 'ثبت استراحت', sub: 'شروع وقفه', color: 'orange', icon: 'lunch',
+        handler: () => openBreakSheet(),
+      });
+    }
     addMissionTile();
     addMyDayTile();
     addPlanTile();
