@@ -16,7 +16,7 @@ const at = (hhmm, date = DATE) => zonedTimeToUtc(date, hhmm, TEHRAN).toISOString
 const base = { workDayStart: '08:00', workDayEnd: '16:30' };
 const br = (from, to, type) => ({ ...(type ? { break_type: type } : {}), start_time: at(from), end_time: to ? at(to) : null });
 const closed = { check_in_time: at('08:00'), check_out_time: at('16:30'), status: 'normal' }; // ۵۱۰ دقیقه
-const open = { check_in_time: at('08:00'), check_out_time: null, status: 'incomplete' };
+const open = { check_in_time: at('08:00'), check_out_time: null, status: 'normal' }; /* رکورد باز زنده: status عادی (incomplete یعنی «ورود بدون خروج» ⇒ ساعت مفید ۰) */
 const run = (breaks, extra = {}, record = closed) => computeDay({ record, breaks, settings: { ...base, ...extra }, timezone: TEHRAN, now: at('12:00') });
 const pick = (d) => [d.break, d.breakAuto, d.breakExcess, d.effective];
 

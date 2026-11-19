@@ -34,7 +34,7 @@ describe('computeDay (S3-2b)', () => {
     const early = run({ check_in_time: at('2026-10-06', '08:00'), check_out_time: at('2026-10-06', '15:00') });
     assert.equal(early.earlyLeave, 90); assert.equal(early.overtime, 0);
     // رکورد باز تا now؛ استراحت باز حساب نمی‌شود
-    const open = run({ check_in_time: at('2026-10-06', '08:10'), check_out_time: null, status: 'incomplete' },
+    const open = run({ check_in_time: at('2026-10-06', '08:10'), check_out_time: null, status: 'late' },
       [...lunch.map((b) => ({ ...b, start_time: at('2026-10-06', '10:00'), end_time: at('2026-10-06', '10:15') })), { start_time: at('2026-10-06', '11:50'), end_time: null }]);
     assert.deepEqual([open.isOpen, open.workedGross, open.break, open.effective, open.late, open.earlyLeave, open.overtime], [true, 230, 15, 215, 10, 0, 0]);
     // بدون ورود / بدون رکورد
@@ -170,7 +170,7 @@ describe('computeDay (S3-2b)', () => {
         { in: at(d(2), '08:45'), out: at(d(2), '17:15'), status: 'late' },
         { in: at(d(3), '08:00'), out: at(d(3), '15:00'), status: 'normal' },
         { in: at(d(4), '08:00'), out: at(d(4), '16:30'), status: 'normal' }, // مرز دقیق
-        { in: at('2026-10-06', '08:10'), out: null, brk: [[at('2026-10-06', '10:00'), at('2026-10-06', '10:15')], [at('2026-10-06', '11:50'), null]], status: 'incomplete' }, // باز + استراحت باز
+        { in: at('2026-10-06', '08:10'), out: null, brk: [[at('2026-10-06', '10:00'), at('2026-10-06', '10:15')], [at('2026-10-06', '11:50'), null]], status: 'late' }, // باز + استراحت باز
         { in: null, out: null, status: 'holiday' },
         { in: at(d(7), '08:00'), out: at(d(7), '07:00'), status: 'normal' }, // خروج پیش از ورود
         { in: at(d(8), '08:00'), out: at(d(9), '01:00'), status: 'normal' }, // خروج بعد از نیمه‌شب (رفتار موروثی)
@@ -218,5 +218,18 @@ describe('computeDay (S3-2b)', () => {
       global.Date = RealDate;
       if (originalTz === undefined) delete process.env.TZ; else process.env.TZ = originalTz;
     }
+  });
+});
+
+describe('ورود بدون خروج (missing_checkout) — ساعت مفید صفر', () => {
+  test('رکورد باز با status=incomplete یا مربوط به روز گذشته: پرچم می‌گیرد و ساعت مفید ۰ است؛ رکورد باز امروز تخمین زنده دارد', () => {
+    const base = { check_in_time: at('2026-10-06', '08:00'), check_out_time: null };
+    const run = (record, now) => computeDay({ record, breaks: [], settings: SETTINGS, timezone: TEHRAN, now });
+    const live = run({ ...base, status: 'normal' }, at('2026-10-06', '12:00'));
+    assert.equal(live.effective, 240); assert.ok(!live.flags.includes('missing_checkout'));
+    const inc = run({ ...base, status: 'incomplete' }, at('2026-10-06', '12:00'));
+    assert.equal(inc.effective, 0); assert.ok(inc.flags.includes('missing_checkout'));
+    const past = run({ ...base, status: 'normal' }, at('2026-10-07', '09:00'));
+    assert.equal(past.effective, 0); assert.ok(past.flags.includes('missing_checkout'));
   });
 });

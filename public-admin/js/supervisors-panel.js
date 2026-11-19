@@ -38,7 +38,7 @@
   const pct = (a, b) => (b > 0 ? Math.max(0, Math.min(100, Math.round((a / b) * 100))) : 0);
   const metric = (label, html) => `<div class="sup-metric"><dt>${esc(label)}</dt><dd>${html}</dd></div>`;
   const menuItem = (act, text, extra = '') => `<button type="button" role="menuitem" class="sup-menu-item" data-act="${act}"${extra}>${esc(text)}</button>`;
-  const meter = (value, total, full) => `<span class="sup-bar${full ? ' is-full' : ''}" aria-hidden="true"><i style="width:${pct(value, total)}%"></i></span>`;
+  const meter = (value, total, full) => `<span class="sup-bar${full ? ' is-full' : ''}" aria-hidden="true"><i data-w="${pct(value, total)}"></i></span>`;
 
   // هر سرپرست یک کارت: هویت ← شاخص‌ها ← عملیات (دو کار پرتکرار بیرون، بقیه داخل منوی «⋯»)
   function rowHtml(s) {
@@ -206,6 +206,7 @@
           ? `<div class="sup-un is-warn" role="status">${icon('alert')}<p><strong>${esc(num(un.count))} کارمند سرپرست ندارند.</strong> تا زمان تخصیص، فقط ادمین‌ها درخواست‌های آن‌ها را تأیید می‌کنند.</p><button type="button" class="btn primary small" data-act-un>نمایش و تخصیص</button></div>`
           : `<div class="sup-un is-ok" role="status">${icon('check')}<p>همه‌ی کارمندان سرپرست دارند.</p></div>`;
         body.innerHTML = `${summary}${sups.length ? `<ul class="sup-list">${sups.map(rowHtml).join('')}</ul>` : '<div class="empty">سرپرستی ثبت نشده است.</div>'}${unHtml}`;
+        body.querySelectorAll('.sup-bar > i[data-w]').forEach((el) => { el.style.width = `${el.dataset.w}%`; }); // عرض نوار از طریق CSSOM (بدون style درون‌خطی)
       }
 
       async function usersWithSup(filter) {

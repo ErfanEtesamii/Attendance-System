@@ -52,13 +52,13 @@ describe('dayService (S3-2c)', () => {
   });
 
   test('رکورد باز تا now (استراحت باز حساب نمی‌شود)؛ summarizeRange جمع‌بندی قدیمی؛ تغییر تنظیم ساعت کاری فوراً اثر می‌کند (بدون کش)', () => {
-    const open = addRecord({ in: at('2026-10-06', '08:10'), status: 'incomplete', brk: [[at('2026-10-06', '10:00'), at('2026-10-06', '10:15')], [at('2026-10-06', '11:50'), null]] });
+    const open = addRecord({ in: at('2026-10-06', '08:10'), status: 'late', brk: [[at('2026-10-06', '10:00'), at('2026-10-06', '10:15')], [at('2026-10-06', '11:50'), null]] });
     const closed = addRecord({ in: at('2026-09-02', '08:00'), out: at('2026-09-02', '15:00') });
     const s = dayService.summarizeRecord(open, { now: NOW });
     assert.deepEqual(s, { effectiveMinutes: 230 - 15, lateMinutes: 10, earlyLeaveMinutes: 0, overtimeMinutes: 0, isOpen: true });
 
     const range = dayService.summarizeRange([open, closed], { now: NOW });
-    assert.deepEqual(range, { totalEffective: 215 + 420 - 45, lateCount: 1, earlyLeaveCount: 1, incompleteCount: 1, dayCount: 2 });
+    assert.deepEqual(range, { totalEffective: 215 + 420 - 45, lateCount: 1, earlyLeaveCount: 1, incompleteCount: 0, dayCount: 2 });
 
     settingsRepo.update({ workDayStart: '09:00', workDayEnd: '15:00' });
     try {

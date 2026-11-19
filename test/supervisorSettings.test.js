@@ -75,7 +75,7 @@ describe('تنظیمات سرپرست‌ها — فاز A', () => {
     assert.equal(all.cronTeamReviewEnsure, '10 0 * * *');
     // بقیه‌ی cronها در گروه schedule مانده‌اند
     assert.equal(registry.getDef('cronDailyReport').group, 'schedule');
-    assert.equal(registry.cronJobs().length, 18, 'تعداد jobها بدون تغییر');
+    assert.equal(registry.cronJobs().length, 19, 'تعداد jobها بدون تغییر');
   });
 
   test('کلیدهای «زمینه» گروه اصلی‌شان را نگه داشته‌اند و related دارند؛ getItems آن را برمی‌گرداند', () => {

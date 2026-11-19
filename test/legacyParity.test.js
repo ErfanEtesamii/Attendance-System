@@ -124,6 +124,12 @@ describe('تطبیق موتور جدید با workHours قدیمی (S3-2d)', () 
     settingsRepo.update(cfg);
   };
 
+  // تنها تفاوتِ عمدیِ موتور جدید با قدیمی: «ورود بدون خروج» (رکورد باز با status=incomplete یا مربوط به روز گذشته، پرچم missing_checkout)
+  // ساعت مفید ۰ دارد، نه «تا الان». مقدار قدیمی را فقط برای همین رکوردها صفر می‌کنیم؛ همه‌ی بقیه‌ی فیلدها و رکوردها باید دقیقاً برابر بمانند.
+  const isMissingCheckout = (record) => { const d = dayService.computeRecordDay(record); return Boolean(d && d.flags && d.flags.includes('missing_checkout')); };
+  const adjustOldRecord = (record, oldOut) => (isMissingCheckout(record) ? { ...oldOut, effectiveMinutes: 0 } : oldOut);
+  const adjustOldRange = (group, oldOut) => ({ ...oldOut, totalEffective: oldOut.totalEffective - group.filter(isMissingCheckout).reduce((sum, r) => sum + (legacy.summarizeRecord(r).effectiveMinutes || 0), 0) });
+
   test('summarizeRecord: برای همه‌ی رکوردها × همه‌ی تنظیمات، موتور جدید = قدیمی (جدول تفاوت خالی)', () => {
     const records = load();
     assert.ok(records.length >= 300);
@@ -134,7 +140,7 @@ describe('تطبیق موتور جدید با workHours قدیمی (S3-2d)', () 
       freezeDate(); // رکوردهای باز: هر دو موتور با همان «الان»
       try {
         for (const record of records) {
-          const oldOut = legacy.summarizeRecord(record);
+          const oldOut = adjustOldRecord(record, legacy.summarizeRecord(record));
           const newOut = dayService.summarizeRecord(record); // بدون now ⇒ مسیر پیش‌فرض واقعی
           try { assert.deepEqual(newOut, oldOut); } catch (_) { diffs.push({ id: record.id, old: oldOut, new: newOut }); }
           compared += 1;
@@ -157,7 +163,7 @@ describe('تطبیق موتور جدید با workHours قدیمی (S3-2d)', () 
         const groups = [records, []];
         for (let i = 0; i < records.length; i += 10) groups.push(records.slice(i, i + 10));
         groups.forEach((g, gi) => {
-          const oldOut = legacy.summarizeRange(g);
+          const oldOut = adjustOldRange(g, legacy.summarizeRange(g));
           const newOut = dayService.summarizeRange(g);
           try { assert.deepEqual(newOut, oldOut); } catch (_) { diffs.push({ group: gi, old: oldOut, new: newOut }); }
         });
@@ -174,12 +180,12 @@ describe('تطبیق موتور جدید با workHours قدیمی (S3-2d)', () 
     freezeDate();
     try {
       for (const record of records) {
-        const oldOut = legacy.summarizeRecord(record);
+        const oldOut = adjustOldRecord(record, legacy.summarizeRecord(record));
         const viaWrapper = workHours.summarizeRecord(record);
         const viaNow = dayService.summarizeRecord(record, { now: FIXED });
         try { assert.deepEqual(viaWrapper, oldOut); assert.deepEqual(viaNow, oldOut); } catch (_) { diffs.push({ id: record.id, old: oldOut, wrapper: viaWrapper, now: viaNow }); }
       }
-      assert.deepEqual(workHours.summarizeRange(records), legacy.summarizeRange(records));
+      assert.deepEqual(workHours.summarizeRange(records), adjustOldRange(records, legacy.summarizeRange(records)));
     } finally { global.Date = RealDate; }
     assert.deepEqual(diffs.slice(0, 5), []);
   });
