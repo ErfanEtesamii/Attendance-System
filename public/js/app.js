@@ -688,30 +688,56 @@
       const done = (v) => { root.remove(); resolve(v); };
       root.addEventListener('click', (e) => { if (e.target === root) done(null); });
       const renderAsk = () => {
-        body.innerHTML = `<h3 class="sheet-title">امروز تایم پرت داشتید؟</h3>
-          <p class="idle-sub">اگر بخشی از ساعت حضورتان کار مفید نبوده، می‌توانید همین الان مقدارش را مشخص کنید تا از ساعت مفید امروز کم شود.</p>
-          <div class="idle-actions"><button type="button" class="btn idle-no" data-idle="no">خیر، ثبت خروج</button><button type="button" class="btn idle-yes" data-idle="yes">بله، دارم</button></div>
+        body.innerHTML = `<div class="idle-badge" aria-hidden="true">⏳</div>
+          <h3 class="idle-title">امروز تایم پرت داشتید؟</h3>
+          <p class="idle-sub">اگر بخشی از ساعت حضورتان کار مفید نبوده، همین الان مقدارش را مشخص کنید تا از ساعت مفید امروز کم شود.</p>
+          <div class="idle-actions">
+            <button type="button" class="idle-btn idle-primary" data-idle="no"><span class="idle-btn-ico">✓</span>نه، تایم پرت نداشتم</button>
+            <button type="button" class="idle-btn idle-soft" data-idle="yes"><span class="idle-btn-ico">⏱</span>بله، تایم پرت داشتم</button>
+          </div>
           <button type="button" class="idle-cancel" data-idle="cancel">انصراف</button>`;
       };
+      const pct = () => (max - step) > 0 ? Math.round(((value - step) / (max - step)) * 100) : 100;
+      const syncPick = () => {
+        const num = body.querySelector('.idle-num'); if (!num) return;
+        num.textContent = faDigits(value);
+        body.querySelector('.idle-words').textContent = value >= 60 ? `یعنی ${idleLabel(value)}` : '';
+        const rg = body.querySelector('.idle-range'); rg.value = value; rg.style.setProperty('--p', `${pct()}%`);
+        body.querySelectorAll('[data-idle-set]').forEach((c) => c.classList.toggle('on', Number(c.dataset.idleSet) === value));
+        body.querySelector('.idle-ok-text').textContent = `ثبت خروج با ${idleLabel(value)} تایم پرت`;
+        body.querySelector('[data-idle="minus"]').disabled = value <= step;
+        body.querySelector('[data-idle="plus"]').disabled = value >= max;
+      };
       const renderPick = () => {
-        const chips = [15, 30, 45, 60, 90].filter((m) => m <= max && m % step === 0);
-        body.innerHTML = `<h3 class="sheet-title">چقدر تایم پرت داشتید؟</h3>
-          <div class="idle-picker"><button type="button" class="idle-step" data-idle="minus" aria-label="کمتر">−</button><output class="idle-value" aria-live="polite">${idleLabel(value)}</output><button type="button" class="idle-step" data-idle="plus" aria-label="بیشتر">+</button></div>
-          <div class="idle-chips">${chips.map((m) => `<button type="button" class="idle-chip${m === value ? ' on' : ''}" data-idle-set="${m}">${idleLabel(m)}</button>`).join('')}</div>
-          <p class="idle-sub">این مقدار از ساعت مفید امروز شما کم می‌شود (حداکثر ${idleLabel(max)}).</p>
-          <div class="idle-actions"><button type="button" class="btn idle-yes" data-idle="ok">ثبت خروج با ${idleLabel(value)} تایم پرت</button></div>
+        const chips = [10, 15, 30, 45, 60, 90, 120].filter((m) => m <= max && m % step === 0);
+        body.innerHTML = `<div class="idle-badge idle-badge-sm" aria-hidden="true">⏱</div>
+          <h3 class="idle-title">چقدر تایم پرت داشتید؟</h3>
+          <div class="idle-dial">
+            <button type="button" class="idle-step" data-idle="minus" aria-label="کمتر">−</button>
+            <div class="idle-read"><span class="idle-num" aria-live="polite"></span><span class="idle-unit">دقیقه</span></div>
+            <button type="button" class="idle-step" data-idle="plus" aria-label="بیشتر">+</button>
+          </div>
+          <div class="idle-words"></div>
+          <input class="idle-range" type="range" min="${step}" max="${max}" step="${step}" value="${value}" aria-label="مقدار تایم پرت (دقیقه)" dir="ltr" />
+          <div class="idle-scale" dir="ltr"><span>${faDigits(step)}</span><span>${faDigits(Math.round(max / 2))}</span><span>${faDigits(max)}</span></div>
+          <div class="idle-chips">${chips.map((m) => `<button type="button" class="idle-chip" data-idle-set="${m}">${idleLabel(m)}</button>`).join('')}</div>
+          <p class="idle-note">این مقدار از ساعت مفید امروز شما کم می‌شود.</p>
+          <div class="idle-actions"><button type="button" class="idle-btn idle-primary" data-idle="ok"><span class="idle-btn-ico">✓</span><span class="idle-ok-text"></span></button></div>
           <button type="button" class="idle-cancel" data-idle="back">بازگشت</button>`;
+        body.querySelector('.idle-range').addEventListener('input', (e) => { value = Number(e.target.value); syncPick(); });
+        syncPick();
       };
       root.addEventListener('click', (e) => {
         const chip = e.target.closest('[data-idle-set]');
-        if (chip) { value = Number(chip.dataset.idleSet); renderPick(); return; }
+        if (chip) { value = Number(chip.dataset.idleSet); syncPick(); return; }
         const b = e.target.closest('[data-idle]'); if (!b) return;
         const a = b.dataset.idle;
         if (a === 'no') done(0);
         else if (a === 'cancel') done(null);
-        else if (a === 'yes' || a === 'back') { if (a === 'yes') renderPick(); else renderAsk(); }
-        else if (a === 'minus') { value = Math.max(step, value - step); renderPick(); }
-        else if (a === 'plus') { value = Math.min(max, value + step); renderPick(); }
+        else if (a === 'yes') renderPick();
+        else if (a === 'back') renderAsk();
+        else if (a === 'minus') { value = Math.max(step, value - step); syncPick(); }
+        else if (a === 'plus') { value = Math.min(max, value + step); syncPick(); }
         else if (a === 'ok') done(value);
       });
       renderAsk();

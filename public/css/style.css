@@ -1229,17 +1229,35 @@ textarea.pl-focus-input { resize: vertical; min-height: 72px; }
 @media (prefers-reduced-motion: reduce) { #plan-body.pl-step-anim > .pl-task-focus { animation: none; } .pl-focus-input { transition: none; } }
 
 /* ---------- پرسش تایم پرت هنگام خروج ---------- */
-.idle-sheet { text-align: center; }
-.idle-body { display: grid; gap: 14px; }
-.idle-sub { margin: 0; color: var(--hint); font-size: var(--fs-sm); line-height: 1.9; }
-.idle-actions { display: grid; gap: 10px; }
-.idle-actions .btn { width: 100%; min-height: 50px; font-size: var(--fs-md); font-weight: 700; border-radius: 14px; }
-.idle-yes { background: var(--orange); border-color: var(--orange); color: #fff; }
-.idle-cancel { appearance: none; background: none; border: 0; color: var(--hint); font: inherit; font-size: var(--fs-sm); padding: 6px; cursor: pointer; }
-.idle-picker { display: flex; align-items: center; justify-content: center; gap: 14px; }
-.idle-step { appearance: none; width: 52px; height: 52px; border-radius: 50%; border: 1px solid var(--border); background: var(--card-bg-2); color: var(--text); font: inherit; font-size: 1.6rem; line-height: 1; cursor: pointer; }
-.idle-step:active { transform: scale(.94); }
-.idle-value { min-width: 170px; font-size: 1.35rem; font-weight: 800; padding: 10px 14px; border-radius: 14px; background: var(--card-bg-2); border: 1px solid var(--border); }
+.idle-sheet { text-align: center; padding-top: 12px; background: linear-gradient(180deg, color-mix(in srgb, var(--brand) 7%, var(--card-bg)) 0, var(--card-bg) 150px); }
+.idle-body { display: grid; gap: 14px; justify-items: center; }
+.idle-badge { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-size: 30px; background: color-mix(in srgb, var(--accent) 18%, var(--card-bg)); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); box-shadow: 0 10px 24px -12px color-mix(in srgb, var(--accent) 80%, transparent); }
+.idle-badge-sm { width: 48px; height: 48px; font-size: 22px; }
+.idle-title { margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--text); }
+.idle-sub, .idle-note { margin: 0; color: var(--hint); font-size: var(--fs-sm); line-height: 1.9; max-width: 34ch; }
+.idle-note { font-size: var(--fs-xs); }
+.idle-actions { display: grid; gap: 10px; width: 100%; }
+.idle-btn { appearance: none; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 54px; padding: 10px 16px; border-radius: 16px; font: inherit; font-size: var(--fs-md); font-weight: 800; cursor: pointer; border: 1px solid transparent; transition: transform .12s ease, box-shadow .2s ease; }
+.idle-btn:active { transform: scale(.98); }
+.idle-btn-ico { width: 26px; height: 26px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 14px; background: rgba(255, 255, 255, .2); }
+.idle-primary { color: #fff; background: linear-gradient(135deg, var(--brand-deep, #322c79), #4b3fc0); box-shadow: 0 12px 24px -12px rgba(50, 44, 121, .7); }
+:root[data-theme="dark"] .idle-primary { background: linear-gradient(135deg, #5b50d6, #7a6ff0); box-shadow: 0 12px 24px -12px rgba(122, 111, 240, .7); }
+.idle-soft { color: var(--text); background: color-mix(in srgb, var(--accent) 14%, var(--card-bg)); border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+.idle-soft .idle-btn-ico { background: color-mix(in srgb, var(--accent) 35%, transparent); }
+.idle-cancel { appearance: none; background: none; border: 0; color: var(--hint); font: inherit; font-size: var(--fs-sm); padding: 6px 12px; cursor: pointer; }
+.idle-dial { display: flex; align-items: center; justify-content: center; gap: 16px; width: 100%; }
+.idle-step { appearance: none; flex: none; width: 54px; height: 54px; border-radius: 50%; border: 1px solid var(--border); background: var(--card-bg-2); color: var(--text); font: inherit; font-size: 1.7rem; line-height: 1; cursor: pointer; transition: transform .12s ease; }
+.idle-step:active:not(:disabled) { transform: scale(.92); }
+.idle-step:disabled { opacity: .35; cursor: default; }
+.idle-read { min-width: 150px; display: grid; justify-items: center; line-height: 1; padding: 8px 12px; border-radius: 20px; background: color-mix(in srgb, var(--accent) 12%, var(--card-bg)); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
+.idle-num { font-size: 3rem; font-weight: 900; color: var(--text); }
+.idle-unit { margin-top: 4px; font-size: var(--fs-sm); color: var(--hint); font-weight: 700; }
+.idle-words { margin-top: -6px; color: var(--brand); font-weight: 800; font-size: var(--fs-md); min-height: 1.5em; }
+.idle-range { --p: 30%; -webkit-appearance: none; appearance: none; width: 100%; height: 12px; border-radius: 999px; outline: none; margin: 4px 0 0; background: linear-gradient(90deg, var(--accent) var(--p), color-mix(in srgb, var(--hint) 22%, transparent) var(--p)); }
+.idle-range::-webkit-slider-thumb { -webkit-appearance: none; width: 30px; height: 30px; border-radius: 50%; background: #fff; border: 4px solid var(--accent); box-shadow: 0 4px 12px rgba(0, 0, 0, .25); }
+.idle-range::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 4px solid var(--accent); box-shadow: 0 4px 12px rgba(0, 0, 0, .25); }
+.idle-scale { display: flex; justify-content: space-between; width: 100%; margin-top: -6px; font-size: var(--fs-xs); color: var(--hint); padding-inline: 4px; }
 .idle-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
-.idle-chip { appearance: none; border: 1px solid var(--border); background: var(--card-bg-2); color: var(--text); font: inherit; font-size: var(--fs-sm); padding: 8px 14px; border-radius: 999px; cursor: pointer; }
-.idle-chip.on { border-color: var(--orange); box-shadow: 0 0 0 1px var(--orange) inset; font-weight: 700; }
+.idle-chip { appearance: none; border: 1px solid var(--border); background: var(--card-bg-2); color: var(--text); font: inherit; font-size: var(--fs-sm); font-weight: 600; padding: 8px 14px; border-radius: 999px; cursor: pointer; transition: background-color .15s, border-color .15s; }
+.idle-chip.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 22%, var(--card-bg)); font-weight: 800; }
+@media (prefers-reduced-motion: reduce) { .idle-btn, .idle-step, .idle-chip { transition: none; } }
