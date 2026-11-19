@@ -49,11 +49,24 @@ const { earningsForUser } = require('../../services/earningsService');
 const employeeWeekService = require('../../services/employeeWeekService');
 const disputeRepository = require('../../repositories/disputeRepository');
 
-const IDEMPOTENT_WINDOW_MS = 2 * 60 * 1000;
+// مهلت تشخیص ثبت تکراری (دوبار لمس/شبکه‌ی کند): از تنظیم duplicateTapWindowSeconds (۰ = خاموش)؛ خرابی مقدار ⇒ پیش‌فرض ۱۲۰ ثانیه
+const DEFAULT_IDEMPOTENT_WINDOW_MS = 2 * 60 * 1000;
+function idempotentWindowMs() {
+  const seconds = Number(settingsRepository.getAll().duplicateTapWindowSeconds);
+  return Number.isFinite(seconds) && seconds >= 0 ? seconds * 1000 : DEFAULT_IDEMPOTENT_WINDOW_MS;
+}
 const justHappened = (value) => {
   const at = new Date(value || 0).getTime();
-  return Number.isFinite(at) && Date.now() - at >= 0 && Date.now() - at <= IDEMPOTENT_WINDOW_MS;
+  const windowMs = idempotentWindowMs();
+  return windowMs > 0 && Number.isFinite(at) && Date.now() - at >= 0 && Date.now() - at <= windowMs;
 };
+
+// سقف ورود مجدد در روز: «نامحدود» یا عدد؛ limit=Infinity یعنی بدون سقف. ۰ ⇒ ورود مجدد غیرفعال
+function reEntryLimit(settings) {
+  if (settings.maxReEntriesUnlimited === true) return { unlimited: true, limit: Infinity };
+  const n = Number(settings.maxReEntriesPerDay);
+  return { unlimited: false, limit: Number.isFinite(n) && n > 0 ? Math.floor(n) : 0 };
+}
 
 // همه مسیرهای زیر /miniapp ابتدا باید هویت تلگرام معتبر داشته باشند
 router.use('/miniapp', telegramAuth);
@@ -188,8 +201,14 @@ router.get('/miniapp/today', (req, res) => {
   const earnings = earningsForUser(req.miniAppUser, settings, { today: todayDateString() });
   const segments = record ? attendanceRepository.listSegments(record.id) : [];
   const reEntriesUsed = Math.max(0, segments.length - 1);
-  const canReEnter = Boolean(record && record.check_out_time && settings.maxReEntriesPerDay > reEntriesUsed);
-  res.json({ record: record || null, openBreak: openBreak || null, breaks, summary, breakPolicy, breakButtonsEnabled: settings.breakButtonsEnabled !== false, openBreakPaid, earnings, segments, reEntriesUsed, reEntriesMax: settings.maxReEntriesPerDay, canReEnter });
+  const reEntry = reEntryLimit(settings);
+  const canReEnter = Boolean(record && record.check_out_time && reEntry.limit > reEntriesUsed);
+  const breakMax = Number(settings.breakMaxPerDay) > 0 ? Math.floor(Number(settings.breakMaxPerDay)) : 0;
+  res.json({
+    record: record || null, openBreak: openBreak || null, breaks, summary, breakPolicy, breakButtonsEnabled: settings.breakButtonsEnabled !== false, openBreakPaid, earnings, segments,
+    reEntriesUsed, reEntriesMax: reEntry.unlimited ? null : reEntry.limit, reEntriesUnlimited: reEntry.unlimited, canReEnter,
+    breakMaxPerDay: breakMax, breakCanStart: !breakMax || breaks.length < breakMax, dailyTargetMinutes: Number(settings.dailyTargetMinutes) > 0 ? Number(settings.dailyTargetMinutes) : 480,
+  });
 });
 
 router.get('/miniapp/week-strip', (req, res) => {
@@ -207,9 +226,10 @@ router.post('/miniapp/re-check-in', (req, res) => {
   if (lastSegment && !lastSegment.check_out_time && justHappened(lastSegment.check_in_time)) return res.json({ ok: true, alreadyDone: true, ...record, segments: currentSegments });
   if (record && monthClosuresRepository.findClosedOverlapping(record.record_date, record.record_date).length) return res.status(409).json({ code: 'MONTH_CLOSED', error: 'این روز در ماه بسته‌شده است و قابل تغییر نیست.' });
   if (!record || !record.check_out_time) return res.status(409).json({ code: 'REENTRY_NOT_AVAILABLE', error: 'ورود مجدد فقط پس از ثبت خروج ممکن است.' });
-  if (!settings.maxReEntriesPerDay || used >= settings.maxReEntriesPerDay) return res.status(409).json({ code: 'REENTRY_LIMIT', error: 'سقف ورود مجدد امروز تکمیل شده است.' });
+  const reEntry = reEntryLimit(settings);
+  if (!reEntry.limit || used >= reEntry.limit) return res.status(409).json({ code: 'REENTRY_LIMIT', error: 'سقف ورود مجدد امروز تکمیل شده است.' });
   if (rejectIfSharedDeviceBlocked(req, res, 're_check_in')) return;
-  const updated = attendanceRepository.startReEntry(record.id, req.ip, settings.maxReEntriesPerDay);
+  const updated = attendanceRepository.startReEntry(record.id, req.ip, reEntry.unlimited ? null : reEntry.limit);
   if (!updated) return res.status(409).json({ code: 'REENTRY_LIMIT', error: 'سقف ورود مجدد امروز تکمیل شده است.' });
   auditRepository.logEvent({ userId: req.miniAppUser.id, action: 're_check_in', ipAddress: req.ip, details: { source: 'miniapp' } });
   res.status(201).json({ ...updated, segments: attendanceRepository.listSegments(record.id) });
@@ -387,7 +407,8 @@ router.get('/miniapp/plan-gate', (req, res) => {
 });
 
 router.post('/miniapp/break/start', (req, res) => {
-  if (settingsRepository.getAll().breakButtonsEnabled === false) {
+  const breakSettings = settingsRepository.getAll();
+  if (breakSettings.breakButtonsEnabled === false) {
     return res.status(403).json({ error: 'ثبت دستی استراحت غیرفعال است؛ استراحت و ناهار طبق ساعت ثابت شرکت است.' });
   }
   const record = attendanceRepository.findTodayRecord(req.miniAppUser.id);
@@ -401,6 +422,10 @@ router.post('/miniapp/break/start', (req, res) => {
   if (activeBreak) {
     if (justHappened(activeBreak.start_time)) return res.json({ ok: true, alreadyDone: true, ...activeBreak });
     return res.status(400).json({ error: 'یک استراحت باز از قبل فعال است.' });
+  }
+  const breakMax = Number(breakSettings.breakMaxPerDay);
+  if (breakMax > 0 && breakRepository.listByAttendanceRecord(record.id).length >= breakMax) {
+    return res.status(409).json({ code: 'BREAK_LIMIT', error: `سقف استراحت امروز (${breakMax} بار) تکمیل شده است.` });
   }
   const breakType = req.body?.breakType === 'short_break' ? 'short_break' : 'lunch';
   const breakRecord = breakRepository.startBreak(record.id, breakType);

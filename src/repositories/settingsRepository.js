@@ -80,13 +80,20 @@ function buildItem(def, stored) {
   if (def.values !== undefined) item.values = def.values;
   if (def.related) item.related = def.related;
   if (def.section) item.section = def.section;
+  if (def.dependsOn) item.dependsOn = def.dependsOn;
   return item;
 }
 
 function getItems() {
   const rows = getDb().prepare('SELECT key, value, updated_at FROM settings').all();
   const byDbKey = new Map(rows.map((r) => [r.key, r]));
-  return registry.REGISTRY.map((def) => buildItem(def, byDbKey.get(def.dbKey)));
+  const items = registry.REGISTRY.map((def) => buildItem(def, byDbKey.get(def.dbKey)));
+  // زیربخش‌های هر گروه کنار هم بیایند (فقط ترتیب نمایش؛ ترتیب تعریف در هر زیربخش حفظ می‌شود)
+  const rank = (it) => { const o = (registry.SECTION_ORDER || {})[it.group]; const i = o && it.section ? o.indexOf(it.section) : -1; return i < 0 ? 999 : i; };
+  const order = new Map(items.map((it, i) => [it.key, i]));
+  const groupAt = new Map();
+  items.forEach((it) => { if (!groupAt.has(it.group)) groupAt.set(it.group, groupAt.size); });
+  return items.sort((a, b) => groupAt.get(a.group) - groupAt.get(b.group) || rank(a) - rank(b) || order.get(a.key) - order.get(b.key));
 }
 
 function getItem(camelKey) {

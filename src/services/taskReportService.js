@@ -132,7 +132,9 @@ function resolveReportDate(user, { now = new Date(), date: trustedDate, requeste
   }
   if (settings.dailyReportGateMode !== 'soft') return fail('LATE_NOT_ALLOWED', 'تکمیل دیرهنگام گزارش برای این روز مجاز نیست.');
   const outAt = Date.parse(record.check_out_time);
-  if (!Number.isFinite(outAt) || now.getTime() - outAt > LATE_SOFT_WINDOW_MS) return fail('LATE_WINDOW_EXPIRED', 'مهلت ۲۴ ساعته‌ی تکمیل گزارش این روز تمام شده است.');
+  const softHours = Number(settings.reportSoftWindowHours) > 0 ? Number(settings.reportSoftWindowHours) : LATE_SOFT_WINDOW_MS / 3600000; // تنظیم reportSoftWindowHours
+  const softWindowMs = softHours * 3600000;
+  if (!Number.isFinite(outAt) || now.getTime() - outAt > softWindowMs) return fail('LATE_WINDOW_EXPIRED', `مهلت ${softHours} ساعته‌ی تکمیل گزارش این روز تمام شده است.`);
   return { ok: true, date, cur, late: true, source: 'soft_later', record };
 }
 
@@ -341,10 +343,10 @@ function validateAnswer(a, n, user, date, settings, byId, base = date) {
   return { out };
 }
 
-function validateExtras(input) {
+function validateExtras(input, maxExtra = MAX_EXTRA) {
   if (input === undefined || input === null) return { extras: [] };
   if (!Array.isArray(input)) return { error: fail('INVALID_EXTRA', 'extra باید آرایه باشد.') };
-  if (input.length > MAX_EXTRA) return { error: fail('TOO_MANY_EXTRA', `حداکثر ${MAX_EXTRA} کار خارج از برنامه در هر بار ثبت می‌شود.`) };
+  if (input.length > maxExtra) return { error: fail('TOO_MANY_EXTRA', `حداکثر ${maxExtra} کار خارج از برنامه در هر بار ثبت می‌شود.`) };
   const extras = [];
   for (let i = 0; i < input.length; i += 1) {
     const e = input[i] || {};
@@ -379,7 +381,8 @@ function prepareReport(user, body, date, settings, { base = date } = {}) {
     seen.add(v.out.taskId);
     answers.push(v.out);
   }
-  const ex = validateExtras(b.extra);
+  const maxExtra = Number(settings.reportMaxExtraTasks) > 0 ? Math.floor(Number(settings.reportMaxExtraTasks)) : MAX_EXTRA; // تنظیم reportMaxExtraTasks
+  const ex = validateExtras(b.extra, maxExtra);
   if (ex.error) return { error: ex.error };
   const open = list.filter((t) => !seen.has(t.id));
   // pending = الزامی‌های پاسخ‌نداده (مبنای گیت)؛ optional = اختیاری‌های (low) پاسخ‌نداده (فقط برای نمایش)

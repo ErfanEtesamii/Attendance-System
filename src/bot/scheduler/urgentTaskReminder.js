@@ -14,6 +14,7 @@ const URGENT_REMINDER_LEAD_MINUTES = 30;
 async function runUrgentTaskReminder({ now = new Date() } = {}) {
   const out = { checked: 0, reminded: 0, errors: 0 };
   const settings = settingsRepository.getAll();
+  const leadMinutes = Number.isFinite(Number(settings.urgentTaskReminderLeadMinutes)) && Number(settings.urgentTaskReminderLeadMinutes) > 0 ? Number(settings.urgentTaskReminderLeadMinutes) : URGENT_REMINDER_LEAD_MINUTES; // تنظیم urgentTaskReminderLeadMinutes
   const today = todayInZone(settings.timezone, now);
   const nowMin = minutesSinceMidnight(now, settings.timezone);
   for (const row of plansRepo.listUrgent({ from: today, to: today })) {
@@ -22,7 +23,7 @@ async function runUrgentTaskReminder({ now = new Date() } = {}) {
     try {
       const deadline = Number(row.urgent_deadline_time.slice(0, 2)) * 60 + Number(row.urgent_deadline_time.slice(3));
       const left = deadline - nowMin;
-      if (left <= 0 || left > URGENT_REMINDER_LEAD_MINUTES) continue;
+      if (left <= 0 || left > leadMinutes) continue;
       if (logsRepo.listByTask(row.id).length > 0) continue; // پاسخ داده/منتقل شده
       const user = usersRepository.findById(row.user_id);
       if (!user || !user.is_active) continue;

@@ -13,6 +13,8 @@
 //              (S3-4a) maxLunchMinutes (حداکثر ناهار مجاز؛ عدد ≥ ۰، پیش‌فرض ۰ = بدون سقف)،
 //              fixedLunchDeductMinutes (کسر ثابت ناهار وقتی ناهار ثبت نشده؛ عدد ≥ ۰، پیش‌فرض ۴۵، ۰ = خاموش)،
 //              fixedLunchMinPresenceMinutes (حداقل حضور ناخالص برای اعمال کسر ثابت؛ عدد ≥ ۰، پیش‌فرض ۲۴۰، ۰ = بدون آستانه)؛
+//              شرط حضور در بازه‌ی ناهار: fixedLunchMode ('present_in_window' | 'always'؛ نبودن = 'always' = رفتار قبلی)، lunchWindowStart/lunchWindowEnd (HH:MM؛ پیش‌فرض ۱۲:۰۰/۱۴:۰۰)،
+//              fixedLunchMinOverlapMinutes (حداقل حضور در بازه؛ پیش‌فرض ۱) و fixedLunchProRate (کسر ≤ مدت حضور در بازه؛ پیش‌فرض روشن)؛
 //              (S3-4b) longOpenBreakMinutes (آستانه‌ی استراحتِ بازِ طولانی؛ عدد > ۰، پیش‌فرض ۱۲۰)،
 //              outsideShiftMarginMinutes (حاشیه‌ی مجاز ورود/خروج دور از شیفت؛ عدد ≥ ۰، پیش‌فرض ۱۲۰)؛
 //              (S3-5a) اضافه‌کاری قابل‌پرداخت: overtimeEnabled (boolean، پیش‌فرض false)، overtimeMinMinutes (حداقل آستانه، ≥ ۰، پیش‌فرض ۰)،
@@ -273,6 +275,34 @@ function paidBreakSplit(items, count, minutes, countUnlimited = false) {
   return paid;
 }
 
+// مقدار کسر ثابت ناهار با شرط «حضور در بازه‌ی ناهار» (خالص). خروجی: دقیقه‌ای که باید کسر شود (۰ ⇒ کسر نمی‌شود).
+// settings.fixedLunchMode: 'present_in_window' ⇒ فقط اگر مجموع حضور واقعی (نوبت‌های ورود/خروج) داخل [lunchWindowStart, lunchWindowEnd]
+// به fixedLunchMinOverlapMinutes (پیش‌فرض ۱) برسد کسر می‌شود؛ fixedLunchProRate (پیش‌فرض روشن) کسر را به همان مقدار حضور محدود می‌کند.
+// هر مقدار دیگر یا نبودن تنظیم یا بازه‌ی نامعتبر (پایان ≤ شروع، ساعت خراب) ⇒ همان کسر کامل قبلی.
+function fixedLunchDeductFor({ settings, segments, posOf, end, workStart, overnight, reversed, fixedLunch }) {
+  if (settings.fixedLunchMode !== 'present_in_window') return fixedLunch;
+  let ws; let we;
+  try {
+    ws = hhmmToMinutes(settings.lunchWindowStart === undefined ? '12:00' : settings.lunchWindowStart, 'lunchWindowStart');
+    we = hhmmToMinutes(settings.lunchWindowEnd === undefined ? '14:00' : settings.lunchWindowEnd, 'lunchWindowEnd');
+  } catch (_) { return fixedLunch; }
+  if (we <= ws) return fixedLunch;
+  if (overnight && ws < workStart) { ws += 1440; we += 1440; } // شیفت شب: بازه‌ی ناهار بعد از نیمه‌شب است
+  if (reversed) return fixedLunch; // زمان‌های ناسازگار؛ بدون قضاوت، مثل قبل
+  let overlap = 0;
+  segments.forEach((segment, index) => {
+    const segmentEnd = segment.out || (index === segments.length - 1 ? end : segment.in);
+    const s = posOf(segment.in);
+    const e = posOf(segmentEnd);
+    if (e < s) return;
+    overlap += Math.max(0, Math.min(e, we) - Math.max(s, ws));
+  });
+  const minOverlap = thresholdMinutes(settings.fixedLunchMinOverlapMinutes, 'fixedLunchMinOverlapMinutes', 1, 0);
+  if (overlap <= 0 || overlap < minOverlap) return 0;
+  const proRate = settings.fixedLunchProRate === undefined ? true : settings.fixedLunchProRate === true || settings.fixedLunchProRate === 'true' || settings.fixedLunchProRate === 1;
+  return proRate ? Math.min(fixedLunch, Math.round(overlap)) : fixedLunch;
+}
+
 function computeDay({ record, breaks, settings, now, timezone, shift, calendar, approvedLeaves, segments } = {}) {
   if (!settings || typeof settings !== 'object') throw new TypeError('settings الزامی است.');
   const params = resolveShiftParams(settings, shift);
@@ -414,7 +444,10 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
   // استراحت کوتاه جای ناهار را نمی‌گیرد.
   const meetsFixedLunchThreshold = fixedLunchMinPresence === 0 || gross >= fixedLunchMinPresence;
   if (fixedLunch > 0 && checkOut && meetsFixedLunchThreshold && !(breaks || []).some((b) => b && isLunch(b))) {
-    result.breakAuto = Math.min(fixedLunch, result.workedGross);
+    // شرط حضور در بازه‌ی ناهار: کارمندی که در ساعت ناهار در شرکت نبوده، ناهارش کسر نمی‌شود (fixedLunchMode='present_in_window').
+    // بدون این تنظیم (یا بازه‌ی نامعتبر) رفتار قدیمی است: کسر کامل با فقط «حداقل حضور».
+    const lunchDeduct = fixedLunchDeductFor({ settings, segments: normalizedSegments, posOf, end, workStart, overnight, reversed, fixedLunch });
+    result.breakAuto = Math.min(lunchDeduct, result.workedGross);
     result.break += result.breakAuto;
     result.breakUnpaid += result.breakAuto; // کسر ثابت ناهار همیشه بدون حقوق
   }

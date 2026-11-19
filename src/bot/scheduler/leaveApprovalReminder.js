@@ -54,6 +54,7 @@ async function runMissionApprovalReminder({ now = new Date() } = {}) {
   const out = { checked: 0, reminded: 0, errors: 0 };
   const today = todayInZone(s.timezone, now);
   const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: s.timezone, hour: '2-digit', hourCycle: 'h23' }).format(now));
+  const missionHour = Number.isInteger(Number(s.missionReminderHour)) && Number(s.missionReminderHour) >= 0 && Number(s.missionReminderHour) <= 23 ? Number(s.missionReminderHour) : MISSION_REMINDER_HOUR; // تنظیم missionReminderHour
   const pending = leaveRepository.listQueue({ status: 'pending', kind: 'mission', limit: null }).rows;
   for (const request of pending) {
     out.checked += 1;
@@ -62,7 +63,7 @@ async function runMissionApprovalReminder({ now = new Date() } = {}) {
       if (!employee) continue;
       const createdMs = toMs(request.created_at);
       const createdDay = Number.isFinite(createdMs) ? todayInZone(s.timezone, new Date(createdMs)) : today;
-      if (hour >= MISSION_REMINDER_HOUR && createdDay < today) await remindAll(request, employee, `mission_reminder:${request.id}`, out);
+      if (hour >= missionHour && createdDay < today) await remindAll(request, employee, `mission_reminder:${request.id}`, out);
     } catch (err) {
       out.errors += 1;
       console.error('[missionApprovalReminder] خطا برای درخواست', request.id, sanitizeText(err && err.message ? err.message : String(err), 200));

@@ -339,3 +339,26 @@ body:has(.st-layout) .ai-panel { height: min(680px, calc(100vh - 170px)); }
   .st-layout .st-nav-item { transition: none; }
   .st-layout .st-save-btn[aria-busy="true"]::before { animation-duration: 1.4s; }
 }
+
+/* ===== زیربخش‌ها (عنوان گروه‌کننده‌ی فیلدها، مثلاً «ناهار» و «استراحت») ===== */
+.st-layout .st-fields .st-section {
+  grid-column: 1 / -1; display: flex; align-items: center; gap: 12px;
+  margin: var(--space-4) 0 var(--space-1); padding: 0; font-size: var(--fs-md); font-weight: 800; color: var(--text);
+}
+.st-layout .st-fields .st-section:first-child { margin-top: 0; }
+.st-layout .st-fields .st-section::before {
+  content: ""; flex: none; width: 4px; height: 20px; border-radius: 4px;
+  background: linear-gradient(180deg, var(--accent), var(--brand));
+}
+.st-layout .st-fields .st-section::after {
+  content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, color-mix(in srgb, var(--brand) 22%, transparent), transparent);
+}
+[dir="rtl"] .st-layout .st-fields .st-section::after { background: linear-gradient(270deg, color-mix(in srgb, var(--brand) 22%, transparent), transparent); }
+
+/* ===== تنظیم وابسته: وقتی شرطش برقرار نیست کم‌رنگ می‌شود و دلیلش را می‌گوید ===== */
+.st-layout .st-field .st-dep-note { display: none; margin: 0; padding: 6px 10px; border-radius: var(--r-sm); font-size: var(--fs-xs); color: var(--hint); background: var(--card-2); }
+.st-layout .st-field.st-inactive { border-style: dashed; background: color-mix(in srgb, var(--hint) 4%, var(--card)); }
+.st-layout .st-field.st-inactive .st-head, .st-layout .st-field.st-inactive .st-ctl, .st-layout .st-field.st-inactive .st-aux, .st-layout .st-field.st-inactive .st-foot { opacity: .55; }
+.st-layout .st-field.st-inactive .st-dep-note { display: block; }
+.st-layout .st-field.st-inactive:hover { transform: none; box-shadow: none; }
+@media (prefers-reduced-motion: reduce) { .st-layout .st-field.st-inactive { transition: none; } }

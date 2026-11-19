@@ -562,7 +562,7 @@
       box.classList.add('single');
       if (state.today && state.today.canReEnter) {
         addTile({
-          title: 'ورود مجدد', sub: `امروز هنوز ${(state.today.reEntriesMax - state.today.reEntriesUsed).toLocaleString('en-US')} بار می‌توانید برگردید`, color: 'green', icon: 'in', wide: true,
+          title: 'ورود مجدد', sub: state.today.reEntriesUnlimited || state.today.reEntriesMax === null ? 'هر زمان برگردید، نوبت کاری جدید ثبت می‌شود' : `امروز هنوز ${(state.today.reEntriesMax - state.today.reEntriesUsed).toLocaleString('en-US')} بار می‌توانید برگردید`, color: 'green', icon: 'in', wide: true,
           primary: true, handler: async () => { if (await confirmReEntry()) doAction('/re-check-in', {}, 'ورود مجدد ثبت شد.'); },
         });
       }
@@ -593,10 +593,14 @@
       handler: () => startCheckout(),
     });
     if (!state.today || state.today.breakButtonsEnabled !== false) { // تنظیم «دکمه‌ی ثبت استراحت/ناهار» خاموش ⇒ پنهان (استراحت طبق ساعت ثابت و پیام خودکار)
-      addTile({
-        title: 'ثبت استراحت', sub: 'شروع وقفه', color: 'orange', icon: 'lunch',
-        handler: () => openBreakSheet(),
-      });
+      if (state.today && state.today.breakCanStart === false) { // سقف تعداد استراحت امروز (تنظیم breakMaxPerDay)
+        addTile({ title: 'ثبت استراحت', sub: 'سقف استراحت امروز تکمیل شد', color: 'orange', icon: 'lunch', handler: () => {}, locked: true });
+      } else {
+        addTile({
+          title: 'ثبت استراحت', sub: 'شروع وقفه', color: 'orange', icon: 'lunch',
+          handler: () => openBreakSheet(),
+        });
+      }
     }
     addMissionTile();
     addMyDayTile();
@@ -1064,7 +1068,7 @@
     });
     renderBreakBreakdown($('#ti-breaks'), breakTotals);
 
-    const TARGET_MIN = 8 * 60;
+    const TARGET_MIN = Number(data.dailyTargetMinutes) > 0 ? Number(data.dailyTargetMinutes) : 8 * 60; // تنظیم dailyTargetMinutes
     const timerEl = $('#timer');
     let progressMin = 0;
     state.breakNoteTick = null;
@@ -1106,7 +1110,8 @@
       progress.setAttribute('aria-valuenow', String(pct));
       progress.setAttribute('aria-label', `${pct.toLocaleString('en-US')} درصد از هدف روزانه`);
     }
-    $('#progress-text').textContent = pct.toLocaleString('en-US') + '% از 8 ساعت';
+    const targetHours = TARGET_MIN / 60;
+    $('#progress-text').textContent = pct.toLocaleString('en-US') + '% از ' + (Number.isInteger(targetHours) ? targetHours : targetHours.toFixed(1)).toLocaleString('en-US') + ' ساعت';
 
     renderTodayActions();
     if (!(data && data.record)) syncLateGate();

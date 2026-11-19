@@ -81,7 +81,7 @@ describe('پیام خودکار استراحت و ناهار (scheduledBreakNoti
     assert.equal(notes(late.id, 'scheduled_break_start').length, 0);
   });
 
-  test('ساعت و مدت دلخواه؛ ساعت بیرون از شیفت پیام نمی‌گیرد', async () => {
+  test('ساعت و مدت دلخواه؛ شیفت مهم نیست و هر حاضرِ شرکت پیام می‌گیرد', async () => {
     enableAll();
     settingsRepo.setValue('scheduledBreakStart', '10:30');
     settingsRepo.setValue('scheduledBreakMinutes', 10);
@@ -89,10 +89,10 @@ describe('پیام خودکار استراحت و ناهار (scheduledBreakNoti
     await run({ now: tehran(10, 30) });
     assert.match(notes(u.id, 'scheduled_break_start')[0].body, /۱۰:۴۰/);
 
-    settingsRepo.setValue('scheduledBreakStart', '06:00'); // قبل از شروع شیفت (۰۸:۰۰)
+    settingsRepo.setValue('scheduledBreakStart', '06:00'); // حتی خارج از ساعت شیفت
     const v = present();
     await run({ now: tehran(6, 0) });
-    assert.equal(notes(v.id, 'scheduled_break_start').length, 0);
+    assert.equal(notes(v.id, 'scheduled_break_start').length, 1);
     settingsRepo.resetValue('scheduledBreakStart');
     settingsRepo.resetValue('scheduledBreakMinutes');
   });

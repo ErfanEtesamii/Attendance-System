@@ -2,16 +2,13 @@
 //
 // • تنظیمات: scheduledBreakEnabled/Start/Minutes (استراحت)، scheduledLunchEnabled/Start/Minutes (ناهار). هر دو خاموش ⇒ بی‌اثر.
 // • شش پیام: شروع، هشدارِ «چند دقیقه مانده» (scheduledWarnMinutes؛ ۰ = خاموش) و پایانِ استراحت و ناهار. هر پیام برای هر کاربر در هر روز «یک‌بار» می‌رود (dedupeKey در DB؛ با ری‌استارت پروسه تکرار نمی‌شود).
-// • گیرنده: کارمند فعالِ دارای تلگرام که امروز «روز کاری» دارد، شیفتش ساعت‌دار و غیرشب است، ساعت پیام داخل بازه‌ی شیفتِ همان روزش
-//   می‌افتد (شروع ≤ ساعت < پایان)، ورودِ امروز را ثبت کرده و هنوز خروج نزده و ماموریت تأییدشده‌ی امروز ندارد.
+// • گیرنده: هر کارمند فعالِ دارای تلگرام که همین لحظه در شرکت است (ورودِ امروز ثبت و هنوز خروج نزده) و ماموریت تأییدشده‌ی امروز ندارد؛ شیفت و روز کاری بودن مهم نیست.
 // • Job هر دقیقه اجرا می‌شود؛ اگر یک تیک از دست برود، تا WINDOW_MINUTES دقیقه بعد هنوز پیام می‌رود (dedupe جلوی تکرار را می‌گیرد).
 // • خطای یک کاربر بقیه را نمی‌شکند. now تزریق‌پذیر برای تست. خروجی: { checked, sent, errors, skipped }
 const settingsRepository = require('../../repositories/settingsRepository');
 const usersRepository = require('../../repositories/usersRepository');
 const attendanceRepository = require('../../repositories/attendanceRepository');
 const leaveRepository = require('../../repositories/leaveRepository');
-const holidaysRepository = require('../../repositories/holidaysRepository');
-const { getCalendarDay } = require('../../engine/calendarService');
 const { hhmmToMinutes } = require('../../engine/computeDay');
 const notificationEvents = require('../../services/notificationEvents');
 const { minutesSinceMidnight, formatDate } = require('../../utils/time');
@@ -52,19 +49,12 @@ async function runScheduledBreakNotice({ now = new Date() } = {}) {
   if (!due.length) return { ...out, skipped: true };
 
   const date = formatDate(now, settings.timezone);
-  const holidays = holidaysRepository.listByDate(date);
 
   for (const user of usersRepository.listUsers({ onlyActive: true })) {
     if (!user.telegram_user_id) continue;
     out.checked += 1;
     try {
-      const calendar = getCalendarDay(user, date, { settings, holidays });
-      if (!calendar.isWorkingDay || !calendar.expectedStart || !calendar.expectedEnd) continue; // غیرکاری یا شیفت بدون ساعت
-      const shiftStart = hhmmToMinutes(calendar.expectedStart, 'expectedStart', 'calendar.');
-      const shiftEnd = hhmmToMinutes(calendar.expectedEnd, 'expectedEnd', 'calendar.');
-      if (shiftEnd <= shiftStart) continue; // شیفت شب
-      const mine = due.filter((e) => e.at >= shiftStart && e.at < shiftEnd);
-      if (!mine.length) continue;
+      const mine = due; // شیفت و تقویم مهم نیست: هر کارمندِ حاضر در شرکت در این لحظه پیام می‌گیرد
 
       const record = attendanceRepository.listByUserAndRange(user.id, date, date)[0]; // با تاریخِ تزریقی (findTodayRecord ساعت واقعی را می‌خواند)
       if (!record || !record.check_in_time || record.check_out_time) continue; // حاضرِ فعلی نیست

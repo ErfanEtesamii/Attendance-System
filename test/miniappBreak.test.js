@@ -66,7 +66,8 @@ describe('Mini App ثبت استراحت (A2) — سرور', { skip: hasDeps ? f
     assert.equal((await S.call(other, 'POST', 'break/start', { breakType: 'lunch' })).status, 400);
   });
 
-  test('ورود مجدد: پس از خروج مجاز است، نوبت دوم را می‌بندد و سقف پیش‌فرض را رعایت می‌کند', async () => {
+  test('ورود مجدد: پس از خروج مجاز است، نوبت دوم را می‌بندد و سقف تنظیم‌شده را رعایت می‌کند', async () => {
+    require('../src/repositories/settingsRepository').update({ maxReEntriesPerDay: 1 }); // پیش‌فرض ۵ است؛ این تست رفتار سقف را با مقدار ۱ می‌سنجد
     const { u } = await checkedIn();
     assert.equal((await S.call(u, 'POST', 'check-out', {})).status, 200);
     const again = await S.call(u, 'POST', 're-check-in', {});

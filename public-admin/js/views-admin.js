@@ -206,7 +206,7 @@
   const ENUM_LABELS = {
     lateCountsFrom: { shift_start: 'از ساعت شروع کار', after_grace: 'پس از پایان مهلت' },
     planGateMode: { enforce: 'الزامی (بدون برنامه خروج ثبت نمی‌شود)', soft: 'یادآوری (الزامی نیست)', off: 'خاموش' },
-    dailyReportGateMode: { enforce: 'الزامی (بدون گزارش خروج ثبت نمی‌شود)', soft: 'نرم (تکمیل تا ۲۴ ساعت بعد)', off: 'خاموش' },
+    dailyReportGateMode: { enforce: 'الزامی (بدون گزارش خروج ثبت نمی‌شود)', soft: 'نرم (تکمیل تا مهلتِ تنظیم‌شده)', off: 'خاموش' },
     planSubmissionWeekday: { auto: 'خودکار (آخرین روز کاریِ هفته)', 0: 'یکشنبه', 1: 'دوشنبه', 2: 'سه‌شنبه', 3: 'چهارشنبه', 4: 'پنجشنبه', 5: 'جمعه', 6: 'شنبه' },
     planGateWarnWeekday: { off: 'خاموش', 0: 'یکشنبه', 1: 'دوشنبه', 2: 'سه‌شنبه', 3: 'چهارشنبه', 4: 'پنجشنبه', 5: 'جمعه', 6: 'شنبه' },
     overtimeRounding: { down: 'به پایین', nearest: 'نزدیک‌ترین', up: 'به بالا' },
@@ -214,6 +214,7 @@
     crossMidnightMode: { legacy: 'سازگار با گذشته', by_shift_day: 'بر پایه‌ی روز شیفت' },
     leaveBalancePolicy: { block: 'مسدود', warn: 'هشدار', allow_negative: 'مانده‌ی منفی' },
     supervisorRecordEditCountMode: { operation: 'هر عملیات یک بار', record: 'هر رکورد یک بار' },
+    fixedLunchMode: { present_in_window: 'فقط با حضور در بازه‌ی ناهار', always: 'همیشه (فقط حداقل حضور روزانه)' },
   };
   // فاز B: برچسب فارسی قابلیت‌های قابل‌خاموش‌شدنِ سرپرست (کلیدها با src/utils/supervisorCapabilities.js یکی است)
   const ST_CAP_LABELS = {
@@ -355,6 +356,18 @@
       const draftOf = (it) => (it.key in drafts ? drafts[it.key] : it.value);
       const isDirty = (it) => it.key in drafts && setNorm(it, drafts[it.key]) !== setNorm(it, it.value);
 
+      // تنظیم وابسته (dependsOn: { key, equals }): تا وقتی شرط برقرار نیست کم‌رنگ می‌شود (ویرایش‌پذیر می‌ماند)
+      const depMet = (it) => {
+        const d = it.dependsOn; const p = d && byKey[d.key];
+        return !p || setNorm(p, draftOf(p)) === setNorm(p, d.equals);
+      };
+      const depText = (it) => {
+        const d = it.dependsOn; const p = d && byKey[d.key];
+        if (!p) return '';
+        const want = p.type === 'boolean' ? (d.equals ? 'روشن' : 'خاموش') : `«${setEnumLabel(p, d.equals)}»`;
+        return `فقط وقتی «${setShort(p)}» ${want} باشد اثر دارد.`;
+      };
+
       // فیلد عریض: روز هفته، cron، رشته و enum با برچسب گزینه‌ی بلند
       const isFull = (it) => ['weekdays', 'multiselect', 'cron', 'string'].includes(it.type) || (it.type === 'enum' && it.values.some((o) => setEnumLabel(it, o).length > 24));
       const rowHtml = (it) => {
@@ -366,7 +379,7 @@
         const hint = setHint(it);
         const ltrDef = ['time', 'timezone', 'cron', 'number', 'date'].includes(it.type);
         return `
-        <div class="st-field${isFull(it) ? ' full' : ''}${dirty ? ' dirty' : ''}${it.isDefault ? '' : ' changed'}" data-row="${esc(it.key)}" data-type="${esc(it.type)}">
+        <div class="st-field${isFull(it) ? ' full' : ''}${dirty ? ' dirty' : ''}${it.isDefault ? '' : ' changed'}${it.dependsOn && !depMet(it) ? ' st-inactive' : ''}" data-row="${esc(it.key)}" data-type="${esc(it.type)}"${it.dependsOn ? ` data-dep="${esc(it.dependsOn.key)}"` : ''}>
           <div class="st-head">
             <span class="st-ico" aria-hidden="true">${stIco(it.type)}</span>
             <div class="st-titles">
@@ -380,6 +393,7 @@
             ${more ? `<button type="button" class="st-more" data-more aria-expanded="false" aria-controls="${did}">${ST_TIP_ICO}<span class="st-more-t">نکته‌ی بیشتر</span></button>` : ''}
           </div>` : ''}
           ${more ? `<div class="st-desc st-hint" id="${did}"><span class="st-tip-bar" aria-hidden="true"></span><p>${esc(it.hint.trim())}</p></div>` : ''}
+          ${it.dependsOn ? `<p class="st-dep-note" role="note">${esc(depText(it))}</p>` : ''}
           <div class="st-foot"><span class="st-def" title="${esc(it.key)}"><span class="st-def-k">پیش‌فرض</span><bdi dir="${ltrDef ? 'ltr' : 'auto'}">${esc(setShow(it, it.default))}</bdi></span>${it.isDefault ? '' : `<button type="button" class="btn ghost small st-reset" data-reset="${esc(it.key)}" title="بازگشت به پیش‌فرض" aria-label="بازگشت «${esc(short)}» به پیش‌فرض">${ST_RESET_ICO}<span>بازنشانی</span></button>`}</div>
         </div>`;
       };
@@ -500,6 +514,7 @@
                 row.classList.toggle('dirty', it.key in drafts);
                 const tag = $('[data-dirty]', row);
                 if (tag) tag.hidden = !(it.key in drafts);
+                $$('.st-field[data-dep]', card).forEach((r) => { const d = byKey[r.dataset.row]; if (d) r.classList.toggle('st-inactive', !depMet(d)); });
                 refreshSave(g);
                 applyReset(g);
               };
