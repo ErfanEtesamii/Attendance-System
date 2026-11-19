@@ -1239,7 +1239,7 @@ textarea.pl-focus-input { resize: vertical; min-height: 72px; }
 .idle-actions { display: grid; gap: 10px; width: 100%; }
 .idle-btn { appearance: none; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 54px; padding: 10px 16px; border-radius: 16px; font: inherit; font-size: var(--fs-md); font-weight: 800; cursor: pointer; border: 1px solid transparent; transition: transform .12s ease, box-shadow .2s ease; }
 .idle-btn:active { transform: scale(.98); }
-.idle-btn-ico { width: 26px; height: 26px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 14px; background: rgba(255, 255, 255, .2); }
+.idle-btn-ico { width: 26px; height: 26px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 14px; background: color-mix(in srgb, #fff 20%, transparent); }
 .idle-primary { color: #fff; background: linear-gradient(135deg, var(--brand-deep, #322c79), #4b3fc0); box-shadow: 0 12px 24px -12px rgba(50, 44, 121, .7); }
 :root[data-theme="dark"] .idle-primary { background: linear-gradient(135deg, #5b50d6, #7a6ff0); box-shadow: 0 12px 24px -12px rgba(122, 111, 240, .7); }
 .idle-soft { color: var(--text); background: color-mix(in srgb, var(--accent) 14%, var(--card-bg)); border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
@@ -1253,7 +1253,7 @@ textarea.pl-focus-input { resize: vertical; min-height: 72px; }
 .idle-num { font-size: 3rem; font-weight: 900; color: var(--text); }
 .idle-unit { margin-top: 4px; font-size: var(--fs-sm); color: var(--hint); font-weight: 700; }
 .idle-words { margin-top: -6px; color: var(--brand); font-weight: 800; font-size: var(--fs-md); min-height: 1.5em; }
-.idle-range { --p: 30%; -webkit-appearance: none; appearance: none; width: 100%; height: 12px; border-radius: 999px; outline: none; margin: 4px 0 0; background: linear-gradient(90deg, var(--accent) var(--p), color-mix(in srgb, var(--hint) 22%, transparent) var(--p)); }
+.idle-range { --p: 30%; -webkit-appearance: none; appearance: none; width: 100%; height: 12px; border-radius: 999px; margin: 4px 0 0; background: linear-gradient(90deg, var(--accent) var(--p), color-mix(in srgb, var(--hint) 22%, transparent) var(--p)); }
 .idle-range::-webkit-slider-thumb { -webkit-appearance: none; width: 30px; height: 30px; border-radius: 50%; background: #fff; border: 4px solid var(--accent); box-shadow: 0 4px 12px rgba(0, 0, 0, .25); }
 .idle-range::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 4px solid var(--accent); box-shadow: 0 4px 12px rgba(0, 0, 0, .25); }
 .idle-scale { display: flex; justify-content: space-between; width: 100%; margin-top: -6px; font-size: var(--fs-xs); color: var(--hint); padding-inline: 4px; }

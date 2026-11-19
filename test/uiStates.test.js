@@ -132,6 +132,7 @@ const PAGES = {
   remote: ['views-remote.js', 'helper'], // R6 (فاز ۱۴): صف بررسی دورکاری؛ حالت خالی: «ثبت دورکاری‌ای با این فیلتر پیدا نشد»
   weekly: ['views-weekly.js', 'n/a'], // صفحه‌ی جزئیات: شبکه‌ی ۷ روزه همیشه هست و خالی‌بودنِ هر روز پیام خودش را دارد
   performance: ['views-performance.js', 'inline'], payroll: ['views-performance.js', 'inline'], // عملکرد کارمند + حقوق (فقط ادمین)
+  exports: ['views-exports.js', 'n/a'], // «خروجی‌های اکسل»: صفحه‌ی کارت‌ها؛ حالت خالی جستجو با .ex-empty
   mystatus: ['views-mystatus.js', 'helper'], // M2 «وضعیت من»؛ حالت خالی: «اطلاعات امروز در دسترس نیست» / «برای امروز تسکی ثبت نشده است»
 };
 
