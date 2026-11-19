@@ -670,6 +670,55 @@
     return confirmAction('از ثبت خروج و پایان روز کاری مطمئن هستید؟', 'تأیید ثبت خروج', 'ثبت خروج');
   }
 
+  // ---------- پرسش «تایم پرت» هنگام خروج ----------
+  // نتیجه: عدد دقیقه (۰ = خیر) یا null (انصراف). پاسخ تا ثبت موفق خروج نگه داشته می‌شود تا اگر ویزارد گزارش/برنامه وسط راه آمد دوباره نپرسد.
+  let idleAnswer = null;
+  const idleLabel = (m) => { const h = Math.floor(m / 60); const r = m % 60; return h && r ? `${faDigits(h)} ساعت و ${faDigits(r)} دقیقه` : (h ? `${faDigits(h)} ساعت` : `${faDigits(r)} دقیقه`); };
+
+  function askIdleMinutes(cfg) {
+    return new Promise((resolve) => {
+      const step = Math.max(1, Number(cfg.step) || 5);
+      const max = Math.max(step, Number(cfg.max) || 120);
+      let value = Math.min(max, Math.max(step, 30 - (30 % step) || step));
+      const root = document.createElement('div');
+      root.className = 'sheet-backdrop idle-backdrop';
+      root.innerHTML = '<div class="sheet idle-sheet" role="dialog" aria-modal="true" aria-label="تایم پرت" tabindex="-1"><div class="sheet-handle"></div><div class="idle-body"></div></div>';
+      document.body.appendChild(root);
+      const body = root.querySelector('.idle-body');
+      const done = (v) => { root.remove(); resolve(v); };
+      root.addEventListener('click', (e) => { if (e.target === root) done(null); });
+      const renderAsk = () => {
+        body.innerHTML = `<h3 class="sheet-title">امروز تایم پرت داشتید؟</h3>
+          <p class="idle-sub">اگر بخشی از ساعت حضورتان کار مفید نبوده، می‌توانید همین الان مقدارش را مشخص کنید تا از ساعت مفید امروز کم شود.</p>
+          <div class="idle-actions"><button type="button" class="btn idle-no" data-idle="no">خیر، ثبت خروج</button><button type="button" class="btn idle-yes" data-idle="yes">بله، دارم</button></div>
+          <button type="button" class="idle-cancel" data-idle="cancel">انصراف</button>`;
+      };
+      const renderPick = () => {
+        const chips = [15, 30, 45, 60, 90].filter((m) => m <= max && m % step === 0);
+        body.innerHTML = `<h3 class="sheet-title">چقدر تایم پرت داشتید؟</h3>
+          <div class="idle-picker"><button type="button" class="idle-step" data-idle="minus" aria-label="کمتر">−</button><output class="idle-value" aria-live="polite">${idleLabel(value)}</output><button type="button" class="idle-step" data-idle="plus" aria-label="بیشتر">+</button></div>
+          <div class="idle-chips">${chips.map((m) => `<button type="button" class="idle-chip${m === value ? ' on' : ''}" data-idle-set="${m}">${idleLabel(m)}</button>`).join('')}</div>
+          <p class="idle-sub">این مقدار از ساعت مفید امروز شما کم می‌شود (حداکثر ${idleLabel(max)}).</p>
+          <div class="idle-actions"><button type="button" class="btn idle-yes" data-idle="ok">ثبت خروج با ${idleLabel(value)} تایم پرت</button></div>
+          <button type="button" class="idle-cancel" data-idle="back">بازگشت</button>`;
+      };
+      root.addEventListener('click', (e) => {
+        const chip = e.target.closest('[data-idle-set]');
+        if (chip) { value = Number(chip.dataset.idleSet); renderPick(); return; }
+        const b = e.target.closest('[data-idle]'); if (!b) return;
+        const a = b.dataset.idle;
+        if (a === 'no') done(0);
+        else if (a === 'cancel') done(null);
+        else if (a === 'yes' || a === 'back') { if (a === 'yes') renderPick(); else renderAsk(); }
+        else if (a === 'minus') { value = Math.max(step, value - step); renderPick(); }
+        else if (a === 'plus') { value = Math.min(max, value + step); renderPick(); }
+        else if (a === 'ok') done(value);
+      });
+      renderAsk();
+      const f = root.querySelector('.idle-sheet'); if (f && f.focus) f.focus();
+    });
+  }
+
   // ---------- bottom-sheet انتخاب نوع استراحت (A1) ----------
   // سه گزینه: ناهار (lunch)، نماز و استراحت کوتاه (هر دو short_break). آخرین انتخاب پیش‌انتخاب است.
   const BREAK_KIND_KEY = 'lastBreakKind';
@@ -806,6 +855,18 @@
     const unlock = () => btns.forEach((b) => { if (b.isConnected && !(b.dataset && b.dataset.locked)) b.disabled = false; });
     try {
       // S2-3: device_id فقط همراه ورود/خروج؛ نبودنش مانع ثبت نیست
+      if (path === '/check-out' && (!body || body.idleMinutes === undefined)) {
+        let idleCfg = null;
+        try { idleCfg = await api('/idle-config'); } catch (_) { /* بدون تنظیمات ⇒ بدون پرسش؛ ثبت خروج مانعی ندارد */ }
+        if (idleCfg && idleCfg.enabled) {
+          if (idleAnswer === null) {
+            const picked = await askIdleMinutes(idleCfg);
+            if (picked === null) { unlock(); return false; }
+            idleAnswer = picked;
+          }
+          body = { ...(body || {}), idleMinutes: idleAnswer };
+        }
+      }
       if (path === '/check-in' || path === '/check-out' || path === '/re-check-in') {
         const deviceId = await getDeviceId();
         if (deviceId) body = { ...(body || {}), deviceId };
@@ -814,7 +875,7 @@
       const feedback = path === '/check-out' ? checkoutMessage(res, successMsg) : successMsg;
       if (window.celebrate && (path === '/check-out' || path === '/check-in')) window.celebrate('check');
       showToast(feedback);
-      if (path === '/check-out') { reportUi.answers = new Map(); reportUi.extras = []; reportUi.date = ''; switchView('today'); }
+      if (path === '/check-out') { idleAnswer = null; reportUi.answers = new Map(); reportUi.extras = []; reportUi.date = ''; switchView('today'); }
       await loadToday();
       if (['/check-in', '/check-out', '/re-check-in'].includes(path)) showActionFeedback(feedback);
       return true;

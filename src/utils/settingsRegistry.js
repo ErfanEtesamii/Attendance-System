@@ -173,6 +173,9 @@ def('lateMonthlyLimit', 'late_monthly_limit', 'number', { related: ['supervisors
 def('lateLimitGateMode', 'late_limit_gate_mode', 'enum', { related: ['supervisors'], group: 'workHours', section: 'تأخیر و زودتر رفتن', values: ['off', 'soft', 'enforce'], default: 'off', label: 'نحوه‌ی اعمال سقف تأخیر', description: 'اگر تأخیر از سقف بگذرد، چه اتفاقی بیفتد.', hint: '«بی‌اثر» کاری نمی‌کند؛ «هشدار» فقط رویداد ثبت می‌کند و ورود مجاز است؛ «الزامی» بدون اجازه‌ی سرپرست ورود ثبت نمی‌شود.' });
 def('lateLimitPermissionTtlMinutes', 'late_limit_permission_ttl_minutes', 'number', { related: ['supervisors'], group: 'workHours', section: 'تأخیر و زودتر رفتن', min: 5, max: 720, default: 60, label: 'اعتبار اجازه‌ی ورود', description: 'اجازه‌ی سرپرست چند دقیقه معتبر بماند.', hint: 'با یک ورود موفق مصرف می‌شود و بعد از این مدت منقضی است.' });
 // S3-4b: آستانه‌ی پرچم‌ها (فقط گزارش؛ عددی را عوض نمی‌کنند)
+def('idleAskEnabled', 'idle_ask_enabled', 'boolean', { group: 'workHours', section: 'تایم پرت هنگام خروج', default: true, label: 'پرسش تایم پرت هنگام خروج', description: 'هنگام ثبت خروج از کارمند می‌پرسد تایم پرت داشته یا نه.', hint: 'اگر کارمند «بله» بزند، مقداری را که انتخاب می‌کند از ساعت مفید همان روز کم می‌شود؛ «خیر» چیزی کم نمی‌کند. خاموش ⇒ پرسشی نمایش داده نمی‌شود.' });
+def('idleMaxMinutes', 'idle_max_minutes', 'number', { group: 'workHours', section: 'تایم پرت هنگام خروج', min: 5, max: 480, default: 120, label: 'سقف تایم پرت در هر خروج', description: 'بیشترین دقیقه‌ای که کارمند می‌تواند به‌عنوان تایم پرت ثبت کند.', hint: 'مثلاً ۱۲۰ یعنی حداکثر ۲ ساعت.', dependsOn: { key: 'idleAskEnabled', equals: true } });
+def('idleStepMinutes', 'idle_step_minutes', 'number', { group: 'workHours', section: 'تایم پرت هنگام خروج', min: 1, max: 60, default: 5, label: 'گام انتخاب تایم پرت', description: 'فاصله‌ی گزینه‌های دقیقه در انتخاب تایم پرت.', hint: 'مثلاً ۵ یعنی ۵، ۱۰، ۱۵ … دقیقه.', dependsOn: { key: 'idleAskEnabled', equals: true } });
 def('longOpenBreakMinutes', 'long_open_break_minutes', 'number', { group: 'workHours', section: 'هشدار و علامت‌گذاری', min: 1, max: 720, default: 120, label: 'آستانه‌ی استراحت باز', description: 'استراحتی که بیش از این دقیقه باز بماند علامت می‌خورد.', hint: 'منظور استراحتی است که پایان نخورده است.' });
 def('outsideShiftMarginMinutes', 'outside_shift_margin_minutes', 'number', { group: 'workHours', section: 'هشدار و علامت‌گذاری', min: 0, max: 720, default: 120, label: 'حاشیه‌ی خارج از شیفت', description: 'ورود یا خروج تا این دقیقه بیرون از شیفت مجاز است.', hint: 'بیشتر از این حاشیه «خارج از شیفت» علامت می‌خورد. مقدار ۷۲۰ عملاً آن را خاموش می‌کند.' });
 def('crossMidnightMode', 'cross_midnight_mode', 'enum', { group: 'workHours', section: 'ساعت و منطقه‌ی زمانی', values: ['legacy', 'by_shift_day'], default: 'legacy', label: 'خروج بعد از نیمه‌شب', description: 'خروج بعد از نیمه‌شب در شیفت عادی چطور حساب شود.', hint: '«سازگار با گذشته» همان محاسبه‌ی قبلی است؛ «بر پایه‌ی روز شیفت» آن را ادامه‌ی همان روز کاری می‌شمارد.' });
@@ -324,7 +327,7 @@ defCron('watchdog', 'cronWatchdog', 'cron_watchdog', () => config.monitor.watchd
 
 // ترتیب زیربخش‌ها در هر گروه (فقط برای نمایش). زیربخشِ ناشناخته/بدون زیربخش بعد از همه می‌آید و ترتیب تعریف حفظ می‌شود.
 const SECTION_ORDER = {
-  workHours: ['ساعت و منطقه‌ی زمانی', 'تأخیر و زودتر رفتن', 'ناهار', 'استراحت', 'خروج و ورود مجدد', 'پیام خودکار استراحت و ناهار', 'هشدار و علامت‌گذاری'],
+  workHours: ['ساعت و منطقه‌ی زمانی', 'تأخیر و زودتر رفتن', 'ناهار', 'استراحت', 'خروج و ورود مجدد', 'پیام خودکار استراحت و ناهار', 'تایم پرت هنگام خروج', 'هشدار و علامت‌گذاری'],
 };
 
 // ---------- توابع عمومی ----------

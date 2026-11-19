@@ -58,6 +58,13 @@ function recordCheckIn(userId, ip, device = {}, { viaPendingMission = false } = 
   return findById(result.lastInsertRowid);
 }
 
+// تایم پرت هنگام خروج: به مقدار قبلی روز اضافه می‌شود (خروج‌های چندباره)؛ ۰ یا نامعتبر ⇒ بدون تغییر
+function addIdleMinutes(attendanceRecordId, minutes) {
+  const n = Math.round(Number(minutes));
+  if (!Number.isFinite(n) || n <= 0) return;
+  getDb().prepare('UPDATE attendance_records SET idle_minutes = idle_minutes + ? WHERE id = ?').run(n, attendanceRecordId);
+}
+
 function recordCheckOut(attendanceRecordId, ip, device = {}, { viaPendingMission = false } = {}) {
   const db = getDb();
   db.prepare(
@@ -352,6 +359,7 @@ function listByUserIdsAndRange(userIds, fromDate, toDate) {
 }
 
 module.exports = {
+  addIdleMinutes,
   currentRecordDate,
   listForFraud,
   createManual,

@@ -451,7 +451,8 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
     result.break += result.breakAuto;
     result.breakUnpaid += result.breakAuto; // کسر ثابت ناهار همیشه بدون حقوق
   }
-  result.effective = Math.max(0, Math.round(gross - result.breakUnpaid)); // C1: فقط بخش بدون حقوق از ساعت کاری کم می‌شود
+  const idle = Number.isFinite(Number(record.idle_minutes)) && Number(record.idle_minutes) > 0 ? Math.round(Number(record.idle_minutes)) : 0;
+  result.effective = Math.max(0, Math.round(gross - result.breakUnpaid - idle)); // C1: فقط بخش بدون حقوق از ساعت کاری کم می‌شود
   result.effectiveWithMission = result.effective;
   // روز بدون خروج (missing_checkout): ساعت مفید صفر است، نه «تا الان». فقط امروزِ هنوز بازِ در حال کار تخمین زنده می‌گیرد.
   const missingCheckout = flagSet.has('missing_checkout');

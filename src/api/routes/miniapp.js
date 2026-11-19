@@ -325,6 +325,12 @@ router.get('/miniapp/checkout-readiness', (req, res) => {
   res.json(items);
 });
 
+// تنظیمات پرسش «تایم پرت» هنگام خروج (UI قبل از ثبت خروج می‌خواند)
+router.get('/miniapp/idle-config', (req, res) => {
+  const s = settingsRepository.getAll();
+  res.json({ enabled: s.idleAskEnabled === true, max: Number(s.idleMaxMinutes), step: Number(s.idleStepMinutes) });
+});
+
 router.post('/miniapp/check-out', (req, res) => {
   const record = attendanceRepository.findTodayRecord(req.miniAppUser.id);
   if (!record) {
@@ -379,14 +385,24 @@ router.post('/miniapp/check-out', (req, res) => {
     });
   }
   if (rejectIfSharedDeviceBlocked(req, res, 'check_out')) return;
+  // تایم پرت (اختیاری؛ نبودن/۰ = بدون کسر): عدد صحیح ۰ تا سقف تنظیمات؛ فقط وقتی پرسش روشن است
+  let idleMinutes = 0;
+  const idleSettings = settingsRepository.getAll();
+  if (idleSettings.idleAskEnabled === true && req.body && req.body.idleMinutes !== undefined && req.body.idleMinutes !== null) {
+    const v = Number(req.body.idleMinutes);
+    if (!Number.isInteger(v) || v < 0 || v > Number(idleSettings.idleMaxMinutes)) {
+      return res.status(400).json({ error: `تایم پرت باید عددی بین ۰ تا ${idleSettings.idleMaxMinutes} دقیقه باشد.`, code: 'INVALID_IDLE_MINUTES' });
+    }
+    idleMinutes = v;
+  }
   // ذخیره‌ی گزارش (اگر در همین درخواست آمده) و ثبت خروج: اتمیک، در یک تراکنش
-  const updated = taskReportService.commitAtomic(req.miniAppUser, reportGate, () => attendanceRepository.closeLastSegment(record.id, req.ip, extractDeviceInfo(req), { viaPendingMission: Boolean(req.viaPendingMission) }));
+  const updated = taskReportService.commitAtomic(req.miniAppUser, reportGate, () => { const closed = attendanceRepository.closeLastSegment(record.id, req.ip, extractDeviceInfo(req), { viaPendingMission: Boolean(req.viaPendingMission) }); if (idleMinutes > 0) { attendanceRepository.addIdleMinutes(record.id, idleMinutes); return attendanceRepository.findById(record.id); } return closed; });
   if (req.viaPendingMission) pendingMissionService.flagPendingMissionOutside({ userId: req.miniAppUser.id, record: updated, requestId: req.viaPendingMission, action: 'check_out' });
   auditRepository.logEvent({
     userId: req.miniAppUser.id,
     action: 'check_out',
     ipAddress: req.ip,
-    details: { source: 'miniapp' },
+    details: idleMinutes > 0 ? { source: 'miniapp', idleMinutes } : { source: 'miniapp' },
   });
   if (reportGate.report) {
     auditRepository.logEvent({ userId: req.miniAppUser.id, action: 'daily_report_submitted', ipAddress: req.ip, details: { source: 'miniapp_check_out', date: reportGate.date, answers: reportGate.report.answers.length, extra: reportGate.report.extras.length } });

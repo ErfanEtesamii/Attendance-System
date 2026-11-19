@@ -1227,3 +1227,19 @@ textarea.pl-focus-input { resize: vertical; min-height: 72px; }
 #plan-body.pl-step-anim > .pl-task-focus { animation: pl-focus-pop .5s cubic-bezier(.2, .9, .3, 1.15) backwards .05s; }
 @keyframes pl-focus-pop { from { opacity: 0; transform: translateY(24px) scale(.94); } }
 @media (prefers-reduced-motion: reduce) { #plan-body.pl-step-anim > .pl-task-focus { animation: none; } .pl-focus-input { transition: none; } }
+
+/* ---------- پرسش تایم پرت هنگام خروج ---------- */
+.idle-sheet { text-align: center; }
+.idle-body { display: grid; gap: 14px; }
+.idle-sub { margin: 0; color: var(--hint); font-size: var(--fs-sm); line-height: 1.9; }
+.idle-actions { display: grid; gap: 10px; }
+.idle-actions .btn { width: 100%; min-height: 50px; font-size: var(--fs-md); font-weight: 700; border-radius: 14px; }
+.idle-yes { background: var(--orange); border-color: var(--orange); color: #fff; }
+.idle-cancel { appearance: none; background: none; border: 0; color: var(--hint); font: inherit; font-size: var(--fs-sm); padding: 6px; cursor: pointer; }
+.idle-picker { display: flex; align-items: center; justify-content: center; gap: 14px; }
+.idle-step { appearance: none; width: 52px; height: 52px; border-radius: 50%; border: 1px solid var(--border); background: var(--card-bg-2); color: var(--text); font: inherit; font-size: 1.6rem; line-height: 1; cursor: pointer; }
+.idle-step:active { transform: scale(.94); }
+.idle-value { min-width: 170px; font-size: 1.35rem; font-weight: 800; padding: 10px 14px; border-radius: 14px; background: var(--card-bg-2); border: 1px solid var(--border); }
+.idle-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.idle-chip { appearance: none; border: 1px solid var(--border); background: var(--card-bg-2); color: var(--text); font: inherit; font-size: var(--fs-sm); padding: 8px 14px; border-radius: 999px; cursor: pointer; }
+.idle-chip.on { border-color: var(--orange); box-shadow: 0 0 0 1px var(--orange) inset; font-weight: 700; }
