@@ -62,3 +62,36 @@
 }
 @media (max-width: 760px) { .ex-grid { grid-template-columns: minmax(0, 1fr); } .ex-search { flex: 1 1 100%; } .ex-tabs { flex-basis: 100%; } .ex-btn { flex: 1 1 auto; } }
 @media (prefers-reduced-motion: reduce) { .ex-group { animation: none; } .ex-card { transition: none; } }
+
+/* ===== نسخه‌ی گرم: هر دسته یک رنگ گرم مخصوص خودش دارد، کارت‌ها توضیح کامل «چه چیزی می‌گیرید» دارند ===== */
+.ex-group[data-cat="attendance"], .ex-card[data-cat="attendance"] { --tone: #d9822b; }
+.ex-group[data-cat="perf"], .ex-card[data-cat="perf"] { --tone: #c9a227; }
+.ex-group[data-cat="tasks"], .ex-card[data-cat="tasks"] { --tone: #c8553d; }
+.ex-group[data-cat="leave"], .ex-card[data-cat="leave"] { --tone: #3f9a7a; }
+.ex-group[data-cat="people"], .ex-card[data-cat="people"] { --tone: #b8607a; }
+.ex-group[data-cat="week"], .ex-card[data-cat="week"] { --tone: #8a6fc7; }
+.ex-group[data-cat="audit"], .ex-card[data-cat="audit"] { --tone: #8b7355; }
+.ex-group-title span { background: linear-gradient(180deg, var(--tone, var(--brand)), color-mix(in srgb, var(--tone, var(--brand)) 40%, var(--card))); }
+.ex-group-title { padding: 8px 14px 8px 12px; border-radius: var(--r-md); background: linear-gradient(90deg, color-mix(in srgb, var(--tone, var(--brand)) 12%, var(--card)), transparent); }
+.ex-card { gap: 12px; padding: 0 0 16px; overflow: hidden; background: var(--card); border-color: color-mix(in srgb, var(--tone, var(--brand)) 22%, var(--border)); }
+.ex-card:hover { border-color: color-mix(in srgb, var(--tone, var(--brand)) 50%, var(--border)); box-shadow: 0 16px 32px -20px color-mix(in srgb, var(--tone, var(--brand)) 70%, transparent); }
+.ex-card > * { margin-inline: 18px; }
+.ex-card > .ex-head { margin: 0; padding: 16px 18px 14px; background: linear-gradient(135deg, color-mix(in srgb, var(--tone, var(--brand)) 16%, var(--card)), color-mix(in srgb, var(--tone, var(--brand)) 4%, var(--card))); border-bottom: 1px solid color-mix(in srgb, var(--tone, var(--brand)) 18%, var(--border)); }
+.ex-ico { color: var(--tone, var(--brand)); background: var(--card); border: 1px solid color-mix(in srgb, var(--tone, var(--brand)) 35%, transparent); box-shadow: 0 8px 14px -10px color-mix(in srgb, var(--tone, var(--brand)) 80%, transparent); }
+.ex-ttl h3 { font-size: 1.08rem; }
+
+.ex-info { display: grid; gap: 10px; }
+.ex-gives b, .ex-use b { display: block; margin-bottom: 6px; font-size: var(--fs-xs); font-weight: 800; color: var(--tone, var(--brand)); letter-spacing: 0; }
+.ex-use b { display: inline; margin: 0; }
+.ex-gives ul { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.ex-gives li { font-size: var(--fs-xs); font-weight: 600; padding: 4px 10px; border-radius: 999px; color: var(--text); background: color-mix(in srgb, var(--tone, var(--brand)) 10%, var(--card)); border: 1px solid color-mix(in srgb, var(--tone, var(--brand)) 22%, transparent); }
+.ex-use { margin: 0; font-size: var(--fs-sm); line-height: 1.9; color: var(--hint); }
+.ex-note { display: flex; align-items: flex-start; gap: 6px; margin: 0; padding: 8px 12px; border-radius: var(--r-md); font-size: var(--fs-xs); line-height: 1.8; color: var(--text); background: color-mix(in srgb, var(--yellow) 9%, var(--card)); border: 1px dashed color-mix(in srgb, var(--yellow) 35%, transparent); }
+.ex-note svg { flex: none; margin-top: 3px; color: var(--yellow); }
+
+.ex-filter-label { font-size: var(--fs-xs); font-weight: 800; color: var(--hint); display: flex; align-items: center; gap: 8px; }
+.ex-filter-label::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, color-mix(in srgb, var(--tone, var(--brand)) 30%, var(--border)), transparent); }
+.ex-form { padding: 12px; border-radius: var(--r-md); background: color-mix(in srgb, var(--tone, var(--brand)) 5%, var(--card)); border: 1px solid color-mix(in srgb, var(--tone, var(--brand)) 14%, var(--border)); }
+.ex-form:empty { display: none; }
+.ex-btn-main { background: linear-gradient(135deg, var(--brand-deep, #322c79), #4b3fc0); }
+.ex-fmt { margin-top: 0; margin-bottom: 0; font-size: var(--fs-xs); color: var(--hint); line-height: 1.8; }

@@ -61,6 +61,28 @@
       desc: 'لاگ غیرقابل‌ویرایش عملیات حساس؛ جدیدترین رویدادها اول.' },
   ];
 
+
+  // توضیح کامل هر خروجی: gives = آنچه داخل فایل می‌گیرید، use = کاربردش، note = نکته (اختیاری)
+  const INFO = {
+    attendance: { gives: ['تاریخ شمسی هر روز', 'ساعت ورود و خروج', 'مجموع استراحت', 'ساعت مفید', 'دقیقه‌ی تأخیر', 'زودتر رفتن', 'اضافه‌کاری', 'وضعیت و پرچم‌ها'], use: 'بررسی دقیق تردد روزانه، رفع اختلاف با کارمند و تهیه‌ی مستند برای حسابداری.' },
+    reports: { gives: ['روزهای حضور', 'جمع ساعت مفید', 'تعداد و دقایق تأخیر', 'روزهای غیبت', 'اضافه‌کاری'], use: 'یک نگاه سریع به عملکرد همه‌ی کارمندان در یک بازه؛ مناسب جلسه‌ی مدیریتی.' },
+    monthly: { gives: ['خلاصه‌ی ماه هر کارمند', 'ریز روزهای ماه (شیت جدا)', 'جمع‌های ماهانه', 'مرخصی و تعطیلی'], use: 'گزارش پایان ماه برای بایگانی یا ارسال به مدیر.', note: 'در Excel خلاصه و ریز روزها در شیت‌های جدا قرار می‌گیرند.' },
+    performance: { gives: ['امتیاز و شاخص‌های عملکرد', 'پایبندی به ساعت', 'تسک‌های انجام‌شده', 'ریز روزها'], use: 'مقایسه‌ی کارمندان و ارزیابی دوره‌ای.' },
+    payroll: { gives: ['نرخ ساعتی', 'ساعت مفید ماه', 'مبلغ محاسبه‌شده', 'مقایسه با ماه قبل', 'ریز روزها'], use: 'ورودی مستقیم برای محاسبه‌ی حقوق و دستمزد.', note: 'فقط برای نقش‌هایی که دسترسی «حقوق» دارند دیده می‌شود.' },
+    taskreport: { gives: ['عنوان و وضعیت هر تسک', 'توضیح کارمند', 'علت انجام‌نشدن', 'خلاصه‌ی هر فرد و تیم'], use: 'ارزیابی خروجی کاری و پیگیری تسک‌های عقب‌افتاده.' },
+    teamreports: { gives: ['متن گزارش پایان روز', 'نام کارمند', 'تاریخ ثبت'], use: 'مرور گزارش‌های روزانه‌ی تیم بدون ورق‌زدن تک‌تک آن‌ها.' },
+    leave: { gives: ['نوع (مرخصی/مأموریت)', 'تاریخ شروع و پایان', 'وضعیت', 'تصمیم‌گیرنده', 'توضیحات'], use: 'کنترل مرخصی‌های استفاده‌شده و درخواست‌های در انتظار.' },
+    balances: { gives: ['استحقاق سالانه', 'مانده از سال قبل', 'تعدیل‌ها', 'مصرف‌شده', 'مانده‌ی فعلی'], use: 'تسویه‌ی مرخصی و برنامه‌ریزی مرخصی‌های سال.' },
+    users: { gives: ['نام و کد پرسنلی', 'دپارتمان', 'نقش', 'سرپرست', 'فعال/غیرفعال'], use: 'فهرست پرسنل برای منابع انسانی یا ورود به سیستم‌های دیگر.' },
+    shifts: { gives: ['ساعت شروع و پایان', 'مهلت‌ها', 'روزهای کاری', 'تعداد کارمندان شیفت'], use: 'مستندسازی ساختار شیفت‌های سازمان.' },
+    holidays: { gives: ['تاریخ شمسی', 'عنوان', 'نوع (رسمی/شرکتی)'], use: 'تقویم تعطیلات سال برای اطلاع‌رسانی.' },
+    disputes: { gives: ['کارمند و تاریخ رکورد', 'وضعیت اعتراض', 'تعداد پیام‌ها', 'نتیجه'], use: 'پیگیری اعتراض‌های بازمانده و بررسی تکرار آن‌ها.' },
+    userweek: { gives: ['برنامه‌ی هفته', 'تردد هر روز', 'مرخصی', 'تسک‌ها'], use: 'مرور یک هفته‌ی کامل یک کارمند.', note: 'قالب «متن» برای چسباندن در تلگرام یا پیام‌رسان مناسب است.' },
+    myweek: { gives: ['برنامه‌ی هفته‌ی شما', 'تردد', 'مرخصی', 'تسک‌ها'], use: 'مرور و بایگانی هفته‌ی خودتان.', note: 'قالب «متن» برای چسباندن در پیام‌رسان مناسب است.' },
+    audit: { gives: ['زمان رویداد', 'عامل و هدف', 'نوع عملیات', 'جزئیات'], use: 'ردیابی تغییرات حساس و بازرسی امنیتی.' },
+  };
+  const FORMAT_HELP = { xlsx: 'Excel: قالب‌بندی‌شده و آماده‌ی چاپ', csv: 'CSV: ساده برای نرم‌افزارهای دیگر', txt: 'متن: برای چسباندن در پیام‌رسان' };
+
   const ui = { cat: 'all', q: '' };
 
   const parseSel = (spec) => { const i1 = spec.indexOf(':'); const i2 = spec.indexOf(':', i1 + 1); const i3 = spec.indexOf(':', i2 + 1); return { name: spec.slice(i1 + 1, i2), label: spec.slice(i2 + 1, i3), opts: JSON.parse(spec.slice(i3 + 1) || '[]') }; };
@@ -93,15 +115,26 @@
     return '';
   }
 
-  const cardHtml = (it, ctx) => `
-    <section class="ex-card" data-id="${it.id}" data-cat="${it.cat}" data-text="${esc(`${it.title} ${it.desc}`.toLowerCase())}">
+  const cardHtml = (it, ctx) => {
+    const info = INFO[it.id] || { gives: [], use: '' };
+    const formats = it.formats || F3.slice();
+    return `
+    <section class="ex-card" data-id="${it.id}" data-cat="${it.cat}" data-text="${esc(`${it.title} ${it.desc} ${info.gives.join(' ')}`.toLowerCase())}">
       <header class="ex-head">
         <span class="ex-ico" aria-hidden="true">${AP.icon(it.icon)}</span>
         <div class="ex-ttl"><h3>${esc(it.title)}</h3><p>${esc(it.desc)}</p></div>
       </header>
+      <div class="ex-info">
+        ${info.gives.length ? `<div class="ex-gives"><b>داخل فایل چه می‌بینید؟</b><ul>${info.gives.map((g) => `<li>${esc(g)}</li>`).join('')}</ul></div>` : ''}
+        ${info.use ? `<p class="ex-use"><b>به درد چه کاری می‌خورد؟</b> ${esc(info.use)}</p>` : ''}
+        ${info.note ? `<p class="ex-note">${AP.icon('info', 14)} ${esc(info.note)}</p>` : ''}
+      </div>
+      ${it.fields.length ? '<div class="ex-filter-label">فیلتر خروجی</div>' : ''}
       <form class="ex-form" autocomplete="off">${it.fields.map((f) => fieldHtml(f, ctx)).join('')}</form>
       <footer class="ex-actions" data-actions></footer>
+      <p class="ex-fmt">${formats.map(([f]) => esc(FORMAT_HELP[f] || '')).filter(Boolean).join(' · ')}</p>
     </section>`;
+  };
 
   function paramsOf(form) {
     const out = {};
