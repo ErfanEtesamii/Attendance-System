@@ -19,7 +19,8 @@ const { getCalendarDay } = require('../../../engine/calendarService');
 const { todayDateString } = require('../../../utils/serverTime');
 const { isoDateToJalaliString } = require('../../../utils/jalali');
 const { sendMessage } = require('../../../bot/notifier');
-const { sendTable, exportAuditFields } = require('../../../utils/xlsx'); // S5-1a: پیش‌فرض CSV؛ ?format=xlsx ⇒ xlsx (بدون exceljs ⇒ CSV + اعلام fallback)
+const { sendSheets, exportAuditFields } = require('../../../utils/xlsx');
+const { withCard } = require('../../../utils/exportCards'); // S5-1a: پیش‌فرض CSV؛ ?format=xlsx ⇒ xlsx (بدون exceljs ⇒ CSV + اعلام fallback)
 const { buildClearCookie } = require('../../../utils/sessionCookie');
 const { scopedUserIds, canAccessUser, parseRange, userBrief, enrichRecord, audit, auditChange, aggregateRecords, requireReason } = require('./common');
 const { userView } = require('../../../utils/auditViews');
@@ -162,15 +163,20 @@ router.get('/admin/users/export', requirePermission('users.read'), (req, res) =>
     u.created_at ? (() => { try { return isoDateToJalaliString(String(u.created_at).slice(0, 10)); } catch (_) { return ''; } })() : '',
   ]);
 
-  return sendTable(
-    req,
-    res,
-    'employees.csv',
-    ['نام کارمند', 'کد پرسنلی', 'دپارتمان', 'نقش', 'آیدی تلگرام', 'وضعیت', 'شناسه‌ی سیستمی', 'مدیر مستقیم', 'زمان ایجاد', 'تاریخ ایجاد (شمسی)'],
-    rows,
+  // CSV: جدول تخت قبلی. xlsx (کارتکس): کادر اطلاعاتی (تعداد کل/فعال/غیرفعال و نقش‌ها) + جدول؛ زمان ایجاد میلادی حذف (شمسی کافی است)
+  const CSV_HEADERS = ['نام کارمند', 'کد پرسنلی', 'دپارتمان', 'نقش', 'آیدی تلگرام', 'وضعیت', 'شناسه‌ی سیستمی', 'مدیر مستقیم', 'زمان ایجاد', 'تاریخ ایجاد (شمسی)'];
+  const sheets = () => {
+    const keep = [0, 1, 2, 3, 4, 5, 6, 7, 9];
+    const count = (fn) => rows.filter(fn).length;
+    const roles = [...new Set(rows.map((r) => r[3]))].map((role) => `${role}:  ${count((r) => r[3] === role)}`);
+    return [withCard({ name: 'کارمندان', headers: keep.map((i) => CSV_HEADERS[i]), rows: rows.map((r) => keep.map((i) => r[i])) },
+      { title: 'فهرست کارمندان', lines: [`تعداد کل:  ${rows.length}`, `فعال:  ${count((r) => r[5] === 'فعال')}`, `غیرفعال:  ${count((r) => r[5] === 'غیرفعال')}`, ...roles], footer: false })];
+  };
+  return sendSheets(req, res, 'employees.csv', sheets, {
+    csv: { headers: CSV_HEADERS, rows },
     // S5-1c: خروجی فهرست کارمندان (شامل آیدی تلگرام) تا حالا audit نداشت
-    { onExport: (info) => audit(req, 'users_exported', { count: rows.length, ...exportAuditFields(info) }) }
-  );
+    onExport: (info) => audit(req, 'users_exported', { count: rows.length, ...exportAuditFields(info) }),
+  });
 });
 
 // ---------- پروفایل یک کارمند ----------

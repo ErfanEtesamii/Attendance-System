@@ -13,13 +13,21 @@ const week = {
 };
 
 describe('خروجی برنامه‌ی هفتگی', () => {
-  test('سه شیت دارد، روز بی‌تسک را نگه می‌دارد و تسک حذف‌شده را نمی‌آورد', () => {
+  test('کارتکس: یک شیت با کادر مشخصات، جدول روزها و بخش تسک‌ها؛ روز بی‌تسک می‌ماند و تسک حذف‌شده نمی‌آید', () => {
     const sheets = buildWeekSheets(week);
-    assert.deepEqual(sheets.map((s) => s.name), ['برنامه‌ی هفته', 'خلاصه‌ی روزها', 'خلاصه‌ی هفته']);
-    assert.equal(sheets[0].rows.length, 2);
-    assert.equal(sheets[0].rows[0][6], '=خطرناک', 'خنثی‌سازی فرمول وظیفه‌ی utils/xlsx است');
-    assert.equal(sheets[0].rows[1][6], '');
-    assert.ok(sheets.every((s) => s.rows.every((r) => r.length === s.headers.length)));
+    assert.deepEqual(sheets.map((s) => s.name), ['کارمند نمونه']);
+    const sheet = sheets[0];
+    assert.equal(sheet.rows.length, 2, 'ردیف هر روز هفته');
+    assert.equal(sheet.card.lines[0][0][0], 'کارمند:  کارمند نمونه');
+    assert.ok(sheet.card.lines.flat().some((c) => /تکمیل تسک‌ها/.test(c[0])), 'خلاصه‌ی هفته در کادر بالا');
+    const tasks = sheet.extra[0];
+    assert.equal(tasks.title, 'تسک‌های هفته');
+    assert.equal(tasks.rows.length, 2);
+    assert.equal(tasks.rows[0][4], '=خطرناک', 'خنثی‌سازی فرمول وظیفه‌ی utils/xlsx است');
+    assert.equal(tasks.rows[1][4], '');
+    assert.ok(![sheet, tasks].some((t) => t.headers.includes('نام کارمند')), 'نام کارمند در ردیف‌ها تکرار نمی‌شود');
+    assert.ok([sheet, tasks].every((s) => s.rows.every((r) => r.length === s.headers.length)));
+    assert.equal(sheets.csv.rows.length, 2, 'CSV همان جدول تخت قبلی');
   });
 
   test('متن خوانا شامل نشان فوری، وضعیت و خلاصه است', () => {

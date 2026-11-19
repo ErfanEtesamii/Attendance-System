@@ -32,12 +32,19 @@ describe('گزارش کامل تسک‌ها', () => {
   });
   after(cleanup);
 
+  // کارتکس: «ریز تسک‌ها» برای هر کارمند در شیت اختصاصی خودش (بدون ستون نام/دپارتمان)؛ خلاصه‌ها تخت‌اند
+  const perPerson = (r) => r.sheets.filter((x) => x.tableTitle === 'ریز تسک‌ها');
+  const detail = (r) => perPerson(r).flatMap((x) => x.rows);
+  const byName = (r, n) => r.sheets.find((x) => x.name === n);
+
   test('ریز تسک‌ها: وضعیت، توضیح انجام، علت و پاسخ‌نداده‌ها', () => {
     const r = svc.buildTaskReportSheets(boss, range, { now: NOW });
     assert.ok(r.ok, JSON.stringify(r));
-    assert.deepEqual(r.sheets.map((s) => s.name), ['ریز تسک‌ها', 'خلاصه افراد', 'خلاصه تیم‌ها']);
-    const rows = r.sheets[0].rows;
-    const H = r.sheets[0].headers;
+    assert.deepEqual(r.sheets.slice(0, 2).map((s) => s.name), ['خلاصه افراد', 'خلاصه تیم‌ها']);
+    assert.ok(perPerson(r).length >= 2, 'یک شیت برای هر کارمند');
+    assert.ok(!perPerson(r)[0].headers.includes('نام') && !perPerson(r)[0].headers.includes('دپارتمان'), 'بدون تکرار نام/دپارتمان');
+    const rows = detail(r);
+    const H = perPerson(r)[0].headers;
     const col = (n) => H.indexOf(n);
     assert.equal(rows.length, 4, 'سه تسک پاسخ‌داده + یک پاسخ‌نداده؛ فقط تیم سرپرست');
     const done = rows.find((x) => x[col('تسک')] === 'الف');
@@ -53,29 +60,29 @@ describe('گزارش کامل تسک‌ها', () => {
 
   test('خلاصه‌ی افراد و تیم‌ها + ردیف «کل مجموعه» برای ادمین', () => {
     const r = svc.buildTaskReportSheets(admin, range, { now: NOW });
-    const teams = r.sheets[2].rows;
+    const teams = byName(r, 'خلاصه تیم‌ها').rows;
     const total = teams[teams.length - 1];
     assert.equal(total[0], 'کل مجموعه');
     assert.equal(total[2], 5, 'کل تسک‌ها');
     assert.equal(total[3], 2, 'انجام‌شده');
     assert.equal(total[6], 1, 'پاسخ داده نشده');
-    const ali = r.sheets[1].rows.find((x) => x[0] === 'علی');
+    const ali = byName(r, 'خلاصه افراد').rows.find((x) => x[0] === 'علی');
     assert.deepEqual(ali.slice(3, 9), [3, 1, 0, 1, 1, 33]);
     assert.ok(teams.some((x) => x[0] === 'تیم سرپرست' && x[1] === 2));
   });
 
   test('فیلتر تیم/فرد و اسکوپ', () => {
     const team = svc.buildTaskReportSheets(admin, { ...range, managerId: boss.id }, { now: NOW });
-    assert.equal(team.sheets[0].rows.length, 4);
+    assert.equal(detail(team).length, 4);
     const one = svc.buildTaskReportSheets(admin, { ...range, userId: b.id }, { now: NOW });
-    assert.equal(one.sheets[0].rows.length, 1);
+    assert.equal(detail(one).length, 1);
     assert.equal(svc.buildTaskReportSheets(boss, { ...range, managerId: admin.id }, { now: NOW }).ok, false, 'سرپرست تیم دیگری را نمی‌بیند');
-    assert.equal(svc.buildTaskReportSheets(a, range, { now: NOW }).sheets[0].rows.length, 3, 'کارمند فقط خودش');
+    assert.equal(detail(svc.buildTaskReportSheets(a, range, { now: NOW })).length, 3, 'کارمند فقط خودش');
   });
 
   test('روزهای آینده «پاسخ داده نشده» نمی‌شوند و Excel ساخته می‌شود', () => {
     const early = svc.buildTaskReportSheets(admin, range, { now: new Date('2026-08-02T08:00:00Z') });
-    assert.ok(!early.sheets[0].rows.some((x) => x[8] === 'پاسخ داده نشده'));
+    assert.ok(!detail(early).some((x) => x.includes('پاسخ داده نشده')));
     if (!xlsx.isAvailable()) return; // exceljs نصب نیست ⇒ فقط ساخت داده بررسی می‌شود (route در این حالت CSV می‌دهد)
     assert.ok(xlsx.buildWorkbook({ sheets: svc.buildTaskReportSheets(admin, range, { now: NOW }).sheets }));
   });

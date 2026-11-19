@@ -1,5 +1,6 @@
 // خروجی برنامه‌ی هفتگی: فقط داده‌ی آماده‌ی getWeek/getMyWeek را به قالب قابل‌ارسال تبدیل می‌کند.
 // اینجا هیچ محاسبه‌ی حضور، برنامه یا تسک تکرار نمی‌شود.
+const { autoLines, keptColumns, pick } = require('../utils/exportCards');
 const STATUS = { done: 'انجام شد', partial: 'ناقص', not_done: 'انجام نشد', no_answer: 'بدون پاسخ' };
 const SOURCE = { planned: 'برنامه‌ای', everyday: 'هرروزه', rescheduled: 'منتقل‌شده', answered_only: 'پاسخ ثبت‌شده' };
 const icon = { done: '✅', partial: '⚠️', not_done: '❌', no_answer: '⏳' };
@@ -26,11 +27,24 @@ function buildWeekSheets(week) {
     ['تکمیل تسک‌ها (درصد)', value(t.completionPercent)], ['تسک انجام‌شده', value(t.done)], ['تسک ناقص', value(t.partial)], ['تسک انجام‌نشده', value(t.notDone)], ['تسک بدون پاسخ', value(t.noAnswer)],
     ['ساعت مفید (دقیقه)', value(a.usefulMinutes)], ['تأخیر (روز)', value(a.lateDays)], ['اضافه‌کاری (دقیقه)', value(a.overtimeMinutes)], ['غیبت (روز)', value(a.absentDays)],
   ];
-  return [
-    { name: 'برنامه‌ی هفته', headers: planHeaders, rows: planRows },
-    { name: 'خلاصه‌ی روزها', headers: ['تاریخ شمسی', 'تاریخ میلادی', 'روز هفته', 'نوع روز', 'ساعت برنامه', 'ورود', 'خروج', 'تأخیر (دقیقه)', 'ساعت مفید (دقیقه)', 'اضافه‌کاری (دقیقه)'], rows: dailyRows },
-    { name: 'خلاصه‌ی هفته', headers: ['عنوان', 'مقدار'], rows: summaryRows },
-  ];
+  // کارتکس هفته: یک شیت برای این کارمند؛ کادر مشخصات + خلاصه‌ی هفته بالا، جدول اصلی = روزهای هفته (ورود/خروج/تأخیر/مفید)،
+  // و بخش زیرین = تسک‌های هفته. نام کارمند و تکرار «خلاصه‌ی هفته» در شیت جدا حذف شد. CSV همان جدول تخت برنامه می‌ماند.
+  const daysSheet0 = { headers: ['تاریخ شمسی', 'تاریخ میلادی', 'روز هفته', 'نوع روز', 'ساعت برنامه', 'ورود', 'خروج', 'تأخیر (دقیقه)', 'ساعت مفید (دقیقه)', 'اضافه‌کاری (دقیقه)'], rows: dailyRows };
+  const daysSheet = pick(daysSheet0, keptColumns(daysSheet0.headers)); // تاریخ میلادی تکراری حذف
+  const planNoName = pick({ headers: planHeaders, rows: planRows }, keptColumns(planHeaders, ['نام کارمند']));
+  const taskCols = planNoName.headers;
+  const lines = [`کارمند:  ${user.fullName || ''}`, ...(user.personnelCode ? [`کد پرسنلی:  ${user.personnelCode}`] : []), ...(user.department ? [`دپارتمان:  ${user.department}`] : [])]
+    .concat(summaryRows.filter((r) => r[0] !== 'نام کارمند' && r[1] !== '' && r[1] !== null && r[1] !== undefined).map((r) => `${r[0]}:  ${r[1]}`));
+  const out = [{
+    name: user.fullName || 'هفته',
+    headers: daysSheet.headers,
+    rows: daysSheet.rows,
+    tableTitle: 'خلاصه‌ی روزها',
+    card: { title: `برنامه و تردد هفتگی — ${value(week.week && week.week.jalaliStart)} تا ${value(week.week && week.week.jalaliEnd)}`, lines: autoLines(lines, daysSheet.headers.length) },
+    extra: planRows.length ? [{ title: 'تسک‌های هفته', headers: taskCols, rows: planNoName.rows }] : [],
+  }];
+  out.csv = { headers: planHeaders, rows: planRows };
+  return out;
 }
 
 function buildWeekText(week) {

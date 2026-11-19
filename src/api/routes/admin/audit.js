@@ -7,7 +7,8 @@ const router = express.Router();
 const { requirePermission } = require('../../../middleware/permissions');
 const usersRepository = require('../../../repositories/usersRepository');
 const auditRepository = require('../../../repositories/auditRepository');
-const { sendTable, exportAuditFields } = require('../../../utils/xlsx'); // S5-1a: پیش‌فرض CSV؛ ?format=xlsx ⇒ xlsx (بدون exceljs ⇒ CSV + اعلام fallback)
+const { sendSheets, exportAuditFields } = require('../../../utils/xlsx'); // S5-1a: پیش‌فرض CSV؛ ?format=xlsx ⇒ xlsx (بدون exceljs ⇒ CSV + اعلام fallback)
+const { withCard } = require('../../../utils/exportCards');
 const { instantToJalaliString } = require('../../../utils/jalali');
 const settingsRepository = require('../../../repositories/settingsRepository');
 const { audit } = require('./common');
@@ -99,7 +100,16 @@ router.get('/admin/audit-log/export', requirePermission('audit.read'), (req, res
   const headers = ['ردیف', 'زمان', 'تاریخ شمسی', 'کارمند', 'عملیات', 'IP', 'جزئیات'];
   if (includeArchive) headers.push('منبع');
   // S5-1c: خروجی خودِ audit هم audit می‌شود (action جدا از لیست؛ قالب واقعاً تحویل‌شده و تعداد ردیف‌ها)
-  return sendTable(req, res, 'audit-log.csv', headers, rows, {
+  // CSV: جدول تخت قبلی. xlsx (کارتکس): کادر اطلاعاتی (تعداد، فیلترها، شامل آرشیو) + جدول؛ ستون «زمان» میلادی حذف (تاریخ و ساعت شمسی کافی است)
+  const sheets = () => {
+    const keep = headers.map((_, i) => i).filter((i) => i !== 1);
+    const f = parsed.filters || {};
+    const lines = [`تعداد رویداد:  ${rows.length}`, `شامل آرشیو:  ${includeArchive ? 'بله' : 'خیر'}`];
+    for (const [k, label] of [['userId', 'کارمند (شناسه)'], ['action', 'عملیات'], ['from', 'از'], ['to', 'تا'], ['q', 'جستجو']]) if (f[k]) lines.push(`${label}:  ${f[k]}`);
+    return [withCard({ name: 'گزارش رویدادها', headers: keep.map((i) => headers[i]), rows: rows.map((r) => keep.map((i) => r[i])) }, { title: 'گزارش رویدادها (ممیزی)', lines, footer: false })];
+  };
+  return sendSheets(req, res, 'audit-log.csv', sheets, {
+    csv: { headers, rows },
     onExport: (info) => audit(req, 'audit_log_exported', { count: rows.length, includeArchive, ...exportAuditFields(info) }),
   });
 });

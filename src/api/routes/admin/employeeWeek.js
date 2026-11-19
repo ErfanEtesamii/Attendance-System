@@ -26,7 +26,7 @@ function exportWeek(req, res, result) {
     return res.send(buildWeekText(result));
   }
   const sheets = buildWeekSheets(result);
-  return sendSheets(req, res, `${filename}.csv`, sheets, { onExport: audit });
+  return sendSheets(req, res, `${filename}.csv`, sheets, { csv: sheets.csv, onExport: audit });
 }
 
 // باید پیش از route معمولی ثبت شود تا مسیر خروجی مستقل و روشن بماند.

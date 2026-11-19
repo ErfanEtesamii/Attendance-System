@@ -5,6 +5,7 @@
 // قالب: مثل monthlyExportService هر شیت با «تعریف ستون‌ها» [header، توضیح، تابع مقدار] ساخته می‌شود و شیت «راهنما» از همان تعریف‌ها تولید می‌شود.
 // مدت‌ها هم «دقیقه» (عدد قابل جمع) و هم «ساعت:دقیقه» (متن)؛ مبلغ‌ها به تومان (نرخ ساعتی به هزار تومان).
 
+const { splitByEmployee, withCard } = require('../utils/exportCards');
 const { isoDateToJalaliString } = require('../utils/jalali');
 const { minutesToHHMM } = require('../api/routes/admin/common');
 const { DAY_STATUS } = require('./monthlyExportService');
@@ -165,7 +166,13 @@ function buildPayrollSheets(data, opts = {}) {
     ],
   };
   const guide = guideSheet([['حقوق کارکنان', PAY_SUMMARY], ['ریز روزانه حقوق', PAY_DAILY], ['دپارتمان‌ها', PAY_DEPT], ['روزهای خارج‌شده', PAY_EXCLUDED]]);
-  return [summary, daily, dept, excluded, meta, guide];
+  // کارتکس: جدول اصلی هر کارمند (ریز روزانه‌ی حقوق + روزهای خارج‌شده) در شیت اختصاصی خودش؛ بدون تکرار نام/کد/دپارتمان در ردیف‌ها
+  const perPerson = splitByEmployee([daily, excluded], { title: `کارتکس حقوق — ${data.label}` });
+  return [
+    withCard(summary, { title: `حقوق کارکنان — ${data.label}`, lines: [`ماه:  ${data.label}`, `تعداد کارمند:  ${t.employees ?? people.length}`, `جمع حقوق (تومان):  ${t.amountToman ?? 0}`, `کارمند بدون نرخ:  ${t.withoutRate ?? 0}`], footer: false }),
+    withCard(dept, { title: 'خلاصه‌ی دپارتمان‌ها', lines: [`ماه:  ${data.label}`, `تعداد دپارتمان:  ${depts.length}`], footer: false }),
+    ...perPerson, meta, guide,
+  ];
 }
 
 // =====================================================================================
@@ -400,7 +407,15 @@ function buildPerformanceSheets(data, opts = {}) {
     ['خلاصه عملکرد', summaryCols], ['ریز روزانه', dailyCols], ['روند روزانه تیم', PERF_TREND], ['دپارتمان‌ها', PERF_DEPT],
     ['روز هفته', PERF_WEEKDAY], ['تسک‌ها و علت‌ها', PERF_TASKS], ['مرخصی و مأموریت', PERF_LEAVE],
   ]);
-  return [summary, daily, trendSheet, deptSheet, weekdaySheet, tasksSheet, leaveSheet, meta, guide];
+  // کارتکس: ریز روزانه/روز هفته/تسک/مرخصی هر کارمند در شیت اختصاصی خودش؛ بدون تکرار نام/کد/دپارتمان در ردیف‌ها
+  const rangeText = `از ${jalali(r.from)} تا ${jalali(r.to)}`;
+  const perPerson = splitByEmployee([daily, weekdaySheet, tasksSheet, leaveSheet], { title: `کارتکس عملکرد — ${rangeText}`, drop: ['ساعت ورود', 'ساعت خروج'] }) // ورود/خروج روزبه‌روز در خروجی «رکوردهای تردد» است;
+  return [
+    withCard(summary, { title: `عملکرد کارکنان — ${rangeText}`, lines: [`بازه:  ${rangeText}`, `تعداد کارمند:  ${people.length}`, `شامل حقوق:  ${withPay ? 'بله' : 'خیر'}`], footer: false }),
+    withCard(trendSheet, { title: 'روند روزانه‌ی تیم', lines: [`بازه:  ${rangeText}`], footer: false }),
+    withCard(deptSheet, { title: 'خلاصه‌ی دپارتمان‌ها', lines: [`بازه:  ${rangeText}`], footer: false }),
+    ...perPerson, meta, guide,
+  ];
 }
 
 module.exports = { buildPayrollSheets, buildPerformanceSheets, WEEKDAYS };

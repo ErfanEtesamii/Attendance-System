@@ -11,6 +11,7 @@ const { planSatisfied } = require('./planGateService');
 const teamReports = require('./teamReportsService');
 const { REASON_LABELS, STATUS_LABELS } = require('../content/reportLabels');
 const { isoDateToJalaliString } = require('../utils/jalali');
+const { splitByEmployee, withCard } = require('../utils/exportCards');
 const { todayInZone } = require('../utils/time');
 const { addDays, dayNumber, dayDiff } = require('../utils/shiftDay');
 
@@ -41,6 +42,18 @@ function scoped(viewer, userId) {
 }
 
 /** @returns {{ ok, from, to, sheets: Array<{name, headers, rows}>, count }} */
+// کارتکس: شیت‌های خلاصه (هر ردیف یک نفر/تیم) تخت می‌مانند و کادر اطلاعاتی بالا می‌گیرند؛ شیت‌های ریز (تسک/برنامه/گزارش روزانه) به‌جای تکرار
+// نام و دپارتمان در هر ردیف، برای هر کارمند یک شیت جدا می‌شوند.
+function cardTaskSheets(list, { from, to, summary, keyed, title, flat, csvOf }) {
+  const rangeText = `از ${isoDateToJalaliString(from)} تا ${isoDateToJalaliString(to)}`;
+  const flats = list.filter((x) => (flat ? flat.includes(x.name) : x.name === summary)).map((x) => withCard(x, { title: `${title} — ${x.name}`, lines: [`بازه:  ${rangeText}`, `تعداد ردیف:  ${x.rows.length}`], footer: false }));
+  const per = splitByEmployee(list.filter((x) => keyed.includes(x.name)), { title: `کارتکس ${title} — ${rangeText}` });
+  const out = [...flats, ...per];
+  const csvSheet = list.find((x) => x.name === csvOf) || list[0];
+  out.csv = { headers: csvSheet.headers, rows: csvSheet.rows }; // CSV همان جدول تخت قبلی می‌ماند
+  return out;
+}
+
 function buildTaskSheets(viewer, input = {}, { now = new Date() } = {}) {
   const settings = settingsRepository.getAll();
   const range = resolveRange(input, settings, now);
@@ -91,11 +104,11 @@ function buildTaskSheets(viewer, input = {}, { now = new Date() } = {}) {
   });
   return {
     ok: true, from, to, count: planRows.length + dailyRows.length,
-    sheets: [
+    sheets: cardTaskSheets([
       { name: 'خلاصه', headers: ['نام', 'دپارتمان', 'روزهای دارای گزارش', 'تسک برنامه‌ریزی‌شده', 'انجام‌شده', 'درصد انجام', 'خارج از برنامه'], rows: summaryRows },
       { name: 'برنامه هفتگی', headers: ['شروع هفته', 'شروع هفته (شمسی)', 'نام', 'دپارتمان', 'وضعیت برنامه', 'تسک', 'روز برنامه', 'روز برنامه (شمسی)', 'اولویت'], rows: planRows },
       { name: 'گزارش روزانه', headers: ['تاریخ', 'تاریخ (شمسی)', 'نام', 'دپارتمان', 'تسک', 'خارج از برنامه', 'وضعیت', 'علت', 'توضیح علت', 'انتقال', 'گزارش دیرهنگام', 'مشاهده شد', 'کامنت'], rows: dailyRows },
-    ],
+    ], { from, to, summary: 'خلاصه', keyed: ['برنامه هفتگی', 'گزارش روزانه'], title: 'گزارش‌های روزانه‌ی تیم', csvOf: 'گزارش روزانه' }),
   };
 }
 
@@ -259,11 +272,11 @@ function buildTaskReportSheets(viewer, input = {}, { now = new Date() } = {}) {
 
   return {
     ok: true, from, to, count: rows.length,
-    sheets: [
+    sheets: cardTaskSheets([
       { name: 'ریز تسک‌ها', headers: ['تاریخ', 'تاریخ (شمسی)', 'نام', 'دپارتمان', 'تیم', 'تسک', 'توضیح تسک', 'اولویت', 'وضعیت', 'توضیح انجام', 'علت انجام‌نشدن', 'توضیح علت', 'انتقال', 'خارج از برنامه', 'گزارش دیرهنگام'], rows: rows.map((r) => r.cells) },
       { name: 'خلاصه افراد', headers: ['نام', 'دپارتمان', 'تیم', 'کل تسک‌ها', 'انجام‌شده', 'نیمه‌کاره', 'انجام‌نشده', 'پاسخ داده نشده', 'درصد انجام', 'خارج از برنامه'], rows: personRows },
       { name: 'خلاصه تیم‌ها', headers: ['تیم', 'تعداد اعضا', 'کل تسک‌ها', 'انجام‌شده', 'نیمه‌کاره', 'انجام‌نشده', 'پاسخ داده نشده', 'درصد انجام', 'خارج از برنامه'], rows: teamRows },
-    ],
+    ], { from, to, summary: 'خلاصه افراد', keyed: ['ریز تسک‌ها'], title: 'گزارش کامل تسک‌ها', flat: ['خلاصه افراد', 'خلاصه تیم‌ها'], csvOf: 'ریز تسک‌ها' }),
   };
 }
 

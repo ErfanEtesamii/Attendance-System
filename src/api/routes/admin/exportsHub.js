@@ -13,7 +13,8 @@ const leaveApprovalService = require('../../../services/leaveApprovalService');
 const disputeService = require('../../../services/disputeService');
 const holidaysRepository = require('../../../repositories/holidaysRepository');
 const shiftsRepository = require('../../../repositories/shiftsRepository');
-const { sendTable, exportAuditFields } = require('../../../utils/xlsx');
+const { sendSheets, exportAuditFields } = require('../../../utils/xlsx');
+const { splitByEmployee, withCard } = require('../../../utils/exportCards');
 const { isoDateToJalaliString, jalaliYearOfDateString } = require('../../../utils/jalali');
 const { todayDateString } = require('../../../utils/serverTime');
 const { DATE_RE, scopedUserIds, audit } = require('./common');
@@ -47,9 +48,26 @@ router.get('/admin/leave-requests/export', requirePermission('leave.read'), (req
       dec ? dec.fullName : '', r.reason || '', dt(r.created_at),
     ];
   });
-  return sendTable(req, res, `leave-requests_${from || 'all'}_${to || 'all'}.csv`,
-    ['نام', 'کد پرسنلی', 'دپارتمان', 'نوع', 'عنوان نوع', 'از (میلادی)', 'از (شمسی)', 'تا (میلادی)', 'تا (شمسی)', 'وضعیت', 'تصمیم‌گیرنده', 'دلیل', 'زمان ثبت'],
-    rows, { sheetName: 'مرخصی و مأموریت', onExport: (info) => audit(req, 'report_exported', { kind: 'leave_requests', from: from || null, to: to || null, status, count: rows.length, ...exportAuditFields(info) }) });
+  // CSV: جدول تخت قبلی. xlsx (کارتکس): شیت «خلاصه‌ی افراد» + یک شیت برای هر کارمند (فقط درخواست‌های او، بدون تکرار نام/کد/دپارتمان و تاریخ میلادی)
+  const CSV_HEADERS = ['نام', 'کد پرسنلی', 'دپارتمان', 'نوع', 'عنوان نوع', 'از (میلادی)', 'از (شمسی)', 'تا (میلادی)', 'تا (شمسی)', 'وضعیت', 'تصمیم‌گیرنده', 'دلیل', 'زمان ثبت'];
+  const sheets = () => {
+    const keep = [0, 1, 2, 3, 4, 6, 8, 9, 10, 11, 12];
+    const flat = { name: 'درخواست‌ها', headers: keep.map((i) => CSV_HEADERS[i]), rows: rows.map((r) => keep.map((i) => r[i])) };
+    const by = new Map();
+    for (const r of rows) {
+      const k = `${r[0]}|${r[1]}`;
+      if (!by.has(k)) by.set(k, { name: r[0], code: r[1], dept: r[2], total: 0, approved: 0, pending: 0, rejected: 0 });
+      const e = by.get(k); e.total += 1;
+      if (r[9] === STATUS_FA.approved) e.approved += 1; else if (r[9] === STATUS_FA.pending) e.pending += 1; else if (r[9] === STATUS_FA.rejected) e.rejected += 1;
+    }
+    const sum = { name: 'خلاصه افراد', headers: ['نام', 'کد پرسنلی', 'دپارتمان', 'کل درخواست‌ها', 'تأییدشده', 'در انتظار', 'ردشده'], rows: [...by.values()].map((e) => [e.name, e.code, e.dept, e.total, e.approved, e.pending, e.rejected]) };
+    const range = `${from ? jd(from) : 'ابتدا'} تا ${to ? jd(to) : 'امروز'}`;
+    return [withCard(sum, { title: 'مرخصی و مأموریت — خلاصه‌ی افراد', lines: [`بازه (تاریخ شروع):  ${range}`, `تعداد درخواست:  ${rows.length}`, `تعداد کارمند:  ${by.size}`], footer: false }),
+      ...splitByEmployee([flat], { title: `کارتکس مرخصی و مأموریت — ${range}` })];
+  };
+  return sendSheets(req, res, `leave-requests_${from || 'all'}_${to || 'all'}.csv`, sheets, {
+    csv: { headers: CSV_HEADERS, rows },
+    onExport: (info) => audit(req, 'report_exported', { kind: 'leave_requests', from: from || null, to: to || null, status, count: rows.length, ...exportAuditFields(info) }) });
 });
 
 // مانده‌ی مرخصی: ?year (سال شمسی؛ پیش‌فرض جاری). همان اسکوپ GET /admin/leave-balances بدون userId.
@@ -69,9 +87,20 @@ router.get('/admin/leave-balances/export', requirePermission('leave.balance.read
       rows.push([u.full_name, u.personnel_code || '', u.department || '', t.title, year, d.entitled, d.carriedOver, d.adjustments, d.used, d.pending, d.remaining]);
     }
   }
-  return sendTable(req, res, `leave-balances_${year}.csv`,
-    ['نام', 'کد پرسنلی', 'دپارتمان', 'نوع مرخصی', 'سال شمسی', 'استحقاق (دقیقه)', 'مانده از قبل (دقیقه)', 'تعدیل (دقیقه)', 'مصرف‌شده (دقیقه)', 'در انتظار تأیید (دقیقه)', 'مانده (دقیقه)'],
-    rows, { sheetName: 'مانده‌ی مرخصی', onExport: (info) => audit(req, 'report_exported', { kind: 'leave_balances', year, count: rows.length, ...exportAuditFields(info) }) });
+  // CSV: جدول تخت قبلی. xlsx (کارتکس): برای هر نوع مرخصی یک شیت (کادر: نوع، سال، تعداد کارمند) با یک ردیف برای هر کارمند
+  const CSV_HEADERS = ['نام', 'کد پرسنلی', 'دپارتمان', 'نوع مرخصی', 'سال شمسی', 'استحقاق (دقیقه)', 'مانده از قبل (دقیقه)', 'تعدیل (دقیقه)', 'مصرف‌شده (دقیقه)', 'در انتظار (دقیقه)', 'مانده (دقیقه)'];
+  const sheets = () => {
+    const types = [...new Set(rows.map((r) => r[3]))];
+    const out = types.map((ty) => {
+      const mine = rows.filter((r) => r[3] === ty);
+      const sheet = { name: ty, headers: ['نام', 'کد پرسنلی', 'دپارتمان', ...CSV_HEADERS.slice(5)], rows: mine.map((r) => [r[0], r[1], r[2], ...r.slice(5)]) };
+      return withCard(sheet, { title: `مانده‌ی مرخصی — ${ty}`, lines: [`نوع مرخصی:  ${ty}`, `سال شمسی:  ${year}`, `تعداد کارمند:  ${mine.length}`] });
+    });
+    return out.length ? out : [{ name: 'مانده‌ی مرخصی', headers: CSV_HEADERS, rows: [] }];
+  };
+  return sendSheets(req, res, `leave-balances_${year}.csv`, sheets, {
+    csv: { headers: CSV_HEADERS, rows },
+    onExport: (info) => audit(req, 'report_exported', { kind: 'leave_balances', year, count: rows.length, ...exportAuditFields(info) }) });
 });
 
 // اعتراض‌ها: ?status= (همان فیلترهای GET /admin/disputes؛ ناشناخته ⇒ همه)
@@ -82,17 +111,26 @@ router.get('/admin/disputes/export', requirePermission('disputes.read'), (req, r
     const u = usersRepository.findById(d.userId);
     return [u ? u.full_name : '', (u && u.personnel_code) || '', d.recordDate || '', jd(d.recordDate), d.message || '', DISPUTE_FA[d.status] || d.status || '', d.messageCount, d.reopenCount, dt(d.createdAt), dt(d.closedAt)];
   });
-  return sendTable(req, res, `disputes_${todayDateString()}.csv`,
-    ['نام', 'کد پرسنلی', 'تاریخ رکورد', 'تاریخ شمسی رکورد', 'متن اعتراض', 'وضعیت', 'تعداد پیام', 'دفعات بازگشایی', 'زمان ثبت', 'زمان بسته شدن'],
-    rows, { sheetName: 'اعتراض‌ها', onExport: (info) => audit(req, 'report_exported', { kind: 'disputes', status, count: rows.length, ...exportAuditFields(info) }) });
+  const CSV_HEADERS = ['نام', 'کد پرسنلی', 'تاریخ رکورد', 'تاریخ شمسی رکورد', 'متن اعتراض', 'وضعیت', 'تعداد پیام', 'دفعات بازگشایی', 'زمان ثبت', 'زمان بسته شدن'];
+  const sheets = () => {
+    const keep = [0, 1, 3, 4, 5, 6, 7, 8, 9]; // تاریخ میلادی رکورد حذف (شمسی کافی است)
+    const sheet = { name: 'اعتراض‌ها', headers: keep.map((i) => CSV_HEADERS[i]), rows: rows.map((r) => keep.map((i) => r[i])) };
+    const count = (label) => rows.filter((r) => r[5] === label).length;
+    return [withCard(sheet, { title: 'اعتراض‌ها', lines: [`تعداد اعتراض:  ${rows.length}`, `باز:  ${count(DISPUTE_FA.open)}`, `حل‌شده:  ${count(DISPUTE_FA.resolved) + count(DISPUTE_FA.resolved_by_admin)}`, ...(status ? [`فیلتر وضعیت:  ${DISPUTE_FA[status] || status}`] : [])], footer: false })];
+  };
+  return sendSheets(req, res, `disputes_${todayDateString()}.csv`, sheets, {
+    csv: { headers: CSV_HEADERS, rows },
+    onExport: (info) => audit(req, 'report_exported', { kind: 'disputes', status, count: rows.length, ...exportAuditFields(info) }) });
 });
 
 // تعطیلات رسمی/شرکتی (کل لیست)
 router.get('/admin/holidays/export', requirePermission('settings.read'), (req, res) => {
   const rows = holidaysRepository.listHolidays().map((h) => [h.holiday_date, jd(h.holiday_date), h.title || '', h.kind || '', h.scope || '', h.department || '', h.half_end_time || '']);
-  return sendTable(req, res, `holidays_${todayDateString()}.csv`,
-    ['تاریخ', 'تاریخ شمسی', 'عنوان', 'نوع', 'دامنه', 'دپارتمان', 'پایان نیم‌روز'],
-    rows, { sheetName: 'تعطیلات', onExport: (info) => audit(req, 'report_exported', { kind: 'holidays', count: rows.length, ...exportAuditFields(info) }) });
+  const CSV_HEADERS = ['تاریخ', 'تاریخ شمسی', 'عنوان', 'نوع', 'دامنه', 'دپارتمان', 'پایان نیم‌روز'];
+  const sheets = () => [withCard({ name: 'تعطیلات', headers: CSV_HEADERS.slice(1), rows: rows.map((r) => r.slice(1)) }, { title: 'تعطیلات رسمی و شرکتی', lines: [`تعداد تعطیلی:  ${rows.length}`], footer: false })];
+  return sendSheets(req, res, `holidays_${todayDateString()}.csv`, sheets, {
+    csv: { headers: CSV_HEADERS, rows },
+    onExport: (info) => audit(req, 'report_exported', { kind: 'holidays', count: rows.length, ...exportAuditFields(info) }) });
 });
 
 // شیفت‌ها
@@ -101,9 +139,11 @@ router.get('/admin/shifts/export', requirePermission('shifts.read'), (req, res) 
     const days = Array.isArray(s.workDays) ? s.workDays : [];
     return [s.name, s.startTime, s.endTime, s.graceLateMinutes, s.graceEarlyMinutes, days.map((d) => WEEKDAY_FA[d]).filter(Boolean).join('، '), s.overnight ? 'بله' : 'خیر', s.maxLunchMinutes, s.fixedLunchDeductMinutes, s.userCount ?? ''];
   });
-  return sendTable(req, res, `shifts_${todayDateString()}.csv`,
-    ['نام شیفت', 'شروع', 'پایان', 'مهلت تأخیر (دقیقه)', 'مهلت زودتر رفتن (دقیقه)', 'روزهای کاری', 'شیفت شب', 'سقف ناهار (دقیقه)', 'کسر ثابت ناهار (دقیقه)', 'تعداد کارمند'],
-    rows, { sheetName: 'شیفت‌ها', onExport: (info) => audit(req, 'report_exported', { kind: 'shifts', count: rows.length, ...exportAuditFields(info) }) });
+  const CSV_HEADERS = ['نام شیفت', 'شروع', 'پایان', 'مهلت تأخیر (دقیقه)', 'مهلت زودتر رفتن (دقیقه)', 'روزهای کاری', 'شیفت شب', 'سقف ناهار (دقیقه)', 'کسر ثابت ناهار (دقیقه)', 'تعداد کارمند'];
+  const sheets = () => [withCard({ name: 'شیفت‌ها', headers: CSV_HEADERS, rows }, { title: 'شیفت‌ها', lines: [`تعداد شیفت:  ${rows.length}`, `کارمندان دارای شیفت:  ${rows.reduce((t, r) => t + (Number(r[9]) || 0), 0)}`], footer: false })];
+  return sendSheets(req, res, `shifts_${todayDateString()}.csv`, sheets, {
+    csv: { headers: CSV_HEADERS, rows },
+    onExport: (info) => audit(req, 'report_exported', { kind: 'shifts', count: rows.length, ...exportAuditFields(info) }) });
 });
 
 module.exports = router;

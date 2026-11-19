@@ -32,7 +32,7 @@ router.get('/admin/team-reports/export', requirePermission('taskreports.read'), 
   const r = taskExportService.buildTaskSheets(req.adminUser, { from: req.query.from, to: req.query.to, userId: req.query.userId });
   if (!r.ok) return res.status(teamReportsService.statusOf(r.code)).json({ error: r.error, code: r.code });
   return sendSheets(req, res, `task-reports_${r.from}_${r.to}.csv`, r.sheets, {
-    csv: { headers: r.sheets[2].headers, rows: r.sheets[2].rows },
+    csv: r.sheets.csv,
     onExport: (info) => auditRepository.logEvent({
       userId: req.adminUser.id, action: 'report_exported', ipAddress: req.ip,
       details: { source: 'admin_panel', kind: 'task_reports', from: r.from, to: r.to, userId: req.query.userId || null, count: r.count, ...exportAuditFields(info) },
@@ -46,7 +46,7 @@ router.get('/admin/task-report/export', requirePermission('taskreports.read'), (
   const r = taskExportService.buildTaskReportSheets(req.adminUser, { from: req.query.from, to: req.query.to, userId: req.query.userId, managerId: req.query.managerId });
   if (!r.ok) return res.status(teamReportsService.statusOf(r.code)).json({ error: r.error, code: r.code });
   return sendSheets(req, res, `task-report_${r.from}_${r.to}.csv`, r.sheets, {
-    csv: { headers: r.sheets[0].headers, rows: r.sheets[0].rows },
+    csv: r.sheets.csv,
     onExport: (info) => auditRepository.logEvent({
       userId: req.adminUser.id, action: 'report_exported', ipAddress: req.ip,
       details: { source: 'admin_panel', kind: 'task_report_full', from: r.from, to: r.to, userId: req.query.userId || null, managerId: req.query.managerId || null, count: r.count, ...exportAuditFields(info) },

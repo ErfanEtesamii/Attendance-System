@@ -117,10 +117,21 @@ function fillSheet(ws, s, commit) {
     if (span > 1 && typeof ws.mergeCells === 'function') ws.mergeCells(f.number, 1, f.number, span);
     done(f);
   }
+  // بخش‌های زیرین (جدول‌های دیگرِ همان کارمند): ردیف خالی، عنوان بخش، سرستون، ردیف‌ها
+  for (const sec of s.extra || []) {
+    const gap = ws.addRow([]); done(gap);
+    const w = Math.max(ncols, sec.headers.length);
+    const t = ws.addRow([neutralizeCell(sec.title)]);
+    style.styleCardTitle(t, w);
+    if (w > 1 && typeof ws.mergeCells === 'function') ws.mergeCells(t.number, 1, t.number, w);
+    done(t);
+    const h = ws.addRow(sec.headers.map(neutralizeCell)); style.styleHeader(h); done(h);
+    sec.rows.forEach((r, ri) => { const row = ws.addRow(neutralizeRow(r).map((v) => (v === undefined ? null : v))); style.styleBodyRow(row, ri, []); done(row); });
+  }
   return head.number;
 }
 
-function columnWidth(headers, rows, index) {
+function columnWidth(headers, rows, index, extra = []) {
   // فونت B Nazanin 12/14 پهن‌تر از پیش‌فرض است: ضریب ۱٫۲ برای داده و ۱٫۵ برای سرستون پررنگ ۱۴
   let max = Math.ceil(String(headers[index] == null ? '' : headers[index]).length * 1.5);
   for (const r of rows) {
@@ -128,6 +139,10 @@ function columnWidth(headers, rows, index) {
     if (v === null || v === undefined) continue;
     const len = Math.ceil((v instanceof Date ? 16 : String(v).length) * 1.2);
     if (len > max) max = len;
+  }
+  for (const sec of extra) { // جدول‌های زیرینِ شیت کارتکس
+    const hv = sec.headers[index]; if (hv !== undefined) max = Math.max(max, Math.ceil(String(hv).length * 1.5));
+    for (const r of sec.rows) { const v = r[index]; if (v !== null && v !== undefined) max = Math.max(max, Math.ceil(String(v).length * 1.2)); }
   }
   return Math.min(60, Math.max(14, max + 2));
 }
@@ -156,7 +171,8 @@ function buildWorkbook(spec) {
     // RTL + فریز تا ردیف سرستون
     const ws = wb.addWorksheet(name, { views: SHEET_VIEWS(headerRowOf(s)), ...style.sheetOptions(usedNames.length - 1) });
     const headerRow = fillSheet(ws, s, false);
-    s.headers.forEach((_, i) => { ws.getColumn(i + 1).width = columnWidth(s.headers, rows, i); });
+    const wCols = Math.max(s.headers.length, ...(s.extra || []).map((e) => e.headers.length));
+    for (let i = 0; i < wCols; i += 1) ws.getColumn(i + 1).width = columnWidth(s.headers, rows, i, s.extra || []);
     ws.autoFilter = { from: { row: headerRow, column: 1 }, to: { row: headerRow, column: s.headers.length } };
   }
   return wb;
@@ -209,7 +225,7 @@ async function writeWorkbookStream(out, spec) {
     const name = sanitizeSheetName(s.name, usedNames);
     usedNames.push(name);
     const ws = wb.addWorksheet(name, { views: SHEET_VIEWS(headerRowOf(s)), ...style.sheetOptions(usedNames.length - 1) });
-    ws.columns = s.headers.map((_, i) => ({ width: columnWidth(s.headers, rows, i) }));
+    ws.columns = Array.from({ length: Math.max(s.headers.length, ...(s.extra || []).map((e) => e.headers.length)) }, (_, i) => ({ width: columnWidth(s.headers, rows, i, s.extra || []) }));
     const headerRow = fillSheet(ws, s, true);
     ws.autoFilter = { from: { row: headerRow, column: 1 }, to: { row: headerRow, column: s.headers.length } };
     await ws.commit();
@@ -235,7 +251,7 @@ function exportAuditFields(info) {
   return out;
 }
 
-const countRows = (sheets) => sheets.reduce((t, s) => t + (Array.isArray(s.rows) ? s.rows.length : 0), 0);
+const countRows = (sheets) => sheets.reduce((t, s) => t + (Array.isArray(s.rows) ? s.rows.length : 0) + (s.extra || []).reduce((n, e) => n + e.rows.length, 0), 0);
 
 /**
  * خروجی چندشیتی. پیش‌فرض CSV (همان قالب قدیمی routeها از opts.csv)؛ با ?format=xlsx فایل xlsx با همه‌ی شیت‌ها.

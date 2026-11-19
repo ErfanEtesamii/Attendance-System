@@ -35,17 +35,23 @@ describe('خروجی و شاخص‌های تسک (D13)', () => {
     plans.markSubmitted(plans.getOrCreate(a.id, wk).id);
     rr.upsert({ reviewerId: boss.id, subjectUserId: a.id, reportDate: D, comment: 'خوب' });
     const r = svc.buildTaskSheets(boss, range);
-    assert.deepEqual(r.sheets.map((s) => s.name), ['خلاصه', 'برنامه هفتگی', 'گزارش روزانه']);
+    // کارتکس: خلاصه تخت + یک شیت برای هر کارمند (جدول اصلی او + بخش‌های زیرین)، بدون ستون نام/دپارتمان در ردیف‌ها
+    const names = r.sheets.map((s) => s.name);
+    assert.equal(names[0], 'خلاصه'); assert.ok(names.includes('علی'));
+    const tableOf = (sheet, title) => (sheet.tableTitle === title ? sheet : (sheet.extra || []).find((e) => e.title === title));
+    const ali = r.sheets.find((s) => s.name === 'علی');
+    assert.equal(ali.card.lines[0][0][0], 'کارمند:  علی');
     const sum = r.sheets[0].rows.find((x) => x[0] === 'علی');
     assert.deepEqual([sum[3], sum[4], sum[5], sum[6]], [2, 1, 50, 1]);
-    const daily = r.sheets[2].rows;
+    const daily = tableOf(ali, 'گزارش روزانه').rows;
     assert.equal(daily.length, 3);
-    const nd = daily.find((x) => x[4] === 'ب');
-    assert.deepEqual([nd[6], nd[7], nd[8], nd[9], nd[11], nd[12]], ['انجام نشد', 'وقت نشد', 'شلوغ', '2026-08-04', 'بله', 'خوب']);
+    const nd = daily.find((x) => x[1] === 'ب');
+    assert.deepEqual([nd[3], nd[4], nd[5], nd[6], nd[8], nd[9]], ['انجام نشد', 'وقت نشد', 'شلوغ', '2026-08-04', 'بله', 'خوب']);
     assert.ok(!JSON.stringify(r.sheets).includes('غیرتیم'));
-    assert.ok(r.sheets[1].rows.some((x) => x[4] === 'ثبت‌شده'));
+    assert.ok(tableOf(ali, 'برنامه هفتگی').rows.some((x) => x[1] === 'ثبت‌شده'));
     assert.ok(JSON.stringify(svc.buildTaskSheets(admin, range).sheets).includes('غیرتیم'));
-    assert.equal(svc.buildTaskSheets(a, range).sheets[2].rows.length, 3, 'کارمند فقط خودش');
+    const mine = svc.buildTaskSheets(a, range).sheets.find((x) => x.name === 'علی');
+    assert.equal(tableOf(mine, 'گزارش روزانه').rows.length, 3, 'کارمند فقط خودش');
   });
 
   test('اعتبارسنجی بازه و فرد خارج از اسکوپ', () => {
@@ -66,8 +72,8 @@ describe('خروجی و شاخص‌های تسک (D13)', () => {
     await xlsx.sendSheets({ query: { format: 'xlsx' } }, res, 'task-reports.csv', r.sheets, {});
     assert.match(String(res.headers['Content-Type']), /spreadsheetml/);
     const wb = xlsx.buildWorkbook({ sheets: r.sheets });
-    const ws = wb.getWorksheet('گزارش روزانه');
-    const vals = ws.getRow(2).values.map(String);
+    const ws = wb.getWorksheet('علی');
+    const vals = []; ws.eachRow((row) => row.values.forEach((v) => vals.push(String(v))));
     assert.ok(vals.some((v) => v.startsWith("'=HYPERLINK")));
     assert.ok(vals.some((v) => v === "'+cmd"));
   });

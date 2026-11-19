@@ -34,9 +34,14 @@ describe('خروجی اکسل حقوق و عملکرد', () => {
   test('حقوق: شیت‌ها، جمع، بدون‌نرخ خالی، راهنما همه‌ی ستون‌ها را دارد', () => {
     const data = perf.monthlyPayrollCompared({ users: users(), year: 1405, month: 6, withDays: true });
     const sheets = buildPayrollSheets(data);
-    assert.deepEqual(sheets.map((s) => s.name), ['حقوق کارکنان', 'ریز روزانه حقوق', 'دپارتمان‌ها', 'روزهای خارج‌شده', 'مشخصات گزارش', 'راهنما']);
+    // کارتکس: خلاصه + دپارتمان‌ها، سپس یک شیت برای هر کارمندِ دارای ریز روزانه (بدون تکرار نام/کد/دپارتمان در ردیف‌ها)، مشخصات، راهنما
+    const names = sheets.map((s) => s.name);
+    assert.deepEqual([names[0], names[1], names[names.length - 2], names[names.length - 1]], ['حقوق کارکنان', 'دپارتمان‌ها', 'مشخصات گزارش', 'راهنما']);
+    assert.ok(names.includes('الف'));
     sameWidth(sheets);
-    const [sum, daily] = sheets;
+    const sum = sheets[0]; const daily = sheets.find((s) => s.name === 'الف');
+    assert.ok(daily.card && daily.card.lines[0][0][0] === 'کارمند:  الف', 'کادر مشخصات بالای شیت');
+    assert.ok(!daily.headers.includes('نام کارمند') && !daily.headers.includes('کد پرسنلی'));
     assert.equal(sum.rows.length, 3, 'دو کارمند + ردیف جمع');
     const rowA = sum.rows.find((r) => r[0] === 'الف'); const rowB = sum.rows.find((r) => r[0] === 'ب');
     assert.equal(rowA[col(sum, 'نرخ ساعتی (هزار تومان)')], 60);
@@ -45,9 +50,10 @@ describe('خروجی اکسل حقوق و عملکرد', () => {
     assert.equal(rowB[col(sum, 'وضعیت')], 'بدون نرخ');
     assert.equal(sum.rows[2][0], 'جمع');
     assert.equal(sum.rows[2][col(sum, 'حقوق (تومان)')], rowA[col(sum, 'حقوق (تومان)')]);
-    assert.ok(daily.rows.length >= 3);
-    const guide = sheets[5];
-    for (const s of sheets.slice(0, 4)) for (const h of s.headers) assert.ok(guide.rows.some((g) => g[0] === s.name && g[1] === h), `راهنما: ${s.name}/${h}`);
+    assert.ok(daily.rows.length >= 1);
+    const guide = sheets[sheets.length - 1];
+    for (const s of sheets.slice(0, 2)) for (const h of s.headers) assert.ok(guide.rows.some((g) => g[0] === s.name && g[1] === h), `راهنما: ${s.name}/${h}`);
+    for (const h of daily.headers) assert.ok(guide.rows.some((g) => g[0] === 'ریز روزانه حقوق' && g[1] === h), `راهنما: ریز روزانه حقوق/${h}`);
   });
 
   test('عملکرد: خلاصه، رتبه، ریز روزانه، روند تیم؛ با payroll نرخ می‌آید و بدون آن نمی‌آید', () => {
@@ -55,21 +61,24 @@ describe('خروجی اکسل حقوق و عملکرد', () => {
     for (const withPay of [true, false]) {
       const data = perf.teamDetailed({ users: users(), range, now: '2026-08-30T10:00:00Z', includePayroll: withPay });
       const sheets = buildPerformanceSheets(data, { includePayroll: withPay });
-      assert.deepEqual(sheets.map((s) => s.name), ['خلاصه عملکرد', 'ریز روزانه', 'روند روزانه تیم', 'دپارتمان‌ها', 'روز هفته', 'تسک‌ها و علت‌ها', 'مرخصی و مأموریت', 'مشخصات گزارش', 'راهنما']);
+      const nm = sheets.map((s) => s.name);
+      assert.deepEqual([nm[0], nm[1], nm[2], nm[nm.length - 2], nm[nm.length - 1]], ['خلاصه عملکرد', 'روند روزانه تیم', 'دپارتمان‌ها', 'مشخصات گزارش', 'راهنما']);
+      assert.ok(nm.includes('الف') && nm.includes('ب'), 'یک شیت برای هر کارمند');
       sameWidth(sheets);
-      const [sum, daily, trend] = sheets;
+      const sum = sheets[0]; const trend = sheets[1]; const daily = sheets.find((x) => x.name === 'الف');
       assert.equal(sum.rows.length, 2);
       const rowA = sum.rows.find((r) => r[col(sum, 'نام کارمند')] === 'الف');
       assert.ok(rowA[col(sum, 'ساعت مفید (دقیقه)')] > 0);
       assert.equal(rowA[col(sum, 'میانگین ساعت ورود')] !== '', true);
-      assert.equal(daily.rows.filter((r) => r[0] === 'الف').length, 7);
+      assert.equal(daily.rows.length, 7, 'ریز روزانه‌ی الف: ۷ روز بازه');
       assert.ok(trend.rows.length === 7);
       assert.equal(sum.headers.includes('حقوق بازه (تومان)'), withPay);
       assert.equal(daily.headers.includes('مبلغ روز (تومان)'), withPay);
       if (!withPay) assert.ok(!JSON.stringify(sheets).includes('نرخ ساعتی'), 'بدون payroll.read نرخ در هیچ شیتی نیست');
       if (withPay) assert.equal(rowA[col(sum, 'نرخ ساعتی (هزار تومان)')], 60);
-      const guide = sheets[8];
-      for (const s of sheets.slice(0, 7)) for (const h of s.headers) assert.ok(guide.rows.some((g) => g[0] === s.name && g[1] === h), `راهنما: ${s.name}/${h}`);
+      const guide = sheets[sheets.length - 1];
+      for (const s of sheets.slice(0, 3)) for (const h of s.headers) assert.ok(guide.rows.some((g) => g[0] === s.name && g[1] === h), `راهنما: ${s.name}/${h}`);
+      for (const h of daily.headers) assert.ok(guide.rows.some((g) => g[0] === 'ریز روزانه' && g[1] === h), `راهنما: ریز روزانه/${h}`);
     }
   });
 });
