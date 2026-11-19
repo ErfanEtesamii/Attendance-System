@@ -252,10 +252,53 @@
   function setEnumLabel(it, v) { return (ENUM_LABELS[it.key] && ENUM_LABELS[it.key][v]) || v; }
 
   // مقدار قابل‌نمایش (برای «پیش‌فرض: …»)
+  // ---------- زمان‌بندی (cron) بدون نوشتن عبارت: تبدیل دوطرفه‌ی عبارت ⇄ انتخاب‌های ساده ----------
+  // روز هفته در cron: ۰=یکشنبه … ۶=شنبه (ترتیب نمایش: از شنبه)
+  const CRON_DAYS = [[6, 'شنبه'], [0, 'یکشنبه'], [1, 'دوشنبه'], [2, 'سه‌شنبه'], [3, 'چهارشنبه'], [4, 'پنجشنبه'], [5, 'جمعه']];
+  const cPad = (n) => String(n).padStart(2, '0');
+  function cronParse(expr) {
+    const f = String(expr == null ? '' : expr).trim().split(/\s+/);
+    if (f.length !== 5) return { mode: 'custom' };
+    const [mi, h, dom, mon, dow] = f;
+    if (dom === '*' && mon === '*' && dow === '*') {
+      const m1 = /^\*(?:\/(\d+))?$/.exec(mi); const win = /^(\d{1,2})-(\d{1,2})$/.exec(h);
+      if (m1 && (h === '*' || (win && Number(win[1]) <= Number(win[2]) && Number(win[2]) <= 23))) {
+        const n = m1[1] ? Number(m1[1]) : 1;
+        if (n >= 1 && n <= 59) return { mode: 'minutes', n, win: win ? [Number(win[1]), Number(win[2])] : null };
+      }
+      if (/^\d{1,2}$/.test(mi) && Number(mi) <= 59 && (h === '*' || /^\*\/\d{1,2}$/.test(h))) {
+        const n = h === '*' ? 1 : Number(h.slice(2));
+        if (n >= 1 && n <= 23) return { mode: 'hours', n, m: Number(mi) };
+      }
+    }
+    if (/^\d{1,2}$/.test(mi) && Number(mi) <= 59 && /^\d{1,2}$/.test(h) && Number(h) <= 23 && dom === '*' && mon === '*' && (dow === '*' || /^[0-6](,[0-6])*$/.test(dow))) {
+      return { mode: 'daily', h: Number(h), m: Number(mi), days: dow === '*' ? [0, 1, 2, 3, 4, 5, 6] : [...new Set(dow.split(',').map(Number))] };
+    }
+    return { mode: 'custom' };
+  }
+  function cronBuild(st) {
+    if (st.mode === 'minutes') return `${st.n === 1 ? '*' : `*/${st.n}`} ${st.win ? `${st.win[0]}-${st.win[1]}` : '*'} * * *`;
+    if (st.mode === 'hours') return `${st.m} ${st.n === 1 ? '*' : `*/${st.n}`} * * *`;
+    if (st.mode === 'daily') { const d = [...new Set(st.days)].sort((a, b) => a - b); return `${st.m} ${st.h} * * ${d.length === 7 || !d.length ? '*' : d.join(',')}`; }
+    return '';
+  }
+  function cronHuman(expr) {
+    const st = cronParse(expr);
+    if (st.mode === 'minutes') return { mode: st.mode, text: `${st.n === 1 ? 'هر دقیقه' : `هر ${fmt.num(st.n)} دقیقه`}${st.win ? `، از ساعت ${cPad(st.win[0])}:00 تا ${cPad(st.win[1])}:59` : ''}` };
+    if (st.mode === 'hours') return { mode: st.mode, text: `${st.n === 1 ? 'هر ساعت' : `هر ${fmt.num(st.n)} ساعت`}${st.m === 0 ? ' (سر ساعت)' : ` (دقیقه‌ی ${fmt.num(st.m)})`}` };
+    if (st.mode === 'daily') {
+      const names = CRON_DAYS.filter(([d]) => st.days.includes(d)).map(([, n]) => n);
+      const dayText = names.length === 7 ? 'هر روز' : (names.length > 1 ? `${names.slice(0, -1).join('، ')} و ${names[names.length - 1]}` : names[0]);
+      return { mode: st.mode, text: `${dayText} ساعت ${cPad(st.h)}:${cPad(st.m)}` };
+    }
+    return { mode: 'custom', text: String(expr || '').trim().split(/\s+/).length === 5 ? 'زمان‌بندی سفارشی' : 'عبارت نامعتبر' };
+  }
+
   function setShow(it, v) {
     if (it.type === 'boolean') return v ? 'روشن' : 'خاموش';
     if (it.type === 'weekdays') return (v || []).length ? WEEKDAY_ORDER.filter(([d]) => v.includes(d)).map(([, n]) => n).join('، ') : 'هیچ‌کدام';
     if (it.type === 'enum') return setEnumLabel(it, v);
+    if (it.type === 'cron') { const h = cronHuman(v); return h.mode === 'custom' ? String(v) : h.text; }
     if (it.type === 'multiselect') { const a = v || []; return a.length === (it.values || []).length ? `همه (${a.length} مورد)` : (a.length ? a.map(stCapLabel).join('، ') : 'هیچ‌کدام'); }
     return String(v);
   }
@@ -337,7 +380,15 @@
         return `<div class="chk-row" data-key="${k}" role="group" ${al}>${WEEKDAY_ORDER.map(([d, n]) => `<label class="chk st-pill"><input type="checkbox" value="${d}"${(v || []).includes(d) ? ' checked' : ''} /><span>${n}</span></label>`).join('')}</div>`;
       case 'multiselect':
         return `<div class="chk-row st-multi" data-key="${k}" role="group" ${al}>${(it.values || []).map((o) => `<label class="chk st-pill"><input type="checkbox" value="${esc(o)}"${(v || []).includes(o) ? ' checked' : ''} /><span>${esc(stCapLabel(o))}</span></label>`).join('')}</div>`;
-      default: // cron | string | timezone
+      case 'cron': {
+        const hm = cronHuman(v);
+        return `<div class="st-cron" data-mode="${esc(cronParse(v).mode)}">
+          <input type="text" name="${k}" data-key="${k}" ${al} value="${esc(v)}" dir="ltr" class="ltr-in st-cron-raw" autocomplete="off" spellcheck="false" />
+          <div class="st-cron-summary"><span class="st-cron-ico" aria-hidden="true">${icon('clock')}</span><div class="st-cron-txt"><strong data-cron-text>${esc(hm.text)}</strong><small class="st-cron-code" data-cron-sub dir="ltr">${esc(v)}</small></div><button type="button" class="btn small st-cron-edit" data-cron-edit aria-expanded="false">تغییر زمان</button></div>
+          <div class="st-cron-panel" data-cron-panel hidden></div>
+        </div>`;
+      }
+      default: // string | timezone
         return `<input type="text" name="${k}" data-key="${k}" ${al} value="${esc(v)}" dir="ltr" class="ltr-in" autocomplete="off" spellcheck="false" />`;
     }
   }
@@ -505,7 +556,7 @@
         const dirty = isDirty(it);
         const did = `st-d-${esc(it.key)}`;
         const hint = setHint(it);
-        const ltrDef = ['time', 'timezone', 'cron', 'number', 'date'].includes(it.type);
+        const ltrDef = ['time', 'timezone', 'number', 'date'].includes(it.type);
         return `
         <div class="st-field${isFull(it) ? ' full' : ''}${dirty ? ' dirty' : ''}${it.isDefault ? '' : ' changed'}${it.dependsOn && !depMet(it) ? ' st-inactive' : ''}" data-row="${esc(it.key)}" data-type="${esc(it.type)}"${it.dependsOn ? ` data-dep="${esc(it.dependsOn.key)}"` : ''}>
           <div class="st-head">
@@ -658,6 +709,65 @@
           };
           const applyReset = (g) => { const m = msgOf(g); if (m) { m.className = 'form-msg'; m.textContent = ''; } };
 
+          // ویجت زمان‌بندی: خلاصه‌ی فارسی + دکمه‌ی «تغییر زمان» با انتخاب‌های ساده؛ حالت «پیشرفته» خودِ عبارت cron را نشان می‌دهد
+          function mountCron(row) {
+            const box = $('.st-cron', row); if (!box) return;
+            const raw = $('.st-cron-raw', box); const panel = $('[data-cron-panel]', box); const btn = $('[data-cron-edit]', box);
+            const txt = $('[data-cron-text]', box); const sub = $('[data-cron-sub]', box);
+            const opts = (arr, cur, fmtFn) => arr.map((x) => `<option value="${x}"${Number(x) === Number(cur) ? ' selected' : ''}>${fmtFn ? fmtFn(x) : fmt.num(x)}</option>`).join('');
+            const range = (a, b, st = 1) => { const r = []; for (let i = a; i <= b; i += st) r.push(i); return r; };
+            const minuteList = (cur) => [...new Set([...range(0, 55, 5), cur])].sort((a, b) => a - b);
+            const MODES = [['minutes', 'هر چند دقیقه'], ['hours', 'هر چند ساعت'], ['daily', 'روزانه / روزهای مشخص'], ['custom', 'پیشرفته']];
+            let mode = cronParse(raw.value).mode;
+            const paint = () => {
+              const st = cronParse(raw.value);
+              const h = cronHuman(raw.value);
+              txt.textContent = h.text; sub.textContent = raw.value; box.dataset.mode = mode;
+              box.classList.toggle('is-bad', h.text === 'عبارت نامعتبر');
+              if (panel.hidden) return;
+              const cur = st.mode === mode ? st : null;
+              let body = '';
+              if (mode === 'minutes') {
+                const c = cur || { n: 5, win: null };
+                body = `<div class="st-cron-line"><span>هر</span><select data-c="n" aria-label="فاصله‌ی دقیقه">${opts([1, 2, 3, 5, 10, 15, 20, 30], c.n)}</select><span>دقیقه یک بار اجرا شود</span></div>
+                  <label class="st-cron-check"><input type="checkbox" data-c="win"${c.win ? ' checked' : ''} /><span>فقط در بازه‌ی ساعتی مشخص</span></label>
+                  <div class="st-cron-line"${c.win ? '' : ' hidden'} data-c-winrow><span>از ساعت</span><select data-c="wa" aria-label="از ساعت">${opts(range(0, 23), c.win ? c.win[0] : 8, (x) => `${cPad(x)}:00`)}</select><span>تا پایانِ ساعت</span><select data-c="wb" aria-label="تا ساعت">${opts(range(0, 23), c.win ? c.win[1] : 17, (x) => `${cPad(x)}`)}</select></div>`;
+              } else if (mode === 'hours') {
+                const c = cur || { n: 1, m: 0 };
+                body = `<div class="st-cron-line"><span>هر</span><select data-c="n" aria-label="فاصله‌ی ساعت">${opts([1, 2, 3, 4, 6, 8, 12], c.n)}</select><span>ساعت، در دقیقه‌ی</span><select data-c="m" aria-label="دقیقه">${opts(minuteList(c.m), c.m)}</select></div>`;
+              } else if (mode === 'daily') {
+                const c = cur || { h: 8, m: 0, days: [0, 1, 2, 3, 4, 5, 6] };
+                body = `<div class="st-cron-line"><span>ساعت</span><select data-c="h" aria-label="ساعت">${opts(range(0, 23), c.h, (x) => cPad(x))}</select><span>:</span><select data-c="m" aria-label="دقیقه">${opts(minuteList(c.m), c.m, (x) => cPad(x))}</select></div>
+                  <div class="st-cron-days" role="group" aria-label="روزهای هفته">${CRON_DAYS.map(([d, n]) => `<label class="chk st-pill"><input type="checkbox" data-c="day" value="${d}"${c.days.includes(d) ? ' checked' : ''} /><span>${n}</span></label>`).join('')}<button type="button" class="st-cron-all" data-cron-all>همه‌ی روزها</button></div>`;
+              } else {
+                body = '<p class="st-cron-help">عبارت cron را مستقیم بنویسید: «دقیقه ساعت روز-ماه ماه روز-هفته». مثال: <bdi dir="ltr">0 17 * * *</bdi> یعنی هر روز ساعت ۱۷:۰۰. فیلد بالا ویرایش‌پذیر است.</p>';
+              }
+              panel.innerHTML = `<div class="st-cron-modes" role="tablist" aria-label="نوع زمان‌بندی">${MODES.map(([m, n]) => `<button type="button" role="tab" class="st-cron-mode" data-cron-mode="${m}" aria-selected="${m === mode}">${n}</button>`).join('')}</div><div class="st-cron-body">${body}</div>`;
+            };
+            const commit = (expr) => { raw.value = expr; raw.dispatchEvent(new Event('input', { bubbles: true })); paint(); };
+            const read = () => {
+              const g = (n) => $(`[data-c="${n}"]`, panel); const num = (n) => Number(g(n).value);
+              if (mode === 'minutes') { const win = g('win').checked ? [Math.min(num('wa'), num('wb')), Math.max(num('wa'), num('wb'))] : null; return { mode, n: num('n'), win }; }
+              if (mode === 'hours') return { mode, n: num('n'), m: num('m') };
+              const days = $$('[data-c="day"]:checked', panel).map((c) => Number(c.value));
+              return { mode, h: num('h'), m: num('m'), days: days.length ? days : [0, 1, 2, 3, 4, 5, 6] };
+            };
+            btn.addEventListener('click', () => { panel.hidden = !panel.hidden; btn.setAttribute('aria-expanded', String(!panel.hidden)); btn.textContent = panel.hidden ? 'تغییر زمان' : 'بستن'; mode = cronParse(raw.value).mode; paint(); });
+            panel.addEventListener('click', (e) => {
+              const mb = e.target.closest('[data-cron-mode]');
+              if (mb) {
+                mode = mb.dataset.cronMode;
+                if (mode === 'custom') { paint(); const r = raw; r.focus(); return; }
+                const st = cronParse(raw.value).mode === mode ? cronParse(raw.value) : (mode === 'minutes' ? { mode, n: 5, win: null } : (mode === 'hours' ? { mode, n: 1, m: 0 } : { mode, h: 8, m: 0, days: [0, 1, 2, 3, 4, 5, 6] }));
+                commit(cronBuild(st)); return;
+              }
+              if (e.target.closest('[data-cron-all]')) { $$('[data-c="day"]', panel).forEach((c) => { c.checked = true; }); commit(cronBuild(read())); }
+            });
+            panel.addEventListener('change', (e) => { if (e.target.matches('[data-c]')) commit(cronBuild(read())); });
+            raw.addEventListener('input', () => { if (mode !== 'custom' && !panel.contains(document.activeElement)) mode = cronParse(raw.value).mode; txt.textContent = cronHuman(raw.value).text; sub.textContent = raw.value; box.classList.toggle('is-bad', cronHuman(raw.value).text === 'عبارت نامعتبر'); });
+            paint();
+          }
+
           function bind(g) {
             const card = $(`.st-panel[data-group="${CSS.escape(g)}"]`, page);
             AP.dates.mount(card); // H4: ساعت‌های تنظیمات (شروع/پایان کار و ...) قابل‌تایپ؛ بعد از هر repaint دوباره
@@ -675,6 +785,7 @@
               };
               $$('input, select', row).forEach((el) => { el.addEventListener('input', onChange); el.addEventListener('change', onChange); });
               if (it.key in drafts) row.classList.add('dirty');
+              if (it.type === 'cron') mountCron(row);
             });
             $$('[data-more]', card).forEach((b) => b.addEventListener('click', () => {
               const d = $(`#${CSS.escape(b.getAttribute('aria-controls'))}`, card);

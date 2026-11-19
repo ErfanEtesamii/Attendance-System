@@ -41,3 +41,8 @@ test('SECTION_MAP: گروه‌های بلند همه‌ی کلیدهایشان �
   assert.equal(registry.defaultOf('overtimeFactor'), 1);
   assert.equal(registry.getDef('supervisorRecordEditMonthlyLimit').section, 'سقف‌ها');
 });
+
+test('cron picker: ویجت و توابع تبدیل در UI وجود دارند', () => {
+  const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public-admin', 'js', 'views-admin.js'), 'utf8');
+  for (const s of ['function cronParse', 'function cronBuild', 'function cronHuman', 'function mountCron', 'data-cron-edit', 'st-cron-raw']) assert.ok(src.includes(s), s);
+});

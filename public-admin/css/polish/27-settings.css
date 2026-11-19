@@ -600,3 +600,54 @@ body:has(.st-layout) .ai-panel { height: min(680px, calc(100vh - 170px)); }
 .sk-settings .sk-fields { grid-template-columns: minmax(0, 1fr); gap: 0; }
 .sk-settings .sk-field { padding: 16px 0; border-bottom: 1px solid var(--border); }
 .sk-settings .sk-field:last-child { border-bottom: 0; }
+
+/* ===== کادر روشن برای هر تنظیم (کارت جدا، فاصله‌ی مشخص) ===== */
+.st-layout .st-group .st-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 16px var(--st-pad) 18px; }
+.st-layout .st-group .st-field {
+  border: 1px solid color-mix(in srgb, var(--brand) 16%, var(--border)); border-radius: var(--r-lg); background: var(--card);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 6%, transparent);
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast), background-color var(--motion-fast);
+}
+.st-layout .st-group .st-field:last-child { border-bottom: 1px solid color-mix(in srgb, var(--brand) 16%, var(--border)); }
+.st-layout .st-group .st-field:hover {
+  background: var(--card); border-color: color-mix(in srgb, var(--brand) 42%, transparent);
+  box-shadow: 0 10px 22px -16px color-mix(in srgb, var(--brand) 60%, transparent);
+}
+.st-layout .st-group .st-field.changed::before, .st-layout .st-group .st-field.dirty::before { inset-block: 12px; inset-inline-start: -1px; }
+.st-layout .st-group .st-field.dirty { border-color: color-mix(in srgb, var(--yellow) 55%, var(--border)); }
+.st-layout .st-group .st-field.st-inactive { background: color-mix(in srgb, var(--hint) 5%, var(--card)); }
+.st-layout .st-adv > .st-fields { border-top: 1px solid color-mix(in srgb, var(--border) 80%, transparent); background: color-mix(in srgb, var(--brand) 3%, var(--card)); }
+
+}
+
+/* ===== انتخاب‌گر زمان‌بندی (به‌جای نوشتن cron) ===== */
+.st-layout .st-group .st-field.full[data-type="cron"] { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "ctl" "aux" "hint" "dep" "foot"; row-gap: 12px; align-items: stretch; }
+.st-layout .st-group .st-field[data-type="cron"] .st-foot { justify-content: flex-start; }
+.st-layout .st-cron { display: grid; gap: 0; width: 100%; border: 1px solid color-mix(in srgb, var(--brand) 18%, var(--border)); border-radius: var(--r-lg); background: color-mix(in srgb, var(--brand) 4%, var(--card)); overflow: hidden; }
+.st-layout .st-cron:not([data-mode="custom"]) .st-cron-raw { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); border: 0; opacity: 0; pointer-events: none; }
+.st-layout .st-cron[data-mode="custom"] .st-cron-raw { margin: 12px 14px 0; width: auto; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .05em; text-align: left; direction: ltr; }
+.st-layout .st-cron.is-bad { border-color: var(--red); }
+.st-layout .st-cron-summary { display: flex; align-items: center; gap: 14px; padding: 12px 14px; }
+.st-layout .st-cron-ico { flex: none; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; color: var(--brand); background: var(--brand-soft); border: 1px solid color-mix(in srgb, var(--brand) 22%, transparent); }
+.st-layout .st-cron-ico svg { width: 20px; height: 20px; }
+.st-layout .st-cron-txt { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.st-layout .st-cron-txt strong { font-size: 1.05rem; font-weight: 800; color: var(--text); line-height: 1.5; }
+.st-layout .st-cron-code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 11.5px; color: var(--hint); letter-spacing: .04em; text-align: start; }
+.st-layout .st-cron-edit { flex: none; border-radius: 999px; font-weight: 700; padding-inline: 16px; }
+.st-layout .st-cron-panel { padding: 14px; display: grid; gap: 14px; border-top: 1px dashed color-mix(in srgb, var(--brand) 28%, var(--border)); background: var(--card); animation: st-adv-in .22s cubic-bezier(.2, .7, .2, 1); }
+.st-layout .st-cron-panel[hidden] { display: none; }
+.st-layout .st-cron-modes { display: flex; flex-wrap: wrap; gap: 6px; padding: 5px; border-radius: var(--r-lg); background: color-mix(in srgb, var(--brand) 6%, var(--card)); border: 1px solid color-mix(in srgb, var(--brand) 14%, var(--border)); }
+.st-layout .st-cron-mode { appearance: none; flex: 1 1 auto; cursor: pointer; font: inherit; font-size: var(--fs-sm); font-weight: 700; padding: 8px 14px; border: 1px solid transparent; border-radius: var(--r-md); color: var(--hint); background: transparent; transition: background-color var(--motion-fast), color var(--motion-fast), box-shadow var(--motion-fast); }
+.st-layout .st-cron-mode:hover { color: var(--text); }
+.st-layout .st-cron-mode[aria-selected="true"] { color: var(--brand); background: var(--card); border-color: color-mix(in srgb, var(--brand) 22%, transparent); box-shadow: 0 6px 12px -8px color-mix(in srgb, var(--brand) 65%, transparent), inset 0 -2px 0 var(--accent); }
+.st-layout .st-cron-mode:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.st-layout .st-cron-body { display: grid; gap: 12px; }
+.st-layout .st-cron-line { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: var(--fs-sm); color: var(--text); font-weight: 600; }
+.st-layout .st-cron-line[hidden] { display: none; }
+.st-layout .st-cron-line select { width: auto; min-width: 84px; min-height: 40px; text-align: center; font-weight: 800; }
+.st-layout .st-cron-check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: var(--fs-sm); font-weight: 600; width: fit-content; }
+.st-layout .st-cron-days { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.st-layout .st-cron-all { appearance: none; cursor: pointer; font: inherit; font-size: var(--fs-xs); font-weight: 700; color: var(--brand); background: none; border: 0; padding: 4px 8px; text-decoration: underline; text-underline-offset: 3px; }
+.st-layout .st-cron-help { margin: 0; color: var(--hint); font-size: var(--fs-sm); line-height: 1.9; }
+@media (max-width: 760px) { .st-layout .st-cron-summary { flex-wrap: wrap; } .st-layout .st-cron-edit { width: 100%; } }
+@media (prefers-reduced-motion: reduce) { .st-layout .st-cron-panel { animation: none; } }
