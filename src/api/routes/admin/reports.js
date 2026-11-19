@@ -9,7 +9,7 @@ const attendanceRepository = require('../../../repositories/attendanceRepository
 const auditRepository = require('../../../repositories/auditRepository');
 const dayService = require('../../../engine/dayService');
 const { sendSheets, exportAuditFields } = require('../../../utils/xlsx'); // پیش‌فرض CSV؛ ?format=xlsx ⇒ xlsx چندشیتی (بدون exceljs ⇒ CSV + اعلام fallback)
-const { buildEmployeeReportSheets } = require('../../../services/reportExportService');
+const { buildEmployeeReportWorkbookSheets } = require('../../../services/reportExportService');
 const { computeMonthlyReport } = require('../../../services/monthlyReportService');
 const { reportFromSnapshot } = require('../../../services/monthCloseService');
 const { buildMonthlySheets, MAIN_COLUMNS } = require('../../../services/monthlyExportService');
@@ -63,7 +63,7 @@ router.get('/admin/reports/export', requirePermission('reports.read'), (req, res
     ],
     rows,
   };
-  return sendSheets(req, res, `attendance-report_${from}_${to}.csv`, () => buildEmployeeReportSheets({ users: team, from, to }), {
+  return sendSheets(req, res, `attendance-report_${from}_${to}.csv`, () => buildEmployeeReportWorkbookSheets({ users: team, from, to }), {
     csv,
     onExport: (info) => auditRepository.logEvent({
       userId: req.adminUser.id,

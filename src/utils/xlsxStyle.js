@@ -54,4 +54,55 @@ function sheetOptions(sheetIndex) {
   };
 }
 
-module.exports = { COLORS, FONT_NAME, columnKinds, styleHeader, styleBodyRow, sheetOptions };
+// ---------- کارتکس کارمند (شیت اختصاصی هر کارمند: مستطیل مشخصات بالا + جدول روزها + ردیف جمع) ----------
+const CARD = { title: 'FFFFFFFF', field: 'FFF4EFE3', total: 'FFE3EBCF', absent: 'FFFBE4E0', holiday: 'FFEEEEEE', incomplete: 'FFFFF3D6' };
+const TONE_FILL = { absent: CARD.absent, holiday: CARD.holiday, incomplete: CARD.incomplete };
+const solid = (argb) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
+
+/** ردیف عنوان کارت (همه‌ی سلول‌های بازه‌ی ادغام‌شده رنگ می‌گیرند). */
+function styleCardTitle(row, ncols) {
+  if (typeof row.getCell !== 'function') return; // exceljs ساختگی در تست‌ها
+  row.height = 28;
+  for (let i = 1; i <= ncols; i += 1) {
+    const c = row.getCell(i);
+    c.font = { name: FONT_NAME, charset: FONT_CHARSET, bold: true, size: 14, color: { argb: CARD.title } };
+    c.alignment = { vertical: 'middle', horizontal: 'center' };
+    c.fill = solid(COLORS.head);
+    c.border = BORDER;
+  }
+}
+
+/** ردیف فیلدهای مشخصات: هر فیلد «برچسب: مقدار» در یک بازه‌ی ادغام‌شده. */
+function styleCardFields(row, ncols) {
+  if (typeof row.getCell !== 'function') return; // exceljs ساختگی در تست‌ها
+  row.height = 28;
+  for (let i = 1; i <= ncols; i += 1) {
+    const c = row.getCell(i);
+    c.font = { name: FONT_NAME, charset: FONT_CHARSET, bold: true, size: 12, color: { argb: COLORS.text } };
+    c.alignment = { vertical: 'middle', horizontal: 'right', readingOrder: 2, wrapText: true };
+    c.fill = solid(CARD.field);
+    c.border = BORDER;
+  }
+}
+
+/** رنگ ردیف روز بر اساس tone: absent | holiday | incomplete (بدون tone ⇒ دست نمی‌خورد). */
+function applyTone(row, tone) {
+  const fill = TONE_FILL[tone];
+  if (!fill || typeof row.eachCell !== 'function') return;
+  row.eachCell({ includeEmpty: true }, (c) => { c.fill = solid(fill); });
+}
+
+/** ردیف «جمع کل». */
+function styleTotalRow(row, ncols) {
+  if (typeof row.getCell !== 'function') return; // exceljs ساختگی در تست‌ها
+  row.height = 26;
+  for (let i = 1; i <= ncols; i += 1) {
+    const c = row.getCell(i);
+    c.font = { name: FONT_NAME, charset: FONT_CHARSET, bold: true, size: 12, color: { argb: COLORS.text } };
+    c.alignment = ALIGN;
+    c.fill = solid(CARD.total);
+    c.border = { top: { style: 'medium', color: { argb: COLORS.head } }, bottom: { style: 'medium', color: { argb: COLORS.head } }, left: thin(), right: thin() };
+  }
+}
+
+module.exports = { COLORS, FONT_NAME, columnKinds, styleHeader, styleBodyRow, sheetOptions, styleCardTitle, styleCardFields, applyTone, styleTotalRow };

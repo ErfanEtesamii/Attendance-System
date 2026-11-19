@@ -94,13 +94,23 @@ function computeTotals(userRecords) {
  * @returns {{ year, month, from, to, label, daysInMonth, today, overtimePolicy, users: object[], totals: object }}
  * @throws {RangeError} سال/ماه نامعتبر
  */
-function computeMonthlyReport({ users, year, month, now, context, includeDays = false, includeBalances = true } = {}) {
-  const range = jalaliMonthRangeOf(year, month); // RangeError برای ورودی نامعتبر
+// بازه‌ی دلخواه (خروجی کارتکس): { from, to } میلادی؛ حداکثر ۳۶۶ روز. فقط برای ریز روزانه/جمع‌ها؛ مانده‌ی مرخصی (سالانه) در این حالت محاسبه نمی‌شود.
+function customRange(from, to) {
+  const re = /^\d{4}-\d{2}-\d{2}$/;
+  if (!re.test(String(from)) || !re.test(String(to)) || from > to) throw new RangeError('بازه‌ی تاریخ نامعتبر است.');
+  const dates = [];
+  for (let t = Date.parse(`${from}T00:00:00Z`); t <= Date.parse(`${to}T00:00:00Z`) && dates.length < 366; t += 86400000) dates.push(new Date(t).toISOString().slice(0, 10));
+  return { from, to: dates[dates.length - 1], daysInMonth: dates.length, label: `${from} تا ${to}`, dates };
+}
+
+function computeMonthlyReport({ users, year, month, now, context, includeDays = false, includeBalances = true, rangeOverride } = {}) {
+  const custom = rangeOverride ? customRange(rangeOverride.from, rangeOverride.to) : null;
+  const range = custom || jalaliMonthRangeOf(year, month); // RangeError برای ورودی نامعتبر
   const ctx = context || dayService.loadContext();
   const { settings, timezone } = ctx;
   const nowDate = now === undefined ? new Date() : new Date(now);
   const today = todayInZone(timezone, nowDate);
-  const dates = jalaliMonthDates(year, month);
+  const dates = custom ? custom.dates : jalaliMonthDates(year, month);
   const list = Array.isArray(users) ? users.filter(Boolean) : [];
   const ids = list.map((u) => u.id);
 
@@ -303,7 +313,7 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
     };
 
     const balances = [];
-    if (includeBalances) {
+    if (includeBalances && !custom) {
       for (const t of trackedTypes) {
         const b = leaveBalanceService.describeBalance({ userId: u.id, leaveTypeId: t.id, jalaliYear: year });
         if (!b.ok || !b.tracked) continue;

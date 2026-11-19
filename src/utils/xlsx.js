@@ -69,7 +69,56 @@ function sanitizeSheetName(name, used = []) {
   return out;
 }
 
-const SHEET_VIEWS = () => [{ rightToLeft: true, state: 'frozen', xSplit: 0, ySplit: 1 }];
+// ردیف سرستون جدول: ۱ برای شیت عادی؛ در شیت کارتکس (s.card) بعد از ردیف عنوان و ردیف‌های مشخصات
+const headerRowOf = (s) => (s.card ? 2 + (s.card.lines || []).length : 1);
+const SHEET_VIEWS = (headerRow = 1) => [{ rightToLeft: true, state: 'frozen', xSplit: 0, ySplit: headerRow }];
+
+/**
+ * پر کردن یک شیت (مشترک بین نسخه‌ی buffer و streaming). commit=true ⇒ هر ردیف بلافاصله commit می‌شود.
+ * شیت کارتکس: s.card = { title, lines: [[[متن، تعدادستون], …], …] } (مستطیل مشخصات)، s.rowTones (رنگ هر ردیف: absent|holiday|incomplete)،
+ * s.footer = { label, labelSpan, values: [...] } (ردیف «جمع کل» که ستون‌های اول آن ادغام می‌شود).
+ */
+function fillSheet(ws, s, commit) {
+  const rows = Array.isArray(s.rows) ? s.rows : [];
+  const ncols = s.headers.length;
+  const done = (row) => { if (commit && typeof row.commit === 'function') row.commit(); };
+  if (s.card) {
+    const t = ws.addRow([neutralizeCell(s.card.title)]);
+    style.styleCardTitle(t, ncols);
+    if (ncols > 1 && typeof ws.mergeCells === 'function') ws.mergeCells(t.number, 1, t.number, ncols);
+    done(t);
+    for (const line of s.card.lines || []) {
+      const vals = []; const spans = [];
+      let col = 1;
+      for (const [text, span] of line) { vals[col - 1] = neutralizeCell(text); spans.push([col, col + span - 1]); col += span; }
+      const r = ws.addRow(vals);
+      style.styleCardFields(r, ncols);
+      for (const [a, b] of spans) if (b > a && typeof ws.mergeCells === 'function') ws.mergeCells(r.number, a, r.number, b);
+      done(r);
+    }
+  }
+  const kinds = style.columnKinds(s.headers, rows);
+  const head = ws.addRow(s.headers.map(neutralizeCell));
+  style.styleHeader(head);
+  done(head);
+  rows.forEach((r, ri) => {
+    const row = ws.addRow(neutralizeRow(r).map((v) => (v === undefined ? null : v)));
+    style.styleBodyRow(row, ri, kinds);
+    if (s.rowTones && s.rowTones[ri]) style.applyTone(row, s.rowTones[ri]);
+    done(row);
+  });
+  if (s.footer) {
+    const span = s.footer.labelSpan || 1;
+    const vals = [neutralizeCell(s.footer.label)];
+    for (let i = 1; i < span; i += 1) vals.push(null);
+    for (const v of s.footer.values || []) vals.push(neutralizeCell(v));
+    const f = ws.addRow(vals);
+    style.styleTotalRow(f, ncols);
+    if (span > 1 && typeof ws.mergeCells === 'function') ws.mergeCells(f.number, 1, f.number, span);
+    done(f);
+  }
+  return head.number;
+}
 
 function columnWidth(headers, rows, index) {
   // فونت B Nazanin 12/14 پهن‌تر از پیش‌فرض است: ضریب ۱٫۲ برای داده و ۱٫۵ برای سرستون پررنگ ۱۴
@@ -104,13 +153,11 @@ function buildWorkbook(spec) {
     const name = sanitizeSheetName(s.name, usedNames);
     usedNames.push(name);
 
-    // RTL + فریز ردیف اول
-    const ws = wb.addWorksheet(name, { views: SHEET_VIEWS(), ...style.sheetOptions(usedNames.length - 1) });
-    const kinds = style.columnKinds(s.headers, rows);
-    style.styleHeader(ws.addRow(s.headers.map(neutralizeCell)));
-    rows.forEach((r, ri) => style.styleBodyRow(ws.addRow(neutralizeRow(r).map((v) => (v === undefined ? null : v))), ri, kinds));
+    // RTL + فریز تا ردیف سرستون
+    const ws = wb.addWorksheet(name, { views: SHEET_VIEWS(headerRowOf(s)), ...style.sheetOptions(usedNames.length - 1) });
+    const headerRow = fillSheet(ws, s, false);
     s.headers.forEach((_, i) => { ws.getColumn(i + 1).width = columnWidth(s.headers, rows, i); });
-    ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: s.headers.length } };
+    ws.autoFilter = { from: { row: headerRow, column: 1 }, to: { row: headerRow, column: s.headers.length } };
   }
   return wb;
 }
@@ -161,18 +208,10 @@ async function writeWorkbookStream(out, spec) {
     const rows = Array.isArray(s.rows) ? s.rows : [];
     const name = sanitizeSheetName(s.name, usedNames);
     usedNames.push(name);
-    const ws = wb.addWorksheet(name, { views: SHEET_VIEWS(), ...style.sheetOptions(usedNames.length - 1) });
+    const ws = wb.addWorksheet(name, { views: SHEET_VIEWS(headerRowOf(s)), ...style.sheetOptions(usedNames.length - 1) });
     ws.columns = s.headers.map((_, i) => ({ width: columnWidth(s.headers, rows, i) }));
-    const kinds = style.columnKinds(s.headers, rows);
-    const head = ws.addRow(s.headers.map(neutralizeCell));
-    style.styleHeader(head);
-    head.commit();
-    rows.forEach((r, ri) => {
-      const row = ws.addRow(neutralizeRow(r).map((v) => (v === undefined ? null : v)));
-      style.styleBodyRow(row, ri, kinds);
-      row.commit();
-    });
-    ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: s.headers.length } };
+    const headerRow = fillSheet(ws, s, true);
+    ws.autoFilter = { from: { row: headerRow, column: 1 }, to: { row: headerRow, column: s.headers.length } };
     await ws.commit();
   }
   await wb.commit();

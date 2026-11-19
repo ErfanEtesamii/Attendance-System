@@ -13,7 +13,8 @@ const breakRepository = require('../../../repositories/breakRepository');
 const disputeRepository = require('../../../repositories/disputeRepository');
 const auditRepository = require('../../../repositories/auditRepository');
 const { notifyUser } = require('../../../bot/notifier');
-const { sendTable, exportAuditFields } = require('../../../utils/xlsx'); // S5-1a: پیش‌فرض CSV؛ ?format=xlsx ⇒ xlsx (بدون exceljs ⇒ CSV + اعلام fallback)
+const { buildRangeCardSheets } = require('../../../services/employeeCardService');
+const { sendSheets, exportAuditFields } = require('../../../utils/xlsx'); // S5-1a: پیش‌فرض CSV؛ ?format=xlsx ⇒ xlsx (بدون exceljs ⇒ CSV + اعلام fallback)
 const { isoDateToJalaliString } = require('../../../utils/jalali');
 const { DATE_RE, STATUSES, scopedUserIds, visibleUsers, canAccessUser, parseRange, isoOrNull, enrichRecord, requireReason, audit, auditChange } = require('./common');
 const { attendanceRecordView, breakView } = require('../../../utils/auditViews');
@@ -176,18 +177,21 @@ router.get('/admin/attendance/export', requirePermission('attendance.read'), (re
       EXPORT_WEEKDAYS[(new Date(`${r.record_date}T00:00:00Z`).getUTCDay() + 1) % 7], EXPORT_STATUS[r.status] || r.status || '', e.user?.role || '', r.created_at || '', r.updated_at || '',
     ];
   });
-  // S5-1c: audit درست قبل از ارسال بدنه و با قالب واقعاً تحویل‌شده (csv/xlsx/fallback/streamed)
-  return sendTable(
-    req,
-    res,
-    `attendance-records_${from}_${to}.csv`,
-    ['نام', 'کد پرسنلی', 'دپارتمان', 'تاریخ', 'تاریخ شمسی', 'ورود', 'IP ورود', 'خروج', 'IP خروج',
+  // CSV: همان جدول تخت قبلی (بدون تغییر). xlsx: کارتکس — برای هر کارمند یک شیت (مشخصات بالا + همه‌ی روزهای بازه + جمع کل)
+  // کارمندان شیت: همان‌هایی که فیلتر اسکوپ/دپارتمان/کارمند انتخاب کرده (حتی بدون رکورد در بازه ⇒ همه‌ی روزها «غیبت»).
+  const csv = {
+    headers: ['نام', 'کد پرسنلی', 'دپارتمان', 'تاریخ', 'تاریخ شمسی', 'ورود', 'IP ورود', 'خروج', 'IP خروج',
       'دقیقه استراحت', 'دقیقه مفید', 'دقیقه تأخیر', 'دقیقه خروج زودهنگام', 'دقیقه اضافه‌کاری', 'وضعیت',
       'استراحت با حقوق (دقیقه)', 'استراحت بدون حقوق (دقیقه)',
       'روز هفته', 'وضعیت (فارسی)', 'نقش', 'زمان ایجاد رکورد', 'آخرین ویرایش'],
     rows,
-    { onExport: (info) => audit(req, 'attendance_exported', { from, to, count: rows.length, ...exportAuditFields(info) }) }
-  );
+  };
+  const sheets = () => buildRangeCardSheets({ users: [...userMap.values()], from, to });
+  // S5-1c: audit درست قبل از ارسال بدنه و با قالب واقعاً تحویل‌شده (csv/xlsx/fallback/streamed)
+  return sendSheets(req, res, `attendance-records_${from}_${to}.csv`, sheets, {
+    csv,
+    onExport: (info) => audit(req, 'attendance_exported', { from, to, count: rows.length, ...exportAuditFields(info) }),
+  });
 });
 
 // ---------- جزئیات یک رکورد (استراحت‌ها، IPها، تاریخچه‌ی تغییرات) ----------

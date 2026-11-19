@@ -17,6 +17,7 @@ const { isoDateToJalaliString } = require('../utils/jalali');
 const { formatTime, minutesSinceMidnight } = require('../utils/time');
 const { aggregateRecords, safeSummary, minutesToHHMM } = require('../api/routes/admin/common');
 const remoteWorkRepository = require('../repositories/remoteWorkRepository');
+const { buildRangeCardSheets } = require('./employeeCardService');
 
 const SHEET_NAMES = { summary: 'خلاصه کارمند', daily: 'ریز روزانه', leave: 'مرخصی و مأموریت', overtime: 'اضافه‌کاری', remote: 'دورکاری', meta: 'مشخصات گزارش' };
 
@@ -238,4 +239,14 @@ function buildEmployeeReportSheets({ users, from, to }) {
   ];
 }
 
-module.exports = { buildEmployeeReportSheets, SHEET_NAMES };
+/**
+ * شیت‌های نهایی فایل xlsx «گزارش کارمندان»: خلاصه ⇒ کارتکس هر کارمند (ریز روزانه‌ی او با مشخصات بالا و جمع کل) ⇒ مرخصی ⇒ اضافه‌کاری ⇒ دورکاری ⇒ مشخصات.
+ * (ریز روزانه‌ی بلند با تکرار نام/کد/دپارتمان در هر ردیف حذف شده است.)
+ */
+function buildEmployeeReportWorkbookSheets({ users, from, to }) {
+  const base = buildEmployeeReportSheets({ users, from, to });
+  const cards = Array.isArray(users) && users.length ? buildRangeCardSheets({ users, from, to }) : [];
+  return [base[0], ...cards, ...base.slice(1).filter((x) => x.name !== SHEET_NAMES.daily)];
+}
+
+module.exports = { buildEmployeeReportSheets, buildEmployeeReportWorkbookSheets, SHEET_NAMES };

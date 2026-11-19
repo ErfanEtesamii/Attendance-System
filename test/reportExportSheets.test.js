@@ -211,7 +211,10 @@ describe('route گزارش و خروجی‌ها: اسکوپ، CSV قدیمی، a
       const ExcelJS = require('exceljs');
       const wb = new ExcelJS.Workbook();
       await wb.xlsx.load(Buffer.from(await res.arrayBuffer()));
-      assert.deepEqual(wb.worksheets.map((s) => s.name), ['خلاصه کارمند', 'ریز روزانه', 'مرخصی و مأموریت', 'اضافه‌کاری', 'دورکاری', 'مشخصات گزارش']);
+      assert.equal(wb.worksheets[0].name, 'خلاصه کارمند');
+      assert.deepEqual(wb.worksheets.slice(-4).map((s) => s.name), ['مرخصی و مأموریت', 'اضافه‌کاری', 'دورکاری', 'مشخصات گزارش']);
+      assert.ok(!wb.worksheets.some((s) => s.name === 'ریز روزانه'), 'ریز روزانه‌ی بلند حذف شده؛ هر کارمند کارتکس خودش را دارد');
+      assert.equal(wb.worksheets.length, 6, 'خلاصه + کارتکس یک کارمند + چهار شیت');
       const summary = wb.worksheets[0];
       assert.equal(summary.rowCount, 2, 'سرستون + فقط کارمند تیم سرپرست');
       assert.equal(summary.getCell(2, 1).value, "'=cmd|calc");

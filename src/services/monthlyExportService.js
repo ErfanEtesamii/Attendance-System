@@ -180,17 +180,15 @@ function buildMonthlySheets(payload, opts = {}) {
 
   const leaveRows = [];
   const balanceRows = [];
-  const dailyRows = [];
   for (const u of users) {
     const id = { fullName: u.user.fullName || '', code: u.user.personnelCode || '' };
     for (const t of (u.leave && u.leave.byType) || []) leaveRows.push({ ...id, ...t });
     for (const b of u.balances || []) balanceRows.push({ ...id, b });
-    for (const d of u.days || []) dailyRows.push({ ...id, d });
   }
   const dept = sheetFrom(SHEET.dept, DEPT_COLUMNS, deptRows(users));
   const leave = sheetFrom(SHEET.leave, LEAVE_COLUMNS, leaveRows);
   const balances = sheetFrom(SHEET.balances, BALANCE_COLUMNS, balanceRows);
-  const daily = sheetFrom(SHEET.daily, DAILY_COLUMNS, dailyRows);
+  const cards = users.length ? buildMonthlyCardSheets(payload) : []; // ریز روزانه: یک کارتکس برای هر کارمند (به‌جای شیت بلند با تکرار نام/کد)
 
   const closure = payload.closure;
   const sourceLabel = payload.source === 'snapshot' ? 'snapshot ماه بسته (ارقام ثابت لحظه‌ی بستن)' : 'محاسبه‌ی زنده (ممکن است با تغییر داده‌ها عوض شود)';
@@ -218,14 +216,16 @@ function buildMonthlySheets(payload, opts = {}) {
   };
 
   const guideRows = [];
-  for (const [sheetName, cols] of [[SHEET.main, MAIN_COLUMNS], [SHEET.dept, DEPT_COLUMNS], [SHEET.leave, LEAVE_COLUMNS], [SHEET.balances, BALANCE_COLUMNS], [SHEET.daily, DAILY_COLUMNS]]) {
+  for (const [sheetName, cols] of [[SHEET.main, MAIN_COLUMNS], [SHEET.dept, DEPT_COLUMNS], [SHEET.leave, LEAVE_COLUMNS], [SHEET.balances, BALANCE_COLUMNS]]) {
     for (const c of cols) guideRows.push([sheetName, c[0], c[1]]);
   }
   guideRows.push([SHEET.main, 'ردیف «جمع»', 'جمع ستون‌های عددی همه‌ی کارمندان نمایش‌داده‌شده (ستون‌های متنی خالی‌اند).']);
-  guideRows.push([SHEET.daily, 'خالی بودن مقدار', 'مقدار خالی یعنی آن روز/ستون معنا ندارد (مثلاً مفید برای روز تعطیل) نه صفر.']);
+  guideRows.push(['شیت هر کارمند', 'کارتکس', 'برای هر کارمند یک شیت: مستطیل مشخصات (نام، کد، دپارتمان، IP، میانگین ورود/خروج)، همه‌ی روزهای ماه (روز بدون ورود «غیبت»، تعطیل/آخر هفته «تعطیل») و ردیف «جمع کل». خط تیره یعنی آن روز/ستون معنا ندارد.']);
   const guide = { name: SHEET.guide, headers: ['شیت', 'ستون', 'تعریف'], rows: guideRows };
 
-  return [main, dept, leave, balances, daily, meta, guide];
+  return [main, dept, leave, balances, ...cards, meta, guide];
 }
+
+const { buildMonthlyCardSheets } = require('./employeeCardService');
 
 module.exports = { buildMonthlySheets, SHEET, MAIN_COLUMNS, DAY_STATUS };
