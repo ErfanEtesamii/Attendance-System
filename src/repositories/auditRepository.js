@@ -32,6 +32,14 @@ function logEvent({ userId = null, action, ipAddress = null, details = null }) {
   return db.prepare('SELECT * FROM audit_log WHERE id = ?').get(result.lastInsertRowid);
 }
 
+// آیا برای این کاربر/عمل، با employeeId مشخص، از ابتدای بازه (YYYY-MM-DD، UTC) رویدادی ثبت شده؟ (جلوگیری از هشدار تکراری؛ پس از ری‌استارت هم کار می‌کند)
+function hasEmployeeEventSince({ userId, action, employeeId, sinceDate }) {
+  const row = getDb()
+    .prepare(`SELECT 1 AS x FROM audit_log WHERE user_id = ? AND action = ? AND occurred_at >= ? AND json_valid(details) AND json_extract(details, '$.employeeId') = ? LIMIT 1`)
+    .get(userId, action, sinceDate, employeeId);
+  return Boolean(row);
+}
+
 // S4-1a: ثبت «تغییرِ یک موجودیت» با details استاندارد (جزئیات قالب: src/utils/auditDiff.js).
 // ساختار جدول و ورودی‌های قدیمی (logEvent) بدون تغییر است؛ این فقط یک لایه‌ی بالای logEvent است.
 //   actor: شناسه‌ی کاربر انجام‌دهنده، یا آبجکت با id/userId (null برای سیستم)؛ در ستون user_id می‌نشیند
@@ -156,4 +164,4 @@ function listActions() {
     .all();
 }
 
-module.exports = { logEvent, logChange, listByUser, listRecent, search, listActions, listPlanEditEventsPending, summarizeOlderThan, archiveBatch };
+module.exports = { hasEmployeeEventSince, logEvent, logChange, listByUser, listRecent, search, listActions, listPlanEditEventsPending, summarizeOlderThan, archiveBatch };

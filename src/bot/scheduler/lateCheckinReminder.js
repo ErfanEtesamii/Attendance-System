@@ -89,6 +89,8 @@ async function checkRepeatedLateness(bot, { now = new Date() } = {}) {
 
     const alertKey = `${monthKey}:${user.id}`;
     if (alertedManagerThisMonth.has(alertKey)) continue;
+    // بعد از ری‌استارت سرور حافظه خالی است؛ ردپای ممیزی همان ماه هشدارِ تکراری را می‌گیرد
+    if (auditRepository.hasEmployeeEventSince({ userId: manager.id, action: 'manager_alerted_repeated_lateness', employeeId: user.id, sinceDate: `${monthKey}-01` })) { alertedManagerThisMonth.add(alertKey); continue; }
 
     const records = attendanceRepository.listByUserAndRange(user.id, daysAgoDateString(29, now), today);
     const summary = summarizeRange(records);
