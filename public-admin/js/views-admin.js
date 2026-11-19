@@ -269,6 +269,34 @@
     return String(v == null ? '' : v).trim();
   }
 
+  // واحد نمایشی کنار عدد (از روی نام کلید؛ تا کاربرِ تازه‌کار بداند «۴۵» دقیقه است یا ساعت)
+  function stUnit(it) {
+    if (it.type !== 'number') return '';
+    const k = it.key;
+    if (k === 'missionReminderHour') return 'ساعتِ روز';
+    if (/Percent/.test(k)) return 'درصد';
+    if (/Factor$/.test(k)) return 'برابر';
+    if (/Minutes|RoundStep$/.test(k)) return 'دقیقه';
+    if (/Hours$/.test(k)) return 'ساعت';
+    if (/Days$/.test(k)) return 'روز';
+    if (/Months$/.test(k)) return 'ماه';
+    if (/Seconds$/.test(k)) return 'ثانیه';
+    if (/Kb$/.test(k)) return 'کیلوبایت';
+    if (/CommentMax$|ReasonMin$/.test(k)) return 'نویسه';
+    return '';
+  }
+
+  // راهنمای ساده‌ی هر بخش: «این بخش چه می‌کند» و یک مثال واقعی
+  const ST_SECTION_HELP = {
+    'ساعت و منطقه‌ی زمانی': ['ساعت رسمی شروع و پایان کار شرکت. تأخیر و زودتر رفتن همه نسبت به همین ساعت‌ها حساب می‌شود.', 'اگر شروع کار ۰۸:۰۰ باشد و کارمندی ۰۸:۲۰ ورود بزند، ۲۰ دقیقه تأخیر دارد.'],
+    'تأخیر و زودتر رفتن': ['چند دقیقه ارفاق قبل از اینکه تأخیر یا زودتر رفتن ثبت شود.', 'مهلت تأخیر ۱۰ دقیقه و شروع ۰۸:۰۰: ورود ۰۸:۰۸ تأخیر حساب نمی‌شود.'],
+    'ناهار': ['کسر خودکار زمان ناهار از ساعت مفید. با حالت پیش‌فرض فقط کسی کسر می‌شود که در بازه‌ی ناهار در شرکت بوده است.', 'بازه ۱۲:۰۰ تا ۱۴:۰۰ و کسر ۴۵ دقیقه: کسی که کل بازه را در شرکت بوده ۴۵ دقیقه کسر می‌شود؛ کسی که فقط ۲۰ دقیقه‌اش حاضر بوده، با «کسر متناسب» ۲۰ دقیقه.'],
+    'خروج و ورود مجدد': ['وقتی کارمند وسط روز از شرکت بیرون می‌رود خروج می‌زند و هنگام برگشت «ورود مجدد». اینجا تعداد دفعات مجاز را تعیین می‌کنید.', 'سقف ۵: هر کارمند تا ۵ بار در روز می‌تواند بیرون برود و برگردد. با گزینه‌ی «نامحدود» سقفی نیست.'],
+    'استراحت': ['استراحت‌های کوتاه با حقوق؛ تا سقف تعیین‌شده از ساعت کار کم نمی‌شوند.', 'سه استراحت و مجموع ۴۵ دقیقه: سه بار چای‌خوردن و کلاً ۴۵ دقیقه‌اش حقوقی است.'],
+    'پیام خودکار استراحت و ناهار': ['ربات خودش سر ساعت تعیین‌شده برای همه‌ی کسانی که همان لحظه در شرکت‌اند پیام می‌فرستد؛ شیفت مهم نیست. هر دو کلید پیش‌فرض خاموش‌اند.', 'ناهار ۱۲:۱۵ و ۴۵ دقیقه: ربات ۱۲:۱۵ پیام شروع می‌فرستد و چند دقیقه مانده به ۱۳:۰۰ هشدار پایان.'],
+    'هشدار و علامت‌گذاری': ['تعیین می‌کند چه زمانی یک استراحت یا حضور «غیرعادی» علامت بخورد تا ادمین ببیند.', ''],
+  };
+
   function setInput(it, v) {
     const k = esc(it.key);
     const al = `aria-label="${esc(setShort(it))}"`; // برچسب دسترس‌پذیر کنترل (S5-9a)
@@ -276,7 +304,7 @@
       case 'boolean':
         return `<label class="st-switch-wrap"><input type="checkbox" role="switch" class="st-switch" name="${k}" data-key="${k}" ${al}${setNorm(it, v) === 'true' ? ' checked' : ''} /><span class="st-track" aria-hidden="true"></span><span class="st-sw-on">روشن</span><span class="st-sw-off">خاموش</span></label>`;
       case 'number':
-        return `<input type="number" step="any" name="${k}" data-key="${k}" ${al} value="${esc(v)}"${it.min !== undefined ? ` min="${it.min}"` : ''}${it.max !== undefined ? ` max="${it.max}"` : ''} class="ltr-in" />`;
+        { const u = stUnit(it); const inp = `<input type="number" step="any" name="${k}" data-key="${k}" ${al} value="${esc(v)}"${it.min !== undefined ? ` min="${it.min}"` : ''}${it.max !== undefined ? ` max="${it.max}"` : ''} class="ltr-in" />`; return u ? `<span class="st-unit-wrap">${inp}<span class="st-unit" aria-hidden="true">${u}</span></span>` : inp; }
       case 'time':
         return `<input type="time" name="${k}" data-key="${k}" ${al} value="${esc(v)}" class="ltr-in" dir="ltr" />`;
       case 'enum':
@@ -416,13 +444,30 @@
           <ul class="st-rel-list" data-related="${esc(g)}">${relatedInner(g)}</ul>
         </section>` : '');
 
+      // بخش‌بندی: هر section یک کارت جدا با عنوان، توضیح ساده و مثال؛ ردیف‌ها زیرش به‌صورت فهرست فشرده
+      const fieldGroups = (g, list) => {
+        const chunks = [];
+        list.forEach((it, i) => {
+          const sec = it.section || '';
+          if (i === 0 || (list[i - 1].section || '') !== sec) chunks.push({ sec, idx: i, rows: [] });
+          chunks[chunks.length - 1].rows.push(it);
+        });
+        const jump = chunks.filter((c) => c.sec).length >= 3
+          ? `<nav class="st-jump" aria-label="پرش به بخش">${chunks.filter((c) => c.sec).map((c) => `<button type="button" class="st-jump-chip" data-jump="st-sec-${esc(g)}-${c.idx}">${esc(c.sec)}</button>`).join('')}</nav>` : '';
+        return jump + chunks.map((c) => {
+          const help = ST_SECTION_HELP[c.sec];
+          const head = c.sec ? `<header class="st-group-head"><h4 class="st-section" id="st-sec-${esc(g)}-${c.idx}">${esc(c.sec)}</h4><span class="st-group-count">${fmt.num(c.rows.length)} تنظیم</span>${help ? `<p class="st-group-what">${esc(help[0])}</p>${help[1] ? `<p class="st-group-eg"><span>مثال</span>${esc(help[1])}</p>` : ''}` : ''}</header>` : '';
+          return `<section class="st-group${c.sec ? '' : ' st-group-plain'}">${head}<div class="st-fields">${c.rows.map(rowHtml).join('')}</div></section>`;
+        }).join('');
+      };
+
       const groupBody = (g) => {
         const list = items.filter((i) => i.group === g);
         const notes = [];
         if (IMPACT_GROUPS.has(g)) notes.push(`<div class="st-banner st-banner-warn" role="note"><span class="st-banner-ico" aria-hidden="true">${icon('alert')}</span><p>${esc(IMPACT_SHORT)}</p></div>`);
         if (g === 'schedule') notes.push(`<div class="st-banner st-banner-info" role="note"><span class="st-banner-ico" aria-hidden="true">${icon('clock')}</span><p>تغییر زمان‌بندی بدون ری‌استارت و بلافاصله اعمال می‌شود. مقدار پیش‌فرض از فایل <code class="ltr">.env</code> می‌آید.</p></div>`);
         if (g === 'supervisors' && AP.supervisorsPanel && AP.can('supervisors.manage')) notes.push(AP.supervisorsPanel.html()); // فاز C
-        return `${notes.join('')}<div class="st-fields">${list.map((it, i) => (it.section && (i === 0 || list[i - 1].section !== it.section) ? `<h4 class="st-section" id="st-sec-${esc(g)}-${i}">${esc(it.section)}</h4>` : '') + rowHtml(it)).join('')}</div>${relatedCard(g)}
+        return `${notes.join('')}${fieldGroups(g, list)}${relatedCard(g)}
           <div class="st-actionbar" data-bar="${esc(g)}">
             <div class="st-save-state"><span class="st-status-dot" aria-hidden="true"></span><span class="st-pending" data-pending="${esc(g)}" aria-live="polite">تغییری ذخیره‌نشده نیست</span></div>
             <div class="form-msg" data-msg></div>
@@ -441,7 +486,7 @@
               <span class="st-nav-ico" aria-hidden="true">${icon('settings')}</span>
               <div><h3>تنظیمات سیستم</h3><div class="muted small">${fmt.num(items.length)} تنظیم در ${fmt.num(groupKeys.length)} بخش</div></div>
             </div>
-            <label class="field st-search"><span class="sr-only">جستجو در تنظیمات</span><input type="search" id="set-q" placeholder="جستجو در تنظیمات…" autocomplete="off" /></label>
+            <label class="field st-search"><span class="sr-only">جستجو در تنظیمات</span><input type="search" id="set-q" placeholder="جستجو در تنظیمات… (کلید /)" autocomplete="off" /></label>
             <nav aria-label="بخش‌های تنظیمات">${groupKeys.map((g, i) => `
               <button type="button" class="st-nav-item" data-go="${esc(g)}"${i === 0 ? ' aria-current="true"' : ''}>
                 <span class="st-nav-item-ico" aria-hidden="true">${icon(stGroupMeta(g)[0])}</span>
@@ -600,11 +645,21 @@
               let shown = 0;
               $$('.st-field', card).forEach((row) => {
                 const it = byKey[row.dataset.row];
-                const hit = !q || it.description.toLowerCase().includes(q) || (it.label || '').toLowerCase().includes(q) || it.key.toLowerCase().includes(q);
+                const hit = !q || it.description.toLowerCase().includes(q) || (it.label || '').toLowerCase().includes(q) || it.key.toLowerCase().includes(q) || (it.hint || '').toLowerCase().includes(q) || (it.section || '').toLowerCase().includes(q);
                 row.classList.toggle('hidden', !hit);
                 if (hit) shown += 1;
+                [$('.st-label > span', row), $('.st-sub', row)].forEach((el) => {
+                  if (!el) return;
+                  if (el.dataset.raw === undefined) el.dataset.raw = el.textContent;
+                  const raw = el.dataset.raw; const at = q ? raw.toLowerCase().indexOf(q) : -1;
+                  if (at < 0 && el.dataset.hl !== '1') return;
+                  el.innerHTML = at < 0 ? esc(raw) : `${esc(raw.slice(0, at))}<mark class="st-mark">${esc(raw.slice(at, at + q.length))}</mark>${esc(raw.slice(at + q.length))}`;
+                  el.dataset.hl = at < 0 ? '0' : '1';
+                });
               });
               card.hidden = q ? shown === 0 : card.dataset.group !== active;
+              $$('.st-jump', card).forEach((j) => j.classList.toggle('hidden', !!q));
+              $$('.st-group', card).forEach((gr) => gr.classList.toggle('hidden', !!q && !$$('.st-field:not(.hidden)', gr).length));
               const g = card.dataset.group;
               const cnt = $(`[data-count="${CSS.escape(g)}"]`, page);
               if (cnt) cnt.textContent = fmt.num(q ? shown : items.filter((i) => i.group === g).length);
@@ -637,6 +692,11 @@
           page.addEventListener('click', (e) => {
             const b = e.target.closest && e.target.closest('[data-goto]');
             if (b) gotoSetting(b.dataset.goto);
+            const j = e.target.closest && e.target.closest('[data-jump]');
+            if (j) {
+              const h = document.getElementById(j.dataset.jump); const grp = h && h.closest('.st-group');
+              if (grp && grp.scrollIntoView) { const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; grp.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'start' }); }
+            }
           });
 
           function showGroup(g) {
@@ -660,6 +720,18 @@
 
           groupKeys.forEach(bind);
           $('#set-q', page).addEventListener('input', applyFilter);
+          // میان‌بر: «/» رفتن به جستجو، Esc پاک‌کردن جستجو، Ctrl/⌘+S ذخیره‌ی بخش فعلی
+          const onKey = (e) => {
+            if (!page.isConnected) { document.removeEventListener('keydown', onKey); return; }
+            const typing = /^(INPUT|SELECT|TEXTAREA)$/.test((e.target && e.target.tagName) || '');
+            if (e.key === '/' && !typing) { e.preventDefault(); $('#set-q', page).focus(); return; }
+            if (e.key === 'Escape' && e.target && e.target.id === 'set-q') { e.target.value = ''; applyFilter(); return; }
+            if ((e.ctrlKey || e.metaKey) && String(e.key).toLowerCase() === 's') {
+              const b = $(`[data-save="${CSS.escape(active)}"]`, page);
+              if (b) { e.preventDefault(); if (!b.disabled) b.click(); }
+            }
+          };
+          if (typeof document.addEventListener === 'function') document.addEventListener('keydown', onKey);
         },
       };
     },

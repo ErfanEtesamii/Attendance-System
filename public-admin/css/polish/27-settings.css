@@ -362,3 +362,120 @@ body:has(.st-layout) .ai-panel { height: min(680px, calc(100vh - 170px)); }
 .st-layout .st-field.st-inactive .st-dep-note { display: block; }
 .st-layout .st-field.st-inactive:hover { transform: none; box-shadow: none; }
 @media (prefers-reduced-motion: reduce) { .st-layout .st-field.st-inactive { transition: none; } }
+
+/* ===== بازطراحی: بخش‌ها به‌صورت کارت، تنظیم‌ها به‌صورت ردیف فشرده (عنوان و توضیح کنار کنترل) ===== */
+.st-layout .st-body > .st-group { margin-top: 18px; }
+.st-layout .st-group {
+  border: 1px solid color-mix(in srgb, var(--brand) 14%, var(--border)); border-radius: var(--r-xl);
+  background: var(--card); overflow: hidden;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 8%, transparent), 0 18px 34px -28px color-mix(in srgb, var(--brand) 50%, transparent);
+}
+.st-layout .st-group-head {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 12px; padding: 16px 20px 14px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--brand) 7%, var(--card)), var(--card));
+  border-bottom: 1px solid color-mix(in srgb, var(--brand) 12%, var(--border));
+}
+.st-layout .st-group-head .st-section { margin: 0; padding: 0; border: 0; background: none; font-size: var(--fs-md, 1rem); font-weight: 800; display: flex; align-items: center; gap: 10px; }
+.st-layout .st-group-head .st-section::before { content: ""; width: 4px; height: 18px; border-radius: 4px; background: linear-gradient(180deg, var(--accent), var(--brand)); flex: none; }
+.st-layout .st-group-head .st-section::after { content: none; }
+.st-layout .st-group-count { font-size: var(--fs-xs); font-weight: 700; color: var(--hint); padding: 2px 10px; border-radius: 999px; background: color-mix(in srgb, var(--brand) 8%, var(--card)); }
+.st-layout .st-group-what { grid-column: 1 / -1; margin: 2px 0 0; color: var(--text); opacity: .86; font-size: var(--fs-sm); line-height: 1.9; }
+.st-layout .st-group-eg {
+  grid-column: 1 / -1; margin: 6px 0 0; display: flex; gap: 10px; align-items: baseline; padding: 8px 12px; border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--accent) 10%, var(--card)); border: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--hint); font-size: var(--fs-sm); line-height: 1.8;
+}
+.st-layout .st-group-eg span { flex: none; font-weight: 800; font-size: var(--fs-xs); color: var(--brand); padding: 1px 9px; border-radius: 999px; background: var(--card); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
+
+.st-layout .st-group .st-fields { display: block; padding: 0; gap: 0; }
+.st-layout .st-group .st-field {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(210px, 290px); grid-template-areas: "head ctl" "aux foot" "hint hint" "dep dep";
+  column-gap: 28px; row-gap: 3px; align-items: center; padding: 12px 20px; margin: 0;
+  border: 0; border-radius: 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 80%, transparent); background: transparent;
+  position: relative; transition: background-color var(--motion-fast);
+}
+.st-layout .st-group .st-field:last-child { border-bottom: 0; }
+.st-layout .st-group .st-field:hover { background: color-mix(in srgb, var(--brand) 4%, var(--card)); }
+.st-layout .st-group .st-head { grid-area: head; align-items: center; gap: 12px; }
+.st-layout .st-group .st-ico { width: 34px; height: 34px; border-radius: 10px; flex: none; }
+.st-layout .st-group .st-label { font-weight: 800; }
+.st-layout .st-group .st-ctl { grid-area: ctl; min-width: 0; }
+.st-layout .st-group .st-aux { grid-area: aux; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.st-layout .st-group .st-hint { grid-area: hint; margin: 4px 0 0; }
+.st-layout .st-group .st-dep-note { grid-area: dep; margin: 2px 0 0; }
+.st-layout .st-group .st-foot { grid-area: foot; margin: 0; padding: 0; border: 0; justify-content: flex-end; gap: 8px; }
+.st-layout .st-group .st-field.full { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "ctl" "aux" "hint" "dep" "foot"; row-gap: 10px; align-items: stretch; }
+.st-layout .st-group .st-field.full .st-foot { justify-content: flex-start; }
+
+/* تغییر‌کرده از پیش‌فرض: نوار رنگی کنار ردیف؛ ذخیره‌نشده: زرد */
+.st-layout .st-group .st-field.changed::before { content: ""; position: absolute; inset-block: 10px; inset-inline-start: 0; width: 3px; border-radius: 3px; background: var(--brand); }
+.st-layout .st-group .st-field.dirty { background: color-mix(in srgb, var(--yellow) 8%, var(--card)); }
+.st-layout .st-group .st-field.dirty::before { content: ""; position: absolute; inset-block: 10px; inset-inline-start: 0; width: 3px; border-radius: 3px; background: var(--yellow); }
+
+/* واحد کنار عدد */
+.st-layout .st-unit-wrap { display: flex; align-items: stretch; width: 100%; }
+.st-layout .st-unit-wrap > input { flex: 1; min-width: 0; border-start-end-radius: 0; border-end-end-radius: 0; text-align: center; font-weight: 700; }
+.st-layout .st-unit {
+  display: inline-flex; align-items: center; padding: 0 14px; font-size: var(--fs-sm); font-weight: 700; color: var(--brand); white-space: nowrap;
+  background: var(--brand-soft); border: 1px solid color-mix(in srgb, var(--brand) 14%, transparent); border-inline-start: 0;
+  border-start-start-radius: 0; border-end-start-radius: 0; border-start-end-radius: var(--r-md); border-end-end-radius: var(--r-md);
+}
+
+@media (max-width: 760px) {
+  .st-layout .st-group .st-field { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "ctl" "aux" "hint" "dep" "foot"; row-gap: 10px; padding: 14px 16px; }
+  .st-layout .st-group .st-foot { justify-content: flex-start; }
+  .st-layout .st-group-head { padding: 14px 16px 12px; }
+}
+
+/* ===== الگوبرداری از Stripe / Linear / Vercel / iOS ===== */
+/* پرش بین بخش‌ها (مثل «On this page») */
+.st-layout .st-jump { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; padding: 10px 12px; border-radius: var(--r-lg); background: color-mix(in srgb, var(--brand) 5%, var(--card)); border: 1px solid color-mix(in srgb, var(--brand) 12%, var(--border)); }
+.st-layout .st-jump-chip { appearance: none; cursor: pointer; font: inherit; font-size: var(--fs-xs); font-weight: 700; color: var(--brand); padding: 5px 13px; border-radius: 999px; background: var(--card); border: 1px solid color-mix(in srgb, var(--brand) 22%, transparent); transition: background-color var(--motion-fast), transform var(--motion-fast), box-shadow var(--motion-fast); }
+.st-layout .st-jump-chip:hover { background: var(--brand-soft); transform: translateY(-1px); box-shadow: 0 6px 12px -8px color-mix(in srgb, var(--brand) 60%, transparent); }
+.st-layout .st-jump-chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.st-layout .st-group { scroll-margin-top: calc(var(--st-sticky-top, 72px) + 12px); }
+
+/* برچسب «سفارشی» کنار تنظیم‌هایی که از پیش‌فرض فرق دارند (فقط CSS، بدون JS) */
+.st-layout .st-field.changed .st-label > span:first-child::after {
+  content: "سفارشی"; margin-inline-start: 10px; padding: 1px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 800; vertical-align: middle;
+  color: var(--brand); background: var(--brand-soft); border: 1px solid color-mix(in srgb, var(--brand) 25%, transparent);
+}
+.st-layout .st-mark { background: color-mix(in srgb, var(--accent) 45%, transparent); color: inherit; border-radius: 4px; padding: 0 2px; }
+
+/* کلید روشن/خاموش: سوئیچ تمیز و فشرده، بدون کپسول بزرگ دور آن */
+.st-layout .st-group .st-ctl:has(.st-switch-wrap) { display: flex; justify-content: flex-end; }
+.st-layout .st-group .st-switch-wrap { min-height: 0; padding: 0; background: none; border: 0; box-shadow: none; flex-direction: row-reverse; gap: 12px; }
+.st-layout .st-group .st-track { width: 48px; height: 28px; }
+.st-layout .st-group .st-track::after { width: 22px; height: 22px; top: 2px; }
+.st-layout .st-group .st-switch:checked + .st-track::after { inset-inline-start: 22px; }
+.st-layout .st-group .st-sw-on, .st-layout .st-group .st-sw-off { font-weight: 800; font-size: var(--fs-sm); min-width: 46px; }
+.st-layout .st-group .st-sw-on { color: var(--green); }
+.st-layout .st-group .st-sw-off { color: var(--hint); }
+
+/* ورودی‌ها: همه هم‌قد و هم‌عرض */
+.st-layout .st-group .st-ctl :where(input:not([type="checkbox"]), select) { min-height: 42px; border-radius: var(--r-md); }
+.st-layout .st-group .st-field:not(.full) { grid-template-columns: minmax(0, 1fr) 260px; }
+
+/* پیش‌فرض: متن آرام، نه قرص جدا؛ دکمه‌ی بازنشانی فقط وقتی لازم است */
+.st-layout .st-group .st-foot { font-size: var(--fs-xs); }
+.st-layout .st-group .st-def { gap: 6px; background: none; border: 0; padding: 0; color: var(--hint); }
+.st-layout .st-group .st-def bdi { font-weight: 700; color: var(--text); opacity: .75; }
+
+/* نوار ذخیره‌ی شناور (مثل Linear/Vercel) */
+.st-layout .st-actionbar.dirty {
+  position: sticky; bottom: 14px; margin: 18px 12px 12px; padding: 10px 14px; border: 1px solid color-mix(in srgb, var(--brand) 30%, var(--border)); border-top-width: 1px;
+  border-radius: var(--r-xl); background: color-mix(in srgb, var(--card) 92%, transparent); backdrop-filter: blur(10px);
+  box-shadow: 0 18px 40px -14px color-mix(in srgb, var(--brand) 55%, transparent), 0 2px 6px color-mix(in srgb, var(--brand) 14%, transparent);
+  animation: st-bar-in .22s ease-out;
+}
+@keyframes st-bar-in { from { transform: translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .st-layout .st-actionbar.dirty { animation: none; } }
+.st-layout .st-actionbar:not(.dirty) { border-top: 0; background: none; padding-top: 0; }
+@media (max-width: 760px) {
+  .st-layout .st-group .st-field:not(.full) { grid-template-columns: minmax(0, 1fr); }
+  .st-layout .st-group .st-ctl:has(.st-switch-wrap) { justify-content: flex-start; }
+}
+
+/* overflow:hidden پنل نوار ذخیره را از حالت چسبان درمی‌آورد؛ clip گوشه‌ها را می‌برد ولی اسکرول‌کانتینر نمی‌سازد */
+.st-layout .st-panel { overflow: clip; }
+.st-layout .st-panel:has(.st-actionbar.dirty) { overflow: visible; }
