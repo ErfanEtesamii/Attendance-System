@@ -50,7 +50,8 @@ describe('صفحه‌های تنظیمات و تعطیلات پنل (S3-9a/9b)',
       assert.match(html, new RegExp(`<section class="card st-panel" data-group="${g}"`), `گروه ${g}`);
       assert.match(html, new RegExp(`class="st-nav-item" data-go="${g}"`), `ناوبری ${g}`);
     }
-    assert.doesNotMatch(html, /<details|set-group/);
+    assert.doesNotMatch(html, /set-group/);
+    assert.doesNotMatch(html.replace(/<details class="st-adv"[\s\S]*?<\/details>/g, ''), /<details/); // فقط «پیشرفته» جمع‌شونده است؛ آکاردئون قدیمی برنگشته
     const panelTags = html.match(/<section class="card st-panel"[^>]*>/g);
     assert.equal(panelTags.length, groupKeys.length);
     assert.equal(panelTags.filter((t) => !/\shidden(\s|>|=)/.test(t)).length, 1, 'فقط یک پنل نمایان');
@@ -60,7 +61,7 @@ describe('صفحه‌های تنظیمات و تعطیلات پنل (S3-9a/9b)',
       assert.ok(html.includes(`data-key="${it.key}"`), `ورودی ${it.key}`);
     }
     // هر گروه فقط ردیف‌های خودش را دارد
-    const section = (g) => html.split(`data-group="${g}"`)[1].split('</section>')[0];
+    const section = (g) => html.split(`data-group="${g}"`)[1].split('<section class="card st-panel"')[0]; // پنل تا شروع پنل بعدی (داخل پنل <section class="st-group"> تو در تو است)
     assert.match(section('workHours'), /data-row="workDayStart"/);
     assert.doesNotMatch(section('workHours'), /data-row="overtimeEnabled"/);
     for (const it of items) assert.equal(html.split(`data-row="${it.key}"`).length - 1, 1, `${it.key} فقط یک بار`);

@@ -435,9 +435,9 @@ body:has(.st-layout) .ai-panel { height: min(680px, calc(100vh - 170px)); }
 .st-layout .st-jump-chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .st-layout .st-group { scroll-margin-top: calc(var(--st-sticky-top, 72px) + 12px); }
 
-/* برچسب «سفارشی» کنار تنظیم‌هایی که از پیش‌فرض فرق دارند (فقط CSS، بدون JS) */
-.st-layout .st-field.changed .st-label > span:first-child::after {
-  content: "سفارشی"; margin-inline-start: 10px; padding: 1px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 800; vertical-align: middle;
+/* برچسب «سفارشی» (فقط CSS): آیتم flex خودِ .st-label تا هیچ‌وقت حرف‌به‌حرف نشکند */
+.st-layout .st-field.changed .st-label::after {
+  content: "سفارشی"; flex: none; align-self: center; white-space: nowrap; margin-inline-start: 8px; padding: 1px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 800; line-height: 1.7;
   color: var(--brand); background: var(--brand-soft); border: 1px solid color-mix(in srgb, var(--brand) 25%, transparent);
 }
 .st-layout .st-mark { background: color-mix(in srgb, var(--accent) 45%, transparent); color: inherit; border-radius: 4px; padding: 0 2px; }
@@ -479,3 +479,124 @@ body:has(.st-layout) .ai-panel { height: min(680px, calc(100vh - 170px)); }
 /* overflow:hidden پنل نوار ذخیره را از حالت چسبان درمی‌آورد؛ clip گوشه‌ها را می‌برد ولی اسکرول‌کانتینر نمی‌سازد */
 .st-layout .st-panel { overflow: clip; }
 .st-layout .st-panel:has(.st-actionbar.dirty) { overflow: visible; }
+
+/* ===== تب‌های زیربخش، خلاصه‌ی زنده، جمله‌ی اثر و «پیشرفته» ===== */
+.st-layout .st-group.st-tab-off { display: none; }
+.st-layout .st-tabs {
+  display: flex; gap: 6px; margin: 16px 0 0; padding: 6px; overflow-x: auto; scrollbar-width: thin; border-radius: var(--r-xl);
+  background: color-mix(in srgb, var(--brand) 6%, var(--card)); border: 1px solid color-mix(in srgb, var(--brand) 14%, var(--border));
+}
+.st-layout .st-tab {
+  appearance: none; flex: none; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font: inherit; font-size: var(--fs-sm); font-weight: 700;
+  padding: 9px 16px; border: 1px solid transparent; border-radius: var(--r-lg); color: var(--hint); background: transparent;
+  transition: background-color var(--motion-fast), color var(--motion-fast), box-shadow var(--motion-fast);
+}
+.st-layout .st-tab:hover { color: var(--text); background: color-mix(in srgb, var(--brand) 8%, transparent); }
+.st-layout .st-tab[aria-selected="true"] {
+  color: var(--brand); background: var(--card); border-color: color-mix(in srgb, var(--brand) 22%, transparent);
+  box-shadow: 0 8px 16px -10px color-mix(in srgb, var(--brand) 65%, transparent), inset 0 -2px 0 var(--accent);
+}
+.st-layout .st-tab:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.st-layout .st-tab-n { min-width: 22px; height: 20px; padding: 0 7px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; font-size: 11px; font-weight: 800; color: var(--hint); background: color-mix(in srgb, var(--brand) 10%, var(--card)); }
+.st-layout .st-tab[aria-selected="true"] .st-tab-n { color: var(--brand); background: var(--brand-soft); }
+
+/* خلاصه‌ی وضعیت فعلی (چیپ‌ها) و جمله‌ی اثر */
+.st-layout .st-live { grid-column: 1 / -1; display: grid; gap: 10px; margin-top: 4px; }
+.st-layout .st-live:empty { display: none; }
+.st-layout .st-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.st-layout .st-chip {
+  display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px; border-radius: 999px; font-size: var(--fs-xs);
+  background: color-mix(in srgb, var(--brand) 7%, var(--card)); border: 1px solid color-mix(in srgb, var(--brand) 16%, transparent);
+}
+.st-layout .st-chip-k { color: var(--hint); font-weight: 600; }
+.st-layout .st-chip-v { font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+.st-layout .st-chip[data-on]::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--hint); flex: none; }
+.st-layout .st-chip[data-on="1"]::before { background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 25%, transparent); }
+.st-layout .st-chip[data-on="1"] .st-chip-v { color: var(--green); }
+.st-layout .st-effect {
+  display: flex; gap: 10px; align-items: flex-start; margin: 0; padding: 11px 14px; border-radius: var(--r-lg); line-height: 1.95; font-size: var(--fs-sm); color: var(--text);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 8%, var(--card)), color-mix(in srgb, var(--accent-2) 6%, var(--card)));
+  border: 1px solid color-mix(in srgb, var(--brand) 18%, transparent);
+}
+.st-layout .st-effect-ico { flex: none; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; color: var(--brand); background: var(--card); border: 1px solid color-mix(in srgb, var(--brand) 20%, transparent); }
+.st-layout .st-effect-ico svg { width: 15px; height: 15px; }
+
+/* تنظیمات پیشرفته (جمع‌شونده) */
+.st-layout .st-adv { border-top: 1px dashed color-mix(in srgb, var(--brand) 28%, var(--border)); }
+.st-layout .st-adv > summary {
+  list-style: none; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 13px 20px; cursor: pointer; user-select: none;
+  color: var(--brand); font-weight: 800; font-size: var(--fs-sm); background: color-mix(in srgb, var(--brand) 3%, var(--card));
+}
+.st-layout .st-adv > summary::-webkit-details-marker { display: none; }
+.st-layout .st-adv > summary::before { content: ""; width: 9px; height: 9px; border-inline-start: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform var(--motion-fast); margin-inline-end: 2px; }
+.st-layout .st-adv[open] > summary::before { transform: rotate(-135deg); }
+.st-layout .st-adv > summary:hover { background: color-mix(in srgb, var(--brand) 7%, var(--card)); }
+.st-layout .st-adv > summary:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.st-layout .st-adv-n { min-width: 22px; height: 20px; padding: 0 7px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; font-size: 11px; background: var(--brand-soft); }
+.st-layout .st-adv-h { color: var(--hint); font-weight: 600; font-size: var(--fs-xs); }
+.st-layout .st-adv > .st-fields { border-top: 1px solid color-mix(in srgb, var(--border) 80%, transparent); }
+.st-layout .st-adv.hidden, .st-layout .st-tabs.hidden { display: none; }
+
+/* ===== مقیاس یکدست فاصله و تایپوگرافی (همه‌ی کارت/ردیف/تب هم‌تراز با --st-pad) ===== */
+.st-layout {
+  --st-pad: 24px;      /* حاشیه‌ی افقیِ ثابتِ هدر، ردیف، تب و پیشرفته */
+  --st-row-y: 16px;    /* فاصله‌ی عمودی ردیف‌ها */
+  --st-block: 20px;    /* فاصله‌ی بین کارت‌ها و تب‌ها */
+  --st-t-title: 1rem;  --st-t-body: var(--fs-sm); --st-t-meta: var(--fs-xs);
+}
+.st-layout .st-body > .st-group { margin-top: var(--st-block); }
+.st-layout .st-tabs { margin-top: var(--st-block); }
+.st-layout .st-group-head { padding: 20px var(--st-pad) 18px; gap: 8px 12px; }
+.st-layout .st-group .st-field { padding: var(--st-row-y) var(--st-pad); }
+.st-layout .st-adv > summary { padding: 14px var(--st-pad); }
+.st-layout .st-group .st-label { font-size: var(--st-t-title); line-height: 1.6; }
+.st-layout .st-group .st-sub, .st-layout .st-group-what, .st-layout .st-group-eg, .st-layout .st-effect { font-size: var(--st-t-body); }
+.st-layout .st-group .st-meta, .st-layout .st-group .st-more, .st-layout .st-group .st-foot, .st-layout .st-group-count, .st-layout .st-adv-h { font-size: var(--st-t-meta); }
+.st-layout .st-group .st-sub { line-height: 1.85; }
+@media (max-width: 760px) { .st-layout { --st-pad: 16px; --st-row-y: 14px; --st-block: 16px; } }
+
+/* ===== چیپ‌های خلاصه: اولین چیزی که دیده می‌شود (کاشی‌های آماری) ===== */
+.st-layout .st-group-head .st-live { order: 2; margin: 6px 0 2px; }
+.st-layout .st-group-head .st-group-what { order: 3; }
+.st-layout .st-group-head .st-group-eg { order: 4; }
+.st-layout .st-chips { gap: 10px; }
+.st-layout .st-chip {
+  flex-direction: column; align-items: flex-start; gap: 3px; min-width: 124px; padding: 10px 16px; border-radius: var(--r-lg);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--brand) 10%, var(--card)), var(--card));
+  border: 1px solid color-mix(in srgb, var(--brand) 22%, transparent);
+  box-shadow: 0 10px 18px -14px color-mix(in srgb, var(--brand) 70%, transparent);
+  transition: transform var(--motion-fast), box-shadow var(--motion-fast);
+}
+.st-layout .st-chip:hover { transform: translateY(-1px); box-shadow: 0 14px 22px -14px color-mix(in srgb, var(--brand) 80%, transparent); }
+.st-layout .st-chip-k { font-size: 11.5px; letter-spacing: 0; }
+.st-layout .st-chip-v { font-size: 1.12rem; line-height: 1.4; color: var(--brand); }
+.st-layout .st-chip[data-on] { position: relative; padding-inline-start: 30px; }
+.st-layout .st-chip[data-on]::before { position: absolute; inset-inline-start: 14px; top: 50%; transform: translateY(-50%); }
+.st-layout .st-chip[data-on="0"] .st-chip-v { color: var(--hint); }
+.st-layout .st-effect { padding: 13px 16px; font-size: var(--st-t-body); }
+
+/* ===== حرکت نرم: تعویض تب و باز شدن «پیشرفته» ===== */
+@keyframes st-pane-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes st-adv-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+.st-layout .st-group:not(.st-tab-off) { animation: st-pane-in .26s cubic-bezier(.2, .7, .2, 1); }
+.st-layout .st-adv[open] > .st-fields { animation: st-adv-in .24s cubic-bezier(.2, .7, .2, 1); }
+.st-layout .st-tab { transition: background-color .18s, color .18s, box-shadow .2s, transform .18s; }
+.st-layout .st-tab:active { transform: scale(.97); }
+.st-layout .st-chip-v { transition: color .2s; }
+@media (prefers-reduced-motion: reduce) {
+  .st-layout .st-group:not(.st-tab-off), .st-layout .st-adv[open] > .st-fields { animation: none; }
+  .st-layout .st-chip, .st-layout .st-tab { transition: none; }
+}
+
+/* ===== اسکلت لودینگ تنظیمات: همان ساختار صفحه (ناوبری، تب‌ها، کاشی‌ها، ردیف‌ها) ===== */
+.sk-settings.st-layout { align-items: start; }
+.sk-settings .sk-box { border: 1px solid color-mix(in srgb, var(--brand) 14%, var(--border)); border-radius: var(--r-xl); background: var(--card); padding: 22px; gap: 14px; }
+.sk-settings .sk-line { background: color-mix(in srgb, var(--brand) 9%, var(--card-2)); }
+.sk-settings .sk-head { display: grid; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.sk-settings .sk-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.sk-settings .sk-pill { width: 118px; height: 36px; border-radius: 999px; }
+.sk-settings .sk-tiles { display: flex; gap: 10px; flex-wrap: wrap; }
+.sk-settings .sk-tile { display: grid; gap: 8px; width: 140px; padding: 12px 16px; border-radius: var(--r-lg); border: 1px solid color-mix(in srgb, var(--brand) 14%, var(--border)); }
+.sk-settings .sk-fields { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.sk-settings .sk-field { padding: 16px 0; border-bottom: 1px solid var(--border); }
+.sk-settings .sk-field:last-child { border-bottom: 0; }

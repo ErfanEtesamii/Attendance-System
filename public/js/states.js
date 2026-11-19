@@ -27,8 +27,11 @@
           `<div class="nb"><div class="nb-spread"><div class="nb-page">${cards}</div><div class="nb-spring"></div><div class="nb-page">${cards}</div></div></div></div>`;
         break;
       case 'settings':
-        body = `<div class="st-layout sk-settings"><div class="sk-box">${bar('w50 tall')}${bar('w100')}${bar('w100')}${bar('w100')}${bar('w100')}${bar('w60')}</div>` +
-          `<div class="sk-box"><div class="sk-fields">${Array.from({ length: 6 }, () => `<div class="sk-field">${bar('w40')}${bar('w100 tall')}${bar('w60')}</div>`).join('')}</div></div></div>`;
+        body = `<div class="st-layout sk-settings"><div class="sk-box sk-nav">${bar('w50 tall')}${bar('w100 tall')}${Array.from({ length: 6 }, () => bar('w80')).join('')}</div>` +
+          `<div class="sk-box sk-main"><div class="sk-head">${bar('w30 tall')}${bar('w60')}</div>` +
+          `<div class="sk-tabs">${Array.from({ length: 5 }, () => '<span class="sk-line sk-pill"></span>').join('')}</div>` +
+          `<div class="sk-tiles">${Array.from({ length: 4 }, () => `<span class="sk-tile">${bar('w60')}${bar('w40 tall')}</span>`).join('')}</div>` +
+          `<div class="sk-fields">${Array.from({ length: 6 }, () => `<div class="sk-field">${bar('w40')}${bar('w100 tall')}${bar('w60')}</div>`).join('')}</div></div></div>`;
         break;
       case 'list': body = Array.from({ length: Math.min(rows, 5) }, () => `<div class="sk-box">${bar('w60')}${bar('w40')}</div>`).join(''); break;
       default: body = `${bar('w25 tall')}<div class="sk-grid">${cards}</div><div class="sk-box">${tableRows}</div>`;

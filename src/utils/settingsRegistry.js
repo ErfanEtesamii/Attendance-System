@@ -410,4 +410,74 @@ function selfCheck() {
   return problems;
 }
 
-module.exports = { REGISTRY, SECTION_ORDER, GROUP_LABELS, TYPES, getDef, keys, cronJobs, defaultOf, validate, validateValue, deserialize, serialize, sameValue, selfCheck };
+// زیربخش‌بندی گروه‌های بلند (تب‌های پنل). فقط نمایش؛ ترتیب تب‌ها همین ترتیب کلیدهای اینجاست. گروه‌های کوتاه (≤۷ مورد) بدون تب می‌مانند.
+const SECTION_MAP = {
+  overtime: {
+    'قواعد اضافه‌کاری': ['overtimeEnabled', 'overtimeRequiresApproval', 'overtimeMinMinutes', 'overtimeDailyCapMinutes', 'overtimeMonthlyCapMinutes'],
+    'ضریب و گرد کردن': ['overtimeFactor', 'overtimeHolidayFactor', 'overtimeRounding', 'overtimeRoundStep'],
+  },
+  leave: {
+    'استحقاق و مانده': ['leaveDefaultEntitlementMinutes', 'leaveCarryOverCapMinutes', 'leaveBalancePolicy'],
+    'ثبت و مهلت‌ها': ['leaveAllowPastRequests', 'leaveMaxPastDays', 'leaveMaxFutureDays', 'leaveMinNoticeHours', 'leaveApprovalReminderHours'],
+    'پیوست': ['leaveAttachmentMaxKb', 'leaveAttachmentTypes'],
+    'ماموریت': ['missionReminderHour', 'missionBackdateDays', 'missionAdvanceDays', 'allowCheckinWithPendingMission'],
+  },
+  planning: {
+    'برنامه‌ی هفتگی': ['weekStartDay', 'planSubmissionWeekday', 'planGateWarnWeekday', 'planMinTasks', 'planGateMode', 'planGateStartDate'],
+    'گزارش روزانه': ['dailyReportGateMode', 'reportBackfillDays', 'reportSoftWindowHours', 'reportMaxExtraTasks'],
+    'تسک‌ها و پیام‌ها': ['taskCarryMaxTimes', 'selfUrgentEnabled', 'selfUrgentMaxPerDay', 'taskReportAdminMaxParts', 'encouragementsEnabled'],
+  },
+  security: {
+    'راه‌اندازی و ثبت تردد': ['systemGoLive', 'duplicateTapWindowSeconds', 'blockOnSharedDevice'],
+    'دورکاری': ['remoteWorkEnabled', 'remoteWorkBotEnabled', 'remoteWorkBotBlockOnsiteToday', 'remoteWorkAllowAfterOnsiteCheckout', 'remoteWorkMaxOpenHours'],
+  },
+  patterns: {
+    'تأخیر': ['patternConsecutiveLateDays', 'patternWeekdayLateMinCount', 'patternWeekdayLateMinSharePercent', 'patternWeekdayLateMarginPercent', 'patternSuddenIncreaseFactor', 'patternSuddenIncreaseMinExtraLate'],
+    'غیبت و ساعت یکسان': ['patternWeekendAbsenceMinCount', 'patternWeekendAbsenceMinSharePercent', 'patternIdenticalTimeMinDays', 'patternIdenticalTimeMinSharePercent'],
+    'ماه‌های مبنا': ['patternBaselineMonths', 'patternBaselineMinMonths', 'patternMinPresentDays'],
+  },
+  supervisors: {
+    'بررسی گزارش تیم': ['teamReviewTaskEnabled', 'teamReviewLookbackDays', 'teamReviewCommentMax', 'supervisorPlanCommentMax', 'urgentTaskMaxAheadDays', 'missionRejectReasonMin'],
+    'مرور شبانه و خلاصه‌ها': ['nightlyReviewSendEnabled', 'nightlyReviewMaxParts', 'nightlyReviewMaxItemsPerMember', 'nightlyReviewMaxAttentionLines', 'nightlyReviewMaxMissions', 'morningDigestEnabled', 'supervisorTeamReportEnabled'],
+    'هشدارها و اعلان‌ها': ['repeatedLatenessAlertSupervisor', 'supervisorDecisionNotifyAdmins'],
+    'سقف‌ها': ['supervisorRecordEditMonthlyLimit', 'supervisorRecordEditCountMode'],
+    'قابلیت‌های سرپرست': ['supervisorEnabledCapabilities'],
+    'زمان‌بندی': ['cronNightlyReview', 'cronMorningDigest', 'cronTeamReviewEnsure'],
+  },
+  schedule: {
+    'یادآوری‌ها': ['cronLateCheckinCheck', 'cronCheckoutReminderCheck', 'cronBreakOverrunReminder', 'cronScheduledBreakNotice', 'cronLeaveApprovalReminder', 'cronUrgentTaskReminder'],
+    'گزارش‌ها': ['cronDailyReport', 'cronWeeklyReport', 'cronMonthlyReport', 'cronAiDigest'],
+    'پایان روز و تقویم': ['cronAutoCloseIncomplete', 'cronMarkNonWorkingDays'],
+    'نگهداری و پایش': ['cronDailyBackup', 'cronAuditArchive', 'cronDbMaintenance', 'cronWatchdog'],
+  },
+};
+for (const [group, secs] of Object.entries(SECTION_MAP)) {
+  const seen = new Set();
+  for (const [sec, ks] of Object.entries(secs)) {
+    for (const k of ks) {
+      const d = REGISTRY.find((x) => x.key === k);
+      if (!d || d.group !== group) throw new Error(`SECTION_MAP: کلید ${k} در گروه ${group} نیست`);
+      d.section = sec; seen.add(k);
+    }
+  }
+  const missing = REGISTRY.filter((d) => d.group === group && !seen.has(d.key)).map((d) => d.key);
+  if (missing.length) throw new Error(`SECTION_MAP: کلیدهای بدون زیربخش در ${group}: ${missing.join(', ')}`);
+  SECTION_ORDER[group] = Object.keys(secs);
+}
+
+// تنظیم‌های «پیشرفته»: تخصصی و کم‌کاربرد. فقط نمایش را عوض می‌کند (در پنل زیر بخش بسته‌ی «پیشرفته» می‌مانند)؛ رفتار و مقدار پیش‌فرض دست‌نخورده است.
+const ADVANCED_KEYS = [
+  'fixedLunchMinPresenceMinutes', 'fixedLunchMinOverlapMinutes', 'fixedLunchProRate', 'maxLunchMinutes', 'lateCountsFrom',
+  'scheduledWarnMinutes', 'longOpenBreakMinutes', 'outsideShiftMarginMinutes', 'overtimeRoundStep',
+  'rateLimitRetentionDays', 'jobRunsRetentionDays', 'monitorAlertsRetentionDays', 'notificationsRetentionDays',
+  'patternBaselineMonths', 'patternBaselineMinMonths', 'patternMinPresentDays', 'patternWeekdayLateMarginPercent', 'patternSuddenIncreaseMinExtraLate',
+  'nightlyReviewMaxParts', 'nightlyReviewMaxItemsPerMember', 'nightlyReviewMaxAttentionLines', 'nightlyReviewMaxMissions',
+  'taskReportAdminMaxParts', 'teamReviewCommentMax', 'supervisorPlanCommentMax',
+];
+for (const k of ADVANCED_KEYS) {
+  const d = REGISTRY.find((x) => x.key === k);
+  if (!d) throw new Error(`ADVANCED_KEYS: کلید ناشناخته ${k}`);
+  d.advanced = true;
+}
+
+module.exports = { REGISTRY, ADVANCED_KEYS, SECTION_ORDER, GROUP_LABELS, TYPES, getDef, keys, cronJobs, defaultOf, validate, validateValue, deserialize, serialize, sameValue, selfCheck };

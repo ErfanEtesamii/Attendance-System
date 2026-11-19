@@ -295,6 +295,30 @@
     'استراحت': ['استراحت‌های کوتاه با حقوق؛ تا سقف تعیین‌شده از ساعت کار کم نمی‌شوند.', 'سه استراحت و مجموع ۴۵ دقیقه: سه بار چای‌خوردن و کلاً ۴۵ دقیقه‌اش حقوقی است.'],
     'پیام خودکار استراحت و ناهار': ['ربات خودش سر ساعت تعیین‌شده برای همه‌ی کسانی که همان لحظه در شرکت‌اند پیام می‌فرستد؛ شیفت مهم نیست. هر دو کلید پیش‌فرض خاموش‌اند.', 'ناهار ۱۲:۱۵ و ۴۵ دقیقه: ربات ۱۲:۱۵ پیام شروع می‌فرستد و چند دقیقه مانده به ۱۳:۰۰ هشدار پایان.'],
     'هشدار و علامت‌گذاری': ['تعیین می‌کند چه زمانی یک استراحت یا حضور «غیرعادی» علامت بخورد تا ادمین ببیند.', ''],
+    'قواعد اضافه‌کاری': ['اضافه‌کاری چه زمانی حساب شود، آیا تأیید لازم دارد و تا چه سقفی.', 'حداقل ۳۰ دقیقه و سقف روزانه ۲ ساعت: ۲۰ دقیقه کار اضافه حساب نمی‌شود و بیشتر از ۲ ساعت در روز هم محاسبه نمی‌شود.'],
+    'ضریب و گرد کردن': ['هر دقیقه اضافه‌کاری با چه ضریبی حساب شود و چطور گرد شود.', 'ضریب روز عادی ۱٫۵: هر ۶۰ دقیقه اضافه‌کاری، ۹۰ دقیقه محاسبه می‌شود.'],
+    'استحقاق و مانده': ['مرخصی سالانه‌ی هر کارمند و اینکه مانده‌ی سال قبل و کمبود مانده چطور رفتار کند.', 'استحقاق ۹۶۰۰ دقیقه یعنی ۱۶۰ ساعت مرخصی در سال برای هر کارمند.'],
+    'ثبت و مهلت‌ها': ['چه بازه‌ای برای ثبت مرخصی مجاز است و با چه پیش‌اطلاعی.', 'سقف فاصله‌ی آینده ۹۰ روز: مرخصیِ بیش از ۹۰ روز بعد از امروز قابل ثبت نیست.'],
+    'پیوست': ['حجم و نوع فایل‌هایی که کارمند می‌تواند به درخواست مرخصی پیوست کند.', 'حداکثر ۵۱۲۰ کیلوبایت یعنی فایل بزرگ‌تر از ۵ مگابایت پذیرفته نمی‌شود.'],
+    'ماموریت': ['قواعد ثبت ماموریت: چند روز به گذشته و آینده، یادآوری و تردد با ماموریتِ در انتظار.', 'ثبت برای گذشته ۳ روز: ماموریتِ ۴ روز قبل دیگر قابل ثبت نیست.'],
+    'برنامه‌ی هفتگی': ['روز شروع هفته، زمان ثبت برنامه‌ی هفته‌ی بعد و اینکه ثبت برنامه اجباری باشد یا نه.', ''],
+    'گزارش روزانه': ['الزام و مهلت تکمیل گزارش کارهای روزانه.', ''],
+    'تسک‌ها و پیام‌ها': ['انتقال تسک بین روزها، تسک فوری شخصی و پیام‌های تشویقی.', ''],
+    'راه‌اندازی و ثبت تردد': ['حالت راه‌اندازی نهایی، جلوگیری از ثبت تکراری و دستگاه مشترک.', ''],
+    'دورکاری': ['اجازه و قواعد دورکاری بیرون از شبکه و از طریق بات.', ''],
+    'تأخیر': ['شرط‌های تشخیص الگوهای تأخیر؛ مثلاً چند روز متوالی یا تکرار در یک روز هفته.', 'تأخیر پشت‌سرهم ۳: سه روز متوالی تأخیر به‌عنوان الگو علامت می‌خورد.'],
+    'غیبت و ساعت یکسان': ['تشخیص غیبتِ چسبیده به تعطیلی و ورود/خروج با ساعت‌های دقیقاً یکسان.', ''],
+    'ماه‌های مبنا': ['چند ماه گذشته مبنای مقایسه است و حداقل داده‌ی لازم برای معتبر بودن یک ماه.', ''],
+    'بررسی گزارش تیم': ['قواعد بررسی گزارش تیم و ثبت یادداشت و علت رد ماموریت توسط سرپرست.', ''],
+    'مرور شبانه و خلاصه‌ها': ['پیام‌های مرور شبانه و خلاصه‌ی صبحگاهی برای سرپرست و سقف طول آن‌ها.', ''],
+    'هشدارها و اعلان‌ها': ['اینکه چه رویدادهایی به سرپرست و ادمین‌ها اعلان شود.', ''],
+    'سقف‌ها': ['سقف و نحوه‌ی شمارش اصلاح رکورد توسط سرپرست.', ''],
+    'قابلیت‌های سرپرست': ['مشخص می‌کند سرپرست‌ها به چه کارهایی دسترسی دارند.', ''],
+    'زمان‌بندی': ['زمان اجرای کارهای خودکار این بخش؛ به‌صورت عبارت cron (مثلاً «* * * * *» یعنی هر دقیقه).', ''],
+    'یادآوری‌ها': ['زمان اجرای کارهای خودکارِ یادآوری و پیام؛ هر مورد یک عبارت cron است.', ''],
+    'گزارش‌ها': ['زمان ساخت و ارسال گزارش‌های دوره‌ای.', ''],
+    'پایان روز و تقویم': ['بستن رکوردهای باز و علامت‌گذاری تعطیلی/مرخصی.', ''],
+    'نگهداری و پایش': ['بک‌آپ، آرشیو، نگهداری پایگاه داده و پایش سلامت.', ''],
   };
 
   function setInput(it, v) {
@@ -320,7 +344,9 @@
 
   function setHint(it) {
     const bits = [];
-    if (it.type === 'number' && (it.min !== undefined || it.max !== undefined)) bits.push(`بازه: ${it.min !== undefined ? it.min : '…'} تا ${it.max !== undefined ? it.max : '…'}`);
+    if (it.type === 'number' && it.min !== undefined && it.max !== undefined) bits.push(`بازه: ${it.min} تا ${it.max}`);
+    else if (it.type === 'number' && it.min !== undefined) bits.push(`حداقل: ${it.min}`);
+    else if (it.type === 'number' && it.max !== undefined) bits.push(`حداکثر: ${it.max}`);
     return bits.join(' · ');
   }
 
@@ -383,6 +409,80 @@
       const groupKeys = Object.keys(data.groups).filter((g) => items.some((i) => i.group === g));
       const draftOf = (it) => (it.key in drafts ? drafts[it.key] : it.value);
       const isDirty = (it) => it.key in drafts && setNorm(it, drafts[it.key]) !== setNorm(it, it.value);
+      const tabOf = {}; // گروه ← شناسه‌ی تب فعال (بعد از repaint هم می‌ماند)
+
+      // ----- خلاصه و جمله‌ی اثرِ زنده‌ی هر زیربخش (از مقدارهای فعلی/ذخیره‌نشده ساخته می‌شود) -----
+      const V = (k) => (byKey[k] ? draftOf(byKey[k]) : undefined);
+      const N = (k) => Number(V(k));
+      const ON = (k) => !!byKey[k] && setNorm(byKey[k], V(k)) === 'true';
+      const addMin = (t, d) => { const m = /^(\d{1,2}):(\d{2})$/.exec(String(t)); if (!m) return String(t); const x = (((Number(m[1]) * 60 + Number(m[2]) + d) % 1440) + 1440) % 1440; return `${String(Math.floor(x / 60)).padStart(2, '0')}:${String(x % 60).padStart(2, '0')}`; };
+      const dur = (min) => { const n = Math.max(0, Math.round(Number(min) || 0)); const h = Math.floor(n / 60); const m = n % 60; return h && m ? `${fmt.num(h)} ساعت و ${fmt.num(m)} دقیقه` : (h ? `${fmt.num(h)} ساعت` : `${fmt.num(m)} دقیقه`); };
+      const ST_ZERO_TEXT = { breakMaxPerDay: 'بدون سقف', maxLunchMinutes: 'بدون سقف', lateGraceMinutes: 'بدون مهلت', earlyGraceMinutes: 'بدون مهلت' };
+      const ST_SUM = {
+        'ساعت و منطقه‌ی زمانی': ['workDayStart', 'workDayEnd', 'timezone', 'dailyTargetMinutes'],
+        'تأخیر و زودتر رفتن': ['lateGraceMinutes', 'earlyGraceMinutes', 'lateCountsFrom'],
+        'ناهار': ['fixedLunchDeductMinutes', 'lunchWindowStart', 'lunchWindowEnd', 'fixedLunchMode'],
+        'خروج و ورود مجدد': ['maxReEntriesPerDay'],
+        'استراحت': ['paidBreakCount', 'paidBreakMinutes', 'breakMaxPerDay'],
+        'پیام خودکار استراحت و ناهار': ['scheduledBreakEnabled', 'scheduledBreakStart', 'scheduledLunchEnabled', 'scheduledLunchStart'],
+        'هشدار و علامت‌گذاری': ['longOpenBreakMinutes', 'outsideShiftMarginMinutes'],
+      };
+      const sumVal = (k) => {
+        const it = byKey[k]; if (!it) return '';
+        if (k === 'maxReEntriesPerDay' && ON('maxReEntriesUnlimited')) return 'نامحدود';
+        if (k === 'paidBreakCount' && ON('paidBreakCountUnlimited')) return 'نامحدود';
+        if (it.type === 'number' && Number(V(k)) === 0 && ST_ZERO_TEXT[k]) return ST_ZERO_TEXT[k];
+        const base = setShow(it, V(k)); const u = stUnit(it);
+        return u && it.type === 'number' ? `${base} ${u}` : base;
+      };
+      const ST_EFFECT = {
+        'ساعت و منطقه‌ی زمانی': () => `روز کاری عمومی از ${V('workDayStart')} تا ${V('workDayEnd')} (${V('timezone')}) است؛ هدف ساعت مفید روزانه ${dur(N('dailyTargetMinutes'))}.`,
+        'تأخیر و زودتر رفتن': () => {
+          const g = N('lateGraceMinutes'); const e = N('earlyGraceMinutes'); const st = V('workDayStart'); const en = V('workDayEnd');
+          const late = g === 0 ? `هر ورود بعد از ${st} تأخیر حساب می‌شود` : `ورود تا ${addMin(st, g)} بدون تأخیر است و بعد از آن تأخیر از ${V('lateCountsFrom') === 'after_grace' ? addMin(st, g) : st} محاسبه می‌شود`;
+          const early = e === 0 ? `هر خروج قبل از ${en} «زودتر رفتن» است` : `خروج تا ${addMin(en, -e)} «زودتر رفتن» حساب نمی‌شود`;
+          return `با ساعت کاری عمومی: ${late}؛ ${early}.`;
+        },
+        'ناهار': () => {
+          const ded = N('fixedLunchDeductMinutes');
+          if (!ded) return 'کسر ثابت ناهار خاموش است؛ فقط ناهارِ ثبت‌شده از ساعت مفید کم می‌شود.';
+          if (V('fixedLunchMode') === 'always') return `پس از ${dur(N('fixedLunchMinPresenceMinutes'))} حضور، به هر کارمند ${dur(ded)} ناهار کسر می‌شود؛ حتی اگر در بازه‌ی ناهار در شرکت نبوده باشد.`;
+          return `کارمندی که دست‌کم ${dur(N('fixedLunchMinOverlapMinutes'))} از بازه‌ی ${V('lunchWindowStart')} تا ${V('lunchWindowEnd')} در شرکت باشد، ${ON('fixedLunchProRate') ? `به‌نسبت حضورش در بازه (حداکثر ${dur(ded)})` : dur(ded)} ناهار کسر می‌شود؛ کسی که در این بازه حاضر نبوده کسری ندارد.`;
+        },
+        'خروج و ورود مجدد': () => {
+          if (ON('maxReEntriesUnlimited')) return 'هر کارمند هر چند بار بخواهد می‌تواند در روز خارج شود و دوباره وارد شود.';
+          const n = N('maxReEntriesPerDay');
+          return n === 0 ? 'ورود مجدد بعد از خروج ممکن نیست.' : `هر کارمند در روز حداکثر ${fmt.num(n)} بار می‌تواند بعد از خروج، ورود مجدد بزند.`;
+        },
+        'استراحت': () => {
+          const unl = ON('paidBreakCountUnlimited'); const cnt = N('paidBreakCount'); const min = N('paidBreakMinutes'); const cap = N('breakMaxPerDay');
+          if (!unl && (cnt === 0 || min === 0)) return 'استراحت با حقوق خاموش است؛ همه‌ی استراحت‌ها از ساعت مفید کم می‌شود.';
+          return `تا ${unl ? 'هر تعداد' : fmt.num(cnt)} استراحت کوتاه و در مجموع ${dur(min)} با حقوق حساب می‌شود${cap ? `؛ شروع استراحت در روز حداکثر ${fmt.num(cap)} بار مجاز است` : ''}.`;
+        },
+        'قواعد اضافه‌کاری': () => {
+          if (!ON('overtimeEnabled')) return 'محاسبه‌ی اضافه‌کاری خاموش است.';
+          const min = N('overtimeMinMinutes'); const cap = N('overtimeDailyCapMinutes'); const mcap = N('overtimeMonthlyCapMinutes');
+          return `اضافه‌کاری ${ON('overtimeRequiresApproval') ? 'پس از تأیید مدیر' : 'به‌صورت خودکار'} حساب می‌شود${min ? `؛ کمتر از ${dur(min)} در روز حساب نمی‌شود` : ''}؛ ${cap ? `سقف روزانه ${dur(cap)}` : 'بدون سقف روزانه'}${mcap ? ` و سقف ماهانه ${dur(mcap)}` : ''}.`;
+        },
+        'ضریب و گرد کردن': () => `هر ۶۰ دقیقه اضافه‌کاری در روز عادی ${dur(60 * N('overtimeFactor'))} و در روز تعطیل ${dur(60 * N('overtimeHolidayFactor'))} محاسبه می‌شود؛ گرد کردن با گام ${dur(N('overtimeRoundStep'))} (${setEnumLabel(byKey.overtimeRounding, V('overtimeRounding'))}).`,
+        'ثبت و مهلت‌ها': () => `ثبت مرخصی برای گذشته ${ON('leaveAllowPastRequests') ? `تا ${fmt.num(N('leaveMaxPastDays'))} روز قبل` : 'مجاز نیست'}؛ برای آینده تا ${fmt.num(N('leaveMaxFutureDays'))} روز بعد${N('leaveMinNoticeHours') ? `؛ حداقل ${fmt.num(N('leaveMinNoticeHours'))} ساعت پیش‌اطلاع` : ''}.`,
+        'دورکاری': () => (ON('remoteWorkEnabled') ? `دورکاری بیرون از شبکه مجاز است${ON('remoteWorkBotEnabled') ? ' و از طریق بات هم ثبت می‌شود' : ''}؛ هر دورکاری حداکثر ${fmt.num(N('remoteWorkMaxOpenHours'))} ساعت باز می‌ماند.` : 'دورکاری بیرون از شبکه خاموش است.'),
+        'برنامه‌ی هفتگی': () => `الزام ثبت برنامه‌ی هفتگی: ${setEnumLabel(byKey.planGateMode, V('planGateMode'))}؛ حداقل ${fmt.num(N('planMinTasks'))} تسک در برنامه.`,
+        'گزارش روزانه': () => `الزام گزارش روزانه: ${setEnumLabel(byKey.dailyReportGateMode, V('dailyReportGateMode'))}؛ تکمیل گزارش روزهای گذشته تا ${fmt.num(N('reportBackfillDays'))} روز بعد مجاز است.`,
+        'پیام خودکار استراحت و ناهار': () => {
+          const b = ON('scheduledBreakEnabled'); const l = ON('scheduledLunchEnabled');
+          if (!b && !l) return 'هر دو پیام خاموش‌اند؛ ربات خودکار پیامی نمی‌فرستد.';
+          return `${b ? `استراحت ساعت ${V('scheduledBreakStart')} (${dur(N('scheduledBreakMinutes'))})` : 'پیام استراحت خاموش'}؛ ${l ? `ناهار ساعت ${V('scheduledLunchStart')} (${dur(N('scheduledLunchMinutes'))})` : 'پیام ناهار خاموش'}. پیام برای هر کارمندِ حاضر در شرکت ارسال می‌شود.`;
+        },
+      };
+      const liveHtml = (sec) => {
+        const keys = (ST_SUM[sec] || items.filter((i) => i.section === sec && ['boolean', 'number', 'enum', 'time', 'date'].includes(i.type)).slice(0, 4).map((i) => i.key)).filter((k) => byKey[k]);
+        const fx = ST_EFFECT[sec]; let text = '';
+        try { text = fx ? fx() : ''; } catch (_) { text = ''; }
+        if (!keys.length && !text) return '';
+        const chips = keys.map((k) => { const it = byKey[k]; const on = it.type === 'boolean' ? ` data-on="${ON(k) ? '1' : '0'}"` : ''; return `<span class="st-chip"${on}><span class="st-chip-k">${esc(setShort(it))}</span><bdi class="st-chip-v">${esc(sumVal(k))}</bdi></span>`; }).join('');
+        return `${chips ? `<div class="st-chips" aria-label="خلاصه‌ی وضعیت فعلی">${chips}</div>` : ''}${text ? `<p class="st-effect"><span class="st-effect-ico" aria-hidden="true">${ST_TIP_ICO}</span><span>${esc(text)}</span></p>` : ''}`;
+      };
 
       // تنظیم وابسته (dependsOn: { key, equals }): تا وقتی شرط برقرار نیست کم‌رنگ می‌شود (ویرایش‌پذیر می‌ماند)
       const depMet = (it) => {
@@ -444,7 +544,7 @@
           <ul class="st-rel-list" data-related="${esc(g)}">${relatedInner(g)}</ul>
         </section>` : '');
 
-      // بخش‌بندی: هر section یک کارت جدا با عنوان، توضیح ساده و مثال؛ ردیف‌ها زیرش به‌صورت فهرست فشرده
+      // بخش‌بندی: هر section یک کارت (تب) با عنوان، توضیح ساده، مثال، خلاصه و جمله‌ی اثرِ زنده؛ ردیف‌ها فشرده و موارد تخصصی زیر «پیشرفته»
       const fieldGroups = (g, list) => {
         const chunks = [];
         list.forEach((it, i) => {
@@ -452,12 +552,20 @@
           if (i === 0 || (list[i - 1].section || '') !== sec) chunks.push({ sec, idx: i, rows: [] });
           chunks[chunks.length - 1].rows.push(it);
         });
-        const jump = chunks.filter((c) => c.sec).length >= 3
-          ? `<nav class="st-jump" aria-label="پرش به بخش">${chunks.filter((c) => c.sec).map((c) => `<button type="button" class="st-jump-chip" data-jump="st-sec-${esc(g)}-${c.idx}">${esc(c.sec)}</button>`).join('')}</nav>` : '';
-        return jump + chunks.map((c) => {
+        const secChunks = chunks.filter((c) => c.sec);
+        const tabbed = secChunks.length >= 2;
+        const cur = tabbed ? (secChunks.some((c) => String(c.idx) === String(tabOf[g])) ? String(tabOf[g]) : String(secChunks[0].idx)) : '';
+        const tabs = tabbed
+          ? `<div class="st-tabs" role="tablist" aria-label="زیربخش‌ها" data-tabs="${esc(g)}">${secChunks.map((c) => `<button type="button" role="tab" class="st-tab" data-tab="${c.idx}" aria-selected="${String(c.idx) === cur}"><span>${esc(c.sec)}</span><span class="st-tab-n">${fmt.num(c.rows.length)}</span></button>`).join('')}</div>` : '';
+        return tabs + chunks.map((c) => {
           const help = ST_SECTION_HELP[c.sec];
-          const head = c.sec ? `<header class="st-group-head"><h4 class="st-section" id="st-sec-${esc(g)}-${c.idx}">${esc(c.sec)}</h4><span class="st-group-count">${fmt.num(c.rows.length)} تنظیم</span>${help ? `<p class="st-group-what">${esc(help[0])}</p>${help[1] ? `<p class="st-group-eg"><span>مثال</span>${esc(help[1])}</p>` : ''}` : ''}</header>` : '';
-          return `<section class="st-group${c.sec ? '' : ' st-group-plain'}">${head}<div class="st-fields">${c.rows.map(rowHtml).join('')}</div></section>`;
+          const live = c.sec ? liveHtml(c.sec) : '';
+          const head = c.sec ? `<header class="st-group-head"><h4 class="st-section" id="st-sec-${esc(g)}-${c.idx}">${esc(c.sec)}</h4><span class="st-group-count">${fmt.num(c.rows.length)} تنظیم</span>${help ? `<p class="st-group-what">${esc(help[0])}</p>${help[1] ? `<p class="st-group-eg"><span>مثال</span>${esc(help[1])}</p>` : ''}` : ''}<div class="st-live" data-live="${esc(c.sec)}">${live}</div></header>` : '';
+          const basic = c.rows.filter((r) => !r.advanced); const adv = c.rows.filter((r) => r.advanced);
+          const openAdv = adv.some((r) => isDirty(r) || !r.isDefault);
+          const advHtml = adv.length ? `<details class="st-adv"${openAdv ? ' open' : ''}><summary><span class="st-adv-t">تنظیمات پیشرفته</span><span class="st-adv-n">${fmt.num(adv.length)}</span><span class="st-adv-h">مقدار پیش‌فرض برای بیشتر سازمان‌ها مناسب است</span></summary><div class="st-fields st-fields-adv">${adv.map(rowHtml).join('')}</div></details>` : '';
+          const off = tabbed && c.sec && String(c.idx) !== cur ? ' st-tab-off' : '';
+          return `<section class="st-group${c.sec ? '' : ' st-group-plain'}${off}" data-sec-idx="${c.idx}">${head}<div class="st-fields">${basic.map(rowHtml).join('')}</div>${advHtml}</section>`;
         }).join('');
       };
 
@@ -530,8 +638,10 @@
             if (pend) pend.textContent = n ? `${fmt.num(n)} تغییر ذخیره‌نشده` : 'تغییری ذخیره‌نشده نیست';
             const dis = $(`[data-discard="${CSS.escape(g)}"]`, page);
             if (dis) dis.disabled = n === 0;
+            refreshLive(g);
             refreshStats();
           };
+          const refreshLive = (g) => { $$('[data-live]', $(`.st-panel[data-group="${CSS.escape(g)}"]`, page)).forEach((el) => { el.innerHTML = liveHtml(el.dataset.live); }); };
           const refreshStats = () => {
             const ch = $('[data-stat="changed"]', page);
             const dr = $('[data-stat="dirty"]', page);
@@ -658,8 +768,13 @@
                 });
               });
               card.hidden = q ? shown === 0 : card.dataset.group !== active;
-              $$('.st-jump', card).forEach((j) => j.classList.toggle('hidden', !!q));
-              $$('.st-group', card).forEach((gr) => gr.classList.toggle('hidden', !!q && !$$('.st-field:not(.hidden)', gr).length));
+              const curTab = tabOf[card.dataset.group] !== undefined ? String(tabOf[card.dataset.group]) : (($('.st-tab', card) || { dataset: {} }).dataset.tab);
+              $$('.st-tabs', card).forEach((t) => t.classList.toggle('hidden', !!q));
+              $$('.st-group', card).forEach((gr) => {
+                gr.classList.toggle('hidden', !!q && !$$('.st-field:not(.hidden)', gr).length);
+                if (q) gr.classList.remove('st-tab-off'); else if (curTab !== undefined && gr.dataset.secIdx !== undefined && gr.querySelector('.st-group-head')) gr.classList.toggle('st-tab-off', String(gr.dataset.secIdx) !== curTab);
+              });
+              $$('details.st-adv', card).forEach((d) => { if (q) { const has = !!$('.st-field:not(.hidden)', d); d.open = has; d.classList.toggle('hidden', !has); } else d.classList.remove('hidden'); });
               const g = card.dataset.group;
               const cnt = $(`[data-count="${CSS.escape(g)}"]`, page);
               if (cnt) cnt.textContent = fmt.num(q ? shown : items.filter((i) => i.group === g).length);
@@ -674,6 +789,12 @@
           function refreshRelated() {
             $$('[data-related]', page).forEach((ul) => { ul.innerHTML = relatedInner(ul.dataset.related); });
           }
+          function showTab(g, idx) {
+            tabOf[g] = idx;
+            const card = $(`.st-panel[data-group="${CSS.escape(g)}"]`, page); if (!card) return;
+            $$('.st-tab', card).forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === String(idx))));
+            $$('.st-group', card).forEach((gr) => { if (gr.dataset.secIdx !== undefined && gr.querySelector('.st-group-head')) gr.classList.toggle('st-tab-off', String(gr.dataset.secIdx) !== String(idx)); });
+          }
           function gotoSetting(key) {
             const it = byKey[key];
             if (!it) return;
@@ -682,6 +803,8 @@
             showGroup(it.group);
             const row = $(`.st-field[data-row="${CSS.escape(key)}"]`, page);
             if (!row) return;
+            const grp = row.closest && row.closest('.st-group'); if (grp && grp.dataset && grp.dataset.secIdx !== undefined) showTab(it.group, grp.dataset.secIdx);
+            const adv = row.closest && row.closest('details'); if (adv) adv.open = true;
             const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
             if (typeof row.scrollIntoView === 'function') row.scrollIntoView({ block: 'center', behavior: calm ? 'auto' : 'smooth' });
             const ctl = $('input, select', row);
@@ -692,6 +815,8 @@
           page.addEventListener('click', (e) => {
             const b = e.target.closest && e.target.closest('[data-goto]');
             if (b) gotoSetting(b.dataset.goto);
+            const tb = e.target.closest && e.target.closest('[data-tab]');
+            if (tb) { const card = tb.closest('.st-panel'); if (card) showTab(card.dataset.group, tb.dataset.tab); }
             const j = e.target.closest && e.target.closest('[data-jump]');
             if (j) {
               const h = document.getElementById(j.dataset.jump); const grp = h && h.closest('.st-group');

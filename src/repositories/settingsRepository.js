@@ -81,6 +81,7 @@ function buildItem(def, stored) {
   if (def.related) item.related = def.related;
   if (def.section) item.section = def.section;
   if (def.dependsOn) item.dependsOn = def.dependsOn;
+  if (def.advanced) item.advanced = true;
   return item;
 }
 
