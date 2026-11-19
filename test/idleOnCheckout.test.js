@@ -24,16 +24,17 @@ describe('تایم پرت هنگام خروج', () => {
     before(async () => { resetDb(); F = require('./helpers/factories'); settingsRepo = require('../src/repositories/settingsRepository'); attendanceRepo = require('../src/repositories/attendanceRepository'); S = await startServer(); });
     after(() => { if (S) S.close(); cleanup(); });
 
-    test('پیش‌فرض: روشن، سقف ۱۲۰، گام ۵', async () => {
+    test('پیش‌فرض: روشن، بدون سقف، گام ۵', async () => {
       const u = F.makeUser();
       const r = await S.call(u, 'GET', 'idle-config');
-      assert.deepEqual(r.json, { enabled: true, max: 120, step: 5 });
+      assert.equal(r.json.enabled, true); assert.equal(r.json.step, 5); assert.equal(r.json.unlimited, true); assert.ok(r.json.max >= 60);
     });
 
     test('خروج با تایم پرت ذخیره و جمع می‌شود؛ مقدار بیش از سقف/نامعتبر رد می‌شود', async () => {
       const u = F.makeUser();
       const ci = await S.call(u, 'POST', 'check-in', {});
       assert.equal(ci.status, 201, JSON.stringify(ci.json));
+      settingsRepo.setValue('idleMaxMinutes', 120);
       const bad = await S.call(u, 'POST', 'check-out', { idleMinutes: 999 });
       assert.equal(bad.status, 400); assert.equal(bad.json.code, 'INVALID_IDLE_MINUTES');
       const bad2 = await S.call(u, 'POST', 'check-out', { idleMinutes: -5 });
@@ -41,6 +42,9 @@ describe('تایم پرت هنگام خروج', () => {
       const ok = await S.call(u, 'POST', 'check-out', { idleMinutes: 25 });
       assert.equal(ok.status, 200, JSON.stringify(ok.json));
       assert.equal(attendanceRepo.findById(ci.json.id).idle_minutes, 25);
+      settingsRepo.setValue('idleMaxMinutes', 0);
+      const u3 = F.makeUser(); await S.call(u3, 'POST', 'check-in', {});
+      assert.equal((await S.call(u3, 'POST', 'check-out', { idleMinutes: 400 })).status, 200); // بدون سقف
     });
 
     test('خروج بدون idleMinutes یا با ۰ چیزی کم نمی‌کند؛ با پرسش خاموش مقدار نادیده گرفته می‌شود', async () => {

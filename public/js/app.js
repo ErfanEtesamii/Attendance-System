@@ -678,7 +678,7 @@
   function askIdleMinutes(cfg) {
     return new Promise((resolve) => {
       const step = Math.max(1, Number(cfg.step) || 5);
-      const max = Math.max(step, Number(cfg.max) || 120);
+      const max = Math.max(step, Math.floor((Number(cfg.max) || 120) / step) * step);
       let value = Math.min(max, Math.max(step, 30 - (30 % step) || step));
       const root = document.createElement('div');
       root.className = 'sheet-backdrop idle-backdrop';
@@ -709,7 +709,7 @@
         body.querySelector('[data-idle="plus"]').disabled = value >= max;
       };
       const renderPick = () => {
-        const chips = [10, 15, 30, 45, 60, 90, 120].filter((m) => m <= max && m % step === 0);
+        const chips = [10, 15, 30, 45, 60, 90, 120, 180, 240].filter((m) => m <= max && m % step === 0);
         body.innerHTML = `<div class="idle-badge idle-badge-sm" aria-hidden="true">⏱</div>
           <h3 class="idle-title">چقدر تایم پرت داشتید؟</h3>
           <div class="idle-dial">

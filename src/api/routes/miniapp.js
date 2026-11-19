@@ -328,7 +328,15 @@ router.get('/miniapp/checkout-readiness', (req, res) => {
 // تنظیمات پرسش «تایم پرت» هنگام خروج (UI قبل از ثبت خروج می‌خواند)
 router.get('/miniapp/idle-config', (req, res) => {
   const s = settingsRepository.getAll();
-  res.json({ enabled: s.idleAskEnabled === true, max: Number(s.idleMaxMinutes), step: Number(s.idleStepMinutes) });
+  const cap = Number(s.idleMaxMinutes);
+  // سقف ۰ = بدون سقف: در UI حداکثر انتخاب = مدت حضور امروز (از اولین ورود تا الان؛ حداقل یک ساعت، حداکثر ۲۴ ساعت)
+  let max = cap;
+  if (!(cap > 0)) {
+    const rec = attendanceRepository.findTodayRecord(req.miniAppUser.id);
+    const since = rec && rec.check_in_time ? Math.round((Date.now() - new Date(rec.check_in_time).getTime()) / 60000) : 0;
+    max = Math.min(1440, Math.max(60, since));
+  }
+  res.json({ enabled: s.idleAskEnabled === true, max, step: Number(s.idleStepMinutes), unlimited: !(cap > 0) });
 });
 
 router.post('/miniapp/check-out', (req, res) => {
@@ -390,8 +398,9 @@ router.post('/miniapp/check-out', (req, res) => {
   const idleSettings = settingsRepository.getAll();
   if (idleSettings.idleAskEnabled === true && req.body && req.body.idleMinutes !== undefined && req.body.idleMinutes !== null) {
     const v = Number(req.body.idleMinutes);
-    if (!Number.isInteger(v) || v < 0 || v > Number(idleSettings.idleMaxMinutes)) {
-      return res.status(400).json({ error: `تایم پرت باید عددی بین ۰ تا ${idleSettings.idleMaxMinutes} دقیقه باشد.`, code: 'INVALID_IDLE_MINUTES' });
+    const idleCap = Number(idleSettings.idleMaxMinutes) > 0 ? Number(idleSettings.idleMaxMinutes) : 1440; // سقف ۰ = بدون سقف (حداکثر منطقی: یک شبانه‌روز)
+    if (!Number.isInteger(v) || v < 0 || v > idleCap) {
+      return res.status(400).json({ error: `تایم پرت باید عددی بین ۰ تا ${idleCap} دقیقه باشد.`, code: 'INVALID_IDLE_MINUTES' });
     }
     idleMinutes = v;
   }
