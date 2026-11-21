@@ -174,7 +174,7 @@ describe('تنظیمات، شیفت و migration (C1)', () => {
       ? breakRepo.createManual({ attendanceRecordId: rec.id, startTime: zonedTimeToUtc(date, '10:00', 'Asia/Tehran').toISOString(), endTime: zonedTimeToUtc(date, '10:25', 'Asia/Tehran').toISOString(), breakType: 'short_break' })
       : db.prepare("INSERT INTO break_records (attendance_record_id, start_time, end_time, break_type) VALUES (?, ?, ?, 'short_break')").run(rec.id, zonedTimeToUtc(date, '10:00', 'Asia/Tehran').toISOString(), zonedTimeToUtc(date, '10:25', 'Asia/Tehran').toISOString());
     const d = dayService.computeRecordDay(rec);
-    assert.deepEqual([d.breakPaid, d.breakUnpaid, d.effective], [15, 10, 470]);
+    assert.deepEqual([d.breakPaid, d.breakUnpaid, d.effective], [15, 55, 425]);
     usersRepo.setUserShift(u.id, null);
     const g = dayService.computeRecordDay(rec);
     assert.deepEqual([g.breakPaid, g.breakUnpaid, g.effective], [25, 45, 435]);
@@ -239,10 +239,10 @@ describe('سرویس سیاست (Mini App) و گزارش ماهانه (C1)', () 
     mk('10:00', '10:25'); mk('12:00', '12:10');
     const rep = computeMonthlyReport({ users: [usersRepo.findById(u.id)], year: 1405, month: 9, now: '2026-12-31T12:00:00Z', includeDays: true, includeBalances: false });
     const r = rep.users[0];
-    assert.deepEqual(r.breaks, { paidMinutes: 35, unpaidMinutes: 0 });
+    assert.deepEqual(r.breaks, { paidMinutes: 35, unpaidMinutes: 45 });
     assert.ok(!('breakPaidMinutes' in r.time), 'time دست‌نخورده (snapshotهای ماه بسته‌ی قبلی)');
     const day = r.days.find((d) => d.date === date);
-    assert.deepEqual([day.breakPaid, day.breakUnpaid, day.effective], [35, 0, 480]);
+    assert.deepEqual([day.breakPaid, day.breakUnpaid, day.effective], [35, 45, 435]);
     const { buildMonthlySheets } = require('../src/services/monthlyExportService');
     const sheets = buildMonthlySheets(rep);
     const main = sheets[0];
@@ -250,7 +250,7 @@ describe('سرویس سیاست (Mini App) و گزارش ماهانه (C1)', () 
     const iPaid = main.headers.indexOf('استراحت با حقوق (دقیقه)');
     assert.ok(iPaid >= 0);
     assert.equal(main.headers[iPaid + 1], 'استراحت بدون حقوق (دقیقه)');
-    assert.deepEqual(main.rows[0].slice(iPaid, iPaid + 2), [35, 0]);
+    assert.deepEqual(main.rows[0].slice(iPaid, iPaid + 2), [35, 45]);
     settings.setValue('paidBreakCount', 0);
   });
 });

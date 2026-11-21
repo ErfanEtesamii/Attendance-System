@@ -152,8 +152,9 @@ function resolveShiftParams(settings, shift) {
     workEnd: overnight ? end + 1440 : end,
     lateGrace: graceMinutes(shift.graceLateMinutes, 'graceLateMinutes', 'shift.'),
     earlyGrace: graceMinutes(shift.graceEarlyMinutes, 'graceEarlyMinutes', 'shift.'),
-    maxLunch: graceMinutes(shift.maxLunchMinutes, 'maxLunchMinutes', 'shift.'),
-    fixedLunch: graceMinutes(shift.fixedLunchDeductMinutes, 'fixedLunchDeductMinutes', 'shift.'),
+    // قاعده‌ی ناهار مستقل از شیفت است: همیشه از تنظیمات سراسری (شیفت چرخشی و عادی یکسان).
+    maxLunch: graceMinutes(settings.maxLunchMinutes, 'maxLunchMinutes'),
+    fixedLunch: graceMinutes(settings.fixedLunchDeductMinutes, 'fixedLunchDeductMinutes'),
     ...paidBreakParams(settings, shift),
     overnight,
   };
@@ -419,8 +420,11 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
   // ---- پرچم‌ها (S3-4b): فقط گزارش؛ هیچ‌کدام عددی را عوض نمی‌کنند ----
   const reversed = normalizedSegments.some((segment) => segment.out && segment.out.getTime() < segment.in.getTime());
   if (reversed) flagSet.add('checkout_before_checkin');
-  const dayOver = shiftDayPositions ? posOf(end) > workEnd + shiftMargin : formatDate(checkIn, tz) < formatDate(end, tz); // حالت سازگار با گذشته فقط تغییر تاریخ را ملاک می‌گیرد
-  if (!checkOut && (record.status === 'incomplete' || dayOver)) flagSet.add('missing_checkout');
+  // «خروج موقت» بدون خروج اصلی (temp_exit=1) مثل روز بدون خروج است: تا همان خروج موقت حساب می‌شود، ولی وقتی روز تمام شد ساعت مفید صفر است.
+  const tempExitOpen = record.temp_exit === 1 || record.temp_exit === '1' || record.temp_exit === true;
+  const dayEnd = tempExitOpen ? (now === undefined ? new Date() : toDate(now, 'now')) : end; // پایان روز را با «الان» می‌سنجیم، نه ساعت خروج موقت
+  const dayOver = shiftDayPositions ? posOf(dayEnd) > workEnd + shiftMargin : formatDate(checkIn, tz) < formatDate(dayEnd, tz); // حالت سازگار با گذشته فقط تغییر تاریخ را ملاک می‌گیرد
+  if ((!checkOut || tempExitOpen) && (record.status === 'incomplete' || dayOver)) flagSet.add('missing_checkout');
   for (const b of read.items) {
     if (b.endMs === null && (end.getTime() - b.startMs) / 60000 > longOpenBreak) flagSet.add('long_open_break');
     if (reversed) continue; // بازه‌ی روز معتبر نیست؛ مقایسه‌ی استراحت بی‌معنی است

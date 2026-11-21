@@ -97,21 +97,24 @@ function startReEntry(attendanceRecordId, ip, maxReEntries = null) {
     }
     const seq = state.count ? state.seq + 1 : 2;
     db.prepare('INSERT INTO attendance_segments (attendance_record_id, seq, check_in_time, check_in_ip) VALUES (?, ?, ?, ?)').run(attendanceRecordId, seq, nowIso(), ip);
-    db.prepare('UPDATE attendance_records SET check_out_time = NULL, check_out_ip = NULL, check_out_device = NULL, check_out_ua = NULL, updated_at = datetime(\'now\') WHERE id = ?').run(attendanceRecordId);
+    db.prepare('UPDATE attendance_records SET check_out_time = NULL, check_out_ip = NULL, check_out_device = NULL, check_out_ua = NULL, temp_exit = 0, updated_at = datetime(\'now\') WHERE id = ?').run(attendanceRecordId);
     return true;
   });
   return tx() ? findById(attendanceRecordId) : null;
 }
 
-function closeLastSegment(attendanceRecordId, ip, device = {}, { viaPendingMission = false } = {}) {
+// temp=true ⇒ «خروج موقت» (temp_exit=1: خروج اصلی هنوز ثبت نشده)؛ در غیر این صورت «خروج اصلی» و temp_exit=0.
+function closeLastSegment(attendanceRecordId, ip, device = {}, { viaPendingMission = false, temp = false } = {}) {
   const db = getDb();
+  const flag = () => db.prepare('UPDATE attendance_records SET temp_exit = ? WHERE id = ?').run(temp ? 1 : 0, attendanceRecordId);
   const row = db.prepare('SELECT * FROM attendance_segments WHERE attendance_record_id = ? AND check_out_time IS NULL ORDER BY seq DESC LIMIT 1').get(attendanceRecordId);
-  if (!row) return recordCheckOut(attendanceRecordId, ip, device, { viaPendingMission });
+  if (!row) { const rec = recordCheckOut(attendanceRecordId, ip, device, { viaPendingMission }); flag(); return findById(attendanceRecordId) || rec; }
   db.prepare('UPDATE attendance_segments SET check_out_time = ?, check_out_ip = ? WHERE id = ?').run(nowIso(), ip, row.id);
   const updated = db.prepare('SELECT check_out_time, check_out_ip FROM attendance_segments WHERE id = ?').get(row.id);
   db.prepare(`UPDATE attendance_records SET via_pending_mission = CASE WHEN ? = 1 THEN 1 ELSE via_pending_mission END,
     check_out_time = ?, check_out_ip = ?, check_out_device = ?, check_out_ua = ?, updated_at = datetime('now') WHERE id = ?`)
     .run(viaPendingMission ? 1 : 0, updated.check_out_time, updated.check_out_ip, device?.deviceId ?? null, device?.userAgent ?? null, attendanceRecordId);
+  flag();
   return findById(attendanceRecordId);
 }
 
@@ -134,6 +137,7 @@ function removeReEntrySegment(attendanceRecordId, seq) {
       db.prepare(`UPDATE attendance_records SET check_out_time = ?, check_out_ip = ?, updated_at = datetime('now') WHERE id = ?`)
         .run(last.check_out_time, last.check_out_ip, attendanceRecordId);
     }
+    db.prepare('UPDATE attendance_records SET temp_exit = 0 WHERE id = ?').run(attendanceRecordId);
     return target;
   });
   return tx();
@@ -164,6 +168,7 @@ function addManualSegment(attendanceRecordId, { checkInTime, checkOutTime = null
       .run(attendanceRecordId, seq, checkInTime, checkOutTime || null);
     db.prepare(`UPDATE attendance_records SET check_out_time = ?, check_out_ip = NULL, check_out_device = NULL, check_out_ua = NULL, updated_at = datetime('now') WHERE id = ?`)
       .run(checkOutTime || null, attendanceRecordId);
+    db.prepare('UPDATE attendance_records SET temp_exit = 0 WHERE id = ?').run(attendanceRecordId); // دخالت ادمین ⇒ دیگر «خروج موقتِ باز» نیست
     return { segment: db.prepare('SELECT * FROM attendance_segments WHERE id = ?').get(info.lastInsertRowid) };
   });
   return tx();
@@ -205,6 +210,7 @@ function updateSegmentManual(attendanceRecordId, seq, { checkInTime, checkOutTim
       db.prepare(`UPDATE attendance_records SET check_in_time = ?, check_out_time = ?, check_out_ip = ?, updated_at = datetime('now') WHERE id = ?`)
         .run(first.check_in_time, last.check_out_time || null, last.check_out_time ? last.check_out_ip : null, attendanceRecordId);
     }
+    db.prepare('UPDATE attendance_records SET temp_exit = 0 WHERE id = ?').run(attendanceRecordId);
     return { segment: listSegments(attendanceRecordId).find((s) => s.seq === seq) };
   });
   return tx();
@@ -237,6 +243,7 @@ function manualUpdate(attendanceRecordId, fields) {
     if (segmentCount && fields.check_in_time !== undefined) {
       db.prepare('UPDATE attendance_segments SET check_in_time = ? WHERE attendance_record_id = ? AND seq = 1').run(fields.check_in_time, attendanceRecordId);
     }
+    if (fields.check_out_time !== undefined) db.prepare('UPDATE attendance_records SET temp_exit = 0 WHERE id = ?').run(attendanceRecordId);
     if (segmentCount && fields.check_out_time !== undefined) {
       db.prepare(`UPDATE attendance_segments SET check_out_time = ?
         WHERE attendance_record_id = ? AND seq = (SELECT MAX(seq) FROM attendance_segments WHERE attendance_record_id = ?)`)
@@ -275,7 +282,7 @@ function listOpenRecordsByDate(dateStr) {
   const db = getDb();
   return db
     .prepare(
-      `SELECT * FROM attendance_records WHERE record_date = ? AND check_in_time IS NOT NULL AND check_out_time IS NULL`
+      `SELECT * FROM attendance_records WHERE record_date = ? AND check_in_time IS NOT NULL AND (check_out_time IS NULL OR temp_exit = 1)`
     )
     .all(dateStr);
 }

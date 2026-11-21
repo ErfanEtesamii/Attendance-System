@@ -111,7 +111,7 @@ describe('خروج و ورود مجدد چندباره با استراحت — �
     const u = F.makeUser();
     assert.equal((await S.call(u, 'POST', 'check-in', {})).status, 201);
     for (let i = 0; i < 3; i += 1) {
-      const out = await S.call(u, 'POST', 'check-out', {});
+      const out = await S.call(u, 'POST', 'temp-check-out', {});
       assert.equal(out.status, 200, JSON.stringify(out.json));
       const again = await S.call(u, 'POST', 're-check-in', {});
       assert.equal(again.status, 201, `ورود مجدد ${i + 1}: ${JSON.stringify(again.json)}`);
@@ -130,15 +130,15 @@ describe('خروج و ورود مجدد چندباره با استراحت — �
     settingsRepo.update({ maxReEntriesPerDay: 1 });
     const u = F.makeUser();
     await S.call(u, 'POST', 'check-in', {});
-    await S.call(u, 'POST', 'check-out', {});
+    await S.call(u, 'POST', 'temp-check-out', {});
     assert.equal((await S.call(u, 'POST', 're-check-in', {})).status, 201);
-    await S.call(u, 'POST', 'check-out', {});
-    const blocked = await S.call(u, 'POST', 're-check-in', {});
+    const blocked = await S.call(u, 'POST', 'temp-check-out', {}); // سقف ۱ پر شد ⇒ خروج موقتِ دوم (بدون راه برگشت) رد می‌شود
     assert.equal(blocked.status, 409);
-    assert.equal(blocked.json.code, 'REENTRY_LIMIT');
-    assert.equal((await S.call(u, 'GET', 'today')).json.canReEnter, false);
+    assert.equal(blocked.json.code, 'TEMP_EXIT_LIMIT');
+    assert.equal((await S.call(u, 'GET', 'today')).json.canTempExit, false);
 
     settingsRepo.update({ maxReEntriesUnlimited: true });
+    assert.equal((await S.call(u, 'POST', 'temp-check-out', {})).status, 200);
     const today = (await S.call(u, 'GET', 'today')).json;
     assert.equal(today.canReEnter, true);
     assert.equal(today.reEntriesMax, null);

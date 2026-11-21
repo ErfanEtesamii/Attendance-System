@@ -44,16 +44,16 @@ describe('computeDay با شیفت (S3-6b)', () => {
     assert.equal(a.workedGross, b.workedGross);
   });
 
-  test('مهلت و ناهار شیفت جایگزین تنظیمات سراسری می‌شوند (۰ در شیفت = خاموش، نه «از تنظیمات»)', () => {
+  test('مهلت شیفت جایگزین می‌شود؛ قاعده‌ی ناهار همیشه سراسری است', () => {
     const r = rec('2026-09-13', '08:10', '16:00');
     const settings = { ...GLOBAL, workDayEnd: '16:00', lateGraceMinutes: 15, fixedLunchDeductMinutes: 45 };
     const g = day(r, { settings });
     assert.deepEqual([g.late, g.breakAuto], [0, 45]); // سراسری: مهلت ۱۵، کسر ۴۵
     const s = day(r, { settings, shift: shiftOf({ startTime: '08:00', endTime: '16:00' }) });
-    assert.deepEqual([s.late, s.breakAuto], [10, 0]); // شیفت: بدون مهلت و بدون کسر
+    assert.deepEqual([s.late, s.breakAuto], [10, 45]); // شیفت: بدون مهلت؛ ناهار از تنظیمات سراسری
     const s2 = day(r, { settings, shift: shiftOf({ startTime: '08:00', endTime: '16:00', graceLateMinutes: 10, fixedLunchDeductMinutes: 30 }) });
-    assert.deepEqual([s2.late, s2.breakAuto, s2.effective], [0, 30, 440]); // ۴۷۰ دقیقه حضور − ۳۰ کسر ناهار
-    const cap = day(r, { shift: shiftOf({ startTime: '08:00', endTime: '16:00', maxLunchMinutes: 30 }), breaks: [{ start_time: iso('2026-09-13', '12:00'), end_time: iso('2026-09-13', '13:00'), break_type: 'lunch' }] });
+    assert.deepEqual([s2.late, s2.breakAuto, s2.effective], [0, 45, 425]); // ناهار شیفت نادیده؛ کسر سراسری ۴۵
+    const cap = day(r, { settings: { ...GLOBAL, maxLunchMinutes: 30 }, shift: shiftOf({ startTime: '08:00', endTime: '16:00' }), breaks: [{ start_time: iso('2026-09-13', '12:00'), end_time: iso('2026-09-13', '13:00'), break_type: 'lunch' }] });
     assert.equal(cap.breakExcess, 30);
 
     for (const bad of [

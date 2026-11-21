@@ -413,6 +413,7 @@
   const ICONS = {
     in: 'in',
     out: 'out',
+    tempout: 'clock',
     lunch: 'break',
     resume: 'play',
     plan: 'plan',
@@ -567,8 +568,18 @@
         });
       }
       const done = document.createElement('div');
-      done.className = 'card done-card';
-      done.textContent = 'امروز به پایان رسید. تا فردا خوش باشید.';
+      if (state.today && state.today.tempExit) {
+        // خروج موقت ثبت شده و خروج اصلی هنوز نه: یادآوری زیبا و پررنگ، نه «امروز تمام شد»
+        done.className = 'card tx-banner';
+        const ico = document.createElement('span'); ico.className = 'tx-banner-ico'; ico.setAttribute('aria-hidden', 'true'); ico.textContent = '🌿';
+        const txt = document.createElement('div'); txt.className = 'tx-banner-text';
+        const h = document.createElement('strong'); h.textContent = 'خروج موقت ثبت شده؛ روز شما هنوز تمام نشده';
+        const p = document.createElement('p'); p.textContent = 'برگردید، «ورود مجدد» بزنید، تسک‌هایتان را کامل کنید و در پایان «خروج اصلی» را ثبت کنید؛ وگرنه رکورد امروز ثبت نمی‌شود.';
+        txt.append(h, p); done.append(ico, txt);
+      } else {
+        done.className = 'card done-card';
+        done.textContent = 'امروز به پایان رسید. تا فردا خوش باشید.';
+      }
       box.appendChild(done);
       addMissionTile();
       addMyDayTile();
@@ -589,9 +600,15 @@
     }
 
     addTile({
-      title: 'ثبت خروج', sub: 'پایان روز کاری', color: 'red', icon: 'out', primary: true, wide: true,
+      title: 'ثبت خروج', sub: 'خروج اصلی · پایان روز (فقط یک‌بار)', color: 'red', icon: 'out', primary: true, wide: true,
       handler: () => startCheckout(),
     });
+    if (state.today && state.today.canTempExit) {
+      addTile({
+        title: 'خروج موقت', sub: 'کار بیرون یا وقفه‌ی طولانی', color: 'blue', icon: 'tempout',
+        handler: async () => { if (await askTempExit()) doAction('/temp-check-out', {}, 'خروج موقت ثبت شد.'); },
+      });
+    }
     if (!state.today || state.today.breakButtonsEnabled !== false) { // تنظیم «دکمه‌ی ثبت استراحت/ناهار» خاموش ⇒ پنهان (استراحت طبق ساعت ثابت و پیام خودکار)
       if (state.today && state.today.breakCanStart === false) { // سقف تعداد استراحت امروز (تنظیم breakMaxPerDay)
         addTile({ title: 'ثبت استراحت', sub: 'سقف استراحت امروز تکمیل شد', color: 'orange', icon: 'lunch', handler: () => {}, locked: true });
@@ -664,6 +681,40 @@
 
   function confirmReEntry() {
     return confirmAction('از ورود مجدد برای ادامه‌ی کار مطمئن هستید؟', 'تأیید ورود مجدد', 'ورود مجدد');
+  }
+
+  // ---------- خروج موقت ----------
+  // پیام تأیید و پیام موفقیت زیبا؛ تأکید می‌کند خروج اصلی یک‌بار است و رکورد بدون آن ثبت نمی‌شود.
+  function txSheet(html, onClick) {
+    const root = document.createElement('div');
+    root.className = 'sheet-backdrop idle-backdrop';
+    root.innerHTML = `<div class="sheet idle-sheet tx-sheet" role="dialog" aria-modal="true" tabindex="-1"><div class="idle-body">${html}</div></div>`;
+    document.body.appendChild(root);
+    root.addEventListener('click', (e) => { if (e.target === root) onClick('cancel', root); const b = e.target.closest('[data-tx]'); if (b) onClick(b.dataset.tx, root); });
+    const f = root.querySelector('.tx-sheet'); if (f && f.focus) f.focus();
+    return root;
+  }
+  const TX_STEPS = '<ol class="tx-steps"><li><span class="tx-n">۱</span>برگردید و «ورود مجدد» را بزنید</li><li><span class="tx-n">۲</span>تسک‌های امروز را کامل کنید</li><li><span class="tx-n">۳</span>آخر روز «خروج اصلی» را ثبت کنید</li></ol>';
+  const TX_WARN = '<p class="tx-warn"><span aria-hidden="true">⚠️</span> بدون خروج اصلی، رکورد امروز شما ثبت نمی‌شود و ساعتتان حساب نمی‌شود.</p>';
+
+  function askTempExit() {
+    return new Promise((resolve) => {
+      const root = txSheet(`<div class="idle-badge tx-badge" aria-hidden="true">🚪</div>
+        <h3 class="idle-title">خروج موقت می‌زنید؟</h3>
+        <p class="idle-sub">برای کار بیرون یا وقفه‌ی طولانی. فعلاً گزارش تسک‌ها را نمی‌خواهیم؛ اما روز شما تا «خروج اصلی» تمام نمی‌شود.</p>
+        ${TX_STEPS}${TX_WARN}
+        <div class="idle-actions"><button type="button" class="idle-btn idle-primary" data-tx="ok"><span class="idle-btn-ico">✓</span>بله، خروج موقت می‌زنم</button></div>
+        <button type="button" class="idle-cancel" data-tx="cancel">انصراف</button>`, (a, r) => { r.remove(); resolve(a === 'ok'); });
+      return root;
+    });
+  }
+
+  function showTempExitDone() {
+    txSheet(`<div class="idle-badge tx-badge" aria-hidden="true">🌿</div>
+      <h3 class="idle-title">خروج موقت ثبت شد</h3>
+      <p class="idle-sub">به سلامتی! هر وقت کارتان تمام شد برگردید؛ ما منتظریم.</p>
+      ${TX_STEPS}${TX_WARN}
+      <div class="idle-actions"><button type="button" class="idle-btn idle-primary" data-tx="ok"><span class="idle-btn-ico">👍</span>باشه، برمی‌گردم</button></div>`, (a, r) => r.remove());
   }
 
   function confirmCheckout() {
@@ -893,11 +944,12 @@
           body = { ...(body || {}), idleMinutes: idleAnswer };
         }
       }
-      if (path === '/check-in' || path === '/check-out' || path === '/re-check-in') {
+      if (path === '/check-in' || path === '/check-out' || path === '/re-check-in' || path === '/temp-check-out') {
         const deviceId = await getDeviceId();
         if (deviceId) body = { ...(body || {}), deviceId };
       }
       const res = await api(path, { method: 'POST', body });
+      if (path === '/temp-check-out') { await loadToday(); showTempExitDone(); return true; }
       const feedback = path === '/check-out' ? checkoutMessage(res, successMsg) : successMsg;
       if (window.celebrate && (path === '/check-out' || path === '/check-in')) window.celebrate('check');
       showToast(feedback);
@@ -3575,7 +3627,7 @@
   const REMOTE_MSG = 'شما در فرازهنر حضور ندارید. می‌توانید ساعت خود را به‌عنوان دورکار ثبت کنید و پس از بررسی سرپرست مربوطه، در آخر هفته ساعتتان لحاظ می‌شود.';
   const REMOTE_STATUS = { pending: 'در انتظار بررسی', approved: 'تأیید شده', rejected: 'رد شده' };
   const REMOTE_VIEWS = ['remote', 'remote-history'];
-  const OUT_OF_NETWORK_PATHS = ['/check-in', '/check-out', '/re-check-in', '/break/start', '/break/end'];
+  const OUT_OF_NETWORK_PATHS = ['/check-in', '/check-out', '/re-check-in', '/temp-check-out', '/break/start', '/break/end'];
 
   function rEl(tag, cls, text) {
     const e = document.createElement(tag);

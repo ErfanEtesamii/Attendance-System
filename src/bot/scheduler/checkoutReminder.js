@@ -38,13 +38,15 @@ async function checkCheckoutReminders(bot, { now = new Date() } = {}) {
     if (nowMinutes < reminderLine || nowMinutes > workEndMinutes) continue;
 
     const record = attendanceRepository.findTodayRecord(user.id);
-    if (!record || !record.check_in_time || record.check_out_time) continue; // حاضر نبوده یا قبلاً خروج زده
+    if (!record || !record.check_in_time || (record.check_out_time && !record.temp_exit)) continue; // حاضر نبوده یا قبلاً «خروج اصلی» زده
 
     remindedToday.add(key);
     try {
       await bot.sendMessage(
         user.telegram_user_id,
-        `⏰ یادآوری: پایان ساعت کاری نزدیک است. فراموش نکنید خروج خود را ثبت کنید.`
+        record.temp_exit
+          ? '⏰ یادآوری: پایان ساعت کاری نزدیک است و هنوز «خروج اصلی» ثبت نشده.\n🔁 برگردید و «ورود مجدد» بزنید، تسک‌هایتان را کامل کنید و خروج اصلی را ثبت کنید؛ وگرنه رکورد امروز ثبت نمی‌شود.'
+          : `⏰ یادآوری: پایان ساعت کاری نزدیک است. فراموش نکنید خروج خود را ثبت کنید.`
       );
     } catch (err) {
       logger.error('checkout_reminder_failed', { userId: user.id, error: err.message });

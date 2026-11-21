@@ -1261,3 +1261,14 @@ textarea.pl-focus-input { resize: vertical; min-height: 72px; }
 .idle-chip { appearance: none; border: 1px solid var(--border); background: var(--card-bg-2); color: var(--text); font: inherit; font-size: var(--fs-sm); font-weight: 600; padding: 8px 14px; border-radius: 999px; cursor: pointer; transition: background-color .15s, border-color .15s; }
 .idle-chip.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 22%, var(--card-bg)); font-weight: 800; }
 @media (prefers-reduced-motion: reduce) { .idle-btn, .idle-step, .idle-chip { transition: none; } }
+
+/* خروج موقت: برگه‌ی تأیید/موفقیت و بنر وضعیت */
+.tx-badge { background: color-mix(in srgb, var(--blue) 16%, var(--card-bg)); }
+.tx-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; width: 100%; text-align: start; }
+.tx-steps li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--card-bg-2); border: 1px solid var(--border); font-size: var(--fs-sm); font-weight: 600; color: var(--text); }
+.tx-n { flex: none; width: 26px; height: 26px; border-radius: 50%; display: inline-grid; place-items: center; font-size: var(--fs-xs); font-weight: 800; color: var(--blue); background: color-mix(in srgb, var(--blue) 16%, transparent); }
+.tx-warn { margin: 0; width: 100%; padding: 10px 12px; border-radius: 14px; font-size: var(--fs-xs); line-height: 1.9; font-weight: 700; text-align: start; color: var(--text); background: color-mix(in srgb, var(--orange) 14%, var(--card-bg)); border: 1px solid color-mix(in srgb, var(--orange) 45%, transparent); }
+.tx-banner { display: flex; align-items: flex-start; gap: 12px; padding: 14px; border-radius: var(--radius-sheet); background: linear-gradient(135deg, color-mix(in srgb, var(--orange) 14%, var(--card-bg)), var(--card-bg)); border: 1px solid color-mix(in srgb, var(--orange) 40%, transparent); }
+.tx-banner-ico { flex: none; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-size: 22px; background: color-mix(in srgb, var(--orange) 20%, var(--card-bg)); }
+.tx-banner-text strong { display: block; font-size: var(--fs-md); font-weight: 800; color: var(--text); margin-bottom: 4px; }
+.tx-banner-text p { margin: 0; font-size: var(--fs-sm); line-height: 1.9; color: var(--hint); }

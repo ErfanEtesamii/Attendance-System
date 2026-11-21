@@ -8,6 +8,7 @@ let botInstance;
 let TelegramBot;
 
 function getNotifierBot() {
+  if (process.env.NODE_ENV === 'test' && !process.env.NOTIFIER_ALLOW_IN_TEST) return null; // تست‌ها هرگز پیام واقعی تلگرام نمی‌فرستند
   if (!config.telegramBotToken) return null;
   if (!botInstance) {
     TelegramBot = TelegramBot || require('node-telegram-bot-api');

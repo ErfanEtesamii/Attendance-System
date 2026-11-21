@@ -74,6 +74,7 @@ router.use('/miniapp', telegramAuth);
 // ریست برنامه (B2): هنگام نگهداری، ثبت تردد 503 می‌گیرد (قبل از چک شبکه/rate limit)
 router.use('/miniapp/check-in', maintenanceGate);
 router.use('/miniapp/check-out', maintenanceGate);
+router.use('/miniapp/temp-check-out', maintenanceGate);
 router.use('/miniapp/re-check-in', maintenanceGate);
 router.use('/miniapp/break/start', maintenanceGate);
 router.use('/miniapp/break/end', maintenanceGate);
@@ -81,6 +82,7 @@ router.use('/miniapp/break/end', maintenanceGate);
 // عملیات‌های واقعی ثبت تردد علاوه‌بر آن باید از چک شبکه داخلی فاز ۲ هم عبور کنند
 router.use('/miniapp/check-in', networkRestriction);
 router.use('/miniapp/check-out', networkRestriction);
+router.use('/miniapp/temp-check-out', networkRestriction);
 router.use('/miniapp/re-check-in', networkRestriction);
 router.use('/miniapp/break/start', networkRestriction);
 router.use('/miniapp/break/end', networkRestriction);
@@ -113,6 +115,7 @@ const miniAppActionLimiter = createRateLimiter({
 router.use('/miniapp/check-in', miniAppActionLimiter);
 router.use('/miniapp/checkin-permission', miniAppActionLimiter);
 router.use('/miniapp/check-out', miniAppActionLimiter);
+router.use('/miniapp/temp-check-out', miniAppActionLimiter);
 router.use('/miniapp/re-check-in', miniAppActionLimiter);
 router.use('/miniapp/break/start', miniAppActionLimiter);
 router.use('/miniapp/break/end', miniAppActionLimiter);
@@ -202,11 +205,13 @@ router.get('/miniapp/today', (req, res) => {
   const segments = record ? attendanceRepository.listSegments(record.id) : [];
   const reEntriesUsed = Math.max(0, segments.length - 1);
   const reEntry = reEntryLimit(settings);
-  const canReEnter = Boolean(record && record.check_out_time && reEntry.limit > reEntriesUsed);
+  const tempExit = Boolean(record && record.temp_exit);
+  const canReEnter = Boolean(record && record.check_out_time && tempExit && reEntry.limit > reEntriesUsed); // ورود مجدد فقط پس از «خروج موقت»؛ خروج اصلی یک‌بار و نهایی است
+  const canTempExit = Boolean(record && !record.check_out_time && !openBreak && reEntry.limit > reEntriesUsed);
   const breakMax = Number(settings.breakMaxPerDay) > 0 ? Math.floor(Number(settings.breakMaxPerDay)) : 0;
   res.json({
     record: record || null, openBreak: openBreak || null, breaks, summary, breakPolicy, breakButtonsEnabled: settings.breakButtonsEnabled !== false, openBreakPaid, earnings, segments,
-    reEntriesUsed, reEntriesMax: reEntry.unlimited ? null : reEntry.limit, reEntriesUnlimited: reEntry.unlimited, canReEnter,
+    reEntriesUsed, reEntriesMax: reEntry.unlimited ? null : reEntry.limit, reEntriesUnlimited: reEntry.unlimited, canReEnter, tempExit, canTempExit,
     breakMaxPerDay: breakMax, breakCanStart: !breakMax || breaks.length < breakMax, dailyTargetMinutes: Number(settings.dailyTargetMinutes) > 0 ? Number(settings.dailyTargetMinutes) : 480,
   });
 });
@@ -225,7 +230,7 @@ router.post('/miniapp/re-check-in', (req, res) => {
   const lastSegment = currentSegments[currentSegments.length - 1];
   if (lastSegment && !lastSegment.check_out_time && justHappened(lastSegment.check_in_time)) return res.json({ ok: true, alreadyDone: true, ...record, segments: currentSegments });
   if (record && monthClosuresRepository.findClosedOverlapping(record.record_date, record.record_date).length) return res.status(409).json({ code: 'MONTH_CLOSED', error: 'این روز در ماه بسته‌شده است و قابل تغییر نیست.' });
-  if (!record || !record.check_out_time) return res.status(409).json({ code: 'REENTRY_NOT_AVAILABLE', error: 'ورود مجدد فقط پس از ثبت خروج ممکن است.' });
+  if (!record || !record.check_out_time || !record.temp_exit) return res.status(409).json({ code: 'REENTRY_NOT_AVAILABLE', error: 'ورود مجدد فقط پس از «خروج موقت» ممکن است؛ خروج اصلی یک‌بار و نهایی است.' });
   const reEntry = reEntryLimit(settings);
   if (!reEntry.limit || used >= reEntry.limit) return res.status(409).json({ code: 'REENTRY_LIMIT', error: 'سقف ورود مجدد امروز تکمیل شده است.' });
   if (rejectIfSharedDeviceBlocked(req, res, 're_check_in')) return;
@@ -339,6 +344,47 @@ router.get('/miniapp/idle-config', (req, res) => {
   res.json({ enabled: s.idleAskEnabled === true, max, step: Number(s.idleStepMinutes), unlimited: !(cap > 0) });
 });
 
+// ---------- خروج موقت ----------
+// کارمند برای کار بیرون/وقفه‌ی طولانی «خروج موقت» می‌زند: گزارش تسک‌ها و برنامه‌ی هفته را نمی‌خواهد، ولی باید برگردد (ورود مجدد)،
+// «خروج اصلی» را یک‌بار بزند و تسک‌هایش را کامل کند؛ وگرنه (temp_exit=1 تا آخر روز) رکوردش «ناقص» می‌شود و ساعت مفید صفر است.
+const TEMP_EXIT_FA_TIME = (iso, tz) => { try { return new Date(iso).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz || 'Asia/Tehran' }); } catch (_) { return ''; } };
+function tempExitMessage(timeText) {
+  return [
+    `🚪 خروج موقت ثبت شد${timeText ? ` · ساعت ${timeText}` : ''}`,
+    '',
+    '🌿 به سلامتی! هر وقت کارت تموم شد برگرد، ما منتظریم.',
+    '',
+    '📌 یادت نره:',
+    '① برگردی و «ورود مجدد» رو بزنی',
+    '② آخر روز «خروج اصلی» رو ثبت کنی',
+    '③ تسک‌های امروزت رو کامل کنی و گزارش بدی',
+    '',
+    '⚠️ اگه خروج اصلی ثبت نشه، رکورد امروزت ثبت نمی‌شه و ساعتت حساب نمی‌شه. 🙏',
+  ].join('\n');
+}
+
+router.post('/miniapp/temp-check-out', (req, res) => {
+  const record = attendanceRepository.findTodayRecord(req.miniAppUser.id);
+  if (!record) return res.status(400).json({ error: 'ابتدا باید ورود ثبت شود.' });
+  if (record.check_out_time) {
+    if (record.temp_exit && justHappened(record.check_out_time)) return res.json({ ok: true, alreadyDone: true, ...record });
+    return res.status(400).json({ error: record.temp_exit ? 'خروج موقت شما قبلاً ثبت شده است؛ برای ادامه «ورود مجدد» بزنید.' : 'خروج اصلی امروز ثبت شده است.', code: 'ALREADY_EXITED' });
+  }
+  if (monthClosuresRepository.findClosedOverlapping(record.record_date, record.record_date).length) return res.status(409).json({ code: 'MONTH_CLOSED', error: 'این روز در ماه بسته‌شده است و قابل تغییر نیست.' });
+  if (breakRepository.findOpenBreak(record.id)) return res.status(400).json({ error: 'ابتدا باید استراحت باز فعلی را پایان دهید.' });
+  const settings = settingsRepository.getAll();
+  const reEntry = reEntryLimit(settings);
+  const used = Math.max(0, attendanceRepository.listSegments(record.id).length - 1);
+  if (!reEntry.limit || used >= reEntry.limit) return res.status(409).json({ code: 'TEMP_EXIT_LIMIT', error: 'سقف خروج موقت امروز تکمیل شده است؛ برای رفتن «خروج اصلی» را بزنید.' });
+  if (rejectIfSharedDeviceBlocked(req, res, 'temp_check_out')) return;
+  const updated = attendanceRepository.closeLastSegment(record.id, req.ip, extractDeviceInfo(req), { viaPendingMission: Boolean(req.viaPendingMission), temp: true });
+  auditRepository.logEvent({ userId: req.miniAppUser.id, action: 'temp_check_out', ipAddress: req.ip, details: { source: 'miniapp' } });
+  const message = tempExitMessage(TEMP_EXIT_FA_TIME(updated.check_out_time, settings.timezone));
+  try { require('../../bot/notifier').notifyUser(req.miniAppUser.telegram_user_id, message); } catch (_) { /* پیام تلگرام اختیاری است؛ ثبت خروج موقت مانعی ندارد */ }
+  res.json({ ...updated, tempExit: true, tempExitMessage: message });
+  fraudRunner.runFraudChecksSafe({ date: updated.record_date });
+});
+
 router.post('/miniapp/check-out', (req, res) => {
   const record = attendanceRepository.findTodayRecord(req.miniAppUser.id);
   if (!record) {
@@ -354,9 +400,8 @@ router.post('/miniapp/check-out', (req, res) => {
   }
   // گیت D7: گزارش روزانه‌ی تسک‌ها. ترتیب گیت‌ها: گزارش امروز ← برنامه‌ی هفته‌ی بعد ← ثبت خروج.
   // (بعد از بررسی «خروج قبلاً ثبت شده»، تا دبل‌کلیکِ موفق 409 نگیرد؛ تا همه‌ی گیت‌ها رد نشوند چیزی نوشته نمی‌شود.)
-  // خروج نوبت دوم همان تعهد روز را دوباره مطالبه نمی‌کند؛ گزارش و برنامه در خروج اول بررسی شده‌اند.
-  const isReEntryCheckout = attendanceRepository.listSegments(record.id).length > 1;
-  const reportGate = isReEntryCheckout ? { action: 'allow', report: null } : taskReportService.checkoutGate(req.miniAppUser, record.record_date, req.body);
+  // «خروج موقت» گیت ندارد (مسیر جدا: /temp-check-out)؛ پس هر «خروج اصلی» ــ حتی بعد از چند خروج موقت ــ همه‌ی گیت‌ها را می‌گذراند.
+  const reportGate = taskReportService.checkoutGate(req.miniAppUser, record.record_date, req.body);
   if (reportGate.action === 'invalid') {
     return res.status(['MONTH_CLOSED', 'FULL_DAY_OFF', 'ALREADY_ANSWERED'].includes(reportGate.code) ? 409 : 400).json({ error: reportGate.error, code: reportGate.code });
   }
@@ -373,7 +418,7 @@ router.post('/miniapp/check-out', (req, res) => {
     });
   }
   // گیت D5: برنامه‌ی هفته‌ی بعد
-  const planGate = isReEntryCheckout ? { action: 'allow', info: {} } : planGateService.check(req.miniAppUser, record.record_date);
+  const planGate = planGateService.check(req.miniAppUser, record.record_date);
   if (planGate.action === 'block') {
     auditRepository.logEvent({ userId: req.miniAppUser.id, action: 'check_out_blocked', ipAddress: req.ip, details: { source: 'miniapp', reason: 'weekly_plan_required', weekStart: planGate.info.weekStart } });
     return res.status(409).json({
@@ -416,7 +461,7 @@ router.post('/miniapp/check-out', (req, res) => {
   if (reportGate.report) {
     auditRepository.logEvent({ userId: req.miniAppUser.id, action: 'daily_report_submitted', ipAddress: req.ip, details: { source: 'miniapp_check_out', date: reportGate.date, answers: reportGate.report.answers.length, extra: reportGate.report.extras.length } });
   }
-  if (!isReEntryCheckout) planGateService.consumeExemption(req.miniAppUser, planGate, updated, req.ip);
+  planGateService.consumeExemption(req.miniAppUser, planGate, updated, req.ip);
   const payload = { ...updated };
   if (planGate.action === 'remind' || planGate.action === 'confirm') payload.planReminder = { weekStart: planGate.info.weekStart };
   if (reportGate.report) payload.reportSaved = { date: reportGate.date, answers: reportGate.report.answers.length, extra: reportGate.report.extras.length };
