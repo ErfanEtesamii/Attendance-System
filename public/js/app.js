@@ -395,11 +395,13 @@
     state.timerInterval = null;
   }
 
-  function startTimer(fromIso, sel = '#timer') {
+  // offsetMs: حضورِ نوبت‌های قبلیِ امروز (بعد از ورود مجدد، شمارنده از صفر شروع نمی‌شود و ادامه‌ی حضور قبلی است)
+  function startTimer(fromIso, sel = '#timer', offsetMs = 0) {
     stopTimer();
     const from = new Date(fromIso).getTime();
+    const offset = Number.isFinite(offsetMs) && offsetMs > 0 ? offsetMs : 0;
     function tick() {
-      const diff = Math.max(0, Date.now() - from);
+      const diff = Math.max(0, Date.now() - from) + offset;
       const h = String(Math.floor(diff / 3600000)).padStart(2, '0');
       const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
       const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
@@ -1235,11 +1237,14 @@
     } else {
       const mission = state.network && state.network.viaMission;
       setStatus(mission ? 'در مأموریت' : 'حاضر در شرکت', mission ? 'is-mission' : 'is-active', mission ? 'mission' : 'active');
-      const currentSegment = (data.segments || []).at(-1);
-      startTimer(currentSegment?.check_in_time || r.check_in_time);
+      const allSegments = data.segments || [];
+      const currentSegment = allSegments.at(-1);
+      // جمع حضورِ نوبت‌های بسته‌شده‌ی قبلی؛ بعد از «ورود مجدد» شمارنده از همان‌جا ادامه می‌یابد
+      const previousMs = allSegments.slice(0, -1).reduce((sum, sg) => (sg.check_out_time ? sum + Math.max(0, new Date(sg.check_out_time) - new Date(sg.check_in_time)) : sum), 0);
+      startTimer(currentSegment?.check_in_time || r.check_in_time, '#timer', previousMs);
       timerEl.classList.remove('is-text');
       progressMin = data.summary?.effectiveMinutes || 0;
-      $('#today-summary').textContent = 'مدت حضور از لحظه ورود';
+      $('#today-summary').textContent = previousMs > 0 ? 'مجموع حضور امروز (ادامه‌ی نوبت قبلی)' : 'مدت حضور از لحظه ورود';
     }
 
     const pct = Math.max(0, Math.min(100, Math.round((progressMin / TARGET_MIN) * 100)));
