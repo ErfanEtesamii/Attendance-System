@@ -97,7 +97,7 @@ function startReEntry(attendanceRecordId, ip, maxReEntries = null) {
     }
     const seq = state.count ? state.seq + 1 : 2;
     db.prepare('INSERT INTO attendance_segments (attendance_record_id, seq, check_in_time, check_in_ip) VALUES (?, ?, ?, ?)').run(attendanceRecordId, seq, nowIso(), ip);
-    db.prepare('UPDATE attendance_records SET check_out_time = NULL, check_out_ip = NULL, check_out_device = NULL, check_out_ua = NULL, temp_exit = 0, updated_at = datetime(\'now\') WHERE id = ?').run(attendanceRecordId);
+    db.prepare('UPDATE attendance_records SET check_out_time = NULL, check_out_ip = NULL, check_out_device = NULL, check_out_ua = NULL, temp_exit = 0, status = CASE WHEN status = \'incomplete\' THEN \'normal\' ELSE status END, updated_at = datetime(\'now\') WHERE id = ?').run(attendanceRecordId); // برگشتن کارمند ⇒ علامت «ناقص» (از Job پایان روز) برداشته می‌شود
     return true;
   });
   return tx() ? findById(attendanceRecordId) : null;
@@ -108,13 +108,14 @@ function closeLastSegment(attendanceRecordId, ip, device = {}, { viaPendingMissi
   const db = getDb();
   const flag = () => db.prepare('UPDATE attendance_records SET temp_exit = ? WHERE id = ?').run(temp ? 1 : 0, attendanceRecordId);
   const row = db.prepare('SELECT * FROM attendance_segments WHERE attendance_record_id = ? AND check_out_time IS NULL ORDER BY seq DESC LIMIT 1').get(attendanceRecordId);
-  if (!row) { const rec = recordCheckOut(attendanceRecordId, ip, device, { viaPendingMission }); flag(); return findById(attendanceRecordId) || rec; }
+  if (!row) { const rec = recordCheckOut(attendanceRecordId, ip, device, { viaPendingMission }); flag(); if (!temp) db.prepare("UPDATE attendance_records SET status = 'normal' WHERE id = ? AND status = 'incomplete'").run(attendanceRecordId); return findById(attendanceRecordId) || rec; }
   db.prepare('UPDATE attendance_segments SET check_out_time = ?, check_out_ip = ? WHERE id = ?').run(nowIso(), ip, row.id);
   const updated = db.prepare('SELECT check_out_time, check_out_ip FROM attendance_segments WHERE id = ?').get(row.id);
   db.prepare(`UPDATE attendance_records SET via_pending_mission = CASE WHEN ? = 1 THEN 1 ELSE via_pending_mission END,
     check_out_time = ?, check_out_ip = ?, check_out_device = ?, check_out_ua = ?, updated_at = datetime('now') WHERE id = ?`)
     .run(viaPendingMission ? 1 : 0, updated.check_out_time, updated.check_out_ip, device?.deviceId ?? null, device?.userAgent ?? null, attendanceRecordId);
   flag();
+  if (!temp) db.prepare("UPDATE attendance_records SET status = 'normal' WHERE id = ? AND status = 'incomplete'").run(attendanceRecordId); // خروج اصلیِ واقعی ⇒ دیگر «بدون خروج» نیست
   return findById(attendanceRecordId);
 }
 

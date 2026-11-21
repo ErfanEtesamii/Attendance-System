@@ -74,6 +74,19 @@ describe('خروج موقت: API', { skip: hasDeps ? false : 'express نصب ن�
     settingsRepo.setValue('maxReEntriesPerDay', 5);
   });
 
+  test('بعد از خروج موقت، حتی اگر Job پایان روز «ناقص» زده باشد، ورود مجدد وضعیت را برمی‌گرداند و ساعت مفید ادامه‌ی قبلی است', async () => {
+    const u = F.makeUser();
+    const ci = await S.call(u, 'POST', 'check-in', {});
+    const db = require('../src/db/connection').getDb();
+    db.prepare('UPDATE attendance_records SET check_in_time = ? WHERE id = ?').run(new Date(Date.now() - 120 * 60000).toISOString(), ci.json.id);
+    assert.equal((await S.call(u, 'POST', 'temp-check-out', {})).status, 200);
+    attendanceRepo.updateStatus(ci.json.id, 'incomplete'); // مثل اجرای Job بستن رکوردهای بدون خروج
+    assert.equal((await S.call(u, 'POST', 're-check-in', {})).status, 201);
+    assert.equal(attendanceRepo.findById(ci.json.id).status, 'normal');
+    const today = (await S.call(u, 'GET', 'today')).json;
+    assert.ok(today.summary.effectiveMinutes >= 119, JSON.stringify(today.summary));
+  });
+
   test('Job پایان روز: خروج موقتِ بازمانده «ناقص» علامت می‌خورد', () => {
     const u = F.makeUser();
     const rec = attendanceRepo.createManual({ userId: u.id, recordDate: '2026-03-02', checkInTime: '2026-03-02T05:00:00.000Z', checkOutTime: '2026-03-02T08:00:00.000Z', status: 'normal' });

@@ -1271,4 +1271,6 @@ textarea.pl-focus-input { resize: vertical; min-height: 72px; }
 .tx-banner { display: flex; align-items: flex-start; gap: 12px; padding: 14px; border-radius: var(--radius-sheet); background: linear-gradient(135deg, color-mix(in srgb, var(--orange) 14%, var(--card-bg)), var(--card-bg)); border: 1px solid color-mix(in srgb, var(--orange) 40%, transparent); }
 .tx-banner-ico { flex: none; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-size: 22px; background: color-mix(in srgb, var(--orange) 20%, var(--card-bg)); }
 .tx-banner-text strong { display: block; font-size: var(--fs-md); font-weight: 800; color: var(--text); margin-bottom: 4px; }
+.actions .tx-banner, .actions .done-card { grid-column: 1 / -1; } /* شبکه‌ی ۲ستونه‌ی اقدام‌ها: بنر وضعیت تمام‌عرض، نه نیم‌ستون */
+.tx-banner-text { min-width: 0; flex: 1; }
 .tx-banner-text p { margin: 0; font-size: var(--fs-sm); line-height: 1.9; color: var(--hint); }
