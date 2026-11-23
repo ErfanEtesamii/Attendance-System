@@ -83,6 +83,23 @@ function listSegments(attendanceRecordId) {
   return rows.length ? rows : [{ seq: 1, check_in_time: record.check_in_time, check_in_ip: record.check_in_ip, check_out_time: record.check_out_time, check_out_ip: record.check_out_ip }];
 }
 
+// نوبت‌های ثبت‌شده‌ی چند رکورد با یک کوئری (گروه‌های ۵۰۰تایی): Map(recordId ⇒ ردیف‌های نوبت به ترتیب seq).
+// رکوردِ بدون ردیف نوبت (مدل قدیمی/تک‌نوبت) در Map نمی‌آید؛ مصرف‌کننده (computeDay) خودش از خود رکورد یک نوبت می‌سازد.
+function listSegmentsByRecordIds(recordIds) {
+  const out = new Map();
+  const ids = [...new Set((recordIds || []).filter((x) => Number.isInteger(x)))];
+  const db = getDb();
+  for (let i = 0; i < ids.length; i += 500) {
+    const chunk = ids.slice(i, i + 500);
+    const rows = db.prepare(`SELECT * FROM attendance_segments WHERE attendance_record_id IN (${chunk.map(() => '?').join(',')}) ORDER BY attendance_record_id, seq`).all(...chunk);
+    for (const row of rows) {
+      if (!out.has(row.attendance_record_id)) out.set(row.attendance_record_id, []);
+      out.get(row.attendance_record_id).push(row);
+    }
+  }
+  return out;
+}
+
 function startReEntry(attendanceRecordId, ip, maxReEntries = null) {
   const db = getDb(); const record = findById(attendanceRecordId);
   if (!record || !record.check_out_time) return null;
@@ -380,6 +397,7 @@ module.exports = {
   recordCheckIn,
   recordCheckOut,
   listSegments,
+  listSegmentsByRecordIds,
   startReEntry,
   closeLastSegment,
   removeReEntrySegment,

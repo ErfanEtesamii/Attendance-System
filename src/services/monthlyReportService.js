@@ -152,6 +152,8 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
   const allRecordIds = [];
   for (const m of recordsByUser.values()) for (const r of m.values()) allRecordIds.push(r.id);
   const decisions = requiresApproval ? overtimeApprovalRepository.mapByRecordIds(allRecordIds) : new Map();
+  // نوبت‌های ورود/خروج (ورود مجدد): بدون آن، فاصله‌ی بین دو نوبت هم «حضور» حساب می‌شد و ساعت مفید با گزارش تحلیلی/روزانه فرق می‌کرد
+  const segmentsByRecord = attendanceRepository.listSegmentsByRecordIds(allRecordIds);
 
   const out = list.map((u) => {
     const recMap = recordsByUser.get(u.id) || new Map();
@@ -213,7 +215,7 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
       let invalid = false;
       try {
         const breaks = hasCheckIn ? breakRepository.listByAttendanceRecord(record.id) : [];
-        day = computeDay({ record, breaks, settings, now: nowDate, timezone, shift, calendar: cal, approvedLeaves: windows.length ? windows : null });
+        day = computeDay({ record, breaks, settings, now: nowDate, timezone, shift, calendar: cal, approvedLeaves: windows.length ? windows : null, segments: segmentsByRecord.get(record && record.id) });
       } catch (err) {
         if (!(err instanceof RangeError)) throw err;
         console.error(`[monthlyReport] روز ${dateStr} کاربر ${u.id} قابل‌محاسبه نیست:`, err.message);
