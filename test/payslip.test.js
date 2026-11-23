@@ -102,12 +102,13 @@ describe('تنظیمات شخصی', () => {
   test('loadOpts: پیش‌فرض، مقدار نامعتبر نادیده، و ذخیره/خواندن', () => {
     const mem = {}; const st = { getItem: (k) => (k in mem ? mem[k] : null), setItem: (k, v) => { mem[k] = v; } };
     assert.deepEqual(PS.loadOpts(st), PS.DEFAULTS);
+    assert.equal(PS.DEFAULTS.paper, 'a5'); // پیش‌فرض: A5 افقی
     PS.saveOpts(st, { ...PS.DEFAULTS, ins: false, perPage: 1, company: 'نمونه' });
     const o = PS.loadOpts(st);
     assert.equal(o.ins, false); assert.equal(o.perPage, 1); assert.equal(o.company, 'نمونه');
     st.setItem('payslip.opts.v1', JSON.stringify({ perPage: 7, wage: -5, ins: 'x' }));
     const bad = PS.loadOpts(st);
-    assert.equal(bad.perPage, 2); assert.equal(bad.wage, PS.DEFAULT_DAILY_WAGE); assert.equal(bad.ins, true);
+    assert.equal(bad.perPage, 1); assert.equal(bad.paper, 'a5'); assert.equal(bad.wage, PS.DEFAULT_DAILY_WAGE); assert.equal(bad.ins, true);
     assert.deepEqual(PS.loadOpts({ getItem: () => { throw new Error('x'); } }), PS.DEFAULTS);
   });
 });

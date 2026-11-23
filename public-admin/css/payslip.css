@@ -55,6 +55,8 @@ html, body { margin: 0; background: var(--bg); color: var(--text); font-family: 
 .ps-seg span { display: block; padding: 7px 6px; border-radius: 9px; font-size: 13px; font-weight: 700; color: var(--hint); transition: background .15s, color .15s; }
 .ps-seg input:checked + span { background: var(--accent); color: #17143a; box-shadow: var(--shadow-sm); }
 .ps-seg input:focus-visible + span { outline: 2px solid var(--brand); }
+.ps-seg.three span { font-size: 12.5px; }
+.ps-seg span small { display: block; font-weight: 400; font-size: 11px; opacity: .85; }
 .ps-sw { display: flex; align-items: center; gap: 10px; padding: 7px 0; cursor: pointer; }
 .ps-sw + .ps-sw { border-top: 1px dashed var(--border); }
 .ps-sw input { position: absolute; opacity: 0; }
@@ -123,6 +125,19 @@ html, body { margin: 0; background: var(--bg); color: var(--text); font-family: 
 
 /* ---------- چاپ ---------- */
 @page { size: A4 portrait; margin: 8mm; }
+@page a5 { size: A5 landscape; margin: 6mm; }
+@page a4 { size: A4 portrait; margin: 8mm; }
+.slips.a5 { page: a5; }
+.slips:not(.a5) { page: a4; }
+/* A5 افقی: یک فیش در هر برگ؛ فشرده‌تر تا در ۱۳۶mm ارتفاع جا شود */
+.slips.a5 .slip { max-width: 198mm; }
+.slips.a5 .paper { font-size: 11.5px; }
+.slips.a5 .p-head { padding: 5px 12px; }
+.slips.a5 .p-info { padding: 5px 12px; }
+.slips.a5 .ic { min-height: 19px; }
+.slips.a5 .ln { min-height: 20px; }
+.slips.a5 .p-paid { padding: 5px 12px; }
+.slips.a5 .p-sig { height: 22mm; padding: 6px 12px; }
 @media print {
   html, body { background: #fff !important; color: #000; font-size: 11px; }
   .no-print { display: none !important; }
@@ -130,7 +145,10 @@ html, body { margin: 0; background: var(--bg); color: var(--text); font-family: 
   .slips { display: block; }
   .slip { max-width: none; width: 100%; break-inside: avoid; page-break-inside: avoid; margin: 0 0 4mm; }
   .slips.two .slip { height: 136mm; }
-  .slips:not(.two) .slip { page-break-after: always; }
+  .slips:not(.two) .slip { page-break-after: always; break-after: page; }
+  .slips .slip:last-child { page-break-after: auto; break-after: auto; }
+  .slips.a5 .slip { height: auto; margin: 0; }
+  .slips.a5 .paper { font-size: 11px; }
   .paper { box-shadow: none; border-radius: 0; }
   .p-head, .p-col-h, .p-paid, .ln.tot { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .edit:hover, .edit:focus { background: transparent; box-shadow: none; }

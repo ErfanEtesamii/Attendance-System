@@ -57,10 +57,12 @@
 
       <section class="ps-card">
         <h2>۴. چیدمان و عنوان</h2>
-        <div class="ps-seg" role="radiogroup" aria-label="تعداد فیش در صفحه">
-          <label><input type="radio" name="per" value="1" /><span>۱ فیش در صفحه</span></label>
-          <label><input type="radio" name="per" value="2" checked /><span>۲ فیش در صفحه</span></label>
+        <div class="ps-seg three" role="radiogroup" aria-label="اندازه‌ی کاغذ و چیدمان">
+          <label><input type="radio" name="paper" value="a5" checked /><span>A5 افقی<small>۱ فیش</small></span></label>
+          <label><input type="radio" name="paper" value="a4-1" /><span>A4 عمودی<small>۱ فیش</small></span></label>
+          <label><input type="radio" name="paper" value="a4-2" /><span>A4 عمودی<small>۲ فیش</small></span></label>
         </div>
+        <p class="ps-help">در پنجره‌ی چاپ مرورگر، اندازه‌ی کاغذ خودکار روی همین انتخاب تنظیم می‌شود؛ «Margins» را روی Default و «Scale» را روی ۱۰۰٪ بگذارید.</p>
         <label class="ps-field"><span>نام شرکت در سرفیش</span><input id="opt-company" class="ps-input" autocomplete="off" /></label>
         <label class="ps-field"><span>توضیح پایین فیش (اختیاری)</span><input id="opt-note" class="ps-input" autocomplete="off" placeholder="مثلاً: مبلغ به حساب واریز شد" /></label>
         <button type="button" class="ps-btn ghost wide" id="opt-reset">بازنشانی تنظیمات</button>

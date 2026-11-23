@@ -69,14 +69,15 @@
 
   // ---------- تنظیمات شخصی ----------
   const STORE = 'payslip.opts.v1';
-  const DEFAULTS = { eidi: false, wage: DEFAULT_DAILY_WAGE, perPage: 2, ins: true, extras: true, ids: true, sign: true, stamp: true, company: 'فراز هنر', note: '' };
+  const DEFAULTS = { eidi: false, wage: DEFAULT_DAILY_WAGE, paper: 'a5', perPage: 1, ins: true, extras: true, ids: true, sign: true, stamp: true, company: 'فراز هنر', note: '' };
   function loadOpts(storage) {
     try {
       const raw = storage && storage.getItem(STORE);
       const o = raw ? JSON.parse(raw) : {};
       const out = { ...DEFAULTS };
       for (const k of Object.keys(DEFAULTS)) if (o && typeof o[k] === typeof DEFAULTS[k]) out[k] = o[k];
-      if (out.perPage !== 1 && out.perPage !== 2) out.perPage = 2;
+      if (out.perPage !== 1 && out.perPage !== 2) out.perPage = 1;
+      if (out.paper !== 'a5' && out.paper !== 'a4') out.paper = 'a5';
       if (!(out.wage > 0)) out.wage = DEFAULT_DAILY_WAGE;
       return out;
     } catch (_) { return { ...DEFAULTS }; }
@@ -229,7 +230,11 @@
     const note = $('opt-note'); note.value = opts.note;
     note.addEventListener('input', () => { opts.note = note.value; persist(); draw(); });
     doc.querySelectorAll('input[name="kind"]').forEach((r) => { r.checked = (r.value === 'eidi') === !!opts.eidi; r.addEventListener('change', () => { if (r.checked) { opts.eidi = r.value === 'eidi'; state.sw.clear(); persist(); draw(); } }); });
-    doc.querySelectorAll('input[name="per"]').forEach((r) => { r.checked = Number(r.value) === opts.perPage; r.addEventListener('change', () => { if (r.checked) { opts.perPage = Number(r.value); persist(); draw(); } }); });
+    const paperVal = () => (opts.paper === 'a5' ? 'a5' : `a4-${opts.perPage}`);
+    doc.querySelectorAll('input[name="paper"]').forEach((r) => {
+      r.checked = r.value === paperVal();
+      r.addEventListener('change', () => { if (!r.checked) return; if (r.value === 'a5') opts.paper = 'a5'; else { opts.paper = 'a4'; opts.perPage = Number(r.value.slice(3)); } persist(); draw(); });
+    });
     $('opt-reset').addEventListener('click', () => { Object.assign(opts, DEFAULTS); persist(); state.edits.clear(); state.sw.clear(); win.location.reload(); });
     $('print-btn').addEventListener('click', () => win.print());
 
@@ -259,7 +264,7 @@
 
     // --- رسم فیش‌ها ---
     function draw() {
-      host.className = `slips${opts.perPage === 2 ? ' two' : ''}`;
+      host.className = `slips${opts.paper === 'a5' ? ' a5' : (opts.perPage === 2 ? ' two' : '')}`;
       host.textContent = '';
       let n = 0;
       state.rows.forEach((r) => {
