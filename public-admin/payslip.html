@@ -4,22 +4,75 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex" />
+<meta name="theme-color" content="#17143a" />
 <title>فیش حقوقی — چاپ</title>
+<script src="/js/theme.js"></script>
+<link rel="stylesheet" href="/css/tokens.css" />
 <link rel="stylesheet" href="/admin/css/payslip.css" />
 </head>
 <body>
-  <!-- نوار ابزار (در چاپ پنهان است) -->
-  <div class="no-print toolbar">
-    <button id="print-btn" type="button">چاپ / ذخیره PDF</button>
-    <a id="back-link" href="/admin/#/payroll">بازگشت به پنل</a>
-    <label class="opt"><input type="checkbox" id="opt-two" checked /> دو فیش در هر صفحه A4</label>
-    <label class="opt"><input type="checkbox" id="opt-all" /> کارمندان بدون حقوق هم چاپ شوند</label>
-    <label class="opt"><input type="checkbox" id="opt-eidi" /> فیش با عیدی و سنوات</label>
-    <label class="opt">مزد روزانه (تومان): <input type="text" id="opt-wage" size="10" inputmode="numeric" /></label>
-    <span id="status" class="status" role="status">در حال بارگذاری…</span>
-    <span class="hint">عیدی = مزد روزانه × ۶۰ ÷ ۳۶۵ × روز مبنا؛ سنوات = نصف عیدی (روز مبنا برای هر کارمند قابل ویرایش است). خانه‌های مزایا و کسورات (بن، مسکن، مساعده، وام، مالیات، بیمه) قابل ویرایش‌اند؛ حقوق خالص خودکار محاسبه می‌شود.</span>
+  <header class="ps-top no-print">
+    <div class="ps-top-r">
+      <a id="back-link" class="ps-btn ghost" href="/admin/#/payroll">→ بازگشت به پنل</a>
+      <div class="ps-title"><h1>فیش حقوقی</h1><small id="ps-sub">در حال بارگذاری…</small></div>
+    </div>
+    <div class="ps-top-l">
+      <span id="status" class="ps-status" role="status"></span>
+      <button type="button" class="ps-btn ghost icon" data-theme-toggle title="تم" aria-label="تغییر تم">◐</button>
+      <button id="print-btn" type="button" class="ps-btn primary">🖨 چاپ / ذخیره PDF</button>
+    </div>
+  </header>
+
+  <div class="ps-app">
+    <aside class="ps-side no-print" aria-label="تنظیمات فیش">
+      <section class="ps-card">
+        <h2>۱. کارمندان</h2>
+        <input id="emp-search" class="ps-input" type="search" placeholder="جستجوی نام یا کد پرسنلی…" autocomplete="off" />
+        <div class="ps-quick">
+          <button type="button" class="ps-chip" id="sel-paid">دارای حقوق</button>
+          <button type="button" class="ps-chip" id="sel-all">همه</button>
+          <button type="button" class="ps-chip" id="sel-none">هیچ‌کدام</button>
+        </div>
+        <ul id="emp-list" class="ps-emps" role="list"></ul>
+      </section>
+
+      <section class="ps-card">
+        <h2>۲. نوع فیش</h2>
+        <div class="ps-seg" role="radiogroup" aria-label="نوع فیش">
+          <label><input type="radio" name="kind" value="plain" checked /><span>بدون عیدی و سنوات</span></label>
+          <label><input type="radio" name="kind" value="eidi" /><span>با عیدی و سنوات</span></label>
+        </div>
+        <p class="ps-help">عیدی = مزد روزانه × ۶۰ ÷ ۳۶۵ × روز مبنا؛ سنوات = نصف عیدی. روز مبنا روی هر فیش قابل ویرایش است.</p>
+        <label class="ps-field"><span>مزد روزانه‌ی اداره‌ی کار (تومان)</span><input id="opt-wage" class="ps-input ltr" inputmode="numeric" autocomplete="off" /></label>
+      </section>
+
+      <section class="ps-card">
+        <h2>۳. محتوای فیش</h2>
+        <label class="ps-sw"><input type="checkbox" id="opt-ins" /><i></i><span>کسر حق بیمه (برای کسانی که تعریف شده)</span></label>
+        <label class="ps-sw"><input type="checkbox" id="opt-extras" /><i></i><span>ردیف‌های مزایا و کسورات (بن، مسکن، اولاد، مساعده، وام، مالیات)</span></label>
+        <label class="ps-sw"><input type="checkbox" id="opt-ids" /><i></i><span>مشخصات (شغل، نوع استخدام، کد ملی، شماره بیمه)</span></label>
+        <label class="ps-sw"><input type="checkbox" id="opt-sign" /><i></i><span>کادر امضا (سرپرست و پرسنل)</span></label>
+        <label class="ps-sw"><input type="checkbox" id="opt-stamp" /><i></i><span>کادر مهر شرکت</span></label>
+      </section>
+
+      <section class="ps-card">
+        <h2>۴. چیدمان و عنوان</h2>
+        <div class="ps-seg" role="radiogroup" aria-label="تعداد فیش در صفحه">
+          <label><input type="radio" name="per" value="1" /><span>۱ فیش در صفحه</span></label>
+          <label><input type="radio" name="per" value="2" checked /><span>۲ فیش در صفحه</span></label>
+        </div>
+        <label class="ps-field"><span>نام شرکت در سرفیش</span><input id="opt-company" class="ps-input" autocomplete="off" /></label>
+        <label class="ps-field"><span>توضیح پایین فیش (اختیاری)</span><input id="opt-note" class="ps-input" autocomplete="off" placeholder="مثلاً: مبلغ به حساب واریز شد" /></label>
+        <button type="button" class="ps-btn ghost wide" id="opt-reset">بازنشانی تنظیمات</button>
+      </section>
+    </aside>
+
+    <main class="ps-main">
+      <div id="ps-empty" class="ps-emptybox no-print" hidden>هیچ کارمندی برای چاپ انتخاب نشده است. از فهرست سمت راست انتخاب کنید.</div>
+      <div id="slips" class="slips two"></div>
+    </main>
   </div>
-  <main id="slips" class="slips two"></main>
+
   <script src="/admin/js/jalali.js"></script>
   <script src="/admin/js/payslip.js"></script>
 </body>

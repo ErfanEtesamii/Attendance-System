@@ -1,53 +1,135 @@
-/* فیش حقوقی چاپی: A4 عمودی، دو فیش در هر صفحه (یا یکی)، RTL، بدون ناوبری پنل */
-:root { color-scheme: light; }
+/* فیش حقوقی: رابط صفحه هم‌تم با پنل (روشن/تیره از tokens.css)؛ خودِ کاغذ همیشه سفید/مشکی چاپی است. */
+@font-face { font-family: "Vazirmatn"; font-style: normal; font-weight: 100 900; font-display: swap; src: local("Vazirmatn"), url("/fonts/Vazirmatn-Variable.woff2") format("woff2"); }
+:root { color-scheme: light dark; --ink: #1b1c2c; --paper-line: #2b2560; --paper-soft: #efedf8; }
 * { box-sizing: border-box; }
-html, body { margin: 0; background: #eef0f3; color: #111; font-family: Tahoma, "Segoe UI", Vazirmatn, sans-serif; font-size: 12px; line-height: 1.5; }
-.toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 10px 16px; background: #fff; border-bottom: 1px solid #ccd; position: sticky; top: 0; z-index: 5; }
-.toolbar button { padding: 6px 14px; border: 1px solid #1b1c2c; background: #1b1c2c; color: #fff; border-radius: 6px; cursor: pointer; font: inherit; }
-.toolbar a { color: #1b1c2c; }
-.toolbar .opt { cursor: pointer; }
-.toolbar .hint { color: #666; font-size: 11px; flex-basis: 100%; }
-.status { color: #555; }
-.status.error { color: #b00020; font-weight: bold; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font-family: "Vazirmatn", Tahoma, "Segoe UI", system-ui, sans-serif; font-size: 14px; line-height: 1.6; }
+.ltr { direction: ltr; unicode-bidi: isolate; }
 
-.slips { width: 210mm; margin: 12px auto; }
-.slip { background: #fff; padding: 6mm 8mm; margin-bottom: 8mm; box-shadow: 0 1px 6px rgba(0,0,0,.2); break-inside: avoid; page-break-inside: avoid; }
-.slips.two .slip { height: 138mm; margin-bottom: 4mm; }
-.warn { margin-top: 4px; color: #8a4b00; font-size: 11px; font-weight: bold; }
+/* ---------- نوار بالا ---------- */
+.ps-top { position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 20px; background: color-mix(in srgb, var(--card) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); box-shadow: var(--shadow-1); }
+.ps-top-r, .ps-top-l { display: flex; align-items: center; gap: 12px; }
+.ps-title h1 { margin: 0; font-size: 17px; font-weight: 800; }
+.ps-title small { color: var(--hint); }
+.ps-status { color: var(--hint); font-size: 13px; }
+.ps-status.error { color: var(--red-text, #b00020); font-weight: 700; }
+.ps-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--border); background: var(--card-2); color: var(--text); font: inherit; font-weight: 700; cursor: pointer; text-decoration: none; transition: transform .15s, box-shadow .15s, background .15s; }
+.ps-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-2); }
+.ps-btn.primary { background: var(--accent); color: #17143a; border-color: transparent; }
+.ps-btn.primary:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
+.ps-btn.ghost { background: transparent; }
+.ps-btn.icon { width: 40px; padding: 0; font-size: 18px; }
+.ps-btn.wide { width: 100%; margin-top: 6px; }
+.ps-btn:focus-visible, .ps-input:focus-visible, .ps-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-table.slip-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1.5px solid #111; }
-.slip-table td { border: 1px solid #111; padding: 3px 6px; vertical-align: top; }
-.slip-table td.h { background: #e6e9ef; font-weight: bold; font-size: 13px; text-align: right; width: 33.33%; }
-.slip-table td.h.c { text-align: center; }
-.slip-table td.h:last-child { text-align: left; }
-.info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px 10px; }
-.ic { display: flex; gap: 4px; min-height: 18px; border-bottom: 1px dotted #999; }
-.ic .l { color: #333; white-space: nowrap; }
-.ic .v { font-weight: bold; }
-tr.cols td.col { padding: 0 6px 4px; width: 33.33%; }
-.col-h { text-align: center; font-weight: bold; background: #f1f3f6; margin: 0 -6px 4px; padding: 2px; border-bottom: 1px solid #111; }
-.ln { display: flex; justify-content: space-between; gap: 6px; min-height: 22px; align-items: baseline; border-bottom: 1px dotted #bbb; }
-.ln .l { color: #222; }
-.ln .v { font-weight: bold; min-width: 40px; text-align: left; direction: ltr; unicode-bidi: isolate; }
-.ln .v.total { font-size: 13px; }
-.edit { outline: none; cursor: text; }
-.edit:hover, .edit:focus { background: #fff8d6; }
-.paid-grid { display: flex; gap: 10px; align-items: baseline; }
-.paid-grid .v { min-width: 110px; border-bottom: 1px dotted #555; direction: ltr; unicode-bidi: isolate; text-align: left; }
-.paid-grid .edit { min-height: 18px; }
-.sig-grid { display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 6mm; height: 28mm; }
-.slips:not(.two) .sig-grid { height: 38mm; }
-.sg { border: 1px dashed #777; padding: 3px 6px; font-size: 11px; color: #333; }
+/* ---------- چیدمان ---------- */
+.ps-app { display: grid; grid-template-columns: 350px minmax(0, 1fr); gap: 20px; padding: 20px; max-width: 1500px; margin: 0 auto; align-items: start; }
+.ps-side { position: sticky; top: 76px; max-height: calc(100vh - 92px); overflow: auto; display: flex; flex-direction: column; gap: 14px; padding-inline-end: 2px; }
+.ps-card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 14px 16px; box-shadow: var(--shadow-1); }
+.ps-card h2 { margin: 0 0 10px; font-size: 14px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+.ps-card h2::before { content: ""; width: 4px; height: 16px; border-radius: 4px; background: var(--accent); }
+.ps-help { margin: 8px 0; color: var(--hint); font-size: 12.5px; }
+.ps-input { width: 100%; min-height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--field); color: var(--text); font: inherit; }
+.ps-field { display: block; margin-top: 10px; }
+.ps-field > span { display: block; margin-bottom: 4px; color: var(--hint); font-size: 12.5px; }
+
+/* چیپ‌ها و فهرست کارمندان */
+.ps-quick { display: flex; gap: 6px; margin: 10px 0; flex-wrap: wrap; }
+.ps-chip { padding: 4px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--card-2); color: var(--text); font: inherit; font-size: 12.5px; cursor: pointer; }
+.ps-chip:hover { background: var(--brand-soft); }
+.ps-emps { list-style: none; margin: 0; padding: 0; max-height: 300px; overflow: auto; display: flex; flex-direction: column; gap: 2px; }
+.ps-emps li { display: flex; align-items: center; gap: 6px; border-radius: 10px; }
+.ps-emps li:hover { background: var(--ov-06); }
+.ps-emp { flex: 1; display: flex; align-items: center; gap: 8px; padding: 6px 8px; cursor: pointer; min-width: 0; }
+.ps-emp .n { flex: 1; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ps-emp small { color: var(--green); font-variant-numeric: tabular-nums; }
+.ps-emp small.zero { color: var(--hint); }
+.ps-emp input { accent-color: var(--accent); width: 16px; height: 16px; }
+.ps-only { border: 0; background: transparent; color: var(--brand); font: inherit; font-size: 12px; cursor: pointer; padding: 4px 8px; border-radius: 8px; opacity: 0; }
+.ps-emps li:hover .ps-only, .ps-only:focus-visible { opacity: 1; }
+.ps-only:hover { background: var(--brand-soft); }
+
+/* انتخاب دوحالته و سوییچ */
+.ps-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 4px; border-radius: 12px; background: var(--field); }
+.ps-seg label { position: relative; text-align: center; cursor: pointer; }
+.ps-seg input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.ps-seg span { display: block; padding: 7px 6px; border-radius: 9px; font-size: 13px; font-weight: 700; color: var(--hint); transition: background .15s, color .15s; }
+.ps-seg input:checked + span { background: var(--accent); color: #17143a; box-shadow: var(--shadow-sm); }
+.ps-seg input:focus-visible + span { outline: 2px solid var(--brand); }
+.ps-sw { display: flex; align-items: center; gap: 10px; padding: 7px 0; cursor: pointer; }
+.ps-sw + .ps-sw { border-top: 1px dashed var(--border); }
+.ps-sw input { position: absolute; opacity: 0; }
+.ps-sw i { flex: none; width: 38px; height: 22px; border-radius: 999px; background: var(--card-2); border: 1px solid var(--border); position: relative; transition: background .15s; }
+.ps-sw i::after { content: ""; position: absolute; top: 2px; inset-inline-start: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--hint); transition: transform .15s, background .15s; }
+.ps-sw input:checked + i { background: var(--green-soft); border-color: var(--green); }
+.ps-sw input:checked + i::after { background: var(--green); transform: translateX(-16px); }
+.ps-sw input:focus-visible + i { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ps-sw span { font-size: 13px; }
+
+/* ---------- پیش‌نمایش ---------- */
+.ps-main { min-width: 0; }
+.ps-emptybox { padding: 40px; text-align: center; color: var(--hint); border: 2px dashed var(--border); border-radius: 18px; }
+.slips { display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.slip { width: 100%; max-width: 190mm; }
+.slip-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 12px; margin-bottom: 8px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; }
+.slip-bar-name { flex: 1; min-width: 120px; }
+.ps-mini { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; cursor: pointer; padding: 3px 10px; border-radius: 999px; background: var(--card-2); }
+.ps-mini input { accent-color: var(--accent); }
+.ps-mini input:disabled + span { color: var(--hint); }
+.ps-mini-btn { border: 0; background: transparent; color: var(--red-text, #c0334d); font: inherit; font-size: 12.5px; cursor: pointer; border-radius: 8px; padding: 3px 8px; }
+.ps-mini-btn:hover { background: var(--red-soft); }
+.ps-warn { margin-top: 6px; color: var(--orange); font-size: 12.5px; font-weight: 700; }
+
+/* ---------- کاغذ فیش (همیشه روشن) ---------- */
+.paper { background: #fff; color: var(--ink); border: 1.6px solid var(--paper-line); border-radius: 6px; overflow: hidden; box-shadow: 0 6px 28px rgba(0, 0, 0, .25); font-size: 12.5px; }
+.p-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; padding: 8px 12px; background: var(--paper-line); color: #fff; }
+.p-co { font-size: 15px; font-weight: 800; }
+.p-mid { font-weight: 700; letter-spacing: .5px; opacity: .9; }
+.p-date { text-align: left; display: flex; gap: 8px; justify-content: flex-end; align-items: baseline; }
+.p-date b { font-variant-numeric: tabular-nums; }
+.p-info { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px 14px; padding: 8px 12px; border-bottom: 1px solid var(--paper-line); }
+.ic { display: flex; gap: 5px; min-height: 22px; border-bottom: 1px dotted #aaa; align-items: baseline; }
+.ic .l { color: #444; white-space: nowrap; font-size: 12px; }
+.ic .v { font-weight: 700; flex: 1; min-width: 20px; }
+.p-cols { display: grid; grid-template-columns: repeat(3, 1fr); }
+.p-col { padding: 0 10px 6px; border-inline-start: 1px solid var(--paper-line); }
+.p-col:first-child { border-inline-start: 0; }
+.p-col-h { margin: 0 -10px 4px; padding: 4px; text-align: center; font-weight: 800; background: var(--paper-soft); border-bottom: 1px solid var(--paper-line); }
+.ln { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; min-height: 25px; border-bottom: 1px dotted #bbb; }
+.ln .l { color: #333; }
+.ln .v { font-weight: 700; min-width: 36px; text-align: left; direction: ltr; unicode-bidi: isolate; font-variant-numeric: tabular-nums; }
+.ln.tot { background: #f7f6fc; margin: 0 -4px; padding: 0 4px; border-radius: 4px; }
+.ln.tot .v { font-size: 14px; }
+.edit { outline: none; cursor: text; border-radius: 3px; }
+@media screen { .edit:hover { background: #fff6cf; } .edit:focus { background: #fff1b8; box-shadow: 0 0 0 2px #f7a01d55; } }
+.p-paid { display: flex; align-items: baseline; gap: 10px; padding: 8px 12px; border-top: 1px solid var(--paper-line); background: var(--paper-soft); }
+.p-paid .l { color: #333; }
+.p-paid .v { min-width: 110px; border-bottom: 1px dotted #555; direction: ltr; unicode-bidi: isolate; text-align: left; }
+.p-paid .v.big { font-size: 16px; }
+.p-paid .v.date { min-height: 20px; }
+.p-sig { display: grid; gap: 14px; padding: 10px 12px; height: 31mm; border-top: 1px solid var(--paper-line); }
+.slips:not(.two) .p-sig { height: 46mm; }
+.sg { border: 1px dashed #777; border-radius: 4px; padding: 3px 8px; font-size: 11.5px; color: #333; }
 .sg.stamp { text-align: center; }
+.p-note { padding: 6px 12px; border-top: 1px solid #ccc; font-size: 11.5px; color: #333; }
 
+/* ---------- واکنش‌گرا ---------- */
+@media (max-width: 980px) {
+  .ps-app { grid-template-columns: 1fr; padding: 12px; }
+  .ps-side { position: static; max-height: none; }
+  .ps-only { opacity: 1; }
+}
+
+/* ---------- چاپ ---------- */
 @page { size: A4 portrait; margin: 8mm; }
 @media print {
-  html, body { background: #fff; font-size: 11px; }
+  html, body { background: #fff !important; color: #000; font-size: 11px; }
   .no-print { display: none !important; }
-  .slips { width: auto; margin: 0; }
-  .slip { box-shadow: none; padding: 0; margin-bottom: 4mm; }
-  .slips.two .slip { height: 135mm; }
-  .slip-table td.h, .col-h { background: #e6e9ef !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .edit:hover, .edit:focus { background: transparent; }
-  .sg { border-color: #111; }
+  .ps-app { display: block; padding: 0; max-width: none; }
+  .slips { display: block; }
+  .slip { max-width: none; width: 100%; break-inside: avoid; page-break-inside: avoid; margin: 0 0 4mm; }
+  .slips.two .slip { height: 136mm; }
+  .slips:not(.two) .slip { page-break-after: always; }
+  .paper { box-shadow: none; border-radius: 0; }
+  .p-head, .p-col-h, .p-paid, .ln.tot { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .edit:hover, .edit:focus { background: transparent; box-shadow: none; }
 }

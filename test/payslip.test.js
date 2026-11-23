@@ -44,15 +44,18 @@ describe('فیش حقوقی', () => {
     assert.equal(PS.parseAmount(''), 0);
     assert.equal(PS.parseAmount('abc'), 0);
   });
-  test('apiUrlFrom: تک‌نفره یا جمعی؛ فقط پارامترهای شناخته‌شده', () => {
-    assert.equal(PS.apiUrlFrom('?year=1405&month=7&userId=5&x=1'), '/api/admin/payroll/5?year=1405&month=7');
+  test('apiUrlFrom: همیشه فهرست کل؛ userId فقط پیش‌انتخاب است', () => {
+    assert.equal(PS.apiUrlFrom('?year=1405&month=7&userId=5&x=1'), '/api/admin/payroll?year=1405&month=7');
     assert.equal(PS.apiUrlFrom('?year=1405&month=7&department=فنی'), `/api/admin/payroll?year=1405&month=7&department=${encodeURIComponent('فنی')}`);
-    assert.equal(PS.apiUrlFrom('?userId=../x&year=1405&month=7'), '/api/admin/payroll?year=1405&month=7');
+    assert.equal(PS.userIdFrom('?userId=5'), 5);
+    assert.equal(PS.userIdFrom('?userId=../x'), null);
   });
   test('بدون innerHTML و بدون inline script/style (CSP)', () => {
     assert.doesNotMatch(js, /\.innerHTML|insertAdjacentHTML|eval\(/);
     assert.doesNotMatch(html, /<style|\son\w+\s*=|<script(?![^>]*src)/);
     assert.match(html, /\/admin\/css\/payslip\.css/);
+    assert.match(html, /\/js\/theme\.js/); // هم‌تم با پنل
+    assert.match(html, /\/css\/tokens\.css/);
   });
   test('پنل لینک فیش را برای کل ماه و برای هر کارمند دارد', () => {
     const v = fs.readFileSync(path.join(root, 'js', 'views-performance.js'), 'utf8');
@@ -93,4 +96,18 @@ test('recompute: خالص شامل مبالغ add و منهای sub', () => {
   assert.equal(roles.net.textContent, PS.num(11300));
   assert.equal(roles.paid.textContent, PS.num(11300));
   assert.equal(roles.subs.textContent, PS.num(200));
+});
+
+describe('تنظیمات شخصی', () => {
+  test('loadOpts: پیش‌فرض، مقدار نامعتبر نادیده، و ذخیره/خواندن', () => {
+    const mem = {}; const st = { getItem: (k) => (k in mem ? mem[k] : null), setItem: (k, v) => { mem[k] = v; } };
+    assert.deepEqual(PS.loadOpts(st), PS.DEFAULTS);
+    PS.saveOpts(st, { ...PS.DEFAULTS, ins: false, perPage: 1, company: 'نمونه' });
+    const o = PS.loadOpts(st);
+    assert.equal(o.ins, false); assert.equal(o.perPage, 1); assert.equal(o.company, 'نمونه');
+    st.setItem('payslip.opts.v1', JSON.stringify({ perPage: 7, wage: -5, ins: 'x' }));
+    const bad = PS.loadOpts(st);
+    assert.equal(bad.perPage, 2); assert.equal(bad.wage, PS.DEFAULT_DAILY_WAGE); assert.equal(bad.ins, true);
+    assert.deepEqual(PS.loadOpts({ getItem: () => { throw new Error('x'); } }), PS.DEFAULTS);
+  });
 });
