@@ -79,6 +79,7 @@ html, body { margin: 0; background: var(--bg); color: var(--text); font-family: 
 .ps-mini input:disabled + span { color: var(--hint); }
 .ps-amt { width: 150px; min-height: 30px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--field); color: var(--text); font: inherit; font-size: 12.5px; text-align: left; }
 .ps-amt:focus-visible { outline: 2px solid var(--accent); }
+.ps-amt.need { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
 .ps-mini-btn { border: 0; background: transparent; color: var(--red-text, #c0334d); font: inherit; font-size: 12.5px; cursor: pointer; border-radius: 8px; padding: 3px 8px; }
 .ps-mini-btn:hover { background: var(--red-soft); }
 .ps-warn { margin-top: 6px; color: var(--orange); font-size: 12.5px; font-weight: 700; }

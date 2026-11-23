@@ -221,7 +221,7 @@
 
     // --- اتصال کنترل‌ها به opts ---
     const bindCheck = (id, key) => { const el = $(id); el.checked = !!opts[key]; el.addEventListener('change', () => { opts[key] = el.checked; persist(); draw(); }); };
-    { const el = $('opt-ins'); el.checked = !!opts.ins; el.addEventListener('change', () => { opts.ins = el.checked; persist(); state.sw.forEach((v) => { v.ins = opts.ins; }); draw(); }); }
+    { const el = $('opt-ins'); el.checked = !!opts.ins; el.addEventListener('change', () => { opts.ins = el.checked; persist(); state.sw.forEach((v, id) => { const sl = state.slips.get(id); const ed = state.edits.get(id) || {}; v.ins = opts.ins && ((sl && sl.insurance > 0) || parseAmount(ed.ins) > 0); }); draw(); }); }
  bindCheck('opt-extras', 'extras'); bindCheck('opt-ids', 'ids'); bindCheck('opt-sign', 'sign'); bindCheck('opt-stamp', 'stamp');
     const wageIn = $('opt-wage'); wageIn.value = num(opts.wage);
     wageIn.addEventListener('change', () => { opts.wage = parseAmount(wageIn.value) || DEFAULT_DAILY_WAGE; wageIn.value = num(opts.wage); persist(); draw(); });
@@ -271,7 +271,7 @@
         if (!state.selected.has(r.user.id)) return;
         const s = state.slips.get(r.user.id);
         if (!state.edits.has(s.userId)) state.edits.set(s.userId, {});
-        if (!state.sw.has(s.userId)) state.sw.set(s.userId, { ins: opts.ins, eidi: opts.eidi });
+        if (!state.sw.has(s.userId)) state.sw.set(s.userId, { ins: opts.ins && s.insurance > 0, eidi: opts.eidi });
         const sw = state.sw.get(s.userId);
         const art = makeSlip(doc, s, { opts, ed: state.edits.get(s.userId), sw: { ins: sw.ins, eidi: sw.eidi } });
         host.appendChild(art); recompute(art, opts.wage, false); n += 1;
@@ -301,6 +301,10 @@
       const sw = state.sw.get(Number(slip.dataset.id)); sw[t.dataset.sw] = t.checked;
       if (t.dataset.sw === 'eidi') { const ed = state.edits.get(Number(slip.dataset.id)); delete ed.eidi; delete ed.san; delete ed.days; }
       draw();
+      if (t.dataset.sw === 'ins' && t.checked) { // بیمه‌ی ثبت‌نشده: مستقیم برو سراغ نوشتن مبلغ
+        const id = Number(slip.dataset.id); const sl = state.slips.get(id); const ed = state.edits.get(id) || {};
+        if (!(sl.insurance > 0) && !(parseAmount(ed.ins) > 0)) { const a = host.querySelector(`.slip[data-id="${id}"] [data-ins-amt]`); if (a) { a.focus(); a.classList.add('need'); } }
+      }
     });
     host.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-act="remove"]'); if (!b) return; state.selected.delete(Number(b.closest('.slip').dataset.id)); drawList(); draw(); });
 
