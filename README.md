@@ -98,7 +98,7 @@ Use *Without Eidi/Sanavat* or *With Eidi/Sanavat* from the options bar.
 
 ## Date-Effective Settings
 
-Calculation settings that change useful hours — paid-break pool (`paidBreakCount`, `paidBreakMinutes`), lunch rules, lateness/early grace — are **versioned by date** (`settings_history`, migration 058). A change applies **from its effective date forward**; earlier days keep being computed with the value that was in force then, in every report, payroll and the Mini App.
+Calculation settings that change useful hours — paid-break pool (`paidBreakCount`, `paidBreakMinutes`), lunch rules, lateness/early grace, working hours and weekend days — are **versioned by date** (`settings_history`, migration 058). A change applies **from its effective date forward**; earlier days keep being computed with the value that was in force then, in every report, payroll and the Mini App.
 
 - Saving from the panel/API sets the effective date to **today** (override with `effectiveFrom: "YYYY-MM-DD"`).
 - Writing through the repository without a date keeps the legacy behaviour (applies to all days) — only the API routes default to "today".
@@ -399,7 +399,7 @@ npm run secret-scan  # search the project for tokens/keys/secrets (exit code 1 =
 npm run package      # delivery zip without .env/.ssl/data/node_modules/.git → dist/
 ```
 
-The tests are hermetic: a temporary database, fake tokens and secrets, and the real `.env` is never read. Last recorded run: 3,022 tests in 604 suites, no failures. Coverage areas:
+The tests are hermetic: a temporary database, fake tokens and secrets, and the real `.env` is never read. Last recorded run: 3,024 tests in 604 suites, no failures. Coverage areas:
 
 - **Core and security:** migrations, `initData` and Login Widget, session, `networkRestriction`, the role × route access matrix and route ordering, headers/CSP, cookie, CSRF, session revocation, secret checks and scanner, release packager
 - **Operations and monitoring:** Job run recording, polling heartbeat, watchdog with a mocked bot, `/api/health` and `/api/admin/system/status`

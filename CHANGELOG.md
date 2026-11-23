@@ -55,7 +55,7 @@
 - **تنظیم‌های تازه (پیش‌فرض خاموش):** `employeeZipEnabled` و `employeeZipRecipientIds` (گروه «ارسال خودکار گزارش»).
 - **دیتابیس قدیمی:** برای ثبت تاریخ شروعِ تغییرهای قبلیِ بدون تاریخ: `node scripts/set-setting-history.js paidBreakMinutes 45 2026-11-18 --apply` (ابتدا بدون `--apply` برای گزارش).
 - تنظیم‌های جدید بدون مقدار ذخیره‌شده ⇒ پیش‌فرض. برای پنل hard refresh کافی است؛ برای سرور ری‌استارت.
-- **تست:** ۳٬۰۲۲ تست، همگی پاس (`npm test`). تست‌های جدید: `lunchWindowAndReentry`، `settingsHistory`، `employeeZip`، `payslip`، `insuranceDeduction`، `monthlySegments`.
+- **تست:** ۳٬۰۲۴ تست، همگی پاس (`npm test`). تست‌های جدید: `lunchWindowAndReentry`، `settingsHistory`، `employeeZip`، `payslip`، `insuranceDeduction`، `monthlySegments`.
 
 ---
 

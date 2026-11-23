@@ -55,3 +55,28 @@ describe('تغییر تنظیم با تاریخ شروع', () => {
     assert.equal(JSON.stringify(repo.getAll()).includes('__history'), false);
   });
 });
+
+describe('همه‌ی مسیرهای محاسبه تنظیمات «همان روز» را می‌خوانند', () => {
+  let F; let repo; let attendanceRepo; let dayService; let usersRepo;
+  before(() => {
+    resetDb(); F = require('./helpers/factories'); repo = require('../src/repositories/settingsRepository');
+    attendanceRepo = require('../src/repositories/attendanceRepository'); dayService = require('../src/engine/dayService'); usersRepo = require('../src/repositories/usersRepository');
+  });
+  after(() => cleanup());
+
+  test('مهلت تأخیر: روز قبل از تاریخ با مقدار قبلی، بعد از آن با مقدار جدید (روزانه و ماهانه یکسان)', () => {
+    const { computeMonthlyReport } = require('../src/services/monthlyReportService');
+    const u = F.makeUser();
+    repo.update({ workDayStart: '08:00', workDayEnd: '16:00', lateGraceMinutes: 0, weekendDays: [5] });
+    repo.setValue('lateGraceMinutes', 15, { effectiveFrom: '2026-12-01' });
+    const T = (d, h) => zonedTimeToUtc(d, h, 'Asia/Tehran').toISOString();
+    const mk = (d) => attendanceRepo.createManual({ userId: u.id, recordDate: d, checkInTime: T(d, '08:10'), checkOutTime: T(d, '16:00'), status: 'normal' });
+    const early = dayService.computeRecordDay(attendanceRepo.findById(mk('2026-11-25').id));
+    const late = dayService.computeRecordDay(attendanceRepo.findById(mk('2026-12-02').id));
+    assert.equal(early.late, 10);
+    assert.equal(late.late, 0);
+    const rep = computeMonthlyReport({ users: [usersRepo.findById(u.id)], year: 1405, month: 9, now: '2026-12-31T12:00:00Z', includeDays: true, includeBalances: false });
+    const d = (date) => rep.users[0].days.find((x) => x.date === date);
+    assert.equal(d('2026-12-02').late, 0);
+  });
+});

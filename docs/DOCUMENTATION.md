@@ -2194,7 +2194,7 @@ A weekly plan satisfies the exit gate when it is `submitted` with at least `plan
 
 **مسئله:** تغییر یک تنظیم (مثلاً استراحت با حقوق ۴۵ → ۲۰ دقیقه) همه‌ی روزهای گذشته را هم دوباره حساب می‌کرد.
 
-**تصمیم:** جدول `settings_history (key, effective_from, value)` (migration ۰۵۸). فقط تنظیم‌های محاسباتی ردیابی می‌شوند (`src/utils/settingsHistory.js`، فهرست `TRACKED`): `paidBreakCount`، `paidBreakCountUnlimited`، `paidBreakMinutes`، تنظیم‌های ناهار، `lateGraceMinutes`، `earlyGraceMinutes`.
+**تصمیم:** جدول `settings_history (key, effective_from, value)` (migration ۰۵۸). فقط تنظیم‌های محاسباتی ردیابی می‌شوند (`src/utils/settingsHistory.js`، فهرست `TRACKED`): `paidBreakCount`، `paidBreakCountUnlimited`، `paidBreakMinutes`، تنظیم‌های ناهار، `lateGraceMinutes`، `earlyGraceMinutes`، `lateCountsFrom` و ساعت/روزهای کاری (`workDayStart`، `workDayEnd`، `weekendDays`، `halfDayWeekdays`، `halfDayEndTime`). همه‌ی مسیرهای محاسبه (`dayService`، گزارش ماهانه، تقویم تیم) از `settingsAt` استفاده می‌کنند.
 - `settingsRepository.getAll()` تاریخچه را در ویژگی غیرقابل‌شمارش `__history` می‌گذارد (در JSON/API نشت نمی‌کند)؛ `settingsAt(settings, 'YYYY-MM-DD')` مقدار مؤثر همان روز را می‌دهد و `dayService`/`monthlyReportService` با آن محاسبه می‌کنند.
 - مسیرهای API (`PATCH /admin/settings`، `PUT /admin/settings/:key`) تاریخ شروع را پیش‌فرض «امروز» می‌گذارند؛ `effectiveFrom` اختیاری است. نوشتن مستقیم با repository بدون تاریخ، رفتار قدیمی (اثر روی همه‌ی روزها) را دارد.
 - ردیف پایه‌ی «از ابتدا» با `effective_from = 0000-00-00` ساخته می‌شود (مقدار قبل از اولین تغییر).

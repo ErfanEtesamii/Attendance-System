@@ -19,6 +19,7 @@
 //   ۷) گذشته بدون رکورد ⇒ absent
 
 const express = require('express');
+const settingsHistory = require('../../../utils/settingsHistory');
 const router = express.Router();
 
 const { requirePermission } = require('../../../middleware/permissions');
@@ -65,7 +66,7 @@ function lateMinutesOf({ record, dateStr, shift, cal, dayLeaves, dayCtx }) {
     const day = computeDay({
       record,
       breaks: [],
-      settings: dayCtx.settings,
+      settings: settingsHistory.settingsAt(dayCtx.settings, dateStr),
       timezone: dayCtx.timezone,
       shift,
       calendar: cal,
@@ -79,7 +80,8 @@ function lateMinutesOf({ record, dateStr, shift, cal, dayLeaves, dayCtx }) {
 }
 
 // وضعیت یک سلول. همه‌ی ورودی‌ها از قبل در حافظه‌اند.
-function buildDayCell({ dateStr, user, shift: baseShift, override = null, record, dayLeaves, settings, holidayRows, today, dayCtx }) {
+function buildDayCell({ dateStr, user, shift: baseShift, override = null, record, dayLeaves, settings: currentSettings, holidayRows, today, dayCtx }) {
+  const settings = settingsHistory.settingsAt(currentSettings, dateStr); // تنظیمات «همان روز» (settings_history)
   const holiday = pickHoliday(holidayRows, user.department);
   const shift = virtualShiftFor(baseShift, override, settings); // B2: برنامه‌ی ویژه‌ی روز بر شیفت/سراسری غالب است
   const cal = resolveCalendarDay({ dateStr, shift, settings, holiday, override });

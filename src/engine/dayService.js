@@ -54,7 +54,7 @@ function shiftForRecord(record, ctx, opts) {
   const shift = date ? shiftsRepository.shiftOn(record.user_id, date) : shiftsRepository.findByUserId(record.user_id);
   if (cache) cache.set(key, shift);
   // B2: اولویت override روز ← شیفت مؤثر ← تنظیمات سراسری (override work ⇒ شیفتِ مجازی با ساعت همان روز)
-  return virtualShiftFor(shift, overrideForRecord(record, ctx, opts), ctx.settings);
+  return virtualShiftFor(shift, overrideForRecord(record, ctx, opts), settingsHistory.settingsAt(ctx.settings, record.record_date));
 }
 
 // تقویم روزِ رکورد (S3-7c): getCalendarDay برای کاربر رکورد در record_date (دپارتمان ⇒ تعطیلی دپارتمانی؛ شیفت ⇒ روزهای کاری/نیم‌روز شیفت).
@@ -77,7 +77,7 @@ function calendarForRecord(record, ctx, opts, shift) {
     holidays = holidaysRepository.listByDate(record.record_date);
     if (hc) hc.set(record.record_date, holidays);
   }
-  return getCalendarDay(user, record.record_date, { shift, settings: ctx.settings, holidays, override: overrideForRecord(record, ctx, opts) });
+  return getCalendarDay(user, record.record_date, { shift, settings: settingsHistory.settingsAt(ctx.settings, record.record_date), holidays, override: overrideForRecord(record, ctx, opts) });
 }
 
 // پنجره‌های مرخصی/مأموریتِ «تأییدشده» روزِ رکورد (S4-8b-2) برای computeDay({ approvedLeaves }).

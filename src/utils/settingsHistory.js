@@ -6,7 +6,8 @@ const TRACKED = [
   'paidBreakCount', 'paidBreakCountUnlimited', 'paidBreakMinutes',
   'maxLunchMinutes', 'fixedLunchDeductMinutes', 'fixedLunchMode', 'lunchWindowStart', 'lunchWindowEnd',
   'fixedLunchMinOverlapMinutes', 'fixedLunchProRate', 'fixedLunchMinPresenceMinutes',
-  'lateGraceMinutes', 'earlyGraceMinutes',
+  'lateGraceMinutes', 'earlyGraceMinutes', 'lateCountsFrom',
+  'workDayStart', 'workDayEnd', 'weekendDays', 'halfDayWeekdays', 'halfDayEndTime',
 ];
 const BASE_FROM = '0000-00-00';
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;

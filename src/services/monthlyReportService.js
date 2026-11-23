@@ -186,8 +186,9 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
     for (const dateStr of dates) {
       const holiday = pickHoliday(holidaysByDate.get(dateStr) || [], u.department);
       const override = overrideOnDate(u.id, dateStr);
-      const shift = virtualShiftFor(shiftOnDate(u.id, dateStr), override, settings);
-      const cal = resolveCalendarDay({ dateStr, shift, settings, holiday, override });
+      const daySettings = settingsHistory.settingsAt(settings, dateStr); // تنظیمات «همان روز» (settings_history)
+      const shift = virtualShiftFor(shiftOnDate(u.id, dateStr), override, daySettings);
+      const cal = resolveCalendarDay({ dateStr, shift, settings: daySettings, holiday, override });
       const record = recMap.get(dateStr) || null;
       const hasCheckIn = !!(record && record.check_in_time);
 
@@ -216,7 +217,7 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
       let invalid = false;
       try {
         const breaks = hasCheckIn ? breakRepository.listByAttendanceRecord(record.id) : [];
-        day = computeDay({ record, breaks, settings: settingsHistory.settingsAt(settings, dateStr), now: nowDate, timezone, shift, calendar: cal, approvedLeaves: windows.length ? windows : null, segments: segmentsByRecord.get(record && record.id) });
+        day = computeDay({ record, breaks, settings: daySettings, now: nowDate, timezone, shift, calendar: cal, approvedLeaves: windows.length ? windows : null, segments: segmentsByRecord.get(record && record.id) });
       } catch (err) {
         if (!(err instanceof RangeError)) throw err;
         console.error(`[monthlyReport] روز ${dateStr} کاربر ${u.id} قابل‌محاسبه نیست:`, err.message);
