@@ -53,3 +53,15 @@ describe('زیپ اکسل ماهانه‌ی کارمندان', () => {
     assert.equal(sent[0][3].contentType, 'application/zip');
   });
 });
+
+describe('قالب سلول‌های اکسل کارمند', () => {
+  test('ستون‌های مدت‌زمان [h]:mm و ورود/خروج hh:mm است (نه عدد خام)', async () => {
+    const svc = require('../src/services/employeeMonthlyExcelService');
+    const ExcelJS = require('exceljs');
+    const buf = await svc.buildEmployeeWorkbook({ name: 'x', label: 'آبان 1405', note: null, rows: [{ jalali: '۱', weekday: 'شنبه', in: '08:00', out: '16:00', brk: 60, unpaid: 20, remote: 0, effective: 440 }] });
+    const wb = new ExcelJS.Workbook(); await wb.xlsx.load(buf); const ws = wb.worksheets[0];
+    assert.equal(ws.getCell('C5').numFmt, 'hh:mm');
+    for (const col of 'EFGHI') assert.equal(ws.getCell(`${col}5`).numFmt, '[h]:mm', col);
+    assert.equal(ws.getCell('I6').numFmt, '[h]:mm');
+  });
+});

@@ -76,7 +76,7 @@ async function buildEmployeeWorkbook({ name, label, rows, note }) {
       c.value = v;
       Object.assign(c, { font: f({ bold: i === 8, color: x.weekday === 'جمعه' && i < 2 ? { argb: 'FFB3402F' } : undefined }), border, alignment: { horizontal: 'center', vertical: 'middle' } });
       if (n % 2) c.fill = fill('FFEEF3F9');
-      c.numberFormat = i === 2 || i === 3 ? 'hh:mm' : (i >= 4 ? '[h]:mm' : 'General');
+      c.numFmt = i === 2 || i === 3 ? 'hh:mm' : (i >= 4 ? '[h]:mm' : 'General');
     });
     if (!x.out) ws.getCell(r, 4).fill = fill('FFFFE08A');
     ws.getRow(r).height = 22;
@@ -86,12 +86,12 @@ async function buildEmployeeWorkbook({ name, label, rows, note }) {
   'EFGHI'.split('').forEach((col, i) => { ws.getCell(t, 5 + i).value = { formula: `SUM(${col}${first}:${col}${last})` }; });
   for (let i = 1; i <= 9; i += 1) {
     const c = ws.getCell(t, i); Object.assign(c, { font: f({ size: 12, bold: true, color: { argb: 'FFFFFFFF' } }), fill: fill(navy), border, alignment: { horizontal: 'center', vertical: 'middle' } });
-    if (i >= 5) c.numberFormat = '[h]:mm';
+    if (i >= 5) c.numFmt = '[h]:mm';
   }
   ws.getRow(t).height = 26;
   const s = t + 2;
   [[s, 'جمع ساعت مفید (ساعت، اعشاری)', `I${t}*24`, '0.00'], [s + 1, 'جمع ساعت مفید (دقیقه)', `ROUND(I${t}*1440,0)`, '#,##0']].forEach(([r, text, formula, nf]) => {
-    ws.mergeCells(r, 1, r, 4); ws.getCell(r, 1).value = text; ws.getCell(r, 5).value = { formula }; ws.getCell(r, 5).numberFormat = nf;
+    ws.mergeCells(r, 1, r, 4); ws.getCell(r, 1).value = text; ws.getCell(r, 5).value = { formula }; ws.getCell(r, 5).numFmt = nf;
     for (let i = 1; i <= 5; i += 1) Object.assign(ws.getCell(r, i), { fill: fill('FFDCE8F5'), font: f({ bold: true, color: { argb: navy } }), alignment: { horizontal: 'center' } });
   });
   const notes = ['توضیحات',
