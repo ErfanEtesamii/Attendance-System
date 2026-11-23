@@ -100,7 +100,11 @@
       const l = mk('label', 'ps-mini'); const i = doc.createElement('input'); i.type = 'checkbox'; i.checked = checked; i.dataset.sw = key; i.disabled = !!disabled;
       l.appendChild(i); l.appendChild(mk('span', '', label)); return l;
     };
-    bar.appendChild(tg('ins', s.insurance ? `کسر بیمه (${num(s.insurance)})` : 'کسر بیمه ندارد', sw.ins && s.insurance > 0, !s.insurance));
+    bar.appendChild(tg('ins', 'کسر بیمه', !!sw.ins, false));
+    const amt = doc.createElement('input'); amt.type = 'text'; amt.className = 'ps-amt ltr'; amt.inputMode = 'numeric'; amt.autocomplete = 'off'; amt.dataset.insAmt = '1';
+    amt.placeholder = 'مبلغ بیمه (تومان)'; amt.setAttribute('aria-label', 'مبلغ کسر بیمه (تومان)');
+    amt.value = ed.ins != null ? ed.ins : (s.insurance ? num(s.insurance) : '');
+    bar.appendChild(amt);
     bar.appendChild(tg('eidi', 'عیدی و سنوات', sw.eidi, false));
     const rm = mk('button', 'ps-mini-btn', '✕ حذف از چاپ'); rm.type = 'button'; rm.dataset.act = 'remove'; bar.appendChild(rm);
     art.appendChild(bar);
@@ -112,7 +116,7 @@
     const hd = mk('div', 'p-date'); hd.appendChild(mk('span', '', `${s.monthName} ماه`)); hd.appendChild(mk('b', '', s.date)); head.appendChild(hd);
     paper.appendChild(head);
 
-    const editable = (el, key, text) => { el.contentEditable = 'true'; el.dataset.key = key; el.setAttribute('role', 'textbox'); el.textContent = ed[key] != null ? ed[key] : text; return el; };
+    const editable = (el, key, text) => { el.contentEditable = 'true'; el.dataset.key = key; el.setAttribute('role', 'textbox'); el.textContent = (ed[key] != null && key !== 'ins') ? ed[key] : text; return el; };
 
     // مشخصات
     const info = mk('div', 'p-info');
@@ -155,7 +159,7 @@
     col('حقوق ماهانه و مزایا', mid, 'mid');
     const sub = [];
     if (o.extras) sub.push(['مساعده', '', { key: 'mosa', kind: 'sub' }], ['وام', '', { key: 'vam', kind: 'sub' }], ['مالیات حقوق', '', { key: 'tax', kind: 'sub' }]);
-    sub.push(['حق بیمه کارگری', sw.ins && s.insurance ? num(s.insurance) : '', { key: 'ins', kind: 'sub' }], ['جمع کسورات', '۰', { role: 'subs', total: true }]);
+    sub.push(['حق بیمه کارگری', sw.ins ? (ed.ins != null ? ed.ins : (s.insurance ? num(s.insurance) : '')) : '', { key: 'ins', kind: 'sub' }], ['جمع کسورات', '۰', { role: 'subs', total: true }]);
     col('کسورات', sub, 'last');
     paper.appendChild(cols);
 
@@ -216,7 +220,8 @@
 
     // --- اتصال کنترل‌ها به opts ---
     const bindCheck = (id, key) => { const el = $(id); el.checked = !!opts[key]; el.addEventListener('change', () => { opts[key] = el.checked; persist(); draw(); }); };
-    bindCheck('opt-ins', 'ins'); bindCheck('opt-extras', 'extras'); bindCheck('opt-ids', 'ids'); bindCheck('opt-sign', 'sign'); bindCheck('opt-stamp', 'stamp');
+    { const el = $('opt-ins'); el.checked = !!opts.ins; el.addEventListener('change', () => { opts.ins = el.checked; persist(); state.sw.forEach((v) => { v.ins = opts.ins; }); draw(); }); }
+ bindCheck('opt-extras', 'extras'); bindCheck('opt-ids', 'ids'); bindCheck('opt-sign', 'sign'); bindCheck('opt-stamp', 'stamp');
     const wageIn = $('opt-wage'); wageIn.value = num(opts.wage);
     wageIn.addEventListener('change', () => { opts.wage = parseAmount(wageIn.value) || DEFAULT_DAILY_WAGE; wageIn.value = num(opts.wage); persist(); draw(); });
     const company = $('opt-company'); company.value = opts.company;
@@ -263,7 +268,7 @@
         if (!state.edits.has(s.userId)) state.edits.set(s.userId, {});
         if (!state.sw.has(s.userId)) state.sw.set(s.userId, { ins: opts.ins, eidi: opts.eidi });
         const sw = state.sw.get(s.userId);
-        const art = makeSlip(doc, s, { opts, ed: state.edits.get(s.userId), sw: { ins: sw.ins && opts.ins, eidi: sw.eidi } });
+        const art = makeSlip(doc, s, { opts, ed: state.edits.get(s.userId), sw: { ins: sw.ins, eidi: sw.eidi } });
         host.appendChild(art); recompute(art, opts.wage, false); n += 1;
       });
       $('ps-empty').hidden = n > 0;
@@ -272,14 +277,23 @@
       status.textContent = '';
     }
     host.addEventListener('input', (e) => {
-      const t = e.target; const slip = t.closest && t.closest('.slip'); if (!slip || !t.dataset.key) return;
+      const t = e.target;
+      if (t.dataset && t.dataset.insAmt) { // مبلغ بیمه از نوار بالای فیش
+        const slip0 = t.closest('.slip'); const id0 = Number(slip0.dataset.id);
+        const txt = t.value.trim() === '' ? '' : num(parseAmount(t.value));
+        state.edits.get(id0).ins = txt; state.sw.get(id0).ins = true;
+        const cb = slip0.querySelector('input[data-sw="ins"]'); if (cb) cb.checked = true;
+        const cell = slip0.querySelector('[data-key="ins"]'); if (cell) cell.textContent = txt;
+        recompute(slip0, opts.wage, false); return;
+      }
+      const slip = t.closest && t.closest('.slip'); if (!slip || !t.dataset.key) return;
       const id = Number(slip.dataset.id); const ed = state.edits.get(id); ed[t.dataset.key] = t.textContent;
+      if (t.dataset.key === 'ins') { const a = slip.querySelector('[data-ins-amt]'); if (a) a.value = t.textContent; state.sw.get(id).ins = true; const cb = slip.querySelector('input[data-sw="ins"]'); if (cb) cb.checked = true; }
       if (t.dataset.key === 'days') { delete ed.eidi; delete ed.san; recompute(slip, opts.wage, true); } else recompute(slip, opts.wage, false);
     });
     host.addEventListener('change', (e) => {
       const t = e.target; const slip = t.closest && t.closest('.slip'); if (!slip || !t.dataset.sw) return;
       const sw = state.sw.get(Number(slip.dataset.id)); sw[t.dataset.sw] = t.checked;
-      if (t.dataset.sw === 'ins') delete state.edits.get(Number(slip.dataset.id)).ins;
       if (t.dataset.sw === 'eidi') { const ed = state.edits.get(Number(slip.dataset.id)); delete ed.eidi; delete ed.san; delete ed.days; }
       draw();
     });
