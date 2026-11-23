@@ -247,10 +247,12 @@
         const li = doc.createElement('li');
         const l = doc.createElement('label'); l.className = 'ps-emp';
         const cb = doc.createElement('input'); cb.type = 'checkbox'; cb.checked = state.selected.has(r.user.id); cb.dataset.id = String(r.user.id);
+        const av = doc.createElement('span'); av.className = 'av'; av.textContent = (r.user.fullName || '؟').trim().charAt(0);
         const nm = doc.createElement('span'); nm.className = 'n'; nm.textContent = r.user.fullName || 'بدون نام';
         const am = doc.createElement('small'); am.textContent = r.amountToman > 0 ? `${num(r.amountToman)} تومان` : 'بدون حقوق';
         if (!(r.amountToman > 0)) am.className = 'zero';
-        l.appendChild(cb); l.appendChild(nm); l.appendChild(am);
+        const tx = doc.createElement('span'); tx.className = 't'; tx.appendChild(nm); tx.appendChild(am);
+        l.appendChild(cb); l.appendChild(av); l.appendChild(tx);
         const only = doc.createElement('button'); only.type = 'button'; only.className = 'ps-only'; only.dataset.only = String(r.user.id); only.textContent = 'فقط این'; only.title = 'فقط فیش این کارمند چاپ شود';
         li.appendChild(l); li.appendChild(only); list.appendChild(li);
       });
@@ -277,10 +279,14 @@
         host.appendChild(art); recompute(art, opts.wage, false); n += 1;
       });
       $('ps-empty').hidden = n > 0;
+      let total = 0; host.querySelectorAll('[data-role="paid"]').forEach((e) => { total += parseAmount(e.textContent); });
+      $('sum-n').textContent = fa(n); $('sum-total').textContent = num(total);
+      $('sum-paper').textContent = opts.paper === 'a5' ? 'A5 افقی' : `A4 عمودی (${fa(opts.perPage)} فیش در برگ)`;
       $('print-btn').textContent = n ? `🖨 چاپ / ذخیره PDF (${fa(n)} فیش)` : '🖨 چاپ / ذخیره PDF';
       $('print-btn').disabled = !n;
       status.textContent = '';
     }
+    const sumUpdate = () => { let total = 0; host.querySelectorAll('[data-role="paid"]').forEach((e) => { total += parseAmount(e.textContent); }); $('sum-total').textContent = num(total); };
     host.addEventListener('input', (e) => {
       const t = e.target;
       if (t.dataset && t.dataset.insAmt) { // مبلغ بیمه از نوار بالای فیش
@@ -289,12 +295,13 @@
         state.edits.get(id0).ins = txt; state.sw.get(id0).ins = true;
         const cb = slip0.querySelector('input[data-sw="ins"]'); if (cb) cb.checked = true;
         const cell = slip0.querySelector('[data-key="ins"]'); if (cell) cell.textContent = txt;
-        recompute(slip0, opts.wage, false); return;
+        recompute(slip0, opts.wage, false); sumUpdate(); return;
       }
       const slip = t.closest && t.closest('.slip'); if (!slip || !t.dataset.key) return;
       const id = Number(slip.dataset.id); const ed = state.edits.get(id); ed[t.dataset.key] = t.textContent;
       if (t.dataset.key === 'ins') { const a = slip.querySelector('[data-ins-amt]'); if (a) a.value = t.textContent; state.sw.get(id).ins = true; const cb = slip.querySelector('input[data-sw="ins"]'); if (cb) cb.checked = true; }
       if (t.dataset.key === 'days') { delete ed.eidi; delete ed.san; recompute(slip, opts.wage, true); } else recompute(slip, opts.wage, false);
+      sumUpdate();
     });
     host.addEventListener('change', (e) => {
       const t = e.target; const slip = t.closest && t.closest('.slip'); if (!slip || !t.dataset.sw) return;

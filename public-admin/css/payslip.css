@@ -117,6 +117,55 @@ html, body { margin: 0; background: var(--bg); color: var(--text); font-family: 
 .sg.stamp { text-align: center; }
 .p-note { padding: 6px 12px; border-top: 1px solid #ccc; font-size: 11.5px; color: #333; }
 
+/* ---------- جلا: ظاهر مدرن‌تر (فقط روی صفحه) ---------- */
+body { background: radial-gradient(40rem 26rem at 95% -5%, var(--brand-soft), transparent 70%), radial-gradient(34rem 22rem at 0% 20%, var(--green-soft), transparent 70%), var(--bg); background-attachment: fixed; }
+.ps-top { border-bottom: 0; box-shadow: 0 1px 0 var(--border), 0 12px 30px -22px rgba(0,0,0,.5); }
+.ps-top::after { content: ""; position: absolute; inset: auto 0 0 0; height: 3px; background: linear-gradient(90deg, var(--brand), var(--accent), var(--green)); opacity: .9; }
+.ps-title h1 { font-size: 18px; letter-spacing: -.2px; }
+.ps-btn.primary { box-shadow: 0 8px 20px -10px var(--accent); background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 88%, #fff), var(--accent)); }
+.ps-btn.primary:hover:not(:disabled) { box-shadow: 0 12px 26px -10px var(--accent); }
+.ps-side { counter-reset: step; scrollbar-width: thin; }
+.ps-card { position: relative; border-radius: 20px; transition: box-shadow .2s, transform .2s; backdrop-filter: blur(4px); }
+.ps-card:hover { box-shadow: var(--shadow-2); }
+.ps-card h2 { counter-increment: step; font-size: 14.5px; margin-bottom: 12px; }
+.ps-card h2::before { content: counter(step, persian); width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #17143a; font-size: 12px; font-weight: 800; box-shadow: 0 4px 10px -4px var(--accent); }
+.ps-input { transition: border-color .15s, box-shadow .15s; }
+.ps-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); outline: none; }
+.ps-emp .av { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 12.5px; font-weight: 800; color: var(--on-brand); background: linear-gradient(135deg, var(--brand), color-mix(in srgb, var(--brand) 55%, var(--accent))); }
+.ps-emp .t { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.35; }
+.ps-emp .t small { font-size: 11.5px; }
+.ps-emps li:has(input:checked) { background: var(--brand-soft); }
+.ps-emps { scrollbar-width: thin; }
+
+/* خلاصه‌ی بالای پیش‌نمایش */
+.ps-sum { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 auto 18px; max-width: 198mm; }
+.ps-sum .tile { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 10px 14px; box-shadow: var(--shadow-1); position: relative; overflow: hidden; }
+.ps-sum .tile::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, var(--brand), var(--accent)); opacity: .8; }
+.ps-sum .tile span { display: block; color: var(--hint); font-size: 12px; }
+.ps-sum .tile b { font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.ps-sum .tile small { color: var(--hint); margin-inline-start: 6px; }
+.slips { gap: 26px; }
+.slip-bar { border-radius: 16px; box-shadow: var(--shadow-1); }
+.slip-bar-name { font-weight: 800; }
+.slip-bar-name::before { content: "●"; color: var(--green); margin-inline-end: 8px; font-size: 10px; vertical-align: middle; }
+.ps-mini { border: 1px solid var(--border); transition: background .15s; }
+.ps-mini:has(input:checked) { background: var(--green-soft); border-color: var(--green); }
+
+/* کاغذ */
+.paper { border-radius: 10px; box-shadow: 0 18px 40px -20px rgba(20, 15, 60, .55), 0 2px 6px rgba(20, 15, 60, .12); position: relative; }
+.p-head { background: linear-gradient(135deg, #2b2560, #3b3488 60%, #4a3fa8); padding: 10px 14px; }
+.p-head::after { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, #f7a01d, #1fcf95); }
+.p-co { font-size: 16px; }
+.p-col-h { background: linear-gradient(180deg, #f4f2fc, #ebe8f8); letter-spacing: .2px; }
+.p-col:nth-child(1) .p-col-h { box-shadow: inset 0 -2px 0 #8b7cf6; }
+.p-col:nth-child(2) .p-col-h { box-shadow: inset 0 -2px 0 #1fcf95; }
+.p-col:nth-child(3) .p-col-h { box-shadow: inset 0 -2px 0 #f7a01d; }
+.ln.tot { background: #f1eefc; }
+.p-col.mid .ln.tot:last-child { background: #e3f8ef; }
+.p-paid { background: linear-gradient(90deg, #f4f2fc, #e3f8ef); }
+.p-paid .v.big { font-size: 17px; color: #14684d; }
+.sg { border-radius: 8px; border-color: #9a94c9; }
+
 /* ---------- واکنش‌گرا ---------- */
 @media (max-width: 980px) {
   .ps-app { grid-template-columns: 1fr; padding: 12px; }
@@ -140,6 +189,7 @@ html, body { margin: 0; background: var(--bg); color: var(--text); font-family: 
 .slips.a5 .p-paid { padding: 5px 12px; }
 .slips.a5 .p-sig { height: 22mm; padding: 6px 12px; }
 @media print {
+  body { background: #fff !important; }
   html, body { background: #fff !important; color: #000; font-size: 11px; }
   .no-print { display: none !important; }
   .ps-app { display: block; padding: 0; max-width: none; }
@@ -151,6 +201,7 @@ html, body { margin: 0; background: var(--bg); color: var(--text); font-family: 
   .slips.a5 .slip { height: auto; margin: 0; }
   .slips.a5 .paper { font-size: 11px; }
   .paper { box-shadow: none; border-radius: 0; }
+  .p-head::after { display: block; }
   .p-head, .p-col-h, .p-paid, .ln.tot { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .edit:hover, .edit:focus { background: transparent; box-shadow: none; }
 }

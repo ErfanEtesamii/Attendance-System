@@ -82,8 +82,10 @@ describe('عیدی و سنوات', () => {
     const s = PS.buildSlip(row(), { month: 7, to: '2026-10-22' }, { isoToJalali: () => ({ jy: 1405, jm: 7, jd: 30 }) });
     assert.equal(s.eidiDays, 216);
   });
-  test('پنل لینک فیش با عیدی دارد', () => {
-    assert.match(fs.readFileSync(path.join(root, 'js', 'views-performance.js'), 'utf8'), /eidi: 1/);
+  test('پنل فقط یک دکمه‌ی فیش دارد (نوع فیش داخل صفحه‌ی فیش انتخاب می‌شود)', () => {
+    const v = fs.readFileSync(path.join(root, 'js', 'views-performance.js'), 'utf8');
+    assert.equal((v.match(/payslip\.html/g) || []).length, 2); // یکی بالای صفحه، یکی ریز کارمند
+    assert.doesNotMatch(v, /eidi: 1/);
   });
 });
 

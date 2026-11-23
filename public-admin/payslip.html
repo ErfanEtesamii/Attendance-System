@@ -26,7 +26,7 @@
   <div class="ps-app">
     <aside class="ps-side no-print" aria-label="تنظیمات فیش">
       <section class="ps-card">
-        <h2>۱. کارمندان</h2>
+        <h2>کارمندان</h2>
         <input id="emp-search" class="ps-input" type="search" placeholder="جستجوی نام یا کد پرسنلی…" autocomplete="off" />
         <div class="ps-quick">
           <button type="button" class="ps-chip" id="sel-paid">دارای حقوق</button>
@@ -37,7 +37,7 @@
       </section>
 
       <section class="ps-card">
-        <h2>۲. نوع فیش</h2>
+        <h2>نوع فیش</h2>
         <div class="ps-seg" role="radiogroup" aria-label="نوع فیش">
           <label><input type="radio" name="kind" value="plain" checked /><span>بدون عیدی و سنوات</span></label>
           <label><input type="radio" name="kind" value="eidi" /><span>با عیدی و سنوات</span></label>
@@ -47,7 +47,7 @@
       </section>
 
       <section class="ps-card">
-        <h2>۳. محتوای فیش</h2>
+        <h2>محتوای فیش</h2>
         <label class="ps-sw"><input type="checkbox" id="opt-ins" /><i></i><span>کسر حق بیمه (برای کسانی که تعریف شده)</span></label>
         <label class="ps-sw"><input type="checkbox" id="opt-extras" /><i></i><span>ردیف‌های مزایا و کسورات (بن، مسکن، اولاد، مساعده، وام، مالیات)</span></label>
         <label class="ps-sw"><input type="checkbox" id="opt-ids" /><i></i><span>مشخصات (شغل، نوع استخدام، کد ملی، شماره بیمه)</span></label>
@@ -56,7 +56,7 @@
       </section>
 
       <section class="ps-card">
-        <h2>۴. چیدمان و عنوان</h2>
+        <h2>کاغذ و عنوان</h2>
         <div class="ps-seg three" role="radiogroup" aria-label="اندازه‌ی کاغذ و چیدمان">
           <label><input type="radio" name="paper" value="a5" checked /><span>A5 افقی<small>۱ فیش</small></span></label>
           <label><input type="radio" name="paper" value="a4-1" /><span>A4 عمودی<small>۱ فیش</small></span></label>
@@ -70,6 +70,11 @@
     </aside>
 
     <main class="ps-main">
+      <section class="ps-sum no-print" id="ps-sum" aria-live="polite">
+        <div class="tile"><span>تعداد فیش</span><b id="sum-n">۰</b></div>
+        <div class="tile"><span>جمع مبلغ پرداخت‌شده</span><b id="sum-total">۰</b><small>تومان</small></div>
+        <div class="tile"><span>کاغذ</span><b id="sum-paper">A5 افقی</b></div>
+      </section>
       <div id="ps-empty" class="ps-emptybox no-print" hidden>هیچ کارمندی برای چاپ انتخاب نشده است. از فهرست سمت راست انتخاب کنید.</div>
       <div id="slips" class="slips two"></div>
     </main>
