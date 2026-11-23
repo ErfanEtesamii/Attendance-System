@@ -60,3 +60,37 @@ describe('فیش حقوقی', () => {
     assert.match(v, /payslip\.html\?\$\{q\(\{ year: data\.year, month: data\.month, userId/);
   });
 });
+
+describe('عیدی و سنوات', () => {
+  test('فرمول: مزد روزانه × ۶۰ ÷ ۳۶۵ × روز؛ سنوات نصف', () => {
+    const e = PS.eidiOf(541850, 365);
+    assert.equal(e, 32511000);
+    assert.equal(PS.sanavatOf(e), 16255500);
+    assert.equal(PS.eidiOf(541850, 0), 0);
+    assert.equal(PS.eidiOf(541850, 100), Math.round(541850 * 60 / 365 * 100));
+  });
+  test('روز سال شمسی', () => {
+    assert.equal(PS.dayOfYear(1, 1), 1);
+    assert.equal(PS.dayOfYear(6, 31), 186);
+    assert.equal(PS.dayOfYear(7, 1), 187);
+    assert.equal(PS.dayOfYear(12, 29), 365);
+  });
+  test('buildSlip روز مبنای پیش‌فرض را از تاریخ پایان ماه می‌گیرد (حداکثر ۳۶۵)', () => {
+    const s = PS.buildSlip(row(), { month: 7, to: '2026-10-22' }, { isoToJalali: () => ({ jy: 1405, jm: 7, jd: 30 }) });
+    assert.equal(s.eidiDays, 216);
+  });
+  test('پنل لینک فیش با عیدی دارد', () => {
+    assert.match(fs.readFileSync(path.join(root, 'js', 'views-performance.js'), 'utf8'), /eidi: 1/);
+  });
+});
+
+test('recompute: خالص شامل مبالغ add و منهای sub', () => {
+  const mk = (kind, text) => ({ dataset: { kind }, textContent: text });
+  const els = { 'add': [mk('add', '۱,۰۰۰'), mk('add', '۵۰۰')], 'sub': [mk('sub', '۲۰۰')] };
+  const roles = {}; ['subs', 'net', 'paid'].forEach((r) => { roles[r] = { textContent: '' }; });
+  const slip = { dataset: { base: '10000' }, querySelectorAll: (sel) => els[/"(\w+)"/.exec(sel)[1]] || [], querySelector: (sel) => roles[/"(\w+)"/.exec(sel)[1]] || null };
+  PS.recompute(slip, 541850, false);
+  assert.equal(roles.net.textContent, PS.num(11300));
+  assert.equal(roles.paid.textContent, PS.num(11300));
+  assert.equal(roles.subs.textContent, PS.num(200));
+});

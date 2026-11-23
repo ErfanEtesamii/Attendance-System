@@ -26,6 +26,16 @@
       return fa(`${j.jy}/${String(j.jm).padStart(2, '0')}/${String(j.jd).padStart(2, '0')}`);
     } catch (_) { return iso || ''; }
   }
+  function jalaliDayOfYear(iso, J) {
+    try { const j = (J || (root && root.Jalali)).isoToJalali(iso); return Math.min(365, dayOfYear(j.jm, j.jd)); } catch (_) { return 365; }
+  }
+
+  // مزد روزانه‌ی اداره‌ی کار (پیش‌فرض) و فرمول عیدی/سنوات: عیدی = مزد روزانه × ۶۰ ÷ ۳۶۵ × روزهای کارکرد؛ سنوات = نصف عیدی
+  const DEFAULT_DAILY_WAGE = 541850;
+  const eidiOf = (wage, days) => Math.round((Number(wage) * 60 / 365) * Math.max(0, Number(days) || 0));
+  const sanavatOf = (eidi) => Math.round(eidi / 2);
+  // شماره‌ی روز در سال شمسی (۱ فروردین = ۱)
+  const dayOfYear = (jm, jd) => (jm <= 6 ? (jm - 1) * 31 + jd : 186 + (jm - 7) * 30 + jd);
 
   // مدل خالص (بدون DOM) برای یک ردیف پاسخ API حقوق
   function buildSlip(row, meta, J) {
@@ -37,6 +47,7 @@
       userId: u.id,
       title: `فیش حقوقی فراز هنر / ${MONTHS[(meta.month || 1) - 1]} ماه`,
       date: jalaliDate(meta.to, J),
+      eidiDays: jalaliDayOfYear(meta.to, J), // پیش‌فرض: از ۱ فروردین تا پایان همین ماه (قابل ویرایش برای هر کارمند)
       name: u.fullName || '',
       personnelCode: u.personnelCode || '',
       department: u.department || '',
@@ -56,7 +67,9 @@
     return rows.filter((r) => r && r.user && (all || (r.amountToman != null && r.amountToman > 0)));
   }
 
-  function render(doc, slips) {
+  function render(doc, slips, opts) {
+    const o = opts || {};
+    const wage = o.wage || DEFAULT_DAILY_WAGE;
     const mk = (tag, cls, text) => { const e = doc.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
     const host = doc.getElementById('slips');
     host.textContent = '';
@@ -85,6 +98,7 @@
           const val = mk('span', `v${opt && opt.edit ? ' edit' : ''}${opt && opt.total ? ' total' : ''}`, v);
           if (opt && opt.edit) { val.contentEditable = 'true'; val.dataset.kind = opt.edit; val.setAttribute('role', 'textbox'); val.setAttribute('aria-label', l); }
           if (opt && opt.total) val.dataset.role = opt.total;
+          if (opt && opt.role) val.dataset.role = opt.role;
           r.appendChild(val); td.appendChild(r);
         });
         return td;
@@ -94,10 +108,12 @@
         ['ساعات کارکرد:', s.workHours], ['کسر کار:', s.deficit], ['اضافه کار:', s.overtime], ['خالص کارکرد:', s.netHours],
         ['مبلغ توافق‌شده (ساعتی):', s.rate], ['مبلغ کارکرد:', money(s.amount), { total: 'base' }],
       ]));
-      body.appendChild(col('حقوق ماهانه و مزایا', [
-        ['حقوق ماهانه:', money(s.amount), { total: 'monthly' }], ['حق بن کارگری:', '۰', { edit: 'add' }], ['حق مسکن:', '۰', { edit: 'add' }],
-        ['حق اولاد:', '۰', { edit: 'add' }], ['عیدی و سنوات:', '۰', { edit: 'add' }], ['حقوق خالص:', money(s.amount), { total: 'net' }],
-      ]));
+      const eidi = eidiOf(wage, s.eidiDays);
+      const mid = [['حقوق ماهانه:', money(s.amount), { total: 'monthly' }], ['حق بن کارگری:', '۰', { edit: 'add' }], ['حق مسکن:', '۰', { edit: 'add' }], ['حق اولاد:', '۰', { edit: 'add' }]];
+      if (o.eidi) mid.push(['روز مبنای عیدی:', fa(s.eidiDays), { edit: 'days' }], ['عیدی:', num(eidi), { edit: 'add', role: 'eidi' }], ['سنوات (نصف عیدی):', num(sanavatOf(eidi)), { edit: 'add', role: 'sanavat' }]);
+      else mid.push(['عیدی و سنوات:', '۰', { edit: 'add' }]);
+      mid.push(['حقوق خالص:', money(s.amount), { total: 'net' }]);
+      body.appendChild(col('حقوق ماهانه و مزایا', mid));
       body.appendChild(col('کسورات', [
         ['مساعده:', '', { edit: 'sub' }], ['وام:', '', { edit: 'sub' }], ['مالیات حقوق:', '', { edit: 'sub' }], ['حق بیمه کارگری:', '', { edit: 'sub' }],
         ['جمع کسورات:', '۰', { total: 'subs' }],
@@ -120,11 +136,17 @@
       if (s.noRate) art.appendChild(mk('div', 'warn no-print', 'برای این کارمند نرخ ساعتی تعریف نشده است.'));
       else if (s.excludedDays) art.appendChild(mk('div', 'warn no-print', `${fa(s.excludedDays)} روز (اعتراض باز / ورود بدون خروج) از محاسبه خارج شده است.`));
       host.appendChild(art);
+      if (o.eidi) recompute(art, wage, false); // خالص و پرداخت‌شده شامل عیدی و سنوات
     });
   }
 
   // محاسبه‌ی دوباره‌ی جمع‌ها وقتی خانه‌ای ویرایش شد
-  function recompute(slip) {
+  function recompute(slip, wage, refreshEidi) {
+    if (refreshEidi) {
+      const d = slip.querySelector('[data-kind="days"]');
+      const ee = slip.querySelector('[data-role="eidi"]'); const ss = slip.querySelector('[data-role="sanavat"]');
+      if (d && ee && ss) { const e = eidiOf(wage || DEFAULT_DAILY_WAGE, parseAmount(d.textContent)); ee.textContent = num(e); ss.textContent = num(sanavatOf(e)); }
+    }
     const base = slip.dataset.base === '' ? 0 : parseInt(slip.dataset.base, 10);
     let add = 0; let sub = 0;
     slip.querySelectorAll('[data-kind="add"]').forEach((e) => { add += parseAmount(e.textContent); });
@@ -151,12 +173,17 @@
     const host = doc.getElementById('slips');
     doc.getElementById('print-btn').addEventListener('click', () => win.print());
     doc.getElementById('opt-two').addEventListener('change', (e) => { host.className = `slips${e.target.checked ? ' two' : ''}`; });
-    host.addEventListener('input', (e) => { const s = e.target.closest && e.target.closest('.slip'); if (s) recompute(s); });
+    const qs = new URLSearchParams(win.location.search);
+    const eidiBox = doc.getElementById('opt-eidi'); const wageIn = doc.getElementById('opt-wage');
+    eidiBox.checked = qs.get('eidi') === '1';
+    wageIn.value = num(DEFAULT_DAILY_WAGE);
+    const wageNow = () => parseAmount(wageIn.value) || DEFAULT_DAILY_WAGE;
+    host.addEventListener('input', (e) => { const s = e.target.closest && e.target.closest('.slip'); if (s) recompute(s, wageNow(), !!(e.target.dataset && e.target.dataset.kind === 'days')); });
     let payload;
     const draw = () => {
       const slips = selectRows(payload, { all: doc.getElementById('opt-all').checked || new URLSearchParams(win.location.search).get('all') === '1' })
         .map((r) => buildSlip(r, { month: payload.month, to: payload.to }, win.Jalali));
-      render(doc, slips);
+      render(doc, slips, { eidi: eidiBox.checked, wage: wageNow() });
       status.textContent = slips.length ? `${fa(slips.length)} فیش آماده‌ی چاپ` : 'کارمندی با حقوق مثبت در این ماه نیست.';
       status.className = 'status';
     };
@@ -166,6 +193,8 @@
       payload = await res.json();
       if (!res.ok) throw new Error(payload && payload.error ? payload.error : 'دریافت اطلاعات حقوق ناموفق بود.');
       doc.getElementById('opt-all').addEventListener('change', draw);
+      eidiBox.addEventListener('change', draw);
+      wageIn.addEventListener('change', draw);
       draw();
     } catch (err) {
       status.textContent = err.message || 'خطا';
@@ -173,7 +202,7 @@
     }
   }
 
-  const api = { buildSlip, selectRows, render, recompute, apiUrlFrom, parseAmount, jalaliDate, hhmm, num, fa };
+  const api = { eidiOf, sanavatOf, dayOfYear, DEFAULT_DAILY_WAGE, buildSlip, selectRows, render, recompute, apiUrlFrom, parseAmount, jalaliDate, hhmm, num, fa };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (root && root.document && root.addEventListener) {
     root.Payslip = api;
