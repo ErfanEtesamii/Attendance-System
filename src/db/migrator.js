@@ -314,7 +314,20 @@ function migrate(db, opts = {}) {
   return { applied, backupPath };
 }
 
+// پذیرفتن نسخه‌ی فعلیِ فایل یک migration که قبلاً اعمال شده و بعد ویرایش شده (رفع هشدار checksum). فقط مقدار checksum ثبت‌شده را عوض می‌کند؛
+// هیچ SQLی از migration اجرا نمی‌شود. فقط وقتی بزنید که مطمئنید تفاوت فایل با آنچه روی DB اجرا شده عمدی و بی‌خطر است.
+function restampChecksum(db, name, dir = MIGRATIONS_DIR) {
+  const m = loadMigrations(dir).find((x) => x.name === name);
+  if (!m) throw new Error(`فایل migration «${name}» پیدا نشد.`);
+  const row = db.prepare('SELECT id, checksum FROM schema_migrations WHERE name = ?').get(name);
+  if (!row) throw new Error(`migration «${name}» هنوز روی این دیتابیس اعمال نشده است.`);
+  if (row.checksum === m.checksum) return { changed: false };
+  db.prepare('UPDATE schema_migrations SET checksum = ? WHERE id = ?').run(m.checksum, row.id);
+  return { changed: true, from: row.checksum, to: m.checksum };
+}
+
 module.exports = {
+  restampChecksum,
   migrate,
   getStatus,
   loadMigrations,

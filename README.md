@@ -104,6 +104,7 @@ Calculation settings that change useful hours — paid-break pool (`paidBreakCou
 - Writing through the repository without a date keeps the legacy behaviour (applies to all days) — only the API routes default to "today".
 - For an older, undated change: `node scripts/set-setting-history.js paidBreakMinutes 45 2026-11-18 --apply` (*"before 2026-11-18 the value was 45; from then on it is the current value"*).
 - Closed months are unaffected (they use their snapshot). Per-shift paid-break overrides are not versioned.
+- **Hourly rate and insurance deduction** are date-effective too (`user_rate_history`, migration 059): changing an existing value from the profile applies from the first day of the current Jalali month by default (`rateEffectiveFrom` in `PATCH /admin/users/:id` overrides it); payroll, payslips and the earnings card price each day with that day's rate. Setting a rate for the first time applies to all months.
 
 ## Automatic Reports
 
@@ -161,6 +162,7 @@ Other helper scripts:
 | `scripts/restore-backup.js`, `scripts/install-fonts.js` | Restore a backup; install panel fonts |
 | `scripts/set-setting-history.js <key> <old value> <YYYY-MM-DD> [--apply]` | Give an old, undated settings change an effective date (dry-run without `--apply`) |
 | `scripts/export-employee-zip.js <jalali year> <month> [out.zip]` | Build the per-employee Excel zip for a month on disk (nothing is sent) |
+| `node src/db/migrate.js --restamp <migration name>` | Accept the current file of an already-applied, later-edited migration (clears the checksum warning; no SQL runs) |
 | `scripts/repair-legacy-remote-merge.js [--apply]` | One-off repair of legacy merged remote-work sessions (dry-run by default) |
 
 ## Environment Variables
@@ -197,7 +199,7 @@ Most business rules (lunch, breaks, lateness limit, remote work, plan/report gat
 
 ## Database and Migrations
 
-Database schema changes are made **only** through migrations (`src/db/migrations/`, numbered files; currently `001` to `058`):
+Database schema changes are made **only** through migrations (`src/db/migrations/`, numbered files; currently `001` to `059`):
 
 ```bash
 npm run migrate           # apply pending migrations (takes a backup first)
@@ -379,7 +381,7 @@ Phase upgrades (additive only; no mandatory `.env` change except where noted):
 | 14 | 036–038 | Remote work; check `ALLOWED_NETWORK_CIDR` and `TRUST_PROXY` |
 | 15 | 039 | "My Day", task completion note |
 | 16–19 | 040–042 | UI redesign, lunch / breaks / re-entry; the main change is on the front-end side |
-| Unreleased | 055–058 | Idle minutes, temporary check-out, insurance deduction (sensitive column), date-effective settings; new dependency `jszip`; new settings `employeeZipEnabled` / `employeeZipRecipientIds` (off by default) |
+| Unreleased | 055–059 | Idle minutes, temporary check-out, insurance deduction (sensitive column), date-effective settings and rate/insurance history; new dependency `jszip`; new settings `employeeZipEnabled` / `employeeZipRecipientIds` (off by default) |
 
 Commands and the manual-test checklist for each phase: [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md) (section "Phases").
 
@@ -399,7 +401,7 @@ npm run secret-scan  # search the project for tokens/keys/secrets (exit code 1 =
 npm run package      # delivery zip without .env/.ssl/data/node_modules/.git → dist/
 ```
 
-The tests are hermetic: a temporary database, fake tokens and secrets, and the real `.env` is never read. Last recorded run: 3,024 tests in 604 suites, no failures. Coverage areas:
+The tests are hermetic: a temporary database, fake tokens and secrets, and the real `.env` is never read. Last recorded run: 3,032 tests in 604 suites, no failures. Coverage areas:
 
 - **Core and security:** migrations, `initData` and Login Widget, session, `networkRestriction`, the role × route access matrix and route ordering, headers/CSP, cookie, CSRF, session revocation, secret checks and scanner, release packager
 - **Operations and monitoring:** Job run recording, polling heartbeat, watchdog with a mocked bot, `/api/health` and `/api/admin/system/status`

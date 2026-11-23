@@ -9,6 +9,7 @@ const holidaysRepository = require('../../../repositories/holidaysRepository');
 const settingsRepository = require('../../../repositories/settingsRepository');
 const usersRepository = require('../../../repositories/usersRepository');
 const registry = require('../../../utils/settingsRegistry');
+const settingsHistory = require('../../../utils/settingsHistory');
 const { requireReason, auditChange } = require('./common');
 const { todayInZone } = require('../../../utils/time');
 const { parseHolidayBody, parseImport } = require('../../../utils/holidayInput');
@@ -143,6 +144,8 @@ router.patch('/admin/settings', requirePermission('settings.edit'), (req, res) =
   const { effectiveFrom: efRaw, ...fields } = req.body || {};
   const ef = parseEffectiveFrom(efRaw);
   if (ef.error) return res.status(400).json({ error: ef.error });
+  const untracked = ef.value ? Object.keys(fields).filter((k) => !settingsHistory.isTracked(k)) : [];
+  if (untracked.length) return res.status(400).json({ error: `تاریخ شروع اعمال فقط برای تنظیمات محاسباتی معنا دارد؛ این کلیدها تاریخ‌دار نیستند: ${untracked.join('، ')}`, keys: untracked });
   const updated = settingsRepository.update(fields, { effectiveFrom: ef.value || todayInZone(before.timezone) });
   // S3-1b: مقدار قبل/بعد کلیدهای تغییرکرده هم در details می‌آید (فیلدهای قبلی بدون تغییر)
   const changedKeys = Object.keys(updated).filter((k) => !registry.sameValue(updated[k], before[k]));
@@ -179,6 +182,7 @@ router.put('/admin/settings/:key', requirePermission('settings.edit'), (req, res
 
   const ef = parseEffectiveFrom((req.body || {}).effectiveFrom);
   if (ef.error) return res.status(400).json({ error: ef.error });
+  if (ef.value && !settingsHistory.isTracked(key)) return res.status(400).json({ error: `تنظیم «${key}» تاریخ‌دار نیست؛ تاریخ شروع اعمال برای آن معنا ندارد.`, key });
   const checked = registry.validate(key, (req.body || {}).value);
   if (!checked.ok) return res.status(400).json({ error: `مقدار «${key}» نامعتبر است: ${checked.error}`, key });
 

@@ -15,6 +15,7 @@ function isExcludedFile(name) {
   if (/\.(db|sqlite|sqlite3)(-wal|-shm|-journal)?$/i.test(name)) return true;
   if (/\.(log)$/i.test(name) || /^npm-debug\.log/.test(name)) return true;
   if (/\.zip$/i.test(name)) return true;
+  if (/\.(bak|orig)(-.*)?$/i.test(name)) return true; // نسخه‌های پشتیبان دستی (config.js.bak-…) هرگز در بسته نیایند
   if (name === 'Thumbs.db' || name === '.DS_Store') return true;
   return false;
 }

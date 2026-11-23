@@ -9,7 +9,7 @@
 //   • «امروز» به وقت شرکت (timezone تنظیمات) است و now قابل‌تزریق برای تست.
 
 const { computeMonthlyReport } = require('./monthlyReportService');
-const { calculateAmountToman } = require('./earningsService');
+const { calculateAmountToman, amountForDays } = require('./earningsService');
 const { taskDayTally } = require('./taskDayTally');
 const dayService = require('../engine/dayService');
 const attendanceRepository = require('../repositories/attendanceRepository');
@@ -379,7 +379,8 @@ function openDisputeDates(userId, from, to) {
 
 /** حقوق روزانه‌ی یک کاربر از روزهای گزارش ماهانه (rate از repository؛ null ⇒ نرخ تعریف نشده) */
 function payrollOfRows(user, dayMap, from, to) {
-  const rateKt = usersRepository.getHourlyRateKt(user.id);
+  const timeline = usersRepository.getRateTimeline(user.id, 'rate'); // نرخِ «همان روز» (تاریخچه‌ی نرخ)
+  const rateOnDay = (d) => usersRepository.rateOn(timeline, d);
   const disputed = openDisputeDates(user.id, from, to);
   const days = [];
   let minutes = 0;
@@ -395,13 +396,16 @@ function payrollOfRows(user, dayMap, from, to) {
     const useful = excluded || day.effectiveWithMission == null ? 0 : Number(day.effectiveWithMission);
     const ot = day.overtimePayableFinal != null ? day.overtimePayableFinal : (day.overtimePayable || 0);
     if (!excluded) { minutes += useful; overtime += ot; }
-    days.push({ date: d, status: day.status, usefulMinutes: useful, overtimeMinutes: excluded ? 0 : ot, amountToman: calculateAmountToman(useful, rateKt), excluded });
+    days.push({ date: d, status: day.status, usefulMinutes: useful, overtimeMinutes: excluded ? 0 : ot, amountToman: calculateAmountToman(useful, rateOnDay(d)), excluded });
   }
+  const priced = amountForDays(days.filter((x) => !x.excluded).map((x) => ({ date: x.date, minutes: x.usefulMinutes })), timeline);
+  const endRate = rateOnDay(to);
   return {
-    rateKt: rateKt === undefined ? null : rateKt,
+    rateKt: endRate === undefined ? null : endRate, // نرخ در پایان بازه؛ با تغییر نرخ وسط ماه rateChanged=true
+    rateChanged: priced.multiRate,
     usefulMinutes: minutes,
     overtimeMinutes: overtime,
-    amountToman: calculateAmountToman(minutes, rateKt === undefined ? null : rateKt),
+    amountToman: priced.amountToman,
     excludedDays: days.filter((x) => x.excluded).map((x) => ({ date: x.date, reason: x.excluded })),
     days: days.filter((x) => x.usefulMinutes > 0 || x.excluded),
   };
@@ -418,7 +422,8 @@ function monthlyPayroll({ users, year, month, now, withDays = false }) {
     const row = {
       user: r.user,
       rateKt: p.rateKt,
-      insuranceToman: usersRepository.getInsuranceDeductionToman(r.user.id) || 0,
+      rateChanged: p.rateChanged,
+      insuranceToman: usersRepository.getInsuranceDeductionToman(r.user.id, rep.to) || 0, // مقدار مؤثر در پایان ماه
       usefulMinutes: p.usefulMinutes,
       overtimeMinutes: p.overtimeMinutes,
       amountToman: p.amountToman,

@@ -228,6 +228,19 @@ function parseHourlyRateKt(raw) {
   return { value: n };
 }
 
+// تاریخ شروع اعمال نرخ/بیمه (میلادی YYYY-MM-DD، اختیاری). پیش‌فرض برای «تغییرِ نرخِ موجود»: روز اول ماه شمسیِ جاری؛ یعنی ماه‌های قبل با
+// مقدار قبلی می‌مانند و ماه جاری کامل با مقدار تازه حساب می‌شود. تعیین «اولین نرخ» (قبلاً تعریف نشده) پیش‌فرض ندارد: برای همه‌ی ماه‌ها اعمال می‌شود.
+function parseRateEffectiveFrom(raw) {
+  if (raw === undefined || raw === null || raw === '') return { value: undefined };
+  if (typeof raw !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(raw) || Number.isNaN(Date.parse(`${raw}T00:00:00Z`))) return { error: 'تاریخ شروع اعمال باید میلادی و به شکل YYYY-MM-DD باشد.' };
+  return { value: raw };
+}
+function rateFromFor(before, explicit) {
+  if (explicit) return explicit;
+  if (before === undefined || before === null) return undefined;
+  return require('../../../utils/jalali').jalaliMonthRange({ date: new Date() }).from;
+}
+
 const MAX_INSURANCE_TOMAN = 1000000000;
 function parseInsuranceToman(raw) {
   if (raw === undefined) return { skip: true };
@@ -257,6 +270,8 @@ router.patch('/admin/users/:id', requirePermission('users.write'), (req, res) =>
   if (rateIn.error) return res.status(400).json({ error: rateIn.error });
   const insIn = parseInsuranceToman((req.body || {}).insuranceDeductionToman);
   if (insIn.error) return res.status(400).json({ error: insIn.error });
+  const rateFromIn = parseRateEffectiveFrom((req.body || {}).rateEffectiveFrom);
+  if (rateFromIn.error) return res.status(400).json({ error: rateFromIn.error });
   const nextRole = role !== undefined && ROLES.includes(role) ? role : undefined;
   const selfNoRoleChange = id === req.adminUser.id && (nextRole === undefined || nextRole === user.role);
   const denied = selfNoRoleChange ? null : adminManagementDenied(req, user.role, nextRole);
@@ -306,7 +321,7 @@ router.patch('/admin/users/:id', requirePermission('users.write'), (req, res) =>
   if (!rateIn.skip) {
     const beforeRate = usersRepository.getHourlyRateKt(id);
     if ((beforeRate === undefined ? null : beforeRate) !== rateIn.value) {
-      usersRepository.setHourlyRateKt(id, rateIn.value);
+      usersRepository.setHourlyRateKt(id, rateIn.value, { effectiveFrom: rateFromFor(beforeRate, rateFromIn.value) });
       auditChange(req, {
         action: 'employee_hourly_rate_changed',
         entityType: 'user',
@@ -321,7 +336,7 @@ router.patch('/admin/users/:id', requirePermission('users.write'), (req, res) =>
   if (!insIn.skip) {
     const beforeIns = usersRepository.getInsuranceDeductionToman(id);
     if ((beforeIns === undefined ? null : beforeIns) !== insIn.value) {
-      usersRepository.setInsuranceDeductionToman(id, insIn.value);
+      usersRepository.setInsuranceDeductionToman(id, insIn.value, { effectiveFrom: rateFromFor(beforeIns, rateFromIn.value) });
       auditChange(req, {
         action: 'employee_insurance_deduction_changed',
         entityType: 'user',

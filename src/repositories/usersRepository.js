@@ -84,25 +84,84 @@ function updateUser(id, fields) {
 }
 
 // نرخ ساعتی (هزار تومان در ساعت). NULL = تعریف نشده. کاربر نبود ⇒ undefined.
-function getHourlyRateKt(id) {
+function getHourlyRateKt(id, date) {
   const row = getDb().prepare('SELECT hourly_rate_kt AS rate FROM users WHERE id = ?').get(id);
-  return row ? row.rate : undefined;
+  if (!row) return undefined;
+  return date ? rateOn(getRateTimeline(id, 'rate', row.rate), date) : row.rate;
+}
+
+// ---------- تاریخچه‌ی تاریخ‌دار نرخ/بیمه (migration 059) ----------
+const BASE_FROM = '0000-00-00';
+const FIELD_COLUMN = { rate: 'hourly_rate_kt', insurance: 'insurance_deduction_toman' };
+
+function historyTableExists() {
+  try { return !!getDb().prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='user_rate_history'").get(); } catch (_) { return false; }
+}
+
+// { current, rows: [{ from, value }] } برای یک کاربر/فیلد؛ rows خالی ⇒ بدون تاریخچه (همان مقدار فعلی برای همه‌ی روزها)
+function getRateTimeline(id, field, current) {
+  const col = FIELD_COLUMN[field];
+  let cur = current;
+  if (cur === undefined) { const r = getDb().prepare(`SELECT ${col} AS v FROM users WHERE id = ?`).get(id); cur = r ? r.v : undefined; }
+  const rows = historyTableExists()
+    ? getDb().prepare('SELECT effective_from AS "from", value FROM user_rate_history WHERE user_id = ? AND field = ? ORDER BY effective_from').all(id, field)
+    : [];
+  return { current: cur, rows };
+}
+
+// مقدار مؤثر در یک تاریخ (YYYY-MM-DD)
+function rateOn(timeline, date) {
+  if (!timeline.rows.length || !date) return timeline.current;
+  let pick;
+  for (const r of timeline.rows) { if (r.from <= date) pick = r; else break; }
+  return pick ? pick.value : timeline.current;
+}
+
+// ثبت «از تاریخ from مقدار تازه newVal است». ردیف پایه (مقدار قبلی از ابتدا) اگر نبود ساخته می‌شود، ردیف‌های بعد از from حذف می‌شوند
+// و ستون users با آخرین مقدار تاریخچه هم‌گام می‌ماند.
+function recordFieldChange(id, field, from, oldVal, newVal) {
+  const db = getDb();
+  const col = FIELD_COLUMN[field];
+  db.transaction(() => {
+    const has = db.prepare('SELECT 1 FROM user_rate_history WHERE user_id = ? AND field = ? LIMIT 1').get(id, field);
+    if (!has) db.prepare('INSERT INTO user_rate_history (user_id, field, effective_from, value) VALUES (?, ?, ?, ?)').run(id, field, BASE_FROM, oldVal);
+    db.prepare('DELETE FROM user_rate_history WHERE user_id = ? AND field = ? AND effective_from > ?').run(id, field, from);
+    db.prepare(`INSERT INTO user_rate_history (user_id, field, effective_from, value) VALUES (?, ?, ?, ?)
+      ON CONFLICT(user_id, field, effective_from) DO UPDATE SET value = excluded.value`).run(id, field, from, newVal);
+    const latest = db.prepare('SELECT value FROM user_rate_history WHERE user_id = ? AND field = ? ORDER BY effective_from DESC LIMIT 1').get(id, field);
+    db.prepare(`UPDATE users SET ${col} = ? WHERE id = ?`).run(latest ? latest.value : newVal, id);
+  })();
+}
+
+// نوشتن یک فیلد حساس: با effectiveFrom و مقدار قبلیِ غیر‌NULL ⇒ تاریخ‌دار؛ وگرنه جایگزینی ساده (و پاک‌شدن تاریخچه‌ی همان فیلد تا ستون و تاریخچه ناسازگار نمانند).
+function writeSensitive(id, field, value, effectiveFrom) {
+  const db = getDb();
+  const col = FIELD_COLUMN[field];
+  const row = db.prepare(`SELECT ${col} AS v FROM users WHERE id = ?`).get(id);
+  if (!row) return false;
+  const old = row.v === undefined ? null : row.v;
+  if (effectiveFrom && historyTableExists()) {
+    if (old === value && !db.prepare('SELECT 1 FROM user_rate_history WHERE user_id = ? AND field = ? LIMIT 1').get(id, field)) return true;
+    recordFieldChange(id, field, effectiveFrom, old, value);
+    return true;
+  }
+  if (historyTableExists()) db.prepare('DELETE FROM user_rate_history WHERE user_id = ? AND field = ?').run(id, field);
+  return db.prepare(`UPDATE users SET ${col} = ? WHERE id = ?`).run(value, id).changes > 0;
 }
 
 // value = عدد صحیح نامنفی یا null؛ اعتبارسنجی با caller است (CHECK دیتابیس آخرین سد). updated_at و نسخه‌ی نشست عمداً دست نمی‌خورد.
-function setHourlyRateKt(id, value) {
-  const info = getDb().prepare('UPDATE users SET hourly_rate_kt = ? WHERE id = ?').run(value, id);
-  return info.changes > 0;
+function setHourlyRateKt(id, value, opts = {}) {
+  return writeSensitive(id, 'rate', value, opts.effectiveFrom);
 }
 
 // کسر ماهانه‌ی حق بیمه (تومان) برای فیش حقوقی. NULL = تعریف نشده (۰). کاربر نبود ⇒ undefined.
-function getInsuranceDeductionToman(id) {
+function getInsuranceDeductionToman(id, date) {
   const row = getDb().prepare('SELECT insurance_deduction_toman AS v FROM users WHERE id = ?').get(id);
-  return row ? row.v : undefined;
+  if (!row) return undefined;
+  return date ? rateOn(getRateTimeline(id, 'insurance', row.v), date) : row.v;
 }
-function setInsuranceDeductionToman(id, value) {
-  const info = getDb().prepare('UPDATE users SET insurance_deduction_toman = ? WHERE id = ?').run(value, id);
-  return info.changes > 0;
+function setInsuranceDeductionToman(id, value, opts = {}) {
+  return writeSensitive(id, 'insurance', value, opts.effectiveFrom);
 }
 
 // باطل‌کردن همه‌ی نشست‌های پنل یک کاربر (دکمه‌ی «خروج از همه‌ی نشست‌ها»). نسخه‌ی جدید را برمی‌گرداند یا null اگر کاربر نبود.
@@ -165,6 +224,8 @@ function deleteUserPermanently(id) {
 }
 
 module.exports = {
+  getRateTimeline,
+  rateOn,
   listUsers,
   findById,
   listByDeputy,

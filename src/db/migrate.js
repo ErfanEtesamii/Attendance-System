@@ -1,13 +1,14 @@
 // CLI مدیریت migration:
 //   npm run migrate          → اجرای migrationهای اعمال‌نشده (همراه بک‌آپ قبل از اجرا)
 //   npm run migrate:status   → فقط نمایش وضعیت؛ هیچ تغییری نمی‌دهد
+//   node src/db/migrate.js --restamp <نام migration>  → پذیرفتن نسخه‌ی فعلی فایلِ یک migration ویرایش‌شده (رفع هشدار checksum؛ SQL اجرا نمی‌شود)
 //
 // ⚠️ روی سرور production بهتر است قبل از migrate دستی، سرویس را stop کنید (nssm stop <service>).
 
 const path = require('path');
 const config = require('../config');
 const { openDatabase } = require('./connection');
-const { migrate, getStatus } = require('./migrator');
+const { migrate, getStatus, restampChecksum } = require('./migrator');
 
 function printStatus(db) {
   const { items, unknownApplied } = getStatus(db);
@@ -26,6 +27,14 @@ function main() {
   const db = openDatabase();
   try {
     console.log(`دیتابیس: ${config.dbPath}`);
+    const ri = process.argv.indexOf('--restamp');
+    if (ri !== -1) {
+      const name = process.argv[ri + 1];
+      if (!name) { console.error('استفاده: node src/db/migrate.js --restamp <نام migration>'); process.exitCode = 2; return; }
+      const r = restampChecksum(db, name);
+      console.log(r.changed ? `checksum «${name}» به نسخه‌ی فعلیِ فایل به‌روز شد.` : `checksum «${name}» از قبل با فایل یکی است.`);
+      return;
+    }
     if (statusOnly) {
       const pending = printStatus(db);
       process.exitCode = 0;
