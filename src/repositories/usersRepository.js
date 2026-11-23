@@ -2,7 +2,7 @@ const { getDb } = require('../db/connection');
 
 // Phase 20: نرخ ساعتی (hourly_rate_kt) یک داده‌ی حساس است و عمداً در «SELECT *» نمی‌آید تا هیچ route/خروجی/لاگی
 // که ردیف کاربر را کامل برمی‌گرداند آن را درز ندهد. فقط getHourlyRateKt / setHourlyRateKt به آن دست می‌زنند.
-const SENSITIVE_COLUMNS = new Set(['hourly_rate_kt']);
+const SENSITIVE_COLUMNS = new Set(['hourly_rate_kt', 'insurance_deduction_toman']);
 const columnListCache = new WeakMap();
 function userColumns(db) {
   let list = columnListCache.get(db);
@@ -95,6 +95,16 @@ function setHourlyRateKt(id, value) {
   return info.changes > 0;
 }
 
+// کسر ماهانه‌ی حق بیمه (تومان) برای فیش حقوقی. NULL = تعریف نشده (۰). کاربر نبود ⇒ undefined.
+function getInsuranceDeductionToman(id) {
+  const row = getDb().prepare('SELECT insurance_deduction_toman AS v FROM users WHERE id = ?').get(id);
+  return row ? row.v : undefined;
+}
+function setInsuranceDeductionToman(id, value) {
+  const info = getDb().prepare('UPDATE users SET insurance_deduction_toman = ? WHERE id = ?').run(value, id);
+  return info.changes > 0;
+}
+
 // باطل‌کردن همه‌ی نشست‌های پنل یک کاربر (دکمه‌ی «خروج از همه‌ی نشست‌ها»). نسخه‌ی جدید را برمی‌گرداند یا null اگر کاربر نبود.
 function revokeSessions(id) {
   const db = getDb();
@@ -167,5 +177,7 @@ module.exports = {
   getHistoryCounts,
   deleteUserPermanently,
   getHourlyRateKt,
+  getInsuranceDeductionToman,
+  setInsuranceDeductionToman,
   setHourlyRateKt,
 };

@@ -228,11 +228,20 @@ function parseHourlyRateKt(raw) {
   return { value: n };
 }
 
+const MAX_INSURANCE_TOMAN = 1000000000;
+function parseInsuranceToman(raw) {
+  if (raw === undefined) return { skip: true };
+  if (raw === null || (typeof raw === 'string' && raw.trim() === '')) return { value: null };
+  const n = typeof raw === 'number' ? raw : (typeof raw === 'string' && /^\d{1,10}$/.test(raw.trim()) ? Number(raw.trim()) : NaN);
+  if (!Number.isInteger(n) || n < 0 || n > MAX_INSURANCE_TOMAN) return { error: 'کسر بیمه باید عدد صحیح نامنفی (تومان) باشد.' };
+  return { value: n };
+}
+
 router.get('/admin/users/:id/hourly-rate', requirePermission('users.write'), (req, res) => {
   const id = parseInt(req.params.id, 10);
   const rate = usersRepository.getHourlyRateKt(id);
   if (rate === undefined) return res.status(404).json({ error: 'کارمند یافت نشد.' });
-  res.json({ hourlyRateKt: rate });
+  res.json({ hourlyRateKt: rate, insuranceDeductionToman: usersRepository.getInsuranceDeductionToman(id) ?? null });
 });
 
 // ---------- ویرایش پروفایل کارمند (فقط ادمین کل) ----------
@@ -246,6 +255,8 @@ router.patch('/admin/users/:id', requirePermission('users.write'), (req, res) =>
     req.body || {};
   const rateIn = parseHourlyRateKt((req.body || {}).hourlyRateKt);
   if (rateIn.error) return res.status(400).json({ error: rateIn.error });
+  const insIn = parseInsuranceToman((req.body || {}).insuranceDeductionToman);
+  if (insIn.error) return res.status(400).json({ error: insIn.error });
   const nextRole = role !== undefined && ROLES.includes(role) ? role : undefined;
   const selfNoRoleChange = id === req.adminUser.id && (nextRole === undefined || nextRole === user.role);
   const denied = selfNoRoleChange ? null : adminManagementDenied(req, user.role, nextRole);
@@ -302,6 +313,21 @@ router.patch('/admin/users/:id', requirePermission('users.write'), (req, res) =>
         entityId: id,
         before: { hourly_rate_kt: beforeRate === undefined ? null : beforeRate },
         after: { hourly_rate_kt: rateIn.value },
+        meta: { targetUserId: id },
+      });
+    }
+  }
+
+  if (!insIn.skip) {
+    const beforeIns = usersRepository.getInsuranceDeductionToman(id);
+    if ((beforeIns === undefined ? null : beforeIns) !== insIn.value) {
+      usersRepository.setInsuranceDeductionToman(id, insIn.value);
+      auditChange(req, {
+        action: 'employee_insurance_deduction_changed',
+        entityType: 'user',
+        entityId: id,
+        before: { insurance_deduction_toman: beforeIns === undefined ? null : beforeIns },
+        after: { insurance_deduction_toman: insIn.value },
         meta: { targetUserId: id },
       });
     }

@@ -324,7 +324,7 @@
         <label class="field"><span>سرپرست مستقیم</span><select name="managerId"><option value="">— ندارد —</option>
           ${managers.map((m) => `<option value="${m.id}" ${u && u.managerId === m.id ? 'selected' : ''}>${esc(m.fullName)}</option>`).join('')}</select></label>
         <label class="field"><span>آیدی عددی تلگرام</span><input name="telegramUserId" class="ltr" inputmode="numeric" value="${esc(u ? u.telegramUserId || '' : '')}" /></label>
-        ${u && AP.can('users.write') ? `<label class="field"><span>نرخ ساعتی (هزار تومان)</span><input name="hourlyRateKt" class="ltr" inputmode="numeric" autocomplete="off" disabled placeholder="در حال بارگذاری…" /></label>` : ''}
+        ${u && AP.can('users.write') ? `<label class="field"><span>نرخ ساعتی (هزار تومان)</span><input name="hourlyRateKt" class="ltr" inputmode="numeric" autocomplete="off" disabled placeholder="در حال بارگذاری…" /></label><label class="field"><span>کسر ماهانه‌ی حق بیمه (تومان)</span><input name="insuranceDeductionToman" class="ltr" inputmode="numeric" autocomplete="off" disabled placeholder="در حال بارگذاری…" /></label>` : ''}
         ${u ? `<label class="check-row full u-full"><input type="checkbox" name="isActive" ${u.isActive ? 'checked' : ''} /> حساب فعال است</label>` : ''}
       </div>`;
   }
@@ -742,15 +742,20 @@
                 rateInput.placeholder = 'تعریف نشده';
                 rateInput.disabled = false;
                 rateInput.dataset.loaded = '1';
+                const insInput = form.querySelector('[name="insuranceDeductionToman"]');
+                if (insInput) { insInput.value = r && r.insuranceDeductionToman != null ? String(r.insuranceDeductionToman) : ''; insInput.placeholder = 'بدون کسر'; insInput.disabled = false; insInput.dataset.loaded = '1'; }
               }).catch(() => { rateInput.placeholder = 'بارگذاری نشد'; });
             }
             if (form) form.addEventListener('submit', async (e) => {
               e.preventDefault();
               const f = AP.formData(form);
               const rateField = rateInput && rateInput.dataset.loaded === '1' ? { hourlyRateKt: String(f.hourlyRateKt || '').replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))) } : {};
+              const faToEn = (v) => String(v || '').replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[,٬،\s]/g, '');
+              const insInputEl = form.querySelector('[name="insuranceDeductionToman"]');
+              const insField = insInputEl && insInputEl.dataset.loaded === '1' ? { insuranceDeductionToman: faToEn(f.insuranceDeductionToman) } : {};
               const ok = await AP.attempt(() => AP.api(`/admin/users/${u.id}`, { method: 'PATCH', body: {
                 fullName: f.fullName, personnelCode: f.personnelCode, department: f.department, role: f.role,
-                managerId: f.managerId ? Number(f.managerId) : null, telegramUserId: f.telegramUserId, isActive: f.isActive, ...rateField } }), 'تغییرات ذخیره شد.');
+                managerId: f.managerId ? Number(f.managerId) : null, telegramUserId: f.telegramUserId, isActive: f.isActive, ...rateField, ...insField } }), 'تغییرات ذخیره شد.');
               if (ok) { AP.state.users = null; AP.refresh(); }
             });
           };

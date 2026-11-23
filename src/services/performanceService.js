@@ -418,6 +418,7 @@ function monthlyPayroll({ users, year, month, now, withDays = false }) {
     const row = {
       user: r.user,
       rateKt: p.rateKt,
+      insuranceToman: usersRepository.getInsuranceDeductionToman(r.user.id) || 0,
       usefulMinutes: p.usefulMinutes,
       overtimeMinutes: p.overtimeMinutes,
       amountToman: p.amountToman,
