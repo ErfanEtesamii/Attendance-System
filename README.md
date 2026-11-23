@@ -8,6 +8,9 @@ Employee check-in / check-out / break tracking through a **Telegram bot** and a 
 
 - [Documentation](#documentation)
 - [Features](#features)
+- [Payroll and Payslips](#payroll-and-payslips)
+- [Date-Effective Settings](#date-effective-settings)
+- [Automatic Reports](#automatic-reports)
 - [Tech Stack](#tech-stack)
 - [Installation and Running](#installation-and-running)
 - [Environment Variables](#environment-variables)
@@ -41,7 +44,8 @@ Employee check-in / check-out / break tracking through a **Telegram bot** and a 
 **Attendance and working hours**
 - Check-in, check-out, break, and **re-entry** on the same day (multiple presence segments, capped by `maxReEntriesPerDay`; segments are summed in the calculation engine and in reports)
 - Lunch rule: automatic deduction of `fixedLunchDeductMinutes=45` for presence of at least `fixedLunchMinPresenceMinutes=240`; if lunch is recorded, only its actual duration is deducted
-- Paid breaks: a shared daily pool (`paidBreakCount=3`, `paidBreakMinutes=45`); anything beyond it is unpaid
+- Paid breaks: a shared daily pool (`paidBreakCount`, `paidBreakMinutes`); anything beyond it is unpaid. Pool size, lunch and lateness-grace settings are **date-effective** — see [Date-Effective Settings](#date-effective-settings)
+- Temporary check-out (leaving for an errand) and idle-time ("lost time") deduction at check-out
 - Shifts with an "effective date", rotating shifts, and day-by-day schedule overrides per employee
 - Lateness limit and "check-in permission" (requested by the employee, approved by the supervisor / admin)
 - Useful-hours calculation engine, overtime with approval, marking of holidays / leave days, automatic closing of incomplete records
@@ -60,8 +64,12 @@ Employee check-in / check-out / break tracking through a **Telegram bot** and a 
 - Admin-configurable supervisor capability matrix (Settings → Supervisors): each supervisor capability (leave approval, record edits, urgent tasks, …) can be switched off for all supervisors; scope rules are unchanged
 - Supervisor & team management (Settings → Supervisors, admin/owner only via `supervisors.manage`): list of supervisors with team size, pending requests, yesterday-report review state and last login; add members or transfer a whole team (dry-run preview, mandatory reason, audit entries `supervisor_members_added` / `supervisor_team_transferred`, loop/role validation)
 
+**Payroll**
+- Monthly payroll per employee from useful hours × hourly rate, with approved missions and per-employee insurance deduction; printable **payslips** (A5 landscape / A4) with optional Eidi and severance (sanavat) — see [Payroll and Payslips](#payroll-and-payslips)
+
 **Reports, analytics and control**
-- Daily / weekly / monthly reports (Jalali calendar), CSV export (and `.xlsx` if `exceljs` is installed), print view
+- Daily / weekly / monthly reports (Jalali calendar), CSV export (and `.xlsx` if `exceljs` is installed), print view; one consolidated "Excel exports" page in the panel
+- Scheduled Telegram delivery of the monthly report and of a **per-employee Excel zip** — see [Automatic Reports](#automatic-reports)
 - Analytics: lateness trend and comparison, rankings, attendance rate, check-in distribution, patterns; calendar; leave balances
 - Month closing (checklist, adjustments, reopening), suspicious events (anti-fraud: same IP, device change), a non-editable Audit Log with archiving
 - Record disputes with a two-way conversation (messages, reopening up to `disputeMaxReopens`, closing)
@@ -75,9 +83,43 @@ Employee check-in / check-out / break tracking through a **Telegram bot** and a 
 - Application reset (double confirmation, backup, Go-Live lock), broadcast messages, daily backup, Audit archive, database maintenance
 - A watchdog that sends Telegram alerts to admins (disk, polling, Jobs, backup) and records Job runs
 
+## Payroll and Payslips
+
+Payroll (`GET /api/admin/payroll`, panel: **Payroll**) is computed from the same monthly report as every other export, so useful hours match the analytic report exactly (re-entry segments are summed; days with an open dispute or a missing check-out are excluded). Hourly rate and the monthly **insurance deduction** (toman) are stored per employee as *sensitive columns*: they are excluded from `SELECT *` and only returned to roles with `payroll.read`.
+
+**Payslip** — `/admin/payslip.html?year=&month=[&department=|&userId=]` (one button in the Payroll header and one in each employee's breakdown). A client-side print page (browser *Print → Save as PDF*): panel theme (light/dark), employee list with search and "only this one", **A5 landscape** by default (A4 portrait, 1 or 2 slips per page also available), company name, signature/stamp boxes, editable cells and an insurance switch per employee. Options persist in `localStorage`.
+
+| Variant | Formula |
+|---|---|
+| Eidi | `daily wage × 60 / 365 × days worked` (daily wage = the Labour-Office wage, default 541,850) |
+| Sanavat | `Eidi / 2` |
+
+Use *Without Eidi/Sanavat* or *With Eidi/Sanavat* from the options bar.
+
+## Date-Effective Settings
+
+Calculation settings that change useful hours — paid-break pool (`paidBreakCount`, `paidBreakMinutes`), lunch rules, lateness/early grace — are **versioned by date** (`settings_history`, migration 058). A change applies **from its effective date forward**; earlier days keep being computed with the value that was in force then, in every report, payroll and the Mini App.
+
+- Saving from the panel/API sets the effective date to **today** (override with `effectiveFrom: "YYYY-MM-DD"`).
+- Writing through the repository without a date keeps the legacy behaviour (applies to all days) — only the API routes default to "today".
+- For an older, undated change: `node scripts/set-setting-history.js paidBreakMinutes 45 2026-11-18 --apply` (*"before 2026-11-18 the value was 45; from then on it is the current value"*).
+- Closed months are unaffected (they use their snapshot). Per-shift paid-break overrides are not versioned.
+
+## Automatic Reports
+
+On the first day of each Jalali month the `monthlyReport` job sends the previous month (Settings → *Automatic report delivery*):
+
+| What | Setting(s) | Default |
+|---|---|---|
+| Text summary | — | on |
+| Monthly `.xlsx` report | `reportXlsxEnabled`, `reportXlsxRecipientRoles`, `reportXlsxRequireClosed` | off |
+| **Zip of one Excel per employee** (entry, exit, presence, total breaks, unpaid-break remainder, remote work, useful hours; a banner notes policy changes from `settings_history`) | `employeeZipEnabled`, `employeeZipRecipientIds` (e.g. `1,22`) | off |
+
+A failure for one recipient does not stop the others; the run is recorded as failed in `job_runs`. To build the zip by hand: `node scripts/export-employee-zip.js 1405 8 out.zip`.
+
 ## Tech Stack
 
-Node.js (>=18) · Express 4 · SQLite (`better-sqlite3`) · `node-telegram-bot-api` (polling) · `node-cron` · `jalaali-js` · `exceljs` (optional, for `.xlsx`).
+Node.js (>=18) · Express 4 · SQLite (`better-sqlite3`) · `node-telegram-bot-api` (polling) · `node-cron` · `jalaali-js` · `exceljs` (optional, for `.xlsx`) · `jszip` (zip of per-employee Excel files).
 The front end (Mini App and panel) uses plain JavaScript with no build step.
 SQLite means no separate database service; the whole database is a single file (`data/attendance.db`). It runs on a local Windows server using NSSM.
 
@@ -111,7 +153,15 @@ The database starts with no users. Send a message to the bot (`/start`); it tell
 | `npm run secret-scan` | Search the project for secrets (exit code 1 = findings) |
 | `npm run package` | Build a delivery zip without secrets in `dist/` |
 
-Other helper scripts: `src/scripts/seedEmployees.js`, `src/scripts/pushPanelButton.js` (replaces the old bot keyboard; `--apply`), `scripts/restore-backup.js`, `scripts/install-fonts.js`.
+Other helper scripts:
+
+| Script | Purpose |
+|---|---|
+| `src/scripts/seedEmployees.js`, `src/scripts/pushPanelButton.js` | Seed employees; replace the old bot keyboard (`--apply`) |
+| `scripts/restore-backup.js`, `scripts/install-fonts.js` | Restore a backup; install panel fonts |
+| `scripts/set-setting-history.js <key> <old value> <YYYY-MM-DD> [--apply]` | Give an old, undated settings change an effective date (dry-run without `--apply`) |
+| `scripts/export-employee-zip.js <jalali year> <month> [out.zip]` | Build the per-employee Excel zip for a month on disk (nothing is sent) |
+| `scripts/repair-legacy-remote-merge.js [--apply]` | One-off repair of legacy merged remote-work sessions (dry-run by default) |
 
 ## Environment Variables
 
@@ -147,7 +197,7 @@ Most business rules (lunch, breaks, lateness limit, remote work, plan/report gat
 
 ## Database and Migrations
 
-Database schema changes are made **only** through migrations (`src/db/migrations/`, numbered files; currently `001` to `054`):
+Database schema changes are made **only** through migrations (`src/db/migrations/`, numbered files; currently `001` to `058`):
 
 ```bash
 npm run migrate           # apply pending migrations (takes a backup first)
@@ -190,6 +240,7 @@ public/                    employee Mini App (no build): app.js, planner.js, dai
 public-admin/              web admin panel (no build), under /admin/; views in js/views-*.js
                            "notebook" design system: css/notebook.css + js/notebook.js; demo page /admin/nb-demo.html
                            (static data, no API; removable)
+                           payslip.html + js/payslip.js + css/payslip.css: printable payslips (client-side PDF)
 scripts/                   install-service.ps1 (NSSM), setup-ssl-renewal.ps1, run-tests.js, smoke-test.js,
                            package-release.js, secret-scan.js, restore-backup.js, bench-analytics.js, lib/
 deploy/                    .bat files to install/restart/remove the service
@@ -203,6 +254,7 @@ data/                      database, backups/, attachments/ (not committed)
 
 | Role | Access |
 |---|---|
+| `owner` | The system owner, above `admin`: everything `admin` can do plus the owner-only "System and security" area (`system.manage`: broadcast, revoke all sessions, reset). Not an employee, so hidden from employee lists and reports. Promoted only via `OWNER_TELEGRAM_ID` in `.env` or `npm run promote-owner` — never from the panel/bot/API |
 | `admin` | Everything; settings, Audit, record correction, broadcast, backup, reset, month closing |
 | `hr` (human resources) | Global read access (users, reports, analytics, leave balances, closed months), the "HR" step in the leave approval chain; no admin management powers |
 | `manager` ("supervisor") | Only their own team (`manager_id`); view, approve leave / remote work / check-in permission, handle disputes, weekly plan and urgent tasks of subordinates, message the team |
@@ -270,7 +322,8 @@ All routes are under `/api`. The list below is a grouped summary; the exact refe
 | Reports and analytics | `GET reports/summary`, `reports/export`; `GET analytics/(late-trend\|late-compare\|rankings\|attendance-rate\|leave-by-type\|checkin-distribution\|patterns)` |
 | Month closing | `GET month-closures`, `month-closures/:y/:m/(checklist\|adjustments)`; `POST month-closures/:y/:m/(close\|reopen)` |
 | Control and notifications | `GET suspicious`, `POST suspicious/:id/review`; `GET notifications`, `notifications/unread-count`; `POST notifications/read-all`, `notifications/:id/read` |
-| Holidays and settings | `GET/POST/DELETE holidays`, `GET/PATCH settings` |
+| Holidays and settings | `GET/POST/DELETE holidays`; `GET/PATCH settings`, `GET settings/items`, `PUT settings/:key` (+ reason), `POST settings/:key/reset`; optional `effectiveFrom` (`YYYY-MM-DD`) on PATCH/PUT |
+| Payroll (`payroll.read`) | `GET payroll`, `payroll/:id`, `payroll/export`; `GET users/:id/hourly-rate` (rate + insurance deduction), `PATCH users/:id` to change them; printable page `/admin/payslip.html` |
 | System (admin only) | `GET audit-log`, `audit-log/export`, `audit-actions`; `POST broadcast`; `GET system`, `system/status`, `system/backup`; reset: `GET system/reset/options`, `POST system/reset/preview`, `POST system/reset` |
 
 ## Telegram Bot and Jobs
@@ -291,7 +344,7 @@ In multi-step flows, dates are picked with an inline Jalali calendar, times with
 |---|---|
 | Reminders | Late check-in, check-out, urgent-task deadline (every 10 minutes), leave approval, remote work |
 | Calculation and maintenance | Marking holidays/leave, closing incomplete records, daily backup, Audit archive, database maintenance |
-| Reports | Daily / weekly / monthly (Jalali month), morning digest, nightly review, nightly task report, report documents |
+| Reports | Daily / weekly / monthly (Jalali month), morning digest, nightly review, nightly task report, monthly xlsx report, **monthly per-employee Excel zip** (`employeeZip.js`) |
 | Supervisors | Automatic creation of the mandatory "review yesterday's report" task (every day at 00:10, `CRON_TEAM_REVIEW_ENSURE`) |
 | Monitoring | **watchdog** (Telegram alert to admins) |
 
@@ -326,6 +379,7 @@ Phase upgrades (additive only; no mandatory `.env` change except where noted):
 | 14 | 036–038 | Remote work; check `ALLOWED_NETWORK_CIDR` and `TRUST_PROXY` |
 | 15 | 039 | "My Day", task completion note |
 | 16–19 | 040–042 | UI redesign, lunch / breaks / re-entry; the main change is on the front-end side |
+| Unreleased | 055–058 | Idle minutes, temporary check-out, insurance deduction (sensitive column), date-effective settings; new dependency `jszip`; new settings `employeeZipEnabled` / `employeeZipRecipientIds` (off by default) |
 
 Commands and the manual-test checklist for each phase: [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md) (section "Phases").
 
@@ -345,10 +399,11 @@ npm run secret-scan  # search the project for tokens/keys/secrets (exit code 1 =
 npm run package      # delivery zip without .env/.ssl/data/node_modules/.git → dist/
 ```
 
-The tests are hermetic: a temporary database, fake tokens and secrets, and the real `.env` is never read. Last recorded run in `PROJECT_STATUS.md`: 2,643 tests in 532 suites, no failures. Coverage areas:
+The tests are hermetic: a temporary database, fake tokens and secrets, and the real `.env` is never read. Last recorded run: 3,022 tests in 604 suites, no failures. Coverage areas:
 
 - **Core and security:** migrations, `initData` and Login Widget, session, `networkRestriction`, the role × route access matrix and route ordering, headers/CSP, cookie, CSRF, session revocation, secret checks and scanner, release packager
 - **Operations and monitoring:** Job run recording, polling heartbeat, watchdog with a mocked bot, `/api/health` and `/api/admin/system/status`
+- **Payroll and reports:** payroll vs analytic-report consistency (re-entry segments), payslip page (CSP, options, Eidi, insurance), insurance deduction, per-employee Excel zip, date-effective settings
 - **Attendance and calculation:** the `computeDay` engine, breaks and paid breaks, lunch, re-entry/segments, shifts and day-by-day schedule, lateness limit and check-in permission, remote work
 - **Leave and mission:** validation, effect on working hours, nightly confirmation, balances, approval chain
 - **Plan and tasks:** weekly plan and check-out gates (`PLAN_LOCKED`), daily report, urgent tasks, "My Day", manager view, nightly report, the supervisor's mandatory task

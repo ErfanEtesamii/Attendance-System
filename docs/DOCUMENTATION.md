@@ -1,5 +1,18 @@
 # مستندات فنی سیستم حضور و غیاب فرازهنر
 
+> **آخرین به‌روزرسانی:** ۱۴۰۵/۰۹/۰۲ · این سند، مرجع فنی و مجموعه‌ی تصمیم‌ها و چک‌لیست‌های استقرار است.
+> معرفی و راه‌اندازی: [`README.md`](../README.md) · وضعیت پروژه: [`PROJECT_STATUS.md`](../PROJECT_STATUS.md) ·
+> تاریخچه‌ی تغییرها: [`CHANGELOG.md`](../CHANGELOG.md) · ایجنت هوش مصنوعی: [`AI_AGENT.md`](AI_AGENT.md)
+
+| می‌خواهم… | بروم به |
+|---|---|
+| ساختار کد و لایه‌ها را بفهمم | [۱. معماری](#۱-معماری) |
+| امنیت، رازها، بک‌آپ و پایش | [۲. امنیت، رازها و پایش](#۲-امنیت-رازها-و-پایش) |
+| وضعیت و رفتار هر صفحه‌ی UI | [۳. رابط کاربری](#۳-رابط-کاربری) |
+| تصمیم و استقرار یک فاز | [۵. فازها](#۵-فازها-تصمیمها-و-استقرار) |
+| حقوق، فیش، تنظیمات تاریخ‌دار، زیپ ماهانه | [پس از فاز ۱۹](#پس-از-فاز-۱۹--حقوق-فیش-حقوقی-و-گزارش‌های-ماهانه) |
+| چک‌لیست تست دستی | [۶. پیوست‌ها](#۶-پیوستها-تست-دستی) |
+
 ## ریسک شناخته‌شدهٔ وابستگی بات
 
 `node-telegram-bot-api` به زنجیرهٔ وابستگی قدیمی `request` متکی است. برای جلوگیری از تغییر رفتاری، فعلاً جایگزین نشده است. مهاجرت به grammY یا Telegraf باید یک کار مستقل باشد: adapter بات، pickerها و همهٔ فرمان‌ها بازنویسی و یکپارچه آزموده شوند.
@@ -38,6 +51,10 @@
   - [فاز ۱۸ — ناهار، استراحت و ورود مجدد (تصمیم‌های U1 تا U8)](#فاز-۱۸--ناهار-استراحت-و-ورود-مجدد-تصمیمهای-u1-تا-u8)  `PHASE18_DECISIONS.md`
   - [فاز ۱۹ — بازطراحی Mini App و تکمیل پنل (تصمیم‌ها)](#فاز-۱۹--بازطراحی-mini-app-و-تکمیل-پنل-تصمیمها)  `PHASE19_DECISIONS.md`
   - [فاز ۱۹ — راهنمای استقرار و بررسی دستی](#فاز-۱۹--راهنمای-استقرار-و-بررسی-دستی)  `PHASE19_DEPLOY.md`
+  - [فاز ۲۰ — قفل خروج با برنامه‌ی هفتگی](#فاز-۲۰--قفل-خروج-با-برنامهی-هفتگی)
+  - [پس از فاز ۱۹ — حقوق، فیش حقوقی و گزارش‌های ماهانه](#پس-از-فاز-۱۹--حقوق-فیش-حقوقی-و-گزارشهای-ماهانه)
+  - [تنظیمات تاریخ‌دار (settings_history)](#تنظیمات-تاریخدار-settings_history)
+  - [زیپ اکسل ماهانه‌ی کارمندان — استقرار و تست دستی](#زیپ-اکسل-ماهانهی-کارمندان--استقرار-و-تست-دستی)
 - **[۶. پیوست‌ها: تست دستی](#۶-پیوستها-تست-دستی)**
   - [تست دستی ویزارد گزارش روزانه (D7-ب)](#تست-دستی-ویزارد-گزارش-روزانه-d7-ب)  `D7_WIZARD_MANUAL_TEST.md`
 
@@ -255,10 +272,6 @@
 #### ۲. جلوگیری از لورفتن (آنچه در کد پیاده شده)
 
 ##### ۲.۱ بسته‌ی تحویل/استقرار بدون راز
-## Phase 20 — Weekly-plan exit gate
-
-A weekly plan satisfies the exit gate when it is `submitted` with at least `planMinTasks` active ordinary tasks, or when it contains one active ordinary task with `manager_locked = 1`. The latter keeps the raw plan status as `draft`: the employee can view the supervisor-configured plan, add their own tasks, and submit finally. Nightly reporting and task KPI use this same gate definition; the KPI separately reports supervisor-configured plans that have not been finally submitted.
-
 ```bash
 npm run package                       # → dist/farazhonar-attendance-<نسخه>-<تاریخ>.zip
 node scripts/package-release.js --out C:\temp\release.zip
@@ -2159,6 +2172,50 @@ M1 فقط فایل‌های استاتیک Mini App و تست/مستندات ر�
 - [ ] نوار پایین (دارای blur) هنگام اسکرول سریع پرش یا لکه‌ی سیاه نداشته باشد؛ اگر داشت، آن را یادداشت کنید تا blur برای دستگاه ضعیف خاموش شود.
 - [ ] با reduced-motion گوشی روشن، انیمیشن‌ها کوتاه یا خاموش باشند.
 
+
+### فاز ۲۰ — قفل خروج با برنامه‌ی هفتگی
+
+A weekly plan satisfies the exit gate when it is `submitted` with at least `planMinTasks` active ordinary tasks, or when it contains one active ordinary task with `manager_locked = 1`. The latter keeps the raw plan status as `draft`: the employee can view the supervisor-configured plan, add their own tasks, and submit finally. Nightly reporting and task KPI use this same gate definition; the KPI separately reports supervisor-configured plans that have not been finally submitted.
+
+### پس از فاز ۱۹ — حقوق، فیش حقوقی و گزارش‌های ماهانه
+
+**تصمیم‌ها**
+- **یک منبع حقیقت برای ساعت مفید:** حقوق (`performanceService.monthlyPayroll`) و همه‌ی اکسل‌ها از `monthlyReportService.computeMonthlyReport` می‌آیند و آن هم مثل گزارش روزانه نوبت‌های ورود/خروج مجدد (`attendance_segments`) را جمع می‌زند؛ فاصله‌ی بین دو نوبت دیگر ساعت مفید حساب نمی‌شود. (قبلاً حقوق نوبت‌ها را نادیده می‌گرفت و با گزارش تحلیلی اختلاف داشت.)
+- **ستون‌های حساس:** `users.hourly_rate_kt` و `users.insurance_deduction_toman` (migration ۰۵۷) از `SELECT *` بیرون‌اند (`SENSITIVE_COLUMNS`) و فقط با مجوز `payroll.read` از مسیرهای حقوق می‌آیند. تغییر بیمه در audit با `employee_insurance_deduction_changed` ثبت می‌شود.
+- **فیش حقوقی سمت کلاینت:** `/admin/payslip.html` فقط صفحه‌ی چاپ است (Print → Save as PDF)؛ سرور PDF نمی‌سازد. CSP اسکریپت/استایل inline را نمی‌پذیرد، پس همه‌چیز در `js/payslip.js` و `css/payslip.css` است. اندازه‌ی کاغذ با `@page` نام‌دار (A5 افقی / A4 عمودی) و گزینه‌ها در `localStorage` (`payslip.opts.v1`) ذخیره می‌شود.
+- **فرمول عیدی/سنوات:** عیدی = `۵۴۱٬۸۵۰ × ۶۰ / ۳۶۵ × تعداد روز کارکرد`؛ سنوات = نصف عیدی (مزد روزانه‌ی اداره‌ی کار قابل تنظیم در صفحه).
+- **خروج موقت** (migration ۰۵۶) و **دقیقه‌ی پرت** (migration ۰۵۵) در محاسبه‌ی روز لحاظ می‌شوند.
+
+**استقرار:** `npm install` → ری‌استارت سرویس (migration ۰۵۵–۰۵۸ خودکار و با بک‌آپ). تنظیم جدید لازم نیست.
+
+**تست دستی:** (۱) در «حقوق»، دکمه‌ی «فیش حقوقی (PDF)» → فهرست همه‌ی کارمندان. (۲) کسر بیمه برای یک نفر روشن/خاموش و مبلغ دستی. (۳) نوع «با/بدون عیدی» و چاپ A5 افقی. (۴) جمع ساعت مفید حقوق با گزارش تحلیلیِ همان ماه یکی باشد.
+
+### تنظیمات تاریخ‌دار (settings_history)
+
+**مسئله:** تغییر یک تنظیم (مثلاً استراحت با حقوق ۴۵ → ۲۰ دقیقه) همه‌ی روزهای گذشته را هم دوباره حساب می‌کرد.
+
+**تصمیم:** جدول `settings_history (key, effective_from, value)` (migration ۰۵۸). فقط تنظیم‌های محاسباتی ردیابی می‌شوند (`src/utils/settingsHistory.js`، فهرست `TRACKED`): `paidBreakCount`، `paidBreakCountUnlimited`، `paidBreakMinutes`، تنظیم‌های ناهار، `lateGraceMinutes`، `earlyGraceMinutes`.
+- `settingsRepository.getAll()` تاریخچه را در ویژگی غیرقابل‌شمارش `__history` می‌گذارد (در JSON/API نشت نمی‌کند)؛ `settingsAt(settings, 'YYYY-MM-DD')` مقدار مؤثر همان روز را می‌دهد و `dayService`/`monthlyReportService` با آن محاسبه می‌کنند.
+- مسیرهای API (`PATCH /admin/settings`، `PUT /admin/settings/:key`) تاریخ شروع را پیش‌فرض «امروز» می‌گذارند؛ `effectiveFrom` اختیاری است. نوشتن مستقیم با repository بدون تاریخ، رفتار قدیمی (اثر روی همه‌ی روزها) را دارد.
+- ردیف پایه‌ی «از ابتدا» با `effective_from = 0000-00-00` ساخته می‌شود (مقدار قبل از اولین تغییر).
+- ماه بسته‌شده از snapshot خودش می‌آید و به این تغییر وابسته نیست. استراحت با حقوقِ تعریف‌شده روی هر شیفت تاریخ‌دار **نیست**.
+
+**استقرار:** تغییرهای قدیمیِ بدون تاریخ را یک‌بار ثبت کنید (ابتدا بدون `--apply`):
+```bash
+node scripts/set-setting-history.js paidBreakMinutes 45 2026-11-18
+node scripts/set-setting-history.js paidBreakMinutes 45 2026-11-18 --apply
+```
+**تست دستی:** روزی قبل از تاریخ، ساعت مفید با مقدار قبلی؛ روز بعد از تاریخ با مقدار جدید؛ یک تغییر تازه از پنل → فقط از امروز اثر کند.
+
+### زیپ اکسل ماهانه‌ی کارمندان — استقرار و تست دستی
+
+**رفتار:** Job `monthlyReport` در روز اول ماه شمسی (پس از پیام متنی و اکسل ماهانه) `sendEmployeeZipReports` را صدا می‌زند: برای هر کارمندِ دارای رکورد در ماه قبل یک اکسل (ورود، خروج، حضور، جمع استراحت، مانده‌ی استراحت بدون حقوق، دورکاری، ساعت مفید) ساخته، زیپ می‌کند و برای گیرنده‌ها می‌فرستد. بالای هر فایل، تغییر سیاست استراحت از `settings_history` اعلام می‌شود. نام فایل‌های داخل زیپ فارسی است (پرچم UTF-8 استاندارد زیپ).
+
+**تنظیمات (پیش‌فرض خاموش):** `employeeZipEnabled` و `employeeZipRecipientIds` (شناسه‌ی کاربران، با ویرگول؛ فقط فعال و دارای تلگرام).
+
+**استقرار:** `npm install` (وابستگی `jszip`)، ری‌استارت، سپس در پنل → تنظیمات → «ارسال خودکار گزارش» دو تنظیم بالا.
+
+**تست دستی:** `node scripts/export-employee-zip.js 1405 8 out.zip` → زیپ را باز کنید، نام فایل‌ها فارسی و درست باشد، ستون‌ها قالب `ساعت:دقیقه` داشته باشند و جمع ساعت مفید هر نفر با «حقوق» برابر باشد. شکست ارسال به یک گیرنده بقیه را متوقف نمی‌کند و در `job_runs` ناموفق ثبت می‌شود.
 
 ## ۶. پیوست‌ها: تست دستی
 
