@@ -10,6 +10,7 @@ const settingsRepository = require('../../../repositories/settingsRepository');
 const usersRepository = require('../../../repositories/usersRepository');
 const registry = require('../../../utils/settingsRegistry');
 const { requireReason, auditChange } = require('./common');
+const { todayInZone } = require('../../../utils/time');
 const { parseHolidayBody, parseImport } = require('../../../utils/holidayInput');
 
 // ---------- تعطیلات رسمی ----------
@@ -126,13 +127,23 @@ function reloadSchedulerIfCron(keys) {
 
 // ---------- تنظیمات سیستم (ساعت کاری، آستانه‌ها) ----------
 
+// effectiveFrom (اختیاری): تاریخ میلادی YYYY-MM-DD؛ فقط برای تنظیمات محاسباتی (استراحت/ناهار/تأخیر) معنا دارد. خالی ⇒ از امروز.
+function parseEffectiveFrom(raw) {
+  if (raw === undefined || raw === null || raw === '') return { value: undefined };
+  if (typeof raw !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(raw) || Number.isNaN(Date.parse(`${raw}T00:00:00Z`))) return { error: 'تاریخ شروع اعمال باید میلادی و به شکل YYYY-MM-DD باشد.' };
+  return { value: raw };
+}
+
 router.get('/admin/settings', requirePermission('settings.read'), (req, res) => {
   res.json(settingsRepository.getAll());
 });
 
 router.patch('/admin/settings', requirePermission('settings.edit'), (req, res) => {
   const before = settingsRepository.getAll();
-  const updated = settingsRepository.update(req.body || {});
+  const { effectiveFrom: efRaw, ...fields } = req.body || {};
+  const ef = parseEffectiveFrom(efRaw);
+  if (ef.error) return res.status(400).json({ error: ef.error });
+  const updated = settingsRepository.update(fields, { effectiveFrom: ef.value || todayInZone(before.timezone) });
   // S3-1b: مقدار قبل/بعد کلیدهای تغییرکرده هم در details می‌آید (فیلدهای قبلی بدون تغییر)
   const changedKeys = Object.keys(updated).filter((k) => !registry.sameValue(updated[k], before[k]));
   const beforeChanged = {};
@@ -166,14 +177,16 @@ router.put('/admin/settings/:key', requirePermission('settings.edit'), (req, res
   const reason = requireReason(req, res);
   if (reason === null) return undefined;
 
+  const ef = parseEffectiveFrom((req.body || {}).effectiveFrom);
+  if (ef.error) return res.status(400).json({ error: ef.error });
   const checked = registry.validate(key, (req.body || {}).value);
   if (!checked.ok) return res.status(400).json({ error: `مقدار «${key}» نامعتبر است: ${checked.error}`, key });
 
   const before = settingsRepository.getItem(key).value;
   if (registry.sameValue(before, checked.value)) return res.json({ changed: false, item: settingsRepository.getItem(key) });
 
-  const item = settingsRepository.setValue(key, checked.value);
-  auditChange(req, { action: 'settings_updated', entityType: 'settings', entityId: key, before: { [key]: before }, after: { [key]: item.value }, reason, meta: { fields: [key] } });
+  const item = settingsRepository.setValue(key, checked.value, { effectiveFrom: ef.value || todayInZone(settingsRepository.getAll().timezone) });
+  auditChange(req, { action: 'settings_updated', entityType: 'settings', entityId: key, before: { [key]: before }, after: { [key]: item.value }, reason, meta: { fields: [key], ...(ef.value ? { effectiveFrom: ef.value } : {}) } });
   const scheduler = reloadSchedulerIfCron([key]);
   return res.json({ changed: true, item, ...(scheduler ? { scheduler } : {}) });
 });

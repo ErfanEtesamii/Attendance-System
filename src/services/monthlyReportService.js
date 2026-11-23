@@ -35,6 +35,7 @@ const overtimeApprovalRepository = require('../repositories/overtimeApprovalRepo
 const dayService = require('../engine/dayService');
 const leaveBalanceService = require('./leaveBalanceService');
 const { computeDay } = require('../engine/computeDay');
+const settingsHistory = require('../utils/settingsHistory');
 const { resolveCalendarDay, pickHoliday, virtualShiftFor } = require('../engine/calendarService');
 const userDayScheduleRepository = require('../repositories/userDayScheduleRepository');
 const { leaveWindowsOnDate, requestRowToValue } = require('../utils/leaveUnits');
@@ -215,7 +216,7 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
       let invalid = false;
       try {
         const breaks = hasCheckIn ? breakRepository.listByAttendanceRecord(record.id) : [];
-        day = computeDay({ record, breaks, settings, now: nowDate, timezone, shift, calendar: cal, approvedLeaves: windows.length ? windows : null, segments: segmentsByRecord.get(record && record.id) });
+        day = computeDay({ record, breaks, settings: settingsHistory.settingsAt(settings, dateStr), now: nowDate, timezone, shift, calendar: cal, approvedLeaves: windows.length ? windows : null, segments: segmentsByRecord.get(record && record.id) });
       } catch (err) {
         if (!(err instanceof RangeError)) throw err;
         console.error(`[monthlyReport] روز ${dateStr} کاربر ${u.id} قابل‌محاسبه نیست:`, err.message);

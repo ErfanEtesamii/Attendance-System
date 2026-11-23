@@ -9,6 +9,7 @@
 //
 // timezone از تنظیمات (settings.timezone) می‌آید، نه ساعت سیستم‌عامل. now قابل تزریق است (رکورد باز تا now حساب می‌شود).
 
+const settingsHistory = require('../utils/settingsHistory');
 const settingsRepository = require('../repositories/settingsRepository');
 const breakRepository = require('../repositories/breakRepository');
 const attendanceRepository = require('../repositories/attendanceRepository');
@@ -118,7 +119,7 @@ function computeRecordDay(record, opts = {}) {
       if (ctx.segmentCache) ctx.segmentCache.set(record.id, segments);
     }
   }
-  return computeDay({ record, breaks, settings: ctx.settings, now: opts.now, timezone: ctx.timezone, shift, calendar, approvedLeaves, segments });
+  return computeDay({ record, breaks, settings: settingsHistory.settingsAt(ctx.settings, record && record.record_date), now: opts.now, timezone: ctx.timezone, shift, calendar, approvedLeaves, segments });
 }
 
 // تبدیل خروجی computeDay به شکل قدیمی summarizeRecord (ترتیب کلیدها هم همان است ⇒ JSON یکسان)

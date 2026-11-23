@@ -5,6 +5,8 @@
 
 const { getDb } = require('../db/connection');
 const registry = require('../utils/settingsRegistry');
+const settingsHistory = require('../utils/settingsHistory');
+const settingsHistoryRepository = require('./settingsHistoryRepository');
 
 // S3-1a: کلیدها، نوع، پیش‌فرض و اعتبارسنجی همه از src/utils/settingsRegistry.js می‌آیند (تنها منبع حقیقت).
 // این فایل فقط SQL خواندن/نوشتن را نگه می‌دارد. رفتار قبلی حفظ شده: مقدار نامعتبر هنگام ذخیره نادیده گرفته می‌شود
@@ -41,16 +43,30 @@ function getAll() {
   registry.keys().forEach((camelKey) => {
     result[camelKey] = registry.deserialize(camelKey, stored[dbKeyOf(camelKey)]);
   });
+  // تاریخچه‌ی تنظیمات محاسباتی (غیرقابل‌شمارش تا در JSON/spread/API نشت نکند؛ فقط settingsHistory.settingsAt آن را می‌خواند)
+  Object.defineProperty(result, '__history', { value: settingsHistoryRepository.mapAll(), enumerable: false });
   return result;
 }
 
-function update(fields) {
+// تغییر یک کلید محاسباتی از تاریخ effectiveFrom به بعد اعمال می‌شود (مسیرهای API پیش‌فرض را «امروز» می‌گذارند) و روزهای قبل با مقدار قبلی می‌مانند.
+// از update/setValue فراخوانی می‌شود، قبل از نوشتن مقدار جدید. بدون تغییرِ مقدار ⇒ کاری نمی‌کند.
+function trackChange(camelKey, newValue, effectiveFrom) {
+  if (!effectiveFrom || !settingsHistory.isTracked(camelKey)) return; // بدون تاریخ صریح ⇒ رفتار قبلی (اثر روی همه‌ی روزها)
+  const raw = readRaw(camelKey);
+  const oldSer = registry.serialize(camelKey, registry.deserialize(camelKey, raw));
+  const newSer = registry.serialize(camelKey, newValue);
+  if (oldSer === newSer) return;
+  settingsHistoryRepository.recordChange(camelKey, effectiveFrom, oldSer, newSer);
+}
+
+function update(fields, opts = {}) {
   const db = getDb();
   const upsert = db.prepare(UPSERT_SQL);
   Object.keys(fields).forEach((camelKey) => {
     if (!registry.getDef(camelKey)) return; // کلید ناشناخته نادیده گرفته می‌شود
     const result = registry.validate(camelKey, fields[camelKey]);
     if (!result.ok) return; // نامعتبر/خالی نادیده گرفته می‌شود
+    trackChange(camelKey, result.value, opts.effectiveFrom);
     upsert.run(dbKeyOf(camelKey), registry.serialize(camelKey, result.value));
     invalidatePermissionsCache(camelKey);
   });
@@ -105,9 +121,10 @@ function getItem(camelKey) {
 }
 
 // ذخیره‌ی یک مقدار «از قبل معتبر» (خروجی registry.validate). نامعتبر ⇒ خطا (مسیر API پیش‌تر ۴۰۰ می‌دهد)
-function setValue(camelKey, value) {
+function setValue(camelKey, value, opts = {}) {
   const result = registry.validate(camelKey, value);
   if (!result.ok) throw new Error(`مقدار نامعتبر برای ${camelKey}: ${result.error}`);
+  trackChange(camelKey, result.value, opts.effectiveFrom);
   getDb().prepare(UPSERT_SQL).run(dbKeyOf(camelKey), registry.serialize(camelKey, result.value));
   invalidatePermissionsCache(camelKey);
   return getItem(camelKey);
