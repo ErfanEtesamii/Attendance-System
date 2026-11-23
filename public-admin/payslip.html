@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>فیش حقوقی — چاپ</title>
+<link rel="stylesheet" href="/admin/css/payslip.css" />
+</head>
+<body>
+  <!-- نوار ابزار (در چاپ پنهان است) -->
+  <div class="no-print toolbar">
+    <button id="print-btn" type="button">چاپ / ذخیره PDF</button>
+    <a id="back-link" href="/admin/#/payroll">بازگشت به پنل</a>
+    <label class="opt"><input type="checkbox" id="opt-two" checked /> دو فیش در هر صفحه A4</label>
+    <label class="opt"><input type="checkbox" id="opt-all" /> کارمندان بدون حقوق هم چاپ شوند</label>
+    <span id="status" class="status" role="status">در حال بارگذاری…</span>
+    <span class="hint">خانه‌های مزایا و کسورات (بن، مسکن، مساعده، وام، مالیات، بیمه) قابل ویرایش‌اند؛ حقوق خالص خودکار محاسبه می‌شود.</span>
+  </div>
+  <main id="slips" class="slips two"></main>
+  <script src="/admin/js/jalali.js"></script>
+  <script src="/admin/js/payslip.js"></script>
+</body>
+</html>

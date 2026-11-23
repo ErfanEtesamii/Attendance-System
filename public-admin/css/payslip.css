@@ -1,0 +1,53 @@
+/* فیش حقوقی چاپی: A4 عمودی، دو فیش در هر صفحه (یا یکی)، RTL، بدون ناوبری پنل */
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #eef0f3; color: #111; font-family: Tahoma, "Segoe UI", Vazirmatn, sans-serif; font-size: 12px; line-height: 1.5; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 10px 16px; background: #fff; border-bottom: 1px solid #ccd; position: sticky; top: 0; z-index: 5; }
+.toolbar button { padding: 6px 14px; border: 1px solid #1b1c2c; background: #1b1c2c; color: #fff; border-radius: 6px; cursor: pointer; font: inherit; }
+.toolbar a { color: #1b1c2c; }
+.toolbar .opt { cursor: pointer; }
+.toolbar .hint { color: #666; font-size: 11px; flex-basis: 100%; }
+.status { color: #555; }
+.status.error { color: #b00020; font-weight: bold; }
+
+.slips { width: 210mm; margin: 12px auto; }
+.slip { background: #fff; padding: 6mm 8mm; margin-bottom: 8mm; box-shadow: 0 1px 6px rgba(0,0,0,.2); break-inside: avoid; page-break-inside: avoid; }
+.slips.two .slip { height: 138mm; margin-bottom: 4mm; }
+.warn { margin-top: 4px; color: #8a4b00; font-size: 11px; font-weight: bold; }
+
+table.slip-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1.5px solid #111; }
+.slip-table td { border: 1px solid #111; padding: 3px 6px; vertical-align: top; }
+.slip-table td.h { background: #e6e9ef; font-weight: bold; font-size: 13px; text-align: right; width: 33.33%; }
+.slip-table td.h.c { text-align: center; }
+.slip-table td.h:last-child { text-align: left; }
+.info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px 10px; }
+.ic { display: flex; gap: 4px; min-height: 18px; border-bottom: 1px dotted #999; }
+.ic .l { color: #333; white-space: nowrap; }
+.ic .v { font-weight: bold; }
+tr.cols td.col { padding: 0 6px 4px; width: 33.33%; }
+.col-h { text-align: center; font-weight: bold; background: #f1f3f6; margin: 0 -6px 4px; padding: 2px; border-bottom: 1px solid #111; }
+.ln { display: flex; justify-content: space-between; gap: 6px; min-height: 22px; align-items: baseline; border-bottom: 1px dotted #bbb; }
+.ln .l { color: #222; }
+.ln .v { font-weight: bold; min-width: 40px; text-align: left; direction: ltr; unicode-bidi: isolate; }
+.ln .v.total { font-size: 13px; }
+.edit { outline: none; cursor: text; }
+.edit:hover, .edit:focus { background: #fff8d6; }
+.paid-grid { display: flex; gap: 10px; align-items: baseline; }
+.paid-grid .v { min-width: 110px; border-bottom: 1px dotted #555; direction: ltr; unicode-bidi: isolate; text-align: left; }
+.paid-grid .edit { min-height: 18px; }
+.sig-grid { display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 6mm; height: 28mm; }
+.slips:not(.two) .sig-grid { height: 38mm; }
+.sg { border: 1px dashed #777; padding: 3px 6px; font-size: 11px; color: #333; }
+.sg.stamp { text-align: center; }
+
+@page { size: A4 portrait; margin: 8mm; }
+@media print {
+  html, body { background: #fff; font-size: 11px; }
+  .no-print { display: none !important; }
+  .slips { width: auto; margin: 0; }
+  .slip { box-shadow: none; padding: 0; margin-bottom: 4mm; }
+  .slips.two .slip { height: 135mm; }
+  .slip-table td.h, .col-h { background: #e6e9ef !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .edit:hover, .edit:focus { background: transparent; }
+  .sg { border-color: #111; }
+}
