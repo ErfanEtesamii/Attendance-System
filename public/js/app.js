@@ -1227,7 +1227,10 @@
       progressMin = data.summary?.effectiveMinutes || 0;
       timerEl.textContent = fmtDuration(data.summary?.effectiveMinutes);
       timerEl.classList.add('is-text');
-      $('#today-summary').textContent = 'ساعت مفید کاری امروز';
+      const sm = data.summary || {};
+      $('#today-summary').textContent = sm.remoteMinutes
+        ? `ساعت مفید کل امروز — حضوری ${fmtDuration(sm.onsiteEffectiveMinutes || 0)} + دورکاری ${fmtDuration(sm.remoteMinutes)}${sm.idleMinutes ? ` − تایم پرت ${fmtDuration(sm.idleMinutes)}` : ''}`
+        : 'ساعت مفید کاری امروز';
     } else if (data.openBreak) {
       setStatus('در حال استراحت', 'is-break', 'break');
       startTimer(data.openBreak.start_time);
@@ -1436,7 +1439,7 @@
     status.textContent = record ? (STATUS_LABELS[record.status] || record.status) : 'بدون رکورد ثبت‌شده';
     const times = document.createElement('p');
     times.textContent = record
-      ? `${fmtClock(record.check_in_time)} تا ${fmtClock(record.check_out_time)} · ${fmtDuration(record.summary?.effectiveMinutes)}`
+      ? `${fmtClock(record.check_in_time)} تا ${fmtClock(record.check_out_time)} · ${fmtDuration(record.summary?.effectiveMinutes)}${record.summary?.remoteMinutes ? ` (حضوری ${fmtDuration(record.summary.onsiteEffectiveMinutes || 0)} + دورکاری ${fmtDuration(record.summary.remoteMinutes)})` : ''}`
       : 'برای این روز جزئیات ترددی وجود ندارد.';
     const dispute = document.createElement('button');
     dispute.type = 'button'; dispute.className = 'btn secondary'; dispute.textContent = 'اعتراض یا درخواست اصلاح این روز';
@@ -3759,9 +3762,13 @@
   function remoteBreakMinutes(s) {
     return (s.breaks || []).reduce((sum, b) => (b.end_at ? sum + Math.max(0, minutesBetween(b.start_at, b.end_at)) : sum), 0);
   }
+  // ساعت دورکاری = (پایان − شروع) منهای کل استراحت‌ها؛ برای جلسه‌ی تأییدشده با ساعت اصلاح‌شده، همان بازه‌ی لحاظ‌شده و فقط استراحت‌های داخل آن (مثل محاسبه‌ی سرور)
   function remoteEffectiveMinutes(s) {
     if (!s.end_at) return null;
-    return Math.max(0, minutesBetween(s.start_at, s.end_at) - remoteBreakMinutes(s));
+    let a = Date.parse(s.start_at); let b = Date.parse(s.end_at);
+    if (s.status === 'approved' && s.approved_start_at && s.approved_end_at) { a = Date.parse(s.approved_start_at); b = Date.parse(s.approved_end_at); }
+    const inside = (s.breaks || []).reduce((sum, x) => (x.end_at ? sum + Math.max(0, Math.min(b, Date.parse(x.end_at)) - Math.max(a, Date.parse(x.start_at))) / 60000 : sum), 0);
+    return Math.max(0, (b - a) / 60000 - inside);
   }
 
   function setRemoteStatus(label, cls) {

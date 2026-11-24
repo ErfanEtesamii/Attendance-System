@@ -140,13 +140,20 @@ function computeRecordDay(record, opts = {}) {
 
 // تبدیل خروجی computeDay به شکل قدیمی summarizeRecord (ترتیب کلیدها هم همان است ⇒ JSON یکسان)
 function toLegacySummary(day) {
-  return {
+  const out = {
     effectiveMinutes: day.effective,
     lateMinutes: day.late,
     earlyLeaveMinutes: day.earlyLeave,
     overtimeMinutes: day.overtime,
     isOpen: day.isOpen,
   };
+  // روز دارای دورکاری: تفکیکِ حضوری و دورکاری (effectiveMinutes همان جمع کل است)
+  if (day.remoteDetail) {
+    out.remoteMinutes = day.remoteMinutes || 0;
+    out.onsiteEffectiveMinutes = day.remoteDetail.onsiteEffective;
+    out.idleMinutes = day.remoteDetail.idle || 0;
+  }
+  return out;
 }
 
 function emptySummary() {
