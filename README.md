@@ -161,6 +161,7 @@ Other helper scripts:
 | `src/scripts/seedEmployees.js`, `src/scripts/pushPanelButton.js` | Seed employees; replace the old bot keyboard (`--apply`) |
 | `scripts/restore-backup.js`, `scripts/install-fonts.js` | Restore a backup; install panel fonts |
 | `scripts/set-setting-history.js <key> <old value> <YYYY-MM-DD> [--apply]` | Give an old, undated settings change an effective date (dry-run without `--apply`) |
+| `scripts/apply-lunch-policy.js <YYYY-MM-DD> [--apply] [--minutes=45]` | Apply the fixed-lunch policy (deducted in proportion to presence inside the lunch window) from a date onward; earlier days are untouched |
 | `scripts/export-employee-zip.js <jalali year> <month> [out.zip]` | Build the per-employee Excel zip for a month on disk (nothing is sent) |
 | `node src/db/migrate.js --restamp <migration name>` | Accept the current file of an already-applied, later-edited migration (clears the checksum warning; no SQL runs) |
 | `scripts/repair-legacy-remote-merge.js [--apply]` | One-off repair of legacy merged remote-work sessions (dry-run by default) |
