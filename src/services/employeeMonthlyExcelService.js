@@ -33,7 +33,24 @@ function collectRows(userId, from, to, tz, ctx) {
 }
 
 // متن توضیح تغییر سیاست استراحت (تاریخ‌دار) تا پایان ماه؛ بدون تغییر ⇒ null
+function lunchPolicyNote(toDate) {
+  const registry = require('../utils/settingsRegistry');
+  const h = settingsHistoryRepository.listForKey('fixedLunchDeductMinutes').filter((e) => e.from <= toDate);
+  const change = h.filter((e) => e.from !== BASE_FROM).pop();
+  if (!change) return null;
+  const minutes = registry.deserialize('fixedLunchDeductMinutes', change.value);
+  if (!(minutes > 0)) return null;
+  const cur = require('../repositories/settingsRepository').getAll();
+  return `از ${toFa(jalali.isoDateToJalaliString(change.from))} (${change.from}) کسر ثابت ناهار برقرار شد: هر کس دست‌کم ${toFa(cur.fixedLunchMinOverlapMinutes)} دقیقه در بازه‌ی ${toFa(cur.lunchWindowStart)} تا ${toFa(cur.lunchWindowEnd)} در شرکت باشد، به اندازه‌ی حضورش در بازه (حداکثر ${toFa(minutes)} دقیقه) کسر می‌شود؛ ناهارِ ثبت‌شده جایگزین آن است.`;
+}
+
 function policyNote(toDate) {
+  const lunch = lunchPolicyNote(toDate);
+  const breakNote = breakPolicyNote(toDate);
+  return [breakNote, lunch].filter(Boolean).join(' ') || null;
+}
+
+function breakPolicyNote(toDate) {
   const h = settingsHistoryRepository.listForKey('paidBreakMinutes').filter((e) => e.from <= toDate);
   const changes = h.filter((e) => e.from !== BASE_FROM);
   if (!changes.length) return null;
@@ -68,9 +85,11 @@ async function buildEmployeeWorkbook({ name, label, rows, note }) {
   const day = (m) => m / 1440; // مدت‌زمان به‌صورت کسری از شبانه؛ قالب [h]:mm
   const time = (s) => { if (!s) return null; const [h, m] = s.split(':').map(Number); return (h * 60 + m) / 1440; };
   const first = 5;
+  const presenceDay = (x) => (x.in && x.out ? time(x.out) - time(x.in) : null);
+  const presenceOf = (x, r) => ({ formula: `IF(OR(C${r}="",D${r}=""),"",D${r}-C${r})`, result: presenceDay(x) === null ? '' : presenceDay(x) });
   rows.forEach((x, n) => {
     const r = first + n;
-    const vals = [x.jalali, x.weekday, time(x.in), time(x.out), { formula: `IF(OR(C${r}="",D${r}=""),"",D${r}-C${r})` }, day(x.brk), day(x.unpaid), day(x.remote), day(x.effective)];
+    const vals = [x.jalali, x.weekday, time(x.in), time(x.out), presenceOf(x, r), day(x.brk), day(x.unpaid), day(x.remote), day(x.effective)];
     vals.forEach((v, i) => {
       const c = ws.getCell(r, i + 1);
       c.value = v;
@@ -83,7 +102,11 @@ async function buildEmployeeWorkbook({ name, label, rows, note }) {
   });
   const last = first + rows.length - 1; const t = last + 1;
   ws.mergeCells(t, 1, t, 4); ws.getCell(t, 1).value = 'جمع کل';
-  'EFGHI'.split('').forEach((col, i) => { ws.getCell(t, 5 + i).value = { formula: `SUM(${col}${first}:${col}${last})` }; });
+  const sums = [
+    rows.reduce((a, x) => a + (presenceDay(x) || 0), 0), rows.reduce((a, x) => a + day(x.brk), 0), rows.reduce((a, x) => a + day(x.unpaid), 0),
+    rows.reduce((a, x) => a + day(x.remote), 0), rows.reduce((a, x) => a + day(x.effective), 0),
+  ];
+  'EFGHI'.split('').forEach((col, i) => { ws.getCell(t, 5 + i).value = { formula: `SUM(${col}${first}:${col}${last})`, result: sums[i] }; });
   for (let i = 1; i <= 9; i += 1) {
     const c = ws.getCell(t, i); Object.assign(c, { font: f({ size: 12, bold: true, color: { argb: 'FFFFFFFF' } }), fill: fill(navy), border, alignment: { horizontal: 'center', vertical: 'middle' } });
     if (i >= 5) c.numFmt = '[h]:mm';
@@ -91,7 +114,7 @@ async function buildEmployeeWorkbook({ name, label, rows, note }) {
   ws.getRow(t).height = 26;
   const s = t + 2;
   [[s, 'جمع ساعت مفید (ساعت، اعشاری)', `I${t}*24`, '0.00'], [s + 1, 'جمع ساعت مفید (دقیقه)', `ROUND(I${t}*1440,0)`, '#,##0']].forEach(([r, text, formula, nf]) => {
-    ws.mergeCells(r, 1, r, 4); ws.getCell(r, 1).value = text; ws.getCell(r, 5).value = { formula }; ws.getCell(r, 5).numFmt = nf;
+    ws.mergeCells(r, 1, r, 4); ws.getCell(r, 1).value = text; ws.getCell(r, 5).value = { formula, result: nf === '0.00' ? sums[4] * 24 : Math.round(sums[4] * 1440) }; ws.getCell(r, 5).numFmt = nf;
     for (let i = 1; i <= 5; i += 1) Object.assign(ws.getCell(r, i), { fill: fill('FFDCE8F5'), font: f({ bold: true, color: { argb: navy } }), alignment: { horizontal: 'center' } });
   });
   const notes = ['توضیحات',
