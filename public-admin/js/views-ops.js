@@ -509,18 +509,35 @@
         <label class="field full"><span>کارمند</span><select name="userId" required>${userOptions(users, userId)}</select></label>
         <label class="field"><span>نوع</span><select name="leaveType"><option value="leave">مرخصی</option><option value="mission">مأموریت</option></select></label>
         <label class="field"><span>وضعیت</span><select name="status"><option value="approved">تأییدشده</option><option value="pending">در انتظار</option></select></label>
+        <label class="field"><span>مدت</span><select name="unit"><option value="day">چند روز / تمام‌روز</option><option value="half_day">نیم‌روز</option><option value="hour">ساعتی (از ساعت … تا …)</option></select></label>
         <label class="field"><span>از تاریخ</span><input type="date" name="startDate" required value="${fmt.today()}" /></label>
-        <label class="field"><span>تا تاریخ</span><input type="date" name="endDate" required value="${fmt.today()}" /></label>
+        <label class="field" data-lv-row="day"><span>تا تاریخ</span><input type="date" name="endDate" required value="${fmt.today()}" /></label>
+        <label class="field" data-lv-row="half_day" hidden><span>نیم‌روز</span><select name="halfDayPart"><option value="morning">صبح</option><option value="afternoon">عصر</option></select></label>
+        <label class="field" data-lv-row="hour" hidden><span>از ساعت</span><input type="time" name="startTime" /></label>
+        <label class="field" data-lv-row="hour" hidden><span>تا ساعت</span><input type="time" name="endTime" /></label>
         <label class="field full"><span>توضیح</span><textarea name="reason" rows="2"></textarea></label></div>
         <div class="form-msg"></div>
         <div class="modal-actions"><button class="btn primary" type="submit">ثبت</button></div></form>`,
       onMount(b, h) {
         AP.dates.mount(b); // از/تا تاریخ شمسی (S3-11b)
+        const unitSel = $('select[name="unit"]', b);
+        const syncUnit = () => {
+          $$('[data-lv-row]', b).forEach((row) => { row.hidden = row.dataset.lvRow !== unitSel.value; });
+          const end = $('[name="endDate"]', b); if (end) end.required = unitSel.value === 'day';
+        };
+        unitSel.addEventListener('change', syncUnit); syncUnit();
         $('form', b).addEventListener('submit', async (e) => {
           e.preventDefault();
           const f = AP.formData(e.target);
+          const body = { ...f, userId: Number(f.userId) };
+          if (f.unit === 'day') { delete body.unit; delete body.halfDayPart; delete body.startTime; delete body.endTime; }
+          else if (f.unit === 'half_day') { delete body.endDate; delete body.startTime; delete body.endTime; }
+          else {
+            delete body.endDate; delete body.halfDayPart;
+            if (!f.startTime || !f.endTime || f.endTime <= f.startTime) { const m = $('.form-msg', b); m.className = 'form-msg err'; m.textContent = 'ساعت شروع و پایان را درست وارد کنید (پایان بعد از شروع).'; return; }
+          }
           try {
-            await AP.api('/admin/leave-requests', { method: 'POST', body: { ...f, userId: Number(f.userId) } });
+            await AP.api('/admin/leave-requests', { method: 'POST', body });
             h.close(); AP.toast('ثبت شد.'); AP.refresh(); AP.refreshCounts();
           } catch (err) { const m = $('.form-msg', b); m.className = 'form-msg err'; m.textContent = err.message; }
         });
@@ -624,7 +641,9 @@
     const emp = it.employee;
     const type = it.leaveType && it.leaveType.title ? it.leaveType.title : (AP.LEAVE_TYPE[it.kind] || '—');
     const dur = it.durationMinutes != null ? ` · مدت: ${esc(fmt.min(it.durationMinutes))}` : '';
-    const span = it.startDate === it.endDate ? esc(fmt.dateLong(it.startDate)) : `${esc(fmt.dateLong(it.startDate))} تا ${esc(fmt.dateLong(it.endDate))}`;
+    let span = it.startDate === it.endDate ? esc(fmt.dateLong(it.startDate)) : `${esc(fmt.dateLong(it.startDate))} تا ${esc(fmt.dateLong(it.endDate))}`;
+    if (it.unit === 'hour' && it.startTime) span += ` · ساعت ${esc(it.startTime)} تا ${esc(it.endTime)}`;
+    else if (it.unit === 'half_day') span += ` · نیم‌روز ${it.halfDayPart === 'afternoon' ? 'عصر' : 'صبح'}`;
     const att = it.attachment
       ? `<div class="meta">پیوست: <a class="u-link-accent" href="${esc(it.attachment.url)}" target="_blank" rel="noopener">${esc(it.attachment.name || 'دانلود')}</a></div>` : '';
     const waiting = it.status === 'pending' && it.awaitingRole ? ` ${AP.badge('purple', `منتظر ${ROLE_STEP[it.awaitingRole] || it.awaitingRole}`)}` : '';
