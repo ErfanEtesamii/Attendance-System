@@ -509,10 +509,9 @@
         <label class="field full"><span>کارمند</span><select name="userId" required>${userOptions(users, userId)}</select></label>
         <label class="field"><span>نوع</span><select name="leaveType"><option value="leave">مرخصی</option><option value="mission">مأموریت</option></select></label>
         <label class="field"><span>وضعیت</span><select name="status"><option value="approved">تأییدشده</option><option value="pending">در انتظار</option></select></label>
-        <label class="field"><span>مدت</span><select name="unit"><option value="day">چند روز / تمام‌روز</option><option value="half_day">نیم‌روز</option><option value="hour">ساعتی (از ساعت … تا …)</option></select></label>
+        <label class="field"><span>مدت</span><select name="unit"><option value="day">چند روز / تمام‌روز</option><option value="hour">ساعتی (از ساعت … تا …)</option></select></label>
         <label class="field"><span>از تاریخ</span><input type="date" name="startDate" required value="${fmt.today()}" /></label>
         <label class="field" data-lv-row="day"><span>تا تاریخ</span><input type="date" name="endDate" required value="${fmt.today()}" /></label>
-        <label class="field" data-lv-row="half_day" hidden><span>نیم‌روز</span><select name="halfDayPart"><option value="morning">صبح</option><option value="afternoon">عصر</option></select></label>
         <label class="field" data-lv-row="hour" hidden><span>از ساعت</span><input type="time" name="startTime" /></label>
         <label class="field" data-lv-row="hour" hidden><span>تا ساعت</span><input type="time" name="endTime" /></label>
         <label class="field full"><span>توضیح</span><textarea name="reason" rows="2"></textarea></label></div>

@@ -963,7 +963,7 @@ body {
 
 /* فرم مرخصی/مأموریت: انتخاب واحد به‌صورت دکمه‌های قطعه‌ای، ساعت‌ها کنار هم، خلاصه‌ی مدت */
 #leave-form #leave-unit-row select { display: none; }
-#leave-form .lv-seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; padding: 5px; border-radius: 16px; background: color-mix(in srgb, var(--accent) 8%, var(--card-bg)); border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent); }
+#leave-form .lv-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; margin-top: 8px; padding: 5px; border-radius: 16px; background: color-mix(in srgb, var(--accent) 8%, var(--card-bg)); border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent); }
 #leave-form .lv-seg button { min-height: 44px; padding: 6px 4px; border: 0; border-radius: 12px; font: inherit; font-size: var(--fs-sm); font-weight: 800; color: var(--hint); background: transparent; cursor: pointer; transition: background .2s, color .2s, box-shadow .2s; }
 #leave-form .lv-seg button[aria-pressed="true"] { color: #fff; background: linear-gradient(135deg, #322c79, #4b3fc0); box-shadow: 0 4px 12px color-mix(in srgb, #4b3fc0 40%, transparent); }
 #leave-form .lv-seg button[hidden] { display: none; }
