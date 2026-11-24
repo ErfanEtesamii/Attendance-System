@@ -169,6 +169,7 @@
           ${tile('blue', 'out', 'خروج', `<span class="num">${fmt.clock(r.check_out_time)}</span>`)}
           ${tile('purple', 'clock', 'ساعت مفید', eff != null ? fmt.min(eff) : '—')}
           ${tile(late ? 'red' : 'gray', 'alert', 'تأخیر', late ? fmt.min(late) : '—')}
+          ${r.idleMinutes ? tile('orange', 'alert', 'تایم پرت (اعلام‌شده)', fmt.min(r.idleMinutes), 'از ساعت مفید کم شده') : ''}
         </div>
         <div class="rec-ips">
           <span class="rec-ip"><em>IP ورود</em><b class="ltr">${esc(r.check_in_ip || '—')}</b></span>
@@ -435,15 +436,16 @@
           <label class="field"><span>وضعیت</span><select name="status"><option value="">همه</option>${Object.entries(AP.STATUS_LABEL).map(([k, v]) => `<option value="${k}" ${k === attUi.status ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
         </form>
         <div class="card flush"><div class="table-wrap"><table>
-          <thead><tr><th>کارمند</th><th>تاریخ</th><th>ورود</th><th>خروج</th><th>استراحت</th><th>ساعت مفید</th><th>تأخیر</th><th>IP ورود</th><th>وضعیت</th></tr></thead><tbody>
+          <thead><tr><th>کارمند</th><th>تاریخ</th><th>ورود</th><th>خروج</th><th>استراحت</th><th>تایم پرت</th><th>ساعت مفید</th><th>تأخیر</th><th>IP ورود</th><th>وضعیت</th></tr></thead><tbody>
           ${data.records.length ? data.records.map((r) => `<tr class="${r.id ? 'clickable' : ''}" ${r.id ? `data-rec="${r.id}"` : ''}>
             <td><div class="cell-user">${AP.avatar(r.user ? r.user.fullName : '?', 'sm', r.user ? r.user.id : undefined)}<span><b>${esc(r.user ? r.user.fullName : '—')}</b><small>${esc(r.user ? r.user.department || '' : '')}</small></span></div></td>
             <td>${esc(fmt.date(r.record_date))}</td><td class="num">${r.remoteOnly ? '—' : fmt.clock(r.check_in_time)}${remoteCell(r.remoteSessions)}</td><td class="num">${r.remoteOnly ? '—' : fmt.clock(r.check_out_time)}</td>
             <td class="num">${r.breakMinutes ? fmt.min(r.breakMinutes) : '—'}</td>
+            <td class="num${r.idleMinutes ? ' att-idle' : ''}">${r.idleMinutes ? fmt.min(r.idleMinutes) : '—'}</td>
             <td class="num${r.summary.effectiveMinutes != null ? ' att-eff' : ''}">${r.summary.effectiveMinutes != null ? fmt.min(r.summary.effectiveMinutes) : '—'}</td>
             <td class="num${r.summary.lateMinutes ? ' att-late' : ''}">${r.summary.lateMinutes ? fmt.min(r.summary.lateMinutes) : '—'}</td>
             <td><span class="ltr muted">${esc(String(r.check_in_ip || '—').replace(/^::ffff:/i, ''))}</span></td><td>${r.remoteOnly ? AP.badge('purple', 'فقط دورکاری') : AP.statusBadge(r.status)}${r.via_remote ? ` ${AP.badge('purple', 'دورکاری')}` : ''}</td></tr>`).join('')
-            : `<tr><td colspan="9">${emptyBox('رکوردی با این فیلتر پیدا نشد.')}</td></tr>`}
+            : `<tr><td colspan="10">${emptyBox('رکوردی با این فیلتر پیدا نشد.')}</td></tr>`}
           </tbody></table></div></div>`;
       return {
         html,

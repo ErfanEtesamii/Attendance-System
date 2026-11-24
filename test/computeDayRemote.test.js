@@ -62,3 +62,16 @@ describe('استراحتِ بسته‌نشده در دورکاری', () => {
     assert.equal(run(rec, brk, [{ start: ms('09:00'), end: ms('18:00') }]).effective, 480);
   });
 });
+
+describe('تایم پرت (idle_minutes) با دورکاری', () => {
+  test('از کل ساعت مفید (حضوری + دورکاری) کم می‌شود', () => {
+    const rec = { check_in_time: at('09:00'), check_out_time: at('18:00'), status: 'normal', idle_minutes: 60 };
+    const d = run(rec, [], [{ start: ms('13:00'), end: ms('18:00') }]);
+    assert.equal(d.effective, 240 + 300 - 60);
+  });
+  test('اگر حضوری از تایم پرت کمتر باشد، باقی‌مانده از دورکاری کم می‌شود', () => {
+    const rec = { check_in_time: at('09:00'), check_out_time: at('18:00'), status: 'normal', idle_minutes: 120 };
+    const d = run(rec, [], [{ start: ms('10:00'), end: ms('18:00') }]); // حضوری ۶۰ + دورکاری ۴۸۰
+    assert.equal(d.effective, 60 + 480 - 120);
+  });
+});

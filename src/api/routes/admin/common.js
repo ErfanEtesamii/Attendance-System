@@ -84,6 +84,7 @@ function enrichRecord(record, userMap) {
     segments,
     segmentCount: segments.length,
     breakMinutes: breakRepository.totalBreakMinutes(record.id),
+    idleMinutes: Number(record.idle_minutes) || 0,
     summary: safeSummary(record),
   };
 }

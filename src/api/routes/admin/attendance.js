@@ -151,7 +151,7 @@ router.get('/admin/attendance', requirePermission('attendance.read'), (req, res)
         id: null, remoteOnly: true, user_id: Number(uid), record_date: date,
         check_in_time: null, check_out_time: null, check_in_ip: null, status: null, via_remote: 0,
         user: u ? { id: u.id, fullName: u.full_name, department: u.department || '', personnelCode: u.personnel_code || '' } : null,
-        breaks: [], segments: [], segmentCount: 0, breakMinutes: 0, summary: { effectiveMinutes: null, lateMinutes: 0 },
+        breaks: [], segments: [], segmentCount: 0, breakMinutes: 0, idleMinutes: 0, summary: { effectiveMinutes: null, lateMinutes: 0 },
         remoteSessions: sessions,
       });
     }
@@ -174,7 +174,7 @@ router.get('/admin/attendance/export', requirePermission('attendance.read'), (re
       r.check_out_ip || '', e.breakMinutes, e.summary.effectiveMinutes ?? '', e.summary.lateMinutes,
       e.summary.earlyLeaveMinutes, e.summary.overtimeMinutes, r.status,
       ...(() => { const s = e.summary.effectiveMinutes === null ? null : dayService.breakSplit(r); return [s ? s.paid : '', s ? s.unpaid : '']; })(), // C1
-      EXPORT_WEEKDAYS[(new Date(`${r.record_date}T00:00:00Z`).getUTCDay() + 1) % 7], EXPORT_STATUS[r.status] || r.status || '', e.user?.role || '', r.created_at || '', r.updated_at || '',
+      EXPORT_WEEKDAYS[(new Date(`${r.record_date}T00:00:00Z`).getUTCDay() + 1) % 7], EXPORT_STATUS[r.status] || r.status || '', e.user?.role || '', r.created_at || '', r.updated_at || '', e.idleMinutes,
     ];
   });
   // CSV: همان جدول تخت قبلی (بدون تغییر). xlsx: کارتکس — برای هر کارمند یک شیت (مشخصات بالا + همه‌ی روزهای بازه + جمع کل)
@@ -183,7 +183,7 @@ router.get('/admin/attendance/export', requirePermission('attendance.read'), (re
     headers: ['نام', 'کد پرسنلی', 'دپارتمان', 'تاریخ', 'تاریخ شمسی', 'ورود', 'IP ورود', 'خروج', 'IP خروج',
       'دقیقه استراحت', 'دقیقه مفید', 'دقیقه تأخیر', 'دقیقه خروج زودهنگام', 'دقیقه اضافه‌کاری', 'وضعیت',
       'استراحت با حقوق (دقیقه)', 'استراحت بدون حقوق (دقیقه)',
-      'روز هفته', 'وضعیت (فارسی)', 'نقش', 'زمان ایجاد رکورد', 'آخرین ویرایش'],
+      'روز هفته', 'وضعیت (فارسی)', 'نقش', 'زمان ایجاد رکورد', 'آخرین ویرایش', 'تایم پرت (دقیقه)'],
     rows,
   };
   const sheets = () => buildRangeCardSheets({ users: [...userMap.values()], from, to });

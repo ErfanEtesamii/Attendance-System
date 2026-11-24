@@ -556,7 +556,7 @@ function computeDay(args = {}) {
   if (segs.length) {
     const last = segs[segs.length - 1];
     const gaps = mergeWindows((breaks || []).filter((b) => b && (b.via_remote === 1 || b.via_remote === true) && b.end_time).flatMap((b) => subtractWindows([toMs(b.start_time), toMs(b.end_time)], wins).map(([a, z]) => ({ start: a, end: z }))));
-    onsite = computeDayCore({ ...args, lunchExclude: gaps, record: { ...record, check_in_time: segs[0].in, check_out_time: last.out }, breaks: brks, segments: segs });
+    onsite = computeDayCore({ ...args, lunchExclude: gaps, record: { ...record, idle_minutes: 0, check_in_time: segs[0].in, check_out_time: last.out }, breaks: brks, segments: segs });
   }
   // استراحتِ بسته‌نشده داخل جلسه‌ی دورکاری (تا پایان جلسه/خروج باز مانده و خودکار بسته شده): فقط تا شروع آن استراحت کار حساب می‌شود
   const credited = wins.map(([a, b]) => {
@@ -578,10 +578,12 @@ function computeDay(args = {}) {
   const out = { ...base };
   out.break = onsite.break; out.breakPaid = onsite.breakPaid; out.breakUnpaid = onsite.breakUnpaid; out.breakAuto = onsite.breakAuto;
   if (base.breakExcess !== undefined) out.breakExcess = onsite.breakExcess !== undefined ? onsite.breakExcess : 0;
-  out.effective = onsite.effective + remoteMinutes;
+  // تایم پرتِ اعلام‌شده (idle_minutes) از کل ساعت مفید (حضوری + دورکاری) کم می‌شود
+  const idle = Number.isFinite(Number(record.idle_minutes)) && Number(record.idle_minutes) > 0 ? Math.round(Number(record.idle_minutes)) : 0;
+  out.effective = Math.max(0, onsite.effective + remoteMinutes - idle);
   out.effectiveWithMission = Math.max(0, base.effectiveWithMission - base.effective + out.effective);
   out.remoteMinutes = remoteMinutes;
-  out.remoteDetail = { remoteGross: remoteGrossMin, remoteBreak: remoteBreakMin, onsiteEffective: onsite.effective, onsiteBreak: onsite.break, onsiteBreakPaid: onsite.breakPaid, onsiteBreakUnpaid: onsite.breakUnpaid, onsiteBreakAuto: onsite.breakAuto, credited: credited.map(([a, b]) => [a, b]), full: wins.map(([a, b]) => [a, b]) };
+  out.remoteDetail = { idle, remoteGross: remoteGrossMin, remoteBreak: remoteBreakMin, onsiteEffective: Math.max(0, Math.min(onsite.effective, out.effective)), onsiteBreak: onsite.break, onsiteBreakPaid: onsite.breakPaid, onsiteBreakUnpaid: onsite.breakUnpaid, onsiteBreakAuto: onsite.breakAuto, credited: credited.map(([a, b]) => [a, b]), full: wins.map(([a, b]) => [a, b]) };
   return out;
 }
 

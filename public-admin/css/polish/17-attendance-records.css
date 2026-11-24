@@ -157,3 +157,5 @@ body:has(.nav-item.active[data-view="attendance"]) #page[aria-busy="true"] .skel
   #att-filters [data-range], #att-filters [data-range]:hover { transition: none; transform: none; }
   #att-filters + .card.flush tbody > tr > td:first-child::before { transition: none; }
 }
+
+#att-filters + .card.flush td.att-idle { color: var(--orange); font-weight: 800; }

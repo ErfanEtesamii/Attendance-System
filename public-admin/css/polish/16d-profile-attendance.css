@@ -76,3 +76,6 @@
   .atd-m { min-width: 100px; }
 }
 @media (prefers-reduced-motion: reduce) { .atd-day, .atd-day:hover, .atd-chip { transition: none; transform: none; } }
+
+.atd-m.is-idle b { color: var(--orange); }
+.atd-m.is-idle em::before { content: '⏱ '; }
