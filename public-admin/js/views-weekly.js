@@ -80,12 +80,12 @@
 
   // نوع تسک: فوری (ارجاعی/خودفوری) | واجب (سیستمی) | روزانه (برنامه‌ی همین روز، منتقل‌شده یا خارج از برنامه) | روتین (بدون تاریخ؛ هر روز کاری تکرار می‌شود)
   const KIND = {
-    urgent: { icon: '⚡', title: 'فوری', hint: 'ارجاع‌شده یا فوریِ خودِ کارمند' },
+    urgent: { icon: '⚡', title: 'تسک فوری', hint: 'ارجاع‌شده یا فوریِ خودِ کارمند' },
     mandatory: { icon: '🔒', title: 'واجب', hint: 'تسک سیستمی' },
-    daily: { icon: '📌', title: 'روزانه', hint: 'برنامه‌ی همین روز' },
+    daily: { icon: '📌', title: 'تسک روزانه', hint: 'برنامه‌ی همین روز' },
     routine: { icon: '🔁', title: 'روتین', hint: 'هر روز کاری تکرار می‌شود' },
   };
-  const KIND_ORDER = ['urgent', 'mandatory', 'daily', 'routine'];
+  const KIND_ORDER = ['urgent', 'daily', 'routine', 'mandatory']; // واجب (بررسی گزارش تیم) مختصر در انتها
   function taskKind(t) {
     if (t.isUrgent) return 'urgent';
     if (t.isSystem) return 'mandatory';
@@ -164,12 +164,11 @@
       t.outOfPlan ? AP.badge('', 'خارج از برنامه') : '',
     ].filter(Boolean).join('');
     const kind = taskKind(t);
-    const kindPill = kind === 'routine' ? `<span class="tk-pill tk-pill-routine">${KIND.routine.icon} روتین</span>` : (kind === 'daily' ? `<span class="tk-pill tk-pill-daily">${KIND.daily.icon} ${t.source === 'rescheduled' ? 'منتقل‌شده به این روز' : 'روزانه'}</span>` : '');
-    const stateChip = `<span class="tk-state tk-state-${STATUS_CLS[t.status] || 'is-none'}">${TASK_ICON[t.status] || '○'} ${esc((TASK_STATUS[t.status] || ['', ''])[1])}</span>`;
-    return `<li class="day-task dt-row tk-k-${kind} dt-${STATUS_CLS[t.status] || 'is-none'}${t.isUrgent ? ' is-urgent' : ''}">
+    const kindPill = kind === 'daily' && t.source === 'rescheduled' ? `<span class="tk-pill tk-pill-daily">↪ منتقل‌شده به این روز</span>` : '';
+        return `<li class="day-task dt-row tk-k-${kind} dt-${STATUS_CLS[t.status] || 'is-none'}${t.isUrgent ? ' is-urgent' : ''}">
       ${taskStatusCell(t.status)}
       <div class="dt-body">
-      <div class="tk-top">${t.isUrgent ? AP.badge('red', t.selfAssigned ? '⚡ فوری (خودش)' : '⚡ فوری', true) : kindPill}${t.priority === 'high' && !t.isUrgent ? AP.badge('late', 'اولویت بالا') : ''}${stateChip}</div>
+      <div class="tk-top">${t.isUrgent ? AP.badge('red', t.selfAssigned ? '⚡ فوری (خودش)' : '⚡ فوری', true) : kindPill}${t.priority === 'high' && !t.isUrgent ? AP.badge('late', 'اولویت بالا') : ''}</div>
       <div class="title tk-title">${esc(t.title)}</div>
       ${t.isUrgent && ((t.selfAssigned && t.scheduledStartTime && t.urgentDeadlineTime) || (!t.selfAssigned && t.assignedBy)) ? `<div class="muted text-xs">${t.selfAssigned ? `زمان: ${esc(t.scheduledStartTime)} تا ${esc(t.urgentDeadlineTime)}` : `از طرف: ${esc(t.assignedBy)}${t.urgentDeadlineTime ? ` · مهلت ${esc(t.urgentDeadlineTime)}` : ''}`}</div>` : ''}
       ${meta ? `<div class="day-task-meta">${meta}</div>` : ''}
@@ -210,10 +209,9 @@
     return KIND_ORDER.filter((k) => by[k]).map((k) => {
       const list = by[k]; const K = KIND[k];
       const done = list.filter((t) => t.status === 'done').length;
-      const pct = Math.round((done / list.length) * 100);
-      return `<section class="tk-group tk-${k}" aria-label="${esc(`تسک‌های ${K.title}`)}">
-        <header class="tk-head"><span class="tk-ico" aria-hidden="true">${K.icon}</span><span class="tk-name">${K.title}</span><span class="tk-sub">${esc(K.hint)}</span><span class="tk-count">${fmt.num(done)} از ${fmt.num(list.length)}</span></header>
-        <div class="tk-bar" aria-hidden="true"><i data-progress="${pct}"></i></div>
+      if (k === 'mandatory') return `<section class="tk-group tk-mandatory tk-compact" aria-label="${esc(`تسک ${K.title}`)}"><ul class="day-tasks">${list.map((t) => taskRow(t, isSelf, opts)).join('')}</ul></section>`;
+      return `<section class="tk-group tk-${k}" aria-label="${esc(K.title)}">
+        <header class="tk-head"><span class="tk-name">${K.title}</span><span class="tk-count">${fmt.num(done)} از ${fmt.num(list.length)}</span></header>
         <ul class="day-tasks">${list.map((t) => taskRow(t, isSelf, opts)).join('')}</ul>
       </section>`;
     }).join('');

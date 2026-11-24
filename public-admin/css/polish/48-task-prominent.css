@@ -1,36 +1,43 @@
-/* ===== برنامه‌ی هفتگی کارمند: تسک‌ها مشخص‌تر و توی چشم =====
-   رنگ نوار کنار کارت = نوع تسک؛ رنگ زمینه و دایره‌ی بزرگ = وضعیت (انجام شد سبز · انجام نشد قرمز · ناقص نارنجی).
-   عنوان درشت‌تر و پررنگ، چیپ وضعیت توپر، سرتیتر گروه به‌صورت نوار رنگی. فقط توکن‌های تم. */
-.tk-group { padding: 0 0 12px; overflow: hidden; border-radius: 20px; border-width: 1.5px;
-  background: color-mix(in srgb, var(--tk) 6%, var(--card)); box-shadow: 0 4px 14px color-mix(in srgb, var(--tk) 12%, transparent); }
-.tk-group > .tk-bar, .tk-group > .day-tasks { margin-inline: 10px; }
-.tk-head { margin: 0 0 8px; padding: 9px 12px; gap: 6px 8px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--tk) 26%, var(--card)), color-mix(in srgb, var(--tk) 8%, var(--card))); border-bottom: 1px solid color-mix(in srgb, var(--tk) 30%, transparent); }
-.tk-ico { width: 32px; height: 32px; font-size: 17px; border-radius: 12px; background: var(--tk); box-shadow: 0 3px 8px color-mix(in srgb, var(--tk) 40%, transparent); }
-.tk-name { font-size: 1.02rem; font-weight: 900; color: var(--text); }
-.tk-count { font-size: 12px; padding: 3px 11px; color: #fff; background: var(--tk); }
-.tk-bar { height: 7px; margin-bottom: 10px; background: color-mix(in srgb, var(--tk) 18%, var(--card)); }
+/* ===== برنامه‌ی هفتگی کارمند: فهرست فشرده ===== 
+   هر نوع تسک یک مستطیلِ ساده با سرتیتر («تسک روزانه» / «روتین»)؛ تسک‌ها با خط‌چین از هم جدا می‌شوند و وضعیت فقط با ✓ / ✗ / ◐ نشان داده می‌شود.
+   «بررسی گزارش تیم» (واجب) یک خط کوتاه در انتهاست. فقط توکن‌های تم. */
+.tk-group { --tk: var(--hint); margin-top: 10px; padding: 0; overflow: hidden; border-radius: 14px; border: 1.5px solid color-mix(in srgb, var(--tk) 45%, transparent);
+  background: var(--card); box-shadow: none; }
+.tk-group:first-child { margin-top: 0; }
+.tk-urgent { --tk: var(--red); }
+.tk-daily { --tk: var(--purple); }
+.tk-routine { --tk: color-mix(in srgb, var(--blue) 55%, var(--green)); }
+.tk-mandatory { --tk: var(--blue); }
+.tk-head { margin: 0; padding: 7px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  background: color-mix(in srgb, var(--tk) 16%, var(--card)); border-bottom: 1.5px solid color-mix(in srgb, var(--tk) 45%, transparent); }
+.tk-name { font-size: 0.95rem; font-weight: 900; color: color-mix(in srgb, var(--tk) 80%, var(--text)); }
+.tk-count { margin: 0; padding: 1px 9px; font-size: 12px; font-weight: 800; border-radius: 999px; color: color-mix(in srgb, var(--tk) 80%, var(--text)); background: color-mix(in srgb, var(--tk) 14%, transparent); }
+.tk-group > .day-tasks { margin: 0; padding: 0; }
 
-/* کارت تسک */
-.tk-group .day-task.dt-row { grid-template-columns: 40px minmax(0, 1fr); column-gap: 8px; margin-top: 10px; padding: 12px 12px 12px 10px; border-radius: 16px; border-inline-start-width: 6px;
-  background: color-mix(in srgb, var(--card) 94%, var(--dt-state, var(--tk)) 6%); box-shadow: 0 3px 10px color-mix(in srgb, var(--tk) 14%, transparent); }
-.tk-group .day-task.dt-row.dt-is-done { --dt-state: var(--green); background: color-mix(in srgb, var(--card) 90%, var(--green) 10%); }
-.tk-group .day-task.dt-row.dt-is-not-done { --dt-state: var(--red); background: color-mix(in srgb, var(--card) 90%, var(--red) 10%); }
-.tk-group .day-task.dt-row.dt-is-partial { --dt-state: var(--orange); background: color-mix(in srgb, var(--card) 90%, var(--orange) 11%); }
-.tk-group .day-task.dt-row.dt-is-done .tk-title { color: var(--text); }
-.tk-title { font-size: 1.02rem; font-weight: 800; line-height: 1.75; color: var(--text); overflow-wrap: anywhere; }
+/* ردیف تسک: بدون کادر، جداشده با خط‌چین */
+.tk-group .day-task.dt-row { grid-template-columns: 24px minmax(0, 1fr); column-gap: 8px; margin: 0; padding: 8px 12px; border: 0; border-radius: 0; box-shadow: none; background: transparent;
+  border-top: 1.5px dashed color-mix(in srgb, var(--hint) 40%, transparent); }
+.tk-group .day-task.dt-row:first-child { border-top: 0; }
+.tk-title { font-size: 0.93rem; font-weight: 700; line-height: 1.65; color: var(--text); overflow-wrap: anywhere; }
+.tk-group .day-task.dt-row.dt-is-done .tk-title { color: var(--hint); }
 
-/* دایره‌ی وضعیت: بزرگ و توپر */
-.tk-group .dt-mark { width: 34px; height: 34px; font-size: 18px; font-weight: 900; color: #fff; box-shadow: 0 3px 8px color-mix(in srgb, var(--hint) 30%, transparent); background: var(--hint); }
-.tk-group .dt-mark.is-done { background: var(--green); box-shadow: 0 3px 10px color-mix(in srgb, var(--green) 45%, transparent); }
-.tk-group .dt-mark.is-not-done { background: var(--red); box-shadow: 0 3px 10px color-mix(in srgb, var(--red) 45%, transparent); }
-.tk-group .dt-mark.is-partial { background: var(--orange); box-shadow: 0 3px 10px color-mix(in srgb, var(--orange) 45%, transparent); }
+/* وضعیت: فقط علامت ✓ / ✗ / ◐ */
+.tk-group .dt-mark { width: 22px; height: 22px; font-size: 20px; font-weight: 900; background: transparent; box-shadow: none; color: var(--hint); }
+.tk-group .dt-mark.is-done { color: var(--green); }
+.tk-group .dt-mark.is-not-done { color: var(--red); }
+.tk-group .dt-mark.is-partial { color: var(--orange); }
 
-/* چیپ‌ها */
-.tk-pill { font-size: 12px; padding: 3px 11px; color: #fff; background: var(--tk); }
-.tk-state { font-size: 12px; padding: 3px 11px; color: #fff; background: var(--hint); }
-.tk-state-is-done { color: #fff; background: var(--green); }
-.tk-state-is-not-done { color: #fff; background: var(--red); }
-.tk-state-is-partial { color: #fff; background: var(--orange); }
-.tk-group .day-task-meta, .tk-group .reason { font-size: 12.5px; }
-.tk-group .day-task.dt-row.is-urgent { box-shadow: 0 0 0 2px color-mix(in srgb, var(--red) 55%, transparent), 0 4px 12px color-mix(in srgb, var(--red) 22%, transparent); }
+.tk-top { margin-bottom: 2px; gap: 4px; }
+.tk-top:empty { display: none; }
+.tk-pill { font-size: 11px; padding: 1px 8px; }
+.tk-group .day-task-meta, .tk-group .reason { font-size: 12px; margin-top: 2px; }
+.tk-group .day-task.dt-row.is-urgent { background: color-mix(in srgb, var(--red) 7%, transparent); }
+
+/* بررسی گزارش تیم: یک خط کوتاه در انتها */
+.tk-compact { border-style: solid; border-width: 1px; background: color-mix(in srgb, var(--blue) 6%, var(--card)); }
+.tk-compact .day-task.dt-row { padding: 6px 12px; }
+.tk-compact .day-task.dt-row .title { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 0.85rem; font-weight: 700; }
+.tk-compact .day-task.dt-row .title .badge { display: none; }
+.tk-compact .rv-progress { display: none; }
+.tk-compact .rv-progress-text { font-size: 12px; color: var(--hint); margin-top: 0; }
+.tk-compact .rv-open { padding: 0 8px; min-height: 0; font-size: 12px; }
