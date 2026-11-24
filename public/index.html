@@ -167,11 +167,12 @@
       <section id="view-leave" class="view hidden">
         <h3 class="view-title">درخواست مرخصی / مأموریت</h3>
         <form id="leave-form" class="card form">
-          <label>نوع
+          <label>نوع درخواست
             <select name="leaveType">
               <option value="leave">مرخصی</option>
               <option value="mission">مأموریت</option>
             </select>
+            <div class="lv-chips" id="leave-type-chips" role="group" aria-label="نوع درخواست"></div>
           </label>
           <div class="form-msg" id="leave-balance"></div>
           <label id="leave-unit-row" hidden>واحد
@@ -180,10 +181,18 @@
               <option value="half_day">نیم‌روز</option>
               <option value="hour">ساعتی</option>
             </select>
+            <div class="lv-seg" id="leave-unit-seg" role="group" aria-label="واحد درخواست">
+              <button type="button" data-unit="day">📅 روزانه</button>
+              <button type="button" data-unit="half_day">🌗 نیم‌روز</button>
+              <button type="button" data-unit="hour">⏱ ساعتی</button>
+            </div>
           </label>
           <label id="leave-start-row">از تاریخ
             <input type="date" name="startDate" required />
           </label>
+          <div class="lv-quick" id="leave-date-quick" role="group" aria-label="انتخاب سریع تاریخ">
+            <button type="button" data-add="0">امروز</button><button type="button" data-add="1">فردا</button><button type="button" data-add="2">پس‌فردا</button>
+          </div>
           <label id="leave-end-row">تا تاریخ
             <input type="date" name="endDate" required />
           </label>
@@ -192,6 +201,7 @@
               <option value="morning">صبح</option>
               <option value="afternoon">عصر</option>
             </select>
+            <div class="lv-chips" id="leave-part-chips" role="group" aria-label="بخش روز"></div>
           </label>
           <label id="leave-starttime-row" hidden>از ساعت
             <input type="time" name="startTime" />
@@ -199,6 +209,11 @@
           <label id="leave-endtime-row" hidden>تا ساعت
             <input type="time" name="endTime" />
           </label>
+          <div class="lv-quick" id="leave-hour-quick" role="group" aria-label="مدت سریع" hidden>
+            <span class="lv-quick-label">مدت سریع:</span>
+            <button type="button" data-h="1">۱ ساعت</button><button type="button" data-h="2">۲ ساعت</button><button type="button" data-h="3">۳ ساعت</button>
+          </div>
+          <div class="lv-hour-sum" id="leave-hour-sum" hidden></div>
           <label>توضیح
             <textarea name="reason" rows="2" placeholder="اختیاری"></textarea>
           </label>

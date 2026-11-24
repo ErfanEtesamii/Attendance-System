@@ -960,3 +960,32 @@ body {
 :root[data-theme="dark"] #view-profile .pf-hero #pf-role-chip {
   background: linear-gradient(135deg, #7a1f1a, #5a1e12); color: #fff4dc; border-color: #b8862e;
 }
+
+/* فرم مرخصی/مأموریت: انتخاب واحد به‌صورت دکمه‌های قطعه‌ای، ساعت‌ها کنار هم، خلاصه‌ی مدت */
+#leave-form #leave-unit-row select { display: none; }
+#leave-form .lv-seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; padding: 5px; border-radius: 16px; background: color-mix(in srgb, var(--accent) 8%, var(--card-bg)); border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent); }
+#leave-form .lv-seg button { min-height: 44px; padding: 6px 4px; border: 0; border-radius: 12px; font: inherit; font-size: var(--fs-sm); font-weight: 800; color: var(--hint); background: transparent; cursor: pointer; transition: background .2s, color .2s, box-shadow .2s; }
+#leave-form .lv-seg button[aria-pressed="true"] { color: #fff; background: linear-gradient(135deg, #322c79, #4b3fc0); box-shadow: 0 4px 12px color-mix(in srgb, #4b3fc0 40%, transparent); }
+#leave-form .lv-seg button[hidden] { display: none; }
+#leave-form:has(#leave-starttime-row:not([hidden])) #leave-start-row,
+#leave-form:has(#leave-part-row:not([hidden])) #leave-start-row,
+#leave-form #leave-part-row:not([hidden]) { grid-column: 1 / -1; }
+#leave-form #leave-starttime-row:not([hidden]), #leave-form #leave-endtime-row:not([hidden]) { padding: 10px 12px; border-radius: 16px; background: color-mix(in srgb, var(--accent) 7%, var(--card-bg)); border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent); }
+#leave-form .lv-hour-sum { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 14px; border-radius: 14px; font-weight: 800; font-size: var(--fs-sm); color: var(--green); background: color-mix(in srgb, var(--green) 12%, transparent); }
+#leave-form .lv-hour-sum.is-bad { color: var(--red); background: color-mix(in srgb, var(--red) 12%, transparent); }
+#leave-form .lv-hour-sum[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { #leave-form .lv-seg button { transition: none; } }
+
+/* فرم مرخصی/مأموریت: انتخاب نوع و بخش روز به‌صورت دکمه، میان‌برهای تاریخ و مدت */
+#leave-form select[name="leaveType"], #leave-form select[name="halfDayPart"] { display: none; }
+#leave-form .lv-chips { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; margin-top: 8px; }
+#leave-form .lv-chips button { min-height: 52px; padding: 8px 6px; border-radius: 16px; font: inherit; font-size: var(--fs-sm); font-weight: 800; color: var(--text); cursor: pointer;
+  background: var(--card-bg); border: 1.5px solid color-mix(in srgb, var(--accent) 25%, transparent); transition: border-color .2s, background .2s, box-shadow .2s; }
+#leave-form .lv-chips button[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--card-bg)); box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 22%, transparent); }
+#leave-form .lv-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: -4px; }
+#leave-form .lv-quick-label { font-size: var(--fs-xs); font-weight: 700; color: var(--hint); }
+#leave-form .lv-quick button { min-height: 36px; padding: 4px 14px; border-radius: 999px; font: inherit; font-size: var(--fs-xs); font-weight: 800; cursor: pointer; color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent); }
+#leave-form .lv-quick button:active { transform: scale(.96); }
+#leave-form .lv-quick[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { #leave-form .lv-chips button { transition: none; } }

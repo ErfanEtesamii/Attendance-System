@@ -1591,6 +1591,73 @@
     return v.startsWith('id:') ? leaveTypes.find((t) => `id:${t.id}` === v) || null : null;
   };
 
+  // گزینه‌های select به‌صورت دکمه‌های انتخابی (select اصلی پنهان می‌ماند و مقدارش همان است)
+  function chipify(select, box, iconFor) {
+    if (!select || !box || !select.options || typeof box.appendChild !== 'function' || typeof select.addEventListener !== 'function') return null;
+    const render = () => {
+      box.textContent = '';
+      Array.from(select.options).forEach((opt) => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.dataset.value = opt.value;
+        b.textContent = `${iconFor ? iconFor(opt) : ''} ${opt.textContent}`.trim();
+        b.setAttribute('aria-pressed', String(select.value === opt.value));
+        b.addEventListener('click', () => { select.value = opt.value; select.dispatchEvent(new Event('change', { bubbles: true })); });
+        box.appendChild(b);
+      });
+    };
+    select.addEventListener('change', () => { Array.from(box.children).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.value === select.value))); });
+    render();
+    return render;
+  }
+  const leaveTypeIcon = (opt) => {
+    const t = leaveTypes.find((x) => `id:${x.id}` === opt.value);
+    return (t ? t.kind : opt.value) === 'mission' ? '🚗' : '🏖';
+  };
+  const renderTypeChips = chipify(leaveForm.leaveType, $('#leave-type-chips'), leaveTypeIcon);
+  chipify(leaveForm.halfDayPart, $('#leave-part-chips'), (o) => (o.value === 'afternoon' ? '🌇' : '🌅'));
+
+  // تاریخ امروز/فردا/پس‌فردا (به وقت تهران) و مدت سریع ساعتی
+  const tehranIso = (addDays = 0) => {
+    const d = new Date(Date.now() + addDays * 86400000);
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tehran', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+  };
+  const qsa = (sel) => (typeof document.querySelectorAll === 'function' ? document.querySelectorAll(sel) : []);
+  qsa('#leave-date-quick [data-add]').forEach((btn) => btn.addEventListener('click', () => {
+    const addN = Number(btn.dataset && btn.dataset.add);
+    if (!Number.isFinite(addN)) return;
+    const iso = tehranIso(addN);
+    if (leaveDates.startDate) leaveDates.startDate.setValue(iso); else leaveForm.startDate.value = iso;
+    if (leaveDates.endDate && !leaveDates.endDate.getValue()) leaveDates.endDate.setValue(iso);
+  }));
+  qsa('#leave-hour-quick [data-h]').forEach((btn) => btn.addEventListener('click', () => {
+    const hours = Number(btn.dataset && btn.dataset.h);
+    if (!Number.isFinite(hours) || !leaveForm.startTime || !leaveForm.endTime) return;
+    const pad = (n) => String(n).padStart(2, '0');
+    const toMinL = (v) => { const m = /^(\d{1,2}):(\d{2})$/.exec(v || ''); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
+    let a = toMinL(leaveForm.startTime.value);
+    if (a == null) {
+      const now = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Tehran', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
+      const n = toMinL(now); a = Math.ceil((n == null ? 600 : n) / 15) * 15;
+    }
+    const b = Math.min(a + hours * 60, 23 * 60 + 59);
+    leaveForm.startTime.value = `${pad(Math.floor(a / 60))}:${pad(a % 60)}`;
+    leaveForm.endTime.value = `${pad(Math.floor(b / 60))}:${pad(b % 60)}`;
+    leaveForm.startTime.dispatchEvent(new Event('input', { bubbles: true }));
+    leaveForm.endTime.dispatchEvent(new Event('input', { bubbles: true }));
+  }));
+
+  // خلاصه‌ی مدت در حالت ساعتی («مدت: ۲ ساعت و ۳۰ دقیقه»)
+  function updateHourSum(form, unit) {
+    const el = $('#leave-hour-sum');
+    if (!el) return;
+    const toMin = (v) => { const m = /^(\d{1,2}):(\d{2})$/.exec(v || ''); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
+    const a = toMin(fieldValue(form, 'startTime')); const b = toMin(fieldValue(form, 'endTime'));
+    const ok = unit === 'hour' && a != null && b != null && b > a;
+    el.hidden = unit !== 'hour' || a == null || b == null;
+    el.classList.toggle('is-bad', !el.hidden && !ok);
+    el.textContent = el.hidden ? '' : (ok ? `مدت: ${fmtDuration(b - a)}` : 'ساعت پایان باید بعد از شروع باشد');
+  }
+
   function applyUnitUI(form) {
     const type = selectedType(form);
     const units = type ? type.allowedUnits : ['day'];
@@ -1600,6 +1667,9 @@
     const unit = units.length < 2 ? units[0] : fieldValue(form, 'unit', 'day');
     ALL_UNIT_ROWS.forEach((sel) => { const row = $(sel); if (row) row.hidden = !(UNIT_ROWS[unit] || []).includes(sel); });
     if (form.endDate) form.endDate.required = unit === 'day';
+    qsa('#leave-unit-seg [data-unit]').forEach((btn) => { btn.hidden = !units.includes(btn.dataset.unit); btn.setAttribute('aria-pressed', String(btn.dataset.unit === unit)); });
+    updateHourSum(form, unit);
+    const hq = $('#leave-hour-quick'); if (hq) hq.hidden = unit !== 'hour';
     const bal = $('#leave-balance');
     if (bal) bal.textContent = type && type.balance ? `مانده‌ی مرخصی شما: ${type.balance.remainingText}` : '';
     return unit;
@@ -1623,10 +1693,18 @@
         });
         sel.value = `id:${items[0].id}`;
       }
+      if (renderTypeChips) renderTypeChips();
       applyUnitUI(leaveForm);
     } catch (_) { /* بدون نوع‌های پویا: فرم قدیمی */ }
   }
 
+  qsa('#leave-unit-seg [data-unit]').forEach((btn) => btn.addEventListener('click', () => {
+    if (leaveForm.unit) { leaveForm.unit.value = btn.dataset.unit; applyUnitUI(leaveForm); }
+  }));
+  ['startTime', 'endTime'].forEach((name) => {
+    const el = leaveForm[name];
+    if (el && typeof el.addEventListener === 'function') ['change', 'input'].forEach((ev) => el.addEventListener(ev, () => applyUnitUI(leaveForm)));
+  });
   ['leaveType', 'unit'].forEach((name) => {
     const el = leaveForm[name];
     if (el && typeof el.addEventListener === 'function') el.addEventListener('change', () => applyUnitUI(leaveForm));
@@ -1672,6 +1750,7 @@
       msg.textContent = low ? 'درخواست ارسال شد؛ توجه: مانده‌ی مرخصی شما کافی نیست و ممکن است رد شود.' : 'درخواست با موفقیت ارسال شد.';
       msg.classList.add('ok');
       form.reset();
+      ['leaveType', 'halfDayPart'].forEach((n) => { if (form[n] && typeof form[n].dispatchEvent === 'function' && typeof Event === 'function') form[n].dispatchEvent(new Event('change', { bubbles: true })); });
       // reset فرم حالت داخلی datepicker را پاک نمی‌کند
       Object.values(leaveDates).forEach((dp) => { if (dp) dp.setValue(''); });
       leaveTypesLoaded = false; // مانده عوض شده؛ دفعه‌ی بعد دوباره بخوان
