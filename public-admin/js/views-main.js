@@ -561,7 +561,7 @@
           </span>
         </div>`;
 
-      const tabs = [['attendance', 'تردد'], ['leave', 'مرخصی و مأموریت'], ['disputes', 'اعتراض‌ها'], ['info', 'اطلاعات و ویرایش']];
+      const tabs = [['attendance', 'تردد'], ...((d.remoteDays || []).length ? [['remote', 'دورکاری']] : []), ['leave', 'مرخصی و مأموریت'], ['disputes', 'اعتراض‌ها'], ['info', 'اطلاعات و ویرایش']];
       if (AP.scheduleTab && AP.can('schedule.read')) tabs.push(['schedule', 'برنامه‌ی روزبه‌روز']); // B2
       if (d.team.length) tabs.push(['team', 'اعضای تیم']);
       if (AP.can('audit.read')) tabs.push(['activity', 'سوابق و رویدادها']);
@@ -667,6 +667,84 @@
             <div class="atd-list">${d.records.map(dayCard).join('')}</div>
             <div class="atd-none" hidden>${emptyBox('رکوردی با این فیلتر نیست.')}</div>`;
         },
+        remote() {
+          const days = d.remoteDays || [];
+          if (!days.length) return `<div class="card">${emptyBox('در این بازه دورکاری ثبت نشده است.')}</div>`;
+          const T = (v) => (v ? Date.parse(v) : NaN);
+          const clk = (v) => (v ? fmt.clock(v) : '—');
+          const KIND = {
+            onsite: ['onsite', 'حضور در شرکت', 'مفید (منهای استراحت‌های حضوری)'],
+            remote: ['remote', 'دورکاری', 'کامل مفید'],
+            inside_remote: ['rbrk', 'استراحت داخل دورکاری', 'کامل از دورکاری کسر می‌شود (بدون سهمیه‌ی با حقوق)'],
+            unclosed: ['cut', 'استراحتِ بسته‌نشده', 'کار تا شروع آن حساب شد؛ بعدش حساب نمی‌شود'],
+            gap: ['gap', 'فاصله‌ی حضوری ← دورکاری', 'استراحت: از مفید کم می‌شود'],
+            brk: ['brk', 'استراحت حضوری', 'طبق قاعده‌ی استراحت (با/بدون حقوق)'],
+          };
+          const card = (x) => {
+            const t = x.totals || { effective: 0, remote: 0, onsiteEffective: 0, onsiteMinutes: 0, breakUnpaid: 0, lunchAuto: 0, idle: 0 };
+            const j = window.Jalali.isoToJalali(x.date);
+            const items = [];
+            x.onsite.forEach((o) => items.push({ k: 'onsite', s: o.start, e: o.end, m: o.minutes }));
+            x.sessions.forEach((s) => items.push({ k: 'remote', s: s.start, e: s.end, m: s.minutes, sess: s }));
+            x.breaks.forEach((b) => items.push({ k: b.kind === 'onsite' ? 'brk' : b.kind, s: b.start, e: b.end, m: b.minutes, brk: b }));
+            items.sort((a, b) => T(a.s) - T(b.s) || (a.k === 'remote' ? -1 : 1));
+            const pts = items.flatMap((i) => [T(i.s), T(i.e)]).filter(Number.isFinite);
+            const lo = Math.min(...pts); const hi = Math.max(...pts); const span = Math.max(hi - lo, 60000);
+            const pos = (a, b) => { const l = ((T(a) - lo) / span) * 100; const w = Math.max(0.8, ((T(b || a) - T(a)) / span) * 100); return `data-seg="${l.toFixed(2)},${w.toFixed(2)}"`; };
+            const lane = (kinds) => items.filter((i) => kinds.includes(i.k) && Number.isFinite(T(i.s)) && Number.isFinite(T(i.e))).map((i) => `<i class="rd-seg rd-k-${KIND[i.k][0]}" ${pos(i.s, i.e)} title="${esc(KIND[i.k][1])} ${clk(i.s)}–${clk(i.e)}"></i>`).join('');
+            const sessCut = x.sessions.filter((s) => s.cutAt).map((s) => `<i class="rd-mark" ${pos(s.cutAt, s.cutAt)} title="پایان کار قابل‌قبول ${clk(s.cutAt)}"></i>`).join('');
+            const rows = items.map((i) => {
+              const [tone, label, effect] = KIND[i.k];
+              let note = effect; let extra = '';
+              if (i.k === 'remote') {
+                const s = i.sess;
+                if (s.status !== 'approved') { note = 'تأیید نشده؛ حساب نمی‌شود'; extra = AP.badge(s.status === 'rejected' ? 'red' : 'orange', s.status === 'rejected' ? 'ردشده' : 'در انتظار'); }
+                else if (s.cutAt) note = `فقط تا ${clk(s.cutAt)} حساب شد (${fmt.min(s.creditedMinutes)})`;
+                else note = `کل جلسه حساب شد (${fmt.min(s.creditedMinutes)}) و استراحت‌های داخلش جدا کسر می‌شود`;
+                if (s.autoClosed) extra += ` ${AP.badge('gray', 'بسته‌شدن خودکار')}`;
+              }
+              return `<li class="rd-row rd-k-${tone}"><span class="rd-dot" aria-hidden="true"></span>
+                <span class="rd-time ltr"><b>${clk(i.s)}</b> ← <b>${i.e ? clk(i.e) : 'باز'}</b></span>
+                <span class="rd-what"><b>${label}${i.m != null ? ` <span class="rd-dur">${fmt.min(i.m)}</span>` : ''}</b>${extra ? `<span class="rd-x">${extra}</span>` : ''}<small>${esc(note)}</small></span></li>`;
+            }).join('');
+            const unpaidNote = t.breakUnpaid || t.lunchAuto || t.idle
+              ? `<span class="rd-minus">کسر حضوری: استراحت بدون حقوق ${fmt.min(t.breakUnpaid)}${t.lunchAuto ? ` (شامل ناهار ثابت ${fmt.min(t.lunchAuto)})` : ''}${t.idle ? ` · بیکاری ${fmt.min(t.idle)}` : ''}</span>` : '';
+            return `
+            <article class="rd-day">
+              <header class="rd-head">
+                <span class="rd-date"><em>${esc(j ? window.Jalali.weekdayName(x.date) : '')}</em><b>${j ? fmt.num(j.jd) : '—'}</b><small>${esc(j ? window.Jalali.MONTH_NAMES[j.jm - 1] : '')}</small></span>
+                <span class="rd-io"><span><em>ورود</em><b>${clk(x.checkIn)}</b></span><span><em>خروج</em><b>${x.checkOut ? clk(x.checkOut) : 'ثبت نشده'}</b></span></span>
+                <span class="rd-badges">${x.status ? AP.statusBadge(x.status) : ''}${x.viaRemote ? ` ${AP.badge('purple', 'رکورد دورکاری')}` : ''}${x.checkIn && !x.checkOut ? ` ${AP.badge('red', 'خروج ثبت نشده')}` : ''}</span>
+                <span class="rd-total"><em>ساعت مفید کل</em><b>${fmt.min(t.effective)}</b></span>
+              </header>
+              <div class="rd-eq" aria-label="محاسبه‌ی ساعت مفید">
+                <span class="rd-eq-i rd-k-onsite"><em>مفید حضوری</em><b>${fmt.min(t.onsiteEffective)}</b></span><span class="rd-op">+</span>
+                <span class="rd-eq-i rd-k-remote"><em>دورکاری (خالص)</em><b>${fmt.min(t.remote)}</b></span><span class="rd-op">=</span>
+                <span class="rd-eq-i rd-k-total"><em>مفید کل</em><b>${fmt.min(t.effective)}</b></span>
+              </div>
+              ${t.remoteGross ? `<span class="rd-minus">دورکاری: ${fmt.min(t.remoteGross)} (پایان − شروع) منهای استراحت‌ها ${fmt.min(t.remoteBreak)} = ${fmt.min(t.remote)}</span>` : ''}
+              ${unpaidNote}
+              <div class="rd-tl" role="img" aria-label="خط زمانی روز">
+                <div class="rd-lane">${lane(['onsite', 'remote'])}${sessCut}</div>
+                <div class="rd-lane rd-lane-b">${lane(['brk', 'inside_remote', 'unclosed', 'gap'])}</div>
+                <div class="rd-axis"><span>${clk(new Date(lo).toISOString())}</span><span>${clk(new Date(hi).toISOString())}</span></div>
+              </div>
+              <ol class="rd-list">${rows}</ol>
+            </article>`;
+          };
+          const sum = days.reduce((a, x) => { const t = x.totals || {}; a.eff += t.effective || 0; a.rem += t.remote || 0; a.on += t.onsiteEffective || 0; return a; }, { eff: 0, rem: 0, on: 0 });
+          return `
+            <div class="rd-sum">
+              <span class="rd-eq-i rd-k-onsite"><em>مفید حضوری (این روزها)</em><b>${fmt.min(sum.on)}</b></span><span class="rd-op">+</span>
+              <span class="rd-eq-i rd-k-remote"><em>دورکاری (خالص)</em><b>${fmt.min(sum.rem)}</b></span><span class="rd-op">=</span>
+              <span class="rd-eq-i rd-k-total"><em>مفید کل</em><b>${fmt.min(sum.eff)}</b></span>
+            </div>
+            <div class="rd-legend">
+              <span class="rd-k-onsite"><i></i>حضور در شرکت</span><span class="rd-k-remote"><i></i>دورکاری</span><span class="rd-k-rbrk"><i></i>استراحت داخل دورکاری (کامل کسر می‌شود)</span>
+              <span class="rd-k-cut"><i></i>استراحتِ بسته‌نشده (بعدش حساب نمی‌شود)</span><span class="rd-k-gap"><i></i>فاصله‌ی حضوری←دورکاری</span><span class="rd-k-brk"><i></i>استراحت حضوری</span>
+            </div>
+            <div class="rd-days">${days.map(card).join('')}</div>`;
+        },
         leave() {
           if (!d.leaves.length) return `<div class="card">${emptyBox('درخواستی ثبت نشده است.')}</div>`;
           return `<div class="list">${d.leaves.map((l) => `
@@ -720,6 +798,7 @@
           const panel = $('#pf-panel', page);
           const drawTab = () => {
             panel.innerHTML = panels[profileUi.tab]();
+            $$('[data-seg]', panel).forEach((el) => { const [l, w] = el.dataset.seg.split(','); el.style.setProperty('--sl', `${Number(l) || 0}%`); el.style.setProperty('--sw', `${Number(w) || 0}%`); }); // موقعیت قطعه‌های خط زمانی (بدون style درون‌خطی)
             $$('#pf-tabs .tab', page).forEach((t) => t.classList.toggle('active', t.dataset.tab === profileUi.tab));
             $$('[data-rec]', panel).forEach((el) => el.addEventListener('click', () => AP.openRecord(el.dataset.rec)));
             $$('[data-att-filter]', panel).forEach((b) => b.addEventListener('click', () => {

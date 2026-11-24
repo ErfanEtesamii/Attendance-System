@@ -304,7 +304,7 @@ function fixedLunchDeductFor({ settings, segments, posOf, end, workStart, overni
   return proRate ? Math.min(fixedLunch, Math.round(overlap)) : fixedLunch;
 }
 
-function computeDay({ record, breaks, settings, now, timezone, shift, calendar, approvedLeaves, segments } = {}) {
+function computeDayCore({ record, breaks, settings, now, timezone, shift, calendar, approvedLeaves, segments, lunchExclude } = {}) {
   if (!settings || typeof settings !== 'object') throw new TypeError('settings الزامی است.');
   const params = resolveShiftParams(settings, shift);
   const { workStart, lateGrace, earlyGrace, maxLunch, fixedLunch, overnight, paidCount, paidMinutes, paidCountUnlimited } = params;
@@ -450,7 +450,12 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
   if (fixedLunch > 0 && checkOut && meetsFixedLunchThreshold && !(breaks || []).some((b) => b && isLunch(b))) {
     // شرط حضور در بازه‌ی ناهار: کارمندی که در ساعت ناهار در شرکت نبوده، ناهارش کسر نمی‌شود (fixedLunchMode='present_in_window').
     // بدون این تنظیم (یا بازه‌ی نامعتبر) رفتار قدیمی است: کسر کامل با فقط «حداقل حضور».
-    const lunchDeduct = fixedLunchDeductFor({ settings, segments: normalizedSegments, posOf, end, workStart, overnight, reversed, fixedLunch });
+    // فاصله‌ی «حضوری → دورکاری» (استراحتِ via_remote) بیرون از شرکت است؛ در شرط حضور در بازه‌ی ناهار حساب نمی‌شود
+    const lunchSegments = lunchExclude && lunchExclude.length ? normalizedSegments.flatMap((sg, i) => {
+      const endD = sg.out || (i === normalizedSegments.length - 1 ? end : sg.in);
+      return subtractWindows([sg.in.getTime(), endD.getTime()], lunchExclude).map(([a, b]) => ({ in: new Date(a), out: new Date(b) }));
+    }) : normalizedSegments;
+    const lunchDeduct = fixedLunchDeductFor({ settings, segments: lunchSegments, posOf, end, workStart, overnight, reversed, fixedLunch });
     result.breakAuto = Math.min(lunchDeduct, result.workedGross);
     result.break += result.breakAuto;
     result.breakUnpaid += result.breakAuto; // کسر ثابت ناهار همیشه بدون حقوق
@@ -501,4 +506,83 @@ function computeDay({ record, breaks, settings, now, timezone, shift, calendar, 
   return emit();
 }
 
-module.exports = { computeDay, hhmmToMinutes, sumBreakMinutes, resolveShiftParams };
+// ---- دورکاری تأییدشده ----
+// قاعده: دورکاری یعنی کار بیرون از شرکت و ربطی به بازه‌ی حضور ندارد؛ ساعت دورکاری = (پایان − شروع جلسه) منهای «کل استراحت‌ها».
+// داخل دورکاری سهمیه‌ی استراحت با حقوق و ناهار ثابت نیست؛ همه‌ی استراحت‌های ثبت‌شده کامل کسر می‌شوند. استراحتِ بسته‌نشده: کار فقط تا شروعش حساب می‌شود.
+// ساعت مفید = مفیدِ حضوری (بدون بازه‌ی دورکاری) + ساعت دورکاری.
+// remoteWindows: [{ start, end }] بر حسب میلی‌ثانیه‌ی مطلق (روی هم‌افتاده‌ها ادغام می‌شوند). بدون آن ⇒ دقیقاً رفتار قبلی.
+function mergeWindows(wins) {
+  const sorted = (wins || []).filter((w) => w && Number.isFinite(w.start) && Number.isFinite(w.end) && w.end > w.start).map((w) => [w.start, w.end]).sort((a, b) => a[0] - b[0]);
+  const out = [];
+  for (const [a, b] of sorted) { if (out.length && a <= out[out.length - 1][1]) out[out.length - 1][1] = Math.max(out[out.length - 1][1], b); else out.push([a, b]); }
+  return out;
+}
+
+function subtractWindows([a, b], wins) { // [a,b] منهای پنجره‌ها ⇒ تکه‌ها (b ممکن است Infinity باشد)
+  let pieces = [[a, b]];
+  for (const [ws, we] of wins) {
+    const next = [];
+    for (const [s, e] of pieces) {
+      if (we <= s || ws >= e) next.push([s, e]);
+      else { if (ws > s) next.push([s, ws]); if (we < e) next.push([we, e]); }
+    }
+    pieces = next;
+  }
+  return pieces;
+}
+
+function computeDay(args = {}) {
+  const { remoteWindows } = args;
+  const base = computeDayCore(args);
+  const wins = mergeWindows(remoteWindows);
+  if (!wins.length || !args.record || !args.record.check_in_time) return base;
+  const { record, breaks } = args;
+  const rawSegments = Array.isArray(args.segments) && args.segments.length ? args.segments : [{ in: record.check_in_time, out: record.check_out_time }];
+  const toMs = (v) => (v ? new Date(v).getTime() : null);
+  const segs = [];
+  for (const sg of rawSegments) {
+    const inMs = toMs(sg.in || sg.check_in_time); const outRaw = toMs(sg.out || sg.check_out_time);
+    if (!Number.isFinite(inMs) || (outRaw !== null && !Number.isFinite(outRaw))) return base; // داده‌ی خراب: همان نتیجه‌ی پایه
+    for (const [s, e] of subtractWindows([inMs, outRaw === null ? Infinity : outRaw], wins)) segs.push({ in: new Date(s).toISOString(), out: e === Infinity ? null : new Date(e).toISOString() });
+  }
+  const brks = [];
+  for (const b of breaks || []) {
+    if (!b) continue;
+    const s = toMs(b.start_time); const e = b.end_time ? toMs(b.end_time) : null;
+    if (!Number.isFinite(s) || (e !== null && !Number.isFinite(e))) return base;
+    for (const [ps, pe] of subtractWindows([s, e === null ? Infinity : e], wins)) brks.push({ ...b, start_time: new Date(ps).toISOString(), end_time: pe === Infinity ? null : new Date(pe).toISOString() });
+  }
+  let onsite = { effective: 0, effectiveWithMission: 0, break: 0, breakPaid: 0, breakUnpaid: 0, breakAuto: 0 };
+  if (segs.length) {
+    const last = segs[segs.length - 1];
+    const gaps = mergeWindows((breaks || []).filter((b) => b && (b.via_remote === 1 || b.via_remote === true) && b.end_time).flatMap((b) => subtractWindows([toMs(b.start_time), toMs(b.end_time)], wins).map(([a, z]) => ({ start: a, end: z }))));
+    onsite = computeDayCore({ ...args, lunchExclude: gaps, record: { ...record, check_in_time: segs[0].in, check_out_time: last.out }, breaks: brks, segments: segs });
+  }
+  // استراحتِ بسته‌نشده داخل جلسه‌ی دورکاری (تا پایان جلسه/خروج باز مانده و خودکار بسته شده): فقط تا شروع آن استراحت کار حساب می‌شود
+  const credited = wins.map(([a, b]) => {
+    let cut = b;
+    for (const br of breaks || []) {
+      if (!br) continue;
+      const bs = toMs(br.start_time); const be = br.end_time ? toMs(br.end_time) : Infinity;
+      if (Number.isFinite(bs) && bs > a && bs < b && be >= b - 90000 && bs < cut) cut = bs;
+    }
+    return [a, cut];
+  });
+  // ساعت دورکاری = (پایان − شروع) منهای «کل استراحت‌ها» (همه‌ی استراحت‌های بسته‌شده، بدون سهمیه‌ی با حقوق و بدون ناهار ثابت)
+  const breakWins = mergeWindows((breaks || []).filter((br) => br && br.end_time).map((br) => ({ start: toMs(br.start_time), end: toMs(br.end_time) })));
+  let remoteBreakMs = 0;
+  for (const [a, b] of credited) for (const [bs, be] of breakWins) remoteBreakMs += Math.max(0, Math.min(b, be) - Math.max(a, bs));
+  const remoteGrossMin = Math.round(credited.reduce((t, [a, b]) => t + (b - a), 0) / 60000);
+  const remoteBreakMin = Math.round(remoteBreakMs / 60000);
+  const remoteMinutes = Math.max(0, remoteGrossMin - remoteBreakMin);
+  const out = { ...base };
+  out.break = onsite.break; out.breakPaid = onsite.breakPaid; out.breakUnpaid = onsite.breakUnpaid; out.breakAuto = onsite.breakAuto;
+  if (base.breakExcess !== undefined) out.breakExcess = onsite.breakExcess !== undefined ? onsite.breakExcess : 0;
+  out.effective = onsite.effective + remoteMinutes;
+  out.effectiveWithMission = Math.max(0, base.effectiveWithMission - base.effective + out.effective);
+  out.remoteMinutes = remoteMinutes;
+  out.remoteDetail = { remoteGross: remoteGrossMin, remoteBreak: remoteBreakMin, onsiteEffective: onsite.effective, onsiteBreak: onsite.break, onsiteBreakPaid: onsite.breakPaid, onsiteBreakUnpaid: onsite.breakUnpaid, onsiteBreakAuto: onsite.breakAuto, credited: credited.map(([a, b]) => [a, b]), full: wins.map(([a, b]) => [a, b]) };
+  return out;
+}
+
+module.exports = { mergeWindows, subtractWindows, computeDay, hhmmToMinutes, sumBreakMinutes, resolveShiftParams };

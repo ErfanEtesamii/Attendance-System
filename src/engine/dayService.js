@@ -19,6 +19,7 @@ const usersRepository = require('../repositories/usersRepository');
 const holidaysRepository = require('../repositories/holidaysRepository');
 const userDayScheduleRepository = require('../repositories/userDayScheduleRepository');
 const leaveRepository = require('../repositories/leaveRepository');
+const remoteWorkRepository = require('../repositories/remoteWorkRepository');
 const { dayNumber } = require('../utils/shiftDay');
 const { leaveWindowsOnDate, requestRowToValue } = require('../utils/leaveUnits');
 const { computeDay } = require('./computeDay');
@@ -28,7 +29,7 @@ const { getCalendarDay, virtualShiftFor } = require('./calendarService');
 // تا هر رکورد دوباره DB نخواند. context ساخته‌شده‌ی دستی (فقط { settings, timezone }) هم معتبر است؛ فقط کش نخواهد داشت.
 function loadContext() {
   const settings = settingsRepository.getAll();
-  return { settings, timezone: settings.timezone, shiftCache: new Map(), userCache: new Map(), holidayCache: new Map(), leaveCache: new Map(), overrideCache: new Map(), segmentCache: new Map() };
+  return { settings, timezone: settings.timezone, shiftCache: new Map(), userCache: new Map(), holidayCache: new Map(), leaveCache: new Map(), overrideCache: new Map(), segmentCache: new Map(), remoteCache: new Map() };
 }
 
 // شیفت کاربر رکورد (S3-6b): opts.shift صریح (null = «بدون شیفت») اولویت دارد؛ وگرنه از users.shift_id. بدون شیفت ⇒ null ⇒ تنظیمات سراسری.
@@ -100,6 +101,21 @@ function leavesForRecord(record, ctx, opts, calendar) {
   return windows.length ? windows : null;
 }
 
+// پنجره‌های دورکاریِ تأییدشده‌ی روزِ رکورد (میلی‌ثانیه‌ی مطلق) برای computeDay({ remoteWindows }). opts.remoteWindows صریح اولویت دارد.
+function remoteWindowsForRecord(record, ctx, opts) {
+  if (opts.remoteWindows !== undefined) return opts.remoteWindows;
+  if (!record || record.user_id === undefined || record.user_id === null || !record.record_date) return null;
+  const key = `${record.user_id}|${record.record_date}`;
+  const rc = ctx.remoteCache;
+  let rows = rc ? rc.get(key) : undefined;
+  if (rows === undefined) {
+    rows = remoteWorkRepository.listApprovedForDay(record.user_id, record.record_date);
+    if (rc) rc.set(key, rows);
+  }
+  const wins = remoteWorkRepository.toWindows ? remoteWorkRepository.toWindows(rows) : rows.map((x) => ({ start: Date.parse(x.approved_start_at || x.start_at), end: Date.parse(x.approved_end_at || x.end_at) }));
+  return wins.length ? wins : null;
+}
+
 // خروجی کامل computeDay برای یک رکورد attendance_records (یا null).
 // opts: { now, context, shift, calendar } — now پیش‌فرض الان؛ context خروجی loadContext()؛ shift (اختیاری) شیفت صریح به‌جای شیفت منتسب به کاربر؛
 // calendar (اختیاری، S3-7c) تقویم صریح به‌جای خواندن از getCalendarDay (null = بدون تقویم)؛
@@ -119,7 +135,7 @@ function computeRecordDay(record, opts = {}) {
       if (ctx.segmentCache) ctx.segmentCache.set(record.id, segments);
     }
   }
-  return computeDay({ record, breaks, settings: settingsHistory.settingsAt(ctx.settings, record && record.record_date), now: opts.now, timezone: ctx.timezone, shift, calendar, approvedLeaves, segments });
+  return computeDay({ record, breaks, settings: settingsHistory.settingsAt(ctx.settings, record && record.record_date), now: opts.now, timezone: ctx.timezone, shift, calendar, approvedLeaves, segments, remoteWindows: remoteWindowsForRecord(record, ctx, opts) });
 }
 
 // تبدیل خروجی computeDay به شکل قدیمی summarizeRecord (ترتیب کلیدها هم همان است ⇒ JSON یکسان)

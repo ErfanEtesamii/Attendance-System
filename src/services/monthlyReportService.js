@@ -134,6 +134,7 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
   }
   // R7: فقط نشست‌های تأییدشده؛ مدت = بازه‌ی تأییدشده (در صورت اصلاح) وگرنه بازه‌ی ثبت‌شده
   const remoteByUser = new Map(); // userId -> Map(date -> دقیقه)
+  const remoteWinByKey = new Map(); // userId|date -> [{ start, end }] میلی‌ثانیه‌ی مطلق
   for (const s of remoteWorkRepository.listApprovedInRange(ids, range.from, range.to)) {
     const a = Date.parse(s.approved_start_at || s.start_at);
     const b = Date.parse(s.approved_end_at || s.end_at);
@@ -141,6 +142,11 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
     if (!remoteByUser.has(s.user_id)) remoteByUser.set(s.user_id, new Map());
     const m = remoteByUser.get(s.user_id);
     m.set(s.work_date, (m.get(s.work_date) || 0) + mins);
+    if (mins > 0) {
+      const wk = `${s.user_id}|${s.work_date}`;
+      if (!remoteWinByKey.has(wk)) remoteWinByKey.set(wk, []);
+      remoteWinByKey.get(wk).push({ start: a, end: b });
+    }
   }
   const shiftOnDate = shiftsRepository.makeShiftResolver(ids); // B1: شیفتِ مؤثر هر کاربر در هر روز (یک‌بار خواندن)
   const overrideOnDate = userDayScheduleRepository.makeResolver(ids, range.from, range.to); // B2: برنامه‌ی ویژه‌ی روز
@@ -217,7 +223,7 @@ function computeMonthlyReport({ users, year, month, now, context, includeDays = 
       let invalid = false;
       try {
         const breaks = hasCheckIn ? breakRepository.listByAttendanceRecord(record.id) : [];
-        day = computeDay({ record, breaks, settings: daySettings, now: nowDate, timezone, shift, calendar: cal, approvedLeaves: windows.length ? windows : null, segments: segmentsByRecord.get(record && record.id) });
+        day = computeDay({ record, breaks, settings: daySettings, now: nowDate, timezone, shift, calendar: cal, approvedLeaves: windows.length ? windows : null, segments: segmentsByRecord.get(record && record.id), remoteWindows: remoteWinByKey.get(`${u.id}|${dateStr}`) || null });
       } catch (err) {
         if (!(err instanceof RangeError)) throw err;
         console.error(`[monthlyReport] روز ${dateStr} کاربر ${u.id} قابل‌محاسبه نیست:`, err.message);
