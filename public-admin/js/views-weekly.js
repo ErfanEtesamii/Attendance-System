@@ -77,6 +77,20 @@
 
   // وضعیت تسک با تیک/ضربدر: ✓ انجام شد، ✗ انجام نشد، ◐ ناقص، ○ بدون پاسخ (رنگ همان قبلی)
   const TASK_ICON = { done: '✓', not_done: '✗', partial: '◐', no_answer: '○' };
+
+  // نوع تسک: فوری (ارجاعی/خودفوری) | واجب (سیستمی) | روزانه (برنامه‌ی همین روز، منتقل‌شده یا خارج از برنامه) | روتین (بدون تاریخ؛ هر روز کاری تکرار می‌شود)
+  const KIND = {
+    urgent: { icon: '⚡', title: 'فوری', hint: 'ارجاع‌شده یا فوریِ خودِ کارمند' },
+    mandatory: { icon: '🔒', title: 'واجب', hint: 'تسک سیستمی' },
+    daily: { icon: '📌', title: 'روزانه', hint: 'برنامه‌ی همین روز' },
+    routine: { icon: '🔁', title: 'روتین', hint: 'هر روز کاری تکرار می‌شود' },
+  };
+  const KIND_ORDER = ['urgent', 'mandatory', 'daily', 'routine'];
+  function taskKind(t) {
+    if (t.isUrgent) return 'urgent';
+    if (t.isSystem) return 'mandatory';
+    return t.source === 'everyday' ? 'routine' : 'daily';
+  }
   function taskStatusBadge(status) {
     const [cls, label] = TASK_STATUS[status] || ['', status];
     return AP.badge(cls, `${TASK_ICON[status] ? `${TASK_ICON[status]} ` : ''}${label}`);
@@ -129,7 +143,7 @@
   function mandatoryTaskRow(t, isSelf) {
     const r = t.review || null;
     const pct = r && !r.notYet && r.reportCount > 0 ? Math.round((r.reviewedCount / r.reportCount) * 100) : null;
-    return `<li class="day-task dt-row is-mandatory dt-${STATUS_CLS[t.status] || 'is-none'}">
+    return `<li class="day-task dt-row is-mandatory tk-k-mandatory dt-${STATUS_CLS[t.status] || 'is-none'}">
       ${taskStatusCell(t.status)}
       <div class="dt-body">
       <div class="title">${AP.badge('blue', '🔒 واجب', true)}${esc(t.title)}<span class="sr-only">تسک سیستمی؛ فقط‌خواندنی</span></div>
@@ -149,10 +163,14 @@
       t.answeredLate ? AP.badge('orange', 'پاسخ دیرهنگام') : '',
       t.outOfPlan ? AP.badge('', 'خارج از برنامه') : '',
     ].filter(Boolean).join('');
-    return `<li class="day-task dt-row dt-${STATUS_CLS[t.status] || 'is-none'}${t.isUrgent ? ' is-urgent' : ''}">
+    const kind = taskKind(t);
+    const kindPill = kind === 'routine' ? `<span class="tk-pill tk-pill-routine">${KIND.routine.icon} روتین</span>` : (kind === 'daily' ? `<span class="tk-pill tk-pill-daily">${KIND.daily.icon} ${t.source === 'rescheduled' ? 'منتقل‌شده به این روز' : 'روزانه'}</span>` : '');
+    const stateChip = `<span class="tk-state tk-state-${STATUS_CLS[t.status] || 'is-none'}">${TASK_ICON[t.status] || '○'} ${esc((TASK_STATUS[t.status] || ['', ''])[1])}</span>`;
+    return `<li class="day-task dt-row tk-k-${kind} dt-${STATUS_CLS[t.status] || 'is-none'}${t.isUrgent ? ' is-urgent' : ''}">
       ${taskStatusCell(t.status)}
       <div class="dt-body">
-      <div class="title">${t.isUrgent ? AP.badge('red', t.selfAssigned ? '⚡ فوری (خودش)' : '⚡ فوری', true) : ''}${t.priority === 'high' && !t.isUrgent ? AP.badge('late', 'اولویت بالا') : ''}${esc(t.title)}</div>
+      <div class="tk-top">${t.isUrgent ? AP.badge('red', t.selfAssigned ? '⚡ فوری (خودش)' : '⚡ فوری', true) : kindPill}${t.priority === 'high' && !t.isUrgent ? AP.badge('late', 'اولویت بالا') : ''}${stateChip}</div>
+      <div class="title tk-title">${esc(t.title)}</div>
       ${t.isUrgent && ((t.selfAssigned && t.scheduledStartTime && t.urgentDeadlineTime) || (!t.selfAssigned && t.assignedBy)) ? `<div class="muted text-xs">${t.selfAssigned ? `زمان: ${esc(t.scheduledStartTime)} تا ${esc(t.urgentDeadlineTime)}` : `از طرف: ${esc(t.assignedBy)}${t.urgentDeadlineTime ? ` · مهلت ${esc(t.urgentDeadlineTime)}` : ''}`}</div>` : ''}
       ${meta ? `<div class="day-task-meta">${meta}</div>` : ''}
       ${reasonText ? `<div class="reason">${esc(reasonText)}</div>` : ''}
@@ -185,11 +203,25 @@
     return btns ? `<div class="day-card-actions">${btns}</div>` : '';
   }
 
+  // گروه‌بندی تسک‌های یک روز بر اساس نوع: هر گروه سرتیتر، شمارنده‌ی «x از y انجام شد» و نوار پیشرفت خودش را دارد
+  function taskGroups(tasks, isSelf, opts) {
+    const by = {};
+    tasks.forEach((t) => { const k = taskKind(t); (by[k] = by[k] || []).push(t); });
+    return KIND_ORDER.filter((k) => by[k]).map((k) => {
+      const list = by[k]; const K = KIND[k];
+      const done = list.filter((t) => t.status === 'done').length;
+      const pct = Math.round((done / list.length) * 100);
+      return `<section class="tk-group tk-${k}" aria-label="${esc(`تسک‌های ${K.title}`)}">
+        <header class="tk-head"><span class="tk-ico" aria-hidden="true">${K.icon}</span><span class="tk-name">${K.title}</span><span class="tk-sub">${esc(K.hint)}</span><span class="tk-count">${fmt.num(done)} از ${fmt.num(list.length)}</span></header>
+        <div class="tk-bar" aria-hidden="true"><i data-progress="${pct}"></i></div>
+        <ul class="day-tasks">${list.map((t) => taskRow(t, isSelf, opts)).join('')}</ul>
+      </section>`;
+    }).join('');
+  }
+
   function dayCard(d, isSelf, opts) {
     const tasks = d.tasks || [];
-    const taskList = tasks.length
-      ? `<ul class="day-tasks">${tasks.map((t) => taskRow(t, isSelf, opts)).join('')}</ul>`
-      : `<div class="muted text-xs">تسکی برای این روز ثبت نشده است.</div>`;
+    const taskList = tasks.length ? taskGroups(tasks, isSelf, opts) : `<div class="tk-empty"><span aria-hidden="true">📭</span> تسکی برای این روز ثبت نشده است.</div>`;
     const reviewNote = d.review && d.review.reviewed
       ? `<div class="muted day-reviewed">${icon('check', 14)} مشاهده‌شده توسط سرپرست${d.review.reviews[0] && d.review.reviews[0].comment ? `: «${esc(d.review.reviews[0].comment)}»` : ''}</div>` : '';
     return `<details class="card day-card${d.isToday ? ' is-today' : ''}" open>

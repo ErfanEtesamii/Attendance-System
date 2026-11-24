@@ -1,0 +1,40 @@
+/* ===== برنامه‌ی روزانه‌ی کارمند: تسک‌ها بر اساس نوع گروه‌بندی و رنگ‌بندی می‌شوند =====
+   فوری = قرمز ⚡ · واجب = آبی 🔒 · روزانه = بنفش 📌 (برنامه‌ی همین روز) · روتین = سبزآبی 🔁 (هر روز کاری)
+   رنگ کارت = نوع تسک؛ وضعیت (انجام شد/ناقص/…) فقط با دایره‌ی ✓ و چیپ وضعیت نشان داده می‌شود. فقط توکن‌های تم. */
+.tk-group { --tk: var(--hint); margin-top: 14px; padding: 10px 10px 12px; border-radius: 18px;
+  background: color-mix(in srgb, var(--tk) 7%, transparent); border: 1px solid color-mix(in srgb, var(--tk) 22%, transparent); }
+.tk-group:first-child { margin-top: 0; }
+.tk-urgent { --tk: var(--red); }
+.tk-mandatory { --tk: var(--blue); }
+.tk-daily { --tk: var(--purple); }
+.tk-routine { --tk: color-mix(in srgb, var(--blue) 55%, var(--green)); }
+
+.tk-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin-bottom: 6px; }
+.tk-ico { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 10px; font-size: 15px; line-height: 1;
+  background: color-mix(in srgb, var(--tk) 18%, var(--card)); box-shadow: 0 2px 6px color-mix(in srgb, var(--tk) 22%, transparent); }
+.tk-name { font-weight: 900; font-size: var(--fs-sm, 0.95rem); color: color-mix(in srgb, var(--tk) 85%, var(--text)); }
+.tk-sub { font-size: var(--fs-xs); color: var(--hint); font-weight: 600; }
+.tk-count { margin-inline-start: auto; font-size: var(--fs-xs); font-weight: 800; padding: 2px 10px; border-radius: 999px;
+  color: color-mix(in srgb, var(--tk) 85%, var(--text)); background: color-mix(in srgb, var(--tk) 14%, transparent); }
+.tk-bar { height: 5px; border-radius: 999px; overflow: hidden; margin-bottom: 8px; background: color-mix(in srgb, var(--tk) 14%, transparent); }
+.tk-bar i { display: block; height: 100%; width: var(--progress, 0%); margin-inline-start: 0; border-radius: 999px; background: var(--tk); transition: width 0.35s ease; }
+@media (prefers-reduced-motion: reduce) { .tk-bar i { transition: none; } }
+
+/* کارت تسک داخل گروه: رنگ نوع، نه وضعیت */
+.tk-group .day-task.dt-row { --dt-tint: var(--tk); margin-top: 8px; border-radius: 14px; background: color-mix(in srgb, var(--card) 88%, var(--tk) 6%);
+  border: 1px solid color-mix(in srgb, var(--tk) 20%, transparent); border-inline-start: 4px solid var(--tk); box-shadow: 0 1px 4px color-mix(in srgb, var(--tk) 10%, transparent); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.tk-group .day-task.dt-row:first-child { margin-top: 0; border-top: 1px solid color-mix(in srgb, var(--tk) 20%, transparent); }
+.tk-group .day-task.dt-row.dt-is-done .tk-title { color: var(--hint); }
+.tk-top { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+.tk-title { line-height: 1.7; }
+
+.tk-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 800; padding: 2px 9px; border-radius: 999px;
+  color: color-mix(in srgb, var(--tk) 85%, var(--text)); background: color-mix(in srgb, var(--tk) 14%, transparent); }
+.tk-state { margin-inline-start: auto; font-size: 11px; font-weight: 800; padding: 2px 9px; border-radius: 999px; color: var(--hint); background: color-mix(in srgb, var(--hint) 12%, transparent); }
+.tk-state-is-done { color: var(--green); background: color-mix(in srgb, var(--green) 14%, transparent); }
+.tk-state-is-not-done { color: var(--red); background: color-mix(in srgb, var(--red) 14%, transparent); }
+.tk-state-is-partial { color: var(--orange); background: color-mix(in srgb, var(--orange) 16%, transparent); }
+
+.tk-empty { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 18px 10px; border-radius: 14px; font-size: var(--fs-xs); color: var(--hint);
+  border: 1px dashed color-mix(in srgb, var(--hint) 40%, transparent); }
+@media print { .tk-group { break-inside: avoid; background: none; } .tk-bar { display: none; } }
