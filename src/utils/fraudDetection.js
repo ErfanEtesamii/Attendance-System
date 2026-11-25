@@ -82,6 +82,8 @@ function detectSameIpClose(records, options) {
   const n = Number(options && options.windowSeconds);
   const windowSeconds = Number.isFinite(n) && n > 0 ? n : DEFAULT_SAME_IP_WINDOW_SECONDS;
   const windowMs = windowSeconds * 1000;
+  // IPهای مشترک شرکت (مثلاً گیت‌وی/NAT که همه‌ی کارمندان پشت آن‌اند): نزدیکی ثبت‌ها از این IPها نشانه نیست
+  const ignored = new Set((Array.isArray(options && options.ignoreIps) ? options.ignoreIps : []).map(normalizeIp).filter(Boolean));
 
   // کلید گروه: تاریخ + IP ⇒ فهرست ثبت‌ها { t (ms), userId, recordId }
   const groups = new Map();
@@ -94,7 +96,7 @@ function detectSameIpClose(records, options) {
     for (const [time, rawIp] of regs) {
       const ip = normalizeIp(rawIp);
       const t = typeof time === 'string' ? Date.parse(time) : NaN;
-      if (!ip || !Number.isFinite(t)) continue;
+      if (!ip || !Number.isFinite(t) || ignored.has(ip)) continue;
       const key = `${rec.record_date}\u0000${ip}`;
       let g = groups.get(key);
       if (!g) {

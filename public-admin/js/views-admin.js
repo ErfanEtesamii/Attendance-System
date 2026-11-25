@@ -469,6 +469,7 @@
       const ON = (k) => !!byKey[k] && setNorm(byKey[k], V(k)) === 'true';
       const addMin = (t, d) => { const m = /^(\d{1,2}):(\d{2})$/.exec(String(t)); if (!m) return String(t); const x = (((Number(m[1]) * 60 + Number(m[2]) + d) % 1440) + 1440) % 1440; return `${String(Math.floor(x / 60)).padStart(2, '0')}:${String(x % 60).padStart(2, '0')}`; };
       const dur = (min) => { const n = Math.max(0, Math.round(Number(min) || 0)); const h = Math.floor(n / 60); const m = n % 60; return h && m ? `${fmt.num(h)} ساعت و ${fmt.num(m)} دقیقه` : (h ? `${fmt.num(h)} ساعت` : `${fmt.num(m)} دقیقه`); };
+      const stFa = (x) => (window.Jalali && typeof window.Jalali.toFaDigits === 'function' ? window.Jalali.toFaDigits(String(x)) : String(x)); // ارقام فارسی در خلاصه‌ی تنظیمات
       const ST_ZERO_TEXT = { breakMaxPerDay: 'بدون سقف', maxLunchMinutes: 'بدون سقف', lateGraceMinutes: 'بدون مهلت', earlyGraceMinutes: 'بدون مهلت' };
       const ST_SUM = {
         'ساعت و منطقه‌ی زمانی': ['workDayStart', 'workDayEnd', 'timezone', 'dailyTargetMinutes'],
@@ -530,9 +531,9 @@
       const liveHtml = (sec) => {
         const keys = (ST_SUM[sec] || items.filter((i) => i.section === sec && ['boolean', 'number', 'enum', 'time', 'date'].includes(i.type)).slice(0, 4).map((i) => i.key)).filter((k) => byKey[k]);
         const fx = ST_EFFECT[sec]; let text = '';
-        try { text = fx ? fx() : ''; } catch (_) { text = ''; }
+        try { text = fx ? stFa(fx()) : ''; } catch (_) { text = ''; }
         if (!keys.length && !text) return '';
-        const chips = keys.map((k) => { const it = byKey[k]; const on = it.type === 'boolean' ? ` data-on="${ON(k) ? '1' : '0'}"` : ''; return `<span class="st-chip"${on}><span class="st-chip-k">${esc(setShort(it))}</span><bdi class="st-chip-v">${esc(sumVal(k))}</bdi></span>`; }).join('');
+        const chips = keys.map((k) => { const it = byKey[k]; const on = it.type === 'boolean' ? ` data-on="${ON(k) ? '1' : '0'}"` : ''; return `<span class="st-chip"${on}><span class="st-chip-k">${esc(setShort(it))}</span><bdi class="st-chip-v">${esc(stFa(sumVal(k)))}</bdi></span>`; }).join('');
         return `${chips ? `<div class="st-chips" aria-label="خلاصه‌ی وضعیت فعلی">${chips}</div>` : ''}${text ? `<p class="st-effect"><span class="st-effect-ico" aria-hidden="true">${ST_TIP_ICO}</span><span>${esc(text)}</span></p>` : ''}`;
       };
 
@@ -1238,7 +1239,7 @@
         <div class="card flush"><div class="table-wrap"><table>
           <thead><tr><th>زمان</th><th>کاربر</th><th>رویداد</th><th>IP</th><th>جزئیات</th></tr></thead><tbody>
           ${rows.length ? rows.map((r) => `<tr><td class="num">${esc(fmt.dateTime(r.occurred_at))}</td><td>${esc(r.userFullName || '—')}</td>
-            <td><span class="au-act au-act--${auTone(r.action)}">${esc(r.action)}</span></td><td><span class="ltr muted">${esc(r.ip_address || '—')}</span></td>
+            <td><span class="au-act au-act--${auTone(r.action)}">${esc(r.action)}</span></td><td><span class="ltr muted">${esc(String(r.ip_address || '—').replace(/^::ffff:/i, ''))}</span></td>
             <td class="wrap">${auDetailsHtml(r.details)}</td></tr>`).join('') : `<tr><td colspan="5">${emptyBox('رویدادی پیدا نشد.')}</td></tr>`}
           </tbody></table></div></div>`;
       return {

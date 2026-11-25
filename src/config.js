@@ -85,6 +85,8 @@ const config = {
   fraud: {
     // قاعده‌ی ب: دو کاربر با یک IP که ثبتشان با فاصله‌ی کمتر از این‌قدر ثانیه باشد «نشانه» حساب می‌شود (پیش‌فرض ۶۰)
     sameIpWindowSeconds: positiveIntEnv(process.env.FRAUD_SAME_IP_WINDOW_SECONDS, 60),
+    // IPهای مشترک شرکت که قاعده‌ی ب نادیده می‌گیرد (جداشده با ویرگول؛ مثلاً IP گیت‌وی). پیش‌فرض: خالی = هیچ‌کدام
+    ignoreIps: String(process.env.FRAUD_IGNORE_IPS || '').split(',').map((x) => x.trim()).filter(Boolean),
     // قاعده‌ی ج: تغییر ناگهانی دستگاه. الگو = device‌های چند روز تقویمیِ اخیر (پیش‌فرض ۷) و حداقل چند روزِ
     // دارای device لازم است تا «الگو» حساب شود (پیش‌فرض ۳)
     deviceChangeLookbackDays: positiveIntEnv(process.env.FRAUD_DEVICE_CHANGE_LOOKBACK_DAYS, 7),

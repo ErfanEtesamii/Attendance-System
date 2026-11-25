@@ -84,7 +84,7 @@
           <span class="rec-seg-num">${fmt.num(s.seq)}</span>
           <b class="rec-seg-title">نوبت ${fmt.num(s.seq)}</b>
           ${open ? AP.badge('present', 'باز') : (dur != null ? `<span class="rec-seg-dur">${icon('clock')}${fmt.min(dur)}</span>` : '')}
-          <span class="rec-seg-ip ltr" title="IP ورود / خروج">${esc(s.check_in_ip || '—')} / ${esc(s.check_out_ip || '—')}</span>
+          <span class="rec-seg-ip ltr" title="IP ورود / خروج">${esc(String(s.check_in_ip || '—').replace(/^::ffff:/i, ''))} / ${esc(String(s.check_out_ip || '—').replace(/^::ffff:/i, ''))}</span>
         </div>
         <div class="rec-seg-fields">
           <label class="rec-f rec-f-in"><span>${icon('in')} ورود</span>${admin ? `<input type="datetime-local" data-f="seg-in" aria-label="ورود نوبت ${s.seq}" value="${fmt.toLocalInput(s.check_in_time)}" />` : `<b class="num">${fmt.clock(s.check_in_time)}</b>`}</label>
@@ -172,8 +172,8 @@
           ${r.idleMinutes ? tile('orange', 'alert', 'تایم پرت (اعلام‌شده)', fmt.min(r.idleMinutes), 'از ساعت مفید کم شده') : ''}
         </div>
         <div class="rec-ips">
-          <span class="rec-ip"><em>IP ورود</em><b class="ltr">${esc(r.check_in_ip || '—')}</b></span>
-          <span class="rec-ip"><em>IP خروج</em><b class="ltr">${esc(r.check_out_ip || '—')}</b></span>
+          <span class="rec-ip"><em>IP ورود</em><b class="ltr">${esc(String(r.check_in_ip || '—').replace(/^::ffff:/i, ''))}</b></span>
+          <span class="rec-ip"><em>IP خروج</em><b class="ltr">${esc(String(r.check_out_ip || '—').replace(/^::ffff:/i, ''))}</b></span>
         </div>
 
         <section class="rec-section">
@@ -1041,6 +1041,20 @@
     return out;
   }
 
+  // عملیات گروهی: برای هر نوعِ نشانه که چند مورد بررسی‌نشده دارد یک دکمه («بی‌اهمیت کردن همه‌ی این نوع»)
+  const suspBulkGroups = (items) => {
+    if (suspUi.status !== 'open' || !AP.can('suspicious.review')) return [];
+    const by = {};
+    (items || []).forEach((e) => { if (e.status === 'open') (by[e.eventType] = by[e.eventType] || []).push(e.id); });
+    return Object.keys(by).filter((t) => by[t].length >= 2).map((t) => ({ type: t, ids: by[t] }));
+  };
+  const suspBulkHtml = (items) => {
+    const groups = suspBulkGroups(items);
+    if (!groups.length) return '';
+    return `<div class="card u-mb-12 susp-bulk"><div class="muted">اگر یک نوع نشانه فقط به‌خاطر ساختار شبکه تکرار می‌شود (مثلاً چند نفر پشت یک IP مشترک)، می‌توانید همه‌ی آن‌ها را یک‌جا و با یک دلیل بی‌اهمیت کنید.</div>
+      <div class="row-actions">${groups.map((g, i) => `<button class="btn ghost small" type="button" data-bulk="${i}">بی‌اهمیت کردن همه‌ی «${esc(SUSP_TYPE[g.type] || g.type)}» (${fmt.num(g.ids.length)})</button>`).join('')}</div></div>`;
+  };
+
   AP.view('suspicious', {
     skeleton: 'list', // شکل skeleton هنگام بارگذاری (S5-9c)
     perm: 'suspicious.read',
@@ -1055,6 +1069,7 @@
           هر نشانه باید با گفتگو و بررسی انسانی تأیید یا نادیده گرفته شود. ثبت نتیجه‌ی بررسی (با ذکر دلیل) در گزارش رویدادها می‌ماند.</p></div>
         <div class="chips" id="s-chips">${[['open', 'بررسی‌نشده'], ['reviewed', 'بررسی‌شده'], ['ignored', 'بی‌اهمیت'], ['all', 'همه']]
           .map(([k, l]) => `<button class="chip ${k === suspUi.status ? 'active' : ''}" data-s="${k}">${l}</button>`).join('')}</div>
+        ${suspBulkHtml(items)}
         <div class="list">${items.length ? items.map((e) => {
           const [cls, label] = SUSP_STATUS[e.status] || ['holiday', e.status];
           return `
@@ -1079,6 +1094,24 @@
         mount(page) {
           $('#s-chips', page).addEventListener('click', (ev) => { const c = ev.target.closest('[data-s]'); if (c) { suspUi.status = c.dataset.s; AP.refresh(); } });
           $$('[data-rec]', page).forEach((a) => a.addEventListener('click', (ev) => { ev.preventDefault(); AP.openRecord(a.dataset.rec); }));
+          const bulkGroups = suspBulkGroups(items);
+          $$('[data-bulk]', page).forEach((b) => b.addEventListener('click', async () => {
+            const g = bulkGroups[Number(b.dataset.bulk)];
+            if (!g) return;
+            const reason = await AP.askReason({
+              title: 'ثبت گروهی به‌عنوان بی‌اهمیت',
+              label: 'دلیل (اجباری — برای هر مورد در گزارش رویدادها ثبت می‌شود)',
+              message: `${fmt.num(g.ids.length)} مورد از نوع «${SUSP_TYPE[g.type] || g.type}» بی‌اهمیت می‌شود. این مورد فقط یک نشانه است.`,
+              confirmText: 'ثبت برای همه',
+            });
+            if (reason === null) return;
+            let done = 0;
+            for (const id of g.ids) {
+              try { await AP.api(`/admin/suspicious/${id}/review`, { method: 'POST', body: { status: 'ignored', reason } }); done += 1; } catch (_) { /* مورد بعدی */ }
+            }
+            if (AP.toast) AP.toast(done === g.ids.length ? `${fmt.num(done)} مورد ثبت شد.` : `${fmt.num(done)} از ${fmt.num(g.ids.length)} مورد ثبت شد.`, done !== g.ids.length);
+            AP.refresh(); AP.refreshCounts();
+          }));
           $$('[data-review]', page).forEach((b) => b.addEventListener('click', async () => {
             const to = b.dataset.to;
             const reason = await AP.askReason({

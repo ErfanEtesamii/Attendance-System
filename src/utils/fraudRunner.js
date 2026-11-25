@@ -81,7 +81,7 @@ function runFraudChecks(options) {
     // قاعده‌ها از طریق شیء ماژول صدا زده می‌شوند و هرکدام جدا try/catch دارد؛ خرابی یکی جلوی بقیه را نمی‌گیرد
     const rules = [
       ['rule_A', () => fraud.detectSharedDevice(todayRecords)],
-      ['rule_B', () => fraud.detectSameIpClose(todayRecords, { windowSeconds })],
+      ['rule_B', () => fraud.detectSameIpClose(todayRecords, { windowSeconds, ignoreIps: cfg.ignoreIps })],
       ['rule_C', () => fraud.detectDeviceChange(records, { lookbackDays, minHistoryDays, targetDate: date })],
     ];
     for (const [stage, detect] of rules) {

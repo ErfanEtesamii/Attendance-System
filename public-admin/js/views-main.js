@@ -273,9 +273,9 @@
                 <td>${AP.stateBadge(r.state)} ${r.late ? AP.badge('late', `تأخیر ${fmt.min(r.summary.lateMinutes)}`) : ''} ${r.onMission ? AP.badge('mission', 'مأموریت') : ''}</td>
                 <td class="num">${rec && rec.check_in_time ? fmt.clock(rec.check_in_time) : '—'} ${rec && rec.segmentCount > 1 ? AP.badge('purple', `${fmt.num(rec.segmentCount)} نوبت`) : ''}</td>
                 <td class="num">${rec && rec.check_out_time ? fmt.clock(rec.check_out_time) : '—'}</td>
-                <td class="num">${r.summary && r.summary.effectiveMinutes != null ? fmt.min(r.summary.effectiveMinutes) : '—'}</td>
+                <td class="num">${r.summary && r.summary.effectiveMinutes != null ? fmt.min(r.summary.effectiveMinutes) : '—'}${rec && rec.check_in_time && !rec.check_out_time && r.summary && r.summary.effectiveMinutes != null ? ' <span class="live-dot" role="img" aria-label="تا این لحظه؛ هنوز خروج نزده" title="تا این لحظه؛ هنوز خروج نزده"></span>' : ''}</td>
                 <td class="num">${r.state === 'on_break' ? 'از ' + fmt.clock(r.openBreak.start_time) : r.breakMinutes ? fmt.min(r.breakMinutes) : '—'}</td>
-                <td><span class="ltr muted">${esc(rec && rec.check_in_ip ? rec.check_in_ip : '—')}</span></td>
+                <td><span class="ltr muted">${esc(rec && rec.check_in_ip ? String(rec.check_in_ip).replace(/^::ffff:/i, '') : '—')}</span></td>
                 <td><div class="row-actions">
                   ${AP.can('records.edit') ? (rec ? `<button class="btn ghost small" data-rec="${rec.id}">رکورد</button>`
                     : `<button class="btn ghost small" data-new="${r.user.id}">ثبت دستی</button>`) : ''}
@@ -786,7 +786,7 @@
           return `<div class="card flush"><div class="table-wrap"><table>
             <thead><tr><th>زمان</th><th>انجام‌دهنده</th><th>رویداد</th><th>IP</th><th>جزئیات</th></tr></thead><tbody>
             ${(d.audit || []).map((r) => `<tr><td class="num">${esc(fmt.dateTime(r.occurred_at))}</td><td>${esc(r.userFullName || '—')}</td>
-              <td>${esc(r.action)}</td><td><span class="ltr muted">${esc(r.ip_address || '—')}</span></td>
+              <td>${esc(r.action)}</td><td><span class="ltr muted">${esc(String(r.ip_address || '—').replace(/^::ffff:/i, ''))}</span></td>
               <td class="wrap"><div class="details-box">${esc(r.details || '')}</div></td></tr>`).join('')}</tbody></table></div></div>`;
         },
       };
