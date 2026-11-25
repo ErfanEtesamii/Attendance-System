@@ -41,6 +41,12 @@ describe('API پورسانت فروش', () => {
   test('بدون ایمیل دیدار ⇒ commission: null', async () => {
     assert.equal((await hit('a', 'GET', `/api/admin/me/commission${month}`)).json.commission, null);
   });
+  test('canViewTeam: ادمین بله (بدون ایمیل)، فروشنده‌ی عادی خیر', async () => {
+    const adm = (await hit('admin', 'GET', `/api/admin/me/commission${month}`)).json;
+    assert.equal(adm.commission, null);
+    assert.equal(adm.canViewTeam, true);
+    assert.equal((await hit('b', 'GET', `/api/admin/me/commission${month}`)).json.canViewTeam, false);
+  });
   test('نگاشت ایمیل فقط با users.write؛ ایمیل نامعتبر رد می‌شود', async () => {
     assert.equal((await hit('a', 'PUT', `/api/admin/users/${U.a.id}/didar-email`, { email: 'a@x.com' })).status, 403);
     assert.equal((await hit('admin', 'PUT', `/api/admin/users/${U.a.id}/didar-email`, { email: 'bad' })).status, 400);

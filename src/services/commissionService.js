@@ -114,4 +114,10 @@ function leaderboard(viewer, { jy, jm } = {}) {
   return { monthLabel: month.label, month: build(periods.month), season: build(periods.season), all: isAdmin || isSupervisor ? build(ALL_TIME) : null };
 }
 
-module.exports = { sync, syncIfStale, myCommission, leaderboard, normalizeDeal, AMOUNT_TIERS };
+// ادمین/مالک و سرپرستِ تیم فروش لیدربرد تیمی را می‌بینند (حتی بدون ایمیل دیدار برای خودشان)
+function canViewTeam(viewer) {
+  if (['admin', 'owner'].includes(viewer.role)) return true;
+  return !!getDb().prepare("SELECT 1 FROM users WHERE is_active = 1 AND manager_id = ? AND didar_email IS NOT NULL AND didar_email <> '' LIMIT 1").get(viewer.id);
+}
+
+module.exports = { canViewTeam, sync, syncIfStale, myCommission, leaderboard, normalizeDeal, AMOUNT_TIERS };

@@ -15,7 +15,7 @@ router.get('/admin/me/commission', requirePermission('me.read'), (req, res) => {
   service.syncIfStale();
   const row = getDb().prepare('SELECT didar_email FROM users WHERE id = ?').get(req.adminUser.id);
   const commission = service.myCommission({ ...req.adminUser, didar_email: row && row.didar_email }, { jy: intOrUndef(req.query.year), jm: intOrUndef(req.query.month) });
-  return res.json({ commission });
+  return res.json({ commission, canViewTeam: service.canViewTeam(req.adminUser) });
 });
 
 router.get('/admin/sales-team/leaderboard', requirePermission('me.read'), (req, res) => {

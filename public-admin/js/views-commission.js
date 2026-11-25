@@ -100,8 +100,10 @@
   AP.probeSales = async function probeSales() {
     try {
       const r = await AP.api('/admin/me/commission');
-      if (!r || !r.commission) return;
-      AP.state.sales = true; AP.rebuildNav();
+      if (!r) return;
+      AP.state.sales = !!r.commission; AP.state.salesTeam = !!r.canViewTeam;
+      if (!AP.state.sales && !AP.state.salesTeam) return;
+      AP.rebuildNav();
       const key = (String(location.hash).match(/^#\/([^/?]+)/) || [])[1] || 'dashboard';
       if (AP.setActiveNav) AP.setActiveNav(key);
     } catch (_) { /* غیرحیاتی */ }

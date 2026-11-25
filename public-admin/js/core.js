@@ -680,10 +680,8 @@
       const mine = { id: 'mystatus', icon: 'attendance', label: 'وضعیت من', group: 'پنل من', counter: true };
       if (AP.selfOnly()) items.unshift(mine); else items.push(mine);
     }
-    // پورسانت فروش: فقط برای کارمندی که ایمیل دیدار دارد (AP.probeSales بعد از ورود تعیین می‌کند)
-    if (AP.state.sales) {
-      [['commission', 'wallet', 'پورسانت من'], ['salesteam', 'trend', 'وضعیت تیمی فروش']].forEach(([id, ic, label]) => { if (AP.viewAllowed(AP.views[id])) items.push({ id, icon: ic, label, group: 'پنل من' }); });
-    }
+    // پورسانت فروش: «پورسانت من» برای کارمندِ دارای ایمیل دیدار؛ «وضعیت تیمی» برای او و نیز ادمین/مالک/سرپرست فروش (AP.probeSales بعد از ورود تعیین می‌کند)
+    [['commission', 'wallet', 'پورسانت من', AP.state.sales], ['salesteam', 'trend', 'وضعیت تیمی فروش', AP.state.sales || AP.state.salesTeam]].forEach(([id, ic, label, on]) => { if (on && AP.viewAllowed(AP.views[id])) items.push({ id, icon: ic, label, group: 'پنل من' }); });
     items.forEach((n) => { (groups[n.group] = groups[n.group] || []).push(n); });
     $('#side-nav').innerHTML = Object.keys(groups)
       .map((g) => `<div class="nav-group">${esc(g)}</div>${groups[g].map(AP.navItemHtml).join('')}`)
