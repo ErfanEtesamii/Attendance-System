@@ -1,12 +1,16 @@
 // پورسانت فروش (دیدار). هویت فقط از نشست؛ مبلغ لیدربرد فقط برای خودِ شخص (یا admin/owner).
 //   GET  /admin/me/commission?year=&month=       me.read   — پورسانت و معامله‌های موفقِ خودم
 //   GET  /admin/sales-team/leaderboard           me.read   — رتبه‌ها (تعداد/مبلغ فاکتور)، مبلغ دیگران حذف‌شده
+//   GET  /admin/sales-team/export?from=&to=&format=xlsx|csv   me.read — اکسل پورسانت برای حسابداری (فقط ادمین/مالک/سرپرست فروش)
 //   POST /admin/commission/sync                  users.write — همگام‌سازی دستی با دیدار
 //   GET/PUT /admin/users/:id/didar-email            users.write — ایمیل دیدارِ کارمند (نگاشت مسئول معامله)
 const express = require('express');
 const { requirePermission } = require('../../../middleware/permissions');
 const service = require('../../../services/commissionService');
 const { getDb } = require('../../../db/connection');
+const auditRepository = require('../../../repositories/auditRepository');
+const { sendSheets, exportAuditFields } = require('../../../utils/xlsx');
+const { buildCommissionSheets } = require('../../../services/commissionExportService');
 
 const router = express.Router();
 const intOrUndef = (v) => { const n = Number(v); return Number.isInteger(n) ? n : undefined; };
@@ -37,6 +41,14 @@ router.get('/admin/sales-team/members/:id', requirePermission('me.read'), (req, 
   const r = service.memberCommission(req.adminUser, req.params.id, qOf(req));
   if (!r) return res.status(404).json({ error: 'این همکار پیدا نشد یا اجازه‌ی دیدنش را ندارید.', code: 'NOT_FOUND' });
   return res.json(r);
+});
+
+router.get('/admin/sales-team/export', requirePermission('me.read'), async (req, res) => {
+  service.syncIfStale();
+  const r = buildCommissionSheets(req.adminUser, qOf(req));
+  if (!r.ok) return res.status(r.status).json({ error: r.error, code: r.code });
+  const audit = (info) => auditRepository.logEvent({ userId: req.adminUser.id, action: 'report_exported', ipAddress: req.ip, details: { source: 'admin_panel', kind: 'sales_commission', from: r.range.from, to: r.range.to, ...exportAuditFields(info) } });
+  return sendSheets(req, res, `commission_${r.range.from}_${r.range.to}.csv`, r.sheets, { csv: r.csv, onExport: audit });
 });
 
 router.post('/admin/commission/sync', requirePermission('users.write'), async (req, res) => {

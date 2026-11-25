@@ -151,7 +151,7 @@
   }
   function teamBoardHtml(d) {
     const tabs = [['month', 'ماهانه', d.month], ['season', 'فصلی', d.season], ['all', 'کل زمان', d.all]].filter((t) => t[2]);
-    return `<div class="view-header"><div><h2>وضعیت تیمی فروش</h2><div class="sub">رتبه‌ی تیم فروش · مبلغ فاکتور هر نفر فقط برای خودش (و سرپرست/مدیریت) نمایش داده می‌شود</div></div></div>
+    return `<div class="view-header"><div><h2>وضعیت تیمی فروش</h2><div class="sub">رتبه‌ی تیم فروش · مبلغ فاکتور هر نفر فقط برای خودش (و سرپرست/مدیریت) نمایش داده می‌شود</div></div>${AP.state.salesTeam ? `<div class="header-actions" data-sales-export>${exportBtn(r0.from, r0.to)}</div>` : ''}</div>
       <div class="tb-tabs" role="tablist">${tabs.map(([id, label], k) => `<button type="button" class="tb-tab${k === 0 ? ' is-active' : ''}" role="tab" aria-selected="${k === 0}" data-tb-tab="${id}">${label}</button>`).join('')}</div>
       ${tabs.map(([id, , p], k) => boardPanel(id, p, k === 0)).join('')}`;
   }
@@ -212,6 +212,7 @@
     AP.rangeBar.bind(root, {
       onApply: async (from, to) => {
         AP.state.salesRange = { from, to }; const me = (seq += 1);
+        const ex = page.querySelector('[data-sales-export]'); if (ex) ex.innerHTML = exportBtn(from, to);
         body.setAttribute('aria-busy', 'true');
         const html = await load(from, to).catch(() => '<div class="card"><div class="empty">بارگذاری انجام نشد؛ دوباره تلاش کنید.</div></div>');
         if (me !== seq) return;
@@ -220,6 +221,7 @@
       },
     });
   }
+  const exportBtn = (from, to) => AP.exportBar({ path: '/api/admin/sales-team/export', params: { from, to }, formats: [['xlsx', 'اکسل برای حسابداری']], print: false });
   const qs = (from, to) => `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
   const EMPTY_TEAM = '<div class="card"><div class="empty">در این بازه فاکتور فروشی ثبت نشده است.</div></div>';
   const clampNote = (lb) => (lb && lb.range && lb.range.clamped ? `<p class="tb-note cm-clamp">برای شما بازه از ${esc(fmt.dateLong ? fmt.dateLong(lb.range.from) : lb.range.from)} محدود شد.</p>` : '');

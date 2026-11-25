@@ -35,6 +35,7 @@ const EMPLOYEE_ALLOWED = [
   ['GET', /^\/admin\/avatar\/\d+$/], // عکس خودش یا همکار فروش (دسترسی در مسیر اعمال می‌شود)
   ['GET', /^\/admin\/sales-team\/members(\/[^/]+)?$/], // کارت پورسانت اعضا (سرپرست؛ دسترسی در سرویس)
   ['GET', /^\/admin\/sales-team\/leaderboard$/], // رتبه‌ی تیم فروش؛ مبلغ دیگران در سرور حذف می‌شود
+  ['GET', /^\/admin\/sales-team\/export$/], // اکسل پورسانت؛ فقط ادمین/مالک/سرپرستِ فروش (در سرویس ۴۰۳ می‌دهد)
   ['GET', /^\/admin\/attendance$/],
   ['GET', /^\/admin\/attendance\/export$/],
   ['GET', /^\/admin\/attendance-records\/\d+$/],

@@ -32,6 +32,7 @@ const GROUP_LABELS = {
   performance: 'امتیاز عملکرد',
   disputes: 'اعتراض‌ها',
   supervisors: 'سرپرست‌ها',
+  sales: 'تیم فروش و پورسانت',
 };
 
 // ---------- اعتبارسنجی بر اساس نوع ----------
@@ -217,6 +218,8 @@ def('leaveAttachmentTypes', 'leave_attachment_types', 'string', { group: 'leave'
 def('leaveApprovalReminderHours', 'leave_approval_reminder_hours', 'number', { related: ['supervisors'], group: 'leave', min: 0, max: 8760, default: 0, label: 'یادآوری تأیید مرخصی', description: 'اگر درخواست این‌قدر ساعت بی‌پاسخ ماند، به تأییدکننده یادآوری شود. (۰ = خاموش)', hint: 'یادآوری برای سرپرست مستقیم و همه‌ی ادمین‌ها می‌رود.' });
 def('missionReminderHour', 'mission_reminder_hour', 'number', { group: 'leave', min: 0, max: 23, default: 10, label: 'ساعت یادآوری ماموریتِ بی‌پاسخ', description: 'از این ساعتِ روز بعد از ثبت، اگر ماموریت هنوز بی‌پاسخ است یادآوری تأیید برود.', hint: 'ساعت ۲۴ساعته به وقت شرکت؛ مثلاً ۱۰ یعنی ساعت ۱۰ صبح.' });
 // تأخیر و یادآوری
+def('salesNotifyEnabled', 'sales_notify_enabled', 'boolean', { group: 'sales', default: true, label: 'پیام تشویقی معامله‌ی موفق', description: 'با هر معامله‌ی موفقِ تازه در دیدار، پیام تشویقی تلگرام به خودِ کارشناس برود.', hint: 'شامل رسیدن به پله‌ی بالاتر پورسانت و فاکتورهای پنجم، دهم و … ماه است. پیام‌ها متنوع‌اند و مبلغ فقط برای خودِ کارشناس می‌رود. معامله‌های قبل از فعال‌سازی هرگز اعلام نمی‌شوند.' });
+def('salesGroupChatId', 'sales_group_chat_id', 'string', { group: 'sales', default: '', maxLength: 40, label: 'شناسه‌ی گروه تلگرام تیم فروش', description: 'اگر پر شود، تبریک کوتاه و بدون مبلغ به این گروه هم می‌رود. (خالی = خاموش)', hint: 'بات باید در گروه عضو باشد. شناسه‌ی گروه معمولاً با منفی شروع می‌شود، مثل -1001234567890.' });
 def('lateCheckinGraceMinutes', 'late_checkin_grace_minutes', 'number', { group: 'reminders', min: 0, max: 720, default: () => config.lateCheckinGraceMinutes, fallback: 15, label: 'مهلت یادآوری ورود', description: 'چند دقیقه بعد از شروع کار صبر شود، سپس یادآوری ورود برود.', hint: 'جدا از «مهلت تأخیر» است که روی حساب تأخیر اثر می‌گذارد.' });
 def('checkoutReminderMinutesBefore', 'checkout_reminder_minutes_before', 'number', { group: 'reminders', min: 0, max: 720, default: () => config.checkoutReminderMinutesBefore, fallback: 15, label: 'یادآوری ثبت خروج', description: 'چند دقیقه مانده به پایان کار، یادآوری ثبت خروج برود.' });
 def('urgentTaskReminderLeadMinutes', 'urgent_task_reminder_lead_minutes', 'number', { group: 'reminders', min: 5, max: 1440, default: 30, label: 'پیش‌آگاهی مهلت تسک فوری', description: 'چند دقیقه مانده به مهلت تسک فوری، اگر هنوز پاسخی ندارد یادآوری برای کارمند برود.', hint: 'زمان اجرای خودِ یادآوری در بخش «زمان‌بندی کارهای خودکار» تنظیم می‌شود.' });

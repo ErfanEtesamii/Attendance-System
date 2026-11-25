@@ -20,12 +20,13 @@ function normalizeDeal(d) {
 }
 
 // جایگزینی کامل کش (چند ده معامله؛ معامله‌ای که دیگر «موفق» نیست خودکار حذف می‌شود)
-async function sync({ fetchImpl } = {}) {
+async function sync({ fetchImpl, announce = true } = {}) {
   const db = getDb();
   try {
     const rows = (await didarClient.fetchWonDeals({ fetchImpl })).map(normalizeDeal).filter((r) => r.didar_id && r.won_at);
     const ins = db.prepare(`INSERT INTO sales_deals (didar_id, code, title, customer, owner_email, owner_name, won_at, price_rial, items_json) VALUES (@didar_id, @code, @title, @customer, @owner_email, @owner_name, @won_at, @price_rial, @items_json)`);
     db.transaction(() => { db.prepare('DELETE FROM sales_deals').run(); rows.forEach((r) => ins.run(r)); db.prepare("INSERT INTO didar_sync_state (id, last_sync_at, last_error) VALUES (1, datetime('now'), NULL) ON CONFLICT(id) DO UPDATE SET last_sync_at = excluded.last_sync_at, last_error = NULL").run(); })();
+    if (announce) try { require('./salesNotifyService').announceNewDeals().catch((e) => console.error('[sales-notify]', e.message)); } catch (e) { console.error('[sales-notify]', e.message); }
     return { ok: true, count: rows.length };
   } catch (err) {
     db.prepare('INSERT INTO didar_sync_state (id, last_error) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET last_error = excluded.last_error').run(String(err.message || err).slice(0, 200));
@@ -214,4 +215,4 @@ function hasSalesAccess(viewer) {
   return !!(r && r.didar_email);
 }
 
-module.exports = { hasSalesAccess, floorFor, formerOwners, visibleMembers, membersSummary, memberCommission, canViewTeam, sync, syncIfStale, myCommission, leaderboard, normalizeDeal, AMOUNT_TIERS };
+module.exports = { rangeOf, dealsOfMonth, hasSalesAccess, floorFor, formerOwners, visibleMembers, membersSummary, memberCommission, canViewTeam, sync, syncIfStale, myCommission, leaderboard, normalizeDeal, AMOUNT_TIERS };
