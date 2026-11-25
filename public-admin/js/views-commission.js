@@ -41,7 +41,7 @@
       ? `<div class="cm-hero-ring">${ring(t.nextTier.progress || 0, `${fmt.num(Math.round(t.nextTier.progress || 0))}٪`, 'تا پله‌ی بعد')}<p class="cm-ring-cap">${million(t.nextTier.remainingToman)} دیگر تا پورسانت مبلغی <b>${fmt.num(t.nextTier.rate)}٪</b> روی یک فاکتور</p></div>`
       : `<div class="cm-hero-ring">${ring(100, '🏆', 'بالاترین پله')}<p class="cm-ring-cap">فاکتور شما در بالاترین پله‌ی مبلغی است</p></div>`;
     return `<div class="view-header"><div><h2>${esc(title || 'پورسانت من')}</h2><div class="sub">معامله‌های موفق ${esc(d.monthLabel)} در دیدار</div></div></div>
-      <section class="card cm-hero"><div class="cm-hero-main"><span class="cm-hero-spark" aria-hidden="true">✨</span><span class="cm-hero-label">پورسانت این ماه</span>
+      <section class="card cm-hero"><div class="cm-hero-main"><span class="cm-hero-spark" aria-hidden="true">✨</span><span class="cm-hero-label">پورسانت ${esc(d.monthLabel)}</span>
         <p class="cm-hero-amount"><span>${fmt.num(t.commissionToman)}</span><small>تومان</small></p>
         ${d.season ? `<span class="cm-season">${esc(d.season.label)}: <b>${fmt.num(d.season.commissionToman)}</b> تومان از ${fmt.num(d.season.dealsCount)} فاکتور</span>` : ''}<span class="cm-note"><span aria-hidden="true">ⓘ</span> تخمینی؛ مبلغ نهایی با تأیید حسابداری است</span></div>${next}</section>
       <div class="stat-grid cm-stats">
@@ -174,22 +174,70 @@
     } catch (_) { /* غیرحیاتی */ }
   };
   AP.commissionUi = { sampleData, membersHtml, commissionHtml, commissionCard, teamBoardHtml };
+  // ---------- نوار بازه‌ی زمانی (این ماه / ماه قبل / این فصل / کل زمان / بازه‌ی دلخواه) ----------
+  const J = window.Jalali;
+  const defaultRange = () => {
+    if (AP.state.salesRange) return AP.state.salesRange;
+    const to = fmt.today(); const j = J.isoToJalali(to);
+    return { from: J.jalaliToIso(j.jy, j.jm, 1), to };
+  };
+  // «کل زمان» و بازه‌ی دلخواهِ آزاد فقط برای ادمین/مالک/سرپرست؛ بقیه فقط چیپ‌های ماه/ماه قبل/فصل (سرور هم کف می‌گذارد)
+  const rangeShell = (priv) => {
+    const r = defaultRange();
+    return `<div class="cm-range" data-sales-range>${AP.rangeBar.html({ from: r.from, to: r.to, label: 'بازه‌ی زمانی', presets: priv ? ['month', 'lastMonth', 'season', 'all'] : ['month', 'lastMonth', 'season'], fields: priv })}</div>`;
+  };
+  // mount مشترک: با هر تغییر بازه، body را از load(from, to) دوباره می‌سازد
+  function mountRange(page, load) {
+    const root = page.querySelector('[data-sales-range]'); const body = page.querySelector('[data-sales-body]');
+    if (!root || !body) return;
+    if (AP.dates && AP.dates.mount) AP.dates.mount(root);
+    let seq = 0;
+    AP.rangeBar.bind(root, {
+      onApply: async (from, to) => {
+        AP.state.salesRange = { from, to }; const me = (seq += 1);
+        body.setAttribute('aria-busy', 'true');
+        const html = await load(from, to).catch(() => '<div class="card"><div class="empty">بارگذاری انجام نشد؛ دوباره تلاش کنید.</div></div>');
+        if (me !== seq) return;
+        body.innerHTML = html; body.removeAttribute('aria-busy');
+        body.querySelectorAll('[data-progress]').forEach((el) => el.style.setProperty('--progress', `${Math.max(0, Math.min(100, Number(el.dataset.progress) || 0))}%`));
+      },
+    });
+  }
+  const qs = (from, to) => `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+  const EMPTY_TEAM = '<div class="card"><div class="empty">در این بازه فاکتور فروشی ثبت نشده است.</div></div>';
+  const clampNote = (lb) => (lb && lb.range && lb.range.clamped ? `<p class="tb-note cm-clamp">برای شما بازه از ${esc(fmt.dateLong ? fmt.dateLong(lb.range.from) : lb.range.from)} محدود شد.</p>` : '');
+  async function teamBody(from, to) {
+    const [data, members] = await Promise.all([AP.api(`/admin/sales-team/leaderboard?${qs(from, to)}`).then((r) => r && r.leaderboard).catch(() => null), AP.api(`/admin/sales-team/members?${qs(from, to)}`).catch(() => null)]);
+    const mem = membersHtml(members);
+    if (!data || !data.range || !data.byCount || !data.byCount.some((x) => x.count > 0)) return EMPTY_TEAM + mem;
+    return `${clampNote(data)}${boardPanel('range', data, true)}${mem}`;
+  }
+
   AP.view('commission', {
     skeleton: 'plan',
     perm: 'me.read',
     async render() {
-      let data = await AP.api('/admin/me/commission').then((r) => r && r.commission).catch(() => null);
+      const r0 = defaultRange();
+      let data = await AP.api(`/admin/me/commission?${qs(r0.from, r0.to)}`).then((r) => r && r.commission).catch(() => null);
       const demo = !data && AP.isOwnerMe(); if (demo) data = sampleData();
-      return { html: data ? (demo ? `<div class="cm-demo-banner">${demoTag} این صفحه فقط یک نمونه برای دیدن ظاهر است؛ داده‌ی واقعی نیست.</div>` : '') + commissionHtml(data) : '<div class="view-header"><div><h2>پورسانت من</h2></div></div><div class="card"><div class="empty">اطلاعات پورسانت هنوز در دسترس نیست.</div></div>', mount() {} };
+      if (!data) return { html: '<div class="view-header"><div><h2>پورسانت من</h2></div></div><div class="card"><div class="empty">اطلاعات پورسانت هنوز در دسترس نیست.</div></div>', mount() {} };
+      if (demo) return { html: `<div class="cm-demo-banner">${demoTag} این صفحه فقط یک نمونه برای دیدن ظاهر است؛ داده‌ی واقعی نیست.</div>${commissionHtml(data)}`, mount() {} };
+      return {
+        html: `${rangeShell(true)}<div data-sales-body>${commissionHtml(data)}</div>`,
+        mount(page) { mountRange(page, async (from, to) => { const c = await AP.api(`/admin/me/commission?${qs(from, to)}`).then((r) => r && r.commission); return c ? commissionHtml(c) : EMPTY_TEAM; }); },
+      };
     },
   });
   AP.view('salesteam', {
     skeleton: 'plan',
     perm: 'me.read',
     async render() {
-      const [data, members] = await Promise.all([AP.api('/admin/sales-team/leaderboard').then((r) => r && r.leaderboard).catch(() => null), AP.api('/admin/sales-team/members').catch(() => null)]);
-      const mem = membersHtml(members);
-      return { html: data && data.month && data.month.byCount.length ? teamBoardHtml(data) + mem : '<div class="view-header"><div><h2>وضعیت تیمی فروش</h2></div></div><div class="card"><div class="empty">هنوز فاکتور فروشی در این ماه ثبت نشده است.</div></div>' + mem, mount: mountBoard };
+      const r0 = defaultRange();
+      const body = await teamBody(r0.from, r0.to);
+      return {
+        html: `<div class="view-header"><div><h2>وضعیت تیمی فروش</h2><div class="sub">رتبه‌ی تیم فروش · مبلغ فاکتور هر نفر فقط برای خودش (و سرپرست/مدیریت) نمایش داده می‌شود</div></div></div>${rangeShell(!!AP.state.salesTeam)}<div data-sales-body>${body || '<div class="card"><div class="empty">در این بازه فاکتور فروشی ثبت نشده است.</div></div>'}</div>`,
+        mount(page) { mountBoard(page); mountRange(page, teamBody); },
+      };
     },
   });
   // کارت پورسانتِ یک همکار برای ادمین/مالک/سرپرست (دسترسی در سرور)
@@ -198,10 +246,15 @@
     perm: 'me.read',
     navId: 'salesteam',
     async render(param) {
-      const r = await AP.api(`/admin/sales-team/members/${encodeURIComponent(param)}`).catch(() => null);
+      const r0 = defaultRange(); const url = (f, t) => `/admin/sales-team/members/${encodeURIComponent(param)}?${qs(f, t)}`;
+      const r = await AP.api(url(r0.from, r0.to)).catch(() => null);
       const back = '<a class="tb-back" href="#/salesteam">← وضعیت تیمی فروش</a>';
       if (!r || !r.commission) return { html: `${back}<div class="card"><div class="empty">این همکار پیدا نشد یا اجازه‌ی دیدنش را ندارید.</div></div>`, mount() {} };
-      return { html: `${back}${commissionHtml(r.commission, `پورسانت ${r.name}`)}`, mount() {} };
+      const title = `پورسانت ${r.name}`;
+      return {
+        html: `${back}${rangeShell(true)}<div data-sales-body>${commissionHtml(r.commission, title)}</div>`,
+        mount(page) { mountRange(page, async (from, to) => { const x = await AP.api(url(from, to)); return x && x.commission ? commissionHtml(x.commission, title) : EMPTY_TEAM; }); },
+      };
     },
   });
 })();

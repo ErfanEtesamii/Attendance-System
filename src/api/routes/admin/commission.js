@@ -10,26 +10,27 @@ const { getDb } = require('../../../db/connection');
 
 const router = express.Router();
 const intOrUndef = (v) => { const n = Number(v); return Number.isInteger(n) ? n : undefined; };
+const qOf = (req) => ({ jy: intOrUndef(req.query.year), jm: intOrUndef(req.query.month), from: String(req.query.from || ''), to: String(req.query.to || '') });
 
 router.get('/admin/me/commission', requirePermission('me.read'), (req, res) => {
   service.syncIfStale();
   const row = getDb().prepare('SELECT didar_email FROM users WHERE id = ?').get(req.adminUser.id);
-  const commission = service.myCommission({ ...req.adminUser, didar_email: row && row.didar_email }, { jy: intOrUndef(req.query.year), jm: intOrUndef(req.query.month) });
+  const commission = service.myCommission({ ...req.adminUser, didar_email: row && row.didar_email }, qOf(req));
   return res.json({ commission, canViewTeam: service.canViewTeam(req.adminUser) });
 });
 
 router.get('/admin/sales-team/leaderboard', requirePermission('me.read'), (req, res) => {
   service.syncIfStale();
-  return res.json({ leaderboard: service.leaderboard(req.adminUser, { jy: intOrUndef(req.query.year), jm: intOrUndef(req.query.month) }) });
+  return res.json({ leaderboard: service.leaderboard(req.adminUser, qOf(req)) });
 });
 
 // کارت پورسانتِ اعضا برای ادمین/مالک (همه) و سرپرست (زیرمجموعه‌ی مستقیم)؛ دسترسی در سرویس اعمال می‌شود
 router.get('/admin/sales-team/members', requirePermission('me.read'), (req, res) => {
   service.syncIfStale();
-  return res.json(service.membersSummary(req.adminUser, { jy: intOrUndef(req.query.year), jm: intOrUndef(req.query.month) }));
+  return res.json(service.membersSummary(req.adminUser, qOf(req)));
 });
 router.get('/admin/sales-team/members/:id', requirePermission('me.read'), (req, res) => {
-  const r = service.memberCommission(req.adminUser, req.params.id, { jy: intOrUndef(req.query.year), jm: intOrUndef(req.query.month) });
+  const r = service.memberCommission(req.adminUser, req.params.id, qOf(req));
   if (!r) return res.status(404).json({ error: 'این همکار پیدا نشد یا اجازه‌ی دیدنش را ندارید.', code: 'NOT_FOUND' });
   return res.json(r);
 });

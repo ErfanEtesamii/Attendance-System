@@ -46,6 +46,9 @@
       },
     },
   };
+  // فصل شمسی جاری (۳ ماه پشت‌سرهم) تا امروز، و «کل زمان» (از ابتدای ۲۰۱۵ تا امروز)
+  PRESETS.season = { label: 'این فصل', range: () => { const j = J.isoToJalali(fmt.today()); return { from: J.jalaliToIso(j.jy, Math.floor((j.jm - 1) / 3) * 3 + 1, 1), to: fmt.today() }; } };
+  PRESETS.all = { label: 'کل زمان', range: () => ({ from: '2015-01-01', to: fmt.today() }) };
   const DEFAULT_PRESETS = ['today', '7', '30', 'month', 'lastMonth', '90'];
 
   const matchPreset = (keys, from, to) => keys.find((k) => {

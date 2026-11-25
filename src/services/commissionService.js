@@ -3,7 +3,7 @@
 const { getDb } = require('../db/connection');
 const config = require('../config');
 const { dealFromItems, commissionForDeal, nextAmountTier, buildLeaderboards, AMOUNT_TIERS } = require('../utils/commission');
-const { jalaliMonthRangeOf, toJalaliFromDate } = require('../utils/jalali');
+const { jalaliMonthRangeOf, toJalaliFromDate, jalaliPartsOfDateString, MONTH_NAMES } = require('../utils/jalali');
 const didarClient = require('./didarClient');
 
 const tehranDate = (iso) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tehran' }).format(new Date(iso)); // YYYY-MM-DD
@@ -50,6 +50,19 @@ function monthOf(jy, jm) {
   return { jy: y, jm: m, ...jalaliMonthRangeOf(y, m) };
 }
 
+const ISO = /^\d{4}-\d{2}-\d{2}$/;
+const jlabel = (iso) => { const j = jalaliPartsOfDateString(iso); return j ? `${j.jd} ${MONTH_NAMES[j.jm - 1]} ${j.jy}` : iso; };
+// بازه‌ی دلخواه (from/to میلادی) یا ماه (jy/jm)؛ بازه‌ی نامعتبر ⇒ ماه جاری. viewer غیرمجاز به «کل زمان» حداکثر از ابتدای ماهِ قبلِ ابتدای فصل جاری عقب نمی‌رود.
+function rangeOf({ jy, jm, from, to } = {}, { floor = null } = {}) {
+  if (ISO.test(String(from || '')) && ISO.test(String(to || '')) && jalaliPartsOfDateString(from) && jalaliPartsOfDateString(to) && from <= to) {
+    let f = from;
+    if (floor && f < floor) f = floor;
+    if (f > to) return { ...monthOf(), custom: false };
+    return { from: f, to, label: f === to ? jlabel(f) : `${jlabel(f)} تا ${jlabel(to)}`, custom: true, clamped: f !== from };
+  }
+  return { ...monthOf(jy, jm), custom: false };
+}
+
 const SEASONS = ['بهار', 'تابستان', 'پاییز', 'زمستان'];
 // فصل شمسیِ یک ماه: ۳ ماه پشت‌سرهم (بهار = فروردین تا خرداد، ...)
 function seasonOf(jy, jm) {
@@ -60,7 +73,10 @@ const ALL_TIME = { from: '0000-01-01', to: '9999-12-31', label: 'از ابتدا
 
 // معامله‌های یک بازه‌ی تاریخ (به‌وقت تهران) برای یک ایمیل دیدار؛ هر معامله با پورسانتش
 function dealsOfMonth(range, email) {
-  const rows = getDb().prepare('SELECT * FROM sales_deals WHERE (? IS NULL OR owner_email = ?) ORDER BY won_at DESC').all(email || null, email || null);
+  // کلید مالک: ایمیل؛ یا «name:نام» برای معامله‌ای که دیدار ایمیل مالکش را برنمی‌گرداند (کاربر غیرفعال)
+  const byName = String(email || '').startsWith('name:');
+  const rows = getDb().prepare('SELECT * FROM sales_deals ORDER BY won_at DESC').all()
+    .filter((r) => !email || (byName ? (!r.owner_email && r.owner_name === email.slice(5)) : r.owner_email === email));
   return rows.filter((r) => { const d = tehranDate(r.won_at); return d >= range.from && d <= range.to; }).map((r) => {
     const items = JSON.parse(r.items_json || '[]');
     const base = { id: r.didar_id, title: r.title || `معامله ${r.code || ''}`.trim(), customer: r.customer, dateLabel: tehranDate(r.won_at), ownerEmail: r.owner_email, hasInvoice: items.length > 0 };
@@ -70,8 +86,8 @@ function dealsOfMonth(range, email) {
   });
 }
 
-function myCommission(user, { jy, jm } = {}) {
-  const range = monthOf(jy, jm);
+function myCommission(user, q = {}) {
+  const range = rangeOf(q);
   const email = String(user.didar_email || '').trim().toLowerCase();
   if (!email) return null;
   const deals = dealsOfMonth(range, email);
@@ -81,11 +97,12 @@ function myCommission(user, { jy, jm } = {}) {
   const best = inv.reduce((m, d) => Math.max(m, d.amountToman), 0);
   const tier = nextAmountTier(best);
   const avg = (f) => (inv.length ? Math.round((inv.reduce((t, d) => t + f(d), 0) / inv.length) * 10) / 10 : 0);
-  const seasonRange = seasonOf(range.jy, range.jm);
+  const seasonRange = range.custom ? range : seasonOf(range.jy, range.jm);
   const seasonInv = dealsOfMonth(seasonRange, email).filter((d) => !d.noInvoice);
   return {
     monthLabel: range.label,
-    season: { label: seasonRange.label, dealsCount: seasonInv.length, commissionToman: seasonInv.reduce((t, d) => t + d.commissionToman, 0) },
+    range: { from: range.from, to: range.to, custom: !!range.custom },
+    season: range.custom ? null : { label: seasonRange.label, dealsCount: seasonInv.length, commissionToman: seasonInv.reduce((t, d) => t + d.commissionToman, 0) },
     totals: {
       commissionToman: commission, dealsCount: inv.length, noInvoiceCount: deals.length - inv.length, salesToman: sales,
       avgRatePercent: avg((d) => d.ratePercent), avgDiscountPercent: avg((d) => d.discountPercent),
@@ -96,7 +113,17 @@ function myCommission(user, { jy, jm } = {}) {
 }
 
 // سرپرستِ تیم فروش = مدیرِ مستقیمِ (manager_id) حداقل یک عضو نگاشت‌شده؛ مبلغ اعضای تیم خودش را می‌بیند (admin/owner هم همه را می‌بینند)
-function leaderboard(viewer, { jy, jm } = {}) {
+// کف بازه برای کسی که ادمین/مالک/سرپرست نیست: ابتدای فصل جاری یا ماه قبل (هر کدام زودتر)؛ «کل زمان» برای او بسته است
+function floorFor(isPrivileged) {
+  if (isPrivileged) return null;
+  const now = toJalaliFromDate(new Date());
+  const pj = now.jm === 1 ? { jy: now.jy - 1, jm: 12 } : { jy: now.jy, jm: now.jm - 1 };
+  const a = seasonOf(now.jy, now.jm).from; const b = jalaliMonthRangeOf(pj.jy, pj.jm).from;
+  return a < b ? a : b;
+}
+
+function leaderboard(viewer, q = {}) {
+  const { jy, jm } = q;
   const month = monthOf(jy, jm);
   const periods = { month, season: seasonOf(month.jy, month.jm) };
   const members = getDb().prepare("SELECT id, full_name, didar_email, manager_id, role FROM users WHERE is_active = 1 AND didar_email IS NOT NULL AND didar_email <> '' AND role <> 'owner'").all();
@@ -107,9 +134,9 @@ function leaderboard(viewer, { jy, jm } = {}) {
   // کارشناسان فروشِ سابق (و هر مالکِ معامله‌ی دیدار که کارمند فعالِ نگاشت‌شده نیست): فقط در لیدربرد، بدون حساب در پنل
   const activeEmails = new Set(members.map((u) => String(u.didar_email).toLowerCase()));
   const inactiveName = new Map(getDb().prepare("SELECT didar_email, full_name FROM users WHERE is_active = 0 AND didar_email IS NOT NULL AND didar_email <> ''").all().map((u) => [String(u.didar_email).toLowerCase(), u.full_name]));
-  const former = getDb().prepare("SELECT owner_email, MAX(owner_name) AS owner_name FROM sales_deals WHERE owner_email IS NOT NULL AND owner_email <> '' GROUP BY owner_email").all()
-    .map((r) => ({ email: String(r.owner_email).toLowerCase(), name: r.owner_name }))
-    .filter((r) => !activeEmails.has(r.email));
+  const former = getDb().prepare("SELECT owner_email, MAX(owner_name) AS owner_name FROM sales_deals GROUP BY owner_email, CASE WHEN owner_email = '' THEN owner_name ELSE '' END").all()
+    .map((r) => (r.owner_email ? { email: String(r.owner_email).toLowerCase(), name: r.owner_name } : (r.owner_name ? { email: `name:${r.owner_name}`, name: r.owner_name } : null)))
+    .filter((r) => r && !activeEmails.has(r.email));
   const rowOf = (name, email, base) => {
     const inv = dealsOfMonth(base, email).filter((d) => !d.noInvoice);
     const amount = inv.reduce((t, d) => t + d.amountToman, 0);
@@ -128,6 +155,10 @@ function leaderboard(viewer, { jy, jm } = {}) {
     ].filter((r) => !r.former || r.count > 0);
     return { label: range.label, ...buildLeaderboards(rows, viewer.id, { canSeeAll: isAdmin, canSee }) };
   };
+  if (q.from && q.to) {
+    const r = rangeOf(q, { floor: floorFor(isAdmin || isSupervisor) });
+    if (r.custom) return { range: { from: r.from, to: r.to, label: r.label, clamped: !!r.clamped }, ...build(r) };
+  }
   return { monthLabel: month.label, month: build(periods.month), season: build(periods.season), all: isAdmin || isSupervisor ? build(ALL_TIME) : null };
 }
 
@@ -143,9 +174,9 @@ function visibleMembers(viewer) {
   if (['admin', 'owner'].includes(viewer.role)) return all;
   return all.filter((u) => u.manager_id === viewer.id);
 }
-function membersSummary(viewer, ym) {
-  const rows = visibleMembers(viewer).map((u) => { const c = myCommission(u, ym); return { userId: u.id, name: u.full_name, ...(c ? { commissionToman: c.totals.commissionToman, dealsCount: c.totals.dealsCount, salesToman: c.totals.salesToman, avgRatePercent: c.totals.avgRatePercent, seasonToman: c.season.commissionToman } : {}) }; });
-  return { monthLabel: monthOf(ym && ym.jy, ym && ym.jm).label, members: rows.sort((a, b) => (b.commissionToman || 0) - (a.commissionToman || 0)) };
+function membersSummary(viewer, ym = {}) {
+  const rows = visibleMembers(viewer).map((u) => { const c = myCommission(u, ym); return { userId: u.id, name: u.full_name, ...(c ? { commissionToman: c.totals.commissionToman, dealsCount: c.totals.dealsCount, salesToman: c.totals.salesToman, avgRatePercent: c.totals.avgRatePercent, seasonToman: c.season ? c.season.commissionToman : null } : {}) }; });
+  return { monthLabel: rangeOf(ym).label, range: { from: rangeOf(ym).from, to: rangeOf(ym).to }, members: rows.sort((a, b) => (b.commissionToman || 0) - (a.commissionToman || 0)) };
 }
 function memberCommission(viewer, id, ym) {
   const u = visibleMembers(viewer).find((m) => m.id === Number(id));

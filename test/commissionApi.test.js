@@ -95,7 +95,29 @@ describe('API پورسانت فروش', () => {
       const sup = (await hit('sup', 'GET', `/api/admin/sales-team/leaderboard${month}`)).json.leaderboard.month;
       assert.equal(sup.byAmount.find((x) => x.isFormer).amountToman, null);
       assert.ok(!(await hit('admin', 'GET', `/api/admin/sales-team/members${month}`)).json.members.some((m) => /سابق/.test(m.name)));
-    } finally { db.prepare("DELETE FROM sales_deals WHERE didar_id = 'old1'").run(); }
+      // مالکِ بدون ایمیل (دیدار برای کاربر غیرفعال ایمیل برنمی‌گرداند) با نام می‌آید
+      db.prepare("INSERT INTO sales_deals (didar_id, code, title, customer, owner_email, owner_name, won_at, price_rial, items_json) VALUES ('old2','2','سابق۲','م','','میلاد بدون‌ایمیل','2026-11-02T08:00:00Z',1000000000,?)").run(items);
+      const adm2 = (await hit('admin', 'GET', `/api/admin/sales-team/leaderboard${month}`)).json.leaderboard.month;
+      const g = adm2.byAmount.find((x) => x.name === 'میلاد بدون‌ایمیل');
+      assert.ok(g && g.isFormer && g.amountToman === 100_000_000);
+    } finally { db.prepare("DELETE FROM sales_deals WHERE didar_id IN ('old1','old2')").run(); }
+  });
+  test('بازه‌ی دلخواه from/to: لیدربرد، کارت من و کارت اعضا', async () => {
+    const q = '?from=2026-09-23&to=2026-11-21'; // مهر تا آبان ۱۴۰۵
+    const lb = (await hit('admin', 'GET', `/api/admin/sales-team/leaderboard${q}`)).json.leaderboard;
+    assert.equal(lb.range.from, '2026-09-23'); assert.equal(lb.range.clamped, false);
+    assert.equal(lb.byCount.find((x) => x.userId === U.b.id).count, 2);
+    const mine = (await hit('b', 'GET', `/api/admin/me/commission${q}`)).json.commission;
+    assert.equal(mine.totals.dealsCount, 2); assert.equal(mine.season, null); assert.equal(mine.range.custom, true);
+    const mem = (await hit('admin', 'GET', `/api/admin/sales-team/members${q}`)).json;
+    assert.equal(mem.members.find((m) => m.userId === U.b.id).dealsCount, 2);
+    const bad = (await hit('admin', 'GET', '/api/admin/sales-team/leaderboard?from=2026-11-21&to=2026-09-23')).json.leaderboard;
+    assert.ok(bad.month && !bad.range); // بازه‌ی نامعتبر ⇒ برگشت به ماه
+  });
+  test('کارمند عادی نمی‌تواند با from خیلی قدیمی «کل زمان» بگیرد (کف سمت سرور)', async () => {
+    const lb = (await hit('b', 'GET', '/api/admin/sales-team/leaderboard?from=2015-01-01&to=2026-11-21')).json.leaderboard;
+    assert.equal(lb.range.clamped, true);
+    assert.ok(lb.range.from > '2026-01-01');
   });
   test('admin همه‌ی مبلغ‌ها و «کل زمان» را می‌بیند', async () => {
     const lb = (await hit('admin', 'GET', `/api/admin/sales-team/leaderboard${month}`)).json.leaderboard;
