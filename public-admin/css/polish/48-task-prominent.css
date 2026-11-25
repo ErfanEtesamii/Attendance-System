@@ -41,3 +41,10 @@
 .tk-compact .rv-progress { display: none; }
 .tk-compact .rv-progress-text { font-size: 12px; color: var(--hint); margin-top: 0; }
 .tk-compact .rv-open { padding: 0 8px; min-height: 0; font-size: 12px; }
+
+/* تعدیل دستی حقوق (مودال ریز حقوق) */
+.pf-adj { margin: 12px 0; }
+.pf-adj-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin-top: 8px; }
+.pf-adj-form .field { flex: 1 1 160px; margin: 0; }
+.pf-adj-neg { color: var(--red-text, var(--red)); }
+.pf-adj-pos { color: var(--green-text, var(--green)); }

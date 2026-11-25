@@ -64,6 +64,7 @@ const PERMISSIONS = Object.freeze([
   'remote_work.read', // R5-1 (فاز ۱۴): صف و جزئیات ثبت‌های دورکاری (admin/hr همه، سرپرست فقط کارمندان مستقیمش؛ فقط‌خواندنی؛ اسکوپ در remoteWorkAdminService؛ کارمند ندارد)
   'performance.read', // صفحه‌ی «عملکرد کارمندان» (نمودارها/بینش‌ها/بازرسی روز): فقط admin؛ سرپرست/hr/کارمند ندارند
   'payroll.read', // حقوق دقیق هر کارمند (نرخ ساعتی × ساعت مفید): فقط admin؛ سرپرست/hr/کارمند ندارند (نرخ هرگز در خروجی‌های دیگر نمی‌آید)
+  'payroll.adjust', // تعدیل دستی حقوق ماهانه (کسر/اضافه به ساعت با دلیل): فقط owner
   'remote_work.create', // ثبت دستی دورکاری برای یک کارمند (فقط admin: مثل بقیه‌ی مجوزهای admin فقط در PERMISSIONS است؛ سرپرست/hr/کارمند ندارند)
   'remote_work.review', // R5-1 (فاز ۱۴): تأیید/رد/اصلاح ساعت دورکاری (admin همه، سرپرست فقط کارمندان مستقیمش؛ هیچ‌کس برای خودش؛ hr و کارمند ندارند)
   'supervisors.manage', // فاز C: مدیریت سرپرست‌ها و تیم‌ها (فهرست، افزودن عضو، انتقال تیم) — فقط admin/owner؛ سرپرست/hr/کارمند ندارند
@@ -131,7 +132,7 @@ const HR_PERMISSIONS = [
 ];
 
 // مجوزهای «فقط owner»: سیستم و امنیت + مدیریت adminها. admin کل این‌ها را ندارد.
-const OWNER_ONLY_PERMISSIONS = Object.freeze(['system.manage', 'admins.manage']);
+const OWNER_ONLY_PERMISSIONS = Object.freeze(['system.manage', 'admins.manage', 'payroll.adjust']);
 
 // admin = همه‌ی مجوزها به‌جز «فقط owner»؛ owner = همه‌ی مجوزها (فراتر از admin).
 const ADMIN_PERMISSIONS = PERMISSIONS.filter((p) => !OWNER_ONLY_PERMISSIONS.includes(p));

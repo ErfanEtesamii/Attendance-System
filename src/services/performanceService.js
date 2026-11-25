@@ -16,6 +16,7 @@ const attendanceRepository = require('../repositories/attendanceRepository');
 const breakRepository = require('../repositories/breakRepository');
 const disputeRepository = require('../repositories/disputeRepository');
 const usersRepository = require('../repositories/usersRepository');
+const payrollAdjustmentRepository = require('../repositories/payrollAdjustmentRepository');
 const { jalaliPartsOfDateString } = require('../utils/jalali');
 const { zonedTimeToUtc, minutesSinceMidnight } = require('../utils/time');
 const insightsLib = require('./performanceInsights');
@@ -415,6 +416,7 @@ function payrollOfRows(user, dayMap, from, to) {
 function monthlyPayroll({ users, year, month, now, withDays = false }) {
   const nowDate = now === undefined ? new Date() : new Date(now);
   const rep = computeMonthlyReport({ users, year, month, now: nowDate, includeDays: true, includeBalances: false });
+  const adjTotals = payrollAdjustmentRepository.totalsForMonth(year, month);
   const rows = rep.users.map((r) => {
     const dayMap = new Map((r.days || []).map((d) => [d.date, d]));
     const user = users.find((u) => u.id === r.user.id);
@@ -426,6 +428,9 @@ function monthlyPayroll({ users, year, month, now, withDays = false }) {
       insuranceToman: usersRepository.getInsuranceDeductionToman(r.user.id, rep.to) || 0, // مقدار مؤثر در پایان ماه
       usefulMinutes: p.usefulMinutes,
       overtimeMinutes: p.overtimeMinutes,
+      baseAmountToman: p.amountToman,
+      adjustmentMinutes: adjTotals.get(r.user.id) || 0, // تعدیل دستی مالک (امضادار)؛ مبلغش با نرخ پایان ماه در amountToman اعمال می‌شود
+      adjustmentToman: null,
       amountToman: p.amountToman,
       excludedDays: p.excludedDays,
       workedDays: p.days.filter((x) => x.usefulMinutes > 0).length,
@@ -440,6 +445,10 @@ function monthlyPayroll({ users, year, month, now, withDays = false }) {
     if (p.amountToman != null && row.workedDays > 0) row.avgPerWorkedDayToman = Math.round(p.amountToman / row.workedDays);
     if (p.amountToman != null && elapsed > 0 && total > elapsed && rep.today >= rep.from && rep.today <= rep.to) row.projectedAmountToman = Math.round((p.amountToman / elapsed) * total);
     row.elapsedWorkDays = elapsed; row.totalWorkDays = total;
+    if (row.adjustmentMinutes && p.amountToman != null && p.rateKt != null) {
+      row.adjustmentToman = calculateAmountToman(row.adjustmentMinutes, p.rateKt);
+      row.amountToman = p.amountToman + row.adjustmentToman;
+    }
     if (withDays) row.days = p.days;
     return row;
   });

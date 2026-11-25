@@ -52,8 +52,8 @@
       department: u.department || '',
       workHours: hhmm(useful - ot),
       overtime: ot ? hhmm(ot) : '',
-      deficit: '', // کسری قبلاً در ساعت مفید اعمال شده؛ دوباره کم نمی‌شود
-      netHours: hhmm(useful),
+      deficit: Number(row.adjustmentMinutes) < 0 ? hhmm(-Number(row.adjustmentMinutes)) : '', // کسری ساعت مفید قبلاً اعمال شده؛ فقط «تعدیل دستی» مالک اینجا می‌آید (مبلغش در amount هست)
+      netHours: hhmm(Math.max(0, useful + (Number(row.adjustmentMinutes) || 0))),
       rate: rate == null ? '' : num(rate),
       insurance: Math.max(0, Math.round(Number(row.insuranceToman) || 0)),
       amount: row.amountToman == null ? null : Math.round(row.amountToman),

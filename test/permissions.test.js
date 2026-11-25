@@ -139,7 +139,7 @@ test('عملکرد و حقوق: performance.read و payroll.read فقط admin', 
 });
 
 test('owner: همه‌ی مجوزهای admin + بخش‌های فقط-owner (سیستم/امنیت و مدیریت adminها)؛ admin آن‌ها را ندارد', () => {
-  assert.deepEqual([...OWNER_ONLY_PERMISSIONS].sort(), ['admins.manage', 'system.manage']);
+  assert.deepEqual([...OWNER_ONLY_PERMISSIONS].sort(), ['admins.manage', 'payroll.adjust', 'system.manage']);
   for (const p of PERMISSIONS) assert.equal(hasPermission('owner', p), true, `owner ${p}`);
   for (const p of OWNER_ONLY_PERMISSIONS) {
     assert.equal(hasPermission('admin', p), false, `admin ${p}`);

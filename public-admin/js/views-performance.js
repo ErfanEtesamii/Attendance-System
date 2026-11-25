@@ -716,6 +716,39 @@
       data.rows.map((r) => [r.user.fullName, r.user.personnelCode, r.user.department, r.rateKt, r.usefulMinutes, r.overtimeMinutes, r.workedDays, r.avgPerWorkedDayToman, r.amountToman, r.previousAmountToman, r.projectedAmountToman, r.excludedDays.length])));
   }
 
+  // تعدیل دستی حقوق (کسر/اضافه به ساعت؛ فقط owner ثبت/حذف می‌کند، admin فقط می‌بیند)
+  async function drawAdjust(m, r, data, id) {
+    const host = $('#pf-adj', m.el);
+    if (!host) return;
+    const canEdit = AP.can('payroll.adjust');
+    let list = [];
+    try { list = ((await AP.api(`/admin/payroll/${encodeURIComponent(id)}/adjustments?year=${data.year}&month=${data.month}`)) || {}).adjustments || []; } catch (_) { list = []; }
+    if (!list.length && !canEdit) { host.hidden = true; return; }
+    const hrs = (min) => `${min < 0 ? '−' : '+'}${fmt.min(Math.abs(min))}`;
+    const rows = list.map((x) => `<tr><td class="num ${x.minutes < 0 ? 'pf-adj-neg' : 'pf-adj-pos'}"><b>${esc(hrs(x.minutes))}</b></td><td>${esc(x.reason)}</td>${canEdit ? `<td><button class="btn ghost sm" type="button" data-adj-del="${x.id}">حذف</button></td>` : ''}</tr>`).join('');
+    const sumLine = r.adjustmentMinutes && r.adjustmentToman != null
+      ? `<p class="muted small">حقوق پایه ${esc(toman(r.baseAmountToman))} ${r.adjustmentToman < 0 ? '−' : '+'} تعدیل ${esc(toman(Math.abs(r.adjustmentToman)))} = <b>${esc(toman(r.amountToman))}</b></p>`
+      : (r.adjustmentMinutes ? '<p class="muted small">نرخ ساعتی ثبت نشده؛ مبلغ تعدیل محاسبه نمی‌شود.</p>' : '');
+    host.innerHTML = `<h4>تعدیل دستی حقوق</h4>
+      ${list.length ? `<div class="table-wrap"><table class="pf-paytable"><thead><tr><th>ساعت</th><th>دلیل</th>${canEdit ? '<th></th>' : ''}</tr></thead><tbody>${rows}</tbody></table></div>` : '<p class="muted small">تعدیلی برای این ماه ثبت نشده است.</p>'}
+      ${sumLine}
+      ${canEdit ? `<form class="pf-adj-form" id="pf-adj-form" autocomplete="off"><label class="field"><span>ساعت (منفی = کسر، مثبت = اضافه)</span><input name="hours" class="ltr" inputmode="decimal" placeholder="-26" required /></label><label class="field"><span>دلیل</span><input name="reason" maxlength="300" placeholder="مثلاً توافق با شرکت" required /></label><button class="btn primary" type="submit">ثبت تعدیل</button></form>` : ''}`;
+    const reopen = () => { m.close(); AP.refresh(); openPayDetail(id, data); };
+    const toEn = (v) => String(v || '').replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[−–]/g, '-').replace(/٫/g, '.');
+    const form = $('#pf-adj-form', host);
+    if (form) form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const f = AP.formData(form);
+      const ok = await AP.attempt(() => AP.api(`/admin/payroll/${encodeURIComponent(id)}/adjustments`, { method: 'POST', body: { year: data.year, month: data.month, hours: toEn(f.hours), reason: f.reason } }), 'تعدیل ثبت شد.');
+      if (ok) reopen();
+    });
+    $$('[data-adj-del]', host).forEach((b) => b.addEventListener('click', async () => {
+      if (!(await AP.confirmBox({ title: 'حذف تعدیل حقوق', message: 'این تعدیل حذف شود؟ حقوق ماه به حالت قبل از آن برمی‌گردد.', confirmText: 'حذف', danger: true }))) return;
+      const ok = await AP.attempt(() => AP.api(`/admin/payroll/adjustments/${encodeURIComponent(b.dataset.adjDel)}`, { method: 'DELETE' }), 'تعدیل حذف شد.');
+      if (ok) reopen();
+    }));
+  }
+
   async function openPayDetail(id, data) {
     let r;
     try { r = await AP.api(`/admin/payroll/${encodeURIComponent(id)}?${q({ year: data.year, month: data.month })}`); } catch (err) { AP.toast(err.message, true); return; }
@@ -727,6 +760,7 @@
     const totalAmt = sum(valid.map((x) => x.amountToman));
     const body = `<div class="pf-pay-head">${AP.avatar(r.user.fullName, 'lg', r.user.id)}<div><h4>${esc(r.user.fullName)}</h4><p>${esc(r.user.department || 'بدون دپارتمان')} · ${esc(data.label)}</p></div>${r.rateKt == null ? '' : `<span class="pf-ratechip">${fmt.num(r.rateKt)} هزار تومان / ساعت</span>`}</div>
       <div class="pf-kpis pf-kpis-sm">${[kpi('حقوق ماه', `<span class="pf-amount">${toman(r.amountToman)}</span>`, r.previousAmountToman ? delta({ good: 'up' }, r.amountToman, r.previousAmountToman) : '', 'good'), kpi('ساعت مفید', fmt.min(r.usefulMinutes), `${fmt.num(valid.length)} روز کاری`, 'info'), kpi('اضافه‌کاری', fmt.min(r.overtimeMinutes), '', 'warn'), kpi('میانگین هر روز', toman(r.avgPerWorkedDayToman), '', 'info'), kpi('پیش‌بینی پایان ماه', toman(r.projectedAmountToman), '', 'info')].join('')}</div>
+      <div class="pf-adj" id="pf-adj"></div>
       <h4>درآمد روزانه و تجمعی</h4><div class="pf-chart" id="pf-pay-modal-chart"></div>
       <h4>ریز روزها</h4>
       <div class="table-wrap pf-daywrap"><table class="pf-paytable pf-daytable"><thead><tr><th>روز</th><th>وضعیت</th><th>ساعت مفید</th><th>اضافه‌کاری</th><th>مبلغ</th></tr></thead><tbody>
@@ -735,6 +769,7 @@
       <div class="pf-modal-actions"><a class="btn primary" target="_blank" rel="noopener" href="/admin/payslip.html?${q({ year: data.year, month: data.month, userId: r.user.id })}">${AP.icon('download')} فیش حقوقی (PDF)</a> <a class="btn ghost" href="#/performance/${esc(r.user.id)}">${AP.icon('trend')} گزارش عملکرد این کارمند</a></div>`;
     const m = AP.modal({ title: `ریز حقوق — ${r.user.fullName}`, body, wide: true });
     applyProgress(m.el);
+    drawAdjust(m, r, data, id);
     PC.barsChart($('#pf-pay-modal-chart', m.el), days.filter((x) => !x.excluded && x.amountToman > 0).map((x) => ({ label: fmt.date(x.date), short: shortDate(x.date), value: x.amountToman, sub: STATUS[x.status] || '' })), { unit: 'money', tone: 'green', cumulative: true, valueLabel: 'درآمد روز', aria: 'درآمد روزانه و تجمعی' });
     const link = $('.pf-modal-actions a[href^="#/performance"]', m.el);
     if (link) link.addEventListener('click', () => m.close());

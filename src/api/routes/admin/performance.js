@@ -12,6 +12,7 @@ const router = express.Router();
 const { requirePermission, hasPermission } = require('../../../middleware/permissions');
 const { visibleUsers, canAccessUser } = require('./common');
 const usersRepository = require('../../../repositories/usersRepository');
+const payrollAdjustmentRepository = require('../../../repositories/payrollAdjustmentRepository');
 const settingsRepository = require('../../../repositories/settingsRepository');
 const auditRepository = require('../../../repositories/auditRepository');
 const { parseYearMonth } = require('./monthParams');
@@ -124,6 +125,50 @@ router.get('/admin/payroll/:id', requirePermission('payroll.read'), (req, res) =
   auditView(req, String(user.id), { year: p.year, month: p.month });
   const r = perf.monthlyPayroll({ users: [user], year: p.year, month: p.month, withDays: true });
   return res.json({ year: r.year, month: r.month, label: r.label, from: r.from, to: r.to, ...r.rows[0] });
+});
+
+// ---------- تعدیل دستی حقوق ماهانه (کسر/اضافه به ساعت) ----------
+//   GET    /admin/payroll/:id/adjustments?year=&month=   payroll.read
+//   POST   /admin/payroll/:id/adjustments { year, month, hours (امضادار؛ منفی = کسر), reason }   payroll.adjust (فقط owner)
+//   DELETE /admin/payroll/adjustments/:adjId             payroll.adjust (فقط owner)
+const MAX_ADJUST_HOURS = 744;
+router.get('/admin/payroll/:id/adjustments', requirePermission('payroll.read'), (req, res) => {
+  const p = parseYearMonth(req.query.year, req.query.month);
+  if (p.error) return res.status(400).json(p.error);
+  if (!/^\d+$/.test(req.params.id)) return res.status(400).json({ error: 'شناسه‌ی کاربر نامعتبر است.', code: 'INVALID_USER' });
+  return res.json({ year: p.year, month: p.month, adjustments: payrollAdjustmentRepository.listForUser(parseInt(req.params.id, 10), p.year, p.month) });
+});
+
+router.post('/admin/payroll/:id/adjustments', requirePermission('payroll.adjust'), (req, res) => {
+  const b = req.body || {};
+  const p = parseYearMonth(b.year, b.month);
+  if (p.error) return res.status(400).json(p.error);
+  if (!/^\d+$/.test(req.params.id)) return res.status(400).json({ error: 'شناسه‌ی کاربر نامعتبر است.', code: 'INVALID_USER' });
+  const user = usersRepository.findById(parseInt(req.params.id, 10));
+  if (!user) return res.status(404).json({ error: 'کارمند یافت نشد.' });
+  const hours = typeof b.hours === 'number' ? b.hours : Number(String(b.hours == null ? '' : b.hours).trim().replace(/[−–]/g, '-'));
+  const minutes = Math.round(hours * 60);
+  if (!Number.isFinite(hours) || !minutes || Math.abs(hours) > MAX_ADJUST_HOURS) {
+    return res.status(400).json({ error: `ساعت تعدیل باید عددی غیرصفر (حداکثر ${MAX_ADJUST_HOURS}) باشد؛ منفی = کسر، مثبت = اضافه.`, code: 'INVALID_HOURS' });
+  }
+  const reason = typeof b.reason === 'string' ? b.reason.trim() : '';
+  if (reason.length < 3 || reason.length > 300) return res.status(400).json({ error: 'دلیل تعدیل (۳ تا ۳۰۰ نویسه) الزامی است.', code: 'REASON_REQUIRED' });
+  const adj = payrollAdjustmentRepository.add({ userId: user.id, year: p.year, month: p.month, minutes, reason, createdBy: req.adminUser.id });
+  try {
+    auditRepository.logEvent({ userId: req.adminUser.id, action: 'payroll_adjusted', ipAddress: req.ip || null, details: { targetUserId: user.id, year: p.year, month: p.month, minutes, reason, adjustmentId: adj.id } });
+  } catch (_) { /* ممیزی بهترین‌تلاش است */ }
+  return res.status(201).json({ adjustment: adj });
+});
+
+router.delete('/admin/payroll/adjustments/:adjId', requirePermission('payroll.adjust'), (req, res) => {
+  if (!/^\d+$/.test(req.params.adjId)) return res.status(400).json({ error: 'شناسه‌ی تعدیل نامعتبر است.' });
+  const adj = payrollAdjustmentRepository.findById(parseInt(req.params.adjId, 10));
+  if (!adj) return res.status(404).json({ error: 'تعدیل یافت نشد.' });
+  payrollAdjustmentRepository.remove(adj.id);
+  try {
+    auditRepository.logEvent({ userId: req.adminUser.id, action: 'payroll_adjustment_removed', ipAddress: req.ip || null, details: { targetUserId: adj.userId, year: adj.year, month: adj.month, minutes: adj.minutes, reason: adj.reason, adjustmentId: adj.id } });
+  } catch (_) { /* ممیزی بهترین‌تلاش است */ }
+  return res.json({ ok: true });
 });
 
 module.exports = router;
