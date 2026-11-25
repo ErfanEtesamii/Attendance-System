@@ -135,6 +135,7 @@ const PAGES = {
   exports: ['views-exports.js', 'n/a'], // «خروجی‌های اکسل»: صفحه‌ی کارت‌ها؛ حالت خالی جستجو با .ex-empty
   commission: ['views-commission.js', 'inline'], // «پورسانت من» (طراحی؛ داده از /admin/me/commission)
   salesteam: ['views-commission.js', 'inline'], // «وضعیت تیمی فروش» (لیدربرد؛ مبلغ فقط برای خودِ شخص)
+  salesmember: ['views-commission.js', 'inline'], // کارت پورسانت یک همکار (ادمین/مالک/سرپرست)
   mystatus: ['views-mystatus.js', 'helper'], // M2 «وضعیت من»؛ حالت خالی: «اطلاعات امروز در دسترس نیست» / «برای امروز تسکی ثبت نشده است»
 };
 

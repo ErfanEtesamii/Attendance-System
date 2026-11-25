@@ -23,6 +23,17 @@ router.get('/admin/sales-team/leaderboard', requirePermission('me.read'), (req, 
   return res.json({ leaderboard: service.leaderboard(req.adminUser, { jy: intOrUndef(req.query.year), jm: intOrUndef(req.query.month) }) });
 });
 
+// کارت پورسانتِ اعضا برای ادمین/مالک (همه) و سرپرست (زیرمجموعه‌ی مستقیم)؛ دسترسی در سرویس اعمال می‌شود
+router.get('/admin/sales-team/members', requirePermission('me.read'), (req, res) => {
+  service.syncIfStale();
+  return res.json(service.membersSummary(req.adminUser, { jy: intOrUndef(req.query.year), jm: intOrUndef(req.query.month) }));
+});
+router.get('/admin/sales-team/members/:id', requirePermission('me.read'), (req, res) => {
+  const r = service.memberCommission(req.adminUser, req.params.id, { jy: intOrUndef(req.query.year), jm: intOrUndef(req.query.month) });
+  if (!r) return res.status(404).json({ error: 'این همکار پیدا نشد یا اجازه‌ی دیدنش را ندارید.', code: 'NOT_FOUND' });
+  return res.json(r);
+});
+
 router.post('/admin/commission/sync', requirePermission('users.write'), async (req, res) => {
   const r = await service.sync();
   return res.status(r.ok ? 200 : 502).json(r.ok ? { ok: true, count: r.count } : { error: r.error, code: r.code });

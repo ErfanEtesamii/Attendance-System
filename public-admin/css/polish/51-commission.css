@@ -46,18 +46,16 @@
 /* ---------- وضعیت تیمی فروش: لیدربرد ---------- */
 .tb-card { padding: var(--space-4) var(--space-5); }
 .tb-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
-.tb-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; grid-template-areas: "rank name val" "rank bar bar"; align-items: center; gap: 4px var(--space-3); padding: 9px 10px; border-radius: var(--r-lg); border: 1px solid transparent; transition: background-color var(--motion-fast) var(--ease-out); }
 .tb-row:hover { background: var(--ov-05); }
 .tb-row.is-me { background: color-mix(in srgb, var(--brand) 9%, transparent); border-color: color-mix(in srgb, var(--brand) 28%, transparent); }
-.tb-rank { grid-area: rank; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 10px; background: var(--ov-05); font-size: var(--fs-xs); font-weight: 800; }
+.tb-rank { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 10px; background: var(--ov-05); font-size: var(--fs-xs); font-weight: 800; }
 .tb-rank--1, .tb-rank--2, .tb-rank--3 { background: transparent; font-size: 20px; }
-.tb-name { grid-area: name; display: flex; align-items: center; gap: var(--space-2); min-width: 0; font-size: var(--fs-sm); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-name { display: flex; align-items: center; gap: var(--space-2); min-width: 0; font-size: var(--fs-sm); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tb-me { padding: 1px 8px; border-radius: 999px; background: var(--brand); color: var(--card); font-size: 10px; font-style: normal; font-weight: 700; }
-.tb-val { grid-area: val; font-size: var(--fs-xs); color: var(--hint); }
+.tb-val { font-size: var(--fs-xs); color: var(--hint); }
 .tb-val b { color: var(--text); font-size: var(--fs-sm); font-weight: 800; }
 .tb-val--hidden { letter-spacing: 3px; user-select: none; }
-.tb-bar { grid-area: bar; height: 5px; }
-.tb-row:not(:has(.tb-bar)) { grid-template-areas: "rank name val"; }
+.tb-bar { height: 5px; margin-top: 6px; min-width: 120px; }
 .tb-note { margin: var(--space-3) 0 0; font-size: var(--fs-xs); color: var(--hint); }
 @media (prefers-reduced-motion: reduce) { .tb-row { transition: none; } }
 
@@ -94,21 +92,62 @@
 .cm-deal.is-off .cm-badge { background: color-mix(in srgb, var(--red) 10%, transparent); border-color: color-mix(in srgb, var(--red) 45%, transparent); color: var(--red); }
 @media (max-width: 800px) { .cm-deal { grid-template-columns: 52px repeat(2, minmax(0, 1fr)); } .cm-deal-main { grid-column: 2 / -1; } .cm-deal-rate { grid-column: 1 / -1; } .cm-hero-ring { order: -1; } }
 
-/* سکو */
-.tb-card { border-radius: var(--r-xl); }
-.tb-podium { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: var(--space-2); margin: var(--space-3) 0 var(--space-4); padding: var(--space-3) var(--space-2) 0; border-radius: var(--r-lg); background: linear-gradient(180deg, color-mix(in srgb, var(--brand) 7%, transparent), transparent); }
-.tb-pod { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; min-width: 0; }
-.tb-pod-medal { font-size: 22px; line-height: 1; }
-.tb-pod--1 .tb-pod-medal { font-size: 28px; }
-.tb-pod-av { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; background: color-mix(in srgb, var(--brand) 16%, transparent); border: 2px solid var(--card); font-weight: 800; font-size: var(--fs-sm); color: var(--text); }
-.tb-pod--1 .tb-pod-av { width: 56px; height: 56px; border-color: var(--orange); font-size: var(--fs-md); }
-.tb-pod.is-me .tb-pod-av { border-color: var(--brand); }
-.tb-pod-name { max-width: 100%; display: flex; align-items: center; gap: 4px; font-size: var(--fs-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tb-pod-val { font-size: var(--fs-xs); color: var(--hint); }
-.tb-pod-val b { color: var(--text); font-size: var(--fs-sm); font-weight: 800; }
-.tb-pod-step { width: 100%; display: grid; place-items: start center; padding-top: 6px; border-radius: var(--r-md) var(--r-md) 0 0; background: color-mix(in srgb, var(--brand) 14%, transparent); color: var(--brand); font-weight: 800; }
-.tb-pod--1 .tb-pod-step { height: 64px; background: color-mix(in srgb, var(--orange) 24%, transparent); color: var(--text); }
-.tb-pod--2 .tb-pod-step { height: 46px; }
-.tb-pod--3 .tb-pod-step { height: 34px; }
-.tb-row { border-radius: var(--r-lg); }
-.cm-deal em { display: block; margin-bottom: 2px; font-size: 10px; }
+/* ===== لیدربرد: سکو، جدول جزئیات، تب‌ها ===== */
+.tb-row { display: flex; align-items: center; gap: var(--space-3); padding: 10px 12px; border-radius: var(--r-lg); border: 1px solid transparent; transition: background-color var(--motion-fast) var(--ease-out); }
+.tb-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.tb-row-val { min-width: 150px; text-align: end; display: flex; flex-direction: column; align-items: flex-end; }
+.tb-val { font-size: var(--fs-xs); color: var(--hint); }
+.tb-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.tb-chip { display: inline-flex; gap: 5px; align-items: baseline; padding: 2px 9px; border-radius: 999px; background: var(--ov-05); font-size: 11px; }
+.tb-chip i { font-style: normal; color: var(--hint); }
+.tb-chip b { font-weight: 700; color: var(--text); }
+.tb-card h3 { margin-top: 0; }
+.tb-tabs--metric { display: flex; width: 100%; max-width: 420px; }
+.tb-tabs--metric .tb-tab { flex: 1; }
+.tb-metric { display: none; }
+.tb-metric.is-active { display: block; }
+.tb-summary { margin-bottom: var(--space-3); }
+
+.tb-podium { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: var(--space-3); margin: var(--space-2) 0 var(--space-4); padding: var(--space-5) var(--space-4) 0; border-radius: var(--r-xl); background: radial-gradient(90% 120% at 50% 0%, color-mix(in srgb, var(--orange) 14%, transparent), transparent 70%), var(--card); border: 1px solid var(--border); overflow: hidden; }
+.tb-pod { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; min-width: 0; }
+.tb-crown { font-size: 26px; line-height: 1; margin-bottom: -4px; }
+.tb-pod-av { position: relative; width: 56px; height: 56px; display: grid; place-items: center; border-radius: 50%; background: color-mix(in srgb, var(--brand) 16%, var(--card)); border: 3px solid var(--card); box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 40%, transparent); font-weight: 800; font-size: var(--fs-md); color: var(--text); }
+.tb-pod--1 .tb-pod-av { width: 76px; height: 76px; font-size: 24px; box-shadow: 0 0 0 3px var(--orange), 0 8px 24px color-mix(in srgb, var(--orange) 35%, transparent); }
+.tb-pod--2 .tb-pod-av { box-shadow: 0 0 0 2px var(--hint); }
+.tb-pod--3 .tb-pod-av { box-shadow: 0 0 0 2px color-mix(in srgb, var(--orange) 55%, var(--red)); }
+.tb-pod.is-me .tb-pod-av { box-shadow: 0 0 0 3px var(--brand); }
+.tb-pod-medal { position: absolute; inset-block-end: -6px; inset-inline-end: -6px; font-size: 20px; font-style: normal; line-height: 1; }
+.tb-pod-name { max-width: 100%; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-pod-sub { font-size: 11px; color: var(--hint); }
+.tb-pod-step { width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 10px 6px 8px; border-radius: var(--r-lg) var(--r-lg) 0 0; background: linear-gradient(180deg, color-mix(in srgb, var(--hint) 22%, transparent), color-mix(in srgb, var(--hint) 8%, transparent)); }
+.tb-pod--1 .tb-pod-step { min-height: 112px; background: linear-gradient(180deg, color-mix(in srgb, var(--orange) 42%, transparent), color-mix(in srgb, var(--orange) 12%, transparent)); }
+.tb-pod--2 .tb-pod-step { min-height: 84px; }
+.tb-pod--3 .tb-pod-step { min-height: 64px; background: linear-gradient(180deg, color-mix(in srgb, var(--orange) 22%, var(--red) 12%), transparent); }
+.tb-pod-val { font-size: var(--fs-lg, 18px); font-weight: 800; color: var(--text); }
+.tb-pod-no { font-size: var(--fs-xs); font-weight: 800; color: var(--hint); }
+@media (max-width: 800px) {
+  .tb-row { flex-wrap: wrap; }
+  .tb-row-val { width: 100%; min-width: 0; align-items: stretch; text-align: start; }
+  .tb-podium { gap: var(--space-2); padding-inline: var(--space-2); }
+  .tb-pod-av { width: 44px; height: 44px; font-size: var(--fs-sm); }
+  .tb-pod--1 .tb-pod-av { width: 58px; height: 58px; }
+  .tb-pod-name { font-size: var(--fs-xs); }
+}
+
+/* کارت پورسانت اعضا */
+.tb-members { margin-top: var(--space-5); }
+.tb-members-title { margin: 0 0 var(--space-3); font-size: var(--fs-md); display: flex; align-items: center; gap: var(--space-2); }
+.tb-members-title span { color: var(--hint); font-size: var(--fs-xs); font-weight: 500; }
+.tb-members-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-3); }
+.tb-member { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border-radius: var(--r-xl); color: inherit; text-decoration: none; transition: transform .15s, box-shadow .15s; }
+.tb-member:hover, .tb-member:focus-visible { transform: translateY(-2px); box-shadow: var(--shadow-md, 0 6px 18px var(--ov-08)); }
+.tb-member .tb-pod-av { width: 44px; height: 44px; font-size: var(--fs-sm); box-shadow: none; flex: none; }
+.tb-member-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.tb-member-main span { font-size: var(--fs-xs); color: var(--hint); }
+.tb-member-com { text-align: end; }
+.tb-member-com em { display: block; font-style: normal; font-size: 10px; color: var(--hint); }
+.tb-member-com b { color: var(--green); font-size: var(--fs-md); font-weight: 800; }
+.tb-back { display: inline-block; margin-bottom: var(--space-3); color: var(--brand); font-size: var(--fs-sm); text-decoration: none; }
+@media (prefers-reduced-motion: reduce) { .tb-member { transition: none; } }
+.tb-row-val { min-width: 240px; }
+.tb-row-val .hbar-track { align-self: stretch; }

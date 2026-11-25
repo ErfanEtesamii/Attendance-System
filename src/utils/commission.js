@@ -41,15 +41,33 @@ function nextAmountTier(amountToman) {
 }
 
 // لیدربرد تیم فروش: رتبه‌ها برای همه، ولی «مبلغ» فقط برای خودِ شخص یا کسی که canSee(row) اجازه می‌دهد به پاسخ می‌رود؛ مبلغ بقیه هرگز از سرور خارج نمی‌شود.
-// rows: [{ userId, name, count, amountToman }]
+// rows: [{ userId, name, count, amountToman, commissionToman?, avgDiscountPercent?, avgInvoiceToman?, maxInvoiceToman? }]
+// فیلدهای مالی (مبلغ، میانگین/بیشینه‌ی فاکتور، پورسانت، میانگین تخفیف) فقط برای ردیف‌های قابل‌دیدن به پاسخ می‌روند.
 function buildLeaderboards(rows, viewerId, { canSeeAll = false, canSee = null } = {}) {
   const rank = (list, key) => [...list].sort((a, b) => b[key] - a[key] || String(a.name).localeCompare(String(b.name), 'fa')).map((r, i) => ({ r, rank: i + 1 }));
   const mine = (id) => Number(id) === Number(viewerId);
   const visible = (r) => canSeeAll || mine(r.userId) || (typeof canSee === 'function' && canSee(r));
-  return {
-    byCount: rank(rows, 'count').map(({ r, rank: n }) => ({ userId: r.userId, name: r.name, rank: n, count: r.count, isMe: mine(r.userId) })),
-    byAmount: rank(rows, 'amountToman').map(({ r, rank: n }) => ({ userId: r.userId, name: r.name, rank: n, isMe: mine(r.userId), amountToman: visible(r) ? r.amountToman : null })),
-  };
+  const totalCount = rows.reduce((t, r) => t + (r.count || 0), 0);
+  const byCountRaw = rank(rows, 'count');
+  const byCount = byCountRaw.map(({ r, rank: n }, i) => ({
+    userId: r.userId, name: r.name, rank: n, count: r.count, isMe: mine(r.userId),
+    sharePercent: totalCount ? Math.round((r.count / totalCount) * 100) : 0,
+    gapToPrev: i === 0 ? null : Math.max(0, byCountRaw[i - 1].r.count - r.count),
+  }));
+  const byAmount = rank(rows, 'amountToman').map(({ r, rank: n }) => {
+    const v = visible(r);
+    return {
+      userId: r.userId, name: r.name, rank: n, isMe: mine(r.userId), count: r.count,
+      amountToman: v ? r.amountToman : null,
+      avgInvoiceToman: v ? (r.avgInvoiceToman ?? null) : null,
+      maxInvoiceToman: v ? (r.maxInvoiceToman ?? null) : null,
+      commissionToman: v ? (r.commissionToman ?? null) : null,
+      avgDiscountPercent: v ? (r.avgDiscountPercent ?? null) : null,
+    };
+  });
+  const sum = (k) => rows.reduce((t, r) => t + (r[k] || 0), 0);
+  const summary = { count: totalCount, members: rows.length, activeMembers: rows.filter((r) => r.count > 0).length, amountToman: canSeeAll ? sum('amountToman') : null, commissionToman: canSeeAll ? sum('commissionToman') : null };
+  return { byCount, byAmount, summary };
 }
 
 // تخفیف در دیدار روی «ردیف‌های فاکتور» (DealItems) زده می‌شود: هر ردیف یا مبلغ (Discount) یا درصد (DiscountPercent) دارد، و مبالغ دیدار «ریال» است.

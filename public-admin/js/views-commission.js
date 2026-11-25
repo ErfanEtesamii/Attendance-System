@@ -35,12 +35,12 @@
       <text class="cm-ring-top" x="60" y="56" text-anchor="middle">${centerTop}</text><text class="cm-ring-bot" x="60" y="74" text-anchor="middle">${centerBottom}</text></svg>`;
   }
 
-  function commissionHtml(d) {
+  function commissionHtml(d, title) {
     const t = d.totals;
     const next = t.nextTier
       ? `<div class="cm-hero-ring">${ring(t.nextTier.progress || 0, `${fmt.num(Math.round(t.nextTier.progress || 0))}٪`, 'تا پله‌ی بعد')}<p class="cm-ring-cap">${million(t.nextTier.remainingToman)} دیگر تا پورسانت مبلغی <b>${fmt.num(t.nextTier.rate)}٪</b> روی یک فاکتور</p></div>`
       : `<div class="cm-hero-ring">${ring(100, '🏆', 'بالاترین پله')}<p class="cm-ring-cap">فاکتور شما در بالاترین پله‌ی مبلغی است</p></div>`;
-    return `<div class="view-header"><div><h2>پورسانت من</h2><div class="sub">معامله‌های موفق ${esc(d.monthLabel)} در دیدار</div></div></div>
+    return `<div class="view-header"><div><h2>${esc(title || 'پورسانت من')}</h2><div class="sub">معامله‌های موفق ${esc(d.monthLabel)} در دیدار</div></div></div>
       <section class="card cm-hero"><div class="cm-hero-main"><span class="cm-hero-spark" aria-hidden="true">✨</span><span class="cm-hero-label">پورسانت این ماه</span>
         <p class="cm-hero-amount"><span>${fmt.num(t.commissionToman)}</span><small>تومان</small></p>
         ${d.season ? `<span class="cm-season">${esc(d.season.label)}: <b>${fmt.num(d.season.commissionToman)}</b> تومان از ${fmt.num(d.season.dealsCount)} فاکتور</span>` : ''}<span class="cm-note"><span aria-hidden="true">ⓘ</span> تخمینی؛ مبلغ نهایی با تأیید حسابداری است</span></div>${next}</section>
@@ -64,23 +64,59 @@
 
   // ---------- وضعیت تیمی فروش: دو لیدربرد (تعداد فاکتور / مبلغ فاکتور)؛ مبلغ فقط برای ردیف خودِ شخص ----------
   const MEDAL = ['🥇', '🥈', '🥉'];
-  function boardRow(x, valueHtml) {
-    return `<li class="tb-row${x.isMe ? ' is-me' : ''}"><span class="tb-rank${x.rank <= 3 ? ` tb-rank--${x.rank}` : ''}">${x.rank <= 3 ? MEDAL[x.rank - 1] : fmt.num(x.rank)}</span>
-      <span class="tb-name">${esc(x.name)}${x.isMe ? '<i class="tb-me">شما</i>' : ''}</span>${valueHtml}</li>`;
-  }
   const initial = (n) => (AP.initials ? AP.initials(n) : String(n).slice(0, 1));
-  // سکوی سه نفر اول (ترتیب بصری: ۲، ۱، ۳) + فهرست بقیه
-  function podium(rows, valueHtml) {
-    const top = rows.filter((x) => x.rank <= 3); if (top.length < 1) return '';
+  const HIDDEN = '<span class="tb-val--hidden" aria-label="مبلغ برای شما نمایش داده نمی‌شود">••••</span>';
+  const chip = (label, val) => `<span class="tb-chip"><i>${label}</i><b>${val}</b></span>`;
+
+  // سکوی سه نفر اول (ترتیب بصری: ۲، ۱، ۳)
+  function podium(rows, valueHtml, subHtml) {
+    const top = rows.filter((x) => x.rank <= 3); if (!top.length) return '';
     const order = [2, 1, 3].map((r) => top.find((x) => x.rank === r)).filter(Boolean);
-    return `<div class="tb-podium">${order.map((x) => `<div class="tb-pod tb-pod--${x.rank}${x.isMe ? ' is-me' : ''}"><span class="tb-pod-medal" aria-hidden="true">${MEDAL[x.rank - 1]}</span><span class="tb-pod-av">${esc(initial(x.name))}</span><b class="tb-pod-name">${esc(x.name)}${x.isMe ? '<i class="tb-me">شما</i>' : ''}</b>${valueHtml(x)}<span class="tb-pod-step">${fmt.num(x.rank)}</span></div>`).join('')}</div>`;
+    return `<div class="tb-podium">${order.map((x) => `<div class="tb-pod tb-pod--${x.rank}${x.isMe ? ' is-me' : ''}">
+      ${x.rank === 1 ? '<span class="tb-crown" aria-hidden="true">👑</span>' : ''}<span class="tb-pod-av">${esc(initial(x.name))}<i class="tb-pod-medal" aria-hidden="true">${MEDAL[x.rank - 1]}</i></span>
+      <b class="tb-pod-name">${esc(x.name)}${x.isMe ? '<i class="tb-me">شما</i>' : ''}</b><span class="tb-pod-sub">${subHtml(x)}</span>
+      <div class="tb-pod-step"><span class="tb-pod-val">${valueHtml(x)}</span><span class="tb-pod-no">${fmt.num(x.rank)}</span></div></div>`).join('')}</div>`;
   }
+
+  // فهرست جزئیاتِ همه‌ی رتبه‌ها (ردیف: رتبه | نام + چیپ‌های جزئیات | مقدار اصلی + نوار)
+  function detailRow(x, mainHtml, barPct, chips) {
+    return `<li class="tb-row${x.isMe ? ' is-me' : ''}"><span class="tb-rank${x.rank <= 3 ? ` tb-rank--${x.rank}` : ''}">${x.rank <= 3 ? MEDAL[x.rank - 1] : fmt.num(x.rank)}</span>
+      <div class="tb-row-main"><span class="tb-name">${esc(x.name)}${x.isMe ? '<i class="tb-me">شما</i>' : ''}</span><div class="tb-chips">${chips}</div></div>
+      <div class="tb-row-val">${mainHtml}${barPct != null ? `<div class="hbar-track tb-bar"><div class="hbar-fill" data-progress="${barPct}"></div></div>` : ''}</div></li>`;
+  }
+
+  function countView(p) {
+    const max = Math.max(1, ...p.byCount.map((x) => x.count));
+    const rows = p.byCount.map((x) => detailRow(x, `<span class="tb-val"><b>${fmt.num(x.count)}</b> فاکتور</span>`, Math.max(4, Math.round((x.count / max) * 100)),
+      chip('سهم از کل', `${fmt.num(x.sharePercent)}٪`) + (x.gapToPrev != null ? chip('فاصله تا نفر بالاتر', `${fmt.num(x.gapToPrev)} فاکتور`) : chip('', '👑 پیشتاز')))).join('');
+    return `${podium(p.byCount, (x) => `${fmt.num(x.count)}`, (x) => `فاکتور · سهم ${fmt.num(x.sharePercent)}٪`)}
+      <section class="card tb-card"><h3>🏆 جدول تعداد فاکتور فروش</h3><ol class="tb-list">${rows}</ol></section>`;
+  }
+  function amountView(p) {
+    const vis = p.byAmount.filter((x) => x.amountToman != null);
+    const max = Math.max(1, ...vis.map((x) => x.amountToman));
+    const hidesOthers = p.byAmount.some((x) => x.amountToman == null);
+    const rows = p.byAmount.map((x) => (x.amountToman == null
+      ? detailRow(x, `<span class="tb-val">${HIDDEN}</span>`, null, chip('تعداد', `${fmt.num(x.count)} فاکتور`))
+      : detailRow(x, `<span class="tb-val"><b>${million(x.amountToman)}</b> تومان</span>`, Math.max(4, Math.round((x.amountToman / max) * 100)),
+        chip('تعداد', `${fmt.num(x.count)} فاکتور`) + chip('میانگین فاکتور', million(x.avgInvoiceToman)) + chip('بزرگ‌ترین فاکتور', million(x.maxInvoiceToman)) + chip('میانگین تخفیف', `${fmt.num(x.avgDiscountPercent)}٪`) + chip('پورسانت', `${fmt.num(x.commissionToman)}`)))).join('');
+    return `${podium(p.byAmount, (x) => (x.amountToman != null ? million(x.amountToman) : HIDDEN), (x) => (x.amountToman != null ? `تومان · ${fmt.num(x.count)} فاکتور` : `${fmt.num(x.count)} فاکتور`))}
+      <section class="card tb-card"><h3>💎 جدول مبلغ فاکتور فروش</h3><ol class="tb-list">${rows}</ol>${hidesOthers ? '<p class="tb-note"><span aria-hidden="true">🔒</span> فقط رتبه‌ی همکاران دیده می‌شود؛ مبلغ شما مخصوص خودتان است.</p>' : ''}</section>`;
+  }
+
+  // نوار خلاصه‌ی بازه (تعداد فاکتور برای همه؛ مبلغ و پورسانت کل فقط ادمین/مالک)
+  function summaryStrip(sm) {
+    if (!sm) return '';
+    const tiles = [['g-blue', 'trend', fmt.num(sm.count), 'فاکتور فروش تیم'], ['g-green', 'employees', `${fmt.num(sm.activeMembers)} از ${fmt.num(sm.members)}`, 'فروشنده‌ی فعال']];
+    if (sm.amountToman != null) tiles.push(['g-purple', 'wallet', million(sm.amountToman), 'جمع فروش (تومان)'], ['g-orange', 'wallet', million(sm.commissionToman), 'جمع پورسانت (تومان)']);
+    return `<div class="stat-grid tb-summary">${tiles.map(([g, ic, v, l]) => `<div class="stat"><div class="stat-icon ${g}">${AP.icon(ic)}</div><div class="stat-value">${v}</div><div class="stat-label">${l}</div></div>`).join('')}</div>`;
+  }
+
   function boardPanel(id, p, active) {
-    const maxCount = Math.max(1, ...p.byCount.map((x) => x.count));
-    const hidesOthers = p.byAmount.some((x) => !x.isMe && x.amountToman == null);
-    return `<div class="tb-panel${active ? ' is-active' : ''}" data-tb-panel="${id}"><div class="tb-period">${esc(p.label)}</div>
-      <div class="grid-2 tb-grid"><section class="card tb-card"><h3>🏆 بیشترین تعداد فاکتور فروش</h3>${podium(p.byCount, (x) => `<span class="tb-pod-val"><b>${fmt.num(x.count)}</b> فاکتور</span>`)}<ol class="tb-list">${p.byCount.filter((x) => x.rank > 3).map((x) => boardRow(x, `<span class="tb-val"><b>${fmt.num(x.count)}</b> فاکتور</span><div class="hbar-track tb-bar"><div class="hbar-fill" data-progress="${Math.max(4, Math.round((x.count / maxCount) * 100))}"></div></div>`)).join('')}</ol></section>
-        <section class="card tb-card"><h3>💎 بیشترین مبلغ فاکتور فروش</h3>${podium(p.byAmount, (x) => (x.amountToman != null ? `<span class="tb-pod-val"><b>${million(x.amountToman)}</b></span>` : '<span class="tb-pod-val tb-val--hidden" aria-label="مبلغ برای شما نمایش داده نمی‌شود">••••</span>'))}<ol class="tb-list">${p.byAmount.filter((x) => x.rank > 3).map((x) => boardRow(x, x.amountToman != null ? `<span class="tb-val"><b>${million(x.amountToman)}</b> تومان</span>` : '<span class="tb-val tb-val--hidden" aria-label="مبلغ برای شما نمایش داده نمی‌شود">••••</span>')).join('')}</ol>${hidesOthers ? '<p class="tb-note"><span aria-hidden="true">🔒</span> فقط رتبه‌ی همکاران دیده می‌شود؛ مبلغ شما مخصوص خودتان است.</p>' : ''}</section></div></div>`;
+    return `<div class="tb-panel${active ? ' is-active' : ''}" data-tb-panel="${id}"><div class="tb-period">${esc(p.label)}</div>${summaryStrip(p.summary)}
+      <div class="tb-tabs tb-tabs--metric" role="tablist" aria-label="نوع رتبه‌بندی"><button type="button" class="tb-tab is-active" role="tab" aria-selected="true" data-tb-metric="count">🏆 تعداد فاکتور</button><button type="button" class="tb-tab" role="tab" aria-selected="false" data-tb-metric="amount">💎 مبلغ فاکتور</button></div>
+      <div class="tb-metric is-active" data-tb-metric-panel="count">${countView(p)}</div>
+      <div class="tb-metric" data-tb-metric-panel="amount">${amountView(p)}</div></div>`;
   }
   function teamBoardHtml(d) {
     const tabs = [['month', 'ماهانه', d.month], ['season', 'فصلی', d.season], ['all', 'کل زمان', d.all]].filter((t) => t[2]);
@@ -88,8 +124,23 @@
       <div class="tb-tabs" role="tablist">${tabs.map(([id, label], k) => `<button type="button" class="tb-tab${k === 0 ? ' is-active' : ''}" role="tab" aria-selected="${k === 0}" data-tb-tab="${id}">${label}</button>`).join('')}</div>
       ${tabs.map(([id, , p], k) => boardPanel(id, p, k === 0)).join('')}`;
   }
+  // کارت پورسانت اعضا (ادمین/مالک/سرپرست)؛ هر کارت به جزئیات همان همکار می‌رود
+  function membersHtml(m) {
+    if (!m || !m.members || !m.members.length) return '';
+    return `<section class="tb-members"><h3 class="tb-members-title">کارت پورسانت اعضا <span>${esc(m.monthLabel)}</span></h3>
+      <div class="tb-members-grid">${m.members.map((x) => `<a class="card tb-member" href="#/salesmember/${x.userId}"><span class="tb-pod-av">${esc(initial(x.name))}</span>
+        <div class="tb-member-main"><b>${esc(x.name)}</b><span>${fmt.num(x.dealsCount || 0)} معامله · ${million(x.salesToman)} فروش</span></div>
+        <div class="tb-member-com"><em>پورسانت ماه</em><b>${fmt.num(x.commissionToman || 0)}</b></div></a>`).join('')}</div></section>`;
+  }
   function mountBoard(page) {
     page.addEventListener('click', (e) => {
+      const m = e.target.closest('[data-tb-metric]');
+      if (m) {
+        const panel = m.closest('.tb-panel');
+        panel.querySelectorAll('[data-tb-metric]').forEach((b) => { const on = b === m; b.classList.toggle('is-active', on); b.setAttribute('aria-selected', String(on)); });
+        panel.querySelectorAll('[data-tb-metric-panel]').forEach((p) => p.classList.toggle('is-active', p.dataset.tbMetricPanel === m.dataset.tbMetric));
+        return;
+      }
       const t = e.target.closest('[data-tb-tab]'); if (!t) return;
       page.querySelectorAll('[data-tb-tab]').forEach((b) => { const on = b === t; b.classList.toggle('is-active', on); b.setAttribute('aria-selected', String(on)); });
       page.querySelectorAll('[data-tb-panel]').forEach((p) => p.classList.toggle('is-active', p.dataset.tbPanel === t.dataset.tbTab));
@@ -108,7 +159,7 @@
       if (AP.setActiveNav) AP.setActiveNav(key);
     } catch (_) { /* غیرحیاتی */ }
   };
-  AP.commissionUi = { commissionHtml, commissionCard, teamBoardHtml };
+  AP.commissionUi = { membersHtml, commissionHtml, commissionCard, teamBoardHtml };
   AP.view('commission', {
     skeleton: 'plan',
     perm: 'me.read',
@@ -121,8 +172,21 @@
     skeleton: 'plan',
     perm: 'me.read',
     async render() {
-      const data = await AP.api('/admin/sales-team/leaderboard').then((r) => r && r.leaderboard).catch(() => null);
-      return { html: data && data.month && data.month.byCount.length ? teamBoardHtml(data) : '<div class="view-header"><div><h2>وضعیت تیمی فروش</h2></div></div><div class="card"><div class="empty">هنوز فاکتور فروشی در این ماه ثبت نشده است.</div></div>', mount: mountBoard };
+      const [data, members] = await Promise.all([AP.api('/admin/sales-team/leaderboard').then((r) => r && r.leaderboard).catch(() => null), AP.api('/admin/sales-team/members').catch(() => null)]);
+      const mem = membersHtml(members);
+      return { html: data && data.month && data.month.byCount.length ? teamBoardHtml(data) + mem : '<div class="view-header"><div><h2>وضعیت تیمی فروش</h2></div></div><div class="card"><div class="empty">هنوز فاکتور فروشی در این ماه ثبت نشده است.</div></div>' + mem, mount: mountBoard };
+    },
+  });
+  // کارت پورسانتِ یک همکار برای ادمین/مالک/سرپرست (دسترسی در سرور)
+  AP.view('salesmember', {
+    skeleton: 'plan',
+    perm: 'me.read',
+    navId: 'salesteam',
+    async render(param) {
+      const r = await AP.api(`/admin/sales-team/members/${encodeURIComponent(param)}`).catch(() => null);
+      const back = '<a class="tb-back" href="#/salesteam">← وضعیت تیمی فروش</a>';
+      if (!r || !r.commission) return { html: `${back}<div class="card"><div class="empty">این همکار پیدا نشد یا اجازه‌ی دیدنش را ندارید.</div></div>`, mount() {} };
+      return { html: `${back}${commissionHtml(r.commission, `پورسانت ${r.name}`)}`, mount() {} };
     },
   });
 })();

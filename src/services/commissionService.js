@@ -108,7 +108,14 @@ function leaderboard(viewer, { jy, jm } = {}) {
     label: range.label,
     ...buildLeaderboards(members.map((u) => {
       const inv = dealsOfMonth(range, String(u.didar_email).toLowerCase()).filter((d) => !d.noInvoice);
-      return { userId: u.id, name: u.full_name, count: inv.length, amountToman: inv.reduce((t, d) => t + d.amountToman, 0) };
+      const amount = inv.reduce((t, d) => t + d.amountToman, 0);
+      return {
+        userId: u.id, name: u.full_name, count: inv.length, amountToman: amount,
+        commissionToman: inv.reduce((t, d) => t + d.commissionToman, 0),
+        avgInvoiceToman: inv.length ? Math.round(amount / inv.length) : 0,
+        maxInvoiceToman: inv.reduce((m, d) => Math.max(m, d.amountToman), 0),
+        avgDiscountPercent: inv.length ? Math.round((inv.reduce((t, d) => t + d.discountPercent, 0) / inv.length) * 10) / 10 : 0,
+      };
     }), viewer.id, { canSeeAll: isAdmin, canSee }),
   });
   return { monthLabel: month.label, month: build(periods.month), season: build(periods.season), all: isAdmin || isSupervisor ? build(ALL_TIME) : null };
@@ -120,4 +127,19 @@ function canViewTeam(viewer) {
   return !!getDb().prepare("SELECT 1 FROM users WHERE is_active = 1 AND manager_id = ? AND didar_email IS NOT NULL AND didar_email <> '' LIMIT 1").get(viewer.id);
 }
 
-module.exports = { canViewTeam, sync, syncIfStale, myCommission, leaderboard, normalizeDeal, AMOUNT_TIERS };
+// اعضایی که این کاربر می‌تواند کارت پورسانتشان را ببیند: ادمین/مالک همه؛ سرپرست فقط زیرمجموعه‌ی مستقیم
+function visibleMembers(viewer) {
+  const all = getDb().prepare("SELECT id, full_name, didar_email, manager_id FROM users WHERE is_active = 1 AND didar_email IS NOT NULL AND didar_email <> '' AND role <> 'owner' ORDER BY full_name").all();
+  if (['admin', 'owner'].includes(viewer.role)) return all;
+  return all.filter((u) => u.manager_id === viewer.id);
+}
+function membersSummary(viewer, ym) {
+  const rows = visibleMembers(viewer).map((u) => { const c = myCommission(u, ym); return { userId: u.id, name: u.full_name, ...(c ? { commissionToman: c.totals.commissionToman, dealsCount: c.totals.dealsCount, salesToman: c.totals.salesToman, avgRatePercent: c.totals.avgRatePercent, seasonToman: c.season.commissionToman } : {}) }; });
+  return { monthLabel: monthOf(ym && ym.jy, ym && ym.jm).label, members: rows.sort((a, b) => (b.commissionToman || 0) - (a.commissionToman || 0)) };
+}
+function memberCommission(viewer, id, ym) {
+  const u = visibleMembers(viewer).find((m) => m.id === Number(id));
+  return u ? { name: u.full_name, commission: myCommission(u, ym) } : null;
+}
+
+module.exports = { visibleMembers, membersSummary, memberCommission, canViewTeam, sync, syncIfStale, myCommission, leaderboard, normalizeDeal, AMOUNT_TIERS };

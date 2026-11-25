@@ -71,6 +71,16 @@ describe('API پورسانت فروش', () => {
     assert.equal(lb.season.label, 'پاییز 1405');
     assert.equal(lb.season.byCount.find((x) => x.userId === U.b.id).count, 2);
   });
+  test('جزئیات لیدربرد: فیلدهای مالیِ دیگران null؛ خلاصه فقط برای ادمین مبلغ دارد', async () => {
+    const lb = (await hit('b', 'GET', `/api/admin/sales-team/leaderboard${month}`)).json.leaderboard;
+    const other = lb.month.byAmount.find((x) => x.userId === U.a.id);
+    assert.equal(other.amountToman, null); assert.equal(other.commissionToman, null); assert.equal(other.avgInvoiceToman, null); assert.equal(other.maxInvoiceToman, null); assert.equal(other.avgDiscountPercent, null);
+    assert.equal(lb.month.summary.amountToman, null);
+    assert.ok(lb.month.byCount.every((x) => typeof x.sharePercent === 'number'));
+    const adm = (await hit('admin', 'GET', `/api/admin/sales-team/leaderboard${month}`)).json.leaderboard;
+    assert.ok(adm.month.summary.amountToman > 0 && adm.month.summary.commissionToman > 0);
+    assert.ok(adm.month.byAmount.find((x) => x.userId === U.a.id).avgInvoiceToman > 0);
+  });
   test('admin همه‌ی مبلغ‌ها و «کل زمان» را می‌بیند', async () => {
     const lb = (await hit('admin', 'GET', `/api/admin/sales-team/leaderboard${month}`)).json.leaderboard;
     assert.equal(lb.month.byAmount.find((x) => x.userId === U.b.id).amountToman, 50_000_000);
@@ -81,6 +91,18 @@ describe('API پورسانت فروش', () => {
     assert.equal(lb.month.byAmount.find((x) => x.userId === U.a.id).amountToman, 285_000_000);
     assert.equal(lb.month.byAmount.find((x) => x.userId === U.b.id).amountToman, null);
     assert.ok(lb.all);
+  });
+  test('کارت پورسانت اعضا: ادمین همه، سرپرست فقط تیم خودش، عادی هیچ', async () => {
+    const adm = (await hit('admin', 'GET', `/api/admin/sales-team/members${month}`)).json;
+    assert.equal(adm.members.length, 2);
+    const mem = (await hit('admin', 'GET', `/api/admin/sales-team/members/${U.a.id}${month}`)).json;
+    assert.equal(mem.commission.totals.commissionToman, 19_950_000);
+    const sup = (await hit('sup', 'GET', `/api/admin/sales-team/members${month}`)).json;
+    assert.deepEqual(sup.members.map((m) => m.userId), [U.a.id]);
+    assert.equal((await hit('sup', 'GET', `/api/admin/sales-team/members/${U.a.id}${month}`)).status, 200);
+    assert.equal((await hit('sup', 'GET', `/api/admin/sales-team/members/${U.b.id}${month}`)).status, 404);
+    assert.equal((await hit('b', 'GET', `/api/admin/sales-team/members${month}`)).json.members.length, 0);
+    assert.equal((await hit('b', 'GET', `/api/admin/sales-team/members/${U.a.id}${month}`)).status, 404);
   });
   test('پورسانت من: جمع فصل هم برمی‌گردد', async () => {
     const c = (await hit('b', 'GET', `/api/admin/me/commission${month}`)).json.commission;
