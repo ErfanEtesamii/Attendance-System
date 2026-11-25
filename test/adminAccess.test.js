@@ -79,13 +79,15 @@ describe('لیست سفید کارمند (default-deny)', () => {
       '/api/admin/notifications/7/read': 'POST',
       '/api/admin/notifications/read-all': 'POST',
       '/api/admin/auth/logout': 'POST',
+      '/api/admin/me/commission?year=1405&month=8': 'GET', // پورسانت فروش خود کاربر
+      '/api/admin/sales-team/leaderboard': 'GET', // لیدربرد (مبلغ دیگران در سرور حذف می‌شود)
       '/api/admin/me/': 'GET',
     };
     for (const [url, method] of Object.entries(samples)) {
       assert.equal(call(employee, method, url).nextCalled, true, `${method} ${url}`);
     }
     // هر الگوی لیست سفید حداقل در یکی از نمونه‌ها پوشش داده شده (اگر کسی ورودی جدید اضافه کند این تست یادآوری می‌کند)
-    assert.equal(EMPLOYEE_ALLOWED.length, 27, 'لیست سفید تغییر کرده؛ ماتریس تست را به‌روز کنید');
+    assert.equal(EMPLOYEE_ALLOWED.length, 29, 'لیست سفید تغییر کرده؛ ماتریس تست را به‌روز کنید');
   });
 
   test('هر چیزی خارج از لیست سفید برای کارمند ۴۰۳ است (از جمله route های آینده)', () => {

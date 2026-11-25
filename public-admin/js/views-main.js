@@ -326,7 +326,7 @@
         <label class="field"><span>سرپرست مستقیم</span><select name="managerId"><option value="">— ندارد —</option>
           ${managers.map((m) => `<option value="${m.id}" ${u && u.managerId === m.id ? 'selected' : ''}>${esc(m.fullName)}</option>`).join('')}</select></label>
         <label class="field"><span>آیدی عددی تلگرام</span><input name="telegramUserId" class="ltr" inputmode="numeric" value="${esc(u ? u.telegramUserId || '' : '')}" /></label>
-        ${u && AP.can('users.write') ? `<label class="field"><span>نرخ ساعتی (هزار تومان)</span><input name="hourlyRateKt" class="ltr" inputmode="numeric" autocomplete="off" disabled placeholder="در حال بارگذاری…" /></label><label class="field"><span>کسر ماهانه‌ی حق بیمه (تومان)</span><input name="insuranceDeductionToman" class="ltr" inputmode="numeric" autocomplete="off" disabled placeholder="در حال بارگذاری…" /></label><label class="field full u-full"><span>نرخ و بیمه از این تاریخ اعمال شود (اختیاری؛ خالی = از ابتدای ماه جاری. برای اعمال روی ماه‌های قبل تاریخ قدیمی‌تر بگذارید)</span><input type="date" name="rateEffectiveFrom" class="ltr" /></label>` : ''}
+        ${u && AP.can('users.write') ? `<label class="field"><span>نرخ ساعتی (هزار تومان)</span><input name="hourlyRateKt" class="ltr" inputmode="numeric" autocomplete="off" disabled placeholder="در حال بارگذاری…" /></label><label class="field"><span>کسر ماهانه‌ی حق بیمه (تومان)</span><input name="insuranceDeductionToman" class="ltr" inputmode="numeric" autocomplete="off" disabled placeholder="در حال بارگذاری…" /></label><label class="field"><span>ایمیل در دیدار (برای پورسانت فروش؛ خالی = بدون پورسانت)</span><input name="didarEmail" class="ltr" type="email" autocomplete="off" disabled placeholder="در حال بارگذاری…" /></label><label class="field full u-full"><span>نرخ و بیمه از این تاریخ اعمال شود (اختیاری؛ خالی = از ابتدای ماه جاری. برای اعمال روی ماه‌های قبل تاریخ قدیمی‌تر بگذارید)</span><input type="date" name="rateEffectiveFrom" class="ltr" /></label>` : ''}
         ${u ? `<label class="check-row full u-full"><input type="checkbox" name="isActive" ${u.isActive ? 'checked' : ''} /> حساب فعال است</label>` : ''}
       </div>`;
   }
@@ -829,6 +829,8 @@
                 if (insInput) { insInput.value = r && r.insuranceDeductionToman != null ? String(r.insuranceDeductionToman) : ''; insInput.placeholder = 'بدون کسر'; insInput.disabled = false; insInput.dataset.loaded = '1'; }
               }).catch(() => { rateInput.placeholder = 'بارگذاری نشد'; });
             }
+            const didarInput = form ? form.querySelector('[name="didarEmail"]') : null;
+            if (didarInput) AP.api(`/admin/users/${u.id}/didar-email`).then((r) => { didarInput.value = (r && r.email) || ''; didarInput.placeholder = 'مثلاً name@gmail.com'; didarInput.disabled = false; didarInput.dataset.loaded = '1'; didarInput.dataset.orig = didarInput.value; }).catch(() => { didarInput.placeholder = 'بارگذاری نشد'; });
             if (form) form.addEventListener('submit', async (e) => {
               e.preventDefault();
               const f = AP.formData(form);
@@ -839,6 +841,9 @@
               const ok = await AP.attempt(() => AP.api(`/admin/users/${u.id}`, { method: 'PATCH', body: {
                 fullName: f.fullName, personnelCode: f.personnelCode, department: f.department, role: f.role,
                 managerId: f.managerId ? Number(f.managerId) : null, telegramUserId: f.telegramUserId, isActive: f.isActive, ...rateField, ...insField, ...(f.rateEffectiveFrom && /^\d{4}-\d{2}-\d{2}$/.test(String(f.rateEffectiveFrom)) ? { rateEffectiveFrom: String(f.rateEffectiveFrom) } : {}) } }), 'تغییرات ذخیره شد.');
+              if (ok && didarInput && didarInput.dataset.loaded === '1' && String(f.didarEmail || '').trim() !== didarInput.dataset.orig) {
+                await AP.attempt(() => AP.api(`/admin/users/${u.id}/didar-email`, { method: 'PUT', body: { email: String(f.didarEmail || '').trim() } }));
+              }
               if (ok) { AP.state.users = null; AP.refresh(); }
             });
           };

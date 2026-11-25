@@ -680,12 +680,18 @@
       const mine = { id: 'mystatus', icon: 'attendance', label: 'وضعیت من', group: 'پنل من', counter: true };
       if (AP.selfOnly()) items.unshift(mine); else items.push(mine);
     }
+    // پورسانت فروش: فقط برای کارمندی که ایمیل دیدار دارد (AP.probeSales بعد از ورود تعیین می‌کند)
+    if (AP.state.sales) {
+      [['commission', 'wallet', 'پورسانت من'], ['salesteam', 'trend', 'وضعیت تیمی فروش']].forEach(([id, ic, label]) => { if (AP.viewAllowed(AP.views[id])) items.push({ id, icon: ic, label, group: 'پنل من' }); });
+    }
     items.forEach((n) => { (groups[n.group] = groups[n.group] || []).push(n); });
     $('#side-nav').innerHTML = Object.keys(groups)
       .map((g) => `<div class="nav-group">${esc(g)}</div>${groups[g].map(AP.navItemHtml).join('')}`)
       .join('');
     $$('.nav-item').forEach((b) => b.addEventListener('click', () => AP.go(b.dataset.view, b.dataset.param)));
   }
+
+  AP.rebuildNav = buildNav;
 
   // T3: هر آیتم ریل aria-label و title (برچسب فارسی) دارد؛ در حالت آیکنی متنِ .nav-label فقط برای صفحه‌خوان است
   AP.navItemHtml = function navItemHtml(n) {
@@ -873,6 +879,7 @@
     $('.me-box').setAttribute('title', me.fullName);
     AP.rail.apply(AP.rail.read(), false);
     buildNav();
+    if (AP.probeSales) AP.probeSales();
     if (AP.initAiAssistant) AP.initAiAssistant(); // تحلیلگر هوشمند (فقط با مجوز ai.assistant)
     setupSearch();
     setupDensity();

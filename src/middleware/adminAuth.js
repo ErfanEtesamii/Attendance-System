@@ -30,6 +30,8 @@ const EMPLOYEE_ALLOWED = [
   ['POST', /^\/admin\/me\/urgent$/], // تسک فوریِ شخصی: افزودن (مالکیت فقط از نشست؛ همان قوانین Mini App)
   ['PATCH', /^\/admin\/me\/urgent\/\d+$/], // ویرایش (فقط فوریِ خودش و بدون پاسخ)
   ['DELETE', /^\/admin\/me\/urgent\/\d+$/], // حذف (فقط فوریِ خودش و بدون پاسخ)
+  ['GET', /^\/admin\/me\/commission$/], // پورسانت فروش خود کاربر (هویت فقط از نشست)
+  ['GET', /^\/admin\/sales-team\/leaderboard$/], // رتبه‌ی تیم فروش؛ مبلغ دیگران در سرور حذف می‌شود
   ['GET', /^\/admin\/attendance$/],
   ['GET', /^\/admin\/attendance\/export$/],
   ['GET', /^\/admin\/attendance-records\/\d+$/],

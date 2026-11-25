@@ -1,0 +1,75 @@
+/* ===== ۵۱) پورسانت فروش: صفحه‌ی «پورسانت من» و کارت «وضعیت من» ===== */
+.cm-hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: var(--space-5); align-items: center; padding: var(--space-5); background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 9%, var(--card)), var(--card) 70%); }
+.cm-hero-label { font-size: var(--fs-sm); font-weight: 700; color: var(--hint); }
+.cm-hero-amount { margin: var(--space-1) 0 var(--space-2); display: flex; align-items: baseline; gap: var(--space-2); }
+.cm-hero-amount span { font-size: 40px; font-weight: 800; line-height: 1.1; color: var(--text); letter-spacing: -.5px; }
+.cm-hero-amount small { font-size: var(--fs-sm); color: var(--hint); }
+.cm-note { font-size: var(--fs-xs); color: var(--hint); }
+.cm-next { padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--card); }
+.cm-next-top { display: flex; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-2); font-size: var(--fs-xs); color: var(--hint); }
+.cm-next-top b { color: var(--text); }
+.cm-stats { margin-block: var(--space-4); }
+.cm-deals { padding: var(--space-4) var(--space-5); }
+.cm-deal-list { list-style: none; margin: 0; padding: 0; }
+.cm-deal { display: grid; grid-template-columns: minmax(0, 2fr) repeat(2, minmax(88px, .8fr)) minmax(140px, 1.2fr) minmax(100px, .9fr); gap: var(--space-4); align-items: center; padding: 12px 6px; border-top: 1px solid var(--border); transition: background-color var(--motion-fast) var(--ease-out); }
+.cm-deal:first-child { border-top: 0; }
+.cm-deal:hover { background: var(--ov-05); }
+.cm-deal-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cm-deal-title { font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cm-deal-sub { font-size: var(--fs-xs); color: var(--hint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cm-deal em { display: none; font-style: normal; font-size: var(--fs-xs); color: var(--hint); }
+.cm-deal-num b, .cm-deal-com b { font-size: var(--fs-sm); font-weight: 700; }
+.cm-deal-com b { color: var(--green); font-size: var(--fs-md); font-weight: 800; }
+.cm-deal-rate { display: flex; flex-wrap: wrap; gap: 4px; }
+.cm-chip { padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--brand) 10%, transparent); color: var(--text); font-size: 11px; font-weight: 600; }
+.cm-chip--off { background: color-mix(in srgb, var(--red) 12%, transparent); }
+.cm-deal.is-off .cm-deal-com b { color: var(--hint); }
+.cm-rules { padding: var(--space-3) var(--space-5); margin-top: var(--space-4); }
+.cm-rules > summary { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); cursor: pointer; font-weight: 800; list-style: none; }
+.cm-rules > summary::-webkit-details-marker { display: none; }
+.cm-rules-hint { font-size: var(--fs-xs); font-weight: 500; color: var(--hint); }
+.cm-rule-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-5); margin-top: var(--space-3); }
+.cm-rule h4 { margin: 0 0 var(--space-2); font-size: var(--fs-sm); }
+.cm-rule-row { display: flex; justify-content: space-between; padding: 7px 0; border-top: 1px solid var(--border); font-size: var(--fs-sm); }
+.cm-rule-row b { color: var(--brand); }
+.cm-rules-note { margin: var(--space-3) 0 0; font-size: var(--fs-xs); color: var(--hint); }
+.cm-card-link { font-size: var(--fs-xs); font-weight: 700; color: var(--brand); text-decoration: none; }
+@media (max-width: 800px) {
+  .cm-hero { grid-template-columns: minmax(0, 1fr); padding: var(--space-4); }
+  .cm-hero-amount span { font-size: 32px; }
+  .cm-deal { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); }
+  .cm-deal-main, .cm-deal-rate { grid-column: 1 / -1; }
+  .cm-deal em { display: block; }
+}
+@media (prefers-reduced-motion: reduce) { .cm-deal { transition: none; } }
+
+/* ---------- وضعیت تیمی فروش: لیدربرد ---------- */
+.tb-card { padding: var(--space-4) var(--space-5); }
+.tb-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.tb-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; grid-template-areas: "rank name val" "rank bar bar"; align-items: center; gap: 4px var(--space-3); padding: 9px 10px; border-radius: var(--r-lg); border: 1px solid transparent; transition: background-color var(--motion-fast) var(--ease-out); }
+.tb-row:hover { background: var(--ov-05); }
+.tb-row.is-me { background: color-mix(in srgb, var(--brand) 9%, transparent); border-color: color-mix(in srgb, var(--brand) 28%, transparent); }
+.tb-rank { grid-area: rank; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 10px; background: var(--ov-05); font-size: var(--fs-xs); font-weight: 800; }
+.tb-rank--1, .tb-rank--2, .tb-rank--3 { background: transparent; font-size: 20px; }
+.tb-name { grid-area: name; display: flex; align-items: center; gap: var(--space-2); min-width: 0; font-size: var(--fs-sm); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-me { padding: 1px 8px; border-radius: 999px; background: var(--brand); color: var(--card); font-size: 10px; font-style: normal; font-weight: 700; }
+.tb-val { grid-area: val; font-size: var(--fs-xs); color: var(--hint); }
+.tb-val b { color: var(--text); font-size: var(--fs-sm); font-weight: 800; }
+.tb-val--hidden { letter-spacing: 3px; user-select: none; }
+.tb-bar { grid-area: bar; height: 5px; }
+.tb-row:not(:has(.tb-bar)) { grid-template-areas: "rank name val"; }
+.tb-note { margin: var(--space-3) 0 0; font-size: var(--fs-xs); color: var(--hint); }
+@media (prefers-reduced-motion: reduce) { .tb-row { transition: none; } }
+
+/* تب‌های لیدربرد (ماهانه / فصلی / کل زمان) */
+.tb-tabs { display: inline-flex; gap: 4px; padding: 4px; margin-bottom: var(--space-3); border: 1px solid var(--border); border-radius: 999px; background: var(--card); }
+.tb-tab { appearance: none; border: 0; background: transparent; color: var(--hint); font: inherit; font-size: var(--fs-sm); font-weight: 700; padding: 6px 16px; border-radius: 999px; cursor: pointer; transition: background-color var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out); }
+.tb-tab:hover { color: var(--text); }
+.tb-tab.is-active { background: var(--brand); color: var(--card); }
+.tb-tab:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.tb-panel { display: none; }
+.tb-panel.is-active { display: block; }
+.tb-period { margin-bottom: var(--space-2); font-size: var(--fs-xs); font-weight: 700; color: var(--hint); }
+.cm-season { display: block; margin-bottom: var(--space-1); font-size: var(--fs-sm); color: var(--hint); }
+.cm-season b { color: var(--text); }
+@media (prefers-reduced-motion: reduce) { .tb-tab { transition: none; } }

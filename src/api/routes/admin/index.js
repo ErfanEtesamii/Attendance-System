@@ -26,6 +26,7 @@ router.use('/admin', (req, res, next) => {
 router.use(require('./exportsHub')); // «خروجی‌ها»: Excel/CSV مرخصی، مانده‌ی مرخصی، اعتراض‌ها، تعطیلات، شیفت‌ها (قبل از routeهای /:id)
 router.use(require('./dashboard'));
 router.use(require('./calendar')); // S4-14a: تقویم تیم
+router.use(require('./commission')); // پورسانت فروش (دیدار)
 router.use(require('./users'));
 router.use(require('./attendance'));
 router.use(require('./leave'));

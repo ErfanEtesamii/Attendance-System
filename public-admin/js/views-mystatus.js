@@ -227,17 +227,18 @@
     const enc = encodeURIComponent;
     const cur = await AP.api('/admin/me/week');
     const loadDaily = (date) => AP.api(tasksUrl('today', date ? `date=${enc(date)}` : '')).catch((err) => ({ ok: false, error: err.message }));
-    const [sel, next, daily0, backfill, urgentCfg, earnings] = await Promise.all([
+    const [sel, next, daily0, backfill, urgentCfg, earnings, commission] = await Promise.all([
       ui.start && ui.start !== cur.week.start ? AP.api(`/admin/me/week?start=${enc(ui.start)}`) : Promise.resolve(cur),
       AP.api(`/admin/me/week?start=${enc(cur.week.nextWeekStart)}`).catch(() => null), // غیرحیاتی: فقط نشان وضعیت برنامه
       loadDaily(ui.taskDate),
       AP.api(tasksUrl('backfill')).catch(() => null), // غیرحیاتی: بنر گزارش دیرهنگام
       AP.api('/admin/me/urgent/config').catch(() => null), // غیرحیاتی: نبودنش فقط دکمه‌های «تسک فوری» را مخفی می‌کند
       AP.api('/admin/me/earnings').then((r) => (r && r.earnings) || null).catch(() => null), // غیرحیاتی: null ⇒ کارت نمایش داده نمی‌شود
+      AP.api('/admin/me/commission').then((r) => (r && r.commission) || null).catch(() => null), // غیرحیاتی: null ⇒ کارت پورسانت نمایش داده نمی‌شود
     ]);
     let daily = daily0;
     if (ui.taskDate && !(daily && daily.ok)) { ui.taskDate = ''; daily = await loadDaily(''); } // مهلت روزِ گذشته تمام شده ⇒ برگرد به امروز
-    return { cur, sel, next, daily, backfill, urgentCfg, earnings };
+    return { cur, sel, next, daily, backfill, urgentCfg, earnings, commission };
   }
 
   // Phase 20: کارت «کارکرد این ماه» (null ⇒ اصلاً رندر نمی‌شود). مبلغ با count-up کوتاه فقط بار اول؛ با prefers-reduced-motion بدون انیمیشن.
@@ -328,6 +329,7 @@
     const att = todayRow && todayRow.attendance;
     const live = !!(att && att.hasCheckIn && !att.checkOut);
     return `${kpiRow(d.sel, earningsCard(d.earnings, live))}
+        ${d.commission && AP.commissionUi ? AP.commissionUi.commissionCard(d.commission) : ''}
         <div class="ms-top">${todayCard(d.cur, d.daily, d.backfill, d.urgentCfg)}${nextPlanCard(d.cur, d.next)}</div>
         <h3 class="ms-section-title">روزهای ${esc(weekTitle(d.sel, d.cur))}</h3>
         ${grid}`;

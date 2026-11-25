@@ -44,11 +44,11 @@ function snapshot(db) {
   // suspicious_events (migration ۰۰۶، S2-4a) و audit_log_archive (migration ۰۰۷، S2-6a) و overtime_approvals (migration ۰۰۸، S3-5c) و work_shifts (migration ۰۰۹، S3-6a) و notifications (migration ۰۱۲، S4-5a) هم جدول جدید و خالی‌اند؛ month_closures (migration ۰۲۰، S5-3a) جدول جدیدِ خالی است؛ leave_types (migration ۰۱۳، S4-7a) جدول جدیدِ تنظیماتی با دو ردیف پیش‌فرض است (داده‌ی کاربری نیست)
   // پس از مقایسه‌ی «بدون تغییر داده» کنار می‌مانند
   // remote_work_sessions (migration ۰۳۶) و remote_work_breaks (migration ۰۳۷) — فاز ۱۴، R1: جدول‌های جدید و خالی‌اند؛ ساختار و قیدهایشان در test/remoteWorkSessions.test.js، test/remoteWorkBreaks.test.js و test/remoteWorkMigrations.test.js بررسی می‌شود
-  const OPERATIONAL = ['settings_history', 'user_rate_history', 'payroll_adjustments', 'rate_limit_hits', 'job_runs', 'monitor_alerts', 'monitor_state', 'suspicious_events', 'audit_log_archive', 'overtime_approvals', 'work_shifts', 'notifications', 'leave_types', 'leave_balances', 'leave_balance_adjustments', 'leave_approvals', 'month_closures', 'month_closure_adjustments', 'weekly_plans', 'plan_tasks', 'task_daily_logs', 'report_reviews', 'plan_gate_exemptions', 'dispute_messages', 'user_shift_assignments', 'user_day_schedules', 'checkin_permissions', 'remote_work_sessions', 'remote_work_breaks', 'attendance_segments', 'user_dashboard_prefs', 'ai_alert_log', 'ai_notes', 'ai_pending_actions', 'user_avatars', 'supervisor_overrides'];
+  const OPERATIONAL = ['settings_history', 'user_rate_history', 'payroll_adjustments', 'rate_limit_hits', 'job_runs', 'monitor_alerts', 'monitor_state', 'suspicious_events', 'audit_log_archive', 'overtime_approvals', 'work_shifts', 'notifications', 'leave_types', 'leave_balances', 'leave_balance_adjustments', 'leave_approvals', 'month_closures', 'month_closure_adjustments', 'weekly_plans', 'plan_tasks', 'task_daily_logs', 'report_reviews', 'plan_gate_exemptions', 'dispute_messages', 'user_shift_assignments', 'user_day_schedules', 'checkin_permissions', 'remote_work_sessions', 'remote_work_breaks', 'attendance_segments', 'user_dashboard_prefs', 'ai_alert_log', 'ai_notes', 'ai_pending_actions', 'user_avatars', 'supervisor_overrides', 'sales_deals', 'didar_sync_state'];
   for (const t of userTables(db).filter((n) => !OPERATIONAL.includes(n))) {
     out[t] = db.prepare(`SELECT * FROM "${t}" ORDER BY rowid`).all().map((r) => {
       const row = { ...r };
-      if (t === 'users') { delete row.session_version; delete row.shift_id; delete row.hourly_rate_kt; delete row.deputy_id; delete row.insurance_deduction_toman; } // shift_id: ۰۰۹؛ نرخ: ۰۴۳
+      if (t === 'users') { delete row.session_version; delete row.shift_id; delete row.hourly_rate_kt; delete row.deputy_id; delete row.insurance_deduction_toman; delete row.didar_email; /* ۰۶۳ */ } // shift_id: ۰۰۹؛ نرخ: ۰۴۳
       // leave_type_id/rejected_reason: migration ۰۱۴ (S4-7b) — ستون‌های جدید؛ نگاشت و حفظ داده در test/leaveRequestType.test.js بررسی می‌شود
       if (t === 'leave_requests') { delete row.source; delete row.destination; /* migration ۰۲۳ (C1) */ delete row.leave_type_id; delete row.rejected_reason; delete row.unit; delete row.half_day_part; delete row.start_time; delete row.end_time; delete row.duration_minutes; delete row.current_step; delete row.substitute_user_id; delete row.attachment_id; delete row.attachment_mime; delete row.attachment_size; delete row.attachment_name; } // ستون‌های ۰۱۵ (S4-8a): test/leaveUnits.test.js
       // ستون‌های kind/half_end_time/scope/department (migration ۰۱۰، S3-7b) روی ردیف‌های قدیمی مقدار پیش‌فرض می‌گیرند؛ در تست migration 010 جدا بررسی می‌شوند
@@ -355,7 +355,7 @@ describe('migration 002 — session_version', () => {
     assert.equal(usersAfter.length, usersBefore.length);
     usersAfter.forEach((u, i) => {
       assert.equal(u.session_version, 0);
-      const { session_version: _sv, shift_id: _shift, hourly_rate_kt: _rate, deputy_id: _dep, insurance_deduction_toman: _ins, ...rest } = u; // ستون نرخ: migration ۰۴۳
+      const { session_version: _sv, shift_id: _shift, hourly_rate_kt: _rate, deputy_id: _dep, insurance_deduction_toman: _ins, didar_email: _de, ...rest } = u; // ستون نرخ: migration ۰۴۳
       assert.deepEqual(rest, usersBefore[i]);
     });
   });

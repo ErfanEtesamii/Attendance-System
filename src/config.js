@@ -81,6 +81,14 @@ const config = {
     copyDir: process.env.BACKUP_COPY_DIR ? path.resolve(process.env.BACKUP_COPY_DIR) : '',
   },
 
+  // ===== پورسانت فروش: اتصال به دیدار (فقط‌خواندنی: جستجوی معامله‌های موفق) =====
+  didar: {
+    baseUrl: String(process.env.DIDAR_BASE_URL || 'https://app.didar.me/api').replace(/\/+$/, ''),
+    apiKey: String(process.env.DIDAR_API_KEY || '').trim(), // هرگز لاگ/پاسخ نمی‌شود
+    salesPipelineId: String(process.env.DIDAR_SALES_PIPELINE_ID || 'a6e51c17-6205-4576-9013-80af67b3e9b0').trim(), // «تیم فروش فرازهنر»
+    syncTtlSeconds: positiveIntEnv(process.env.DIDAR_SYNC_TTL_SECONDS, 300),
+  },
+
   // ===== بخش ۲-د: تشخیص موارد مشکوک (S2-4) =====
   fraud: {
     // قاعده‌ی ب: دو کاربر با یک IP که ثبتشان با فاصله‌ی کمتر از این‌قدر ثانیه باشد «نشانه» حساب می‌شود (پیش‌فرض ۶۰)
