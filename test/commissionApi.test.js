@@ -140,6 +140,31 @@ describe('API پورسانت فروش', () => {
       assert.equal((await hit('a', 'GET', '/api/admin/avatars')).json.versions[U.b.id], undefined);
     } finally { db.prepare('UPDATE users SET didar_email = ? WHERE id = ?').run('a@x.com', U.a.id); db.prepare('DELETE FROM user_avatars WHERE user_id = ?').run(U.b.id); }
   });
+  test('ممیزی نشت: پاسخ لیدربرد/کارت اعضا برای کارمند عادی هیچ مبلغِ دیگران ندارد (همه‌ی بازه‌ها و فیلدها)', async () => {
+    const MONEY = ['amountToman', 'avgInvoiceToman', 'maxInvoiceToman', 'commissionToman', 'avgDiscountPercent', 'salesToman', 'seasonToman'];
+    const walk = (node, path, out) => {
+      if (Array.isArray(node)) node.forEach((x, i) => walk(x, `${path}[${i}]`, out));
+      else if (node && typeof node === 'object') {
+        for (const [k, v] of Object.entries(node)) {
+          if (MONEY.includes(k) && v !== null && v !== undefined) out.push({ path: `${path}.${k}`, owner: node.userId, v });
+          walk(v, `${path}.${k}`, out);
+        }
+      }
+    };
+    const urls = [`/api/admin/sales-team/leaderboard${month}`, '/api/admin/sales-team/leaderboard?from=2015-01-01&to=2026-11-21', '/api/admin/sales-team/leaderboard?from=2026-09-23&to=2026-11-21', `/api/admin/sales-team/members${month}`];
+    for (const who of ['a', 'b']) {
+      for (const u of urls) {
+        const json = (await hit(who, 'GET', u)).json; const found = [];
+        walk(json, '$', found);
+        const me = U[who].id;
+        for (const f of found) assert.equal(f.owner, me, `${who} ${u} ${f.path} مبلغِ غیرِ خود را دارد`);
+        // خلاصه‌ی بازه (جمع مبلغ/پورسانت تیم) فقط ادمین/مالک
+        const lbm = json.leaderboard && (json.leaderboard.range ? json.leaderboard : json.leaderboard.month);
+        const sm = (json.leaderboard && json.leaderboard.summary) || (lbm && lbm.summary);
+        if (sm) { assert.equal(sm.amountToman, null); assert.equal(sm.commissionToman, null); }
+      }
+    }
+  });
   test('admin همه‌ی مبلغ‌ها و «کل زمان» را می‌بیند', async () => {
     const lb = (await hit('admin', 'GET', `/api/admin/sales-team/leaderboard${month}`)).json.leaderboard;
     assert.equal(lb.month.byAmount.find((x) => x.userId === U.b.id).amountToman, 50_000_000);
