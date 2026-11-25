@@ -263,4 +263,23 @@
 .ms-money .earn-spark { font-size: .55em; align-self: center; }
 
 /* ===== تصویر پس‌زمینه‌ی کارت حقوق مینی‌اپ (صنایع‌دستی، محو) پشت کارت‌های «وضعیت من»؛ تصویر سمت چپ (سمت خالیِ کارت) و محو شدن به رنگ کارت ===== */
-.cm-card, .ms-money .earn-card { background: linear-gradient(color-mix(in srgb, var(--card) 38%, transparent), color-mix(in srgb, var(--card) 38%, transparent)), linear-gradient(270deg, var(--card) 0%, color-mix(in srgb, var(--card) 97%, transparent) 50%, color-mix(in srgb, var(--card) 55%, transparent) 74%, color-mix(in srgb, var(--card) 0%, transparent) 100%), url("/images/earnings-handicrafts-fade.webp") left center / auto 108% no-repeat, var(--card); }
+.cm-card, .ms-money .earn-card { background: linear-gradient(color-mix(in srgb, var(--card) 36%, transparent), color-mix(in srgb, var(--card) 36%, transparent)), linear-gradient(90deg, color-mix(in srgb, var(--card) 20%, transparent) 0, color-mix(in srgb, var(--card) 62%, transparent) 90px, color-mix(in srgb, var(--card) 94%, transparent) 170px, var(--card) 230px), url("/images/earnings-handicrafts-fade.webp") left top / 230px auto no-repeat, var(--card); }
+
+/* ===== بدون فضای خالی کنار کارت‌ها + نمای تک‌کارتِ افقی (کارمند بدون پورسانت) + سوییچ نمونه برای مالک ===== */
+.ms-money { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.ms-money > .earn-card:only-child, .ms-money-wrap:has(#ms-demo-plain:checked) .ms-money > .earn-card { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); column-gap: var(--space-6); align-content: center; align-items: center; }
+.ms-money > .earn-card:only-child > .earn-head, .ms-money > .earn-card:only-child > .earn-intro, .ms-money > .earn-card:only-child > .earn-amount,
+.ms-money-wrap:has(#ms-demo-plain:checked) .ms-money > .earn-card > .earn-head, .ms-money-wrap:has(#ms-demo-plain:checked) .ms-money > .earn-card > .earn-intro, .ms-money-wrap:has(#ms-demo-plain:checked) .ms-money > .earn-card > .earn-amount { grid-column: 1; }
+.ms-money > .earn-card:only-child > .earn-foot, .ms-money-wrap:has(#ms-demo-plain:checked) .ms-money > .earn-card > .earn-foot { grid-column: 2; grid-row: 1 / span 3; margin: 0; padding: 0 0 0 0; padding-inline-start: var(--space-5); padding-inline-end: 150px; border-top: 0; border-inline-start: 1px dashed color-mix(in srgb, var(--green) 26%, var(--border)); align-self: stretch; justify-content: center; flex-direction: column; align-items: flex-start; }
+.ms-money-wrap:has(#ms-demo-plain:checked) .cm-card { display: none; }
+.ms-demo-switch { display: inline-flex; gap: 4px; margin: var(--space-4) 0 0; padding: 4px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); }
+.ms-demo-switch input { position: absolute; opacity: 0; pointer-events: none; }
+.ms-demo-switch label { padding: 5px 14px; border-radius: 999px; font-size: var(--fs-xs); font-weight: 700; color: var(--hint); cursor: pointer; transition: background .2s, color .2s; }
+.ms-demo-switch input:checked + label { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green); }
+.ms-demo-switch input:focus-visible + label { outline: 2px solid var(--brand); outline-offset: 2px; }
+.ms-money-wrap > .ms-money { margin-top: var(--space-3); }
+@media (max-width: 700px) {
+  .ms-money > .earn-card:only-child, .ms-money-wrap:has(#ms-demo-plain:checked) .ms-money > .earn-card { display: flex; }
+  .ms-money > .earn-card:only-child > .earn-foot, .ms-money-wrap:has(#ms-demo-plain:checked) .ms-money > .earn-card > .earn-foot { padding: var(--space-2) 0 0; border-inline-start: 0; border-top: 1px dashed color-mix(in srgb, var(--green) 26%, var(--border)); }
+}
+@media (prefers-reduced-motion: reduce) { .ms-demo-switch label { transition: none; } }

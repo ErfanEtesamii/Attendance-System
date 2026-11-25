@@ -332,7 +332,7 @@
     const earnHtml = earningsCard(d.earnings || (owner ? { amountToman: 18450000, usefulMinutes: 7320, monthLabel: 'آبان ۱۴۰۵', demo: true } : null), live && !!d.earnings);
     const cmHtml = AP.commissionUi ? (d.commission ? AP.commissionUi.commissionCard(d.commission) : (owner ? AP.commissionUi.commissionCard(AP.commissionUi.sampleData(), true) : '')) : '';
     return `${kpiRow(d.sel, '')}
-        ${earnHtml || cmHtml ? `<div class="ms-money">${earnHtml}${cmHtml}</div>` : ''}
+        ${earnHtml || cmHtml ? (owner && !d.commission ? `<div class="ms-money-wrap"><div class="ms-demo-switch" role="radiogroup" aria-label="نمونه‌ی نمایش برای مالک"><input type="radio" name="ms-demo" id="ms-demo-sales" aria-label="نمونه‌ی کارشناس فروش" checked><label for="ms-demo-sales">کارشناس فروش</label><input type="radio" name="ms-demo" id="ms-demo-plain" aria-label="نمونه‌ی کارمند بدون پورسانت"><label for="ms-demo-plain">کارمند بدون پورسانت</label></div><div class="ms-money">${earnHtml}${cmHtml}</div></div>` : `<div class="ms-money">${earnHtml}${cmHtml}</div>`) : ''}
         <div class="ms-top">${todayCard(d.cur, d.daily, d.backfill, d.urgentCfg)}${nextPlanCard(d.cur, d.next)}</div>
         <h3 class="ms-section-title">روزهای ${esc(weekTitle(d.sel, d.cur))}</h3>
         ${grid}`;
