@@ -324,7 +324,7 @@
         <label class="field"><span>سرپرست مستقیم</span><select name="managerId"><option value="">— ندارد —</option>
           ${managers.map((m) => `<option value="${m.id}" ${u && u.managerId === m.id ? 'selected' : ''}>${esc(m.fullName)}</option>`).join('')}</select></label>
         <label class="field"><span>آیدی عددی تلگرام</span><input name="telegramUserId" class="ltr" inputmode="numeric" value="${esc(u ? u.telegramUserId || '' : '')}" /></label>
-        ${u && AP.can('users.write') ? `<label class="field"><span>نرخ ساعتی (هزار تومان)</span><input name="hourlyRateKt" class="ltr" inputmode="numeric" autocomplete="off" disabled placeholder="در حال بارگذاری…" /></label><label class="field"><span>کسر ماهانه‌ی حق بیمه (تومان)</span><input name="insuranceDeductionToman" class="ltr" inputmode="numeric" autocomplete="off" disabled placeholder="در حال بارگذاری…" /></label>` : ''}
+        ${u && AP.can('users.write') ? `<label class="field"><span>نرخ ساعتی (هزار تومان)</span><input name="hourlyRateKt" class="ltr" inputmode="numeric" autocomplete="off" disabled placeholder="در حال بارگذاری…" /></label><label class="field"><span>کسر ماهانه‌ی حق بیمه (تومان)</span><input name="insuranceDeductionToman" class="ltr" inputmode="numeric" autocomplete="off" disabled placeholder="در حال بارگذاری…" /></label><label class="field full u-full"><span>نرخ و بیمه از این تاریخ اعمال شود (اختیاری؛ خالی = از ابتدای ماه جاری. برای اعمال روی ماه‌های قبل تاریخ قدیمی‌تر بگذارید)</span><input type="date" name="rateEffectiveFrom" class="ltr" /></label>` : ''}
         ${u ? `<label class="check-row full u-full"><input type="checkbox" name="isActive" ${u.isActive ? 'checked' : ''} /> حساب فعال است</label>` : ''}
       </div>`;
   }
@@ -835,7 +835,7 @@
               const insField = insInputEl && insInputEl.dataset.loaded === '1' ? { insuranceDeductionToman: faToEn(f.insuranceDeductionToman) } : {};
               const ok = await AP.attempt(() => AP.api(`/admin/users/${u.id}`, { method: 'PATCH', body: {
                 fullName: f.fullName, personnelCode: f.personnelCode, department: f.department, role: f.role,
-                managerId: f.managerId ? Number(f.managerId) : null, telegramUserId: f.telegramUserId, isActive: f.isActive, ...rateField, ...insField } }), 'تغییرات ذخیره شد.');
+                managerId: f.managerId ? Number(f.managerId) : null, telegramUserId: f.telegramUserId, isActive: f.isActive, ...rateField, ...insField, ...(f.rateEffectiveFrom && /^\d{4}-\d{2}-\d{2}$/.test(String(f.rateEffectiveFrom)) ? { rateEffectiveFrom: String(f.rateEffectiveFrom) } : {}) } }), 'تغییرات ذخیره شد.');
               if (ok) { AP.state.users = null; AP.refresh(); }
             });
           };
