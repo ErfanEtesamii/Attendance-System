@@ -114,7 +114,7 @@
   function countView(p) {
     const max = Math.max(1, ...p.byCount.map((x) => x.count));
     const rows = p.byCount.map((x) => detailRow(x, `<span class="tb-val"><b>${fmt.num(x.count)}</b> فاکتور</span>`, Math.max(4, Math.round((x.count / max) * 100)),
-      chip('سهم از کل', `${fmt.num(x.sharePercent)}٪`) + (x.gapToPrev != null ? chip('فاصله تا نفر بالاتر', `${fmt.num(x.gapToPrev)} فاکتور`) : chip('', '👑 پیشتاز')))).join('');
+      chip('سهم از کل', `${fmt.num(x.sharePercent)}٪`) + (x.noInvoiceCount ? chip('معامله‌ی بدون فاکتور', fmt.num(x.noInvoiceCount)) : '') + (x.gapToPrev != null ? chip('فاصله تا نفر بالاتر', `${fmt.num(x.gapToPrev)} فاکتور`) : chip('', '👑 پیشتاز')))).join('');
     return `${podium(p.byCount, (x) => `${fmt.num(x.count)}`, (x) => `فاکتور · سهم ${fmt.num(x.sharePercent)}٪`)}
       <section class="card tb-card"><h3>🏆 جدول تعداد فاکتور فروش</h3><ol class="tb-list">${rows}</ol></section>`;
   }

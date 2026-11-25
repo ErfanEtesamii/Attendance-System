@@ -149,10 +149,11 @@ function leaderboard(viewer, q = {}) {
     .map((r) => (r.owner_email ? { email: String(r.owner_email).toLowerCase(), name: r.owner_name } : (r.owner_name ? { email: `name:${r.owner_name}`, name: r.owner_name } : null)))
     .filter((r) => r && !activeEmails.has(r.email));
   const rowOf = (name, email, base) => {
-    const inv = dealsOfMonth(base, email).filter((d) => !d.noInvoice);
+    const all = dealsOfMonth(base, email);
+    const inv = all.filter((d) => !d.noInvoice);
     const amount = inv.reduce((t, d) => t + d.amountToman, 0);
     return {
-      name, count: inv.length, amountToman: amount,
+      name, count: inv.length, amountToman: amount, dealsTotal: all.length, noInvoiceCount: all.length - inv.length,
       commissionToman: inv.reduce((t, d) => t + d.commissionToman, 0),
       avgInvoiceToman: inv.length ? Math.round(amount / inv.length) : 0,
       maxInvoiceToman: inv.reduce((m, d) => Math.max(m, d.amountToman), 0),
@@ -163,7 +164,7 @@ function leaderboard(viewer, q = {}) {
     const rows = [
       ...members.map((u) => ({ userId: u.id, ...rowOf(u.full_name, String(u.didar_email).toLowerCase(), range) })),
       ...former.map((f) => ({ userId: `f:${f.email}`, former: true, ...rowOf(inactiveName.get(f.email) || f.name || f.email, f.email, range) })),
-    ].filter((r) => !r.former || r.count > 0);
+    ].filter((r) => !r.former || r.dealsTotal > 0); // سابق‌ها اگر معامله‌ی موفق (حتی بدون فاکتور) در بازه دارند می‌آیند
     return { label: range.label, ...buildLeaderboards(rows, viewer.id, { canSeeAll: isAdmin, canSee }) };
   };
   if (q.from && q.to) {

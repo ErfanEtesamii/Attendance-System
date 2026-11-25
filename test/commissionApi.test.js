@@ -101,12 +101,17 @@ describe('API پورسانت فروش', () => {
       assert.equal(det.isFormer, true); assert.equal(det.commission.totals.dealsCount, 1);
       assert.ok(!(await hit('sup', 'GET', `/api/admin/sales-team/members${month}`)).json.members.some((m) => m.isFormer));
       assert.equal((await hit('sup', 'GET', `/api/admin/sales-team/members/${encodeURIComponent(fm.userId)}${month}`)).status, 404);
+      // سابقِ فقط با معامله‌ی بدون فاکتور (قیمت صفر) هم با صفر فاکتور در لیدربرد می‌آید
+      db.prepare("INSERT INTO sales_deals (didar_id, code, title, customer, owner_email, owner_name, won_at, price_rial, items_json) VALUES ('old3','3','بی‌فاکتور','م','z@x.com','زد بی‌فاکتور','2026-11-03T08:00:00Z',0,'[]')").run();
+      const adm3 = (await hit('admin', 'GET', `/api/admin/sales-team/leaderboard${month}`)).json.leaderboard.month;
+      const z = adm3.byCount.find((x) => x.name === 'زد بی‌فاکتور');
+      assert.ok(z && z.isFormer && z.count === 0 && z.noInvoiceCount === 1);
       // مالکِ بدون ایمیل (دیدار برای کاربر غیرفعال ایمیل برنمی‌گرداند) با نام می‌آید
       db.prepare("INSERT INTO sales_deals (didar_id, code, title, customer, owner_email, owner_name, won_at, price_rial, items_json) VALUES ('old2','2','سابق۲','م','','میلاد بدون‌ایمیل','2026-11-02T08:00:00Z',1000000000,?)").run(items);
       const adm2 = (await hit('admin', 'GET', `/api/admin/sales-team/leaderboard${month}`)).json.leaderboard.month;
       const g = adm2.byAmount.find((x) => x.name === 'میلاد بدون‌ایمیل');
       assert.ok(g && g.isFormer && g.amountToman === 100_000_000);
-    } finally { db.prepare("DELETE FROM sales_deals WHERE didar_id IN ('old1','old2')").run(); }
+    } finally { db.prepare("DELETE FROM sales_deals WHERE didar_id IN ('old1','old2','old3')").run(); }
   });
   test('بازه‌ی دلخواه from/to: لیدربرد، کارت من و کارت اعضا', async () => {
     const q = '?from=2026-09-23&to=2026-11-21'; // مهر تا آبان ۱۴۰۵

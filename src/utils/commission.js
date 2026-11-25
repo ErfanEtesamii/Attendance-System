@@ -50,7 +50,7 @@ function buildLeaderboards(rows, viewerId, { canSeeAll = false, canSee = null } 
   const totalCount = rows.reduce((t, r) => t + (r.count || 0), 0);
   const byCountRaw = rank(rows, 'count');
   const byCount = byCountRaw.map(({ r, rank: n }, i) => ({
-    userId: r.userId, name: r.name, rank: n, count: r.count, isMe: mine(r.userId), isFormer: !!r.former,
+    userId: r.userId, name: r.name, rank: n, count: r.count, isMe: mine(r.userId), isFormer: !!r.former, noInvoiceCount: r.noInvoiceCount || 0,
     sharePercent: totalCount ? Math.round((r.count / totalCount) * 100) : 0,
     gapToPrev: i === 0 ? null : Math.max(0, byCountRaw[i - 1].r.count - r.count),
   }));
