@@ -15,7 +15,9 @@ const qOf = (req) => ({ jy: intOrUndef(req.query.year), jm: intOrUndef(req.query
 router.get('/admin/me/commission', requirePermission('me.read'), (req, res) => {
   service.syncIfStale();
   const row = getDb().prepare('SELECT didar_email FROM users WHERE id = ?').get(req.adminUser.id);
-  const commission = service.myCommission({ ...req.adminUser, didar_email: row && row.didar_email }, qOf(req));
+  // «کل زمان»ِ پورسانتِ خودش برای کارمند بسته است (کف: ابتدای فصل جاری یا ماه قبل)؛ ادمین/مالک بدون کف
+  const floor = ['admin', 'owner'].includes(req.adminUser.role) ? null : service.floorFor(false);
+  const commission = service.myCommission({ ...req.adminUser, didar_email: row && row.didar_email }, qOf(req), { floor });
   return res.json({ commission, canViewTeam: service.canViewTeam(req.adminUser) });
 });
 

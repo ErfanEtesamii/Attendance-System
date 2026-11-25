@@ -118,12 +118,21 @@ describe('API پورسانت فروش', () => {
     const lb = (await hit('admin', 'GET', `/api/admin/sales-team/leaderboard${q}`)).json.leaderboard;
     assert.equal(lb.range.from, '2026-09-23'); assert.equal(lb.range.clamped, false);
     assert.equal(lb.byCount.find((x) => x.userId === U.b.id).count, 2);
-    const mine = (await hit('b', 'GET', `/api/admin/me/commission${q}`)).json.commission;
+    const mine = service.myCommission({ didar_email: 'b@x.com' }, { from: '2026-09-23', to: '2026-11-21' }); // بدون کف (کفِ کارمند وابسته به امروز است؛ تستِ جدا پایین)
     assert.equal(mine.totals.dealsCount, 2); assert.equal(mine.season, null); assert.equal(mine.range.custom, true);
     const mem = (await hit('admin', 'GET', `/api/admin/sales-team/members${q}`)).json;
     assert.equal(mem.members.find((m) => m.userId === U.b.id).dealsCount, 2);
     const bad = (await hit('admin', 'GET', '/api/admin/sales-team/leaderboard?from=2026-11-21&to=2026-09-23')).json.leaderboard;
     assert.ok(bad.month && !bad.range); // بازه‌ی نامعتبر ⇒ برگشت به ماه
+  });
+  test('پورسانتِ خودِ کارمند: «کل زمان» بسته است (کف)؛ ادمین/مالک کفی ندارند', async () => {
+    const mine = (await hit('b', 'GET', '/api/admin/me/commission?from=2015-01-01&to=2026-11-21')).json.commission;
+    assert.equal(mine.range.clamped, true); assert.ok(mine.range.from > '2026-01-01');
+    assert.equal(service.myCommission({ didar_email: 'b@x.com' }, { from: '2015-01-01', to: '2026-11-21' }).range.clamped, false); // ادمین‌ها/کارت اعضا
+    const old = (await hit('b', 'GET', '/api/admin/me/commission?year=1403&month=1')).json.commission; // ماه خیلی قدیمی هم دور زدنِ کف نیست
+    assert.equal(old.range.clamped, true);
+    const ok = (await hit('b', 'GET', '/api/admin/me/commission')).json.commission; // پیش‌فرض (ماه جاری) بدون مشکل
+    assert.ok(ok && ok.range);
   });
   test('کارمند عادی نمی‌تواند با from خیلی قدیمی «کل زمان» بگیرد (کف سمت سرور)', async () => {
     const lb = (await hit('b', 'GET', '/api/admin/sales-team/leaderboard?from=2015-01-01&to=2026-11-21')).json.leaderboard;

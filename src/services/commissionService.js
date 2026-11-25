@@ -60,7 +60,9 @@ function rangeOf({ jy, jm, from, to } = {}, { floor = null } = {}) {
     if (f > to) return { ...monthOf(), custom: false };
     return { from: f, to, label: f === to ? jlabel(f) : `${jlabel(f)} تا ${jlabel(to)}`, custom: true, clamped: f !== from };
   }
-  return { ...monthOf(jy, jm), custom: false };
+  const m = monthOf(jy, jm);
+  if (floor && m.to < floor) return { ...monthOf(), custom: false, clamped: true }; // ماهِ قدیمی‌تر از کف ⇒ ماه جاری
+  return { ...m, custom: false };
 }
 
 const SEASONS = ['بهار', 'تابستان', 'پاییز', 'زمستان'];
@@ -86,8 +88,8 @@ function dealsOfMonth(range, email) {
   });
 }
 
-function myCommission(user, q = {}) {
-  const range = rangeOf(q);
+function myCommission(user, q = {}, { floor = null } = {}) {
+  const range = rangeOf(q, { floor });
   const email = String(user.didar_email || '').trim().toLowerCase();
   if (!email) return null;
   const deals = dealsOfMonth(range, email);
@@ -101,7 +103,7 @@ function myCommission(user, q = {}) {
   const seasonInv = dealsOfMonth(seasonRange, email).filter((d) => !d.noInvoice);
   return {
     monthLabel: range.label,
-    range: { from: range.from, to: range.to, custom: !!range.custom },
+    range: { from: range.from, to: range.to, custom: !!range.custom, clamped: !!range.clamped },
     season: range.custom ? null : { label: seasonRange.label, dealsCount: seasonInv.length, commissionToman: seasonInv.reduce((t, d) => t + d.commissionToman, 0) },
     totals: {
       commissionToman: commission, dealsCount: inv.length, noInvoiceCount: deals.length - inv.length, salesToman: sales,
@@ -206,4 +208,4 @@ function memberCommission(viewer, id, ym) {
   return u ? { name: u.full_name, commission: myCommission(u, ym) } : null;
 }
 
-module.exports = { formerOwners, visibleMembers, membersSummary, memberCommission, canViewTeam, sync, syncIfStale, myCommission, leaderboard, normalizeDeal, AMOUNT_TIERS };
+module.exports = { floorFor, formerOwners, visibleMembers, membersSummary, memberCommission, canViewTeam, sync, syncIfStale, myCommission, leaderboard, normalizeDeal, AMOUNT_TIERS };

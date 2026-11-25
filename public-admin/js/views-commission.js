@@ -194,9 +194,9 @@
     return { from: J.jalaliToIso(j.jy, j.jm, 1), to };
   };
   // «کل زمان» و بازه‌ی دلخواهِ آزاد فقط برای ادمین/مالک/سرپرست؛ بقیه فقط چیپ‌های ماه/ماه قبل/فصل (سرور هم کف می‌گذارد)
-  const rangeShell = (priv) => {
+  const rangeShell = (priv, presets) => {
     const r = defaultRange();
-    return `<div class="cm-range" data-sales-range>${AP.rangeBar.html({ from: r.from, to: r.to, label: 'بازه‌ی زمانی', presets: priv ? ['month', 'lastMonth', 'season', 'all'] : ['month', 'lastMonth', 'season'], fields: priv })}</div>`;
+    return `<div class="cm-range" data-sales-range>${AP.rangeBar.html({ from: r.from, to: r.to, label: 'بازه‌ی زمانی', presets: presets && !priv ? presets : (priv ? ['month', 'lastMonth', 'season', 'all'] : ['month', 'lastMonth', 'season']), fields: priv })}</div>`;
   };
   // mount مشترک: با هر تغییر بازه، body را از load(from, to) دوباره می‌سازد
   function mountRange(page, load) {
@@ -235,7 +235,7 @@
       if (!data) return { html: '<div class="view-header"><div><h2>پورسانت من</h2></div></div><div class="card"><div class="empty">اطلاعات پورسانت هنوز در دسترس نیست.</div></div>', mount() {} };
       if (demo) return { html: `<div class="cm-demo-banner">${demoTag} این صفحه فقط یک نمونه برای دیدن ظاهر است؛ داده‌ی واقعی نیست.</div>${commissionHtml(data)}`, mount() {} };
       return {
-        html: `${rangeShell(true)}<div data-sales-body>${commissionHtml(data)}</div>`,
+        html: `${rangeShell(['admin', 'owner'].includes(AP.state.me.role), ['month', 'lastMonth', 'season'])}<div data-sales-body>${commissionHtml(data)}</div>`,
         mount(page) { mountRange(page, async (from, to) => { const c = await AP.api(`/admin/me/commission?${qs(from, to)}`).then((r) => r && r.commission); return c ? commissionHtml(c) : EMPTY_TEAM; }); },
       };
     },
