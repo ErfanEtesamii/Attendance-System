@@ -74,4 +74,40 @@
 .page .grid-2 > .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r-xl); box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 6%, transparent); }
 .page .grid-2 > .card > h3 { margin-bottom: var(--space-3); font-size: var(--fs-md); font-weight: 800; }
 
-@media (prefers-reduced-motion: reduce) { .stat-grid.stat-grid[data-widget="stats"] > .stat.stat, .inbox-quiet-item { transition: none; } }
+/* ---------- ۴) نمودار روند: میله‌های تخت و سبک، بدون حاشیه و سایه‌ی سنگین ---------- */
+.page .grid-2 > .card .chart rect.bar-a, .page .grid-2 > .card .chart rect.bar-b { stroke: none; filter: none; }
+.page .grid-2 > .card .chart rect.bar-a { fill: var(--green); }
+.page .grid-2 > .card .chart .grid { stroke-dasharray: 3 4; opacity: .7; }
+.page .grid-2 > .card .legend { gap: var(--space-4); margin-bottom: var(--space-2); }
+
+/* ---------- ۵) حضور دپارتمان‌ها: دو ستون فشرده (ارتفاع کارت با نمودار هم‌اندازه می‌شود) ---------- */
+.page .grid-2[data-widget="trend"] > .card:not(.card--primary) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-5); row-gap: 2px; align-content: start; }
+.page .grid-2[data-widget="trend"] > .card:not(.card--primary) > h3, .page .grid-2[data-widget="trend"] > .card:not(.card--primary) > .empty { grid-column: 1 / -1; }
+.page .grid-2[data-widget="trend"] .hbar { margin: 0; padding-block: 8px; }
+.page .grid-2[data-widget="trend"] .hbar-top { margin-bottom: 6px; font-weight: 600; }
+.page .grid-2[data-widget="trend"] .hbar-top span:last-child { font-size: var(--fs-xs); font-weight: 500; }
+.page .grid-2[data-widget="trend"] .hbar-track { height: 6px; background: var(--ov-08); }
+@media (max-width: 700px) { .page .grid-2[data-widget="trend"] > .card:not(.card--primary) { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- ۶) بیشترین تأخیر: فهرست رتبه‌دار با نوار نسبی ---------- */
+.rank-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.rank-row { display: flex; align-items: center; gap: var(--space-3); padding: 8px 6px; border-radius: var(--r-md); transition: background-color var(--motion-fast) var(--ease-out); }
+.rank-row:hover { background: var(--ov-05); }
+.rank-no { flex: 0 0 26px; height: 26px; display: grid; place-items: center; border-radius: 9px; background: color-mix(in srgb, var(--orange) 14%, transparent); color: var(--text); font-size: var(--fs-xs); font-weight: 800; }
+.rank-row:first-child .rank-no { background: var(--orange); color: var(--card); }
+.rank-main { flex: 1; min-width: 0; }
+.rank-top { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-3); margin-bottom: 6px; }
+.rank-name { font-size: var(--fs-sm); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-val { flex: none; font-size: var(--fs-xs); color: var(--hint); }
+.rank-track { height: 5px; }
+.rank-fill { background: var(--orange); }
+
+/* ---------- ۷) آخرین رویدادها: شش مورد، فشرده، بدون خط اتصال بلند ---------- */
+.page .grid-2 .act-list { gap: 2px; }
+.page .grid-2 .act-item { padding-block: 7px; }
+.page .grid-2 .act-item + .act-item::before { display: none; }
+.page .grid-2 .act-ico { width: 32px; height: 32px; border-radius: 10px; font-size: 15px; }
+.page .grid-2 .act-title { font-size: var(--fs-sm); }
+.page .grid-2 .act-list + .mt { margin-top: var(--space-3); }
+
+@media (prefers-reduced-motion: reduce) { .stat-grid.stat-grid[data-widget="stats"] > .stat.stat, .inbox-quiet-item, .rank-row { transition: none; } }

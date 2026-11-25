@@ -179,13 +179,14 @@
 
         <div class="grid-2 mt" data-widget="late">
           <div class="card"><h3>بیشترین تأخیر در ۳۰ روز اخیر</h3>
-            ${d.topLate.length ? `<div class="kv">${d.topLate.map((x) => `
-              <div class="kv-row"><span><a class="u-link-inherit" href="#/profile/${x.userId}">${esc(x.fullName)}</a></span>
-              <span>${fmt.num(x.count)} بار · ${fmt.min(x.minutes)}</span></div>`).join('')}</div>` : emptyBox('تأخیری ثبت نشده است. 🎉')}
+            ${d.topLate.length ? `<ol class="rank-list">${d.topLate.map((x, i) => `
+              <li class="rank-row"><span class="rank-no" aria-hidden="true">${fmt.num(i + 1)}</span>
+              <div class="rank-main"><div class="rank-top"><a class="u-link-inherit rank-name" href="#/profile/${x.userId}">${esc(x.fullName)}</a><span class="rank-val">${fmt.num(x.count)} بار · ${fmt.min(x.minutes)}</span></div>
+              <div class="hbar-track rank-track"><div class="hbar-fill rank-fill" data-progress="${Math.max(6, Math.round((x.count / Math.max(1, d.topLate[0].count)) * 100))}"></div></div></div></li>`).join('')}</ol>` : emptyBox('تأخیری ثبت نشده است. 🎉')}
           </div>
 
           <div class="card"><h3>${AP.can('audit.read') ? 'آخرین رویدادها' : 'ساعت کاری'}</h3>
-            ${AP.can('audit.read') ? ((d.recentActivity || []).length ? `<div class="act-list">${(d.recentActivity || []).map((r) => `
+            ${AP.can('audit.read') ? ((d.recentActivity || []).length ? `<div class="act-list">${(d.recentActivity || []).slice(0, 6).map((r) => `
               <div class="act-item act-item--${actTone(r.action)}" title="${esc(r.action)}"><span class="act-ico" aria-hidden="true">${actIcon(r.action)}</span>
                 <div class="act-main"><b class="act-title">${ACT_LABEL[r.action] ? esc(ACT_LABEL[r.action]) : `<span class="ltr">${esc(r.action)}</span>`}</b>
                   <span class="act-sub"><span class="act-who">${esc(r.userFullName || 'سیستم')}</span>${r.targetFullName ? `<span class="act-arrow" aria-hidden="true">←</span><span class="act-who">${esc(r.targetFullName)}</span>` : ''}<span class="act-sep" aria-hidden="true">·</span><time class="act-time" dir="ltr">${esc(actTime(r.occurred_at))}</time></span></div></div>`).join('')}</div>
