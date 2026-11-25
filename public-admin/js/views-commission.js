@@ -20,6 +20,7 @@
       ? `<span class="cm-chip" title="سهم تخفیف">تخفیف ${fmt.num(x.discountRate)}٪</span><span class="cm-chip" title="سهم مبلغ فاکتور">مبلغ ${fmt.num(x.amountRate)}٪</span>`
       : '<span class="cm-chip cm-chip--off">تخفیف بیش از ۳۰٪</span>';
     return `<li class="cm-deal${x.eligible ? '' : ' is-off'}">
+      <span class="cm-badge" aria-label="درصد پورسانت">${x.eligible ? `${fmt.num(x.ratePercent)}٪` : '۰٪'}</span>
       <div class="cm-deal-main"><b class="cm-deal-title">${esc(x.title)}</b><span class="cm-deal-sub">${esc(x.customer)} · ${esc(x.dateLabel)}</span></div>
       <div class="cm-deal-num"><em>مبلغ فاکتور</em><b>${fmt.num(x.amountToman)}</b></div>
       <div class="cm-deal-num"><em>تخفیف</em><b>${fmt.num(x.discountPercent)}٪</b></div>
@@ -27,11 +28,20 @@
       <div class="cm-deal-com"><em>پورسانت</em><b>${x.eligible ? fmt.num(x.commissionToman) : '—'}</b></div></li>`;
   }
 
+  // حلقه‌ی پیشرفت تا پله‌ی بعدی مبلغ فاکتور (ویژگی SVG؛ بدون style درون‌خطی)
+  function ring(pct, centerTop, centerBottom) {
+    const C = 276.46; const dash = Math.round((Math.max(0, Math.min(100, pct)) / 100) * C * 10) / 10;
+    return `<svg class="cm-ring" viewBox="0 0 120 120" role="img" aria-label="پیشرفت تا پله‌ی بعد"><circle class="cm-ring-bg" cx="60" cy="60" r="44"/><circle class="cm-ring-fg" cx="60" cy="60" r="44" stroke-dasharray="${dash} ${C}" transform="rotate(-90 60 60)"/>
+      <text class="cm-ring-top" x="60" y="56" text-anchor="middle">${centerTop}</text><text class="cm-ring-bot" x="60" y="74" text-anchor="middle">${centerBottom}</text></svg>`;
+  }
+
   function commissionHtml(d) {
     const t = d.totals;
-    const next = t.nextTier ? `<div class="cm-next"><div class="cm-next-top"><span>تا پله‌ی بعد (${fmt.num(t.nextTier.rate)}٪ مبلغی) برای یک فاکتور</span><b>${million(t.nextTier.remainingToman)}</b></div><div class="hbar-track"><div class="hbar-fill" data-progress="${Math.max(4, Math.round(t.nextTier.progress || 0))}"></div></div></div>` : '';
+    const next = t.nextTier
+      ? `<div class="cm-hero-ring">${ring(t.nextTier.progress || 0, `${fmt.num(Math.round(t.nextTier.progress || 0))}٪`, 'تا پله‌ی بعد')}<p class="cm-ring-cap">${million(t.nextTier.remainingToman)} دیگر تا پورسانت مبلغی <b>${fmt.num(t.nextTier.rate)}٪</b> روی یک فاکتور</p></div>`
+      : `<div class="cm-hero-ring">${ring(100, '🏆', 'بالاترین پله')}<p class="cm-ring-cap">فاکتور شما در بالاترین پله‌ی مبلغی است</p></div>`;
     return `<div class="view-header"><div><h2>پورسانت من</h2><div class="sub">معامله‌های موفق ${esc(d.monthLabel)} در دیدار</div></div></div>
-      <section class="card cm-hero"><div class="cm-hero-main"><span class="cm-hero-label">پورسانت این ماه</span>
+      <section class="card cm-hero"><div class="cm-hero-main"><span class="cm-hero-spark" aria-hidden="true">✨</span><span class="cm-hero-label">پورسانت این ماه</span>
         <p class="cm-hero-amount"><span>${fmt.num(t.commissionToman)}</span><small>تومان</small></p>
         ${d.season ? `<span class="cm-season">${esc(d.season.label)}: <b>${fmt.num(d.season.commissionToman)}</b> تومان از ${fmt.num(d.season.dealsCount)} فاکتور</span>` : ''}<span class="cm-note"><span aria-hidden="true">ⓘ</span> تخمینی؛ مبلغ نهایی با تأیید حسابداری است</span></div>${next}</section>
       <div class="stat-grid cm-stats">
@@ -58,14 +68,19 @@
     return `<li class="tb-row${x.isMe ? ' is-me' : ''}"><span class="tb-rank${x.rank <= 3 ? ` tb-rank--${x.rank}` : ''}">${x.rank <= 3 ? MEDAL[x.rank - 1] : fmt.num(x.rank)}</span>
       <span class="tb-name">${esc(x.name)}${x.isMe ? '<i class="tb-me">شما</i>' : ''}</span>${valueHtml}</li>`;
   }
+  const initial = (n) => (AP.initials ? AP.initials(n) : String(n).slice(0, 1));
+  // سکوی سه نفر اول (ترتیب بصری: ۲، ۱، ۳) + فهرست بقیه
+  function podium(rows, valueHtml) {
+    const top = rows.filter((x) => x.rank <= 3); if (top.length < 1) return '';
+    const order = [2, 1, 3].map((r) => top.find((x) => x.rank === r)).filter(Boolean);
+    return `<div class="tb-podium">${order.map((x) => `<div class="tb-pod tb-pod--${x.rank}${x.isMe ? ' is-me' : ''}"><span class="tb-pod-medal" aria-hidden="true">${MEDAL[x.rank - 1]}</span><span class="tb-pod-av">${esc(initial(x.name))}</span><b class="tb-pod-name">${esc(x.name)}${x.isMe ? '<i class="tb-me">شما</i>' : ''}</b>${valueHtml(x)}<span class="tb-pod-step">${fmt.num(x.rank)}</span></div>`).join('')}</div>`;
+  }
   function boardPanel(id, p, active) {
     const maxCount = Math.max(1, ...p.byCount.map((x) => x.count));
-    const count = p.byCount.map((x) => boardRow(x, `<span class="tb-val"><b>${fmt.num(x.count)}</b> فاکتور</span><div class="hbar-track tb-bar"><div class="hbar-fill" data-progress="${Math.max(4, Math.round((x.count / maxCount) * 100))}"></div></div>`)).join('');
-    const amount = p.byAmount.map((x) => boardRow(x, x.amountToman != null ? `<span class="tb-val"><b>${million(x.amountToman)}</b> تومان</span>` : '<span class="tb-val tb-val--hidden" aria-label="مبلغ برای شما نمایش داده نمی‌شود">••••</span>')).join('');
     const hidesOthers = p.byAmount.some((x) => !x.isMe && x.amountToman == null);
     return `<div class="tb-panel${active ? ' is-active' : ''}" data-tb-panel="${id}"><div class="tb-period">${esc(p.label)}</div>
-      <div class="grid-2 tb-grid"><section class="card tb-card"><h3>🏆 بیشترین تعداد فاکتور فروش</h3><ol class="tb-list">${count}</ol></section>
-        <section class="card tb-card"><h3>💎 بیشترین مبلغ فاکتور فروش</h3><ol class="tb-list">${amount}</ol>${hidesOthers ? '<p class="tb-note"><span aria-hidden="true">🔒</span> فقط رتبه‌ی همکاران دیده می‌شود؛ مبلغ شما مخصوص خودتان است.</p>' : ''}</section></div></div>`;
+      <div class="grid-2 tb-grid"><section class="card tb-card"><h3>🏆 بیشترین تعداد فاکتور فروش</h3>${podium(p.byCount, (x) => `<span class="tb-pod-val"><b>${fmt.num(x.count)}</b> فاکتور</span>`)}<ol class="tb-list">${p.byCount.filter((x) => x.rank > 3).map((x) => boardRow(x, `<span class="tb-val"><b>${fmt.num(x.count)}</b> فاکتور</span><div class="hbar-track tb-bar"><div class="hbar-fill" data-progress="${Math.max(4, Math.round((x.count / maxCount) * 100))}"></div></div>`)).join('')}</ol></section>
+        <section class="card tb-card"><h3>💎 بیشترین مبلغ فاکتور فروش</h3>${podium(p.byAmount, (x) => (x.amountToman != null ? `<span class="tb-pod-val"><b>${million(x.amountToman)}</b></span>` : '<span class="tb-pod-val tb-val--hidden" aria-label="مبلغ برای شما نمایش داده نمی‌شود">••••</span>'))}<ol class="tb-list">${p.byAmount.filter((x) => x.rank > 3).map((x) => boardRow(x, x.amountToman != null ? `<span class="tb-val"><b>${million(x.amountToman)}</b> تومان</span>` : '<span class="tb-val tb-val--hidden" aria-label="مبلغ برای شما نمایش داده نمی‌شود">••••</span>')).join('')}</ol>${hidesOthers ? '<p class="tb-note"><span aria-hidden="true">🔒</span> فقط رتبه‌ی همکاران دیده می‌شود؛ مبلغ شما مخصوص خودتان است.</p>' : ''}</section></div></div>`;
   }
   function teamBoardHtml(d) {
     const tabs = [['month', 'ماهانه', d.month], ['season', 'فصلی', d.season], ['all', 'کل زمان', d.all]].filter((t) => t[2]);
