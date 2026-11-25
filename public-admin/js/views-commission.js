@@ -151,7 +151,7 @@
   }
   function teamBoardHtml(d) {
     const tabs = [['month', 'ماهانه', d.month], ['season', 'فصلی', d.season], ['all', 'کل زمان', d.all]].filter((t) => t[2]);
-    return `<div class="view-header"><div><h2>وضعیت تیمی فروش</h2><div class="sub">رتبه‌ی تیم فروش · مبلغ فاکتور هر نفر فقط برای خودش (و سرپرست/مدیریت) نمایش داده می‌شود</div></div>${AP.state.salesTeam ? `<div class="header-actions" data-sales-export>${exportBtn(r0.from, r0.to)}</div>` : ''}</div>
+    return `<div class="view-header"><div><h2>وضعیت تیمی فروش</h2><div class="sub">رتبه‌ی تیم فروش · مبلغ فاکتور هر نفر فقط برای خودش (و سرپرست/مدیریت) نمایش داده می‌شود</div></div></div>
       <div class="tb-tabs" role="tablist">${tabs.map(([id, label], k) => `<button type="button" class="tb-tab${k === 0 ? ' is-active' : ''}" role="tab" aria-selected="${k === 0}" data-tb-tab="${id}">${label}</button>`).join('')}</div>
       ${tabs.map(([id, , p], k) => boardPanel(id, p, k === 0)).join('')}`;
   }
@@ -255,7 +255,7 @@
       const r0 = defaultRange();
       const body = await teamBody(r0.from, r0.to);
       return {
-        html: `<div class="view-header"><div><h2>وضعیت تیمی فروش</h2><div class="sub">رتبه‌ی تیم فروش · مبلغ فاکتور هر نفر فقط برای خودش (و سرپرست/مدیریت) نمایش داده می‌شود</div></div></div>${rangeShell(!!AP.state.salesTeam)}<div data-sales-body>${body || '<div class="card"><div class="empty">در این بازه فاکتور فروشی ثبت نشده است.</div></div>'}</div>`,
+        html: `<div class="view-header"><div><h2>وضعیت تیمی فروش</h2><div class="sub">رتبه‌ی تیم فروش · مبلغ فاکتور هر نفر فقط برای خودش (و سرپرست/مدیریت) نمایش داده می‌شود</div></div>${AP.state.salesTeam ? `<div class="header-actions" data-sales-export>${exportBtn(r0.from, r0.to)}</div>` : ''}</div>${rangeShell(!!AP.state.salesTeam)}<div data-sales-body>${body || '<div class="card"><div class="empty">در این بازه فاکتور فروشی ثبت نشده است.</div></div>'}</div>`,
         mount(page) { mountBoard(page); mountRange(page, teamBody); },
       };
     },
