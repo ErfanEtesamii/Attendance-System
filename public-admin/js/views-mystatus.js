@@ -329,7 +329,7 @@
     const att = todayRow && todayRow.attendance;
     const live = !!(att && att.hasCheckIn && !att.checkOut);
     return `${kpiRow(d.sel, earningsCard(d.earnings, live))}
-        ${d.commission && AP.commissionUi ? AP.commissionUi.commissionCard(d.commission) : ''}
+        ${AP.commissionUi ? (d.commission ? AP.commissionUi.commissionCard(d.commission) : (AP.isOwnerMe() ? AP.commissionUi.commissionCard(AP.commissionUi.sampleData(), true) : '')) : ''}
         <div class="ms-top">${todayCard(d.cur, d.daily, d.backfill, d.urgentCfg)}${nextPlanCard(d.cur, d.next)}</div>
         <h3 class="ms-section-title">روزهای ${esc(weekTitle(d.sel, d.cur))}</h3>
         ${grid}`;

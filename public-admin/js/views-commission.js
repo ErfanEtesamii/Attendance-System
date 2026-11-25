@@ -54,8 +54,21 @@
   }
 
   // کارت فشرده برای «وضعیت من» (کنار کارت کارکرد)
-  function commissionCard(d) {
-    return `<section class="card earn-card cm-card" aria-label="پورسانت این ماه"><div class="earn-head"><h3>🏆 پورسانت این ماه</h3></div>
+  // داده‌ی نمونه فقط برای مالک (ببیند کارت چه شکلی است)؛ هیچ‌جا ذخیره یا به سرور فرستاده نمی‌شود
+  function sampleData() {
+    const mk = (title, customer, dateLabel, amountToman, discountPercent, discountRate, amountRate) => {
+      const eligible = discountPercent <= 30; const ratePercent = eligible ? discountRate + amountRate : 0;
+      return { title, customer, dateLabel, amountToman, discountPercent, eligible, discountRate: eligible ? discountRate : 0, amountRate: eligible ? amountRate : 0, ratePercent, commissionToman: Math.round(amountToman * ratePercent / 100) };
+    };
+    const deals = [mk('معامله‌ی نمونه ۱', 'مشتری نمونه', '۱۴۰۵/۰۸/۲۰', 510000000, 0, 5, 5), mk('معامله‌ی نمونه ۲', 'مشتری نمونه', '۱۴۰۵/۰۸/۱۴', 380300000, 6, 4, 4), mk('معامله‌ی نمونه ۳', 'مشتری نمونه', '۱۴۰۵/۰۸/۰۷', 33700000, 12, 3, 1), mk('معامله‌ی نمونه ۴', 'مشتری نمونه', '۱۴۰۵/۰۸/۰۲', 26200000, 35, 0, 0)];
+    const sum = (k) => deals.reduce((t, x) => t + x[k], 0);
+    return { monthLabel: 'آبان ۱۴۰۵', season: { label: 'پاییز ۱۴۰۵', dealsCount: 9, commissionToman: 61250000 },
+      totals: { commissionToman: sum('commissionToman'), dealsCount: deals.length, noInvoiceCount: 0, salesToman: sum('amountToman'), avgRatePercent: 6.2, avgDiscountPercent: 13.2, nextTier: { rate: 5, remainingToman: 31200000, progress: 79 } }, deals };
+  }
+  const demoTag = '<span class="cm-demo">نمونه</span>';
+
+  function commissionCard(d, demo) {
+    return `<section class="card earn-card cm-card" aria-label="پورسانت این ماه"><div class="earn-head"><h3>🏆 پورسانت این ماه</h3>${demo ? demoTag : ''}</div>
       <p class="earn-intro">${fmt.num(d.totals.dealsCount)} معامله‌ی موفق در ${esc(d.monthLabel)}</p>
       <p class="earn-amount"><span>${fmt.num(d.totals.commissionToman)}</span><small>تومان</small></p>
       <div class="earn-foot"><span class="earn-chip">میانگین ${fmt.num(d.totals.avgRatePercent)}٪</span>${d.season ? `<span class="earn-chip">${esc(d.season.label)}: ${fmt.num(d.season.commissionToman)}</span>` : ''}<a class="cm-card-link" href="#/commission">جزئیات ←</a></div></section>`;
@@ -153,20 +166,21 @@
     try {
       const r = await AP.api('/admin/me/commission');
       if (!r) return;
-      AP.state.sales = !!r.commission; AP.state.salesTeam = !!r.canViewTeam;
-      if (!AP.state.sales && !AP.state.salesTeam) return;
+      AP.state.sales = !!r.commission; AP.state.salesTeam = !!r.canViewTeam; AP.state.salesDemo = !r.commission && AP.isOwnerMe();
+      if (!AP.state.sales && !AP.state.salesTeam && !AP.state.salesDemo) return;
       AP.rebuildNav();
       const key = (String(location.hash).match(/^#\/([^/?]+)/) || [])[1] || 'dashboard';
       if (AP.setActiveNav) AP.setActiveNav(key);
     } catch (_) { /* غیرحیاتی */ }
   };
-  AP.commissionUi = { membersHtml, commissionHtml, commissionCard, teamBoardHtml };
+  AP.commissionUi = { sampleData, membersHtml, commissionHtml, commissionCard, teamBoardHtml };
   AP.view('commission', {
     skeleton: 'plan',
     perm: 'me.read',
     async render() {
-      const data = await AP.api('/admin/me/commission').then((r) => r && r.commission).catch(() => null);
-      return { html: data ? commissionHtml(data) : '<div class="view-header"><div><h2>پورسانت من</h2></div></div><div class="card"><div class="empty">اطلاعات پورسانت هنوز در دسترس نیست.</div></div>', mount() {} };
+      let data = await AP.api('/admin/me/commission').then((r) => r && r.commission).catch(() => null);
+      const demo = !data && AP.isOwnerMe(); if (demo) data = sampleData();
+      return { html: data ? (demo ? `<div class="cm-demo-banner">${demoTag} این صفحه فقط یک نمونه برای دیدن ظاهر است؛ داده‌ی واقعی نیست.</div>` : '') + commissionHtml(data) : '<div class="view-header"><div><h2>پورسانت من</h2></div></div><div class="card"><div class="empty">اطلاعات پورسانت هنوز در دسترس نیست.</div></div>', mount() {} };
     },
   });
   AP.view('salesteam', {

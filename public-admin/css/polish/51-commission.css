@@ -152,3 +152,5 @@
 .tb-row-val { min-width: 240px; }
 .tb-row-val .hbar-track { align-self: stretch; }
 .tb-former { padding: 1px 8px; border-radius: 999px; background: var(--ov-08); color: var(--hint); font-size: 10px; font-style: normal; font-weight: 700; }
+.cm-demo { padding: 2px 10px; border-radius: 999px; background: color-mix(in srgb, var(--orange) 22%, transparent); color: var(--text); font-size: 11px; font-weight: 800; }
+.cm-demo-banner { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); padding: var(--space-2) var(--space-3); border-radius: var(--r-lg); background: color-mix(in srgb, var(--orange) 10%, transparent); font-size: var(--fs-xs); color: var(--hint); }
