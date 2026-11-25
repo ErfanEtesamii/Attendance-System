@@ -43,12 +43,21 @@ describe('پنل: فایل‌های UX جدید', () => {
     const js = read('public-admin/js/ux-refresh.js');
     assert.doesNotMatch(js, /style="|innerHTML/);
   });
-  test('فضای خالی: کارت‌های خالی «منتظر تصمیم» فشرده و آخر فهرست؛ کاشی‌های آمار ۴ ستونه', () => {
-    const css = read('public-admin/css/polish/49-ux-refresh.css');
-    assert.match(css, /\.inbox-grid \{ display: flex; flex-wrap: wrap; align-items: flex-start;/);
-    assert.match(css, /\.inbox-group\.is-empty \{ flex: 0 0 auto; order: 2; min-height: 0;/);
-    assert.match(css, /repeat\(8, minmax\(0, 1fr\)\)/);
-    assert.match(css, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
+  test('داشبورد: 50-dashboard.css بعد از 49؛ نوار شاخص ۸ ستونه از ۱۴۴۰px؛ بدون hex/!important/استایل درون‌خطی', () => {
+    const idx = html.indexOf('polish/50-dashboard.css');
+    assert.ok(idx > html.indexOf('polish/49-ux-refresh.css') && idx < html.indexOf('polish/35-mobile.css'));
+    const css = read('public-admin/css/polish/50-dashboard.css').replace(/\/\*[\s\S]*?\*\//g, '');
+    assert.match(css, /@media \(min-width: 1440px\)[\s\S]*repeat\(8, minmax\(0, 1fr\)\)/);
+    assert.match(css, /\.stat-grid\.stat-grid\[data-widget="stats"\]:not\(\.ms-stats-earn\)/); // بالاتر از 42-prk-cards
+    assert.doesNotMatch(css, /#[0-9a-fA-F]{3,8}\b/);
+    assert.doesNotMatch(css, /!important/);
+  });
+  test('داشبورد: «منتظر تصمیم» به گروه‌های دارای مورد و فهرست «بدون مورد» تقسیم می‌شود', () => {
+    const js = read('public-admin/js/views-main.js');
+    assert.match(js, /return \{ total, label, go, html \};/);
+    assert.match(js, /inboxRows\.filter\(\(g\) => g\.total\)\.map\(\(g\) => g\.html\)/);
+    assert.match(js, /class="inbox-quiet-item" type="button" data-go="\$\{g\.go\}"/);
+    assert.match(js, /group\?\.classList\.toggle\('is-empty'/); // به‌روزرسانی پویای شمارنده‌ی گروه سر جایش
   });
   test('ux-refresh.js بدون DOM/MutationObserver خطا نمی‌دهد', () => {
     const vm = require('node:vm');

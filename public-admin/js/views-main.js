@@ -140,8 +140,9 @@
         const bucket = inbox[key] || {}; const items = bucket.items || [];
         const actions = (item) => !canDecide(key) ? '' : `<span class="inbox-actions">${key === 'reportReview' ? `<button class="btn ghost small" data-inbox-action="approve" data-kind="${key}" data-id="${item.id}" data-user="${item.userId}" data-date="${item.reportDate || ''}">ثبت مشاهده</button>` : `<button class="btn ghost small" data-inbox-action="approve" data-kind="${key}" data-id="${item.id}">تأیید</button><button class="btn danger small" data-inbox-action="reject" data-kind="${key}" data-id="${item.id}">رد</button>`}</span>`;
         const total = Number(bucket.count || 0);
-        return `<div class="inbox-group${total ? '' : ' is-empty'}"><div class="inbox-head"><span class="inbox-label">${label}</span><span class="inbox-count" data-inbox-count>${fmt.num(total)}</span><button class="btn ghost small" data-go="${go}">بررسی</button></div>${items.map((item) => `<div class="inbox-item" data-inbox-row><span class="inbox-name">${esc(item.name)}</span>${actions(item)}</div>`).join('')}</div>`;
-      }).join('');
+        const html = `<div class="inbox-group${total ? '' : ' is-empty'}"><div class="inbox-head"><span class="inbox-label">${label}</span><span class="inbox-count" data-inbox-count>${fmt.num(total)}</span><button class="btn ghost small" data-go="${go}">بررسی</button></div>${items.map((item) => `<div class="inbox-item" data-inbox-row><span class="inbox-name">${esc(item.name)}</span>${actions(item)}</div>`).join('')}</div>`;
+        return { total, label, go, html };
+      });
       const inboxTotal = Object.keys(inboxMeta).reduce((s, k) => s + Number((inbox[k] || {}).count || 0), 0);
       const html = `
         <div class="view-header">
@@ -162,7 +163,7 @@
               <div class="stat-value">${fmt.num(val)}</div><div class="stat-label">${esc(label)}</div>${trendField ? statTrendHtml(d.trend, trendField) : ''}</button>`).join('')}
         </div>
 
-        <div class="card inbox-card" data-widget="inbox"><div class="view-header"><div><h3>منتظر تصمیم شما</h3><div class="sub">${inboxTotal ? `${fmt.num(inboxTotal)} مورد برای بررسی` : 'همه‌چیز مرتب است'}</div></div></div><div class="inbox-grid">${inboxRows}</div></div>
+        <div class="card inbox-card" data-widget="inbox"><div class="view-header"><div><h3>منتظر تصمیم شما</h3><div class="sub">${inboxTotal ? `${fmt.num(inboxTotal)} مورد برای بررسی` : 'همه‌چیز مرتب است'}</div></div></div><div class="inbox-body"><div class="inbox-grid">${inboxRows.filter((g) => g.total).map((g) => g.html).join('')}</div>${inboxRows.some((g) => !g.total) ? `<div class="inbox-quiet" aria-label="بخش‌های بدون مورد"><div class="inbox-quiet-title">بدون مورد</div>${inboxRows.filter((g) => !g.total).map((g) => `<button class="inbox-quiet-item" type="button" data-go="${g.go}"><span>${g.label}</span><b>${fmt.num(0)}</b></button>`).join('')}</div>` : ''}</div></div>
 
         <div class="grid-2" data-widget="trend">
           <div class="card card--primary"><h3>روند حضور ۱۴ روز اخیر</h3>

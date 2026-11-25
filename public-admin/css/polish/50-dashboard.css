@@ -1,0 +1,77 @@
+/* ===== ۵۰) داشبورد: تمیز، فشرده و اصولی =====
+   اصول: ۱) رنگ فقط برای معنا (آیکن و نشان‌ها)، سطح‌ها خنثی  ۲) یک خانواده‌ی سطح: کارت سفید + حاشیه‌ی نازک + سایه‌ی ملایم
+   ۳) ریتم فاصله‌ی ۴/۸/۱۲/۱۶  ۴) سلسله‌مراتب: عدد بزرگ، برچسب کوچک و کم‌رنگ  ۵) بخش بدون مورد جا نگیرد.
+   فقط توکن‌های tokens.css؛ بدون رنگ سخت‌کد و استایل درون‌خطی. ویژگی بالای «.stat-grid.stat-grid» چون
+   42-prk-cards.css همه‌ی کاشی‌ها را با همان انتخابگر یکدست می‌کند. */
+
+/* ---------- ۱) نوار شاخص‌ها: یک کارت یکپارچه با خانه‌های جداشده با خط نازک ---------- */
+.stat-grid.stat-grid[data-widget="stats"]:not(.ms-stats-earn) {
+  grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; padding: 4px; align-items: stretch;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--r-xl);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 6%, transparent), 0 14px 28px -24px color-mix(in srgb, var(--brand) 45%, transparent);
+}
+.stat-grid.stat-grid[data-widget="stats"] > .stat.stat {
+  position: relative; display: grid; align-items: center; row-gap: 6px; column-gap: 8px; min-height: 0;
+  grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "label icon" "value value" "trend trend";
+  padding: 12px 14px; background: transparent; border: 0; border-radius: var(--r-lg); box-shadow: none; animation: none;
+  transition: background-color var(--motion-fast) var(--ease-out);
+}
+/* خط جداکننده‌ی عمودی (::after) و افقی (::before) */
+.stat-grid.stat-grid[data-widget="stats"] > .stat.stat::before { content: ""; position: absolute; inset-inline: 14px; inset-block-start: 0; height: 1px; background: var(--border); opacity: 1; display: none; }
+.stat-grid.stat-grid[data-widget="stats"] > .stat.stat::after { content: ""; position: absolute; inset-block: 14px; inset-inline-start: 0; width: 1px; background: var(--border); display: none; }
+.stat-grid.stat-grid[data-widget="stats"] > .stat.stat:nth-child(even)::after { display: block; }
+.stat-grid.stat-grid[data-widget="stats"] > .stat.stat:nth-child(n+3)::before { display: block; }
+.stat-grid.stat-grid[data-widget="stats"] > .stat.stat:hover { background: color-mix(in srgb, var(--tone) 7%, transparent); transform: none; box-shadow: none; }
+.stat-grid.stat-grid[data-widget="stats"] > .stat.stat > .stat-icon {
+  grid-area: icon; width: 30px; height: 30px; border-radius: 10px; border: 0; box-shadow: none;
+  background: color-mix(in srgb, var(--tone) 13%, transparent); color: var(--tone-num, var(--tone));
+}
+.stat-grid.stat-grid[data-widget="stats"] > .stat.stat > .stat-icon svg { width: 17px; height: 17px; }
+.stat-grid.stat-grid[data-widget="stats"] > .stat.stat > .stat-label { grid-area: label; margin: 0; font-size: var(--fs-xs); font-weight: 600; line-height: 1.5; color: var(--hint); align-self: center; }
+.stat-grid.stat-grid[data-widget="stats"] > .stat.stat > .stat-value { grid-area: value; margin: 0; font-size: 26px; font-weight: 800; line-height: 1.1; letter-spacing: -.3px; color: var(--text); }
+.stat-grid.stat-grid[data-widget="stats"] > .stat.stat > .stat-trend { grid-area: trend; margin: 0; padding: 0; background: transparent; color: var(--hint); font-size: 11px; }
+@media (min-width: 601px) and (max-width: 1439px) {
+  .stat-grid.stat-grid[data-widget="stats"]:not(.ms-stats-earn) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .stat-grid.stat-grid[data-widget="stats"] > .stat.stat:nth-child(even)::after { display: none; }
+  .stat-grid.stat-grid[data-widget="stats"] > .stat.stat:not(:nth-child(4n+1))::after { display: block; }
+  .stat-grid.stat-grid[data-widget="stats"] > .stat.stat:nth-child(n+3)::before { display: none; }
+  .stat-grid.stat-grid[data-widget="stats"] > .stat.stat:nth-child(n+5)::before { display: block; }
+}
+@media (min-width: 1440px) {
+  .stat-grid.stat-grid[data-widget="stats"]:not(.ms-stats-earn) { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+  .stat-grid.stat-grid[data-widget="stats"] > .stat.stat:nth-child(even)::after { display: none; }
+  .stat-grid.stat-grid[data-widget="stats"] > .stat.stat:not(:nth-child(8n+1))::after { display: block; }
+  .stat-grid.stat-grid[data-widget="stats"] > .stat.stat:nth-child(n+3)::before { display: none; }
+}
+
+/* ---------- ۲) «منتظر تصمیم شما»: فهرست دارای مورد + ستون کم‌حجم «بدون مورد» ---------- */
+.inbox-card { padding: 16px 18px; background: var(--card); border: 1px solid var(--border); border-radius: var(--r-xl); box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 6%, transparent); }
+.inbox-card > .view-header { margin-bottom: 12px; }
+.inbox-card > .view-header > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.inbox-card > .view-header .sub { margin: 0; }
+.inbox-body { display: flex; flex-direction: column; gap: 10px; }
+.inbox-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 10px; align-items: start; }
+.inbox-grid:empty { display: none; }
+/* گروه دارای مورد: سرتیتر تمام‌عرض و مورد‌ها در شبکه (عرض را پر می‌کنند، نه یک ستون باریک) */
+.inbox-group { padding: 10px 12px; background: var(--card); border: 1px solid var(--border); box-shadow: inset -3px 0 0 var(--accent); }
+.inbox-group:not(.is-empty) { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; align-items: center; }
+.inbox-group:not(.is-empty) > .inbox-head { grid-column: 1 / -1; }
+.inbox-group.is-empty { min-height: 0; padding-block: 6px; opacity: .85; background: transparent; box-shadow: none; }
+.inbox-group.is-empty .inbox-item, .inbox-group.is-empty .empty, .inbox-group.is-empty .inbox-head .btn { display: none; }
+/* بخش‌های بدون مورد: یک ردیف قرص‌های کم‌رنگ زیر فهرست */
+.inbox-quiet { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.inbox-quiet-title { padding-inline-end: 4px; font-size: var(--fs-xs); font-weight: 700; color: var(--hint); }
+.inbox-quiet-item {
+  appearance: none; display: inline-flex; align-items: center; gap: var(--space-2); min-height: 30px; padding: 2px 6px 2px 12px;
+  border: 1px solid var(--border); border-radius: 999px; background: transparent; color: var(--text); font: inherit; font-size: var(--fs-xs); cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-out);
+}
+.inbox-quiet-item:hover { background: var(--ov-05); }
+.inbox-quiet-item:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.inbox-quiet-item b { min-width: 22px; padding: 0 6px; border-radius: 999px; background: var(--ov-05); color: var(--hint); font-weight: 700; text-align: center; }
+
+/* ---------- ۳) کارت‌های نمودار/فهرست: یک خانواده‌ی سطح ---------- */
+.page .grid-2 > .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r-xl); box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 6%, transparent); }
+.page .grid-2 > .card > h3 { margin-bottom: var(--space-3); font-size: var(--fs-md); font-weight: 800; }
+
+@media (prefers-reduced-motion: reduce) { .stat-grid.stat-grid[data-widget="stats"] > .stat.stat, .inbox-quiet-item { transition: none; } }
