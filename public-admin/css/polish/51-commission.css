@@ -226,3 +226,15 @@
 .cm-hero-foot .cm-season { display: inline-block; margin: 0; padding: 7px 16px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--green) 25%, transparent); background: linear-gradient(135deg, color-mix(in srgb, var(--green) 14%, transparent), color-mix(in srgb, var(--accent-2) 14%, transparent)); color: var(--green); font-weight: 800; }
 .cm-hero-foot .cm-season b { color: inherit; }
 @media (max-width: 800px) { .cm-hero-amount { justify-content: center; } .cm-hero-main { text-align: center; } .cm-hero-head, .cm-hero-foot { justify-content: center; align-items: center; } }
+
+/* ===== انیمیشن پر شدن: حلقه‌ی «تا پله‌ی بعد» و نوارهای لیدربرد (مقدار نهایی همان مقدار واقعی است؛ فقط from تعریف می‌شود) ===== */
+@keyframes cm-ring-fill { from { stroke-dasharray: 0 414.69; } }
+@keyframes cm-bar-fill { from { width: 0; } }
+.cm-ring-fg { animation: cm-ring-fill 1.3s cubic-bezier(.22, 1, .36, 1) .15s both; }
+.tb-bar .hbar-fill { animation: cm-bar-fill .95s cubic-bezier(.22, 1, .36, 1) both; }
+.tb-row:nth-child(2) .tb-bar .hbar-fill { animation-delay: .08s; }
+.tb-row:nth-child(3) .tb-bar .hbar-fill { animation-delay: .16s; }
+.tb-row:nth-child(4) .tb-bar .hbar-fill { animation-delay: .24s; }
+.tb-row:nth-child(5) .tb-bar .hbar-fill { animation-delay: .32s; }
+.tb-row:nth-child(n+6) .tb-bar .hbar-fill { animation-delay: .4s; }
+@media (prefers-reduced-motion: reduce) { .cm-ring-fg, .tb-bar .hbar-fill { animation: none; } }
