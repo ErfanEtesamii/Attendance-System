@@ -151,3 +151,4 @@
 @media (prefers-reduced-motion: reduce) { .tb-member { transition: none; } }
 .tb-row-val { min-width: 240px; }
 .tb-row-val .hbar-track { align-self: stretch; }
+.tb-former { padding: 1px 8px; border-radius: 999px; background: var(--ov-08); color: var(--hint); font-size: 10px; font-style: normal; font-weight: 700; }

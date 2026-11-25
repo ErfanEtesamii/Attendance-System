@@ -81,6 +81,22 @@ describe('API پورسانت فروش', () => {
     assert.ok(adm.month.summary.amountToman > 0 && adm.month.summary.commissionToman > 0);
     assert.ok(adm.month.byAmount.find((x) => x.userId === U.a.id).avgInvoiceToman > 0);
   });
+  test('کارشناس فروشِ سابق (بدون حساب فعال) فقط در لیدربرد می‌آید؛ مبلغش برای عادی/سرپرست پنهان', async () => {
+    const db = require('../src/db/connection').getDb();
+    const items = JSON.stringify([{ Title: 'کالا', UnitPrice: 1_000_000_000, Quantity: 1, Discount: 0, DiscountPercent: 0 }]);
+    db.prepare("INSERT INTO sales_deals (didar_id, code, title, customer, owner_email, owner_name, won_at, price_rial, items_json) VALUES ('old1','1','سابق','م','old@x.com','سجاد سابق','2026-11-01T08:00:00Z',1000000000,?)").run(items);
+    try {
+      const adm = (await hit('admin', 'GET', `/api/admin/sales-team/leaderboard${month}`)).json.leaderboard.month;
+      const f = adm.byAmount.find((x) => x.isFormer);
+      assert.equal(f.name, 'سجاد سابق'); assert.equal(f.amountToman, 100_000_000);
+      assert.equal(adm.summary.members, 2); // سابق‌ها در شمار فروشنده‌ی فعال نیستند
+      const b = (await hit('b', 'GET', `/api/admin/sales-team/leaderboard${month}`)).json.leaderboard.month;
+      assert.equal(b.byAmount.find((x) => x.isFormer).amountToman, null);
+      const sup = (await hit('sup', 'GET', `/api/admin/sales-team/leaderboard${month}`)).json.leaderboard.month;
+      assert.equal(sup.byAmount.find((x) => x.isFormer).amountToman, null);
+      assert.ok(!(await hit('admin', 'GET', `/api/admin/sales-team/members${month}`)).json.members.some((m) => /سابق/.test(m.name)));
+    } finally { db.prepare("DELETE FROM sales_deals WHERE didar_id = 'old1'").run(); }
+  });
   test('admin همه‌ی مبلغ‌ها و «کل زمان» را می‌بیند', async () => {
     const lb = (await hit('admin', 'GET', `/api/admin/sales-team/leaderboard${month}`)).json.leaderboard;
     assert.equal(lb.month.byAmount.find((x) => x.userId === U.b.id).amountToman, 50_000_000);

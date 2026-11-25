@@ -50,14 +50,14 @@ function buildLeaderboards(rows, viewerId, { canSeeAll = false, canSee = null } 
   const totalCount = rows.reduce((t, r) => t + (r.count || 0), 0);
   const byCountRaw = rank(rows, 'count');
   const byCount = byCountRaw.map(({ r, rank: n }, i) => ({
-    userId: r.userId, name: r.name, rank: n, count: r.count, isMe: mine(r.userId),
+    userId: r.userId, name: r.name, rank: n, count: r.count, isMe: mine(r.userId), isFormer: !!r.former,
     sharePercent: totalCount ? Math.round((r.count / totalCount) * 100) : 0,
     gapToPrev: i === 0 ? null : Math.max(0, byCountRaw[i - 1].r.count - r.count),
   }));
   const byAmount = rank(rows, 'amountToman').map(({ r, rank: n }) => {
     const v = visible(r);
     return {
-      userId: r.userId, name: r.name, rank: n, isMe: mine(r.userId), count: r.count,
+      userId: r.userId, name: r.name, rank: n, isMe: mine(r.userId), isFormer: !!r.former, count: r.count,
       amountToman: v ? r.amountToman : null,
       avgInvoiceToman: v ? (r.avgInvoiceToman ?? null) : null,
       maxInvoiceToman: v ? (r.maxInvoiceToman ?? null) : null,
@@ -66,7 +66,7 @@ function buildLeaderboards(rows, viewerId, { canSeeAll = false, canSee = null } 
     };
   });
   const sum = (k) => rows.reduce((t, r) => t + (r[k] || 0), 0);
-  const summary = { count: totalCount, members: rows.length, activeMembers: rows.filter((r) => r.count > 0).length, amountToman: canSeeAll ? sum('amountToman') : null, commissionToman: canSeeAll ? sum('commissionToman') : null };
+  const summary = { count: totalCount, members: rows.filter((r) => !r.former).length, activeMembers: rows.filter((r) => !r.former && r.count > 0).length, amountToman: canSeeAll ? sum('amountToman') : null, commissionToman: canSeeAll ? sum('commissionToman') : null };
   return { byCount, byAmount, summary };
 }
 

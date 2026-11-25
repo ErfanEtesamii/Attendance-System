@@ -104,20 +104,30 @@ function leaderboard(viewer, { jy, jm } = {}) {
   const isSupervisor = members.some((u) => u.manager_id === viewer.id);
   const roleOf = new Map(members.map((u) => [u.id, u]));
   const canSee = (r) => { const u = roleOf.get(r.userId); return isSupervisor && u && u.manager_id === viewer.id; };
-  const build = (range) => ({
-    label: range.label,
-    ...buildLeaderboards(members.map((u) => {
-      const inv = dealsOfMonth(range, String(u.didar_email).toLowerCase()).filter((d) => !d.noInvoice);
-      const amount = inv.reduce((t, d) => t + d.amountToman, 0);
-      return {
-        userId: u.id, name: u.full_name, count: inv.length, amountToman: amount,
-        commissionToman: inv.reduce((t, d) => t + d.commissionToman, 0),
-        avgInvoiceToman: inv.length ? Math.round(amount / inv.length) : 0,
-        maxInvoiceToman: inv.reduce((m, d) => Math.max(m, d.amountToman), 0),
-        avgDiscountPercent: inv.length ? Math.round((inv.reduce((t, d) => t + d.discountPercent, 0) / inv.length) * 10) / 10 : 0,
-      };
-    }), viewer.id, { canSeeAll: isAdmin, canSee }),
-  });
+  // کارشناسان فروشِ سابق (و هر مالکِ معامله‌ی دیدار که کارمند فعالِ نگاشت‌شده نیست): فقط در لیدربرد، بدون حساب در پنل
+  const activeEmails = new Set(members.map((u) => String(u.didar_email).toLowerCase()));
+  const inactiveName = new Map(getDb().prepare("SELECT didar_email, full_name FROM users WHERE is_active = 0 AND didar_email IS NOT NULL AND didar_email <> ''").all().map((u) => [String(u.didar_email).toLowerCase(), u.full_name]));
+  const former = getDb().prepare("SELECT owner_email, MAX(owner_name) AS owner_name FROM sales_deals WHERE owner_email IS NOT NULL AND owner_email <> '' GROUP BY owner_email").all()
+    .map((r) => ({ email: String(r.owner_email).toLowerCase(), name: r.owner_name }))
+    .filter((r) => !activeEmails.has(r.email));
+  const rowOf = (name, email, base) => {
+    const inv = dealsOfMonth(base, email).filter((d) => !d.noInvoice);
+    const amount = inv.reduce((t, d) => t + d.amountToman, 0);
+    return {
+      name, count: inv.length, amountToman: amount,
+      commissionToman: inv.reduce((t, d) => t + d.commissionToman, 0),
+      avgInvoiceToman: inv.length ? Math.round(amount / inv.length) : 0,
+      maxInvoiceToman: inv.reduce((m, d) => Math.max(m, d.amountToman), 0),
+      avgDiscountPercent: inv.length ? Math.round((inv.reduce((t, d) => t + d.discountPercent, 0) / inv.length) * 10) / 10 : 0,
+    };
+  };
+  const build = (range) => {
+    const rows = [
+      ...members.map((u) => ({ userId: u.id, ...rowOf(u.full_name, String(u.didar_email).toLowerCase(), range) })),
+      ...former.map((f) => ({ userId: `f:${f.email}`, former: true, ...rowOf(inactiveName.get(f.email) || f.name || f.email, f.email, range) })),
+    ].filter((r) => !r.former || r.count > 0);
+    return { label: range.label, ...buildLeaderboards(rows, viewer.id, { canSeeAll: isAdmin, canSee }) };
+  };
   return { monthLabel: month.label, month: build(periods.month), season: build(periods.season), all: isAdmin || isSupervisor ? build(ALL_TIME) : null };
 }
 

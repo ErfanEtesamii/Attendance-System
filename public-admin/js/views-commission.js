@@ -65,6 +65,7 @@
   // ---------- وضعیت تیمی فروش: دو لیدربرد (تعداد فاکتور / مبلغ فاکتور)؛ مبلغ فقط برای ردیف خودِ شخص ----------
   const MEDAL = ['🥇', '🥈', '🥉'];
   const initial = (n) => (AP.initials ? AP.initials(n) : String(n).slice(0, 1));
+  const formerTag = (x) => (x.isFormer ? '<i class="tb-former">سابق</i>' : '');
   const HIDDEN = '<span class="tb-val--hidden" aria-label="مبلغ برای شما نمایش داده نمی‌شود">••••</span>';
   const chip = (label, val) => `<span class="tb-chip"><i>${label}</i><b>${val}</b></span>`;
 
@@ -74,14 +75,14 @@
     const order = [2, 1, 3].map((r) => top.find((x) => x.rank === r)).filter(Boolean);
     return `<div class="tb-podium">${order.map((x) => `<div class="tb-pod tb-pod--${x.rank}${x.isMe ? ' is-me' : ''}">
       ${x.rank === 1 ? '<span class="tb-crown" aria-hidden="true">👑</span>' : ''}<span class="tb-pod-av">${esc(initial(x.name))}<i class="tb-pod-medal" aria-hidden="true">${MEDAL[x.rank - 1]}</i></span>
-      <b class="tb-pod-name">${esc(x.name)}${x.isMe ? '<i class="tb-me">شما</i>' : ''}</b><span class="tb-pod-sub">${subHtml(x)}</span>
+      <b class="tb-pod-name">${esc(x.name)}${formerTag(x)}${x.isMe ? '<i class="tb-me">شما</i>' : ''}</b><span class="tb-pod-sub">${subHtml(x)}</span>
       <div class="tb-pod-step"><span class="tb-pod-val">${valueHtml(x)}</span><span class="tb-pod-no">${fmt.num(x.rank)}</span></div></div>`).join('')}</div>`;
   }
 
   // فهرست جزئیاتِ همه‌ی رتبه‌ها (ردیف: رتبه | نام + چیپ‌های جزئیات | مقدار اصلی + نوار)
   function detailRow(x, mainHtml, barPct, chips) {
     return `<li class="tb-row${x.isMe ? ' is-me' : ''}"><span class="tb-rank${x.rank <= 3 ? ` tb-rank--${x.rank}` : ''}">${x.rank <= 3 ? MEDAL[x.rank - 1] : fmt.num(x.rank)}</span>
-      <div class="tb-row-main"><span class="tb-name">${esc(x.name)}${x.isMe ? '<i class="tb-me">شما</i>' : ''}</span><div class="tb-chips">${chips}</div></div>
+      <div class="tb-row-main"><span class="tb-name">${esc(x.name)}${formerTag(x)}${x.isMe ? '<i class="tb-me">شما</i>' : ''}</span><div class="tb-chips">${chips}</div></div>
       <div class="tb-row-val">${mainHtml}${barPct != null ? `<div class="hbar-track tb-bar"><div class="hbar-fill" data-progress="${barPct}"></div></div>` : ''}</div></li>`;
   }
 
