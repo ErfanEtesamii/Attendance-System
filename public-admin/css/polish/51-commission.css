@@ -161,3 +161,21 @@
 .tb-pod-avwrap .tb-pod-medal { inset-block-end: -6px; inset-inline-end: -6px; z-index: 1; }
 .tb-pod-av.avatar { overflow: hidden; }
 .tb-pod-av.has-photo { color: transparent; }
+
+/* نوار بازه‌ی جمع‌وجور (یک ردیف) */
+.cm-range .rb { flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); padding: 8px 12px; border-radius: var(--r-xl); }
+.cm-range .rb::before { height: 2px; }
+.cm-range .rb-top { gap: var(--space-2) var(--space-3); flex: 0 1 auto; }
+.cm-range .rb-label { font-size: var(--fs-xs); }
+.cm-range .rb-label svg { width: 14px; height: 14px; padding: 5px; }
+.cm-range .rb-chips { padding: 2px; }
+.cm-range .rb-chip { min-height: 26px; padding: 4px 11px; }
+.cm-range .rb-foot { padding-top: 0; border-top: 0; flex: 0 1 auto; gap: var(--space-2); }
+.cm-range .rb-fields { padding: 0 6px; border-radius: 12px; }
+.cm-range .rb-fields .field { width: 108px; flex-direction: row; align-items: center; }
+.cm-range .rb-fields .field > span { padding-inline: 4px; font-size: 10px; }
+.cm-range .rb-fields input, .cm-range .rb-fields .jdp-input { padding: 4px 4px; font-size: var(--fs-xs); }
+.cm-range .rb-arrow { padding-top: 0; font-size: var(--fs-sm); }
+.cm-range .rb-summary { display: none; }
+.tb-member.is-former { opacity: .85; }
+.tb-member.is-former .tb-pod-av { filter: grayscale(.4); }

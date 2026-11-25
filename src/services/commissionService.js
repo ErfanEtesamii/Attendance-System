@@ -114,6 +114,17 @@ function myCommission(user, q = {}) {
 
 // سرپرستِ تیم فروش = مدیرِ مستقیمِ (manager_id) حداقل یک عضو نگاشت‌شده؛ مبلغ اعضای تیم خودش را می‌بیند (admin/owner هم همه را می‌بینند)
 // کف بازه برای کسی که ادمین/مالک/سرپرست نیست: ابتدای فصل جاری یا ماه قبل (هر کدام زودتر)؛ «کل زمان» برای او بسته است
+// مالک‌های معامله‌ی دیدار که کارمند فعالِ نگاشت‌شده نیستند؛ کلید: ایمیل یا «name:نام» (وقتی دیدار ایمیل نمی‌دهد)
+function formerOwners() {
+  const db = getDb();
+  const active = new Set(db.prepare("SELECT didar_email FROM users WHERE is_active = 1 AND didar_email IS NOT NULL AND didar_email <> '' AND role <> 'owner'").all().map((u) => String(u.didar_email).toLowerCase()));
+  const inactiveName = new Map(db.prepare("SELECT didar_email, full_name FROM users WHERE is_active = 0 AND didar_email IS NOT NULL AND didar_email <> ''").all().map((u) => [String(u.didar_email).toLowerCase(), u.full_name]));
+  return db.prepare("SELECT owner_email, MAX(owner_name) AS owner_name FROM sales_deals GROUP BY owner_email, CASE WHEN owner_email = '' THEN owner_name ELSE '' END").all()
+    .map((r) => (r.owner_email ? { key: String(r.owner_email).toLowerCase(), name: r.owner_name } : (r.owner_name ? { key: `name:${r.owner_name}`, name: r.owner_name } : null)))
+    .filter((r) => r && !active.has(r.key))
+    .map((r) => ({ key: r.key, name: inactiveName.get(r.key) || r.name || r.key }));
+}
+
 function floorFor(isPrivileged) {
   if (isPrivileged) return null;
   const now = toJalaliFromDate(new Date());
@@ -176,11 +187,22 @@ function visibleMembers(viewer) {
 }
 function membersSummary(viewer, ym = {}) {
   const rows = visibleMembers(viewer).map((u) => { const c = myCommission(u, ym); return { userId: u.id, name: u.full_name, ...(c ? { commissionToman: c.totals.commissionToman, dealsCount: c.totals.dealsCount, salesToman: c.totals.salesToman, avgRatePercent: c.totals.avgRatePercent, seasonToman: c.season ? c.season.commissionToman : null } : {}) }; });
-  return { monthLabel: rangeOf(ym).label, range: { from: rangeOf(ym).from, to: rangeOf(ym).to }, members: rows.sort((a, b) => (b.commissionToman || 0) - (a.commissionToman || 0)) };
+  if (['admin', 'owner'].includes(viewer.role)) {
+    for (const f of formerOwners()) {
+      const c = myCommission({ didar_email: f.key }, ym);
+      rows.push({ userId: `f:${f.key}`, name: f.name, isFormer: true, ...(c ? { commissionToman: c.totals.commissionToman, dealsCount: c.totals.dealsCount, salesToman: c.totals.salesToman, avgRatePercent: c.totals.avgRatePercent, seasonToman: c.season ? c.season.commissionToman : null } : {}) });
+    }
+  }
+  return { monthLabel: rangeOf(ym).label, range: { from: rangeOf(ym).from, to: rangeOf(ym).to }, members: rows.sort((a, b) => (a.isFormer ? 1 : 0) - (b.isFormer ? 1 : 0) || (b.commissionToman || 0) - (a.commissionToman || 0)) };
 }
 function memberCommission(viewer, id, ym) {
+  if (String(id).startsWith('f:')) {
+    if (!['admin', 'owner'].includes(viewer.role)) return null;
+    const f = formerOwners().find((x) => `f:${x.key}` === String(id));
+    return f ? { name: f.name, isFormer: true, commission: myCommission({ didar_email: f.key }, ym) } : null;
+  }
   const u = visibleMembers(viewer).find((m) => m.id === Number(id));
   return u ? { name: u.full_name, commission: myCommission(u, ym) } : null;
 }
 
-module.exports = { visibleMembers, membersSummary, memberCommission, canViewTeam, sync, syncIfStale, myCommission, leaderboard, normalizeDeal, AMOUNT_TIERS };
+module.exports = { formerOwners, visibleMembers, membersSummary, memberCommission, canViewTeam, sync, syncIfStale, myCommission, leaderboard, normalizeDeal, AMOUNT_TIERS };

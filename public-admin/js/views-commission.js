@@ -6,7 +6,17 @@
 
   const RULES_DISCOUNT = [['۰٪ تخفیف', '۵٪'], ['۱ تا ۷٪', '۴٪'], ['۸ تا ۱۵٪', '۳٪'], ['۱۶ تا ۲۳٪', '۲٪'], ['۲۴ تا ۳۰٪', '۱٪'], ['بیش از ۳۰٪', 'بدون پورسانت']];
   const RULES_AMOUNT = [['تا ۱۵۰ میلیون', '۱٪'], ['تا ۲۵۰ میلیون', '۲٪'], ['تا ۳۵۰ میلیون', '۳٪'], ['تا ۴۵۰ میلیون', '۴٪'], ['بالاتر از ۴۵۰ میلیون', '۵٪']];
-  const million = (t) => `${fmt.num(Math.round(Number(t || 0) / 1e5) / 10)} میلیون`;
+  // مبلغ خوانا: زیر ۱ میلیارد «۹۵۰٫۲ میلیون»؛ از ۱ میلیارد به بالا «۴ میلیارد و ۷۲۷ میلیون»
+  const million = (t) => {
+    const v = Math.max(0, Number(t) || 0);
+    if (v >= 1e9) {
+      let b = Math.floor(v / 1e9); let m = Math.round((v - b * 1e9) / 1e6);
+      if (m >= 1000) { b += 1; m = 0; }
+      return m ? `${fmt.num(b)} میلیارد و ${fmt.num(m)} میلیون` : `${fmt.num(b)} میلیارد`;
+    }
+    const mm = Math.round(v / 1e5) / 10;
+    return mm >= 1000 ? `${fmt.num(1)} میلیارد` : `${fmt.num(mm)} میلیون`;
+  };
 
   function rulesHtml() {
     const table = (title, rows) => `<div class="cm-rule"><h4>${title}</h4>${rows.map(([a, b]) => `<div class="cm-rule-row"><span>${a}</span><b>${b}</b></div>`).join('')}</div>`;
@@ -144,8 +154,8 @@
   function membersHtml(m) {
     if (!m || !m.members || !m.members.length) return '';
     return `<section class="tb-members"><h3 class="tb-members-title">کارت پورسانت اعضا <span>${esc(m.monthLabel)}</span></h3>
-      <div class="tb-members-grid">${m.members.map((x) => `<a class="card tb-member" href="#/salesmember/${x.userId}">${av(x, 'tb-pod-av')}
-        <div class="tb-member-main"><b>${esc(x.name)}</b><span>${fmt.num(x.dealsCount || 0)} معامله · ${million(x.salesToman)} فروش</span></div>
+      <div class="tb-members-grid">${m.members.map((x) => `<a class="card tb-member${x.isFormer ? ' is-former' : ''}" href="#/salesmember/${encodeURIComponent(x.userId)}">${av(x, 'tb-pod-av')}
+        <div class="tb-member-main"><b>${esc(x.name)}${formerTag(x)}</b><span>${fmt.num(x.dealsCount || 0)} معامله · ${million(x.salesToman)} فروش</span></div>
         <div class="tb-member-com"><em>پورسانت ماه</em><b>${fmt.num(x.commissionToman || 0)}</b></div></a>`).join('')}</div></section>`;
   }
   function mountBoard(page) {
@@ -248,11 +258,12 @@
     perm: 'me.read',
     navId: 'salesteam',
     async render(param) {
-      const r0 = defaultRange(); const url = (f, t) => `/admin/sales-team/members/${encodeURIComponent(param)}?${qs(f, t)}`;
+      let pid = String(param); try { pid = decodeURIComponent(pid); } catch (_) { /* همان مقدار */ }
+      const r0 = defaultRange(); const url = (f, t) => `/admin/sales-team/members/${encodeURIComponent(pid)}?${qs(f, t)}`;
       const r = await AP.api(url(r0.from, r0.to)).catch(() => null);
       const back = '<a class="tb-back" href="#/salesteam">← وضعیت تیمی فروش</a>';
       if (!r || !r.commission) return { html: `${back}<div class="card"><div class="empty">این همکار پیدا نشد یا اجازه‌ی دیدنش را ندارید.</div></div>`, mount() {} };
-      const title = `پورسانت ${r.name}`;
+      const title = `پورسانت ${r.name}${r.isFormer ? ' (سابق)' : ''}`;
       return {
         html: `${back}${rangeShell(true)}<div data-sales-body>${commissionHtml(r.commission, title)}</div>`,
         mount(page) { mountRange(page, async (from, to) => { const x = await AP.api(url(from, to)); return x && x.commission ? commissionHtml(x.commission, title) : EMPTY_TEAM; }); },

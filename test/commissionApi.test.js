@@ -94,7 +94,13 @@ describe('API پورسانت فروش', () => {
       assert.equal(b.byAmount.find((x) => x.isFormer).amountToman, null);
       const sup = (await hit('sup', 'GET', `/api/admin/sales-team/leaderboard${month}`)).json.leaderboard.month;
       assert.equal(sup.byAmount.find((x) => x.isFormer).amountToman, null);
-      assert.ok(!(await hit('admin', 'GET', `/api/admin/sales-team/members${month}`)).json.members.some((m) => /سابق/.test(m.name)));
+      const mem = (await hit('admin', 'GET', `/api/admin/sales-team/members${month}`)).json.members;
+      const fm = mem.find((m) => m.isFormer && m.name === 'سجاد سابق');
+      assert.ok(fm && fm.dealsCount === 1 && fm.commissionToman > 0); // کارت اعضا: سابق‌ها هم (فقط ادمین/مالک)
+      const det = (await hit('admin', 'GET', `/api/admin/sales-team/members/${encodeURIComponent(fm.userId)}${month}`)).json;
+      assert.equal(det.isFormer, true); assert.equal(det.commission.totals.dealsCount, 1);
+      assert.ok(!(await hit('sup', 'GET', `/api/admin/sales-team/members${month}`)).json.members.some((m) => m.isFormer));
+      assert.equal((await hit('sup', 'GET', `/api/admin/sales-team/members/${encodeURIComponent(fm.userId)}${month}`)).status, 404);
       // مالکِ بدون ایمیل (دیدار برای کاربر غیرفعال ایمیل برنمی‌گرداند) با نام می‌آید
       db.prepare("INSERT INTO sales_deals (didar_id, code, title, customer, owner_email, owner_name, won_at, price_rial, items_json) VALUES ('old2','2','سابق۲','م','','میلاد بدون‌ایمیل','2026-11-02T08:00:00Z',1000000000,?)").run(items);
       const adm2 = (await hit('admin', 'GET', `/api/admin/sales-team/leaderboard${month}`)).json.leaderboard.month;
