@@ -814,6 +814,7 @@
             if (AP.bindShiftAssign) AP.bindShiftAssign(panel, u);
             if (profileUi.tab === 'schedule' && AP.scheduleTab) AP.scheduleTab.mount(panel, u);
             const form = $('#pf-form', panel);
+            if (form && AP.dates && AP.dates.mount) AP.dates.mount(form); // تقویم شمسی برای «اعمال از تاریخ»
             // Phase 20: نرخ ساعتی جدا از پروفایل (پاسخ عمومی کاربر آن را ندارد) بارگذاری می‌شود؛ تا بارگذاری موفق نشده فیلد غیرفعال است و در PATCH نمی‌رود (نرخ بی‌خبر پاک نمی‌شود).
             const rateInput = form ? form.querySelector('[name="hourlyRateKt"]') : null;
             if (rateInput) {
