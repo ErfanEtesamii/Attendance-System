@@ -93,14 +93,15 @@ describe('API پورسانت فروش', () => {
       const b = (await hit('b', 'GET', `/api/admin/sales-team/leaderboard${month}`)).json.leaderboard.month;
       assert.equal(b.byAmount.find((x) => x.isFormer).amountToman, null);
       const sup = (await hit('sup', 'GET', `/api/admin/sales-team/leaderboard${month}`)).json.leaderboard.month;
-      assert.equal(sup.byAmount.find((x) => x.isFormer).amountToman, null);
+      assert.equal(sup.byAmount.find((x) => x.isFormer).amountToman, 100_000_000); // سرپرست سابق‌ها را هم می‌بیند
       const mem = (await hit('admin', 'GET', `/api/admin/sales-team/members${month}`)).json.members;
       const fm = mem.find((m) => m.isFormer && m.name === 'سجاد سابق');
       assert.ok(fm && fm.dealsCount === 1 && fm.commissionToman > 0); // کارت اعضا: سابق‌ها هم (فقط ادمین/مالک)
       const det = (await hit('admin', 'GET', `/api/admin/sales-team/members/${encodeURIComponent(fm.userId)}${month}`)).json;
       assert.equal(det.isFormer, true); assert.equal(det.commission.totals.dealsCount, 1);
-      assert.ok(!(await hit('sup', 'GET', `/api/admin/sales-team/members${month}`)).json.members.some((m) => m.isFormer));
-      assert.equal((await hit('sup', 'GET', `/api/admin/sales-team/members/${encodeURIComponent(fm.userId)}${month}`)).status, 404);
+      assert.ok((await hit('sup', 'GET', `/api/admin/sales-team/members${month}`)).json.members.some((m) => m.isFormer));
+      assert.equal((await hit('sup', 'GET', `/api/admin/sales-team/members/${encodeURIComponent(fm.userId)}${month}`)).status, 200);
+      assert.equal((await hit('b', 'GET', `/api/admin/sales-team/members/${encodeURIComponent(fm.userId)}${month}`)).status, 404);
       // سابقِ فقط با معامله‌ی بدون فاکتور (قیمت صفر) هم با صفر فاکتور در لیدربرد می‌آید
       db.prepare("INSERT INTO sales_deals (didar_id, code, title, customer, owner_email, owner_name, won_at, price_rial, items_json) VALUES ('old3','3','بی‌فاکتور','م','z@x.com','زد بی‌فاکتور','2026-11-03T08:00:00Z',0,'[]')").run();
       const adm3 = (await hit('admin', 'GET', `/api/admin/sales-team/leaderboard${month}`)).json.leaderboard.month;
@@ -179,21 +180,21 @@ describe('API پورسانت فروش', () => {
     assert.equal(lb.month.byAmount.find((x) => x.userId === U.b.id).amountToman, 50_000_000);
     assert.ok(lb.all && lb.all.byCount.length === 2);
   });
-  test('سرپرست تیم: مبلغ اعضای تیم خودش + «کل زمان»؛ مبلغ عضوِ دیگران را نه', async () => {
+  test('سرپرست تیم فروش: مبلغ همه‌ی تیم فروش + «کل زمان»', async () => {
     const lb = (await hit('sup', 'GET', `/api/admin/sales-team/leaderboard${month}`)).json.leaderboard;
     assert.equal(lb.month.byAmount.find((x) => x.userId === U.a.id).amountToman, 285_000_000);
-    assert.equal(lb.month.byAmount.find((x) => x.userId === U.b.id).amountToman, null);
+    assert.equal(lb.month.byAmount.find((x) => x.userId === U.b.id).amountToman, 50_000_000);
     assert.ok(lb.all);
   });
-  test('کارت پورسانت اعضا: ادمین همه، سرپرست فقط تیم خودش، عادی هیچ', async () => {
+  test('کارت پورسانت اعضا: ادمین و سرپرستِ فروش همه، عادی هیچ', async () => {
     const adm = (await hit('admin', 'GET', `/api/admin/sales-team/members${month}`)).json;
     assert.equal(adm.members.length, 2);
     const mem = (await hit('admin', 'GET', `/api/admin/sales-team/members/${U.a.id}${month}`)).json;
     assert.equal(mem.commission.totals.commissionToman, 19_950_000);
     const sup = (await hit('sup', 'GET', `/api/admin/sales-team/members${month}`)).json;
-    assert.deepEqual(sup.members.map((m) => m.userId), [U.a.id]);
+    assert.deepEqual(sup.members.map((m) => m.userId).sort(), [U.a.id, U.b.id].sort());
     assert.equal((await hit('sup', 'GET', `/api/admin/sales-team/members/${U.a.id}${month}`)).status, 200);
-    assert.equal((await hit('sup', 'GET', `/api/admin/sales-team/members/${U.b.id}${month}`)).status, 404);
+    assert.equal((await hit('sup', 'GET', `/api/admin/sales-team/members/${U.b.id}${month}`)).status, 200);
     assert.equal((await hit('b', 'GET', `/api/admin/sales-team/members${month}`)).json.members.length, 0);
     assert.equal((await hit('b', 'GET', `/api/admin/sales-team/members/${U.a.id}${month}`)).status, 404);
   });

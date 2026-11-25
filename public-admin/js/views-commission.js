@@ -235,7 +235,7 @@
       if (!data) return { html: '<div class="view-header"><div><h2>پورسانت من</h2></div></div><div class="card"><div class="empty">اطلاعات پورسانت هنوز در دسترس نیست.</div></div>', mount() {} };
       if (demo) return { html: `<div class="cm-demo-banner">${demoTag} این صفحه فقط یک نمونه برای دیدن ظاهر است؛ داده‌ی واقعی نیست.</div>${commissionHtml(data)}`, mount() {} };
       return {
-        html: `${rangeShell(['admin', 'owner'].includes(AP.state.me.role), ['month', 'lastMonth', 'season'])}<div data-sales-body>${commissionHtml(data)}</div>`,
+        html: `${rangeShell(['admin', 'owner'].includes(AP.state.me.role) || !!AP.state.salesTeam, ['month', 'lastMonth', 'season'])}<div data-sales-body>${commissionHtml(data)}</div>`,
         mount(page) { mountRange(page, async (from, to) => { const c = await AP.api(`/admin/me/commission?${qs(from, to)}`).then((r) => r && r.commission); return c ? commissionHtml(c) : EMPTY_TEAM; }); },
       };
     },

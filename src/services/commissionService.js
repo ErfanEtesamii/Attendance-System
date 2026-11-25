@@ -142,8 +142,7 @@ function leaderboard(viewer, q = {}) {
   const members = getDb().prepare("SELECT id, full_name, didar_email, manager_id, role FROM users WHERE is_active = 1 AND didar_email IS NOT NULL AND didar_email <> '' AND role <> 'owner'").all();
   const isAdmin = ['admin', 'owner'].includes(viewer.role);
   const isSupervisor = members.some((u) => u.manager_id === viewer.id);
-  const roleOf = new Map(members.map((u) => [u.id, u]));
-  const canSee = (r) => { const u = roleOf.get(r.userId); return isSupervisor && u && u.manager_id === viewer.id; };
+  const canSee = null; // سرپرستِ فروش مثل ادمین همه‌ی مبالغِ تیم فروش (حتی سابق‌ها) را می‌بیند (استثنا به تصریح مالک)
   // کارشناسان فروشِ سابق (و هر مالکِ معامله‌ی دیدار که کارمند فعالِ نگاشت‌شده نیست): فقط در لیدربرد، بدون حساب در پنل
   const activeEmails = new Set(members.map((u) => String(u.didar_email).toLowerCase()));
   const inactiveName = new Map(getDb().prepare("SELECT didar_email, full_name FROM users WHERE is_active = 0 AND didar_email IS NOT NULL AND didar_email <> ''").all().map((u) => [String(u.didar_email).toLowerCase(), u.full_name]));
@@ -167,7 +166,7 @@ function leaderboard(viewer, q = {}) {
       ...members.map((u) => ({ userId: u.id, ...rowOf(u.full_name, String(u.didar_email).toLowerCase(), range) })),
       ...former.map((f) => ({ userId: `f:${f.email}`, former: true, ...rowOf(inactiveName.get(f.email) || f.name || f.email, f.email, range) })),
     ].filter((r) => !r.former || r.dealsTotal > 0); // سابق‌ها اگر معامله‌ی موفق (حتی بدون فاکتور) در بازه دارند می‌آیند
-    return { label: range.label, ...buildLeaderboards(rows, viewer.id, { canSeeAll: isAdmin, canSee }) };
+    return { label: range.label, ...buildLeaderboards(rows, viewer.id, { canSeeAll: isAdmin || isSupervisor, canSee }) };
   };
   if (q.from && q.to) {
     const r = rangeOf(q, { floor: floorFor(isAdmin || isSupervisor) });
@@ -185,12 +184,12 @@ function canViewTeam(viewer) {
 // اعضایی که این کاربر می‌تواند کارت پورسانتشان را ببیند: ادمین/مالک همه؛ سرپرست فقط زیرمجموعه‌ی مستقیم
 function visibleMembers(viewer) {
   const all = getDb().prepare("SELECT id, full_name, didar_email, manager_id FROM users WHERE is_active = 1 AND didar_email IS NOT NULL AND didar_email <> '' AND role <> 'owner' ORDER BY full_name").all();
-  if (['admin', 'owner'].includes(viewer.role)) return all;
-  return all.filter((u) => u.manager_id === viewer.id);
+  if (canViewTeam(viewer)) return all; // ادمین/مالک و سرپرستِ فروش
+  return [];
 }
 function membersSummary(viewer, ym = {}) {
   const rows = visibleMembers(viewer).map((u) => { const c = myCommission(u, ym); return { userId: u.id, name: u.full_name, ...(c ? { commissionToman: c.totals.commissionToman, dealsCount: c.totals.dealsCount, salesToman: c.totals.salesToman, avgRatePercent: c.totals.avgRatePercent, seasonToman: c.season ? c.season.commissionToman : null } : {}) }; });
-  if (['admin', 'owner'].includes(viewer.role)) {
+  if (canViewTeam(viewer)) {
     for (const f of formerOwners()) {
       const c = myCommission({ didar_email: f.key }, ym);
       rows.push({ userId: `f:${f.key}`, name: f.name, isFormer: true, ...(c ? { commissionToman: c.totals.commissionToman, dealsCount: c.totals.dealsCount, salesToman: c.totals.salesToman, avgRatePercent: c.totals.avgRatePercent, seasonToman: c.season ? c.season.commissionToman : null } : {}) });
@@ -200,7 +199,7 @@ function membersSummary(viewer, ym = {}) {
 }
 function memberCommission(viewer, id, ym) {
   if (String(id).startsWith('f:')) {
-    if (!['admin', 'owner'].includes(viewer.role)) return null;
+    if (!canViewTeam(viewer)) return null;
     const f = formerOwners().find((x) => `f:${x.key}` === String(id));
     return f ? { name: f.name, isFormer: true, commission: myCommission({ didar_email: f.key }, ym) } : null;
   }
