@@ -45,8 +45,9 @@ describe('پنل: فایل‌های UX جدید', () => {
   });
   test('فضای خالی: کارت‌های خالی «منتظر تصمیم» فشرده و آخر فهرست؛ کاشی‌های آمار ۴ ستونه', () => {
     const css = read('public-admin/css/polish/49-ux-refresh.css');
-    assert.match(css, /\.inbox-grid \{ align-items: start;/);
-    assert.match(css, /\.inbox-group\.is-empty \{ order: 2; min-height: 0;/);
+    assert.match(css, /\.inbox-grid \{ display: flex; flex-wrap: wrap; align-items: flex-start;/);
+    assert.match(css, /\.inbox-group\.is-empty \{ flex: 0 0 auto; order: 2; min-height: 0;/);
+    assert.match(css, /repeat\(8, minmax\(0, 1fr\)\)/);
     assert.match(css, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   });
   test('ux-refresh.js بدون DOM/MutationObserver خطا نمی‌دهد', () => {

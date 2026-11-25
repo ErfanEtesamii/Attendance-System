@@ -77,8 +77,9 @@
 td .live-dot { width: 7px; height: 7px; margin-inline: 6px 0; vertical-align: middle; }
 
 /* ---------- ۱۱) فضای خالی کمتر: کاشی‌های آمار و کارت‌های «منتظر تصمیم شما» ----------
-   کاشی‌ها: متن از ابتدا و آیکن در انتهای کاشی (به‌جای وسط‌چین با نیمه‌ی خالی)؛ کارت‌های بدون مورد فقط یک ردیف
-   (سر‌تیتر + شمارنده) می‌گیرند، آخر فهرست می‌روند و هم‌قدِ کارت پر نمی‌شوند. */
+   کاشی‌ها: متن از ابتدا و آیکن در انتهای کاشی؛ روی صفحه‌ی پهن هر ۸ کاشی در یک ردیف (۴ ستون زیر ۱۲۸۰px، ۲ ستون زیر ۹۰۰px).
+   «منتظر تصمیم»: کارت دارای مورد عرض معقول (۳۰۰ تا ۴۲۰px) می‌گیرد و کارت‌های بدون مورد به‌شکل قرصِ کوچک کنار آن در همان ردیف
+   می‌نشینند (به‌جای ستون‌های کشیده و خالی). */
 @media (min-width: 601px) {
   .stat-grid[data-widget="stats"] { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
   .stat-grid[data-widget="stats"] > .stat {
@@ -89,11 +90,22 @@ td .live-dot { width: 7px; height: 7px; margin-inline: 6px 0; vertical-align: mi
 @media (min-width: 601px) and (max-width: 900px) {
   .stat-grid[data-widget="stats"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-.inbox-grid { align-items: start; gap: var(--space-2); }
+@media (min-width: 1280px) {
+  .stat-grid[data-widget="stats"] { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 8px; }
+  .stat-grid[data-widget="stats"] > .stat { padding: 8px 10px; column-gap: 8px; border-radius: var(--r-lg); }
+  .stat-grid[data-widget="stats"] .stat-icon { width: 34px; height: 34px; border-radius: 11px; }
+  .stat-grid[data-widget="stats"] .stat-icon svg { width: 18px; height: 18px; }
+  .stat-grid[data-widget="stats"] .stat-value { font-size: 22px; }
+  .stat-grid[data-widget="stats"] .stat-label { font-size: 11px; }
+  .stat-grid[data-widget="stats"] .stat-trend { margin-top: 4px; padding: 2px 6px; font-size: 10px; }
+}
+.inbox-grid { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-2); }
 .inbox-group { padding: 10px 12px; }
 .inbox-grid > .inbox-group + .inbox-group { margin-top: 0; }
-.inbox-group.is-empty { order: 2; min-height: 0; padding-block: 7px; opacity: .85; }
-.inbox-group.is-empty .inbox-item, .inbox-group.is-empty .empty { display: none; }
+.inbox-group:not(.is-empty) { flex: 1 1 300px; max-width: 400px; }
+.inbox-group.is-empty { flex: 0 0 auto; order: 2; min-height: 0; padding-block: 6px; opacity: .85; }
+.inbox-group.is-empty .inbox-head { gap: var(--space-3); }
+.inbox-group.is-empty .inbox-item, .inbox-group.is-empty .empty, .inbox-group.is-empty .inbox-head .btn { display: none; } /* بدون مورد: دکمه‌ی «بررسی» لازم نیست؛ فقط برچسب و شمارنده */
 
 /* ---------- ۱۰) تاچ و موبایل ---------- */
 @media (max-width: 640px) {
