@@ -40,9 +40,14 @@
 
   // حلقه‌ی پیشرفت تا پله‌ی بعدی مبلغ فاکتور (ویژگی SVG؛ بدون style درون‌خطی)
   function ring(pct, centerTop, centerBottom) {
-    const C = 276.46; const dash = Math.round((Math.max(0, Math.min(100, pct)) / 100) * C * 10) / 10;
-    return `<svg class="cm-ring" viewBox="0 0 120 120" role="img" aria-label="پیشرفت تا پله‌ی بعد"><circle class="cm-ring-bg" cx="60" cy="60" r="44"/><circle class="cm-ring-fg" cx="60" cy="60" r="44" stroke-dasharray="${dash} ${C}" transform="rotate(-90 60 60)"/>
-      <text class="cm-ring-top" x="60" y="56" text-anchor="middle">${centerTop}</text><text class="cm-ring-bot" x="60" y="74" text-anchor="middle">${centerBottom}</text></svg>`;
+    const C = 414.69; const dash = Math.round((Math.max(0, Math.min(100, pct)) / 100) * C * 10) / 10; // محیط دایره‌ی r=66
+    return `<svg class="cm-ring" viewBox="0 0 180 180" role="img" aria-label="پیشرفت تا پله‌ی بعد">
+      <defs><linearGradient id="cmg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="cm-g1"/><stop offset="1" class="cm-g2"/></linearGradient></defs>
+      <circle class="cm-ring-dots" cx="90" cy="90" r="82"/>
+      <circle class="cm-ring-disc" cx="90" cy="90" r="56"/>
+      <circle class="cm-ring-bg" cx="90" cy="90" r="66"/>
+      <circle class="cm-ring-fg" cx="90" cy="90" r="66" stroke="url(#cmg)" stroke-dasharray="${dash} ${C}" transform="rotate(-90 90 90)"/>
+      <text class="cm-ring-top" x="90" y="92" text-anchor="middle">${centerTop}</text><text class="cm-ring-bot" x="90" y="112" text-anchor="middle">${centerBottom}</text></svg>`;
   }
 
   function commissionHtml(d, title) {
@@ -51,9 +56,9 @@
       ? `<div class="cm-hero-ring">${ring(t.nextTier.progress || 0, `${fmt.num(Math.round(t.nextTier.progress || 0))}٪`, 'تا پله‌ی بعد')}<p class="cm-ring-cap">${million(t.nextTier.remainingToman)} دیگر تا پورسانت مبلغی <b>${fmt.num(t.nextTier.rate)}٪</b> روی یک فاکتور</p></div>`
       : `<div class="cm-hero-ring">${ring(100, '🏆', 'بالاترین پله')}<p class="cm-ring-cap">فاکتور شما در بالاترین پله‌ی مبلغی است</p></div>`;
     return `<div class="view-header"><div><h2>${esc(title || 'پورسانت من')}</h2><div class="sub">معامله‌های موفق ${esc(d.monthLabel)} در دیدار</div></div></div>
-      <section class="card cm-hero"><div class="cm-hero-main"><span class="cm-hero-spark" aria-hidden="true">✨</span><span class="cm-hero-label">پورسانت ${esc(d.monthLabel)}</span>
+      <section class="card cm-hero"><div class="cm-hero-main"><div class="cm-hero-head"><span class="cm-hero-chip" aria-hidden="true">${AP.icon('wallet')}</span><h3>پورسانت ${esc(d.monthLabel)}</h3></div><p class="cm-hero-intro">${fmt.num(t.dealsCount)} معامله‌ی موفق در دیدار</p>
         <p class="cm-hero-amount"><span>${fmt.num(t.commissionToman)}</span><small>تومان</small></p>
-        ${d.season ? `<span class="cm-season">${esc(d.season.label)}: <b>${fmt.num(d.season.commissionToman)}</b> تومان از ${fmt.num(d.season.dealsCount)} فاکتور</span>` : ''}<span class="cm-note"><span aria-hidden="true">ⓘ</span> تخمینی؛ مبلغ نهایی با تأیید حسابداری است</span></div>${next}</section>
+        <div class="cm-hero-foot">${d.season ? `<span class="cm-season">${esc(d.season.label)}: <b>${fmt.num(d.season.commissionToman)}</b> تومان از ${fmt.num(d.season.dealsCount)} فاکتور</span>` : ''}<span class="cm-note"><span aria-hidden="true">ⓘ</span> تخمینی؛ مبلغ نهایی با تأیید حسابداری است</span></div></div>${next}</section>
       <div class="stat-grid cm-stats">
         <div class="stat"><div class="stat-icon g-green">${AP.icon('check')}</div><div class="stat-value">${fmt.num(t.dealsCount)}</div><div class="stat-label">معامله‌ی موفق</div></div>
         <div class="stat"><div class="stat-icon g-blue">${AP.icon('trend')}</div><div class="stat-value">${million(t.salesToman)}</div><div class="stat-label">جمع فروش (تومان)</div></div>
