@@ -320,7 +320,9 @@ router.patch('/admin/users/:id', requirePermission('users.write'), (req, res) =>
   // Phase 20: نرخ ساعتی جدا از بقیه‌ی فیلدها ذخیره و ممیزی می‌شود (مقدار قبل/بعد فقط در before/after ساختاریافته؛ نه در meta/متن آزاد و نه در پاسخ)
   if (!rateIn.skip) {
     const beforeRate = usersRepository.getHourlyRateKt(id);
-    if ((beforeRate === undefined ? null : beforeRate) !== rateIn.value) {
+    // اگر تاریخ اعمال صریح داده شده، مقدارِ مؤثر «در همان تاریخ» هم مقایسه می‌شود (نرخ فعلی ممکن است قبلاً از ماه جاری عوض شده باشد و برای ماه‌های قبل هنوز قدیمی بماند)
+    const effectiveAtFrom = rateFromIn.value ? usersRepository.rateOn(usersRepository.getRateTimeline(id, 'rate'), rateFromIn.value) : undefined;
+    if ((beforeRate === undefined ? null : beforeRate) !== rateIn.value || (rateFromIn.value && effectiveAtFrom !== rateIn.value)) {
       usersRepository.setHourlyRateKt(id, rateIn.value, { effectiveFrom: rateFromFor(beforeRate, rateFromIn.value) });
       auditChange(req, {
         action: 'employee_hourly_rate_changed',
