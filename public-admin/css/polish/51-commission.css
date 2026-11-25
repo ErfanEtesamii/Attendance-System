@@ -179,3 +179,7 @@
 .cm-range .rb-summary { display: none; }
 .tb-member.is-former { opacity: .85; }
 .tb-member.is-former .tb-pod-av { filter: grayscale(.4); }
+/* برچسب «سابق» کنار نام (روی نام نیفتد) */
+.tb-member-main > b { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; line-height: 1.5; }
+.tb-former { flex: none; }
+.tb-name { gap: var(--space-2); }
