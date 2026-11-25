@@ -29,9 +29,9 @@
 .nav-group[data-group]::after {
   content: ""; flex: none; width: 7px; height: 7px; margin-inline-end: 4px;
   border-inline-end: 2px solid currentColor; border-block-end: 2px solid currentColor;
-  transform: rotate(45deg); opacity: .7; transition: transform var(--motion-fast) var(--ease-out);
+  transform: rotate(-45deg); opacity: .7; transition: transform var(--motion-fast) var(--ease-out);
 }
-.nav-group[data-group][aria-expanded="false"]::after { transform: rotate(-45deg); }
+.nav-group[data-group][aria-expanded="false"]::after { transform: rotate(45deg); } /* باز: ⌄ ؛ بسته: › */
 .nav-item.is-group-collapsed { display: none; }
 /* حالت ریل (آیکنی): گروه‌ها خط جداکننده‌اند و همه‌ی آیتم‌ها دیده می‌شوند */
 .app-shell:not(.rail-expanded) .nav-item.is-group-collapsed { display: flex; }
@@ -75,6 +75,25 @@
 
 /* ---------- ۹) تابلوی زنده: نقطه‌ی «تا این لحظه» کنار ساعت مفید ---------- */
 td .live-dot { width: 7px; height: 7px; margin-inline: 6px 0; vertical-align: middle; }
+
+/* ---------- ۱۱) فضای خالی کمتر: کاشی‌های آمار و کارت‌های «منتظر تصمیم شما» ----------
+   کاشی‌ها: متن از ابتدا و آیکن در انتهای کاشی (به‌جای وسط‌چین با نیمه‌ی خالی)؛ کارت‌های بدون مورد فقط یک ردیف
+   (سر‌تیتر + شمارنده) می‌گیرند، آخر فهرست می‌روند و هم‌قدِ کارت پر نمی‌شوند. */
+@media (min-width: 601px) {
+  .stat-grid[data-widget="stats"] { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .stat-grid[data-widget="stats"] > .stat {
+    grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "value icon" "label icon" "trend trend";
+    padding: 10px 14px; column-gap: 10px;
+  }
+}
+@media (min-width: 601px) and (max-width: 900px) {
+  .stat-grid[data-widget="stats"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.inbox-grid { align-items: start; gap: var(--space-2); }
+.inbox-group { padding: 10px 12px; }
+.inbox-grid > .inbox-group + .inbox-group { margin-top: 0; }
+.inbox-group.is-empty { order: 2; min-height: 0; padding-block: 7px; opacity: .85; }
+.inbox-group.is-empty .inbox-item, .inbox-group.is-empty .empty { display: none; }
 
 /* ---------- ۱۰) تاچ و موبایل ---------- */
 @media (max-width: 640px) {

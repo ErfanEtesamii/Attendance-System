@@ -43,6 +43,12 @@ describe('پنل: فایل‌های UX جدید', () => {
     const js = read('public-admin/js/ux-refresh.js');
     assert.doesNotMatch(js, /style="|innerHTML/);
   });
+  test('فضای خالی: کارت‌های خالی «منتظر تصمیم» فشرده و آخر فهرست؛ کاشی‌های آمار ۴ ستونه', () => {
+    const css = read('public-admin/css/polish/49-ux-refresh.css');
+    assert.match(css, /\.inbox-grid \{ align-items: start;/);
+    assert.match(css, /\.inbox-group\.is-empty \{ order: 2; min-height: 0;/);
+    assert.match(css, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
+  });
   test('ux-refresh.js بدون DOM/MutationObserver خطا نمی‌دهد', () => {
     const vm = require('node:vm');
     assert.doesNotThrow(() => vm.runInNewContext(read('public-admin/js/ux-refresh.js'), {}));
