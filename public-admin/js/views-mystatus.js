@@ -247,7 +247,7 @@
     const amount = Math.max(0, Number(e.amountToman) || 0);
     const useful = Math.max(0, Number(e.usefulMinutes) || 0);
     return `<section class="card earn-card" id="ms-earnings" aria-labelledby="ms-earn-h"${live ? ' data-live="1"' : ''} data-useful="${useful}">
-      <div class="earn-head"><h3 id="ms-earn-h">💰 کارکرد این ماه</h3>${live ? '<span class="earn-live" id="ms-earn-live" aria-hidden="true"><i></i>زنده</span>' : ''}</div>
+      <div class="earn-head"><h3 id="ms-earn-h">💰 کارکرد این ماه</h3>${e.demo ? '<span class="cm-demo">نمونه</span>' : ''}${live ? '<span class="earn-live" id="ms-earn-live" aria-hidden="true"><i></i>زنده</span>' : ''}</div>
       <p class="earn-intro">تا امروز در ${esc(e.monthLabel)} کار کرده‌ای</p>
       <p class="earn-amount" id="ms-earn-row"><span id="ms-earn-amount" data-amount="${amount}">${fmt.num(amount)}</span><small>تومان</small><span class="earn-spark" aria-hidden="true">✨</span></p>
       <div class="earn-foot">
@@ -328,8 +328,11 @@
     const todayRow = d.cur && d.cur.days ? d.cur.days.find((x) => x.isToday) : null;
     const att = todayRow && todayRow.attendance;
     const live = !!(att && att.hasCheckIn && !att.checkOut);
-    return `${kpiRow(d.sel, earningsCard(d.earnings, live))}
-        ${AP.commissionUi ? (d.commission ? AP.commissionUi.commissionCard(d.commission) : (AP.isOwnerMe() ? AP.commissionUi.commissionCard(AP.commissionUi.sampleData(), true) : '')) : ''}
+    const owner = !!(AP.commissionUi && AP.isOwnerMe && AP.isOwnerMe());
+    const earnHtml = earningsCard(d.earnings || (owner ? { amountToman: 18450000, usefulMinutes: 7320, monthLabel: 'آبان ۱۴۰۵', demo: true } : null), live && !!d.earnings);
+    const cmHtml = AP.commissionUi ? (d.commission ? AP.commissionUi.commissionCard(d.commission) : (owner ? AP.commissionUi.commissionCard(AP.commissionUi.sampleData(), true) : '')) : '';
+    return `${kpiRow(d.sel, '')}
+        ${earnHtml || cmHtml ? `<div class="ms-money">${earnHtml}${cmHtml}</div>` : ''}
         <div class="ms-top">${todayCard(d.cur, d.daily, d.backfill, d.urgentCfg)}${nextPlanCard(d.cur, d.next)}</div>
         <h3 class="ms-section-title">روزهای ${esc(weekTitle(d.sel, d.cur))}</h3>
         ${grid}`;

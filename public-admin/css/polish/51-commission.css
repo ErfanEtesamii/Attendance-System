@@ -238,3 +238,29 @@
 .tb-row:nth-child(5) .tb-bar .hbar-fill { animation-delay: .32s; }
 .tb-row:nth-child(n+6) .tb-bar .hbar-fill { animation-delay: .4s; }
 @media (prefers-reduced-motion: reduce) { .cm-ring-fg, .tb-bar .hbar-fill { animation: none; } }
+
+/* ===== «وضعیت من»: ردیف پول — کارت حقوق و کارت پورسانت کنار هم، جمع‌وجور و هم‌سبک (الگو: کارت حقوق مینی‌اپ) ===== */
+.ms-money { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--space-4); margin: var(--space-4) 0; align-items: stretch; }
+.cm-card, .ms-money .earn-card { position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; margin: 0; padding: var(--space-4) var(--space-5); border-radius: var(--r-xl); border: 1px solid color-mix(in srgb, var(--green) 22%, var(--border)); background: radial-gradient(220px 140px at 0% 0%, color-mix(in srgb, var(--green) 15%, transparent), transparent 72%), radial-gradient(200px 130px at 100% 100%, color-mix(in srgb, var(--accent-2) 13%, transparent), transparent 72%), var(--card); box-shadow: 0 20px 36px -28px color-mix(in srgb, var(--green) 50%, transparent); }
+.cm-card::before, .ms-money .earn-card::before { content: ""; position: absolute; z-index: -1; width: 150px; height: 150px; inset-inline-end: -52px; inset-block-start: -62px; border-radius: 50%; border: 20px solid color-mix(in srgb, var(--green) 7%, transparent); pointer-events: none; }
+.cm-card-head { display: flex; align-items: center; gap: var(--space-2); }
+.cm-card-head h3 { margin: 0; font-size: var(--fs-md); font-weight: 800; }
+.cm-card-head .cm-card-link { margin-inline-start: auto; }
+.cm-card-chip { width: 28px; height: 28px; flex: none; display: grid; place-items: center; border-radius: 9px; background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green); }
+.cm-card-chip svg { width: 15px; height: 15px; }
+.cm-card-sub { margin: 0; font-size: var(--fs-xs); color: var(--hint); }
+.cm-card-amount, .ms-money .earn-amount { direction: ltr; display: flex; flex-direction: row-reverse; justify-content: flex-end; align-items: baseline; gap: 8px; margin: 2px 0; }
+.cm-card-amount span, .ms-money .earn-amount > span:first-child { font-size: clamp(26px, 3vw, 34px); font-weight: 800; letter-spacing: -.5px; line-height: 1.15; font-variant-numeric: tabular-nums lining-nums; background: linear-gradient(135deg, var(--green), var(--accent-2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: var(--green); }
+.cm-card-amount small { font-size: var(--fs-xs); font-weight: 700; color: var(--hint); }
+.cm-card-next { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-xs); color: var(--hint); }
+.cm-card-next b { color: var(--green); }
+.cm-card-next .tb-bar { height: 6px; }
+.cm-card-foot, .ms-money .earn-foot { margin-top: auto; padding-top: var(--space-2); display: flex; flex-flow: row wrap; align-items: center; gap: var(--space-2); border-top: 1px dashed color-mix(in srgb, var(--green) 26%, var(--border)); }
+.cm-card-pill, .ms-money .earn-chip { display: inline-block; padding: 4px 12px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--green) 25%, transparent); background: linear-gradient(135deg, color-mix(in srgb, var(--green) 14%, transparent), color-mix(in srgb, var(--accent-2) 14%, transparent)); color: var(--green); font-size: var(--fs-xs); font-weight: 800; }
+.cm-card-pill.alt { color: var(--text); }
+.ms-money .earn-note { flex-basis: 100%; }
+@media (max-width: 700px) { .ms-money { grid-template-columns: 1fr; } }
+.ms-money .earn-spark { font-size: .55em; align-self: center; }
+
+/* ===== تصویر پس‌زمینه‌ی کارت حقوق مینی‌اپ (صنایع‌دستی، محو) پشت کارت‌های «وضعیت من»؛ تصویر سمت چپ (سمت خالیِ کارت) و محو شدن به رنگ کارت ===== */
+.cm-card, .ms-money .earn-card { background: linear-gradient(color-mix(in srgb, var(--card) 38%, transparent), color-mix(in srgb, var(--card) 38%, transparent)), linear-gradient(270deg, var(--card) 0%, color-mix(in srgb, var(--card) 97%, transparent) 50%, color-mix(in srgb, var(--card) 55%, transparent) 74%, color-mix(in srgb, var(--card) 0%, transparent) 100%), url("/images/earnings-handicrafts-fade.webp") left center / auto 108% no-repeat, var(--card); }

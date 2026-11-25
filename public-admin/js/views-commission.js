@@ -83,12 +83,15 @@
   const demoTag = '<span class="cm-demo">نمونه</span>';
 
   function commissionCard(d, demo) {
-    return `<section class="card earn-card cm-card" aria-label="پورسانت این ماه"><div class="earn-head"><h3>🏆 پورسانت این ماه</h3>${demo ? demoTag : ''}</div>
-      <p class="earn-intro">${fmt.num(d.totals.dealsCount)} معامله‌ی موفق در ${esc(d.monthLabel)}</p>
-      <p class="earn-amount"><span>${fmt.num(d.totals.commissionToman)}</span><small>تومان</small></p>
-      <div class="earn-foot"><span class="earn-chip">میانگین ${fmt.num(d.totals.avgRatePercent)}٪</span>${d.season ? `<span class="earn-chip">${esc(d.season.label)}: ${fmt.num(d.season.commissionToman)}</span>` : ''}<a class="cm-card-link" href="#/commission">جزئیات ←</a></div></section>`;
+    const nt = d.totals.nextTier;
+    const next = nt ? `<div class="cm-card-next"><div class="hbar-track tb-bar"><div class="hbar-fill" data-progress="${Math.max(0, Math.min(100, Number(nt.progress) || 0))}"></div></div><span>${million(nt.remainingToman)} دیگر تا پله‌ی <b>${fmt.num(nt.rate)}٪</b> مبلغ</span></div>` : '';
+    return `<section class="card cm-card" aria-label="پورسانت این ماه">
+      <div class="cm-card-head"><span class="cm-card-chip" aria-hidden="true">${AP.icon('wallet')}</span><h3>پورسانت ${esc(d.monthLabel)}</h3>${demo ? demoTag : ''}<a class="cm-card-link" href="#/commission">جزئیات ←</a></div>
+      <p class="cm-card-sub">${fmt.num(d.totals.dealsCount)} معامله‌ی موفق در دیدار</p>
+      <p class="cm-card-amount"><span>${fmt.num(d.totals.commissionToman)}</span><small>تومان</small></p>
+      ${next}
+      <div class="cm-card-foot"><span class="cm-card-pill">میانگین ${fmt.num(d.totals.avgRatePercent)}٪</span>${d.season ? `<span class="cm-card-pill alt">${esc(d.season.label)}: ${million(d.season.commissionToman)}</span>` : ''}</div></section>`;
   }
-
 
   // ---------- وضعیت تیمی فروش: دو لیدربرد (تعداد فاکتور / مبلغ فاکتور)؛ مبلغ فقط برای ردیف خودِ شخص ----------
   const MEDAL = ['🥇', '🥈', '🥉'];
