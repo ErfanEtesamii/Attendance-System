@@ -14,11 +14,19 @@ const auditRepository = require('../../../repositories/auditRepository');
 
 const { isAdmin } = require('../../../utils/roles');
 // فهرست کاربرانِ دارای عکس (فقط در اسکوپ پرسنده) ⇒ { versions: { [userId]: نسخه } }؛ کلاینت فقط برای همین‌ها عکس می‌خواهد
+// همکارانِ فروش (کارمندِ دارای ایمیل دیدار) عکسِ هم‌دیگر را در لیدربرد می‌بینند؛ برای بقیه تغییری نیست
+function salesPeerIds(user) {
+  const db = getDb();
+  const mine = db.prepare('SELECT didar_email FROM users WHERE id = ?').get(user.id);
+  if (!mine || !mine.didar_email) return new Set();
+  return new Set(db.prepare("SELECT id FROM users WHERE is_active = 1 AND didar_email IS NOT NULL AND didar_email <> ''").all().map((r) => r.id));
+}
 router.get('/admin/avatars', (req, res) => {
   const ids = scopedUserIds(req.adminUser);
+  const peers = salesPeerIds(req.adminUser);
   const versions = {};
   for (const r of getDb().prepare('SELECT user_id, file_id FROM user_avatars').all()) {
-    if (r.user_id === req.adminUser.id || ids === null || ids.includes(r.user_id)) versions[r.user_id] = r.file_id;
+    if (r.user_id === req.adminUser.id || ids === null || ids.includes(r.user_id) || peers.has(r.user_id)) versions[r.user_id] = r.file_id;
   }
   res.set('Cache-Control', 'private, no-store');
   res.json({ versions });
@@ -27,7 +35,7 @@ router.get('/admin/avatars', (req, res) => {
 router.get('/admin/avatar/:userId', (req, res) => {
   if (!/^\d+$/.test(req.params.userId)) return res.status(404).json({ error: 'عکسی ثبت نشده است.' });
   const id = parseInt(req.params.userId, 10);
-  if (id !== req.adminUser.id && !canAccessUser(req.adminUser, id)) return res.status(404).json({ error: 'عکسی ثبت نشده است.' });
+  if (id !== req.adminUser.id && !canAccessUser(req.adminUser, id) && !salesPeerIds(req.adminUser).has(id)) return res.status(404).json({ error: 'عکسی ثبت نشده است.' });
   return avatarService.send(res, id);
 });
 

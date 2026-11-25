@@ -119,6 +119,16 @@ describe('API پورسانت فروش', () => {
     assert.equal(lb.range.clamped, true);
     assert.ok(lb.range.from > '2026-01-01');
   });
+  test('عکس پروفایل: همکاران فروش (دارای ایمیل دیدار) عکس هم‌دیگر را در فهرست می‌بینند، فروشنده‌ی نگاشت‌نشده نه', async () => {
+    const db = require('../src/db/connection').getDb();
+    db.prepare("INSERT INTO user_avatars (user_id, file_id, mime, size) VALUES (?, 'fid1', 'image/jpeg', 10)").run(U.b.id);
+    try {
+      const a = (await hit('a', 'GET', '/api/admin/avatars')).json.versions;
+      assert.equal(a[U.b.id], 'fid1'); // الف و ب هر دو فروشنده‌اند (ایمیل دیدار) ولی در اسکوپ هم نیستند
+      db.prepare('UPDATE users SET didar_email = NULL WHERE id = ?').run(U.a.id);
+      assert.equal((await hit('a', 'GET', '/api/admin/avatars')).json.versions[U.b.id], undefined);
+    } finally { db.prepare('UPDATE users SET didar_email = ? WHERE id = ?').run('a@x.com', U.a.id); db.prepare('DELETE FROM user_avatars WHERE user_id = ?').run(U.b.id); }
+  });
   test('admin همه‌ی مبلغ‌ها و «کل زمان» را می‌بیند', async () => {
     const lb = (await hit('admin', 'GET', `/api/admin/sales-team/leaderboard${month}`)).json.leaderboard;
     assert.equal(lb.month.byAmount.find((x) => x.userId === U.b.id).amountToman, 50_000_000);

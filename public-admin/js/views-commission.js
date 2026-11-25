@@ -78,6 +78,8 @@
   // ---------- وضعیت تیمی فروش: دو لیدربرد (تعداد فاکتور / مبلغ فاکتور)؛ مبلغ فقط برای ردیف خودِ شخص ----------
   const MEDAL = ['🥇', '🥈', '🥉'];
   const initial = (n) => (AP.initials ? AP.initials(n) : String(n).slice(0, 1));
+  // دایره‌ی آواتار: عکس پروفایل (در صورت وجود) از سازوکار مشترک avatar.js؛ سابق‌ها (userId رشته‌ای) فقط حرف اول
+  const av = (x, cls) => (Number.isInteger(x.userId) && AP.avatar ? AP.avatar(x.name, cls, x.userId) : `<span class="avatar ${cls}">${esc(initial(x.name))}</span>`);
   const formerTag = (x) => (x.isFormer ? '<i class="tb-former">سابق</i>' : '');
   const HIDDEN = '<span class="tb-val--hidden" aria-label="مبلغ برای شما نمایش داده نمی‌شود">••••</span>';
   const chip = (label, val) => `<span class="tb-chip"><i>${label}</i><b>${val}</b></span>`;
@@ -87,7 +89,7 @@
     const top = rows.filter((x) => x.rank <= 3); if (!top.length) return '';
     const order = [2, 1, 3].map((r) => top.find((x) => x.rank === r)).filter(Boolean);
     return `<div class="tb-podium">${order.map((x) => `<div class="tb-pod tb-pod--${x.rank}${x.isMe ? ' is-me' : ''}">
-      ${x.rank === 1 ? '<span class="tb-crown" aria-hidden="true">👑</span>' : ''}<span class="tb-pod-av">${esc(initial(x.name))}<i class="tb-pod-medal" aria-hidden="true">${MEDAL[x.rank - 1]}</i></span>
+      ${x.rank === 1 ? '<span class="tb-crown" aria-hidden="true">👑</span>' : ''}<span class="tb-pod-avwrap">${av(x, 'tb-pod-av')}<i class="tb-pod-medal" aria-hidden="true">${MEDAL[x.rank - 1]}</i></span>
       <b class="tb-pod-name">${esc(x.name)}${formerTag(x)}${x.isMe ? '<i class="tb-me">شما</i>' : ''}</b><span class="tb-pod-sub">${subHtml(x)}</span>
       <div class="tb-pod-step"><span class="tb-pod-val">${valueHtml(x)}</span><span class="tb-pod-no">${fmt.num(x.rank)}</span></div></div>`).join('')}</div>`;
   }
@@ -142,7 +144,7 @@
   function membersHtml(m) {
     if (!m || !m.members || !m.members.length) return '';
     return `<section class="tb-members"><h3 class="tb-members-title">کارت پورسانت اعضا <span>${esc(m.monthLabel)}</span></h3>
-      <div class="tb-members-grid">${m.members.map((x) => `<a class="card tb-member" href="#/salesmember/${x.userId}"><span class="tb-pod-av">${esc(initial(x.name))}</span>
+      <div class="tb-members-grid">${m.members.map((x) => `<a class="card tb-member" href="#/salesmember/${x.userId}">${av(x, 'tb-pod-av')}
         <div class="tb-member-main"><b>${esc(x.name)}</b><span>${fmt.num(x.dealsCount || 0)} معامله · ${million(x.salesToman)} فروش</span></div>
         <div class="tb-member-com"><em>پورسانت ماه</em><b>${fmt.num(x.commissionToman || 0)}</b></div></a>`).join('')}</div></section>`;
   }
