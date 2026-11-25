@@ -15,7 +15,7 @@ describe('API پورسانت فروش', () => {
     service = require('../src/services/commissionService');
     const { createApp } = require('../src/server');
     const sup = F.makeUser({ role: 'manager', name: 'سرپرست' });
-    U = { sup, a: F.makeUser({ name: 'الف', managerId: sup.id }), b: F.makeUser({ name: 'ب' }), admin: F.makeUser({ role: 'admin' }) };
+    U = { sup, a: F.makeUser({ name: 'الف', managerId: sup.id }), b: F.makeUser({ name: 'ب' }), admin: F.makeUser({ role: 'admin' }), plain: F.makeUser({ name: 'ساده' }) };
     cookies = Object.fromEntries(Object.entries(U).map(([k, u]) => [k, F.sessionCookie(u.id)]));
     server = createApp().listen(0);
     await new Promise((r) => server.once('listening', r));
@@ -149,6 +149,15 @@ describe('API پورسانت فروش', () => {
       db.prepare('UPDATE users SET didar_email = NULL WHERE id = ?').run(U.a.id);
       assert.equal((await hit('a', 'GET', '/api/admin/avatars')).json.versions[U.b.id], undefined);
     } finally { db.prepare('UPDATE users SET didar_email = ? WHERE id = ?').run('a@x.com', U.a.id); db.prepare('DELETE FROM user_avatars WHERE user_id = ?').run(U.b.id); }
+  });
+  test('کارمندِ ساده (نه تیم فروش): لیدربرد 403، کارت اعضا خالی، پورسانت من null', async () => {
+    const lb = await hit('plain', 'GET', `/api/admin/sales-team/leaderboard${month}`);
+    assert.equal(lb.status, 403); assert.equal(lb.json.code, 'NOT_SALES_TEAM'); assert.ok(!lb.json.leaderboard);
+    assert.equal((await hit('plain', 'GET', `/api/admin/sales-team/members${month}`)).json.members.length, 0);
+    const me = (await hit('plain', 'GET', `/api/admin/me/commission${month}`)).json;
+    assert.equal(me.commission, null); assert.equal(me.canViewTeam, false);
+    assert.equal((await hit('plain', 'GET', `/api/admin/sales-team/members/${U.a.id}${month}`)).status, 404);
+    assert.equal((await hit('plain', 'GET', '/api/admin/avatars')).json.versions[U.b.id], undefined);
   });
   test('ممیزی نشت: پاسخ لیدربرد/کارت اعضا برای کارمند عادی هیچ مبلغِ دیگران ندارد (همه‌ی بازه‌ها و فیلدها)', async () => {
     const MONEY = ['amountToman', 'avgInvoiceToman', 'maxInvoiceToman', 'commissionToman', 'avgDiscountPercent', 'salesToman', 'seasonToman'];

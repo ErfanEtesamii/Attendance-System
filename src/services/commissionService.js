@@ -207,4 +207,11 @@ function memberCommission(viewer, id, ym) {
   return u ? { name: u.full_name, commission: myCommission(u, ym) } : null;
 }
 
-module.exports = { floorFor, formerOwners, visibleMembers, membersSummary, memberCommission, canViewTeam, sync, syncIfStale, myCommission, leaderboard, normalizeDeal, AMOUNT_TIERS };
+// فقط تیم فروش (کارمندِ دارای ایمیل دیدار) و ادمین/مالک/سرپرستِ فروش به بخش فروش دسترسی دارند؛ بقیه‌ی کارمندها هیچ
+function hasSalesAccess(viewer) {
+  if (canViewTeam(viewer)) return true;
+  const r = getDb().prepare('SELECT didar_email FROM users WHERE id = ?').get(viewer.id);
+  return !!(r && r.didar_email);
+}
+
+module.exports = { hasSalesAccess, floorFor, formerOwners, visibleMembers, membersSummary, memberCommission, canViewTeam, sync, syncIfStale, myCommission, leaderboard, normalizeDeal, AMOUNT_TIERS };

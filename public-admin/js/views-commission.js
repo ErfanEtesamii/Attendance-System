@@ -232,7 +232,7 @@
       const r0 = defaultRange();
       let data = await AP.api(`/admin/me/commission?${qs(r0.from, r0.to)}`).then((r) => r && r.commission).catch(() => null);
       const demo = !data && AP.isOwnerMe(); if (demo) data = sampleData();
-      if (!data) return { html: '<div class="view-header"><div><h2>پورسانت من</h2></div></div><div class="card"><div class="empty">اطلاعات پورسانت هنوز در دسترس نیست.</div></div>', mount() {} };
+      if (!data) return { html: '<div class="view-header"><div><h2>پورسانت من</h2></div></div><div class="card"><div class="empty">پورسانت فقط برای تیم فروش است (یا ایمیل دیدار شما هنوز ثبت نشده).</div></div>', mount() {} };
       if (demo) return { html: `<div class="cm-demo-banner">${demoTag} این صفحه فقط یک نمونه برای دیدن ظاهر است؛ داده‌ی واقعی نیست.</div>${commissionHtml(data)}`, mount() {} };
       return {
         html: `${rangeShell(['admin', 'owner'].includes(AP.state.me.role) || !!AP.state.salesTeam, ['month', 'lastMonth', 'season'])}<div data-sales-body>${commissionHtml(data)}</div>`,
@@ -244,6 +244,7 @@
     skeleton: 'plan',
     perm: 'me.read',
     async render() {
+      if (!AP.state.sales && !AP.state.salesTeam && !AP.isOwnerMe()) return { html: '<div class="view-header"><div><h2>وضعیت تیمی فروش</h2></div></div><div class="card"><div class="empty">این بخش مخصوص تیم فروش است.</div></div>', mount() {} };
       const r0 = defaultRange();
       const body = await teamBody(r0.from, r0.to);
       return {

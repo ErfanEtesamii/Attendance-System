@@ -21,7 +21,9 @@ router.get('/admin/me/commission', requirePermission('me.read'), (req, res) => {
   return res.json({ commission, canViewTeam: service.canViewTeam(req.adminUser) });
 });
 
+const NOT_SALES = { error: 'این بخش مخصوص تیم فروش است.', code: 'NOT_SALES_TEAM' };
 router.get('/admin/sales-team/leaderboard', requirePermission('me.read'), (req, res) => {
+  if (!service.hasSalesAccess(req.adminUser)) return res.status(403).json(NOT_SALES);
   service.syncIfStale();
   return res.json({ leaderboard: service.leaderboard(req.adminUser, qOf(req)) });
 });
