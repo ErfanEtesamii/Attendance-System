@@ -1062,3 +1062,7 @@ body {
 .day-task-edit .day-task-title:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 25%, transparent); border-color: var(--brand); }
 .day-card .day-add { background: color-mix(in srgb, var(--brand) 7%, transparent); }
 .day-card .day-add-input:focus-visible { border-color: var(--brand); box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 20%, transparent); }
+
+/* سربرگ صفحه‌های فرعی: دکمه‌ی «بازگشت» به اندازه‌ی خودش؛ عنوان جا بگیرد و نشکند */
+.view-head > .btn { width: auto; flex: none; min-width: 88px; padding-inline: var(--space-4); }
+.view-head > .view-title { flex: 1; min-width: 0; margin: 0; }
