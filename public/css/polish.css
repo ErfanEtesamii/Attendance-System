@@ -1029,7 +1029,10 @@ body {
 .day-card .day-add-input { border: 1.5px solid transparent; background: var(--plan-card); box-shadow: 0 1px 0 color-mix(in srgb, var(--plan-ink) 8%, transparent); }
 .day-card .day-add-input::placeholder { color: var(--plan-hint); opacity: .75; }
 .day-card .day-add-input:focus-visible { border-color: var(--pl-c, var(--plan-title)); box-shadow: 0 0 0 4px color-mix(in srgb, var(--pl-c, var(--plan-title)) 22%, transparent); }
-.day-card .day-add-btn { background: linear-gradient(160deg, color-mix(in srgb, var(--orange) 78%, white), var(--orange)); color: var(--plan-ink); transition: transform .15s ease; }
+.day-card .day-add-btn { position: relative; overflow: hidden; border: 0; color: #fff; width: 48px; height: 48px; background: linear-gradient(150deg, color-mix(in srgb, var(--accent) 62%, white) 0, var(--accent) 48%, color-mix(in srgb, var(--accent) 86%, var(--red)) 100%); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), 0 8px 16px -6px color-mix(in srgb, var(--accent) 80%, transparent); transition: transform .15s ease, box-shadow .15s ease, filter .15s ease; }
+.day-card .day-add-btn::before { font-size: 30px; font-weight: 500; text-shadow: 0 1px 2px color-mix(in srgb, var(--accent) 60%, black); }
+.day-card .day-add-btn::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: radial-gradient(70% 55% at 35% 12%, rgba(255, 255, 255, .38), transparent 70%); pointer-events: none; }
+.day-card .day-add-btn:hover { filter: saturate(1.1) brightness(1.04); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6), 0 10px 20px -6px color-mix(in srgb, var(--accent) 90%, transparent); }
 .day-card .day-add-btn:active { transform: scale(.92) rotate(90deg); }
 .day-list-edit > .day-task-edit { border: 1px solid color-mix(in srgb, var(--pl-c, var(--plan-title)) 16%, var(--plan-field-border)); border-inline-start-width: 1px; background: var(--plan-card); overflow: hidden; transition: box-shadow .18s ease, transform .18s ease; }
 .day-list-edit > .day-task-edit::before { content: ""; position: absolute; inset-block: 10px; inset-inline-start: 0; width: 4px; border-radius: 0 4px 4px 0; background: var(--pl-c, var(--plan-title)); }
