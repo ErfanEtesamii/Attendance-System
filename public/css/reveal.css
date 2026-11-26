@@ -14,7 +14,7 @@
   position: fixed;
   z-index: 80;
   inset-inline-end: max(16px, env(safe-area-inset-right));
-  bottom: max(16px, env(safe-area-inset-bottom));
+  bottom: calc(92px + max(0px, env(safe-area-inset-bottom)));
   min-height: var(--control-min-height, 44px);
   padding: 0 14px;
   border: 1px solid var(--border);

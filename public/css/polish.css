@@ -989,3 +989,35 @@ body {
 #leave-form .lv-quick button:active { transform: scale(.96); }
 #leave-form .lv-quick[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) { #leave-form .lv-chips button { transition: none; } }
+
+/* ---------- برنامه‌ی هفتگی: کارت‌های فشرده، افزودن سریع، حذف با بازگردانی ---------- */
+.day-card .day-add { align-items: center; gap: 8px; }
+.day-card .day-add-input { border-radius: 999px; padding-inline: 16px; background: color-mix(in srgb, var(--plan-field) 70%, var(--plan-card)); }
+.day-card .day-add-btn { flex: none; width: 46px; height: 46px; min-height: 44px; padding: 0; border-radius: 50%; display: inline-grid; place-items: center; font-size: 0; box-shadow: 0 8px 16px -8px color-mix(in srgb, var(--accent) 70%, transparent); }
+.day-card .day-add-btn::before { content: "+"; font-size: 28px; line-height: 1; font-weight: 600; }
+.day-list-edit { gap: var(--space-2); }
+.day-list-edit > .day-task-edit { padding: 10px 12px; gap: 4px; border-radius: 16px; border-inline-start-width: 3px; box-shadow: 0 6px 14px -12px color-mix(in srgb, var(--pl-c, var(--plan-title)) 70%, transparent); }
+.day-task-edit .day-task-head { display: flex; align-items: center; gap: 8px; }
+.day-task-edit .day-task-num { width: 24px; height: 26px; }
+.day-task-edit .day-task-title { flex: 1; min-width: 0; min-height: 44px; border-color: transparent; background: transparent; padding-inline: 6px; font-size: var(--fs-md); }
+.day-task-edit .day-task-title:hover { background: color-mix(in srgb, var(--plan-field) 60%, transparent); }
+.day-task-edit .prio-badge { cursor: pointer; padding: 5px 10px; border: 0; font: inherit; font-size: var(--fs-xs); font-weight: 800; transition: transform .12s ease; user-select: none; }
+.day-task-edit .prio-badge:active { transform: scale(.92); }
+.day-task-edit .prio-badge:focus-visible { outline: 2px solid var(--plan-title); outline-offset: 2px; }
+.day-task-edit .day-task-del { flex: none; width: 44px; min-width: 44px; padding: 0; margin: 0; justify-content: center; font-size: 0; color: color-mix(in srgb, var(--plan-hint) 80%, transparent); border-color: transparent; }
+.day-task-edit .day-task-del::before { font-size: var(--fs-md); }
+.day-task-edit .day-task-del:hover, .day-task-edit .day-task-del:focus-visible { color: var(--prio-high); }
+.day-task-edit .day-task-more summary { min-height: 34px; padding-inline: 4px; list-style: none; gap: 6px; font-size: var(--fs-xs); }
+.day-task-edit .day-task-more summary::-webkit-details-marker { display: none; }
+.day-task-edit .day-task-more summary::after { content: "▾"; transition: transform .18s ease; }
+.day-task-edit .day-task-more[open] summary::after { transform: rotate(180deg); }
+.day-task-edit .day-task-more[open] { gap: var(--space-2); padding-top: 4px; border-top: 1px dashed var(--plan-line); }
+.plan-note-fold { padding: 0; }
+.plan-note-fold summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; gap: 6px; padding-inline: var(--space-3); font-weight: 800; list-style: none; }
+.plan-note-fold summary::before { content: "ⓘ"; }
+.plan-note-fold summary::-webkit-details-marker { display: none; }
+.plan-note-fold > div { padding: 0 var(--space-3) var(--space-3); line-height: 1.9; }
+.plan-undo { position: sticky; z-index: 30; bottom: calc(92px + max(0px, env(safe-area-inset-bottom))); display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 10px 0; padding: 8px 8px 8px 16px; border-radius: 999px; background: var(--card); color: var(--text); border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); box-shadow: var(--shadow-2); font-size: var(--fs-sm); font-weight: 700; animation: plan-undo-in .2s ease both; }
+.plan-undo button { min-height: 40px; padding: 0 16px; border-radius: 999px; border: 0; font: inherit; font-weight: 800; cursor: pointer; color: var(--text); background: color-mix(in srgb, var(--accent) 16%, transparent); }
+@keyframes plan-undo-in { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .plan-undo { animation: none; } .day-task-edit .prio-badge, .day-task-edit .day-task-more summary::after { transition: none; } }
