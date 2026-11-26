@@ -331,3 +331,5 @@
 .gl-bar.h10 { height: 100%; }
 @media (max-width: 800px) { .ms-side { position: static; } .gl-ring-box { width: 108px; height: 108px; } .gl-ring-txt b { font-size: 22px; } }
 @media (prefers-reduced-motion: reduce) { .gl-ring-fg, .gl-bar { animation: none; } }
+
+@container (max-width: 640px) { .ms-money { grid-template-columns: 1fr; } }

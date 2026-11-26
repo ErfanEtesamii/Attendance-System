@@ -1707,9 +1707,15 @@ body[data-density="compact"] .stat { padding: var(--space-3); gap: 7px; }
 
 /* کارت حقوق داخل ردیف کاشی‌های آماری «وضعیت من»: بعد از «تکمیل تسک‌ها» و پرکردن فضای خالی */
 .stat-grid.ms-stats-earn { grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 2fr); align-items: stretch; }
-@media (max-width: 1100px) {
+/* چیدمان بر اساس عرضِ خودِ ناحیه‌ی محتوا (نه عرض پنجره): کنار منوی کناری، لپ‌تاپ‌های کوچک فضای کمی دارند */
+:has(> .ms-stats-earn), :has(> .ms-money) { container-type: inline-size; }
+@container (max-width: 960px) {
+  .stat-grid.ms-stats-earn { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .stat-grid.ms-stats-earn > .earn-card, .stat-grid.ms-stats-earn > .cm-card { grid-column: span 2; }
+}
+@container (max-width: 560px) {
   .stat-grid.ms-stats-earn { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .stat-grid.ms-stats-earn > .earn-card { grid-column: 1 / -1; }
+  .stat-grid.ms-stats-earn > .earn-card, .stat-grid.ms-stats-earn > .cm-card { grid-column: 1 / -1; }
 }
 
 /* کاشی‌های «وضعیت من»: آیکون‌ها یکدست (پس‌زمینه ملایم + آیکون رنگی) و زمان در یک خط */
