@@ -241,45 +241,42 @@
 
 /* ===== «وضعیت من»: ردیف پول — کارت حقوق و کارت پورسانت کنار هم، جمع‌وجور و هم‌سبک (الگو: کارت حقوق مینی‌اپ) ===== */
 .ms-money { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--space-4); margin: var(--space-4) 0; align-items: stretch; }
-.cm-card, .ms-money .earn-card { position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; margin: 0; padding: var(--space-4) var(--space-5); border-radius: var(--r-xl); border: 1px solid color-mix(in srgb, var(--green) 22%, var(--border)); background: radial-gradient(220px 140px at 0% 0%, color-mix(in srgb, var(--green) 15%, transparent), transparent 72%), radial-gradient(200px 130px at 100% 100%, color-mix(in srgb, var(--accent-2) 13%, transparent), transparent 72%), var(--card); box-shadow: 0 20px 36px -28px color-mix(in srgb, var(--green) 50%, transparent); }
-.cm-card::before, .ms-money .earn-card::before { content: ""; position: absolute; z-index: -1; width: 150px; height: 150px; inset-inline-end: -52px; inset-block-start: -62px; border-radius: 50%; border: 20px solid color-mix(in srgb, var(--green) 7%, transparent); pointer-events: none; }
+.cm-card, .ms-money .earn-card, .ms-stats-earn > .earn-card, .ms-stats-earn > .cm-card { position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; margin: 0; padding: var(--space-4) var(--space-5); border-radius: var(--r-xl); border: 1px solid color-mix(in srgb, var(--green) 22%, var(--border)); background: radial-gradient(220px 140px at 0% 0%, color-mix(in srgb, var(--green) 15%, transparent), transparent 72%), radial-gradient(200px 130px at 100% 100%, color-mix(in srgb, var(--accent-2) 13%, transparent), transparent 72%), var(--card); box-shadow: 0 20px 36px -28px color-mix(in srgb, var(--green) 50%, transparent); }
+.cm-card::before, .ms-money .earn-card::before, .ms-stats-earn > .earn-card::before, .ms-stats-earn > .cm-card::before { content: ""; position: absolute; z-index: -1; width: 150px; height: 150px; inset-inline-end: -52px; inset-block-start: -62px; border-radius: 50%; border: 20px solid color-mix(in srgb, var(--green) 7%, transparent); pointer-events: none; }
 .cm-card-head { display: flex; align-items: center; gap: var(--space-2); }
 .cm-card-head h3 { margin: 0; font-size: var(--fs-md); font-weight: 800; }
 .cm-card-head .cm-card-link { margin-inline-start: auto; }
 .cm-card-chip { width: 28px; height: 28px; flex: none; display: grid; place-items: center; border-radius: 9px; background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green); }
 .cm-card-chip svg { width: 15px; height: 15px; }
 .cm-card-sub { margin: 0; font-size: var(--fs-xs); color: var(--hint); }
-.cm-card-amount, .ms-money .earn-amount { direction: ltr; display: flex; flex-direction: row-reverse; justify-content: flex-end; align-items: baseline; gap: 8px; margin: 2px 0; }
-.cm-card-amount span, .ms-money .earn-amount > span:first-child { font-size: clamp(26px, 3vw, 34px); font-weight: 800; letter-spacing: -.5px; line-height: 1.15; font-variant-numeric: tabular-nums lining-nums; background: linear-gradient(135deg, var(--green), var(--accent-2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: var(--green); }
+.cm-card-amount, .ms-money .earn-amount, .ms-stats-earn .earn-amount { direction: ltr; display: flex; flex-direction: row-reverse; justify-content: flex-end; align-items: baseline; gap: 8px; margin: 2px 0; }
+.cm-card-amount span, .ms-money .earn-amount > span:first-child, .ms-stats-earn .earn-amount > span:first-child { font-size: clamp(26px, 3vw, 34px); font-weight: 800; letter-spacing: -.5px; line-height: 1.15; font-variant-numeric: tabular-nums lining-nums; background: linear-gradient(135deg, var(--green), var(--accent-2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: var(--green); }
 .cm-card-amount small { font-size: var(--fs-xs); font-weight: 700; color: var(--hint); }
 .cm-card-next { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-xs); color: var(--hint); }
 .cm-card-next b { color: var(--green); }
 .cm-card-next .tb-bar { height: 6px; }
-.cm-card-foot, .ms-money .earn-foot { margin-top: auto; padding-top: var(--space-2); display: flex; flex-flow: row wrap; align-items: center; gap: var(--space-2); border-top: 1px dashed color-mix(in srgb, var(--green) 26%, var(--border)); }
-.cm-card-pill, .ms-money .earn-chip { display: inline-block; padding: 4px 12px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--green) 25%, transparent); background: linear-gradient(135deg, color-mix(in srgb, var(--green) 14%, transparent), color-mix(in srgb, var(--accent-2) 14%, transparent)); color: var(--green); font-size: var(--fs-xs); font-weight: 800; }
+.cm-card-foot, .ms-money .earn-foot, .ms-stats-earn .earn-foot { margin-top: auto; padding-top: var(--space-2); display: flex; flex-flow: row wrap; align-items: center; gap: var(--space-2); border-top: 1px dashed color-mix(in srgb, var(--green) 26%, var(--border)); }
+.cm-card-pill, .ms-money .earn-chip, .ms-stats-earn .earn-chip { display: inline-block; padding: 4px 12px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--green) 25%, transparent); background: linear-gradient(135deg, color-mix(in srgb, var(--green) 14%, transparent), color-mix(in srgb, var(--accent-2) 14%, transparent)); color: var(--green); font-size: var(--fs-xs); font-weight: 800; }
 .cm-card-pill.alt { color: var(--text); }
-.ms-money .earn-note { flex-basis: 100%; }
+.ms-money .earn-note, .ms-stats-earn .earn-note { flex-basis: 100%; }
 @media (max-width: 700px) { .ms-money { grid-template-columns: 1fr; } }
-.ms-money .earn-spark { font-size: .55em; align-self: center; }
+.ms-money .earn-spark, .ms-stats-earn .earn-spark { font-size: .55em; align-self: center; }
 
 /* ===== تصویر پس‌زمینه‌ی کارت حقوق مینی‌اپ (صنایع‌دستی، محو) پشت کارت‌های «وضعیت من»؛ تصویر سمت چپ (سمت خالیِ کارت) و محو شدن به رنگ کارت ===== */
-.cm-card, .ms-money .earn-card { background: linear-gradient(color-mix(in srgb, var(--card) 36%, transparent), color-mix(in srgb, var(--card) 36%, transparent)), linear-gradient(90deg, color-mix(in srgb, var(--card) 20%, transparent) 0, color-mix(in srgb, var(--card) 62%, transparent) 90px, color-mix(in srgb, var(--card) 94%, transparent) 170px, var(--card) 230px), url("/images/earnings-handicrafts-fade.webp") left top / 230px auto no-repeat, var(--card); }
+.cm-card, .ms-money .earn-card, .ms-stats-earn > .earn-card, .ms-stats-earn > .cm-card { background: linear-gradient(color-mix(in srgb, var(--card) 36%, transparent), color-mix(in srgb, var(--card) 36%, transparent)), linear-gradient(90deg, color-mix(in srgb, var(--card) 20%, transparent) 0, color-mix(in srgb, var(--card) 62%, transparent) 90px, color-mix(in srgb, var(--card) 94%, transparent) 170px, var(--card) 230px), url("/images/earnings-handicrafts-fade.webp") left top / 230px auto no-repeat, var(--card); }
 
-/* ===== بدون فضای خالی کنار کارت‌ها + نمای تک‌کارتِ افقی (کارمند بدون پورسانت) + سوییچ نمونه برای مالک ===== */
-.ms-money { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
-.ms-money > .earn-card:only-child, .ms-money-wrap:has(#ms-demo-plain:checked) .ms-money > .earn-card { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); column-gap: var(--space-6); align-content: center; align-items: center; }
-.ms-money > .earn-card:only-child > .earn-head, .ms-money > .earn-card:only-child > .earn-intro, .ms-money > .earn-card:only-child > .earn-amount,
-.ms-money-wrap:has(#ms-demo-plain:checked) .ms-money > .earn-card > .earn-head, .ms-money-wrap:has(#ms-demo-plain:checked) .ms-money > .earn-card > .earn-intro, .ms-money-wrap:has(#ms-demo-plain:checked) .ms-money > .earn-card > .earn-amount { grid-column: 1; }
-.ms-money > .earn-card:only-child > .earn-foot, .ms-money-wrap:has(#ms-demo-plain:checked) .ms-money > .earn-card > .earn-foot { grid-column: 2; grid-row: 1 / span 3; margin: 0; padding: 0 0 0 0; padding-inline-start: var(--space-5); padding-inline-end: 150px; border-top: 0; border-inline-start: 1px dashed color-mix(in srgb, var(--green) 26%, var(--border)); align-self: stretch; justify-content: center; flex-direction: column; align-items: flex-start; }
-.ms-money-wrap:has(#ms-demo-plain:checked) .cm-card { display: none; }
+/* ===== ردیف پول: دو ستون هم‌اندازه؛ کارت تنها (کارمند بدون پورسانت) همان کارت عمودیِ نیم‌عرض می‌ماند، نه کشیده ===== */
+.ms-money { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ms-demo-b { display: none; }
+.ms-money-wrap:has(#ms-demo-plain:checked) .ms-demo-a { display: none; }
+.ms-money-wrap:has(#ms-demo-plain:checked) .ms-demo-b { display: block; }
+.ms-demo-a, .ms-demo-b { margin-top: var(--space-3); }
 .ms-demo-switch { display: inline-flex; gap: 4px; margin: var(--space-4) 0 0; padding: 4px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); }
 .ms-demo-switch input { position: absolute; opacity: 0; pointer-events: none; }
 .ms-demo-switch label { padding: 5px 14px; border-radius: 999px; font-size: var(--fs-xs); font-weight: 700; color: var(--hint); cursor: pointer; transition: background .2s, color .2s; }
 .ms-demo-switch input:checked + label { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green); }
 .ms-demo-switch input:focus-visible + label { outline: 2px solid var(--brand); outline-offset: 2px; }
-.ms-money-wrap > .ms-money { margin-top: var(--space-3); }
-@media (max-width: 700px) {
-  .ms-money > .earn-card:only-child, .ms-money-wrap:has(#ms-demo-plain:checked) .ms-money > .earn-card { display: flex; }
-  .ms-money > .earn-card:only-child > .earn-foot, .ms-money-wrap:has(#ms-demo-plain:checked) .ms-money > .earn-card > .earn-foot { padding: var(--space-2) 0 0; border-inline-start: 0; border-top: 1px dashed color-mix(in srgb, var(--green) 26%, var(--border)); }
-}
+@media (max-width: 800px) { .ms-money { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .ms-demo-switch label { transition: none; } }
+
+@media (max-width: 1100px) { .stat-grid.ms-stats-earn > .cm-card { grid-column: 1 / -1; } }
