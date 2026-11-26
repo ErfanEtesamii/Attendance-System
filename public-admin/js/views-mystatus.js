@@ -210,24 +210,27 @@
   function weekGlance(sel) {
     const t = (sel.summary && sel.summary.tasks) || {};
     const pct = t.completionPercent == null ? 0 : Math.max(0, Math.min(100, Number(t.completionPercent)));
-    const C = 207.35; const dash = Math.round((pct / 100) * C * 10) / 10; // محیط دایره‌ی r=33
-    const dayState = (x) => {
+    const C = 276.46; const dash = Math.round((pct / 100) * C * 10) / 10; // محیط دایره‌ی r=44
+    const dayInfo = (x) => {
       const list = (x.tasks || []).filter((k) => !k.isSystem && !k.outOfPlan && !k.dropped);
-      if (!list.length) return 'none';
+      if (!list.length) return { state: 'none', step: 0 };
       const done = list.filter((k) => k.status === 'done').length;
-      if (done === list.length) return 'ok';
-      return done || list.some((k) => k.status === 'partial') ? 'part' : (x.isToday ? 'now' : 'bad');
+      const part = list.filter((k) => k.status === 'partial').length;
+      const step = Math.max(1, Math.round(((done + part * 0.5) / list.length) * 10));
+      if (done === list.length) return { state: 'ok', step: 10 };
+      if (done || part) return { state: 'part', step };
+      return { state: x.isToday ? 'now' : 'bad', step: 1 };
     };
     const wd = (x) => { const JU = window.Jalali; return JU && JU.weekdayName && x.date ? JU.weekdayName(x.date) : ''; };
-    const days = (sel.days || []).map((x) => `<li class="gl-day ${dayState(x)}${x.isToday ? ' today' : ''}" title="${esc(wd(x))}"><i></i><span>${esc(wd(x).charAt(0))}</span></li>`).join('');
+    const days = (sel.days || []).map((x) => { const inf = dayInfo(x); return `<li class="gl-day ${inf.state}${x.isToday ? ' today' : ''}" title="${esc(wd(x))}"><span class="gl-bar-wrap"><i class="gl-bar h${inf.step}"></i></span><span class="gl-wd">${esc(wd(x).charAt(0))}</span></li>`; }).join('');
     const chip = (cls, n, label) => `<span class="gl-chip ${cls}"><b>${fmt.num(n || 0)}</b>${label}</span>`;
     return `<section class="card ms-glance" aria-label="هفته در یک نگاه">
       <h3>هفته در یک نگاه</h3>
       <div class="gl-main">
-        <svg class="gl-ring" viewBox="0 0 80 80" role="img" aria-label="تکمیل تسک‌ها ${t.completionPercent == null ? 'نامشخص' : fmt.num(pct) + ' درصد'}"><circle class="gl-ring-bg" cx="40" cy="40" r="33"/><circle class="gl-ring-fg" cx="40" cy="40" r="33" stroke-dasharray="${dash} ${C}" transform="rotate(-90 40 40)"/><text x="40" y="46" text-anchor="middle">${t.completionPercent == null ? '—' : fmt.num(pct) + '٪'}</text></svg>
+        <svg class="gl-ring" viewBox="0 0 100 100" role="img" aria-label="تکمیل تسک‌ها ${t.completionPercent == null ? 'نامشخص' : fmt.num(pct) + ' درصد'}"><defs><linearGradient id="glg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="gl-g1"/><stop offset="1" class="gl-g2"/></linearGradient></defs><circle class="gl-ring-bg" cx="50" cy="50" r="44"/><circle class="gl-ring-fg" cx="50" cy="50" r="44" stroke="url(#glg)" stroke-dasharray="${dash} ${C}" transform="rotate(-90 50 50)"/><text class="gl-ring-top" x="50" y="60" text-anchor="middle">${t.completionPercent == null ? '—' : fmt.num(pct) + '٪'}</text></svg>
         <div class="gl-chips">${chip('ok', t.done, 'انجام‌شده')}${chip('part', t.partial, 'ناقص')}${chip('bad', t.notDone, 'انجام‌نشده')}${chip('wait', t.noAnswer, 'بی‌پاسخ')}</div>
       </div>
-      <ul class="gl-days" aria-label="وضعیت روزهای هفته">${days}</ul>
+      <ul class="gl-days" aria-label="پیشرفت تسک‌ها در روزهای هفته">${days}</ul>
       <p class="gl-note">${t.total ? `${fmt.num(t.total)} تسکِ سررسیدشده در این هفته` : 'هنوز تسکی در این هفته سررسید نشده است'}</p>
     </section>`;
   }

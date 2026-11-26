@@ -281,31 +281,50 @@
 
 @media (max-width: 1100px) { .stat-grid.ms-stats-earn > .cm-card { grid-column: 1 / -1; } }
 
-/* ===== «وضعیت من»: ستون کنار کارت «امروز» (برنامه‌ی هفته‌ی بعد + هفته در یک نگاه) بدون فضای خالی ===== */
-.ms-top { align-items: stretch; }
-.ms-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+/* ===== «وضعیت من»: ستون کنار کارت «امروز» (برنامه‌ی هفته‌ی بعد + هفته در یک نگاه)؛ ستون با اسکرول همراه می‌شود (sticky) تا کنار فهرست بلند تسک‌ها خالی دیده نشود ===== */
+.ms-top { align-items: start; }
+.ms-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; position: sticky; top: 84px; }
 .ms-side > .card { margin: 0; }
-.ms-glance { flex: 1; display: flex; flex-direction: column; gap: var(--space-3); position: relative; isolation: isolate; overflow: hidden; border: 1px solid color-mix(in srgb, var(--green) 20%, var(--border)); background: radial-gradient(220px 140px at 0% 100%, color-mix(in srgb, var(--accent-2) 12%, transparent), transparent 72%), radial-gradient(200px 130px at 100% 0%, color-mix(in srgb, var(--green) 12%, transparent), transparent 72%), var(--card); }
+.ms-glance { display: flex; flex-direction: column; gap: var(--space-4); position: relative; isolation: isolate; overflow: hidden; padding: var(--space-5); border-radius: var(--r-xl); border: 1px solid color-mix(in srgb, var(--green) 22%, var(--border)); background: radial-gradient(220px 140px at 0% 100%, color-mix(in srgb, var(--accent-2) 13%, transparent), transparent 72%), radial-gradient(200px 130px at 100% 0%, color-mix(in srgb, var(--green) 14%, transparent), transparent 72%), var(--card); box-shadow: 0 20px 36px -28px color-mix(in srgb, var(--green) 50%, transparent); }
+.ms-glance::before { content: ""; position: absolute; z-index: -1; width: 150px; height: 150px; inset-inline-end: -52px; inset-block-start: -62px; border-radius: 50%; border: 20px solid color-mix(in srgb, var(--green) 7%, transparent); pointer-events: none; }
 .ms-glance h3 { margin: 0; font-size: var(--fs-md); font-weight: 800; }
-.gl-main { display: flex; align-items: center; gap: var(--space-4); }
-.gl-ring { width: 96px; height: 96px; flex: none; }
-.gl-ring-bg { fill: none; stroke: color-mix(in srgb, var(--hint) 18%, transparent); stroke-width: 8; }
-.gl-ring-fg { fill: none; stroke: var(--green); stroke-width: 8; stroke-linecap: round; animation: cm-ring-fill-sm 1.1s cubic-bezier(.22, 1, .36, 1) .1s both; }
-@keyframes cm-ring-fill-sm { from { stroke-dasharray: 0 207.35; } }
-.gl-ring text { font-size: 17px; font-weight: 800; fill: var(--text); }
-.gl-chips { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
-.gl-chip { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; padding: 5px 10px; border-radius: var(--r-lg); font-size: var(--fs-xs); font-weight: 700; background: color-mix(in srgb, var(--hint) 10%, transparent); color: var(--hint); }
-.gl-chip b { font-size: var(--fs-md); font-weight: 800; }
+.gl-main { display: flex; align-items: center; gap: var(--space-5); }
+.gl-ring { width: 128px; height: 128px; flex: none; filter: drop-shadow(0 8px 14px color-mix(in srgb, var(--green) 22%, transparent)); }
+.gl-ring-bg { fill: color-mix(in srgb, var(--card) 70%, transparent); stroke: color-mix(in srgb, var(--hint) 16%, transparent); stroke-width: 9; }
+.gl-ring-fg { fill: none; stroke-width: 9; stroke-linecap: round; animation: gl-ring-fill 1.2s cubic-bezier(.22, 1, .36, 1) .1s both; }
+.gl-g1 { stop-color: var(--green); }
+.gl-g2 { stop-color: var(--accent-2); }
+@keyframes gl-ring-fill { from { stroke-dasharray: 0 276.46; } }
+.gl-ring-top { font-size: 24px; font-weight: 800; fill: var(--text); }
+.gl-chips { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.gl-chip { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; padding: 9px 12px; border-radius: var(--r-lg); font-size: var(--fs-xs); font-weight: 700; background: color-mix(in srgb, var(--hint) 10%, transparent); color: var(--hint); }
+.gl-chip b { font-size: var(--fs-lg); font-weight: 800; }
 .gl-chip.ok { background: var(--green-soft); color: var(--green); }
 .gl-chip.part { background: color-mix(in srgb, var(--orange) 14%, transparent); color: var(--orange); }
 .gl-chip.bad { background: color-mix(in srgb, var(--red) 12%, transparent); color: var(--red); }
-.gl-days { list-style: none; margin: auto 0 0; padding: var(--space-3) 0 0; border-top: 1px dashed color-mix(in srgb, var(--green) 26%, var(--border)); display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
-.gl-day { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: var(--fs-xs); color: var(--hint); }
-.gl-day i { width: 14px; height: 14px; border-radius: 50%; background: color-mix(in srgb, var(--hint) 22%, transparent); }
-.gl-day.ok i { background: var(--green); }
-.gl-day.part i { background: var(--orange); }
-.gl-day.bad i { background: var(--red); }
-.gl-day.today span { color: var(--text); font-weight: 800; }
-.gl-day.today i { outline: 2px solid color-mix(in srgb, var(--brand) 55%, transparent); outline-offset: 2px; }
-.gl-note { margin: 0; font-size: var(--fs-xs); color: var(--hint); }
-@media (prefers-reduced-motion: reduce) { .gl-ring-fg { animation: none; } }
+.gl-days { list-style: none; margin: 0; padding: var(--space-4) 0 0; border-top: 1px dashed color-mix(in srgb, var(--green) 26%, var(--border)); display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.gl-day { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.gl-bar-wrap { width: 100%; max-width: 28px; height: 72px; display: flex; align-items: flex-end; border-radius: 10px; background: color-mix(in srgb, var(--hint) 10%, transparent); overflow: hidden; }
+.gl-bar { display: block; width: 100%; min-height: 6px; border-radius: 10px; background: color-mix(in srgb, var(--hint) 30%, transparent); transform-origin: bottom; animation: gl-bar-grow .8s cubic-bezier(.22, 1, .36, 1) both; }
+.gl-day.none .gl-bar { height: 6px; }
+.gl-day.ok .gl-bar { background: linear-gradient(180deg, var(--accent-2), var(--green)); }
+.gl-day.part .gl-bar { background: var(--orange); }
+.gl-day.bad .gl-bar { background: var(--red); }
+@keyframes gl-bar-grow { from { height: 0; } }
+.gl-wd { font-size: var(--fs-xs); color: var(--hint); font-weight: 700; }
+.gl-day.today .gl-wd { color: var(--brand); font-weight: 800; }
+.gl-day.today .gl-bar-wrap { outline: 2px solid color-mix(in srgb, var(--brand) 55%, transparent); outline-offset: 2px; }
+.gl-note { margin: 0; font-size: var(--fs-xs); color: var(--hint); text-align: center; }
+.gl-bar.h0 { height: 0%; }
+.gl-bar.h1 { height: 10%; }
+.gl-bar.h2 { height: 20%; }
+.gl-bar.h3 { height: 30%; }
+.gl-bar.h4 { height: 40%; }
+.gl-bar.h5 { height: 50%; }
+.gl-bar.h6 { height: 60%; }
+.gl-bar.h7 { height: 70%; }
+.gl-bar.h8 { height: 80%; }
+.gl-bar.h9 { height: 90%; }
+.gl-bar.h10 { height: 100%; }
+@media (max-width: 800px) { .ms-side { position: static; } .gl-ring { width: 108px; height: 108px; } }
+@media (prefers-reduced-motion: reduce) { .gl-ring-fg, .gl-bar { animation: none; } }
