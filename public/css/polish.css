@@ -1021,3 +1021,25 @@ body {
 .plan-undo button { min-height: 40px; padding: 0 16px; border-radius: 999px; border: 0; font: inherit; font-weight: 800; cursor: pointer; color: var(--text); background: color-mix(in srgb, var(--accent) 16%, transparent); }
 @keyframes plan-undo-in { from { opacity: 0; transform: translateY(8px); } }
 @media (prefers-reduced-motion: reduce) { .plan-undo { animation: none; } .day-task-edit .prio-badge, .day-task-edit .day-task-more summary::after { transition: none; } }
+
+/* ---------- برنامه‌ی هفتگی: پرداخت دوم (نوار رنگی روز، سطح‌های نرم، نشان‌های شیشه‌ای) ---------- */
+.pl-day { box-shadow: 0 18px 30px -24px color-mix(in srgb, var(--pl-c) 70%, transparent); background: linear-gradient(180deg, color-mix(in srgb, var(--pl-c) 7%, var(--pl-surface)) 0, var(--pl-surface) 120px); }
+.pl-day .pl-day-title { padding: 5px 16px; border-radius: 999px; background: color-mix(in srgb, var(--pl-c) 14%, var(--pl-surface)); border: 1px solid color-mix(in srgb, var(--pl-c) 40%, transparent); letter-spacing: 0; }
+.day-card .day-add { padding: 4px; border-radius: 999px; background: color-mix(in srgb, var(--pl-c, var(--plan-title)) 8%, transparent); }
+.day-card .day-add-input { border: 1.5px solid transparent; background: var(--plan-card); box-shadow: 0 1px 0 color-mix(in srgb, var(--plan-ink) 8%, transparent); }
+.day-card .day-add-input::placeholder { color: var(--plan-hint); opacity: .75; }
+.day-card .day-add-input:focus-visible { border-color: var(--pl-c, var(--plan-title)); box-shadow: 0 0 0 4px color-mix(in srgb, var(--pl-c, var(--plan-title)) 22%, transparent); }
+.day-card .day-add-btn { background: linear-gradient(160deg, color-mix(in srgb, var(--orange) 78%, white), var(--orange)); color: var(--plan-ink); transition: transform .15s ease; }
+.day-card .day-add-btn:active { transform: scale(.92) rotate(90deg); }
+.day-list-edit > .day-task-edit { border: 1px solid color-mix(in srgb, var(--pl-c, var(--plan-title)) 16%, var(--plan-field-border)); border-inline-start-width: 1px; background: var(--plan-card); overflow: hidden; transition: box-shadow .18s ease, transform .18s ease; }
+.day-list-edit > .day-task-edit::before { content: ""; position: absolute; inset-block: 10px; inset-inline-start: 0; width: 4px; border-radius: 0 4px 4px 0; background: var(--pl-c, var(--plan-title)); }
+[dir="rtl"] .day-list-edit > .day-task-edit::before { border-radius: 4px 0 0 4px; }
+.day-list-edit > .day-task-edit:focus-within { box-shadow: 0 10px 22px -14px color-mix(in srgb, var(--pl-c, var(--plan-title)) 80%, transparent); }
+.day-task-edit .day-task-num { background: linear-gradient(160deg, color-mix(in srgb, var(--pl-c, var(--plan-title)) 80%, var(--plan-card)), var(--pl-c, var(--plan-title))); box-shadow: 0 2px 6px color-mix(in srgb, var(--pl-c, var(--plan-title)) 40%, transparent); }
+.day-task-edit .prio-badge { box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 22%, transparent); }
+.day-task-edit .day-task-more summary { width: fit-content; padding: 2px 10px; border-radius: 999px; background: color-mix(in srgb, var(--plan-hint) 9%, transparent); color: var(--plan-hint); }
+.day-task-edit .day-task-more summary:hover { background: color-mix(in srgb, var(--plan-hint) 15%, transparent); }
+.day-card .day-empty { background: color-mix(in srgb, var(--pl-c, var(--plan-title)) 5%, transparent); color: var(--plan-hint); }
+.day-card .day-empty::before { content: "✎"; display: block; font-size: 22px; margin-bottom: 2px; opacity: .6; }
+.plan-note-fold { border-radius: 14px; background: color-mix(in srgb, var(--pl-accent) 8%, var(--pl-surface)); border: 1px solid color-mix(in srgb, var(--pl-accent) 20%, transparent); }
+@media (prefers-reduced-motion: reduce) { .day-card .day-add-btn, .day-list-edit > .day-task-edit { transition: none; } }
