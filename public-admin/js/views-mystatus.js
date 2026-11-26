@@ -206,6 +206,32 @@
     </section>`;
   }
 
+  // «هفته در یک نگاه»: زیر کارت «برنامه‌ی هفته‌ی بعد» می‌نشیند تا ستون کنارِ کارت «امروز» خالی نماند (حلقه‌ی تکمیل تسک‌ها + شمارش + ۷ روز هفته)
+  function weekGlance(sel) {
+    const t = (sel.summary && sel.summary.tasks) || {};
+    const pct = t.completionPercent == null ? 0 : Math.max(0, Math.min(100, Number(t.completionPercent)));
+    const C = 207.35; const dash = Math.round((pct / 100) * C * 10) / 10; // محیط دایره‌ی r=33
+    const dayState = (x) => {
+      const list = (x.tasks || []).filter((k) => !k.isSystem && !k.outOfPlan && !k.dropped);
+      if (!list.length) return 'none';
+      const done = list.filter((k) => k.status === 'done').length;
+      if (done === list.length) return 'ok';
+      return done || list.some((k) => k.status === 'partial') ? 'part' : (x.isToday ? 'now' : 'bad');
+    };
+    const wd = (x) => { const JU = window.Jalali; return JU && JU.weekdayName && x.date ? JU.weekdayName(x.date) : ''; };
+    const days = (sel.days || []).map((x) => `<li class="gl-day ${dayState(x)}${x.isToday ? ' today' : ''}" title="${esc(wd(x))}"><i></i><span>${esc(wd(x).charAt(0))}</span></li>`).join('');
+    const chip = (cls, n, label) => `<span class="gl-chip ${cls}"><b>${fmt.num(n || 0)}</b>${label}</span>`;
+    return `<section class="card ms-glance" aria-label="هفته در یک نگاه">
+      <h3>هفته در یک نگاه</h3>
+      <div class="gl-main">
+        <svg class="gl-ring" viewBox="0 0 80 80" role="img" aria-label="تکمیل تسک‌ها ${t.completionPercent == null ? 'نامشخص' : fmt.num(pct) + ' درصد'}"><circle class="gl-ring-bg" cx="40" cy="40" r="33"/><circle class="gl-ring-fg" cx="40" cy="40" r="33" stroke-dasharray="${dash} ${C}" transform="rotate(-90 40 40)"/><text x="40" y="46" text-anchor="middle">${t.completionPercent == null ? '—' : fmt.num(pct) + '٪'}</text></svg>
+        <div class="gl-chips">${chip('ok', t.done, 'انجام‌شده')}${chip('part', t.partial, 'ناقص')}${chip('bad', t.notDone, 'انجام‌نشده')}${chip('wait', t.noAnswer, 'بی‌پاسخ')}</div>
+      </div>
+      <ul class="gl-days" aria-label="وضعیت روزهای هفته">${days}</ul>
+      <p class="gl-note">${t.total ? `${fmt.num(t.total)} تسکِ سررسیدشده در این هفته` : 'هنوز تسکی در این هفته سررسید نشده است'}</p>
+    </section>`;
+  }
+
   function weekNav(sel, cur) {
     return `<div class="week-nav" role="group" aria-label="ناوبری هفته">
       <button type="button" class="btn ghost small" data-week-nav="${esc(sel.week.prevWeekStart)}">◀ هفته‌ی قبل</button>
@@ -339,7 +365,7 @@
           <div class="ms-demo-a">${layout(earnHtml, cmHtml)}</div><div class="ms-demo-b">${kpiRow(d.sel, earnHtml.replace(/ id="[^"]*"/g, '').replace(/ aria-labelledby="[^"]*"/g, ''))}</div></div>`
       : layout(earnHtml, cmHtml);
     return `${money}
-        <div class="ms-top">${todayCard(d.cur, d.daily, d.backfill, d.urgentCfg)}${nextPlanCard(d.cur, d.next)}</div>
+        <div class="ms-top">${todayCard(d.cur, d.daily, d.backfill, d.urgentCfg)}<div class="ms-side">${nextPlanCard(d.cur, d.next)}${weekGlance(d.sel)}</div></div>
         <h3 class="ms-section-title">روزهای ${esc(weekTitle(d.sel, d.cur))}</h3>
         ${grid}`;
   }
