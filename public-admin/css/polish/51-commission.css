@@ -289,13 +289,16 @@
 .ms-glance::before { content: ""; position: absolute; z-index: -1; width: 150px; height: 150px; inset-inline-end: -52px; inset-block-start: -62px; border-radius: 50%; border: 20px solid color-mix(in srgb, var(--green) 7%, transparent); pointer-events: none; }
 .ms-glance h3 { margin: 0; font-size: var(--fs-md); font-weight: 800; }
 .gl-main { display: flex; align-items: center; gap: var(--space-5); }
-.gl-ring { width: 128px; height: 128px; flex: none; filter: drop-shadow(0 8px 14px color-mix(in srgb, var(--green) 22%, transparent)); }
-.gl-ring-bg { fill: color-mix(in srgb, var(--card) 70%, transparent); stroke: color-mix(in srgb, var(--hint) 16%, transparent); stroke-width: 9; }
-.gl-ring-fg { fill: none; stroke-width: 9; stroke-linecap: round; animation: gl-ring-fill 1.2s cubic-bezier(.22, 1, .36, 1) .1s both; }
+.gl-ring-box { position: relative; width: 128px; height: 128px; flex: none; border-radius: 50%; background: radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--card) 100%, transparent) 0 58%, color-mix(in srgb, var(--green) 9%, var(--card)) 100%); box-shadow: 0 10px 22px -12px color-mix(in srgb, var(--green) 55%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--green) 10%, transparent); }
+.gl-ring { position: absolute; inset: 0; width: 100%; height: 100%; }
+.gl-ring-bg { fill: none; stroke: color-mix(in srgb, var(--green) 12%, var(--border)); stroke-width: 7; }
+.gl-ring-fg { fill: none; stroke-width: 7; stroke-linecap: round; animation: gl-ring-fill 1.2s cubic-bezier(.22, 1, .36, 1) .1s both; }
 .gl-g1 { stop-color: var(--green); }
 .gl-g2 { stop-color: var(--accent-2); }
-@keyframes gl-ring-fill { from { stroke-dasharray: 0 276.46; } }
-.gl-ring-top { font-size: 24px; font-weight: 800; fill: var(--text); }
+@keyframes gl-ring-fill { from { stroke-dasharray: 0 270.18; } }
+.gl-ring-txt { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; direction: rtl; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
+.gl-ring-txt b { font-size: 26px; line-height: 1.1; font-weight: 800; color: var(--text); }
+.gl-ring-txt small { font-size: var(--fs-xs); font-weight: 700; color: var(--hint); }
 .gl-chips { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .gl-chip { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; padding: 9px 12px; border-radius: var(--r-lg); font-size: var(--fs-xs); font-weight: 700; background: color-mix(in srgb, var(--hint) 10%, transparent); color: var(--hint); }
 .gl-chip b { font-size: var(--fs-lg); font-weight: 800; }
@@ -326,5 +329,5 @@
 .gl-bar.h8 { height: 80%; }
 .gl-bar.h9 { height: 90%; }
 .gl-bar.h10 { height: 100%; }
-@media (max-width: 800px) { .ms-side { position: static; } .gl-ring { width: 108px; height: 108px; } }
+@media (max-width: 800px) { .ms-side { position: static; } .gl-ring-box { width: 108px; height: 108px; } .gl-ring-txt b { font-size: 22px; } }
 @media (prefers-reduced-motion: reduce) { .gl-ring-fg, .gl-bar { animation: none; } }

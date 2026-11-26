@@ -210,7 +210,7 @@
   function weekGlance(sel) {
     const t = (sel.summary && sel.summary.tasks) || {};
     const pct = t.completionPercent == null ? 0 : Math.max(0, Math.min(100, Number(t.completionPercent)));
-    const C = 276.46; const dash = Math.round((pct / 100) * C * 10) / 10; // محیط دایره‌ی r=44
+    const C = 270.18; const dash = Math.round((pct / 100) * C * 10) / 10; // محیط دایره‌ی r=43
     const dayInfo = (x) => {
       const list = (x.tasks || []).filter((k) => !k.isSystem && !k.outOfPlan && !k.dropped);
       if (!list.length) return { state: 'none', step: 0 };
@@ -227,7 +227,7 @@
     return `<section class="card ms-glance" aria-label="هفته در یک نگاه">
       <h3>هفته در یک نگاه</h3>
       <div class="gl-main">
-        <svg class="gl-ring" viewBox="0 0 100 100" role="img" aria-label="تکمیل تسک‌ها ${t.completionPercent == null ? 'نامشخص' : fmt.num(pct) + ' درصد'}"><defs><linearGradient id="glg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="gl-g1"/><stop offset="1" class="gl-g2"/></linearGradient></defs><circle class="gl-ring-bg" cx="50" cy="50" r="44"/><circle class="gl-ring-fg" cx="50" cy="50" r="44" stroke="url(#glg)" stroke-dasharray="${dash} ${C}" transform="rotate(-90 50 50)"/><text class="gl-ring-top" x="50" y="60" text-anchor="middle">${t.completionPercent == null ? '—' : fmt.num(pct) + '٪'}</text></svg>
+        <div class="gl-ring-box"><svg class="gl-ring" viewBox="0 0 100 100" role="img" aria-label="تکمیل تسک‌ها ${t.completionPercent == null ? 'نامشخص' : fmt.num(pct) + ' درصد'}"><defs><linearGradient id="glg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="gl-g1"/><stop offset="1" class="gl-g2"/></linearGradient></defs><circle class="gl-ring-bg" cx="50" cy="50" r="43"/><circle class="gl-ring-fg" cx="50" cy="50" r="43" stroke="url(#glg)" stroke-dasharray="${dash} ${C}" transform="rotate(-90 50 50)"/></svg><div class="gl-ring-txt" aria-hidden="true"><b>${t.completionPercent == null ? '—' : fmt.num(pct) + '٪'}</b><small>تکمیل</small></div></div>
         <div class="gl-chips">${chip('ok', t.done, 'انجام‌شده')}${chip('part', t.partial, 'ناقص')}${chip('bad', t.notDone, 'انجام‌نشده')}${chip('wait', t.noAnswer, 'بی‌پاسخ')}</div>
       </div>
       <ul class="gl-days" aria-label="پیشرفت تسک‌ها در روزهای هفته">${days}</ul>
