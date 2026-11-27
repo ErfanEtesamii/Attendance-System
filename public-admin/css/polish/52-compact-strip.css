@@ -122,3 +122,16 @@
 @media (max-width: 640px) { .pf-tiles.pf-tiles > .pf-tile, .pf-kpis.pf-kpis > .pf-kpi { flex-basis: 40%; } }
 .pf-kpis.pf-kpis > .pf-kpi { flex: 1 1 0; min-width: 120px; overflow: hidden; }
 .pf-kpis.pf-kpis > .pf-kpi * { max-width: 100%; }
+
+/* ---------- برترین‌ها (عملکرد): ۴ کارت در یک ردیف، فشرده ---------- */
+.pf-leaders.pf-leaders { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.pf-leaders.pf-leaders > .pf-leadercard { flex: 1 1 220px; min-width: 0; padding: 10px 12px; }
+.pf-leaders .pf-leadercard h3 { font-size: var(--fs-xs); margin-bottom: 4px; }
+.pf-leaders .pf-leader { display: grid; grid-template-columns: auto auto minmax(0, 1fr); grid-template-areas: "rk av nm" ". . em"; align-items: center; column-gap: 8px; row-gap: 0; padding: 5px 4px; }
+.pf-leaders .pf-leader > .pf-rank { grid-area: rk; width: 16px; }
+.pf-leaders .pf-leader > :nth-child(2) { grid-area: av; transform: scale(.85); transform-origin: center; }
+.pf-leaders .pf-leader > .pf-leader-name { grid-area: nm; }
+.pf-leaders .pf-leader > .pf-leader-name b { font-size: 12.5px; }
+.pf-leaders .pf-leader > em { grid-area: em; font-size: 10.5px; justify-self: start; }
+.pf-leaders .pf-leader { grid-template-areas: "rk av nm" "rk av em"; }
+.pf-leaders .pf-leader > .pf-rank, .pf-leaders .pf-leader > :nth-child(2) { align-self: center; }
