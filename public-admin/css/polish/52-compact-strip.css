@@ -111,3 +111,14 @@
     flex-basis: 40%;
   }
 }
+
+/* ---------- عملکرد: همه‌ی کاشی‌ها در یک ردیف؛ نوشته‌ها کوچک‌تر ---------- */
+.pf-tiles.pf-tiles > .pf-tile { flex: 1 1 118px; padding: 10px 10px; gap: 3px; }
+.pf-tiles.pf-tiles > .pf-tile .pf-tile-val { font-size: 14px; line-height: 1.45; font-weight: 800; }
+.pf-tiles.pf-tiles > .pf-tile .pf-tile-name { font-size: 12px; }
+.pf-tiles.pf-tiles > .pf-tile .pf-ico { width: 26px; height: 26px; flex: none; }
+.pf-tiles.pf-tiles > .pf-tile::after { font-size: 10.5px; }
+.pf-kpis.pf-kpis > .pf-kpi { flex: 1 1 120px; padding: 10px 12px; }
+@media (max-width: 640px) { .pf-tiles.pf-tiles > .pf-tile, .pf-kpis.pf-kpis > .pf-kpi { flex-basis: 40%; } }
+.pf-kpis.pf-kpis > .pf-kpi { flex: 1 1 0; min-width: 120px; overflow: hidden; }
+.pf-kpis.pf-kpis > .pf-kpi * { max-width: 100%; }
