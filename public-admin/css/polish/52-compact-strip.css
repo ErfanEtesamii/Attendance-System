@@ -176,3 +176,20 @@
 .np-stats.np-stats > .np-stat.is-none:hover { background: color-mix(in srgb, var(--red) 9%, transparent); }
 .st-layout .st-chips.st-chips > .st-chip { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
 .np-stats.np-stats { flex-wrap: nowrap; } .np-stats.np-stats > .np-stat { flex-basis: 0; }
+
+/* ---------- آیکن کنار هر خانه (tile-icons.js) ---------- */
+.tile-ico { display: inline-grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 10px; color: var(--tone, var(--k, var(--brand))); background: color-mix(in srgb, var(--tone, var(--k, var(--brand))) 14%, var(--card)); }
+.tile-ico svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pf-kpis.pf-kpis > .pf-kpi.has-tile-ico, .nt-stats.nt-stats > .nt-stat.has-tile-ico, .ex-chips.ex-chips > .ex-chip.has-tile-ico {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; row-gap: 4px; align-items: center; align-content: start;
+}
+.pf-kpis.pf-kpis > .pf-kpi.has-tile-ico > .tile-ico, .nt-stats.nt-stats > .nt-stat.has-tile-ico > .tile-ico, .ex-chips.ex-chips > .ex-chip.has-tile-ico > .tile-ico { grid-column: 1; grid-row: 1; }
+.pf-kpis.pf-kpis > .pf-kpi.has-tile-ico > .pf-kpi-label { grid-column: 2; grid-row: 1; }
+.pf-kpis.pf-kpis > .pf-kpi.has-tile-ico > .pf-kpi-val, .pf-kpis.pf-kpis > .pf-kpi.has-tile-ico > .pf-kpi-foot { grid-column: 1 / -1; }
+.nt-stats.nt-stats > .nt-stat.has-tile-ico > span, .ex-chips.ex-chips > .ex-chip.has-tile-ico > span { grid-column: 2; grid-row: 1; }
+.nt-stats.nt-stats > .nt-stat.has-tile-ico > b, .ex-chips.ex-chips > .ex-chip.has-tile-ico > b { grid-column: 1 / -1; grid-row: 2; }
+.np-stats.np-stats > .np-stat.has-tile-ico { flex-direction: column; align-items: center; }
+.st-layout .st-chips.st-chips > .st-chip.has-tile-ico { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; row-gap: 2px; align-items: center; }
+.st-layout .st-chips.st-chips > .st-chip.has-tile-ico > .tile-ico { grid-column: 1; grid-row: 1 / span 2; width: 26px; height: 26px; }
+.st-layout .st-chips.st-chips > .st-chip.has-tile-ico > .st-chip-k, .st-layout .st-chips.st-chips > .st-chip.has-tile-ico > .st-chip-v { grid-column: 2; }
+.st-layout .st-chips > .st-chip.has-tile-ico::before { display: none; }
