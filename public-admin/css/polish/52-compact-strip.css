@@ -193,3 +193,8 @@
 .st-layout .st-chips.st-chips > .st-chip.has-tile-ico > .tile-ico { grid-column: 1; grid-row: 1 / span 2; width: 26px; height: 26px; }
 .st-layout .st-chips.st-chips > .st-chip.has-tile-ico > .st-chip-k, .st-layout .st-chips.st-chips > .st-chip.has-tile-ico > .st-chip-v { grid-column: 2; }
 .st-layout .st-chips > .st-chip.has-tile-ico::before { display: none; }
+
+/* ---------- نمودار میله‌ای حقوق: شبکه‌ی ملایم‌تر و برچسب‌های خواناتر ---------- */
+.pf-svg .pf-grid { stroke-dasharray: 3 5; opacity: .7; }
+.pf-svg .pf-axis-unit { font-size: 10px; fill: var(--hint); font-weight: 700; }
+.pf-svg .pf-bar-val { font-size: 10.5px; font-weight: 700; }

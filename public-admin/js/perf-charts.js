@@ -17,6 +17,16 @@
     const pow = 10 ** Math.floor(Math.log10(v)); const f = v / pow;
     return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * pow;
   }
+  // محور «رند»: گام از {۱، ۲، ۲٫۵، ۵}×۱۰^k؛ بالاترین مقدار به نزدیک‌ترین گام بالاتر گرد می‌شود و ۴ تا ۶ خط شبکه می‌ماند
+  function niceScale(v) {
+    if (!(v > 0)) return { max: 1, steps: 4 };
+    const pow = 10 ** Math.floor(Math.log10(v / 4));
+    for (const f of [1, 2, 2.5, 5, 10, 20, 25, 50]) {
+      const step = f * pow; const steps = Math.ceil(v / step - 1e-9);
+      if (steps <= 6) return { max: step * Math.max(steps, 2), steps: Math.max(steps, 2) };
+    }
+    return { max: niceMax(v), steps: 4 };
+  }
   const clock = (m) => { if (m == null) return '—'; const a = Math.round(m); return `${D.fa(String(Math.floor(a / 60) % 24).padStart(2, '0'))}:${D.fa(String(a % 60).padStart(2, '0'))}`; };
   const metricText = (m, v) => (m.kind === 'min' ? D.fmt.min(v) : m.kind === 'money' ? `${D.fmt.num(v)} تومان` : D.fmt.num(v));
 
@@ -144,7 +154,7 @@
     const tip = wrap(host);
     if (!items.length || !items.some((x) => x.value > 0)) { emptyMsg(host, 'داده‌ای برای نمایش نیست.'); return; }
     const n = items.length;
-    const mx = niceMax(Math.max(...items.map((x) => x.value)));
+    const { max: mx, steps: ST } = niceScale(Math.max(...items.map((x) => x.value)));
     const bw = (W - L - R) / n;
     const xC = (i) => W - R - (i + 0.5) * bw; // RTL
     const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, class: `pf-svg${o.tone ? ` pf-svg-${o.tone}` : ''}`, role: 'img', 'aria-label': o.aria || 'نمودار میله‌ای' });
@@ -153,12 +163,13 @@
     const lg = el('linearGradient', { id: gid, x1: 0, y1: 0, x2: 0, y2: 1 });
     lg.appendChild(el('stop', { offset: '0%', class: 'pf-gs-a' })); lg.appendChild(el('stop', { offset: '100%', class: 'pf-gs-b' }));
     defs.appendChild(lg); svg.appendChild(defs);
-    grid(svg, 4);
-    for (let i = 0; i <= 4; i += 1) {
-      const v = mx * (1 - i / 4);
-      const txt = o.unit === 'money' ? `${D.fa(Math.round((v / 1e6) * 10) / 10)}م` : o.unit === 'min' ? `${D.fa(Math.round((v / 60) * 10) / 10)} س` : D.fa(Math.round(v * 10) / 10);
-      svg.appendChild(el('text', { x: L - 8, y: T + (i * (H - T - B)) / 4 + 4, class: 'pf-axis', 'text-anchor': 'end' }, txt));
+    grid(svg, ST);
+    for (let i = 0; i <= ST; i += 1) {
+      const v = mx * (1 - i / ST);
+      const txt = o.unit === 'money' ? D.fa(Math.round((v / 1e6) * 100) / 100) : o.unit === 'min' ? `${D.fa(Math.round((v / 60) * 10) / 10)} س` : D.fa(Math.round(v * 10) / 10);
+      svg.appendChild(el('text', { x: L - 8, y: T + (i * (H - T - B)) / ST + 4, class: 'pf-axis', 'text-anchor': 'end' }, txt));
     }
+    if (o.unit === 'money') svg.appendChild(el('text', { x: L - 8, y: T - 10, class: 'pf-axis pf-axis-unit', 'text-anchor': 'end' }, 'میلیون تومان'));
     const every = Math.max(1, Math.ceil(n / 10));
     const fmtVal = (v) => (o.unit === 'money' ? `${D.fmt.num(v)} تومان` : o.unit === 'min' ? D.fmt.min(v) : D.fmt.num(v));
     const cumVals = []; let run = 0; items.forEach((x) => { run += x.value; cumVals.push(run); });
@@ -175,7 +186,7 @@
       if (h > 0) {
         const top = x.value === maxVal;
         g.appendChild(el('rect', { x: xC(i) - w / 2, y: H - B - h, width: w, height: h, rx: Math.min(10, w / 2.4), fill: `url(#${gid})`, class: `pf-bar-grad${top ? ' pf-bar-top' : ''}${x.tone ? ` pf-tone-${x.tone}` : ''}` }));
-        if (n <= 14) g.appendChild(el('text', { x: xC(i), y: Math.max(T + 10, H - B - h - 7), class: `pf-bar-val${top ? ' pf-bar-val-top' : ''}`, 'text-anchor': 'middle' }, shortVal(x.value)));
+        if (n <= 16) g.appendChild(el('text', { x: xC(i), y: Math.max(T + 10, H - B - h - 7), class: `pf-bar-val${top ? ' pf-bar-val-top' : ''}`, 'text-anchor': 'middle' }, shortVal(x.value)));
       }
       const show = () => { tip.innerHTML = `<b>${D.esc(x.label)}</b>${x.sub ? `<small>${D.esc(x.sub)}</small>` : ''}<span class="pf-tip-row pf-m-useful"><i class="pf-dot"></i>${D.esc(o.valueLabel || 'مقدار')}<em>${fmtVal(x.value)}</em></span>${o.cumulative ? `<span class="pf-tip-row pf-m-tasksDone"><i class="pf-dot"></i>تجمعی<em>${fmtVal(cumVals[i])}</em></span>` : ''}`; tip.hidden = false; placeTip(tip, svg, xC(i)); };
       g.addEventListener('pointerenter', show); g.addEventListener('focus', show);
@@ -186,7 +197,7 @@
     if (avg != null) {
       const ya = T + (1 - avg / mx) * (H - T - B);
       svg.appendChild(el('line', { x1: L, x2: W - R, y1: ya, y2: ya, class: 'pf-avgline pf-m-tasksDone' }));
-      svg.appendChild(el('text', { x: W - R - 4, y: ya - 5, class: 'pf-avglabel pf-m-tasksDone', 'text-anchor': 'start' }, `میانگین ${shortVal(avg)}`));
+      svg.appendChild(el('text', { x: L + 6, y: ya - 6, class: 'pf-avglabel pf-m-tasksDone', 'text-anchor': 'end' }, `میانگین ${shortVal(avg)}`));
     }
     if (o.cumulative && n > 1) {
       const d = cumVals.map((v, i) => `${i ? 'L' : 'M'}${xC(i).toFixed(1)},${(T + (1 - v / cmx) * (H - T - B)).toFixed(1)}`).join(' ');
