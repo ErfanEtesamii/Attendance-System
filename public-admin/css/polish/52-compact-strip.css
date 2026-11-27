@@ -135,3 +135,23 @@
 .pf-leaders .pf-leader > em { grid-area: em; font-size: 10.5px; justify-self: start; }
 .pf-leaders .pf-leader { grid-template-areas: "rk av nm" "rk av em"; }
 .pf-leaders .pf-leader > .pf-rank, .pf-leaders .pf-leader > :nth-child(2) { align-self: center; }
+
+/* ---------- اندازه‌ی عدد با عرض کاشی تنظیم می‌شود: هرچه جا کم‌تر، فونت کوچک‌تر؛ همه در یک ردیف ---------- */
+.stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) > .stat.stat { flex: 1 1 130px; container-type: inline-size; }
+.stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) > .stat.stat > .stat-value,
+.stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) > .stat.stat .stat-value .dur-part b { font-size: clamp(14px, 9.5cqi, 24px); }
+.stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) > .stat.stat .stat-value .dur-part { font-size: clamp(10px, 6cqi, 14px); }
+.stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) > .stat.stat > .stat-hint { font-size: clamp(10px, 6.5cqi, 11px); }
+.pf-tiles.pf-tiles > .pf-tile, .prk-row.prk-row > .prk, .emp-v2 .emp-stats.emp-stats > .emp-stat, .nt-stats.nt-stats > .nt-stat { container-type: inline-size; }
+.prk-row > .prk .prk-v { font-size: clamp(14px, 10cqi, 24px); }
+.nt-stats .nt-stat b { font-size: clamp(16px, 12cqi, 24px); }
+@media (max-width: 640px) {
+  .stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) > .stat.stat { flex-basis: 40%; }
+}
+.pf-kpis.pf-kpis > .pf-kpi { container-type: inline-size; }
+.pf-kpis.pf-kpis > .pf-kpi .pf-kpi-val, .pf-kpis.pf-kpis > .pf-kpi .pf-kpi-val .pf-amount { font-size: clamp(13px, 9cqi, 22px); line-height: 1.35; }
+.pf-kpis.pf-kpis > .pf-kpi .pf-kpi-val * { font-size: inherit; }
+.pf-kpis.pf-kpis > .pf-kpi .pf-kpi-label { font-size: clamp(11px, 6.5cqi, 12.5px); }
+.pf-kpis.pf-kpis > .pf-kpi.pf-kpi .pf-kpi-val, .pf-kpis.pf-kpis > .pf-kpi.pf-kpi .pf-kpi-val * { font-size: clamp(13px, 9cqi, 22px); line-height: 1.35; }
+.pf-kpis.pf-kpis > .pf-kpi.pf-kpi .pf-kpi-val small, .pf-kpis.pf-kpis > .pf-kpi.pf-kpi .pf-kpi-val .unit { font-size: clamp(10px, 6cqi, 12px); }
+.pf-kpis.pf-kpis > .pf-kpi.pf-kpi .pf-kpi-val { --amt-fs: clamp(13px, 9cqi, 22px); }

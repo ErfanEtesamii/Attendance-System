@@ -214,7 +214,7 @@ tr.clickable:hover .pf-person b { color: var(--brand); }
 .pf-pay-grid span { display: block; color: var(--hint); font-size: var(--fs-xs); font-weight: 600; margin-bottom: 4px; }
 .pf-pay-grid strong { font-size: var(--fs-lg); font-weight: 800; font-variant-numeric: tabular-nums; }
 .pf-amount {
-  font-size: 26px !important; letter-spacing: -.4px;
+  font-size: var(--amt-fs, 26px) !important; letter-spacing: -.4px;
   background: linear-gradient(100deg, var(--green), color-mix(in srgb, var(--accent-2) 60%, var(--green)));
   -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
 }
