@@ -197,7 +197,7 @@
     if (avg != null) {
       const ya = T + (1 - avg / mx) * (H - T - B);
       svg.appendChild(el('line', { x1: L, x2: W - R, y1: ya, y2: ya, class: 'pf-avgline pf-m-tasksDone' }));
-      svg.appendChild(el('text', { x: L + 6, y: ya - 6, class: 'pf-avglabel pf-m-tasksDone', 'text-anchor': 'end' }, `میانگین ${shortVal(avg)}`));
+      svg.appendChild(el('text', { x: L + 46, y: ya - 6, class: 'pf-avglabel pf-m-tasksDone', 'text-anchor': 'end' }, `میانگین ${shortVal(avg)}`));
     }
     if (o.cumulative && n > 1) {
       const d = cumVals.map((v, i) => `${i ? 'L' : 'M'}${xC(i).toFixed(1)},${(T + (1 - v / cmx) * (H - T - B)).toFixed(1)}`).join(' ');

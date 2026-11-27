@@ -198,3 +198,13 @@
 .pf-svg .pf-grid { stroke-dasharray: 3 5; opacity: .7; }
 .pf-svg .pf-axis-unit { font-size: 10px; fill: var(--hint); font-weight: 700; }
 .pf-svg .pf-bar-val { font-size: 10.5px; font-weight: 700; }
+.pf-svg-green .pf-gs-a { stop-color: color-mix(in srgb, var(--green) 52%, var(--card)); }
+.pf-svg-green .pf-gs-b { stop-color: var(--green); }
+.pf-svg .pf-bar-grad { opacity: .92; filter: drop-shadow(0 6px 8px color-mix(in srgb, var(--green) 20%, transparent)); }
+.pf-svg:has(.pf-hour:hover) .pf-bar-grad:not(.pf-bar-top) { opacity: .5; }
+.pf-svg:has(.pf-hour:hover) .pf-hour:hover .pf-bar-grad { opacity: 1; }
+.pf-svg .pf-bar-val, .pf-svg .pf-avglabel { paint-order: stroke; stroke: var(--card); stroke-width: 4px; stroke-linejoin: round; }
+.pf-svg .pf-bar-val-top { fill: var(--green); }
+.pf-svg .pf-avgline { stroke-width: 1.5; stroke-dasharray: 6 5; }
+.pf-svg .pf-axis { font-size: 11px; font-weight: 600; }
+.pf-chartcard { padding: var(--space-4) var(--space-5) var(--space-3); }
