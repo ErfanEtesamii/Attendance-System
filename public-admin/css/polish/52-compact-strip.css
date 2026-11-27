@@ -93,3 +93,21 @@
 .nt-stats .nt-stat::before { display: none; }
 .nt-stats .nt-stat b { font-size: 24px; }
 .ex-chips > .ex-chip b { font-size: 22px; }
+
+/* ---------- ردیف آخر هیچ‌وقت خالی نمی‌ماند: کاشی‌ها کل عرض را پر می‌کنند ---------- */
+.stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn),
+.prk-row.prk-row, .pf-kpis.pf-kpis, .pf-tiles.pf-tiles, .emp-v2 .emp-stats.emp-stats, .nt-stats.nt-stats, .ex-chips.ex-chips {
+  display: flex; flex-wrap: wrap; align-items: stretch;
+}
+.stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) > .stat.stat,
+.prk-row.prk-row > .prk, .pf-kpis.pf-kpis > .pf-kpi, .pf-tiles.pf-tiles > .pf-tile,
+.emp-v2 .emp-stats.emp-stats > .emp-stat, .nt-stats.nt-stats > .nt-stat, .ex-chips.ex-chips > .ex-chip {
+  flex: 1 1 176px; min-width: 0; box-sizing: border-box;
+}
+@media (max-width: 640px) {
+  .stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) > .stat.stat,
+  .prk-row.prk-row > .prk, .pf-kpis.pf-kpis > .pf-kpi, .pf-tiles.pf-tiles > .pf-tile,
+  .emp-v2 .emp-stats.emp-stats > .emp-stat, .nt-stats.nt-stats > .nt-stat, .ex-chips.ex-chips > .ex-chip {
+    flex-basis: 40%;
+  }
+}
