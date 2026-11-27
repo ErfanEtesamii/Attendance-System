@@ -166,3 +166,13 @@
 .nt-stats.nt-stats > .nt-stat:hover { background: color-mix(in srgb, var(--tone, var(--brand)) 9%, transparent); }
 .ex-chips.ex-chips > .ex-chip:hover { background: color-mix(in srgb, var(--brand) 8%, transparent); }
 .prk-row.prk-row > .prk, .emp-v2 .emp-stats.emp-stats > .emp-stat, .nt-stats.nt-stats > .nt-stat, .ex-chips.ex-chips > .ex-chip { transition: background-color var(--motion-fast) var(--ease-out); }
+
+/* ---------- برنامه‌ی هفته‌ی بعد و تنظیمات: همان نوار یکپارچه ---------- */
+.np-stats.np-stats, .st-layout .st-chips.st-chips { display: flex; flex-wrap: wrap; gap: 0; overflow: hidden; background: var(--card); border: 1px solid var(--border); border-radius: var(--r-xl); box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 6%, transparent); }
+.np-stats.np-stats > .np-stat, .st-layout .st-chips.st-chips > .st-chip { flex: 1 1 110px; min-width: 0; box-sizing: border-box; border: 0; border-radius: 0; background: transparent; box-shadow: -1px 0 0 var(--border), 0 -1px 0 var(--border); padding: 10px 12px; transition: background-color var(--motion-fast) var(--ease-out); }
+.np-stats.np-stats > .np-stat:hover, .st-layout .st-chips.st-chips > .st-chip:hover { background: color-mix(in srgb, var(--brand) 8%, transparent); }
+.np-stats.np-stats > .np-stat.is-ok:hover { background: color-mix(in srgb, var(--green) 9%, transparent); }
+.np-stats.np-stats > .np-stat.is-draft:hover { background: color-mix(in srgb, var(--orange) 9%, transparent); }
+.np-stats.np-stats > .np-stat.is-none:hover { background: color-mix(in srgb, var(--red) 9%, transparent); }
+.st-layout .st-chips.st-chips > .st-chip { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.np-stats.np-stats { flex-wrap: nowrap; } .np-stats.np-stats > .np-stat { flex-basis: 0; }
