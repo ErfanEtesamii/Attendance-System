@@ -667,7 +667,7 @@
       };
     });
     // نمودار میله‌ایِ سهم هر نفر
-    PC.barsChart($('#pay-chart', page), rows.filter((r) => r.amount > 0).sort((a, b) => b.amount - a.amount).map((r) => ({ label: r.name, short: r.name.split(' ')[0], value: r.amount, sub: r.user.department || '' })), { unit: 'money', tone: 'green', valueLabel: 'حقوق', aria: 'حقوق هر کارمند' });
+    PC.barsChart($('#pay-chart', page), rows.filter((r) => r.amount > 0).sort((a, b) => b.amount - a.amount).map((r) => ({ label: r.name, short: r.name.trim().split(/\s+/).pop(), value: r.amount, sub: r.user.department || '' })), { unit: 'money', tone: 'green', valueLabel: 'حقوق', aria: 'حقوق هر کارمند' });
     const body = $('#pay-body', page);
     const count = $('#pay-count', page);
     const shortMin = (value) => {

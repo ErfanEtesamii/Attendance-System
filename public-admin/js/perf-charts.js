@@ -170,7 +170,7 @@
       svg.appendChild(el('text', { x: L - 8, y: T + (i * (H - T - B)) / ST + 4, class: 'pf-axis', 'text-anchor': 'end' }, txt));
     }
     if (o.unit === 'money') svg.appendChild(el('text', { x: L - 8, y: T - 10, class: 'pf-axis pf-axis-unit', 'text-anchor': 'end' }, 'میلیون تومان'));
-    const every = Math.max(1, Math.ceil(n / 10));
+    const every = Math.max(1, Math.ceil(n / 14));
     const fmtVal = (v) => (o.unit === 'money' ? `${D.fmt.num(v)} تومان` : o.unit === 'min' ? D.fmt.min(v) : D.fmt.num(v));
     const cumVals = []; let run = 0; items.forEach((x) => { run += x.value; cumVals.push(run); });
     const cmx = niceMax(run);
