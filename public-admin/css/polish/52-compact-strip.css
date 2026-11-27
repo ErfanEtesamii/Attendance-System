@@ -1,0 +1,95 @@
+/* ===== ۵۲) نوار شاخص‌ها و چیدمان فشرده برای همه‌ی صفحه‌ها (هم‌سبک داشبورد) =====
+   هدف: یک کارت یکپارچه با خانه‌های جداشده با خط نازک، حاشیه‌ی کم و ریتم فاصله‌ی یکدست در همه‌ی صفحه‌ها.
+   داشبورد (data-widget="stats") و ردیف کاشی+کارت درآمد «وضعیت من» (ms-stats-earn) در جای خودشان می‌مانند.
+   فقط توکن‌های tokens.css؛ بدون رنگ سخت‌کد. جداکننده‌ها با سایه‌ی بیرونی کاشی‌اند تا با auto-fit هم درست کار کنند. */
+
+.stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) {
+  grid-template-columns: repeat(auto-fit, minmax(176px, 1fr)); gap: 0; padding: 0; overflow: hidden; align-items: stretch;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--r-xl);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 6%, transparent), 0 14px 28px -24px color-mix(in srgb, var(--brand) 45%, transparent);
+}
+.stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) > .stat.stat {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "label icon" "value value" "hint hint" "trend trend";
+  align-items: center; justify-items: stretch; row-gap: 6px; column-gap: 8px; min-height: 0; padding: 12px 14px;
+  background: transparent; border: 0; border-radius: 0; animation: none; transform: none;
+  box-shadow: -1px 0 0 var(--border), 0 -1px 0 var(--border);
+  transition: background-color var(--motion-fast) var(--ease-out);
+}
+.stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) > .stat.stat::before,
+.stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) > .stat.stat::after { display: none; }
+.stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) > .stat.stat:hover { background: color-mix(in srgb, var(--tone) 7%, transparent); transform: none; box-shadow: -1px 0 0 var(--border), 0 -1px 0 var(--border); }
+.stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) > .stat.stat > .stat-icon { grid-area: icon; width: 30px; height: 30px; border-radius: 10px; border: 0; box-shadow: none; background: color-mix(in srgb, var(--tone) 13%, transparent); color: var(--tone-num, var(--tone)); }
+.stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) > .stat.stat > .stat-icon svg { width: 17px; height: 17px; }
+.stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) > .stat.stat > .stat-label { grid-area: label; margin: 0; font-size: var(--fs-xs); font-weight: 600; line-height: 1.5; color: var(--hint); align-self: center; }
+.stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) > .stat.stat > .stat-value { grid-area: value; margin: 0; font-size: 24px; font-weight: 800; line-height: 1.15; letter-spacing: -.3px; color: var(--text); }
+.stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) > .stat.stat .stat-value .dur-part b { font-size: 24px; }
+.stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) > .stat.stat > .stat-hint { grid-area: hint; margin: 0; padding: 0; background: transparent; border-radius: 0; color: var(--hint); font-size: 11px; line-height: 1.6; }
+.stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) > .stat.stat > .stat-trend { grid-area: trend; margin: 0; padding: 0; background: transparent; color: var(--hint); font-size: 11px; }
+.stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) > .stat.stat.is-zero { background: transparent; border: 0; box-shadow: -1px 0 0 var(--border), 0 -1px 0 var(--border); }
+.stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) > .stat.stat:last-child:nth-child(odd) { grid-column: auto; }
+@media (max-width: 600px) {
+  .stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; }
+  .stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) > .stat.stat { padding: 10px 12px; }
+  .stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) > .stat.stat > .stat-value, .stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) > .stat.stat .stat-value .dur-part b { font-size: 20px; }
+}
+.stat-grid.stat-grid:not([data-widget="stats"]):not(.ms-stats-earn) { margin-block: var(--space-3); }
+
+/* ---------- پورسانت من: قهرمان فشرده‌تر (حلقه و مبلغ کوچک‌تر، حاشیه‌ی کمتر) ---------- */
+.cm-hero { padding: var(--space-4) var(--space-5); gap: var(--space-4); }
+.cm-hero .cm-hero-amount span { font-size: 34px; }
+.cm-hero .cm-ring { width: 108px; height: 108px; }
+.cm-hero .cm-ring-cap { max-width: 220px; line-height: 1.7; }
+.cm-hero .cm-hero-ring { gap: var(--space-1); }
+@media (max-width: 800px) { .cm-hero .cm-hero-amount span { font-size: 28px; } .cm-hero .cm-ring { width: 96px; height: 96px; } }
+
+/* ---------- پرونده‌ی کارمند (.prk): نوار شاخص‌ها ---------- */
+.prk-kpis { gap: var(--space-3); margin-bottom: var(--space-3); }
+.prk-title { margin: 0 4px 6px; }
+.prk-row { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0; overflow: hidden; background: var(--card); border: 1px solid var(--border); border-radius: var(--r-xl); box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 6%, transparent), 0 14px 28px -24px color-mix(in srgb, var(--brand) 45%, transparent); }
+.prk-row > .prk { gap: 10px; padding: 12px 14px; border: 0; border-radius: 0; background: transparent; box-shadow: -1px 0 0 var(--border), 0 -1px 0 var(--border); transform: none; flex-direction: row; justify-content: flex-start; }
+.prk-row > .prk::before { display: none; }
+.prk-row > .prk:hover { background: color-mix(in srgb, var(--tone) 7%, transparent); transform: none; box-shadow: -1px 0 0 var(--border), 0 -1px 0 var(--border); }
+.prk-row > .prk .prk-ico { width: 30px; height: 30px; border-radius: 10px; border: 0; box-shadow: none; background: color-mix(in srgb, var(--tone) 13%, transparent); }
+.prk-row > .prk .prk-ico svg { width: 17px; height: 17px; }
+.prk-row > .prk .prk-body { flex: 1; gap: 2px; }
+.prk-row > .prk .prk-label { font-size: var(--fs-xs); font-weight: 600; color: var(--hint); }
+.prk-row > .prk .prk-v { font-size: 24px; font-weight: 800; }
+.prk-row > .prk .prk-u { font-size: 11px; margin-inline-end: 6px; }
+.prk-row > .prk .prk-hint { margin-top: 2px; padding: 0; background: transparent; color: var(--hint); font-size: 11px; }
+.prk-row > .prk.is-zero { background: transparent; border: 0; box-shadow: -1px 0 0 var(--border), 0 -1px 0 var(--border); }
+.prk-row > .prk:last-child:nth-child(odd) { grid-column: auto; }
+@media (max-width: 640px) { .prk-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; } .prk-row > .prk { padding: 10px 12px; } .prk-row > .prk .prk-v { font-size: 20px; } }
+
+/* ---------- عملکرد/حقوق کارمندان (.pf-kpis) ---------- */
+.pf-kpis { gap: 0; overflow: hidden; margin-bottom: var(--space-3); background: var(--card); border: 1px solid var(--border); border-radius: var(--r-xl); box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 6%, transparent), 0 14px 28px -24px color-mix(in srgb, var(--brand) 45%, transparent); }
+.pf-kpis > .pf-kpi { padding: 12px 14px; gap: 4px; border: 0; border-radius: 0; background: transparent; box-shadow: -1px 0 0 var(--border), 0 -1px 0 var(--border); animation: none; }
+.pf-kpis > .pf-kpi::before { display: none; }
+.pf-kpis > .pf-kpi .pf-kpi-val { font-size: 22px; line-height: 1.25; }
+.pf-kpis > .pf-kpi .pf-kpi-label { color: var(--hint); font-weight: 600; }
+
+/* ---------- کارمندان: خلاصه‌ی وضعیت‌ها ---------- */
+.emp-v2 .emp-stats { gap: 0; overflow: hidden; margin-block: 4px 12px; background: var(--card); border: 1px solid var(--border); border-radius: var(--r-xl); box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 6%, transparent), 0 14px 28px -24px color-mix(in srgb, var(--brand) 45%, transparent); }
+.emp-v2 .emp-stats .emp-stat { padding: 12px 16px; border: 0; border-radius: 0; background: transparent; box-shadow: -1px 0 0 var(--border), 0 -1px 0 var(--border); }
+.emp-v2 .emp-stats .emp-stat:hover, .emp-v2 .emp-stats .emp-stat.is-click:hover { transform: none; background: color-mix(in srgb, var(--tone) 7%, transparent); box-shadow: -1px 0 0 var(--border), 0 -1px 0 var(--border); }
+.emp-v2 .emp-stats .emp-stat.is-selected { background: color-mix(in srgb, var(--tone) 11%, transparent); }
+@media (max-width: 760px) { .emp-v2 .emp-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ---------- کاشی‌های انتخابِ شاخص (عملکرد): نوار یکپارچه؛ انتخاب‌شده با پس‌زمینه‌ی رنگی نرم و خط رنگی پایین ---------- */
+.pf-tiles { gap: 0; overflow: hidden; margin-bottom: var(--space-3); grid-template-columns: repeat(auto-fit, minmax(176px, 1fr)); background: var(--card); border: 1px solid var(--border); border-radius: var(--r-xl); box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 6%, transparent), 0 14px 28px -24px color-mix(in srgb, var(--brand) 45%, transparent); }
+.pf-tiles > .pf-tile { gap: 4px; padding: 12px 14px; border: 0; border-radius: 0; background: transparent; box-shadow: -1px 0 0 var(--border), 0 -1px 0 var(--border); animation: none; }
+.pf-tiles > .pf-tile::before { display: none; }
+.pf-tiles > .pf-tile:hover { transform: none; background: color-mix(in srgb, var(--tone) 7%, transparent); box-shadow: -1px 0 0 var(--border), 0 -1px 0 var(--border); }
+.pf-tiles > .pf-tile:active { transform: none; }
+.pf-tiles > .pf-tile.on { border: 0; background: color-mix(in srgb, var(--tone) 11%, transparent); box-shadow: -1px 0 0 var(--border), 0 -1px 0 var(--border), inset 0 -3px 0 var(--tone); }
+.pf-tiles > .pf-tile .pf-tile-val { font-size: 20px; line-height: 1.3; }
+.pf-tiles > .pf-tile::after { margin-top: 2px; padding: 0; border: 0; background: transparent; font-weight: 600; font-size: 11px; color: var(--hint); }
+.pf-tiles > .pf-tile.on::after { border: 0; background: transparent; color: color-mix(in srgb, var(--tone) 85%, var(--text)); }
+.pf-tiles > .pf-tile:hover::after { background: transparent; }
+.pf-tiles > .pf-tile .pf-tile-foot { min-height: 0; }
+
+/* ---------- مرور شبانه و خروجی‌ها: همان نوار یکپارچه ---------- */
+.nt-stats, .ex-chips { gap: 0; overflow: hidden; margin-bottom: var(--space-3); background: var(--card); border: 1px solid var(--border); border-radius: var(--r-xl); box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 6%, transparent), 0 14px 28px -24px color-mix(in srgb, var(--brand) 45%, transparent); }
+.nt-stats .nt-stat, .ex-chips > .ex-chip { padding: 12px 16px; border: 0; border-radius: 0; background: transparent; box-shadow: -1px 0 0 var(--border), 0 -1px 0 var(--border); animation: none; transform: none; }
+.nt-stats .nt-stat::before { display: none; }
+.nt-stats .nt-stat b { font-size: 24px; }
+.ex-chips > .ex-chip b { font-size: 22px; }
