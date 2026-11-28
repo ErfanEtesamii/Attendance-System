@@ -279,6 +279,19 @@
     });
   }
 
+  // دورکاری‌های ردشده با دلیل ادمین (فقط‌خواندنی). اصلاح/ارسال مجدد از دکمه‌های همان پیام در ربات تلگرام است.
+  function rejectedMineCard(items) {
+    if (!items || !items.length) return '';
+    const mins = (n) => { const h = Math.floor(n / 60); const m = n % 60; return `${h ? `${fmt.num(h)} ساعت` : ''}${h && m ? ' و ' : ''}${m || !h ? `${fmt.num(m)} دقیقه` : ''}`; };
+    const row = (it) => `<li class="ms-rr-item">
+      <div class="ms-rr-top"><strong>${esc(fmt.date(it.workDate))}</strong><span class="muted" dir="ltr">${esc(fmt.clock(it.startAt))} – ${esc(fmt.clock(it.endAt))}</span>${it.accepted ? AP.badge('', 'پذیرفته‌شده') : AP.badge('red', 'ردشده', true)}</div>
+      <div class="ms-rr-reason"><span class="muted">دلیل ${esc(it.reviewerName || 'ادمین')}:</span> ${it.reviewNote ? esc(it.reviewNote) : '<span class="muted">بدون توضیح</span>'}</div>
+      ${it.tasks.length ? `<details class="rw-tasks"><summary>${fmt.num(it.tasks.length)} تسک گزارش‌شده · ${esc(mins(it.tasksMinutes))}</summary><ol>${it.tasks.map((t) => `<li>${esc(t.title)} — ${esc(mins(t.minutes))}</li>`).join('')}</ol></details>` : ''}
+      ${it.canRevise ? '<div class="muted text-xs">برای اصلاح و ارسال مجدد، در ربات تلگرام از دکمه‌های پیام «دورکاری شما رد شد» استفاده کن.</div>' : ''}
+    </li>`;
+    return `<section class="card ms-rr" aria-label="دورکاری‌های ردشده"><div class="card-head"><h3>❌ دورکاری‌های ردشده</h3><span class="muted text-xs">${fmt.num(items.length)} مورد در ۶۰ روز اخیر</span></div><ul class="plain ms-rr-list">${items.map(row).join('')}</ul></section>`;
+  }
+
   AP.view('remote', {
     skeleton: 'table',
     perm: 'remote_work.read',
@@ -291,6 +304,7 @@
         <div class="view-header"><div><h2>دورکاری</h2>
           <div class="sub">ساعت‌هایی که کارمندان بیرون از شبکه ثبت کرده‌اند؛ تا تأیید شما در حضور و غیاب، گزارش‌ها و حقوق حساب نمی‌شوند.${canReview ? '' : ' (فقط‌خواندنی)'}</div></div>
           <div class="header-actions">${canCreate ? '<button type="button" class="btn ghost" id="rw-add">ثبت دستی دورکاری</button>' : ''}${canReview ? '<button type="button" class="btn primary" id="rw-batch">تأیید دسته‌ای</button>' : ''}</div></div>
+        <div id="rw-mine-rejected"></div>
         <div class="chips" id="rw-chips">${STATUSES.map(([k, l]) => `<button type="button" class="chip ${k === ui.status ? 'active' : ''}" data-s="${k}">${l}</button>`).join('')}</div>
         <form class="filters" id="rw-filters">
           <label class="field"><span>بازه</span><select name="weekMode">${WEEK_MODES.map(([k, l]) => `<option value="${k}" ${k === ui.weekMode ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
@@ -302,6 +316,7 @@
         html,
         mount(page) {
           AP.dates.mount(page);
+          AP.api('/admin/me/remote/rejected').then((r) => { const box = $('#rw-mine-rejected', page); if (box && r && Array.isArray(r.items)) box.innerHTML = rejectedMineCard(r.items); }).catch(() => {}); // غیرحیاتی: دورکاری‌های ردشده‌ی خودِ کاربر + دلیل ادمین
           $('#rw-chips', page).addEventListener('click', (e) => {
             const c = e.target.closest('[data-s]');
             if (c) { ui.status = c.dataset.s; ui.offset = 0; AP.refresh(); }

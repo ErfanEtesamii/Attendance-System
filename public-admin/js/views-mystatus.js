@@ -252,24 +252,11 @@
   // ---------- داده ----------
   const tasksUrl = (path, q) => `/admin/me/tasks/${path}${q ? `?${q}` : ''}`;
 
-  // دورکاری‌های ردشده با دلیل ادمین (فقط‌خواندنی). اصلاح/ارسال مجدد از دکمه‌های همان پیام در ربات تلگرام است.
-  function rejectedRemoteCard(items) {
-    if (!items || !items.length) return '';
-    const mins = (n) => { const h = Math.floor(n / 60); const m = n % 60; return `${h ? `${fmt.num(h)} ساعت` : ''}${h && m ? ' و ' : ''}${m || !h ? `${fmt.num(m)} دقیقه` : ''}`; };
-    const row = (it) => `<li class="ms-rr-item">
-      <div class="ms-rr-top"><strong>${esc(fmt.date(it.workDate))}</strong><span class="muted" dir="ltr">${esc(fmt.clock(it.startAt))} – ${esc(fmt.clock(it.endAt))}</span>${it.accepted ? AP.badge('', 'پذیرفته‌شده') : AP.badge('red', 'ردشده', true)}</div>
-      <div class="ms-rr-reason"><span class="muted">دلیل ${esc(it.reviewerName || 'ادمین')}:</span> ${it.reviewNote ? esc(it.reviewNote) : '<span class="muted">بدون توضیح</span>'}</div>
-      ${it.tasks.length ? `<details class="rw-tasks"><summary>${fmt.num(it.tasks.length)} تسک گزارش‌شده · ${esc(mins(it.tasksMinutes))}</summary><ol>${it.tasks.map((t) => `<li>${esc(t.title)} — ${esc(mins(t.minutes))}</li>`).join('')}</ol></details>` : ''}
-      ${it.canRevise ? '<div class="muted text-xs">برای اصلاح و ارسال مجدد، در ربات تلگرام از دکمه‌های پیام «دورکاری شما رد شد» استفاده کن.</div>' : ''}
-    </li>`;
-    return `<section class="card ms-rr" aria-label="دورکاری‌های ردشده"><div class="card-head"><h3>❌ دورکاری‌های ردشده</h3><span class="muted text-xs">${fmt.num(items.length)} مورد در ۶۰ روز اخیر</span></div><ul class="plain ms-rr-list">${items.map(row).join('')}</ul></section>`;
-  }
-
   async function loadAll() {
     const enc = encodeURIComponent;
     const cur = await AP.api('/admin/me/week');
     const loadDaily = (date) => AP.api(tasksUrl('today', date ? `date=${enc(date)}` : '')).catch((err) => ({ ok: false, error: err.message }));
-    const [sel, next, daily0, backfill, urgentCfg, earnings, commission, remoteRejected] = await Promise.all([
+    const [sel, next, daily0, backfill, urgentCfg, earnings, commission] = await Promise.all([
       ui.start && ui.start !== cur.week.start ? AP.api(`/admin/me/week?start=${enc(ui.start)}`) : Promise.resolve(cur),
       AP.api(`/admin/me/week?start=${enc(cur.week.nextWeekStart)}`).catch(() => null), // غیرحیاتی: فقط نشان وضعیت برنامه
       loadDaily(ui.taskDate),
@@ -277,11 +264,10 @@
       AP.api('/admin/me/urgent/config').catch(() => null), // غیرحیاتی: نبودنش فقط دکمه‌های «تسک فوری» را مخفی می‌کند
       AP.api('/admin/me/earnings').then((r) => (r && r.earnings) || null).catch(() => null), // غیرحیاتی: null ⇒ کارت نمایش داده نمی‌شود
       AP.api('/admin/me/commission').then((r) => (r && r.commission) || null).catch(() => null), // غیرحیاتی: null ⇒ کارت پورسانت نمایش داده نمی‌شود
-      AP.api('/admin/me/remote/rejected').then((r) => (r && Array.isArray(r.items) ? r.items : [])).catch(() => []), // غیرحیاتی: دورکاری‌های ردشده + دلیل ادمین
     ]);
     let daily = daily0;
     if (ui.taskDate && !(daily && daily.ok)) { ui.taskDate = ''; daily = await loadDaily(''); } // مهلت روزِ گذشته تمام شده ⇒ برگرد به امروز
-    const data = { cur, sel, next, daily, backfill, urgentCfg, earnings, commission, remoteRejected };
+    const data = { cur, sel, next, daily, backfill, urgentCfg, earnings, commission };
     return ownerDemoPlan(data);
   }
 
@@ -420,7 +406,6 @@
       : layout(earnHtml, cmHtml);
     return `${d.demoPlan ? '<div class="cm-demo-banner"><span class="cm-demo">نمونه</span> برنامه‌ی هفتگی و تسک‌های این صفحه فقط نمونه‌اند تا ظاهر پنل کارمند را ببینید؛ داده‌ی واقعی نیست و چیزی ذخیره نمی‌شود.</div>' : ''}${money}
         <div class="ms-top">${todayCard(d.cur, d.daily, d.backfill, d.urgentCfg)}<div class="ms-side">${nextPlanCard(d.cur, d.next)}${weekGlance(d.sel)}</div></div>
-        ${rejectedRemoteCard(d.remoteRejected)}
         <h3 class="ms-section-title">روزهای ${esc(weekTitle(d.sel, d.cur))}</h3>
         ${grid}`;
   }
