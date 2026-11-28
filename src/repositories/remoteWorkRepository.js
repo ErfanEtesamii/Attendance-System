@@ -289,11 +289,18 @@ function trimSessionEnd(id, newEndIso) {
   db.prepare('DELETE FROM remote_work_breaks WHERE session_id = ? AND start_at >= ?').run(id, newEndIso);
   db.prepare('UPDATE remote_work_breaks SET end_at = ? WHERE session_id = ? AND end_at > ?').run(newEndIso, id, newEndIso);
 }
+// دورکاری‌های ردشده‌ی یک کارمند (برای «وضعیت من») همراه نام ردکننده؛ فقط ردیف‌های خودِ userId
+function listRejectedForUser(userId, fromDate, limit = 30) {
+  return getDb().prepare(`SELECT s.id, s.work_date, s.start_at, s.end_at, s.review_note, s.reviewed_at, s.auto_closed, u.full_name AS reviewer_name
+    FROM remote_work_sessions s LEFT JOIN users u ON u.id = s.reviewed_by
+    WHERE s.user_id = ? AND s.status = 'rejected' AND s.end_at IS NOT NULL AND s.work_date >= ?
+    ORDER BY s.work_date DESC, s.id DESC LIMIT ?`).all(userId, fromDate, limit);
+}
 function setSessionTaskPlanTask(id, planTaskId) {
   getDb().prepare('UPDATE remote_session_tasks SET plan_task_id = ? WHERE id = ?').run(planTaskId, id);
 }
 
-module.exports = { trimSessionEnd, deleteSessionTasks, markResubmitted, insertSessionTasks, listSessionTasks, listTasksForSessions, setSessionTaskPlanTask,
+module.exports = { listRejectedForUser, trimSessionEnd, deleteSessionTasks, markResubmitted, insertSessionTasks, listSessionTasks, listTasksForSessions, setSessionTaskPlanTask,
   listQueue, listBreaksForSessions,
   findSessionFull, listInRangeForRecords, listApprovedForDay, listApprovedInRange, listClosedInRange, findOfficialRecord, insertRemoteRecord, updateRemoteRecord, adoptPlaceholder, replaceRemoteBreaks, markApproved, markRejected, updateApprovedTimes, setOnsiteSpan, syncRecordSegments, updateRecordTimes, insertRemoteBreaks, pendingClosedByUser,
   findOpenSession, findSessionById, listForUserDate, listForUserRange, insertSession, insertClosedSession, closeSession, listStaleOpenSessions,

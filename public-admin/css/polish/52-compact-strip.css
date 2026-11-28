@@ -233,3 +233,10 @@
 .rw-tasks summary { cursor: pointer; font-weight: 700; color: var(--brand); }
 .rw-tasks ol { margin: var(--space-2) 0 0; padding-inline-start: var(--space-4); display: grid; gap: 2px; color: var(--text); }
 .rw-tasks li b { color: var(--hint); font-weight: 700; margin-inline-start: var(--space-1); }
+
+/* وضعیت من: دورکاری‌های ردشده + دلیل ادمین */
+.ms-rr { margin-block: var(--space-3); border-inline-start: 3px solid var(--red); }
+.ms-rr-list { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.ms-rr-item { padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--red-soft); }
+.ms-rr-top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.ms-rr-reason { margin-top: var(--space-1); line-height: 1.7; }

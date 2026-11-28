@@ -138,3 +138,38 @@ describe('اعلان ردِ دورکاری با دکمه‌های اصلاح', (
     cleanup();
   });
 });
+
+describe('API دورکاری‌های ردشده‌ی خودِ کاربر (وضعیت من)', () => {
+  test('فقط ردشده‌های خودِ کاربر با دلیل و نام ردکننده؛ پذیرفته‌شده علامت می‌خورد؛ کاربر دیگر نمی‌بیند', async () => {
+    resetDb();
+    const F = require('./helpers/factories');
+    const remote = require('../src/services/remoteWorkService');
+    const svc = require('../src/services/remoteTaskReportService');
+    const admin = require('../src/services/remoteWorkAdminService');
+    const express = require('express');
+    const sup = F.makeUser({ role: 'manager', name: 'سرپرست محترم' });
+    const emp = F.makeUser({ name: 'کارمند', managerId: sup.id });
+    const other = F.makeUser({ name: 'دیگری', managerId: sup.id });
+    const d = new Date(); const day = (h) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), h, 0));
+    remote.start(emp, { now: day(1), source: 'bot' });
+    const r = svc.endWithTasks(emp, [{ title: 'الف', minutes: 200 }], { now: day(5), source: 'bot' });
+    assert.equal(r.ok, true, JSON.stringify(r));
+    assert.equal(admin.reject(sup, r.session.id, { reviewNote: 'با ساعت نمی‌خواند' }).ok, true);
+    const router = require('../src/api/routes/admin/myRemote');
+    const call = (user) => new Promise((resolve) => {
+      const layer = router.stack.find((l) => l.route && l.route.path === '/admin/me/remote/rejected');
+      const handler = layer.route.stack[layer.route.stack.length - 1].handle;
+      handler({ adminUser: user, query: {} }, { json: resolve });
+    });
+    const mine = await call(emp);
+    assert.equal(mine.items.length, 1);
+    assert.equal(mine.items[0].reviewNote, 'با ساعت نمی‌خواند');
+    assert.equal(mine.items[0].reviewerName, 'سرپرست محترم');
+    assert.equal(mine.items[0].tasks.length, 1); assert.equal(mine.items[0].canRevise, true); assert.equal(mine.items[0].accepted, false);
+    assert.equal((await call(other)).items.length, 0, 'کاربر دیگر نمی‌بیند');
+    svc.acceptRejection(emp, r.session.id);
+    const after = await call(emp);
+    assert.equal(after.items[0].accepted, true); assert.equal(after.items[0].canRevise, false);
+    void express;
+  });
+});

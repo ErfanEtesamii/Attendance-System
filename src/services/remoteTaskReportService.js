@@ -230,4 +230,4 @@ function endWithTasks(user, rawTasks, { ip = null, now = new Date(), source = 'm
   return { ...r, tasks: rows.map((t) => ({ title: t.title, minutes: t.minutes })), totalMinutes: v.total, planSynced: false };
 }
 
-module.exports = { previewTrim, trimToTasks, acceptRejection, reviseAfterReject, REMOTE_TASK_KEY, mirrorApproved, endWithTasks, validate, parseMinutes, netMinutes, requirements, faDuration, mirrorToPlan, MAX_TASKS, TOLERANCE };
+module.exports = { isRejectAccepted, previewTrim, trimToTasks, acceptRejection, reviseAfterReject, REMOTE_TASK_KEY, mirrorApproved, endWithTasks, validate, parseMinutes, netMinutes, requirements, faDuration, mirrorToPlan, MAX_TASKS, TOLERANCE };
