@@ -302,13 +302,14 @@
     perm: 'me.read',
     async render() {
       const r0 = defaultRange();
-      let data = await AP.api(`/admin/me/commission?${qs(r0.from, r0.to)}`).then((r) => r && r.commission).catch(() => null);
+      const mine = await AP.api(`/admin/me/commission?${qs(r0.from, r0.to)}`).catch(() => null);
+      let data = mine && mine.commission;
       const demo = !data && AP.isOwnerMe(); if (demo) data = sampleData();
       if (!data) return { html: '<div class="view-header"><div><h2>پورسانت من</h2></div></div><div class="card"><div class="empty">پورسانت فقط برای تیم فروش است (یا ایمیل دیدار شما هنوز ثبت نشده).</div></div>', mount() {} };
       if (demo) return { html: `<div class="cm-demo-banner">${demoTag} این صفحه فقط یک نمونه برای دیدن ظاهر است؛ داده‌ی واقعی نیست.</div>${commissionHtml(data)}`, mount() {} };
       return {
-        html: `${rangeShell(['admin', 'owner'].includes(AP.state.me.role) || !!AP.state.salesTeam, ['month', 'lastMonth', 'season'])}<div data-sales-body>${commissionHtml(data)}</div>`,
-        mount(page) { mountRange(page, async (from, to) => { const c = await AP.api(`/admin/me/commission?${qs(from, to)}`).then((r) => r && r.commission); return c ? commissionHtml(c) : EMPTY_TEAM; }); },
+        html: `${rangeShell(['admin', 'owner'].includes(AP.state.me.role) || !!AP.state.salesTeam, ['month', 'lastMonth', 'season'])}<div data-sales-body>${commissionHtml(data, undefined, { canSetTarget: mine.canSetTarget })}</div>`,
+        mount(page) { if (mine.canSetTarget) bindTarget(page, { userId: mine.userId, url: (f, t) => `/admin/me/commission?${qs(f, t)}`, title: undefined }); mountRange(page, async (from, to) => { const x = await AP.api(`/admin/me/commission?${qs(from, to)}`); return x && x.commission ? commissionHtml(x.commission, undefined, { canSetTarget: x.canSetTarget }) : EMPTY_TEAM; }); },
       };
     },
   });

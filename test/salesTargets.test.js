@@ -31,6 +31,15 @@ describe('commissionService — هدف فروش ماهانه', () => {
     assert.equal(svc.setTarget(owner, emp.id, { jy: ym.jy, jm: ym.jm, targetToman: 600000000 }).ok, true);
   });
 
+  test('سرپرستِ فروش برای خودش هدف می‌گذارد؛ کارمندِ عادی برای خودش نه', () => {
+    db.prepare("UPDATE users SET didar_email = 'mgr@example.com' WHERE id = ?").run(mgr.id);
+    const r = svc.setTarget(mgr, mgr.id, { jy: ym.jy, jm: ym.jm, targetToman: 300000000, rewardToman: 1000000 });
+    assert.equal(r.ok, true, JSON.stringify(r));
+    assert.equal(r.target.targetToman, 300000000);
+    assert.equal(svc.setTarget(emp, emp.id, { jy: ym.jy, jm: ym.jm, targetToman: 1000 }).status, 403);
+    assert.equal(svc.setTarget(other, mgr.id, { jy: ym.jy, jm: ym.jm, targetToman: 1000 }).status, 403);
+  });
+
   test('اعتبارسنجی: مبلغ هدف مثبت، ماه معتبر، کارمند ناموجود ⇒ ۴۰۴', () => {
     assert.equal(svc.setTarget(mgr, emp.id, { targetToman: 0 }).code, 'VALIDATION');
     assert.equal(svc.setTarget(mgr, emp.id, { targetToman: 'abc' }).code, 'VALIDATION');

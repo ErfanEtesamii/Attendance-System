@@ -23,7 +23,8 @@ router.get('/admin/me/commission', requirePermission('me.read'), (req, res) => {
   // «کل زمان»ِ پورسانتِ خودش برای کارمند بسته است (کف: ابتدای فصل جاری یا ماه قبل)؛ ادمین/مالک بدون کف
   const floor = service.canViewTeam(req.adminUser) ? null : service.floorFor(false); // ادمین/مالک/سرپرستِ فروش بدون کف
   const commission = service.myCommission({ ...req.adminUser, didar_email: row && row.didar_email }, qOf(req), { floor });
-  return res.json({ commission, canViewTeam: service.canViewTeam(req.adminUser) });
+  const canSetTarget = !!commission && service.canSetTarget(req.adminUser, { id: req.adminUser.id, manager_id: req.adminUser.manager_id });
+  return res.json({ commission, canViewTeam: service.canViewTeam(req.adminUser), canSetTarget, userId: req.adminUser.id });
 });
 
 const NOT_SALES = { error: 'این بخش مخصوص تیم فروش است.', code: 'NOT_SALES_TEAM' };

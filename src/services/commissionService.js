@@ -256,7 +256,10 @@ function memberCommission(viewer, id, ym) {
 const MAX_AMOUNT = 1e12;
 const intAmount = (v) => (typeof v === 'number' || (typeof v === 'string' && /^\d+$/.test(v.trim())) ? Math.round(Number(v)) : NaN);
 function canSetTarget(viewer, member) {
-  return ['admin', 'owner'].includes(viewer.role) || (member && member.manager_id === viewer.id);
+  if (['admin', 'owner'].includes(viewer.role)) return true;
+  if (!member) return false;
+  // مدیر مستقیم برای زیرمجموعه؛ سرپرستِ فروش (کسی که زیرمجموعه‌ی دارای ایمیل دیدار دارد) برای خودش هم
+  return member.manager_id === viewer.id || (member.id === viewer.id && canViewTeam(viewer));
 }
 function targetMember(id) {
   return getDb().prepare("SELECT id, full_name, manager_id, didar_email FROM users WHERE id = ? AND is_active = 1 AND didar_email IS NOT NULL AND didar_email <> '' AND role <> 'owner'").get(Number(id)) || null;
@@ -299,4 +302,4 @@ function hasSalesAccess(viewer) {
   return !!(r && r.didar_email);
 }
 
-module.exports = { setTarget, removeTarget, targetInfo, targetMonthOf, rangeOf, dealsOfMonth, hasSalesAccess, floorFor, formerOwners, visibleMembers, membersSummary, memberCommission, canViewTeam, sync, syncIfStale, myCommission, leaderboard, normalizeDeal, AMOUNT_TIERS };
+module.exports = { canSetTarget, setTarget, removeTarget, targetInfo, targetMonthOf, rangeOf, dealsOfMonth, hasSalesAccess, floorFor, formerOwners, visibleMembers, membersSummary, memberCommission, canViewTeam, sync, syncIfStale, myCommission, leaderboard, normalizeDeal, AMOUNT_TIERS };
