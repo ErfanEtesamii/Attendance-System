@@ -58,6 +58,9 @@ describe('اسکوپ بررسی دورکاری (R5-۱)', () => {
   test('تصمیم: خود ⇒ SELF_NOT_ALLOWED برای همه‌ی نقش‌های دارای مجوز (حتی admin)؛ hr و کارمند ⇒ FORBIDDEN', () => {
     assert.equal(code(svc.reviewScopeFailure(admin, admin)), 'SELF_NOT_ALLOWED');
     assert.equal(code(svc.reviewScopeFailure(boss, boss)), 'SELF_NOT_ALLOWED');
+    const owner = F.makeUser({ role: 'owner' });
+    assert.equal(svc.reviewScopeFailure(owner, owner), null, 'مالک (بالاترین نقش) دورکاریِ خودش را می‌تواند بررسی کند');
+    assert.equal(code(svc.reviewScopeFailure(admin, admin)), 'SELF_NOT_ALLOWED', 'ادمین هنوز نه');
     assert.equal(svc.reviewScopeFailure(boss, boss).status, 403);
     assert.equal(code(svc.reviewScopeFailure(hr, emp)), 'FORBIDDEN', 'hr فقط خواندن');
     assert.equal(code(svc.reviewScopeFailure(hr, hr)), 'FORBIDDEN');

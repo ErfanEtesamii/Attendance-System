@@ -117,4 +117,21 @@ describe('گزارش تسک‌های پایان دورکاری', () => {
     assert.ok(rows.every((t) => t.plan_task_id));
     assert.ok(sent.some((t) => /برنامه امروز/.test(t)), 'پیام نهایی ثبت در برنامه امروز را می‌گوید');
   });
+
+  test('مالک دورکاریِ خودش را تأیید می‌کند (audit: selfReview)؛ ادمین و سرپرست نه', () => {
+    const adminSvc = require('../src/services/remoteWorkAdminService');
+    const owner = F.makeUser({ role: 'owner', name: 'مالک' });
+    const adm = F.makeUser({ role: 'admin', name: 'ادمین خودتأیید' });
+    const mk = (u, h) => { const st = remote.start(u, { now: at(h, 0) }); assert.equal(st.ok, true); const en = remote.end(u, { now: at(h + 1, 0) }); assert.equal(en.ok, true); return en.session.id; };
+    const ownId = mk(owner, 5); const admId = mk(adm, 5);
+    assert.equal(adminSvc.approve(adm, admId, {}, { now: at(12, 0) }).code, 'SELF_NOT_ALLOWED');
+    assert.equal(adminSvc.reject(adm, admId, { reviewNote: 'x' }, { now: at(12, 0) }).code, 'SELF_NOT_ALLOWED');
+    const r = adminSvc.approve(owner, ownId, {}, { now: at(12, 0) });
+    assert.equal(r.ok, true, JSON.stringify(r));
+    assert.equal(repo.findSessionFull(ownId).status, 'approved');
+    const { getDb } = require('../src/db/connection');
+    const row = getDb().prepare("SELECT * FROM audit_log WHERE action = 'remote_work_approve' ORDER BY id DESC LIMIT 1").get();
+    assert.match(JSON.stringify(row), /selfReview/);
+    assert.match(JSON.stringify(row), /true/);
+  });
 });

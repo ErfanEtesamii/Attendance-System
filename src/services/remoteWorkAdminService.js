@@ -12,7 +12,7 @@
 // قواعد اسکوپ (همه سمت سرور؛ همان الگوی weeklyPlanAdminService / checkin_permissions):
 //   • خواندن (remote_work.read): admin و hr همه‌ی کاربران؛ سرپرست فقط کارمندان مستقیمش (manager_id = خودش)؛ کارمند ندارد.
 //   • تصمیم (remote_work.review): admin همه‌ی کاربران (از جمله سرپرست‌ها)؛ سرپرست فقط کارمندان مستقیمش؛ hr و کارمند ندارند.
-//   • هیچ‌کس دورکاریِ «خودش» را تأیید/رد نمی‌کند (SELF_NOT_ALLOWED)، حتی admin؛ ثبت ادمین را ادمین دیگری بررسی می‌کند.
+//   • هیچ‌کس دورکاریِ «خودش» را تأیید/رد نمی‌کند (SELF_NOT_ALLOWED)، حتی admin (فقط «مالک» استثناست)؛ ثبت ادمین را ادمین دیگری بررسی می‌کند.
 //   • دورکاریِ یک سرپرست را سرپرست دیگر نمی‌تواند بررسی کند، مگر مدیر مستقیمش باشد؛ در عمل فقط admin.
 //   • کاربر غیرفعال: برای خواندن و تصمیم مجاز است (ثبت‌های معلق کسی که رفته باید قابل تعیین‌تکلیف بماند)؛ کاربر ناموجود ⇒ USER_NOT_FOUND.
 //   • ترتیب بررسی: مجوز ⇒ وجود کاربر ⇒ خود (فقط تصمیم) ⇒ اسکوپ تیم. نقش/مجوز ناشناخته ⇒ همیشه رد (default-deny).
@@ -69,7 +69,8 @@ function readScopeFailure(actor, target) {
 function reviewScopeFailure(actor, target) {
   if (!actor || !hasPermission(actor.role, PERM_REVIEW)) return fail('FORBIDDEN', 'برای تأیید یا رد دورکاری مجوز لازم را ندارید.');
   if (!target) return fail('USER_NOT_FOUND', 'کارمند یافت نشد.');
-  if (target.id === actor.id) return fail('SELF_NOT_ALLOWED', 'دورکاریِ خودتان را نمی‌توانید تأیید یا رد کنید؛ سرپرست یا ادمین دیگری باید آن را بررسی کند.');
+  // استثنا: «مالک» بالاترین نقش است و کسی بالاتر از او نیست ⇒ دورکاریِ خودش را می‌تواند تأیید/رد کند (در audit با selfReview علامت می‌خورد)
+  if (target.id === actor.id && actor.role !== 'owner') return fail('SELF_NOT_ALLOWED', 'دورکاریِ خودتان را نمی‌توانید تأیید یا رد کنید؛ سرپرست یا ادمین دیگری باید آن را بررسی کند.');
   if (isAdmin(actor)) return null;
   if (isDirectManager(actor, target)) return null;
   return fail('NOT_IN_SCOPE', 'این کارمند در تیم شما نیست.');
@@ -363,7 +364,7 @@ function applyReject(actor, row, note, { ip, nowIso, meta = {} }) {
   auditRepository.logChange({
     actor: actor.id, action: 'remote_work_reject', entityType: 'remote_work_session', entityId: row.id,
     before: auditSession(row), after: auditSession(after), reason: note, ip,
-    meta: { source: 'admin_panel', targetUserId: row.user_id, sessionId: row.id, workDate: row.work_date, ...meta },
+    meta: { source: 'admin_panel', targetUserId: row.user_id, sessionId: row.id, workDate: row.work_date, selfReview: row.user_id === actor.id, ...meta },
   });
   return { ok: true, rejected: after };
 }
@@ -429,7 +430,7 @@ function approveInner(actor, sessionId, input = {}, { ip = null, now = new Date(
     const decisionAudit = (outcome, extra = {}) => auditRepository.logChange({
       actor: actor.id, action: 'remote_work_overlap_decision', entityType: 'remote_work_session', entityId: row.id,
       before: null, after: { decision, outcome }, reason: noteR.note, ip,
-      meta: { source: 'admin_panel', targetUserId: row.user_id, sessionId: row.id, workDate: row.work_date, onsiteRecordId: existing && existing.id, ...extra },
+      meta: { source: 'admin_panel', targetUserId: row.user_id, sessionId: row.id, workDate: row.work_date, onsiteRecordId: existing && existing.id, selfReview: row.user_id === actor.id, ...extra },
     });
 
     if (overlap && decision === 'keep_onsite') {
@@ -479,7 +480,7 @@ function approveInner(actor, sessionId, input = {}, { ip = null, now = new Date(
       before: { status: 'pending', startAt: row.start_at, endAt: row.end_at, attendanceRecordId: null },
       after: { status: 'approved', startAt: effStart(after), endAt: effEnd(after), attendanceRecordId: recordId },
       reason: noteR.note, ip,
-      meta: { source: 'admin_panel', targetUserId: row.user_id, sessionId: row.id, workDate: row.work_date, recordId, timeAdjusted: Boolean(approvedStartAt || approvedEndAt), overlapDecision: decision },
+      meta: { source: 'admin_panel', targetUserId: row.user_id, sessionId: row.id, workDate: row.work_date, recordId, timeAdjusted: Boolean(approvedStartAt || approvedEndAt), overlapDecision: decision, selfReview: row.user_id === actor.id },
     });
     if (overlap) decisionAudit('approved_merged', { recordId });
     return { ok: true, alreadyApproved: false, decision, outcome: overlap ? 'merged' : 'approved', session: presentSession(after), attendanceRecordId: recordId };
@@ -686,7 +687,7 @@ function adjustApproved(actor, sessionId, input = {}, { ip = null, now = new Dat
       before: { status: 'approved', startAt: effStart(row), endAt: effEnd(row), attendanceRecordId: row.attendance_record_id || null },
       after: { status: 'approved', startAt: effStart(after), endAt: effEnd(after), attendanceRecordId: recordId },
       reason: noteR.note, ip,
-      meta: { source: 'admin_panel', targetUserId: row.user_id, sessionId: row.id, workDate: row.work_date, recordId, recordUpdated, recordUnchanged, legacyMerge },
+      meta: { source: 'admin_panel', targetUserId: row.user_id, sessionId: row.id, workDate: row.work_date, recordId, recordUpdated, recordUnchanged, legacyMerge, selfReview: row.user_id === actor.id },
     });
     return { ok: true, session: presentSession(after), attendanceRecordId: recordId, recordUpdated, recordUnchanged, legacyMerge };
   })();
