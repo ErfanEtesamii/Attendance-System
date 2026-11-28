@@ -267,7 +267,44 @@
     ]);
     let daily = daily0;
     if (ui.taskDate && !(daily && daily.ok)) { ui.taskDate = ''; daily = await loadDaily(''); } // مهلت روزِ گذشته تمام شده ⇒ برگرد به امروز
-    return { cur, sel, next, daily, backfill, urgentCfg, earnings, commission };
+    const data = { cur, sel, next, daily, backfill, urgentCfg, earnings, commission };
+    return ownerDemoPlan(data);
+  }
+
+  // نمونه‌ی برنامه‌ی هفتگی برای «مالک» (مالک برنامه‌ی هفتگی ندارد؛ فقط برای دیدنِ ظاهر صفحه). فقط وقتی هفته‌ی جاری بدون هیچ تسک و بدون برنامه است
+  // و فقط روی نمایش: داده‌ی واقعی تغییر نمی‌کند و چیزی ذخیره نمی‌شود. هفته‌های دیگر دست‌نخورده می‌مانند.
+  const DEMO_TITLES = ['پیگیری مشتریان جدید', 'تهیه‌ی گزارش هفتگی', 'هماهنگی با تأمین‌کننده', 'پاسخ به پیام‌های سفارش', 'جلسه‌ی هماهنگی تیم'];
+  function demoTask(id, title, status, plannedDate) {
+    return { taskId: id, title, description: null, priority: id % 3 === 0 ? 'high' : 'normal', isUrgent: false, urgentNote: null, scheduledStartTime: null, urgentDeadlineTime: null, assignedBy: null, isSystem: false, systemKey: null, outOfPlan: false, carriedFrom: null, assignedByUserId: null, managerLocked: false, plannedDate, selfAssigned: false, source: 'planned', status, reasonCode: null, reasonText: null, rescheduleTo: null, dropped: false, answeredLate: false, answeredAt: null, note: null };
+  }
+  function ownerDemoPlan(data) {
+    const { cur, sel } = data;
+    const owner = !!(AP.isOwnerMe && AP.isOwnerMe());
+    const empty = cur && cur.days && !cur.days.some((x) => (x.tasks || []).length) && !(cur.plan && cur.plan.id);
+    if (!owner || !empty || sel !== cur) return data;
+    const demo = JSON.parse(JSON.stringify(cur));
+    const pastCycle = ['done', 'done', 'partial', 'done', 'not_done'];
+    let id = 9000; let k = 0;
+    const cnt = { total: 0, done: 0, partial: 0, notDone: 0, noAnswer: 0 };
+    demo.days.forEach((d, di) => {
+      if (!d.schedule || !d.schedule.isWorkingDay) return;
+      const n = 2 + (di % 2);
+      d.tasks = [];
+      for (let i = 0; i < n; i += 1) {
+        const status = d.isFuture ? 'no_answer' : d.isToday ? (i === 0 ? 'done' : 'no_answer') : pastCycle[k++ % pastCycle.length];
+        d.tasks.push(demoTask(id++, DEMO_TITLES[(di + i) % DEMO_TITLES.length], status, d.date));
+        if (!d.isFuture) { cnt.total += 1; if (status === 'done') cnt.done += 1; else if (status === 'partial') cnt.partial += 1; else if (status === 'not_done') cnt.notDone += 1; else cnt.noAnswer += 1; }
+      }
+    });
+    demo.plan = { id: 0, status: 'submitted', submittedAt: null, supervisorSeenAt: null, supervisorComment: null };
+    demo.summary.tasks = { ...demo.summary.tasks, ...cnt, completionPercent: cnt.total ? Math.round(((cnt.done + 0.5 * cnt.partial) / cnt.total) * 100) : null };
+    let next = data.next;
+    if (next && next.days && next.days.length) {
+      next = JSON.parse(JSON.stringify(next));
+      next.plan = { id: 0, status: 'submitted', submittedAt: null, supervisorSeenAt: null, supervisorComment: null };
+      next.days.forEach((d, di) => { if (d.schedule && d.schedule.isWorkingDay && di < 4) d.tasks = [demoTask(9500 + di, DEMO_TITLES[di % DEMO_TITLES.length], 'no_answer', d.date)]; });
+    }
+    return { ...data, cur: demo, sel: demo, next, demoPlan: true };
   }
 
   // Phase 20: کارت «کارکرد این ماه» (null ⇒ اصلاً رندر نمی‌شود). مبلغ با count-up کوتاه فقط بار اول؛ با prefers-reduced-motion بدون انیمیشن.
@@ -367,7 +404,7 @@
       ? `<div class="ms-money-wrap"><div class="ms-demo-switch" role="radiogroup" aria-label="نمونه‌ی نمایش برای مالک"><input type="radio" name="ms-demo" id="ms-demo-sales" aria-label="نمونه‌ی کارشناس فروش" checked><label for="ms-demo-sales">کارشناس فروش</label><input type="radio" name="ms-demo" id="ms-demo-plain" aria-label="نمونه‌ی کارمند بدون پورسانت"><label for="ms-demo-plain">کارمند بدون پورسانت</label></div>
           <div class="ms-demo-a">${layout(earnHtml, cmHtml)}</div><div class="ms-demo-b">${kpiRow(d.sel, earnHtml.replace(/ id="[^"]*"/g, '').replace(/ aria-labelledby="[^"]*"/g, ''))}</div></div>`
       : layout(earnHtml, cmHtml);
-    return `${money}
+    return `${d.demoPlan ? '<div class="cm-demo-banner"><span class="cm-demo">نمونه</span> برنامه‌ی هفتگی و تسک‌های این صفحه فقط نمونه‌اند تا ظاهر پنل کارمند را ببینید؛ داده‌ی واقعی نیست و چیزی ذخیره نمی‌شود.</div>' : ''}${money}
         <div class="ms-top">${todayCard(d.cur, d.daily, d.backfill, d.urgentCfg)}<div class="ms-side">${nextPlanCard(d.cur, d.next)}${weekGlance(d.sel)}</div></div>
         <h3 class="ms-section-title">روزهای ${esc(weekTitle(d.sel, d.cur))}</h3>
         ${grid}`;
