@@ -168,7 +168,7 @@
         return `<li class="day-task dt-row tk-k-${kind} dt-${STATUS_CLS[t.status] || 'is-none'}${t.isUrgent ? ' is-urgent' : ''}">
       ${taskStatusCell(t.status)}
       <div class="dt-body">
-      <div class="tk-top">${t.isUrgent ? AP.badge('red', t.selfAssigned ? '⚡ فوری (خودش)' : '⚡ فوری', true) : kindPill}${t.priority === 'high' && !t.isUrgent ? AP.badge('late', 'اولویت بالا') : ''}</div>
+      <div class="tk-top">${t.isUrgent ? AP.urgentBadge(t, t.selfAssigned ? '⚡ فوری (خودش)' : '⚡ فوری') : kindPill}${t.priority === 'high' && !t.isUrgent ? AP.badge('late', 'اولویت بالا') : ''}</div>
       <div class="title tk-title">${esc(t.title)}</div>
       ${t.isUrgent && ((t.selfAssigned && t.scheduledStartTime && t.urgentDeadlineTime) || (!t.selfAssigned && t.assignedBy)) ? `<div class="muted text-xs">${t.selfAssigned ? `زمان: ${esc(t.scheduledStartTime)} تا ${esc(t.urgentDeadlineTime)}` : `از طرف: ${esc(t.assignedBy)}${t.urgentDeadlineTime ? ` · مهلت ${esc(t.urgentDeadlineTime)}` : ''}`}</div>` : ''}
       ${meta ? `<div class="day-task-meta">${meta}</div>` : ''}

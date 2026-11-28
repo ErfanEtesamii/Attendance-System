@@ -1370,7 +1370,7 @@
     box.appendChild(planEl('h4', { class: 'urgent-card-title', id: 'urgent-card-title', text: '⚡ تسک فوری امروز' }));
     if (fresh.length) box.appendChild(planEl('div', { class: 'urgent-new', role: 'status', text: `${fresh.length.toLocaleString('en-US')} تسک فوری جدید` }));
     box.appendChild(planEl('ul', { class: 'urgent-list' }, list.map((t) => planEl('li', { class: 'urgent-item' },
-      planEl('div', { class: 'day-task-main' }, urgentBadge(), planEl('strong', { class: 'urgent-title', text: t.title }), !seen.has(t.id) ? planEl('span', { class: 'urgent-fresh', text: 'جدید' }) : null),
+      planEl('div', { class: 'day-task-main' }, urgentBadge(t), planEl('strong', { class: 'urgent-title', text: t.title }), !seen.has(t.id) ? planEl('span', { class: 'urgent-fresh', text: 'جدید' }) : null),
       planEl('div', { class: 'plan-meta', text: urgentMetaText(t) }),
       t.urgentNote ? planEl('div', { class: 'plan-meta', text: t.urgentNote }) : null))));
     if (fresh.length) {
@@ -2082,7 +2082,9 @@
 
   // E2: تسک فوری — برچسب «⚡ فوری» (متن + نماد؛ فقط به رنگ متکی نیست)، تعیین‌کننده و مهلت. همه‌ی متن‌ها با textContent درج می‌شوند.
   const URGENT_LABEL = '⚡ فوری';
-  function urgentBadge() { return planEl('span', { class: 'urgent-badge', text: URGENT_LABEL }); }
+  const REMOTE_LABEL = '🏠 دورکاری';
+  const isRemoteTask = (t) => !!t && t.systemKey === 'remote_work'; // تسک ثبت‌شده از گزارش پایان دورکاری
+  function urgentBadge(t) { return isRemoteTask(t) ? planEl('span', { class: 'urgent-badge remote-badge', text: REMOTE_LABEL }) : planEl('span', { class: 'urgent-badge', text: URGENT_LABEL }); }
   function urgentMetaText(t) {
     const fa = (s) => (J ? J.toFaDigits(String(s)) : String(s));
     const parts = [t.assignedByName ? `از طرف ${t.assignedByName}` : 'از طرف مدیر'];
@@ -2117,7 +2119,7 @@
   // ردیف فقط‌خواندنیِ تسک فوری (کارمند نمی‌تواند ویرایش/حذف کند)
   function urgentRow(t) {
     return planEl('li', { class: 'day-task day-task-ro day-task-urgent' },
-      planEl('div', { class: 'day-task-main' }, urgentBadge(), planEl('span', { class: 'day-task-text', text: t.title }), planEl('span', { class: 'sr-only', text: 'فقط‌خواندنی' })),
+      planEl('div', { class: 'day-task-main' }, urgentBadge(t), planEl('span', { class: 'day-task-text', text: t.title }), planEl('span', { class: 'sr-only', text: 'فقط‌خواندنی' })),
       planEl('div', { class: 'plan-meta', text: urgentMetaText(t) }),
       t.urgentNote ? planEl('div', { class: 'plan-meta', text: t.urgentNote }) : null);
   }
@@ -3483,7 +3485,7 @@
       if (optional && !(ui.idx > 0 && DR.isOptional(ui.tasks[ui.idx - 1]))) card.appendChild(dEl('div', { class: 'dr-sep', text: 'تسک‌های اختیاری (جدا از الزامی‌ها)' }));
       card.appendChild(heading(isReview ? 'گزارش روز قبلِ تیم را بررسی کرده‌اید؟' : (urgent ? `تسک فوری «${t.title}» انجام شد؟` : `امروز تسک «${t.title}» انجام شد؟`)));
       if (urgent) {
-        card.appendChild(urgentBadge());
+        card.appendChild(urgentBadge(t));
         card.appendChild(dEl('div', { class: 'urgent-meta', text: urgentMetaText(t) }));
         if (t.urgentNote) card.appendChild(dEl('div', { class: 'plan-meta', text: t.urgentNote }));
       } else if (t.priority === 'high') card.appendChild(dEl('span', { class: 'prio-badge prio-high', text: 'اولویت بالا' }));
@@ -3680,7 +3682,7 @@
       const s = a && DR.STATUS.find((x) => x.value === a.status);
       if (DR.isOptional(t) && !(i > 0 && DR.isOptional(ui.tasks[i - 1]))) card.appendChild(dEl('div', { class: 'dr-sep', text: 'اختیاری' })); // A2: جدا از الزامی‌ها
       const row = dEl('div', { class: 'list-item dr-review-row' });
-      row.appendChild(dEl('div', { text: `${s ? s.icon : '⚪'} ${DR.isUrgent(t) ? URGENT_LABEL + ' ' : ''}${t.title}${DR.isOptional(t) ? ' (اختیاری)' : ''}` }));
+      row.appendChild(dEl('div', { text: `${s ? s.icon : '⚪'} ${DR.isUrgent(t) ? (t.systemKey === 'remote_work' ? REMOTE_LABEL : URGENT_LABEL) + ' ' : ''}${t.title}${DR.isOptional(t) ? ' (اختیاری)' : ''}` }));
       if (a && a.status && a.status !== 'done') {
         const r = DR.REASONS.find((x) => x.value === a.reasonCode);
         row.appendChild(dEl('div', { class: 'plan-meta', text: [r ? r.label : '', String(a.reasonText || '').trim()].filter(Boolean).join(' — ') }));

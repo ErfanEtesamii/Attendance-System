@@ -40,7 +40,7 @@ function setup({ ov = OV(), plan = PLAN(), planError = null, ovError = null, per
     can: (...p) => p.every((x) => perms.includes(x)),
     planEditor: { create: () => ({ options: () => ({ enabled: true }), reset() {}, dispose() {} }) },
     esc, icon: () => '',
-    badge: (cls, text) => `<span class="badge ${esc(cls)}">${esc(text)}</span>`,
+    badge: (cls, text) => `<span class="badge ${esc(cls)}">${esc(text)}</span>`, urgentBadge: (t, txt = '⚡ فوری') => `<span class="badge ${t && t.systemKey === 'remote_work' ? 'blue' : 'red'}">${esc(t && t.systemKey === 'remote_work' ? '🏠 دورکاری' : txt)}</span>`,
     avatar: (n) => `<span class="avatar">${esc(n)}</span>`,
     ROLE: { admin: 'ادمین', manager: 'سرپرست', employee: 'کارمند', hr: 'منابع انسانی' },
     $: (sel, r) => (r && r.querySelector ? r.querySelector(sel) : null),

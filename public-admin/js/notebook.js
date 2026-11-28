@@ -7,7 +7,7 @@
   const AP = (window.AP = window.AP || {}); // دموی مستقل (nb-demo.html) core.js را بارگذاری نمی‌کند
 
   const TAPE_TONES = ['rose', 'sage', 'sand', 'lilac', 'sky'];
-  const CHIP_TONES = ['work', 'half', 'off', 'holiday', 'leave', 'mission', 'warn', 'urgent', 'locked'];
+  const CHIP_TONES = ['work', 'half', 'off', 'holiday', 'leave', 'mission', 'warn', 'urgent', 'locked', 'remote'];
 
   /** h('div', { class: 'x', text: '…', attrs: { role: 'list' }, on: { click: fn } }, child, 'text', …) */
   function h(tag, props = {}, ...children) {
@@ -189,7 +189,7 @@
       h('span', { class: 'nb-task__main' },
         pr ? h('span', { class: `nb-task__prio nb-task__prio--${t.priority}` }, h('span', { attrs: { 'aria-hidden': 'true' }, text: pr.icon }), h('span', { class: 'nb-sr-only', text: pr.text })) : null,
         h('span', { class: 'nb-task__title', text: t.title }),
-        t.isUrgent ? chip('فوری', { tone: 'urgent', icon: '⚡' }) : null,
+        t.isUrgent ? (t.systemKey === 'remote_work' ? chip('دورکاری', { tone: 'remote', icon: '🏠' }) : chip('فوری', { tone: 'urgent', icon: '⚡' })) : null,
         t.isSystem ? chip('سیستمی', { tone: 'locked', icon: '🔒' }) : (t.managerLocked && !inMgr ? chip('از طرف سرپرست', { tone: 'locked', icon: '🔒' }) : null)));
     if (edit) {
       if (edit.dnd && t.canEdit) { // E2-ب: drag & drop بومی (رویدادهای dragstart/dragover/drop)؛ فقط تسک قابل‌ویرایش؛ جایگزین کیبوردی همان منوی «انتقال…» و ▲▼ است

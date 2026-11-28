@@ -224,6 +224,7 @@
 .nb .nb-chip--leave { background: var(--nb-chip-leave-bg); color: var(--nb-chip-leave-fg); }
 .nb .nb-chip--mission { background: var(--nb-chip-mission-bg); color: var(--nb-chip-mission-fg); }
 .nb .nb-chip--warn { background: var(--nb-chip-warn-bg); color: var(--nb-chip-warn-fg); }
+.nb .nb-chip--remote { background: var(--blue-soft); color: var(--blue); }
 .nb .nb-chip--urgent { background: var(--nb-chip-urgent-bg); color: var(--nb-chip-urgent-fg); }
 .nb .nb-chip--locked { background: var(--nb-chip-locked-bg); color: var(--nb-chip-locked-fg); }
 

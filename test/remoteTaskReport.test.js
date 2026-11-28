@@ -63,6 +63,8 @@ describe('گزارش تسک‌های پایان دورکاری', () => {
     assert.equal(t1.scheduled_start_time, '08:30'); assert.equal(t1.urgent_deadline_time, '10:00');
     assert.equal(t2.scheduled_start_time, '10:00'); assert.equal(t2.urgent_deadline_time, '12:00');
     assert.equal(t1.planned_date, r.session.work_date);
+    assert.equal(t1.system_key, 'remote_work', 'برچسب «دورکاری» (نه فوری) در UI');
+    assert.equal(t1.is_system, 0);
     const log = logsRepo.findByTaskDate(t1.id, r.session.work_date);
     assert.equal(log.status, 'done');
     assert.match(log.note, /دورکاری/);

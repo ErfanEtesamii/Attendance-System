@@ -88,14 +88,14 @@
   function taskLine(t) {
     const [cls, label] = AP.weekUi.TASK_STATUS[t.status] || ['', t.status];
     const mandatory = t.isSystem && t.systemKey === 'review_team_reports';
-    return `<li class="ms-task"><span class="ms-task-title">${mandatory ? `${AP.badge('blue', '🔒 واجب', true)} ` : ''}${t.isUrgent ? `${AP.badge('red', '⚡ فوری', true)} ` : ''}${esc(t.title)}</span>${AP.badge(cls, label)}</li>`;
+    return `<li class="ms-task"><span class="ms-task-title">${mandatory ? `${AP.badge('blue', '🔒 واجب', true)} ` : ''}${t.isUrgent ? `${AP.urgentBadge(t)} ` : ''}${esc(t.title)}</span>${AP.badge(cls, label)}</li>`;
   }
 
   // تسک بی‌پاسخ: سه دکمه (سیستمی/واجب ⇒ بدون دکمه)
   function pendingTask(t) {
     const badges = [
       t.isSystem ? AP.badge('blue', '🔒 واجب', true) : '',
-      t.isUrgent ? AP.badge('red', '⚡ فوری', true) : '',
+      t.isUrgent ? AP.urgentBadge(t) : '',
       t.optional ? AP.badge('', 'اختیاری') : '',
       t.rescheduledFrom ? AP.badge('', `↪ از ${fmt.date(t.rescheduledFrom)}`) : '',
     ].filter(Boolean).join(' ');
@@ -113,7 +113,7 @@
     const readOnly = !!a.isSystem || a.canUndo === false;
     const chips = [
       a.isSystem ? AP.badge('blue', '🔒 واجب', true) : '',
-      a.isUrgent ? AP.badge('red', '⚡ فوری', true) : '',
+      a.isUrgent ? AP.urgentBadge(a) : '',
       a.answeredLate ? AP.badge('orange', 'پاسخ دیرهنگام') : '',
       a.outOfPlan ? AP.badge('', 'خارج از برنامه') : '',
       a.rescheduleTo && !a.dropped ? AP.badge('', `منتقل به ${fmt.date(a.rescheduleTo)}`) : '',

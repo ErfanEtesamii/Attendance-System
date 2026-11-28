@@ -175,6 +175,9 @@
   AP.STATUS_LABEL = { normal: 'عادی', late: 'تأخیر', incomplete: 'ناقص', leave: 'مرخصی', holiday: 'تعطیل' };
   AP.LEAVE_STATUS = { pending: 'در انتظار', approved: 'تأییدشده', rejected: 'ردشده' };
   AP.LEAVE_TYPE = { leave: 'مرخصی', mission: 'مأموریت' };
+  // برچسب نوع تسک: «دورکاری» (آبی) برای تسک‌های ثبت‌شده از گزارش پایان دورکاری، وگرنه «فوری» (قرمز)
+  AP.isRemoteTask = (t) => !!t && t.systemKey === 'remote_work';
+  AP.urgentBadge = (t, urgentText = '⚡ فوری') => (AP.isRemoteTask(t) ? AP.badge('blue', '🏠 دورکاری', true) : AP.badge('red', urgentText, true));
   AP.badge = (cls, text, dot) => `<span class="badge ${esc(cls)}${dot ? ' dot' : ''}">${esc(text)}</span>`;
   AP.stateBadge = (s) => AP.badge(s, AP.STATE_LABEL[s] || s, true);
   AP.statusBadge = (s) => AP.badge(s, AP.STATUS_LABEL[s] || s);

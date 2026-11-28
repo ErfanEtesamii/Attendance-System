@@ -42,7 +42,7 @@ function setup({ data, perms = ['dashboard.read'] } = {}) {
       num: (n) => String(n), today: () => TODAY, dateFull: (d) => `F(${d})`, min: (m) => `${m}m`,
     },
     icon: () => '',
-    badge: (cls, text) => `<span class="badge ${esc(cls)}">${esc(text)}</span>`,
+    badge: (cls, text) => `<span class="badge ${esc(cls)}">${esc(text)}</span>`, urgentBadge: (t, txt = '⚡ فوری') => `<span class="badge ${t && t.systemKey === 'remote_work' ? 'blue' : 'red'}">${esc(t && t.systemKey === 'remote_work' ? '🏠 دورکاری' : txt)}</span>`,
     avatar: (name) => `<span class="avatar">${esc(name)}</span>`,
     LEAVE_TYPE: { leave: 'مرخصی', mission: 'مأموریت' },
     view(id, def) { AP.views[id] = def; if (def.nav) AP.nav.push({ id, ...def.nav }); },

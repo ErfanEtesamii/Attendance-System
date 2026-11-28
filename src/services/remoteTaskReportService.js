@@ -19,6 +19,7 @@ const auditRepository = require('../repositories/auditRepository');
 const calendarService = require('../engine/calendarService');
 const remoteWork = require('./remoteWorkService');
 
+const REMOTE_TASK_KEY = 'remote_work'; // system_key تسک‌های ثبت‌شده از گزارش پایان دورکاری
 const MAX_TASKS = 20;
 const TOLERANCE = 5; // دقیقه
 const TITLE_MAX = 120;
@@ -110,6 +111,7 @@ function mirrorToPlan(user, session, taskRows, { settings = settingsRepository.g
         const task = plansRepo.addTask(plan.id, {
           title: t.title, description: `⏱ ${dur} — ثبت‌شده هنگام پایان دورکاری`, plannedDate: date, priority: 'high',
           isUrgent: true, assignedByUserId: user.id, urgentDeadlineTime: timed ? hhmm(end) : null, scheduledStartTime: timed ? hhmm(start) : null,
+          systemKey: REMOTE_TASK_KEY, // نشانِ «دورکاری» به‌جای «فوری» در UI (is_system صفر می‌ماند؛ قابل‌ویرایش/حذف نیست چون پاسخ دارد)
         });
         logsRepo.upsert({ taskId: task.id, userId: user.id, logDate: date, status: 'done', note: `⏱ ${dur} — دورکاری` });
         repo.setSessionTaskPlanTask(t.id, task.id);
@@ -139,4 +141,4 @@ function endWithTasks(user, rawTasks, { ip = null, now = new Date(), source = 'm
   return { ...r, tasks: rows.map((t) => ({ title: t.title, minutes: t.minutes })), totalMinutes: v.total, planSynced: mirrored.synced };
 }
 
-module.exports = { endWithTasks, validate, parseMinutes, netMinutes, requirements, faDuration, mirrorToPlan, MAX_TASKS, TOLERANCE };
+module.exports = { REMOTE_TASK_KEY, endWithTasks, validate, parseMinutes, netMinutes, requirements, faDuration, mirrorToPlan, MAX_TASKS, TOLERANCE };
