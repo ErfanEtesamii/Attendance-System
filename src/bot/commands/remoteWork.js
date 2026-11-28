@@ -81,8 +81,8 @@ function summaryView(sess, now, note) {
   const lines = ['🔴 پایان دورکاری', line, ...(note ? [note, ''] : []), tasks.length ? listText(tasks) : 'هنوز تسکی ثبت نشده است.', line,
     `⏱ جمع تسک‌ها: ${report.faDuration(total)} | ساعت خالص دورکاری: ${report.faDuration(net)}`];
   if (need > 0) lines.push(total >= need ? '✅ پوشش زمان کافی است.' : `⚠️ دست‌کم ${report.faDuration(need)} باید با تسک توضیح داده شود (هنوز ${report.faDuration(need - total)} مانده).`);
-  const rows = [[button('➕ تسک بعدی', 'rw:ta')]];
-  if (tasks.length) rows.push([button('🗑 حذف آخرین', 'rw:tu'), button('✅ ثبت و پایان دورکاری', 'rw:ef', 'success')]);
+  const rows = [[button('➕ تسک بعدی', 'rw:ta', 'primary')]];
+  if (tasks.length) rows.push([button('🗑 حذف آخرین', 'rw:tu', 'danger'), button('✅ ثبت و پایان دورکاری', 'rw:ef', 'success')]);
   rows.push([button('↩️ انصراف (ادامه‌ی کار)', 'rw:ec')]);
   return { text: lines.join('\n'), reply_markup: { inline_keyboard: rows } };
 }
@@ -111,7 +111,7 @@ async function handleRemoteEndText(bot, msg, sess) {
     const title = text.replace(/\s+/g, ' ');
     if (!title || title.length > 120) return bot.sendMessage(chatId, 'عنوان باید بین ۱ تا ۱۲۰ نویسه باشد؛ دوباره بنویس.');
     session.update(chatId, { step: 2, data: { ...sess.data, title } });
-    const rows = [QUICK.slice(0, 3), QUICK.slice(3)].map((r) => r.map((m) => button(report.faDuration(m), `rw:t:${m}`)));
+    const rows = [QUICK.slice(0, 3), QUICK.slice(3)].map((r) => r.map((m) => button(report.faDuration(m), `rw:t:${m}`, 'primary')));
     rows.push([button('↩️ انصراف (ادامه‌ی کار)', 'rw:ec')]);
     return bot.sendMessage(chatId, `⏱ «${title}» چقدر از وقتت را گرفت؟\nیکی از دکمه‌ها را بزن یا مدت را بنویس (مثلاً ۴۰ یا ۱:۳۰ یا ۲ ساعت).`, { reply_markup: { inline_keyboard: rows } });
   }
