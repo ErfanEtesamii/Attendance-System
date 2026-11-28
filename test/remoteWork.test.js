@@ -212,10 +212,15 @@ describe('API دورکاری — /api/miniapp/remote/* (R3)', { skip: hasDeps ? 
       assert.equal(t.json.sessions[0].breaks.length, 2);
       assert.ok(t.json.openBreak);
 
-      const e = await ctx.call(u, 'POST', 'remote/end');
+      const noTasks = await ctx.call(u, 'POST', 'remote/end'); // پیش‌فرض: گزارش تسک الزامی است
+      assert.equal(noTasks.status, 400);
+      assert.equal(noTasks.json.code, 'REMOTE_TASKS_REQUIRED');
+      assert.ok((await ctx.call(u, 'GET', 'remote/today')).json.openSession, 'با خطا نشست بسته نمی‌شود');
+      const e = await ctx.call(u, 'POST', 'remote/end', { tasks: [{ title: 'کار آزمایشی', minutes: 1 }] });
       assert.equal(e.status, 200);
       assert.ok(e.json.end_at);
       assert.ok(e.json.autoClosedBreak);
+      assert.equal(e.json.tasks.length, 1);
       assert.equal((await ctx.call(u, 'POST', 'remote/end')).json.code, 'REMOTE_NOT_STARTED');
       assert.equal(db().prepare('SELECT COUNT(*) AS n FROM attendance_records').get().n, 0);
     } finally { stop(); }

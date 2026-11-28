@@ -4,6 +4,7 @@ const { cb } = require('../ui/pickers');
 const { getRegisteredUser, notRegisteredMessage } = require('../auth');
 const remoteWork = require('../../services/remoteWorkService');
 const gate = require('../../services/remoteWorkGate');
+const report = require('../../services/remoteTaskReportService');
 const audit = require('../../repositories/auditRepository');
 const rate = require('../../repositories/rateLimitRepository');
 const panelLinks = require('../panelLinks');
@@ -63,6 +64,96 @@ async function handleRemoteWork(bot, msg) {
   return bot.sendMessage(msg.chat.id, view.text, { reply_markup: view.reply_markup });
 }
 
+// ---------- گزارش تسک‌ها هنگام پایان دورکاری (flow = remote_end) ----------
+// مراحل: عنوان تسک (متن) ← مدت (دکمه یا متن: ۴۵ | ۱:۳۰ | ۲ ساعت) ← «تسک بعدی» یا «ثبت و پایان». اعتبارسنجی و ثبت نهایی در remoteTaskReportService.
+const FLOW_END = 'remote_end';
+const QUICK = [15, 30, 45, 60, 90, 120];
+const fa = (n) => Number(n).toLocaleString('fa-IR');
+
+function netNow(sess, now) {
+  const open = remoteWork.getToday(sess.data.userId, { now }).openSession;
+  return open ? report.netMinutes({ id: open.id, start_at: open.start_at }, now).net : 0;
+}
+function listText(tasks) { return tasks.map((t, i) => `${fa(i + 1)}) ${t.title} — ${report.faDuration(t.minutes)}`).join('\n'); }
+function summaryView(sess, now, note) {
+  const tasks = sess.data.tasks; const net = netNow(sess, now); const total = tasks.reduce((n, t) => n + t.minutes, 0);
+  const cov = report.requirements().coveragePercent; const need = Math.ceil((net * cov) / 100);
+  const lines = ['🔴 پایان دورکاری', line, ...(note ? [note, ''] : []), tasks.length ? listText(tasks) : 'هنوز تسکی ثبت نشده است.', line,
+    `⏱ جمع تسک‌ها: ${report.faDuration(total)} | ساعت خالص دورکاری: ${report.faDuration(net)}`];
+  if (need > 0) lines.push(total >= need ? '✅ پوشش زمان کافی است.' : `⚠️ دست‌کم ${report.faDuration(need)} باید با تسک توضیح داده شود (هنوز ${report.faDuration(need - total)} مانده).`);
+  const rows = [[button('➕ تسک بعدی', 'rw:ta')]];
+  if (tasks.length) rows.push([button('🗑 حذف آخرین', 'rw:tu'), button('✅ ثبت و پایان دورکاری', 'rw:ef', 'success')]);
+  rows.push([button('↩️ انصراف (ادامه‌ی کار)', 'rw:ec')]);
+  return { text: lines.join('\n'), reply_markup: { inline_keyboard: rows } };
+}
+async function askTitle(bot, chatId, sess) {
+  session.update(chatId, { step: 1 });
+  const n = sess.data.tasks.length;
+  await bot.sendMessage(chatId, `📝 ${n ? 'تسک بعدی' : 'تسک اول'}\n${line}\nچه کاری انجام دادی؟ اسم/توضیح کوتاهش را بنویس (حداکثر ۱۲۰ نویسه).`, { reply_markup: { inline_keyboard: [[button('↩️ انصراف (ادامه‌ی کار)', 'rw:ec')]] } });
+}
+
+async function startEndFlow(bot, chatId, query, user, open, now) {
+  session.start(chatId, FLOW_END, { userId: user.id, sessionId: open.id, tasks: [], title: null });
+  const sess = session.get(chatId);
+  const net = report.netMinutes({ id: open.id, start_at: open.start_at }, now).net;
+  const cov = report.requirements().coveragePercent;
+  await replace(bot, query, { text: ['🔴 پایان دورکاری', line, `ساعت خالص دورکاری تا الان: ${report.faDuration(net)}`, 'قبل از پایان، کارهایی را که انجام دادی یکی‌یکی بنویس و بگو هرکدام چقدر طول کشید.',
+    cov ? `جمع زمان تسک‌ها باید دست‌کم ${fa(cov)}٪ این ساعت باشد و از آن بیشتر نشود.` : 'جمع زمان تسک‌ها نباید از این ساعت بیشتر شود.', 'این تسک‌ها در «برنامه امروز»ت و برای سرپرست ثبت می‌شوند.'].join('\n') });
+  return askTitle(bot, chatId, sess);
+}
+
+async function handleRemoteEndText(bot, msg, sess) {
+  const chatId = msg.chat.id;
+  const user = getRegisteredUser(msg.from.id);
+  if (!user || user.id !== sess.data.userId) { session.clear(chatId); return; }
+  const text = String(msg.text || '').trim();
+  if (sess.step === 1) { // عنوان
+    const title = text.replace(/\s+/g, ' ');
+    if (!title || title.length > 120) return bot.sendMessage(chatId, 'عنوان باید بین ۱ تا ۱۲۰ نویسه باشد؛ دوباره بنویس.');
+    session.update(chatId, { step: 2, data: { ...sess.data, title } });
+    const rows = [QUICK.slice(0, 3), QUICK.slice(3)].map((r) => r.map((m) => button(report.faDuration(m), `rw:t:${m}`)));
+    rows.push([button('↩️ انصراف (ادامه‌ی کار)', 'rw:ec')]);
+    return bot.sendMessage(chatId, `⏱ «${title}» چقدر از وقتت را گرفت؟\nیکی از دکمه‌ها را بزن یا مدت را بنویس (مثلاً ۴۰ یا ۱:۳۰ یا ۲ ساعت).`, { reply_markup: { inline_keyboard: rows } });
+  }
+  if (sess.step === 2) { // مدت (متنی)
+    const minutes = report.parseMinutes(text);
+    if (!minutes) return bot.sendMessage(chatId, 'مدت نامعتبر است؛ مثلاً ۴۰ (دقیقه) یا ۱:۳۰ یا ۲ ساعت بنویس.');
+    return addTask(bot, chatId, sess, minutes);
+  }
+  return bot.sendMessage(chatId, 'برای ادامه از دکمه‌های زیر پیام قبلی استفاده کن.');
+}
+
+async function addTask(bot, chatId, sess, minutes) {
+  const tasks = [...sess.data.tasks, { title: sess.data.title, minutes }];
+  session.update(chatId, { step: 3, data: { ...sess.data, tasks, title: null } });
+  const fresh = session.get(chatId);
+  const view = summaryView(fresh, new Date(), `✅ ثبت شد: ${tasks[tasks.length - 1].title} — ${report.faDuration(minutes)}`);
+  return bot.sendMessage(chatId, view.text, { reply_markup: view.reply_markup });
+}
+
+async function handleEndFlowCallback(bot, chat, query, user, data, now) {
+  const chatId = chat.id;
+  const sess = session.get(chatId);
+  if (!sess || sess.flow !== FLOW_END || sess.data.userId !== user.id) { await bot.sendMessage(chatId, 'این مکالمه منقضی شده است؛ دوباره «🔴 پایان دورکاری» را بزن.'); return replace(bot, query, dashboard(user, now)); }
+  if (data === 'rw:ec') { session.clear(chatId); return replace(bot, query, dashboard(user, now)); }
+  const quick = /^rw:t:(\d+)$/.exec(data);
+  if (quick) { if (sess.step !== 2 || !sess.data.title) return; return addTask(bot, chatId, sess, Number(quick[1])); }
+  if (data === 'rw:ta') return askTitle(bot, chatId, sess);
+  if (data === 'rw:tu') {
+    const tasks = sess.data.tasks.slice(0, -1); session.update(chatId, { step: 3, data: { ...sess.data, tasks } });
+    const view = summaryView(session.get(chatId), now, '🗑 آخرین تسک حذف شد.'); return replace(bot, query, view);
+  }
+  if (data === 'rw:ef') {
+    const r = report.endWithTasks(user, sess.data.tasks, { ip: null, now, source: 'bot' });
+    if (!r.ok) { const view = summaryView(sess, now, `⛔️ ${r.error}`); return replace(bot, query, view); }
+    session.clear(chatId);
+    const text = ['✅ دورکاری پایان یافت', line, listText(r.tasks), line, `⏱ جمع تسک‌ها: ${report.faDuration(r.totalMinutes)}`,
+      r.planSynced ? '📋 تسک‌ها در «برنامه امروز»ت ثبت شدند.' : '📋 گزارش ثبت شد (ثبت در برنامه امروز ممکن نبود؛ سرپرست گزارش را می‌بیند).', '⏳ تأییدنشده — پس از بررسی سرپرست لحاظ می‌شود.'].join('\n');
+    return replace(bot, query, { text, reply_markup: { inline_keyboard: [[button('🏠 دورکاری', 'rw:o'), button('🏠 منوی اصلی', 'rw:m')]] } });
+  }
+  return undefined;
+}
+
 async function handleRemoteWorkCallback(bot, query) {
   const chat = query.message && query.message.chat;
   await bot.answerCallbackQuery(query.id);
@@ -80,8 +171,14 @@ async function handleRemoteWorkCallback(bot, query) {
   if (data === 'rw:s!') { const a = gate.checkStart(user, { now }); if (!a.ok) { reject(user, a.code); return show(); } const r = remoteWork.start(user, { ip: null, now, source: 'bot' }); if (!r.ok) return show(); await show(); return; }
   if (data === 'rw:b' || data === 'rw:r') { const r = data === 'rw:b' ? remoteWork.breakStart(user, { ip: null, now, source: 'bot' }) : remoteWork.breakEnd(user, { ip: null, now, source: 'bot' }); if (!r.ok) return bot.sendMessage(chat.id, r.error); return show(); }
   const endId = /^rw:e(!?)\:(\d+)$/.exec(data);
-  if (endId) { const open = state.openSession; if (!open || String(open.id) !== endId[2]) return show(); if (!endId[1]) return replace(bot, query, { text: `🔴 پایان دورکاری\n${line}\nشروع: ${time(open.start_at)} | مدت: ${formatMinutes(duration(open.start_at, now))}\n${state.openBreak ? '☕ استراحت بازِ شما هم همین حالا بسته می‌شود.\n' : ''}پایان بدهم؟`, reply_markup: { inline_keyboard: [[button('✅ بله، پایان بده', `rw:e!:${open.id}`, 'danger')], [button('↩️ ادامه‌ی کار', 'rw:x')]] } }); const r = remoteWork.end(user, { ip: null, now, source: 'bot' }); if (!r.ok) return show(); return show(); }
+  if (endId) {
+    const open = state.openSession; if (!open || String(open.id) !== endId[2]) return show();
+    if (report.requirements().required) return startEndFlow(bot, chat.id, query, user, open, now); // گزارش تسک‌ها پیش از پایان
+    if (!endId[1]) return replace(bot, query, { text: `🔴 پایان دورکاری\n${line}\nشروع: ${time(open.start_at)} | مدت: ${formatMinutes(duration(open.start_at, now))}\n${state.openBreak ? '☕ استراحت بازِ شما هم همین حالا بسته می‌شود.\n' : ''}پایان بدهم؟`, reply_markup: { inline_keyboard: [[button('✅ بله، پایان بده', `rw:e!:${open.id}`, 'danger')], [button('↩️ ادامه‌ی کار', 'rw:x')]] } });
+    const r = remoteWork.end(user, { ip: null, now, source: 'bot' }); if (!r.ok) return show(); return show();
+  }
+  if (data.startsWith('rw:t') || data === 'rw:ec' || data === 'rw:ef') return handleEndFlowCallback(bot, chat, query, user, data, now);
   return show();
 }
 
-module.exports = { handleRemoteWork, handleRemoteWorkCallback, buildView };
+module.exports = { handleRemoteWork, handleRemoteWorkCallback, handleRemoteEndText, buildView };

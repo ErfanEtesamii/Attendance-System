@@ -22,6 +22,7 @@ const { createRateLimiter } = require('../../middleware/rateLimiter');
 
 const attendanceRepository = require('../../repositories/attendanceRepository');
 const remoteWorkService = require('../../services/remoteWorkService');
+const remoteTaskReport = require('../../services/remoteTaskReportService');
 const remoteWorkRepository = require('../../repositories/remoteWorkRepository');
 const breakRepository = require('../../repositories/breakRepository');
 const breakPolicyService = require('../../services/breakPolicyService');
@@ -532,6 +533,15 @@ router.post('/miniapp/remote/start', (req, res) => {
   sendRemote(res, remoteWorkService.start(req.miniAppUser, { ip: req.ip }), 201, (r) => r.session);
 });
 router.post('/miniapp/remote/end', (req, res) => {
+  // با تنظیم remoteEndTasksRequired: پایان فقط با گزارش تسک‌ها (body.tasks = [{title, minutes}]) ثبت می‌شود؛ فرم آن در بات است
+  if (remoteTaskReport.requirements().required) {
+    const tasks = req.body && req.body.tasks;
+    if (!Array.isArray(tasks) || !tasks.length) {
+      if (!remoteWorkRepository.findOpenSession(req.miniAppUser.id)) return sendRemote(res, remoteWorkService.end(req.miniAppUser, { ip: req.ip }), 200, () => ({}));
+      return res.status(400).json({ code: 'REMOTE_TASKS_REQUIRED', error: 'برای پایان دورکاری باید تسک‌های انجام‌شده را با مدتشان ثبت کنید؛ از بات تلگرام «🏠 دورکاری ← 🔴 پایان دورکاری» را بزنید.' });
+    }
+    return sendRemote(res, remoteTaskReport.endWithTasks(req.miniAppUser, tasks, { ip: req.ip }), 200, (r) => ({ ...r.session, autoClosedBreak: r.autoClosedBreak, tasks: r.tasks, planSynced: r.planSynced }));
+  }
   sendRemote(res, remoteWorkService.end(req.miniAppUser, { ip: req.ip }), 200, (r) => ({ ...r.session, autoClosedBreak: r.autoClosedBreak }));
 });
 router.post('/miniapp/remote/break/start', (req, res) => {

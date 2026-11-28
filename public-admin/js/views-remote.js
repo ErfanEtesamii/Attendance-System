@@ -61,8 +61,11 @@
     const brk = it.breaks.length ? `${fmt.num(it.breakMinutes)} دقیقه استراحت` : 'بدون استراحت';
     const worked = it.workedMinutes == null ? '—' : fmt.min(it.workedMinutes);
     const note = it.reviewNote ? `<div class="muted">💬 ${esc(it.reviewNote)}</div>` : '';
+    const tasks = it.tasks && it.tasks.length
+      ? `<details class="rw-tasks"><summary>📋 ${fmt.num(it.tasks.length)} تسک · ${esc(fmt.min(it.tasksMinutes))}</summary><ol>${it.tasks.map((t) => `<li>${esc(t.title)} <b>${esc(fmt.min(t.minutes))}</b></li>`).join('')}</ol></details>`
+      : (it.autoClosed ? '' : '<div class="muted">بدون گزارش تسک</div>');
     return `<tr><td>${name}</td><td>${esc(fmt.date(it.workDate))}</td><td dir="auto">${timeRange(it)}</td>
-      <td>${esc(worked)}<div class="muted">${esc(brk)}</div></td><td>${badges(it)}${note}</td><td class="row-actions">${actions(it)}</td></tr>`;
+      <td>${esc(worked)}<div class="muted">${esc(brk)}</div>${tasks}</td><td>${badges(it)}${note}</td><td class="row-actions">${actions(it)}</td></tr>`;
   }
 
   // ---------- عملیات ----------

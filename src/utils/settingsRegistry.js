@@ -263,6 +263,8 @@ def('remoteWorkBotEnabled', 'remote_work_bot_enabled', 'boolean', { group: 'secu
 def('remoteWorkBotBlockOnsiteToday', 'remote_work_bot_block_onsite_today', 'boolean', { group: 'security', default: true, label: 'مسدودسازی دورکاری پس از حضور حضوری', description: 'اگر کارمند همان روز حضوری ثبت کرده، دورکاری از بات ثبت نشود.' });
 def('remoteWorkAllowAfterOnsiteCheckout', 'remote_work_allow_after_onsite_checkout', 'boolean', { group: 'security', default: true, label: 'دورکاری پس از خروج حضوری', description: 'بعد از ثبت خروج حضوری، شروع دورکاری از بات مجاز باشد.', hint: 'فقط وقتی اثر دارد که «مسدودسازی دورکاری پس از حضور حضوری» روشن باشد. حضوریِ باز همچنان مسدود می‌ماند.' });
 def('remoteWorkMaxOpenHours', 'remote_work_max_open_hours', 'number', { related: ['supervisors'], group: 'security', min: 1, max: 72, default: 16, label: 'سقف باز ماندن دورکاری', description: 'دورکاریِ باز بیش از این‌قدر ساعت، شبانه بسته و علامت‌گذاری شود.', hint: 'پایان آن برابر شروع به‌علاوه‌ی همین سقف می‌شود و سرپرست باید دقیق‌تر بررسی کند.' });
+def('remoteEndTasksRequired', 'remote_end_tasks_required', 'boolean', { group: 'security', default: true, label: 'گزارش تسک هنگام پایان دورکاری', description: 'کارمند برای پایان دورکاری باید تسک‌های انجام‌شده را با مدت هرکدام بنویسد.', hint: 'تسک‌ها در برنامه‌ی امروزِ خودش ثبت می‌شوند و سرپرست هنگام بررسی می‌بیند.' });
+def('remoteTaskCoveragePercent', 'remote_task_coverage_percent', 'number', { group: 'security', min: 0, max: 100, default: 70, label: 'حداقل پوشش تسک‌ها', description: 'جمع مدت تسک‌های ثبت‌شده حداقل چند درصدِ ساعت خالص دورکاری باشد. (۰ = بدون الزام)', hint: 'جمع مدت‌ها هیچ‌وقت نمی‌تواند از ساعت خالص دورکاری بیشتر باشد.' });
 // نگهداری و آرشیو
 def('auditRetentionMonths', 'audit_retention_months', 'number', { group: 'retention', min: 1, max: 240, default: 24, label: 'نگهداری گزارش رویدادها', description: 'گزارش رویدادها چند ماه در بخش اصلی نگهداری شود.' });
 def('auditArchiveEnabled', 'audit_archive_enabled', 'boolean', { group: 'retention', default: false, label: 'آرشیو ماهانه‌ی رویدادها', description: 'رویدادهای قدیمی هر ماه به آرشیو منتقل شوند.', hint: 'اگر خاموش باشد، فقط شمارش انجام می‌شود.' });
@@ -438,7 +440,7 @@ const SECTION_MAP = {
   },
   security: {
     'راه‌اندازی و ثبت تردد': ['systemGoLive', 'duplicateTapWindowSeconds', 'blockOnSharedDevice'],
-    'دورکاری': ['remoteWorkEnabled', 'remoteWorkBotEnabled', 'remoteWorkBotBlockOnsiteToday', 'remoteWorkAllowAfterOnsiteCheckout', 'remoteWorkMaxOpenHours'],
+    'دورکاری': ['remoteWorkEnabled', 'remoteWorkBotEnabled', 'remoteWorkBotBlockOnsiteToday', 'remoteWorkAllowAfterOnsiteCheckout', 'remoteWorkMaxOpenHours', 'remoteEndTasksRequired', 'remoteTaskCoveragePercent'],
   },
   patterns: {
     'تأخیر': ['patternConsecutiveLateDays', 'patternWeekdayLateMinCount', 'patternWeekdayLateMinSharePercent', 'patternWeekdayLateMarginPercent', 'patternSuddenIncreaseFactor', 'patternSuddenIncreaseMinExtraLate'],

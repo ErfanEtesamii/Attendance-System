@@ -137,7 +137,7 @@ function sessionMinutes(row, breaks) {
   return { breakMinutes, workedMinutes };
 }
 
-function toQueueItem(row, breaks, employee, actor) {
+function toQueueItem(row, breaks, employee, actor, tasks = []) {
   const { breakMinutes, workedMinutes } = sessionMinutes(row, breaks);
   return {
     id: row.id,
@@ -154,6 +154,8 @@ function toQueueItem(row, breaks, employee, actor) {
     breaks: breaks.map((b) => ({ id: b.id, startAt: b.start_at, endAt: b.end_at })),
     breakMinutes,
     workedMinutes,
+    tasks: tasks.map((t) => ({ title: t.title, minutes: t.minutes })), // گزارش تسک‌های پایان دورکاری (خالی برای ثبت‌های قدیمی/خودکار)
+    tasksMinutes: tasks.reduce((n, t) => n + t.minutes, 0),
     approvedStartAt: row.approved_start_at,
     approvedEndAt: row.approved_end_at,
     reviewedBy: row.reviewed_by,
@@ -198,12 +200,13 @@ function listQueue(actor, query = {}, { now } = {}) {
     offset: f.offset,
   });
   const breaks = remoteRepo.listBreaksForSessions(rows.map((r) => r.id));
+  const taskMap = remoteRepo.listTasksForSessions(rows.map((r) => r.id));
   const users = new Map();
   const employeeOf = (id) => {
     if (!users.has(id)) users.set(id, usersRepository.findById(id) || null);
     return users.get(id);
   };
-  const items = rows.map((r) => toQueueItem(r, breaks.get(r.id) || [], employeeOf(r.user_id), actor));
+  const items = rows.map((r) => toQueueItem(r, breaks.get(r.id) || [], employeeOf(r.user_id), actor, taskMap.get(r.id) || []));
   return { ok: true, items, total, limit: f.limit, offset: f.offset, status: f.status, window: f.window, weekStart: f.weekStart, weekEnd: f.weekEnd };
 }
 

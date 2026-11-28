@@ -79,7 +79,7 @@ function notifySubmitted(sessionId) {
   }
 }
 
-function end(user, { ip = null, now = new Date(), source = 'miniapp' } = {}) {
+function end(user, { ip = null, now = new Date(), source = 'miniapp', tasks = null } = {}) {
   const nowIso = now.toISOString();
   const result = getDb().transaction(() => {
     const open = repo.findOpenSession(user.id);
@@ -92,6 +92,7 @@ function end(user, { ip = null, now = new Date(), source = 'miniapp' } = {}) {
       auditRepository.logEvent({ userId: user.id, action: 'remote_break_end', ipAddress: ip, details: { source, sessionId: open.id, breakId: openBreak.id, autoClosedByEnd: true } });
     }
     const session = repo.closeSession(open.id, endAt);
+    if (Array.isArray(tasks) && tasks.length) repo.insertSessionTasks(open.id, user.id, tasks); // گزارش تسک‌ها هم‌تراکنش با بستن نشست (اعتبارسنجی در remoteTaskReportService)
     auditRepository.logEvent({ userId: user.id, action: 'remote_work_end', ipAddress: ip, details: { source, sessionId: open.id, workDate: open.work_date, autoClosedBreak: Boolean(closedBreak) } });
     return { ok: true, session: publicSession(session, repo.listBreaks(open.id)), autoClosedBreak: closedBreak };
   })();

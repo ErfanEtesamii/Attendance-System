@@ -208,3 +208,28 @@
 .pf-svg .pf-avgline { stroke-width: 1.5; stroke-dasharray: 6 5; }
 .pf-svg .pf-axis { font-size: 11px; font-weight: 600; }
 .pf-chartcard { padding: var(--space-4) var(--space-5) var(--space-3); }
+
+/* ---------- هدف فروش ماهانه + تشویقی (کارت پورسانت) ---------- */
+.cm-hero .cm-reward { margin: 0; max-width: 240px; padding: 6px 12px; border-radius: var(--r-md); text-align: center; font-size: var(--fs-xs); line-height: 1.7; color: var(--text); background: color-mix(in srgb, var(--accent) 16%, var(--card)); }
+.cm-hero .cm-reward b { font-weight: 800; }
+.cm-hero .cm-target-btn { width: auto; min-width: 0; padding-inline: var(--space-4); min-height: 34px; font-size: var(--fs-xs); }
+.cm-target { margin-bottom: var(--space-3); padding: var(--space-4) var(--space-5); }
+.cm-target[hidden] { display: none; }
+.cm-target h3 { margin: 0 0 var(--space-3); font-size: var(--fs-md); }
+.cm-tf-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.cm-tf { display: grid; gap: 4px; font-size: var(--fs-xs); font-weight: 700; color: var(--hint); }
+.cm-tf--wide { grid-column: 1 / -1; }
+.cm-tf input { width: 100%; min-height: 40px; padding: 0 var(--space-3); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card); color: var(--text); font: inherit; font-size: var(--fs-sm); font-weight: 600; box-sizing: border-box; direction: ltr; text-align: right; }
+.cm-tf--wide input { direction: rtl; }
+.cm-tf input:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.cm-tf small { min-height: 1.2em; color: var(--green); font-weight: 700; }
+.cm-tf-note { margin: var(--space-2) 0 var(--space-3); font-size: var(--fs-xs); color: var(--hint); }
+.cm-tf-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.cm-tf-actions .btn { width: auto; min-width: 110px; }
+@media (max-width: 640px) { .cm-tf-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* گزارش تسک‌های پایان دورکاری در صف بررسی */
+.rw-tasks { margin-top: var(--space-2); font-size: var(--fs-xs); }
+.rw-tasks summary { cursor: pointer; font-weight: 700; color: var(--brand); }
+.rw-tasks ol { margin: var(--space-2) 0 0; padding-inline-start: var(--space-4); display: grid; gap: 2px; color: var(--text); }
+.rw-tasks li b { color: var(--hint); font-weight: 700; margin-inline-start: var(--space-1); }

@@ -91,6 +91,7 @@ function createBot() {
     if (sess.flow === 'fix_record') return handleFixRecordText(bot, msg, sess);
     if (sess.flow === 'dispute_reply') return handleDisputeReplyText(bot, msg, sess);
     if (sess.flow === 'urgent_task') return handleUrgentTaskText(bot, msg, sess);
+    if (sess.flow === 'remote_end') return require('./commands/remoteWork').handleRemoteEndText(bot, msg, sess);
     if (sess.flow === 'remote_reject') return handleRemoteRejectText(bot, msg, sess);
     if (sess.flow === 'mission_reject') return handleMissionRejectText(bot, msg, sess);
     if (sess.flow === 'mission_edit') return handleMissionEditText(bot, msg, sess);

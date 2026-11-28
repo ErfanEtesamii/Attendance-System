@@ -259,7 +259,27 @@ function pendingClosedByUser({ userIds = null, excludeUserId = null } = {}) {
     .all(...params);
 }
 
-module.exports = {
+// ---------- تسک‌های گزارش‌شده هنگام پایان دورکاری (migration 066) ----------
+function insertSessionTasks(sessionId, userId, tasks) {
+  const db = getDb();
+  const ins = db.prepare('INSERT INTO remote_session_tasks (session_id, user_id, title, minutes, sort_order) VALUES (?, ?, ?, ?, ?)');
+  tasks.forEach((t, i) => ins.run(sessionId, userId, t.title, t.minutes, i));
+}
+function listSessionTasks(sessionId) {
+  return getDb().prepare('SELECT id, session_id, user_id, title, minutes, sort_order, plan_task_id FROM remote_session_tasks WHERE session_id = ? ORDER BY sort_order, id').all(sessionId);
+}
+function listTasksForSessions(sessionIds) {
+  const map = new Map();
+  if (!sessionIds.length) return map;
+  const rows = getDb().prepare(`SELECT id, session_id, title, minutes, sort_order FROM remote_session_tasks WHERE session_id IN (${sessionIds.map(() => '?').join(',')}) ORDER BY sort_order, id`).all(...sessionIds);
+  for (const r of rows) { if (!map.has(r.session_id)) map.set(r.session_id, []); map.get(r.session_id).push(r); }
+  return map;
+}
+function setSessionTaskPlanTask(id, planTaskId) {
+  getDb().prepare('UPDATE remote_session_tasks SET plan_task_id = ? WHERE id = ?').run(planTaskId, id);
+}
+
+module.exports = { insertSessionTasks, listSessionTasks, listTasksForSessions, setSessionTaskPlanTask,
   listQueue, listBreaksForSessions,
   findSessionFull, listInRangeForRecords, listApprovedForDay, listApprovedInRange, listClosedInRange, findOfficialRecord, insertRemoteRecord, updateRemoteRecord, adoptPlaceholder, replaceRemoteBreaks, markApproved, markRejected, updateApprovedTimes, setOnsiteSpan, syncRecordSegments, updateRecordTimes, insertRemoteBreaks, pendingClosedByUser,
   findOpenSession, findSessionById, listForUserDate, listForUserRange, insertSession, insertClosedSession, closeSession, listStaleOpenSessions,

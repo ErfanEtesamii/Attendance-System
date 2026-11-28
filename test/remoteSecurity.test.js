@@ -52,7 +52,8 @@ describe('امنیت دورکاری (R8)', () => {
     const src = read('src/api/routes/miniapp.js');
     const block = src.slice(src.indexOf('دورکاری: مسیرها'), src.indexOf('تاریخچه شخصی'));
     assert.ok(block.length > 200);
-    assert.equal(/req\.body|req\.params/.test(block), false);
+    // تنها ورودی مجاز بدنه: لیست تسک‌های گزارش پایان (محتوای کارمند، نه زمان/تاریخ/کاربر)
+    assert.equal(/req\.body|req\.params/.test(block.replace(/req\.body && req\.body\.tasks/g, '')), false);
     assert.equal(/req\.query\.(?!days)/.test(block), false);
   });
 

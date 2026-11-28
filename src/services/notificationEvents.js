@@ -684,6 +684,11 @@ function remoteWorkSubmitted(sessionId) {
       `✅ ساعت خالص: ${faDuration(m.net)}`,
       `📲 ثبت از: ${s.source === 'bot' ? 'بات تلگرام' : 'Mini App'}`,
     ];
+    const tasks = remoteRepo.listSessionTasks(s.id);
+    if (tasks.length) {
+      lines.push('📋 تسک‌های گزارش‌شده:', ...tasks.slice(0, 15).map((t, i) => `${(i + 1).toLocaleString('fa-IR')}) ${sanitizeText(t.title, 120)} — ${faDuration(t.minutes)}`),
+        `Σ جمع تسک‌ها: ${faDuration(tasks.reduce((n, t) => n + t.minutes, 0))}`);
+    } else if (!s.auto_closed) lines.push('📋 گزارش تسکی ثبت نشده است.');
     if (s.auto_closed) lines.push('⚠️ این ثبت را سیستم خودکار بسته است؛ ساعت پایان را با دقت بررسی کنید.');
     lines.push(REMOTE_LINE, '⏳ تا تأیید شما در حضور و غیاب و حقوق حساب نمی‌شود.');
     const button = panelLinks.panelWebAppButton({ view: 'remote', text: '🖥 بررسی در صف دورکاری' });

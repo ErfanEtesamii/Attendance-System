@@ -95,7 +95,7 @@ describe('migration ۰۳۶/۰۳۷ — ارتقا و idempotent (R1-ج)', () => {
     }
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM remote_work_sessions').get().n, 1);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM remote_work_breaks').get().n, 1);
-    const idx = db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'idx_remote_%' ORDER BY name").all().map((r) => r.name);
+    const idx = db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'idx_remote_%' AND name NOT LIKE 'idx_remote_session_tasks%' ORDER BY name").all().map((r) => r.name);
     assert.deepEqual(idx, [
       'idx_remote_breaks_one_open', 'idx_remote_breaks_session',
       'idx_remote_sessions_one_open', 'idx_remote_sessions_status_date', 'idx_remote_sessions_user_date',
