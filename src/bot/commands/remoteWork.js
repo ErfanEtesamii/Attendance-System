@@ -67,10 +67,13 @@ async function handleRemoteWork(bot, msg) {
 // ---------- گزارش تسک‌ها هنگام پایان دورکاری (flow = remote_end) ----------
 // مراحل: عنوان تسک (متن) ← مدت (دکمه یا متن: ۴۵ | ۱:۳۰ | ۲ ساعت) ← «تسک بعدی» یا «ثبت و پایان». اعتبارسنجی و ثبت نهایی در remoteTaskReportService.
 const FLOW_END = 'remote_end';
+const FLOW_REVISE = 'remote_revise'; // اصلاح تسک‌ها پس از ردِ ادمین؛ data.sessionId = نشستِ ردشده
+const isFlow = (sess) => !!sess && (sess.flow === FLOW_END || sess.flow === FLOW_REVISE);
 const QUICK = [15, 30, 45, 60, 90, 120];
 const fa = (n) => Number(n).toLocaleString('fa-IR');
 
 function netNow(sess, now) {
+  if (sess.flow === FLOW_REVISE) { const r = require('../../repositories/remoteWorkRepository').findSessionFull(sess.data.sessionId); return r && r.end_at ? report.netMinutes(r, r.end_at).net : 0; }
   const open = remoteWork.getToday(sess.data.userId, { now }).openSession;
   return open ? report.netMinutes({ id: open.id, start_at: open.start_at }, now).net : 0;
 }
@@ -78,12 +81,14 @@ function listText(tasks) { return tasks.map((t, i) => `${fa(i + 1)}) ${t.title} 
 function summaryView(sess, now, note) {
   const tasks = sess.data.tasks; const net = netNow(sess, now); const total = tasks.reduce((n, t) => n + t.minutes, 0);
   const cov = report.requirements().coveragePercent; const need = Math.ceil((net * cov) / 100);
-  const lines = ['🔴 پایان دورکاری', line, ...(note ? [note, ''] : []), tasks.length ? listText(tasks) : 'هنوز تسکی ثبت نشده است.', line,
+  const revise = sess.flow === FLOW_REVISE;
+  const lines = [revise ? '✏️ اصلاح تسک‌های دورکاری (پس از رد)' : '🔴 پایان دورکاری', line, ...(note ? [note, ''] : []), tasks.length ? listText(tasks) : 'هنوز تسکی ثبت نشده است.', line,
     `⏱ جمع تسک‌ها: ${report.faDuration(total)} | ساعت خالص دورکاری: ${report.faDuration(net)}`];
   if (need > 0) lines.push(total >= need ? '✅ پوشش زمان کافی است.' : `⚠️ دست‌کم ${report.faDuration(need)} باید با تسک توضیح داده شود (هنوز ${report.faDuration(need - total)} مانده).`);
   const rows = [[button('➕ تسک بعدی', 'rw:ta', 'primary')]];
-  if (tasks.length) rows.push([button('🗑 حذف آخرین', 'rw:tu', 'danger'), button('✅ ثبت و پایان دورکاری', 'rw:ef', 'success')]);
-  rows.push([button('↩️ انصراف (ادامه‌ی کار)', 'rw:ec')]);
+  if (revise && tasks.length) rows.push(tasks.slice(0, 8).map((_, i) => button(`🗑 ${fa(i + 1)}`, `rw:td:${i}`, 'danger')));
+  if (tasks.length) rows.push(revise ? [button('📨 ارسال مجدد برای ادمین', 'rw:ef', 'success')] : [button('🗑 حذف آخرین', 'rw:tu', 'danger'), button('✅ ثبت و پایان دورکاری', 'rw:ef', 'success')]);
+  rows.push([button(revise ? '↩️ انصراف' : '↩️ انصراف (ادامه‌ی کار)', 'rw:ec')]);
   return { text: lines.join('\n'), reply_markup: { inline_keyboard: rows } };
 }
 async function askTitle(bot, chatId, sess) {
@@ -100,6 +105,17 @@ async function startEndFlow(bot, chatId, query, user, open, now) {
   await replace(bot, query, { text: ['🔴 پایان دورکاری', line, `ساعت خالص دورکاری تا الان: ${report.faDuration(net)}`, 'قبل از پایان، کارهایی را که انجام دادی یکی‌یکی بنویس و بگو هرکدام چقدر طول کشید.',
     cov ? `جمع زمان تسک‌ها باید دست‌کم ${fa(cov)}٪ این ساعت باشد و از آن بیشتر نشود.` : 'جمع زمان تسک‌ها نباید از این ساعت بیشتر شود.', 'این تسک‌ها در «برنامه امروز»ت و برای سرپرست ثبت می‌شوند.'].join('\n') });
   return askTitle(bot, chatId, sess);
+}
+
+async function startReviseFlow(bot, chatId, query, user, row, mode, now) {
+  const tasks = require('../../repositories/remoteWorkRepository').listSessionTasks(row.id).map((t) => ({ title: t.title, minutes: t.minutes }));
+  session.start(chatId, FLOW_REVISE, { userId: user.id, sessionId: row.id, tasks, title: null });
+  const sess = session.get(chatId);
+  session.update(chatId, { step: 3 });
+  const hint = mode === 'add' ? '➕ تسک‌های جاافتاده را اضافه کن تا جمع زمان با ساعت دورکاری بخواند.' : '✂️ با دکمه‌های 🗑 تسک اضافه را حذف کن، یا حذف کن و دوباره با مدت درست بنویس.';
+  const view = summaryView(session.get(chatId), now, [row.review_note ? `💬 دلیل ادمین: ${row.review_note}` : '', hint].filter(Boolean).join('\n'));
+  if (mode === 'add') { await bot.sendMessage(chatId, view.text, { reply_markup: view.reply_markup }); return askTitle(bot, chatId, sess); }
+  return bot.sendMessage(chatId, view.text, { reply_markup: view.reply_markup });
 }
 
 async function handleRemoteEndText(bot, msg, sess) {
@@ -134,11 +150,23 @@ async function addTask(bot, chatId, sess, minutes) {
 async function handleEndFlowCallback(bot, chat, query, user, data, now) {
   const chatId = chat.id;
   const sess = session.get(chatId);
-  if (!sess || sess.flow !== FLOW_END || sess.data.userId !== user.id) { await bot.sendMessage(chatId, 'این مکالمه منقضی شده است؛ دوباره «🔴 پایان دورکاری» را بزن.'); return replace(bot, query, dashboard(user, now)); }
+  if (!sess || !isFlow(sess) || sess.data.userId !== user.id) { await bot.sendMessage(chatId, 'این مکالمه منقضی شده است؛ دوباره «🔴 پایان دورکاری» را بزن.'); return replace(bot, query, dashboard(user, now)); }
   if (data === 'rw:ec') { session.clear(chatId); return replace(bot, query, dashboard(user, now)); }
   const quick = /^rw:t:(\d+)$/.exec(data);
   if (quick) { if (sess.step !== 2 || !sess.data.title) return; return addTask(bot, chatId, sess, Number(quick[1])); }
   if (data === 'rw:ta') return askTitle(bot, chatId, sess);
+  const del = /^rw:td:(\d+)$/.exec(data);
+  if (del) {
+    if (sess.flow !== FLOW_REVISE) return undefined;
+    const tasks = sess.data.tasks.filter((_, i) => i !== Number(del[1])); session.update(chatId, { step: 3, data: { ...sess.data, tasks } });
+    return replace(bot, query, summaryView(session.get(chatId), now, '🗑 تسک حذف شد.'));
+  }
+  if (data === 'rw:ef' && sess.flow === FLOW_REVISE) {
+    const r = report.reviseAfterReject(user, sess.data.sessionId, sess.data.tasks, { ip: null, now, source: 'bot' });
+    if (!r.ok) return replace(bot, query, summaryView(sess, now, `⛔️ ${r.error}`));
+    session.clear(chatId);
+    return replace(bot, query, { text: ['📨 دوباره برای ادمین ارسال شد', line, listText(r.tasks), line, `⏱ جمع تسک‌ها: ${report.faDuration(r.totalMinutes)}`, '⏳ منتظر بررسی ادمین بمان؛ نتیجه برایت اعلام می‌شود.'].join('\n'), reply_markup: { inline_keyboard: [[button('🏠 دورکاری', 'rw:o'), button('🏠 منوی اصلی', 'rw:m')]] } });
+  }
   if (data === 'rw:tu') {
     const tasks = sess.data.tasks.slice(0, -1); session.update(chatId, { step: 3, data: { ...sess.data, tasks } });
     const view = summaryView(session.get(chatId), now, '🗑 آخرین تسک حذف شد.'); return replace(bot, query, view);
@@ -176,6 +204,17 @@ async function handleRemoteWorkCallback(bot, query) {
     if (report.requirements().required) return startEndFlow(bot, chat.id, query, user, open, now); // گزارش تسک‌ها پیش از پایان
     if (!endId[1]) return replace(bot, query, { text: `🔴 پایان دورکاری\n${line}\nشروع: ${time(open.start_at)} | مدت: ${formatMinutes(duration(open.start_at, now))}\n${state.openBreak ? '☕ استراحت بازِ شما هم همین حالا بسته می‌شود.\n' : ''}پایان بدهم؟`, reply_markup: { inline_keyboard: [[button('✅ بله، پایان بده', `rw:e!:${open.id}`, 'danger')], [button('↩️ ادامه‌ی کار', 'rw:x')]] } });
     const r = remoteWork.end(user, { ip: null, now, source: 'bot' }); if (!r.ok) return show(); return show();
+  }
+  const rv = /^rw:rv([ads]):(\d+)$/.exec(data);
+  if (rv) {
+    const row = require('../../repositories/remoteWorkRepository').findSessionFull(Number(rv[2]));
+    if (!row || row.user_id !== user.id || row.status !== 'rejected') { await bot.sendMessage(chat.id, 'این دورکاری دیگر در وضعیت «ردشده» نیست (شاید قبلاً دوباره ارسال شده).'); return undefined; }
+    if (rv[1] === 's') {
+      const r = report.reviseAfterReject(user, row.id, null, { ip: null, now, source: 'bot' });
+      if (!r.ok) { await bot.sendMessage(chat.id, `⛔️ ${r.error}`); return undefined; }
+      return replace(bot, query, { text: ['📨 دوباره برای ادمین ارسال شد', line, listText(r.tasks), '⏳ منتظر بررسی ادمین بمان؛ نتیجه برایت اعلام می‌شود.'].join('\n'), reply_markup: { inline_keyboard: [[button('🏠 دورکاری', 'rw:o')]] } });
+    }
+    return startReviseFlow(bot, chat.id, query, user, row, rv[1] === 'a' ? 'add' : 'del', now);
   }
   if (data.startsWith('rw:t') || data === 'rw:ec' || data === 'rw:ef') return handleEndFlowCallback(bot, chat, query, user, data, now);
   return show();

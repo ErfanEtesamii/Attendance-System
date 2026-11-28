@@ -668,7 +668,7 @@ const roleWho = (actor) => (actor && isAdmin(actor) ? 'ادمین' : 'سرپرس
  * پایان یک نشست دورکاری ثبت شد (کارمند خودش، یا job شبانه بسته است) ⇒ پیام «برای بررسی» برای تأییدکننده‌ها.
  * فقط نشستِ بسته‌ی pending؛ غیر آن بی‌اثر. dedupe روی شناسه‌ی نشست ⇒ دوباره‌خوانی پیام تکراری نمی‌سازد.
  */
-function remoteWorkSubmitted(sessionId) {
+function remoteWorkSubmitted(sessionId, { resubmit = false, previousNote = null } = {}) {
   return guard('remoteWorkSubmitted', () => {
     const s = remoteRepo.findSessionFull(sessionId);
     if (!s || s.status !== 'pending' || !s.end_at) return [];
@@ -677,6 +677,7 @@ function remoteWorkSubmitted(sessionId) {
     const m = remoteMinutes(s);
     const lines = [
       REMOTE_LINE,
+      ...(resubmit ? ['🔁 کارمند پس از رد شدن، تسک‌ها را اصلاح/تأیید کرد و دوباره فرستاد.', ...(previousNote ? [`💬 دلیل رد قبلی: ${sanitizeText(previousNote, 200)}`] : [])] : []),
       `👤 ${sanitizeText(employee.full_name, 100)}`,
       `📅 ${faDate(s.work_date)}`,
       `🕘 ${remoteRange(s, false)}`,
@@ -694,11 +695,11 @@ function remoteWorkSubmitted(sessionId) {
     const button = panelLinks.panelWebAppButton({ view: 'remote', text: '🖥 بررسی در صف دورکاری' });
     return handlersOf(employee, 'remote_work.review').map((h) => send('remoteWorkSubmitted', h.id, {
       type: 'remote_work_submitted',
-      title: '🏠 دورکاری جدید برای بررسی',
+      title: resubmit ? '🔁 دورکاری اصلاح‌شده برای بررسی مجدد' : '🏠 دورکاری جدید برای بررسی',
       body: lines.join('\n'),
       link: '#/remote',
       data: { sessionId: s.id, userId: s.user_id, workDate: s.work_date, status: 'pending', autoClosed: s.auto_closed === 1 },
-      dedupeKey: `remote_work_submitted:${s.id}`,
+      dedupeKey: resubmit ? `remote_work_submitted:${s.id}:r${Date.now()}` : `remote_work_submitted:${s.id}`,
       telegram: true,
       telegramButton: button || undefined,
     }));
@@ -784,15 +785,23 @@ function remoteWorkRejected(session, { note = null, actor = null } = {}) {
     const lines = [REMOTE_LINE, `📅 ${faDate(session.work_date)}`];
     if (session.start_at && session.end_at) lines.push(`🕘 ${remoteRange(session, false)}`);
     if (note) lines.push(`💬 دلیل ${who}: ${sanitizeText(note, 300)}`);
-    lines.push(REMOTE_LINE, `این ساعت‌ها در حضور و غیاب و حقوق حساب نمی‌شود. اگر فکر می‌کنید اشتباهی شده، با ${who} صحبت کنید.`);
+    const hasTasks = remoteRepo.listSessionTasks(session.id).length > 0 && !session.auto_closed;
+    lines.push(REMOTE_LINE, `این ساعت‌ها در حضور و غیاب و حقوق حساب نمی‌شود. ${hasTasks ? 'یکی از گزینه‌های زیر را انتخاب کن تا دوباره برای بررسی ارسال شود.' : `اگر فکر می‌کنید اشتباهی شده، با ${who} صحبت کنید.`}`);
+    const { cb } = require('../bot/ui/pickers');
+    const kb = hasTasks ? [
+      [{ text: '➕ تسک اضافه می‌کنم', callback_data: cb(`rw:rva:${session.id}`), style: 'primary' }],
+      [{ text: '✂️ از تسک‌ها کم می‌کنم', callback_data: cb(`rw:rvd:${session.id}`), style: 'danger' }],
+      [{ text: '📨 قبول دارم؛ دوباره برای ادمین بفرست', callback_data: cb(`rw:rvs:${session.id}`), style: 'success' }],
+    ] : undefined;
     return [
       send('remoteWorkRejected', session.user_id, {
         type: 'remote_work_rejected',
         title: '❌ دورکاری شما رد شد',
         body: lines.join('\n'),
         data: { sessionId: session.id, workDate: session.work_date, status: 'rejected' },
-        dedupeKey: `remote_work_rejected:${session.id}`,
+        dedupeKey: `remote_work_rejected:${session.id}:${session.reviewed_at || ''}`,
         telegram: true,
+        telegramKeyboard: kb,
       }),
     ];
   });

@@ -138,6 +138,34 @@ function mirrorApproved(sessionId) {
   } catch (err) { console.error('[remoteTasks] mirrorApproved:', err && err.message); return { synced: false, reason: 'ERROR' }; }
 }
 
+/**
+ * اصلاح و ارسال مجدد نشستِ ردشده. rawTasks = null ⇒ همان تسک‌های قبلی (کارمند رد شدن را پذیرفته و دوباره می‌فرستد).
+ * ⇒ { ok, session, tasks, totalMinutes } | fail
+ */
+function reviseAfterReject(user, sessionId, rawTasks, { ip = null, now = new Date(), source = 'bot' } = {}) {
+  const row = repo.findSessionFull(Number(sessionId));
+  if (!row || row.user_id !== user.id) return fail(404, 'SESSION_NOT_FOUND', 'این دورکاری یافت نشد.');
+  if (row.status !== 'rejected' || !row.end_at) return fail(409, 'NOT_REJECTED', 'این دورکاری در وضعیت ردشده نیست (شاید قبلاً دوباره ارسال شده است).');
+  if (monthClosuresRepository.findClosedOverlapping(row.work_date, row.work_date).length > 0) return fail(409, 'MONTH_CLOSED', 'ماهِ این دورکاری بسته شده است و دیگر قابل اصلاح نیست.');
+  const settings = settingsRepository.getAll();
+  const previous = repo.listSessionTasks(row.id).map((t) => ({ title: t.title, minutes: t.minutes }));
+  const list = Array.isArray(rawTasks) ? rawTasks : previous;
+  const { net } = netMinutes(row, row.end_at);
+  const v = validate(list, net, settings);
+  if (!v.ok) return v;
+  const db = getDb();
+  const changed = db.transaction(() => {
+    if (!repo.markResubmitted(row.id)) return 0;
+    repo.deleteSessionTasks(row.id);
+    repo.insertSessionTasks(row.id, user.id, v.tasks);
+    return 1;
+  })();
+  if (!changed) return fail(409, 'NOT_REJECTED', 'این دورکاری در وضعیت ردشده نیست.');
+  try { auditRepository.logChange({ actor: user.id, action: 'remote_work_resubmit', entityType: 'remote_work_session', entityId: row.id, before: { status: 'rejected', tasks: previous }, after: { status: 'pending', tasks: v.tasks }, reason: row.review_note || null, ip, meta: { source, targetUserId: user.id, sessionId: row.id, workDate: row.work_date, edited: Array.isArray(rawTasks), previousNote: row.review_note || null } }); } catch (_) { /* audit نباید ارسال مجدد را بشکند */ }
+  try { require('./notificationEvents').remoteWorkSubmitted(row.id, { resubmit: true, previousNote: row.review_note }).catch(() => {}); } catch (_) { /* اعلان best-effort */ }
+  return { ok: true, session: repo.findSessionFull(row.id), tasks: v.tasks, totalMinutes: v.total };
+}
+
 /** پایان دورکاری همراه گزارش تسک‌ها. ⇒ remoteWork.end + { tasks, totalMinutes, planSynced } | fail */
 function endWithTasks(user, rawTasks, { ip = null, now = new Date(), source = 'miniapp' } = {}) {
   const open = repo.findOpenSession(user.id);
@@ -154,4 +182,4 @@ function endWithTasks(user, rawTasks, { ip = null, now = new Date(), source = 'm
   return { ...r, tasks: rows.map((t) => ({ title: t.title, minutes: t.minutes })), totalMinutes: v.total, planSynced: false };
 }
 
-module.exports = { REMOTE_TASK_KEY, mirrorApproved, endWithTasks, validate, parseMinutes, netMinutes, requirements, faDuration, mirrorToPlan, MAX_TASKS, TOLERANCE };
+module.exports = { reviseAfterReject, REMOTE_TASK_KEY, mirrorApproved, endWithTasks, validate, parseMinutes, netMinutes, requirements, faDuration, mirrorToPlan, MAX_TASKS, TOLERANCE };

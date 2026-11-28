@@ -275,11 +275,18 @@ function listTasksForSessions(sessionIds) {
   for (const r of rows) { if (!map.has(r.session_id)) map.set(r.session_id, []); map.get(r.session_id).push(r); }
   return map;
 }
+function deleteSessionTasks(sessionId) {
+  getDb().prepare('DELETE FROM remote_session_tasks WHERE session_id = ?').run(sessionId);
+}
+// بازگرداندن نشستِ ردشده به صف بررسی (فقط rejected)؛ یادداشت/بررسی‌کننده‌ی قبلی پاک می‌شود (در audit می‌ماند)
+function markResubmitted(id) {
+  return getDb().prepare("UPDATE remote_work_sessions SET status = 'pending', reviewed_by = NULL, reviewed_at = NULL, review_note = NULL WHERE id = ? AND status = 'rejected'").run(id).changes;
+}
 function setSessionTaskPlanTask(id, planTaskId) {
   getDb().prepare('UPDATE remote_session_tasks SET plan_task_id = ? WHERE id = ?').run(planTaskId, id);
 }
 
-module.exports = { insertSessionTasks, listSessionTasks, listTasksForSessions, setSessionTaskPlanTask,
+module.exports = { deleteSessionTasks, markResubmitted, insertSessionTasks, listSessionTasks, listTasksForSessions, setSessionTaskPlanTask,
   listQueue, listBreaksForSessions,
   findSessionFull, listInRangeForRecords, listApprovedForDay, listApprovedInRange, listClosedInRange, findOfficialRecord, insertRemoteRecord, updateRemoteRecord, adoptPlaceholder, replaceRemoteBreaks, markApproved, markRejected, updateApprovedTimes, setOnsiteSpan, syncRecordSegments, updateRecordTimes, insertRemoteBreaks, pendingClosedByUser,
   findOpenSession, findSessionById, listForUserDate, listForUserRange, insertSession, insertClosedSession, closeSession, listStaleOpenSessions,
