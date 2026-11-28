@@ -100,8 +100,10 @@
     };
     const deals = [mk('معامله‌ی نمونه ۱', 'مشتری نمونه', '۱۴۰۵/۰۸/۲۰', 510000000, 0, 5, 5), mk('معامله‌ی نمونه ۲', 'مشتری نمونه', '۱۴۰۵/۰۸/۱۴', 380300000, 6, 4, 4), mk('معامله‌ی نمونه ۳', 'مشتری نمونه', '۱۴۰۵/۰۸/۰۷', 33700000, 12, 3, 1), mk('معامله‌ی نمونه ۴', 'مشتری نمونه', '۱۴۰۵/۰۸/۰۲', 26200000, 35, 0, 0)];
     const sum = (k) => deals.reduce((t, x) => t + x[k], 0);
-    return { monthLabel: 'آبان ۱۴۰۵', season: { label: 'پاییز ۱۴۰۵', dealsCount: 9, commissionToman: 61250000 },
-      totals: { commissionToman: sum('commissionToman'), dealsCount: deals.length, noInvoiceCount: 0, salesToman: sum('amountToman'), avgRatePercent: 6.2, avgDiscountPercent: 13.2, nextTier: { rate: 5, remainingToman: 31200000, progress: 79 } }, deals };
+    const targetToman = 1200000000; const salesToman = sum('amountToman');
+    const target = { jy: 1405, jm: 8, monthLabel: 'آبان ۱۴۰۵', targetToman, rewardToman: 10000000, rewardNote: '', rewardText: 'هر فروشِ بزرگ، با یک تماسِ کوچک شروع شده؛ امروز همان تماس را بگیر.', salesToman, remainingToman: Math.max(0, targetToman - salesToman), progress: Math.min(100, Math.floor((salesToman / targetToman) * 100)), achieved: salesToman >= targetToman };
+    return { monthLabel: 'آبان ۱۴۰۵', target, targetMonth: { jy: 1405, jm: 8, label: 'آبان ۱۴۰۵' }, season: { label: 'پاییز ۱۴۰۵', dealsCount: 9, commissionToman: 61250000 },
+      totals: { commissionToman: sum('commissionToman'), dealsCommissionToman: sum('commissionToman'), targetRewardToman: 0, dealsCount: deals.length, noInvoiceCount: 0, salesToman, avgRatePercent: 6.2, avgDiscountPercent: 13.2, nextTier: { rate: 5, remainingToman: 31200000, progress: 79 } }, deals };
   }
   const demoTag = '<span class="cm-demo">نمونه</span>';
 
