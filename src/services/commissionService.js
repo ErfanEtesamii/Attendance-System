@@ -5,6 +5,8 @@ const config = require('../config');
 const { dealFromItems, commissionForDeal, nextAmountTier, buildLeaderboards, AMOUNT_TIERS } = require('../utils/commission');
 const { jalaliMonthRangeOf, toJalaliFromDate, jalaliPartsOfDateString, MONTH_NAMES } = require('../utils/jalali');
 const didarClient = require('./didarClient');
+const salesTargets = require('../repositories/salesTargetsRepository');
+const { pickMotivation } = require('../utils/motivation');
 
 const tehranDate = (iso) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tehran' }).format(new Date(iso)); // YYYY-MM-DD
 
@@ -89,6 +91,42 @@ function dealsOfMonth(range, email) {
   });
 }
 
+
+// ---------- هدف فروش ماهانه ----------
+// ماهِ هدف: اگر بازه کاملاً داخل یک ماه شمسی باشد همان ماه؛ در غیر این‌صورت (فصل/کل زمان/چند ماه) هدفی نشان داده نمی‌شود.
+function targetMonthOf(range) {
+  const a = jalaliPartsOfDateString(range.from); const b = jalaliPartsOfDateString(range.to);
+  return a && b && a.jy === b.jy && a.jm === b.jm ? { jy: a.jy, jm: a.jm, label: `${MONTH_NAMES[a.jm - 1]} ${a.jy}` } : null;
+}
+// پیشرفت تا هدف: جمع فروش (مبلغ فاکتور) کل همان ماه شمسی؛ برای کاربری که هدف ندارد null
+function targetInfo(userId, email, tm) {
+  if (!userId || !tm) return null;
+  const t = salesTargets.find(userId, tm.jy, tm.jm);
+  if (!t) return null;
+  const sales = dealsOfMonth(monthOf(tm.jy, tm.jm), email).filter((d) => !d.noInvoice).reduce((s, d) => s + d.amountToman, 0);
+  const progress = Math.min(100, Math.floor((sales / t.target_toman) * 100));
+  return {
+    jy: tm.jy, jm: tm.jm, monthLabel: `${MONTH_NAMES[tm.jm - 1]} ${tm.jy}`,
+    targetToman: t.target_toman, rewardToman: t.reward_toman, rewardNote: t.reward_note || '', rewardText: t.reward_note || pickMotivation(userId, tm.jy, tm.jm),
+    salesToman: sales, remainingToman: Math.max(0, t.target_toman - sales), progress, achieved: sales >= t.target_toman,
+  };
+}
+
+// تشویقیِ هدفِ یک ماه شمسی: فقط وقتی کارمند به هدف رسیده باشد به پورسانتِ همان ماه اضافه می‌شود (۰ وگرنه)
+function achievedRewardToman(userId, email, jy, jm) {
+  const g = targetInfo(userId, email, { jy, jm });
+  return g && g.achieved ? g.rewardToman : 0;
+}
+
+// جمع تشویقیِ هدف‌های رسیده‌ی سه ماهِ فصلِ این ماه (برای «پورسانت فصل»)
+function seasonRewards(userId, email, jy, jm) {
+  if (!userId) return 0;
+  const first = Math.floor((jm - 1) / 3) * 3 + 1;
+  let sum = 0;
+  for (let m = first; m < first + 3; m += 1) sum += achievedRewardToman(userId, email, jy, m);
+  return sum;
+}
+
 function myCommission(user, q = {}, { floor = null } = {}) {
   const range = rangeOf(q, { floor });
   const email = String(user.didar_email || '').trim().toLowerCase();
@@ -96,7 +134,11 @@ function myCommission(user, q = {}, { floor = null } = {}) {
   const deals = dealsOfMonth(range, email);
   const inv = deals.filter((d) => !d.noInvoice);
   const sales = inv.reduce((t, d) => t + d.amountToman, 0);
-  const commission = inv.reduce((t, d) => t + d.commissionToman, 0);
+  const dealsCommission = inv.reduce((t, d) => t + d.commissionToman, 0);
+  const tm = targetMonthOf(range);
+  const target = targetInfo(user.id, email, tm);
+  const rewardToman = target && target.achieved ? target.rewardToman : 0; // تشویقیِ هدف به پورسانتِ همان ماه اضافه می‌شود
+  const commission = dealsCommission + rewardToman;
   const best = inv.reduce((m, d) => Math.max(m, d.amountToman), 0);
   const tier = nextAmountTier(best);
   const avg = (f) => (inv.length ? Math.round((inv.reduce((t, d) => t + f(d), 0) / inv.length) * 10) / 10 : 0);
@@ -105,9 +147,11 @@ function myCommission(user, q = {}, { floor = null } = {}) {
   return {
     monthLabel: range.label,
     range: { from: range.from, to: range.to, custom: !!range.custom, clamped: !!range.clamped },
-    season: range.custom ? null : { label: seasonRange.label, dealsCount: seasonInv.length, commissionToman: seasonInv.reduce((t, d) => t + d.commissionToman, 0) },
+    target,
+    targetMonth: tm,
+    season: range.custom ? null : { label: seasonRange.label, dealsCount: seasonInv.length, commissionToman: seasonInv.reduce((t, d) => t + d.commissionToman, 0) + seasonRewards(user.id, email, range.jy, range.jm) },
     totals: {
-      commissionToman: commission, dealsCount: inv.length, noInvoiceCount: deals.length - inv.length, salesToman: sales,
+      commissionToman: commission, dealsCommissionToman: dealsCommission, targetRewardToman: rewardToman, dealsCount: inv.length, noInvoiceCount: deals.length - inv.length, salesToman: sales,
       avgRatePercent: avg((d) => d.ratePercent), avgDiscountPercent: avg((d) => d.discountPercent),
       nextTier: tier ? { rate: tier.rate, remainingToman: Math.max(0, tier.threshold - best + 1), progress: Math.min(100, Math.round((best / tier.threshold) * 100)) } : null,
     },
@@ -205,7 +249,47 @@ function memberCommission(viewer, id, ym) {
     return f ? { name: f.name, isFormer: true, commission: myCommission({ didar_email: f.key }, ym) } : null;
   }
   const u = visibleMembers(viewer).find((m) => m.id === Number(id));
-  return u ? { name: u.full_name, commission: myCommission(u, ym) } : null;
+  return u ? { name: u.full_name, userId: u.id, canSetTarget: canSetTarget(viewer, u), commission: myCommission(u, ym) } : null;
+}
+
+/** تعیین/ویرایش هدف ماهانه‌ی یک کارمند: ادمین/مالک یا مدیر مستقیمِ همان کارمند. */
+const MAX_AMOUNT = 1e12;
+const intAmount = (v) => (typeof v === 'number' || (typeof v === 'string' && /^\d+$/.test(v.trim())) ? Math.round(Number(v)) : NaN);
+function canSetTarget(viewer, member) {
+  return ['admin', 'owner'].includes(viewer.role) || (member && member.manager_id === viewer.id);
+}
+function targetMember(id) {
+  return getDb().prepare("SELECT id, full_name, manager_id, didar_email FROM users WHERE id = ? AND is_active = 1 AND didar_email IS NOT NULL AND didar_email <> '' AND role <> 'owner'").get(Number(id)) || null;
+}
+const failT = (status, code, error) => ({ ok: false, status, code, error });
+function parseMonth(body) {
+  const now = toJalaliFromDate(new Date());
+  const jy = Number.isInteger(body.jy) ? body.jy : now.jy; const jm = Number.isInteger(body.jm) ? body.jm : now.jm;
+  return jy >= 1300 && jy <= 1600 && jm >= 1 && jm <= 12 ? { jy, jm } : null;
+}
+function setTarget(viewer, memberId, body = {}, { ip = null } = {}) {
+  const m = targetMember(memberId);
+  if (!m) return failT(404, 'NOT_FOUND', 'این همکار پیدا نشد.');
+  if (!canSetTarget(viewer, m)) return failT(403, 'FORBIDDEN', 'فقط مدیر مستقیمِ این همکار یا مدیریت می‌تواند هدف تعیین کند.');
+  const ym = parseMonth(body);
+  if (!ym) return failT(400, 'VALIDATION', 'ماه نامعتبر است.');
+  const targetToman = intAmount(body.targetToman); const rewardToman = body.rewardToman == null || body.rewardToman === '' ? 0 : intAmount(body.rewardToman);
+  if (!(targetToman > 0) || targetToman > MAX_AMOUNT) return failT(400, 'VALIDATION', 'مبلغ هدف باید یک عدد مثبت (تومان) باشد.');
+  if (!(rewardToman >= 0) || rewardToman > MAX_AMOUNT) return failT(400, 'VALIDATION', 'مبلغ تشویقی باید صفر یا عدد مثبت (تومان) باشد.');
+  const rewardNote = String(body.rewardNote || '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 160);
+  const r = salesTargets.upsert({ userId: m.id, ...ym, targetToman, rewardToman, rewardNote, setBy: viewer.id });
+  require('../repositories/auditRepository').logEvent({ userId: viewer.id, action: 'sales_target_set', ipAddress: ip, details: { memberId: m.id, jy: ym.jy, jm: ym.jm, targetToman, rewardToman, rewardNote, before: r.before ? { targetToman: r.before.target_toman, rewardToman: r.before.reward_toman } : null } });
+  return { ok: true, target: targetInfo(m.id, String(m.didar_email).toLowerCase(), ym) };
+}
+function removeTarget(viewer, memberId, body = {}, { ip = null } = {}) {
+  const m = targetMember(memberId);
+  if (!m) return failT(404, 'NOT_FOUND', 'این همکار پیدا نشد.');
+  if (!canSetTarget(viewer, m)) return failT(403, 'FORBIDDEN', 'فقط مدیر مستقیمِ این همکار یا مدیریت می‌تواند هدف را حذف کند.');
+  const ym = parseMonth(body);
+  if (!ym) return failT(400, 'VALIDATION', 'ماه نامعتبر است.');
+  const prev = salesTargets.remove(m.id, ym.jy, ym.jm);
+  if (prev) require('../repositories/auditRepository').logEvent({ userId: viewer.id, action: 'sales_target_removed', ipAddress: ip, details: { memberId: m.id, jy: ym.jy, jm: ym.jm, targetToman: prev.target_toman } });
+  return { ok: true, removed: !!prev };
 }
 
 // فقط تیم فروش (کارمندِ دارای ایمیل دیدار) و ادمین/مالک/سرپرستِ فروش به بخش فروش دسترسی دارند؛ بقیه‌ی کارمندها هیچ
@@ -215,4 +299,4 @@ function hasSalesAccess(viewer) {
   return !!(r && r.didar_email);
 }
 
-module.exports = { rangeOf, dealsOfMonth, hasSalesAccess, floorFor, formerOwners, visibleMembers, membersSummary, memberCommission, canViewTeam, sync, syncIfStale, myCommission, leaderboard, normalizeDeal, AMOUNT_TIERS };
+module.exports = { setTarget, removeTarget, targetInfo, targetMonthOf, rangeOf, dealsOfMonth, hasSalesAccess, floorFor, formerOwners, visibleMembers, membersSummary, memberCommission, canViewTeam, sync, syncIfStale, myCommission, leaderboard, normalizeDeal, AMOUNT_TIERS };

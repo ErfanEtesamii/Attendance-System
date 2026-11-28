@@ -9,7 +9,7 @@ const jdate = (iso) => { const j = jalaliPartsOfDateString(iso); return j ? fa(`
 const statusOf = (d) => (d.noInvoice ? 'بدون فاکتور' : (d.eligible ? 'مشمول پورسانت' : 'تخفیف بیش از حد مجاز'));
 
 function owners(viewer) {
-  const active = service.visibleMembers(viewer).map((u) => ({ key: String(u.didar_email).toLowerCase(), name: u.full_name, former: false }));
+  const active = service.visibleMembers(viewer).map((u) => ({ key: String(u.didar_email).toLowerCase(), name: u.full_name, userId: u.id, former: false }));
   const former = service.formerOwners().map((f) => ({ key: f.key, name: f.name, former: true }));
   return [...active, ...former];
 }
@@ -24,19 +24,20 @@ function buildCommissionSheets(viewer, q = {}) {
     if (!deals.length) continue;
     const inv = deals.filter((d) => !d.noInvoice);
     const sales = inv.reduce((t, d) => t + d.amountToman, 0);
-    const commission = inv.reduce((t, d) => t + d.commissionToman, 0);
+    const reward = o.userId ? (() => { const tm = service.targetMonthOf(range); const g = tm ? service.targetInfo(o.userId, o.key, tm) : null; return g && g.achieved ? g.rewardToman : 0; })() : 0; // تشویقی هدفِ ماه (فقط وقتی به هدف رسیده)
+    const commission = inv.reduce((t, d) => t + d.commissionToman, 0) + reward;
     const avg = (f) => (inv.length ? Math.round((inv.reduce((t, d) => t + f(d), 0) / inv.length) * 10) / 10 : 0);
-    summary.push([o.name, o.former ? 'سابق' : 'فعال', inv.length, sales, commission, avg((d) => d.ratePercent), avg((d) => d.discountPercent), deals.length - inv.length]);
+    summary.push([o.name, o.former ? 'سابق' : 'فعال', inv.length, sales, commission, avg((d) => d.ratePercent), avg((d) => d.discountPercent), deals.length - inv.length, reward]);
     for (const d of deals.slice().sort((a, b) => a.dateLabel.localeCompare(b.dateLabel))) {
       detail.push([jdate(d.dateLabel), d.dateLabel, o.name, d.customer || '', d.title || '', d.noInvoice ? 0 : d.amountToman, d.noInvoice ? '' : d.discountPercent, d.noInvoice ? '' : d.ratePercent, d.noInvoice ? 0 : d.commissionToman, statusOf(d)]);
     }
   }
   summary.sort((a, b) => b[4] - a[4]);
   const total = summary.reduce((t, r) => [t[0] + r[2], t[1] + r[3], t[2] + r[4]], [0, 0, 0]);
-  summary.push(['جمع کل', '', total[0], total[1], total[2], '', '', '']);
+  summary.push(['جمع کل', '', total[0], total[1], total[2], '', '', '', summary.reduce((t, r) => t + (r[8] || 0), 0)]);
   const title = `پورسانت تیم فروش — ${range.label}`;
   const sheets = [
-    { name: 'خلاصه‌ی اعضا', headers: ['نام', 'وضعیت', 'تعداد فاکتور', 'جمع فروش (تومان)', 'جمع پورسانت (تومان)', 'میانگین درصد پورسانت', 'میانگین تخفیف (٪)', 'معامله‌ی بدون فاکتور'], rows: summary },
+    { name: 'خلاصه‌ی اعضا', headers: ['نام', 'وضعیت', 'تعداد فاکتور', 'جمع فروش (تومان)', 'جمع پورسانت (تومان)', 'میانگین درصد پورسانت', 'میانگین تخفیف (٪)', 'معامله‌ی بدون فاکتور', 'تشویقی هدف (تومان؛ داخل جمع پورسانت)'], rows: summary },
     { name: 'معامله‌ها', headers: ['تاریخ شمسی', 'تاریخ میلادی', 'کارشناس', 'مشتری', 'عنوان معامله', 'مبلغ فاکتور (تومان)', 'تخفیف (٪)', 'درصد پورسانت', 'پورسانت (تومان)', 'وضعیت'], rows: detail },
   ];
   return { ok: true, title, range, sheets, csv: sheets[1] };

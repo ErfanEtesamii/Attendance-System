@@ -216,4 +216,27 @@ describe('API پورسانت فروش', () => {
     const r = await service.sync(); cfg.apiKey = old;
     assert.equal(r.ok, false); assert.equal(r.code, 'DIDAR_NOT_CONFIGURED'); assert.ok(!JSON.stringify(r).includes('test-key'));
   });
+
+  test('هدف ماهانه (API): مدیر مستقیم PUT/DELETE؛ سرپرست/کارمند دیگر ۴۰۳؛ هدف در پورسانت خودِ کارمند و کارت عضو دیده می‌شود', async () => {
+    require('../src/db/connection').getDb().prepare("UPDATE users SET didar_email = 'a@x.com', is_active = 1 WHERE id = ?").run(U.a.id);
+    const url = `/api/admin/sales-team/members/${U.a.id}/target`;
+    const body = { year: 1405, month: 8, targetToman: 400000000, rewardToman: 2000000, rewardNote: 'سکه' };
+    { const rr = await hit('b', 'PUT', url, body); assert.equal(rr.status, 403, JSON.stringify(rr.json)); } // کارمندِ غیرمدیر
+    assert.equal((await hit('plain', 'PUT', url, body)).status, 403);
+    assert.equal((await hit('sup', 'PUT', url, { ...body, targetToman: 0 })).status, 400);
+    const ok = await hit('sup', 'PUT', url, body);
+    assert.equal(ok.status, 200);
+    assert.equal(ok.json.target.targetToman, 400000000);
+    assert.equal(ok.json.target.salesToman, 285000000); // فاکتور الفِ آبان: ۳۰۰ میلیون با ۵٪ تخفیف
+    assert.equal(ok.json.target.progress, 71);
+    const mine = await hit('a', 'GET', `/api/admin/me/commission${month}`);
+    assert.equal(mine.json.commission.target.rewardToman, 2000000);
+    assert.equal(mine.json.commission.target.rewardText, 'سکه');
+    const card = await hit('sup', 'GET', `/api/admin/sales-team/members/${U.a.id}${month}`);
+    assert.equal(card.json.canSetTarget, true);
+    const own = await hit('admin', 'GET', `/api/admin/sales-team/members/${U.a.id}${month}`);
+    assert.equal(own.json.canSetTarget, true); // ادمین هم می‌تواند
+    assert.equal((await hit('sup', 'DELETE', url, { year: 1405, month: 8 })).json.removed, true);
+    assert.equal((await hit('a', 'GET', `/api/admin/me/commission${month}`)).json.commission.target, null);
+  });
 });

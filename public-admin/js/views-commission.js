@@ -50,15 +50,38 @@
       <text class="cm-ring-top" x="90" y="92" text-anchor="middle">${centerTop}</text><text class="cm-ring-bot" x="90" y="112" text-anchor="middle">${centerBottom}</text></svg>`;
   }
 
-  function commissionHtml(d, title) {
+  // فرم تعیین هدف ماهانه (فقط برای ادمین/مالک و مدیر مستقیم؛ سرور هم بررسی می‌کند)
+  const digitsOnly = (v) => String(v || '').replace(/[۰-۹]/g, (x) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(x))).replace(/[٠-٩]/g, (x) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(x))).replace(/[^0-9]/g, '');
+  function targetPanel(d) {
+    const g = d.target;
+    const field = (name, label, val, hint) => `<label class="cm-tf"><span>${label}</span><input type="text" inputmode="numeric" autocomplete="off" name="${name}" value="${val ? Number(val).toLocaleString('en-US') : ''}" data-money><small data-money-hint>${hint || ''}</small></label>`;
+    return `<section class="card cm-target" data-target-panel hidden aria-label="تعیین هدف ماهانه"><form data-target-form novalidate>
+      <h3>هدف فروش ${esc(d.targetMonth.label)}</h3>
+      <div class="cm-tf-grid">
+        ${field('targetToman', 'مبلغ هدف فروش (تومان)', g ? g.targetToman : '', g ? million(g.targetToman) : '')}
+        ${field('rewardToman', 'مبلغ تشویقی در صورت رسیدن به هدف (تومان)', g && g.rewardToman ? g.rewardToman : '', g && g.rewardToman ? million(g.rewardToman) : '')}
+        <label class="cm-tf cm-tf--wide"><span>جمله‌ی انگیزشی برای کارمند (اختیاری)</span><input type="text" name="rewardNote" maxlength="160" value="${g ? esc(g.rewardNote) : ''}" placeholder="خالی بگذارید تا هر ماه یک جمله‌ی انگیزشی متفاوت خودکار نشان داده شود"></label>
+      </div>
+      <p class="cm-tf-note">هدف بر اساس جمع مبلغ فاکتورهای موفق همین ماه شمسی حساب می‌شود. با رسیدن کارمند به هدف، خودش و شما پیام می‌گیرید.</p>
+      <div class="cm-tf-actions"><button type="submit" class="btn btn-primary">ذخیره‌ی هدف</button>${g ? '<button type="button" class="btn btn-secondary" data-target-del>حذف هدف</button>' : ''}<button type="button" class="btn btn-secondary" data-target-cancel>انصراف</button></div></form></section>`;
+  }
+
+  function commissionHtml(d, title, opts = {}) {
     const t = d.totals;
-    const next = t.nextTier
-      ? `<div class="cm-hero-ring">${ring(t.nextTier.progress || 0, `${fmt.num(Math.round(t.nextTier.progress || 0))}٪`, 'تا پله‌ی بعد')}<p class="cm-ring-cap">${million(t.nextTier.remainingToman)} دیگر تا پورسانت مبلغی <b>${fmt.num(t.nextTier.rate)}٪</b> روی یک فاکتور</p></div>`
-      : `<div class="cm-hero-ring">${ring(100, '🏆', 'بالاترین پله')}<p class="cm-ring-cap">فاکتور شما در بالاترین پله‌ی مبلغی است</p></div>`;
+    const tg = d.target;
+    const rewardLine = (g) => `${g.rewardToman > 0 ? `<p class="cm-reward"><span aria-hidden="true">🎁</span> تشویقی هدف: <b>${million(g.rewardToman)} تومان</b></p>` : ''}${g.rewardText ? `<p class="cm-reward"><span aria-hidden="true">💬</span> <b>${esc(g.rewardText)}</b></p>` : ''}`;
+    const editBtn = opts.canSetTarget && d.targetMonth ? `<button type="button" class="btn btn-secondary cm-target-btn" data-target-edit>${tg ? 'ویرایش هدف' : 'تعیین هدف'}</button>` : '';
+    let next = '';
+    if (tg) {
+      next = `<div class="cm-hero-ring">${ring(tg.progress, tg.achieved ? '🎯' : `${fmt.num(tg.progress)}٪`, tg.achieved ? 'به هدف رسید' : 'تا هدف ماه')}<p class="cm-ring-cap">${tg.achieved ? `هدف <b>${million(tg.targetToman)}</b> تومان کامل شد` : `${million(tg.remainingToman)} دیگر تا هدف <b>${million(tg.targetToman)}</b> تومان`}</p>${rewardLine(tg)}${editBtn}</div>`;
+    } else if (d.targetMonth) {
+      next = `<div class="cm-hero-ring">${ring(0, '—', 'بدون هدف')}<p class="cm-ring-cap">برای ${esc(d.targetMonth.label)} هنوز هدفی تعیین نشده است</p>${editBtn}</div>`;
+    }
     return `<div class="view-header"><div><h2>${esc(title || 'پورسانت من')}</h2><div class="sub">معامله‌های موفق ${esc(d.monthLabel)} در دیدار</div></div></div>
       <section class="card cm-hero"><div class="cm-hero-main"><div class="cm-hero-head"><span class="cm-hero-chip" aria-hidden="true">${AP.icon('wallet')}</span><h3>پورسانت ${esc(d.monthLabel)}</h3></div><p class="cm-hero-intro">${fmt.num(t.dealsCount)} معامله‌ی موفق در دیدار</p>
         <p class="cm-hero-amount"><span>${fmt.num(t.commissionToman)}</span><small>تومان</small></p>
-        <div class="cm-hero-foot">${d.season ? `<span class="cm-season">${esc(d.season.label)}: <b>${fmt.num(d.season.commissionToman)}</b> تومان از ${fmt.num(d.season.dealsCount)} فاکتور</span>` : ''}<span class="cm-note"><span aria-hidden="true">ⓘ</span> تخمینی؛ مبلغ نهایی با تأیید حسابداری است</span></div></div>${next}</section>
+        <div class="cm-hero-foot">${t.targetRewardToman > 0 ? `<span class="cm-season cm-season--reward"><span aria-hidden="true">🎁</span> شامل تشویقی هدف: <b>${fmt.num(t.targetRewardToman)}</b> تومان</span>` : ''}${d.season ? `<span class="cm-season">${esc(d.season.label)}: <b>${fmt.num(d.season.commissionToman)}</b> تومان از ${fmt.num(d.season.dealsCount)} فاکتور</span>` : ''}<span class="cm-note"><span aria-hidden="true">ⓘ</span> تخمینی؛ مبلغ نهایی با تأیید حسابداری است</span></div></div>${next}</section>
+      ${opts.canSetTarget && d.targetMonth ? targetPanel(d) : ''}
       <div class="stat-grid cm-stats">
         <div class="stat"><div class="stat-icon g-green">${AP.icon('check')}</div><div class="stat-value">${fmt.num(t.dealsCount)}</div><div class="stat-label">معامله‌ی موفق</div></div>
         <div class="stat"><div class="stat-icon g-blue">${AP.icon('trend')}</div><div class="stat-value">${million(t.salesToman)}</div><div class="stat-label">جمع فروش (تومان)</div></div>
@@ -83,14 +106,15 @@
   const demoTag = '<span class="cm-demo">نمونه</span>';
 
   function commissionCard(d, demo) {
-    const nt = d.totals.nextTier;
-    const next = nt ? `<div class="cm-card-next"><div class="hbar-track tb-bar"><div class="hbar-fill" data-progress="${Math.max(0, Math.min(100, Number(nt.progress) || 0))}"></div></div><span>${million(nt.remainingToman)} دیگر تا پله‌ی <b>${fmt.num(nt.rate)}٪</b> مبلغ</span></div>` : '';
+    const nt = d.totals.nextTier; const tg = d.target;
+    const tgBar = tg ? `<div class="cm-card-next"><div class="hbar-track tb-bar"><div class="hbar-fill" data-progress="${tg.progress}"></div></div><span>${tg.achieved ? '🎯 به هدف این ماه رسیدی' : `${million(tg.remainingToman)} دیگر تا هدف <b>${million(tg.targetToman)}</b>`}${tg.rewardToman > 0 ? ` · 🎁 ${million(tg.rewardToman)}` : ''}</span></div>` : '';
+    const next = tgBar || (nt ? `<div class="cm-card-next"><div class="hbar-track tb-bar"><div class="hbar-fill" data-progress="${Math.max(0, Math.min(100, Number(nt.progress) || 0))}"></div></div><span>${million(nt.remainingToman)} دیگر تا پله‌ی <b>${fmt.num(nt.rate)}٪</b> مبلغ</span></div>` : '');
     return `<section class="card cm-card" aria-label="پورسانت این ماه">
       <div class="cm-card-head"><span class="cm-card-chip" aria-hidden="true">${AP.icon('wallet')}</span><h3>پورسانت ${esc(d.monthLabel)}</h3>${demo ? demoTag : ''}<a class="cm-card-link" href="#/commission">جزئیات ←</a></div>
       <p class="cm-card-sub">${fmt.num(d.totals.dealsCount)} معامله‌ی موفق در دیدار</p>
       <p class="cm-card-amount"><span>${fmt.num(d.totals.commissionToman)}</span><small>تومان</small></p>
       ${next}
-      <div class="cm-card-foot"><span class="cm-card-pill">میانگین ${fmt.num(d.totals.avgRatePercent)}٪</span>${d.season ? `<span class="cm-card-pill alt">${esc(d.season.label)}: ${million(d.season.commissionToman)}</span>` : ''}</div></section>`;
+      <div class="cm-card-foot">${d.totals.targetRewardToman > 0 ? `<span class="cm-card-pill alt">🎁 شامل تشویقی ${million(d.totals.targetRewardToman)}</span>` : ''}<span class="cm-card-pill">میانگین ${fmt.num(d.totals.avgRatePercent)}٪</span>${d.season ? `<span class="cm-card-pill alt">${esc(d.season.label)}: ${million(d.season.commissionToman)}</span>` : ''}</div></section>`;
   }
 
   // ---------- وضعیت تیمی فروش: دو لیدربرد (تعداد فاکتور / مبلغ فاکتور)؛ مبلغ فقط برای ردیف خودِ شخص ----------
@@ -235,6 +259,42 @@
     return `${clampNote(data)}${boardPanel('range', data, true)}${mem}`;
   }
 
+  // رویدادهای فرم هدف (delegation روی صفحه؛ بدنه با تغییر بازه دوباره ساخته می‌شود)
+  function bindTarget(page, { userId, url, title }) {
+    const reload = async () => {
+      const rg = defaultRange(); const x = await AP.api(url(rg.from, rg.to)).catch(() => null);
+      const body = page.querySelector('[data-sales-body]');
+      if (!x || !x.commission || !body) return;
+      body.innerHTML = commissionHtml(x.commission, title, { canSetTarget: x.canSetTarget });
+      body.querySelectorAll('[data-progress]').forEach((el) => el.style.setProperty('--progress', `${Math.max(0, Math.min(100, Number(el.dataset.progress) || 0))}%`));
+    };
+    const monthOf = () => { const j = J.isoToJalali(defaultRange().from); return { year: j.jy, month: j.jm }; };
+    page.addEventListener('click', async (e) => {
+      const t = e.target.closest('[data-target-edit], [data-target-cancel], [data-target-del]'); if (!t) return;
+      const panel = page.querySelector('[data-target-panel]');
+      if (t.matches('[data-target-edit]')) { if (panel) { panel.hidden = false; const f = panel.querySelector('input'); if (f) f.focus(); panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } return; }
+      if (t.matches('[data-target-cancel]')) { if (panel) panel.hidden = true; return; }
+      const yes = await AP.confirmBox({ title: 'حذف هدف ماهانه', message: 'هدف و تشویقیِ این ماه حذف شود؟', confirmText: 'حذف', danger: true });
+      if (!yes) return;
+      try { await AP.api(`/admin/sales-team/members/${encodeURIComponent(userId)}/target`, { method: 'DELETE', body: monthOf() }); AP.toast('هدف حذف شد.'); await reload(); } catch (err) { AP.toast((err && err.message) || 'حذف انجام نشد.', true); }
+    });
+    page.addEventListener('input', (e) => {
+      const inp = e.target.closest('[data-money]'); if (!inp) return;
+      const raw = digitsOnly(inp.value); inp.value = raw ? Number(raw).toLocaleString('en-US') : '';
+      const h = inp.parentElement.querySelector('[data-money-hint]'); if (h) h.textContent = raw ? `${million(Number(raw))} تومان` : '';
+    });
+    page.addEventListener('submit', async (e) => {
+      const f = e.target.closest('[data-target-form]'); if (!f) return;
+      e.preventDefault();
+      const targetToman = Number(digitsOnly(f.elements.targetToman.value)); const rewardToman = Number(digitsOnly(f.elements.rewardToman.value) || 0);
+      if (!(targetToman > 0)) { AP.toast('مبلغ هدف را وارد کنید.', true); f.elements.targetToman.focus(); return; }
+      const btn = f.querySelector('[type="submit"]'); if (btn) btn.disabled = true;
+      try {
+        await AP.api(`/admin/sales-team/members/${encodeURIComponent(userId)}/target`, { method: 'PUT', body: { ...monthOf(), targetToman, rewardToman, rewardNote: f.elements.rewardNote.value.trim() } });
+        AP.toast('هدف ذخیره شد.'); await reload();
+      } catch (err) { AP.toast((err && err.message) || 'ذخیره انجام نشد.', true); if (btn) btn.disabled = false; }
+    });
+  }
   AP.view('commission', {
     skeleton: 'plan',
     perm: 'me.read',
@@ -276,8 +336,11 @@
       if (!r || !r.commission) return { html: `${back}<div class="card"><div class="empty">این همکار پیدا نشد یا اجازه‌ی دیدنش را ندارید.</div></div>`, mount() {} };
       const title = `پورسانت ${r.name}${r.isFormer ? ' (سابق)' : ''}`;
       return {
-        html: `${back}${rangeShell(true)}<div data-sales-body>${commissionHtml(r.commission, title)}</div>`,
-        mount(page) { mountRange(page, async (from, to) => { const x = await AP.api(url(from, to)); return x && x.commission ? commissionHtml(x.commission, title) : EMPTY_TEAM; }); },
+        html: `${back}${rangeShell(true)}<div data-sales-body>${commissionHtml(r.commission, title, { canSetTarget: r.canSetTarget })}</div>`,
+        mount(page) {
+          mountRange(page, async (from, to) => { const x = await AP.api(url(from, to)); return x && x.commission ? commissionHtml(x.commission, title, { canSetTarget: x.canSetTarget }) : EMPTY_TEAM; });
+          if (r.canSetTarget) bindTarget(page, { userId: r.userId, url, title });
+        },
       };
     },
   });

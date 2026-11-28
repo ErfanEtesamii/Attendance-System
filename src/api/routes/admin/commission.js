@@ -2,6 +2,7 @@
 //   GET  /admin/me/commission?year=&month=       me.read   — پورسانت و معامله‌های موفقِ خودم
 //   GET  /admin/sales-team/leaderboard           me.read   — رتبه‌ها (تعداد/مبلغ فاکتور)، مبلغ دیگران حذف‌شده
 //   GET  /admin/sales-team/export?from=&to=&format=xlsx|csv   me.read — اکسل پورسانت برای حسابداری (فقط ادمین/مالک/سرپرست فروش)
+//   PUT/DELETE /admin/sales-team/members/:id/target  me.read — هدف فروش ماهانه‌ی کارمند + تشویقی (ادمین/مالک یا مدیر مستقیم)
 //   POST /admin/commission/sync                  users.write — همگام‌سازی دستی با دیدار
 //   GET/PUT /admin/users/:id/didar-email            users.write — ایمیل دیدارِ کارمند (نگاشت مسئول معامله)
 const express = require('express');
@@ -41,6 +42,17 @@ router.get('/admin/sales-team/members/:id', requirePermission('me.read'), (req, 
   const r = service.memberCommission(req.adminUser, req.params.id, qOf(req));
   if (!r) return res.status(404).json({ error: 'این همکار پیدا نشد یا اجازه‌ی دیدنش را ندارید.', code: 'NOT_FOUND' });
   return res.json(r);
+});
+
+// هدف فروش ماهانه و جمله‌ی انگیزشی: { year?, month?, targetToman, rewardNote? }؛ مجوز نقش در سرویس (ادمین/مالک یا مدیر مستقیمِ همان کارمند)
+const targetBody = (req) => ({ ...(req.body || {}), jy: intOrUndef(req.body && req.body.year), jm: intOrUndef(req.body && req.body.month) });
+router.put('/admin/sales-team/members/:id/target', requirePermission('me.read'), (req, res) => {
+  const r = service.setTarget(req.adminUser, req.params.id, targetBody(req), { ip: req.ip });
+  return res.status(r.ok ? 200 : r.status).json(r.ok ? { ok: true, target: r.target } : { error: r.error, code: r.code });
+});
+router.delete('/admin/sales-team/members/:id/target', requirePermission('me.read'), (req, res) => {
+  const r = service.removeTarget(req.adminUser, req.params.id, targetBody(req), { ip: req.ip });
+  return res.status(r.ok ? 200 : r.status).json(r.ok ? { ok: true, removed: r.removed } : { error: r.error, code: r.code });
 });
 
 router.get('/admin/sales-team/export', requirePermission('me.read'), async (req, res) => {

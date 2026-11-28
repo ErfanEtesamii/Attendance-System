@@ -183,7 +183,31 @@ async function announceNewDeals({ now = new Date(), rng = Math.random, sendTeleg
     finished.push(row.didar_id);
   }
   markAll(finished);
-  return { baseline: false, sent };
+  let targets = 0;
+  try { targets = await announceTargets({ sendTelegram }); } catch (err) { console.error('[sales-notify] اعلان هدف:', err.message); }
+  return { baseline: false, sent, targets };
 }
 
-module.exports = { announceNewDeals, buildPrivateMessage, buildGroupMessage, contextFor, HEADLINES, CLOSINGS, GROUP_LINES };
+// رسیدن به هدف ماهانه: یک‌بار به خودِ کارمند (با تشویقی) و به مدیر مستقیمش؛ فقط برای ماه شمسی جاری
+async function announceTargets({ sendTelegram, now = new Date() } = {}) {
+  const repo = require('../repositories/salesTargetsRepository');
+  const j = jalaliPartsOfDateString(tehranDate(now));
+  if (!j) return 0;
+  let n = 0;
+  for (const t of repo.listForMonth(j.jy, j.jm)) {
+    if (t.achieved_notified_at) continue;
+    const u = getDb().prepare("SELECT id, full_name, didar_email, manager_id FROM users WHERE id = ? AND is_active = 1 AND didar_email IS NOT NULL AND didar_email <> ''").get(t.user_id);
+    if (!u) continue;
+    const info = service.targetInfo(u.id, String(u.didar_email).toLowerCase(), { jy: j.jy, jm: j.jm });
+    if (!info || !info.achieved) continue;
+    const name = String(u.full_name || '').trim().split(/\s+/)[0] || 'همکار';
+    const reward = `\n🎁 تشویقی هدف: ${money(info.rewardToman)} تومان\n💬 ${info.rewardText}`;
+    const opts = sendTelegram ? { sendTelegram } : {};
+    await notify(u.id, { type: 'sales_target_reached', title: `🎯 ${name} عزیز، به هدف این ماه رسیدی!`, body: `هدف ${info.monthLabel}: ${money(info.targetToman)} تومان\n💳 فروش تا امروز: ${money(info.salesToman)} تومان${reward}\n\nآفرین! 👏`, link: '#/commission', dedupeKey: `sales_target:${t.id}:${info.targetToman}`, telegram: true }, opts);
+    if (u.manager_id) await notify(u.manager_id, { type: 'sales_target_reached', title: `🎯 ${u.full_name} به هدف ماهانه رسید`, body: `فروش ${money(info.salesToman)} از هدف ${money(info.targetToman)} تومان${reward}`, link: `#/salesmember/${u.id}`, dedupeKey: `sales_target_mgr:${t.id}:${info.targetToman}`, telegram: true }, opts);
+    repo.markNotified(t.id); n += 1;
+  }
+  return n;
+}
+
+module.exports = { announceTargets, announceNewDeals, buildPrivateMessage, buildGroupMessage, contextFor, HEADLINES, CLOSINGS, GROUP_LINES };
