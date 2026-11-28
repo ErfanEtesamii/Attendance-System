@@ -148,7 +148,7 @@ async function handleEndFlowCallback(bot, chat, query, user, data, now) {
     if (!r.ok) { const view = summaryView(sess, now, `⛔️ ${r.error}`); return replace(bot, query, view); }
     session.clear(chatId);
     const text = ['✅ دورکاری پایان یافت', line, listText(r.tasks), line, `⏱ جمع تسک‌ها: ${report.faDuration(r.totalMinutes)}`,
-      r.planSynced ? '📋 تسک‌ها در «برنامه امروز»ت ثبت شدند.' : '📋 گزارش ثبت شد (ثبت در برنامه امروز ممکن نبود؛ سرپرست گزارش را می‌بیند).', '⏳ تأییدنشده — پس از بررسی سرپرست لحاظ می‌شود.'].join('\n');
+      '📋 گزارش ثبت شد؛ پس از تأیید سرپرست، تسک‌ها در برنامه‌ی هفتگی‌ات می‌نشینند.', '⏳ تأییدنشده — پس از بررسی سرپرست لحاظ می‌شود.'].join('\n');
     return replace(bot, query, { text, reply_markup: { inline_keyboard: [[button('🏠 دورکاری', 'rw:o'), button('🏠 منوی اصلی', 'rw:m')]] } });
   }
   return undefined;

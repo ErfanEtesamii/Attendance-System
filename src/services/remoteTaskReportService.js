@@ -125,6 +125,19 @@ function mirrorToPlan(user, session, taskRows, { settings = settingsRepository.g
   }
 }
 
+/** پس از تأییدِ ادمین: تسک‌های گزارش (هنوز ثبت‌نشده) را در برنامه‌ی هفتگی کارمند می‌نشاند؛ idempotent. */
+function mirrorApproved(sessionId) {
+  try {
+    const s = getDb().prepare('SELECT * FROM remote_work_sessions WHERE id = ?').get(sessionId);
+    if (!s || s.status !== 'approved') return { synced: false, reason: 'NOT_APPROVED' };
+    const rows = repo.listSessionTasks(sessionId).filter((t) => !t.plan_task_id);
+    if (!rows.length) return { synced: false, reason: 'NONE' };
+    const r = mirrorToPlan({ id: s.user_id }, { ...s, start_at: s.approved_start_at || s.start_at }, rows);
+    try { auditRepository.logEvent({ userId: s.user_id, action: 'remote_tasks_synced', details: { sessionId, count: rows.length, planSynced: r.synced } }); } catch (_) { /* نادیده */ }
+    return r;
+  } catch (err) { console.error('[remoteTasks] mirrorApproved:', err && err.message); return { synced: false, reason: 'ERROR' }; }
+}
+
 /** پایان دورکاری همراه گزارش تسک‌ها. ⇒ remoteWork.end + { tasks, totalMinutes, planSynced } | fail */
 function endWithTasks(user, rawTasks, { ip = null, now = new Date(), source = 'miniapp' } = {}) {
   const open = repo.findOpenSession(user.id);
@@ -136,9 +149,9 @@ function endWithTasks(user, rawTasks, { ip = null, now = new Date(), source = 'm
   const r = remoteWork.end(user, { ip, now, source, tasks: v.tasks });
   if (!r.ok) return r;
   const rows = repo.listSessionTasks(r.session.id);
-  const mirrored = mirrorToPlan(user, r.session, rows, { settings });
-  try { auditRepository.logEvent({ userId: user.id, action: 'remote_tasks_logged', ipAddress: ip, details: { source, sessionId: r.session.id, count: rows.length, totalMinutes: v.total, netMinutes: net, planSynced: mirrored.synced } }); } catch (_) { /* audit نباید پایان را بشکند */ }
-  return { ...r, tasks: rows.map((t) => ({ title: t.title, minutes: t.minutes })), totalMinutes: v.total, planSynced: mirrored.synced };
+  // ثبت در برنامه‌ی هفتگی فقط پس از تأییدِ ادمین انجام می‌شود (mirrorApproved از remoteWorkAdminService.approve)
+  try { auditRepository.logEvent({ userId: user.id, action: 'remote_tasks_logged', ipAddress: ip, details: { source, sessionId: r.session.id, count: rows.length, totalMinutes: v.total, netMinutes: net, planSynced: false } }); } catch (_) { /* audit نباید پایان را بشکند */ }
+  return { ...r, tasks: rows.map((t) => ({ title: t.title, minutes: t.minutes })), totalMinutes: v.total, planSynced: false };
 }
 
-module.exports = { REMOTE_TASK_KEY, endWithTasks, validate, parseMinutes, netMinutes, requirements, faDuration, mirrorToPlan, MAX_TASKS, TOLERANCE };
+module.exports = { REMOTE_TASK_KEY, mirrorApproved, endWithTasks, validate, parseMinutes, netMinutes, requirements, faDuration, mirrorToPlan, MAX_TASKS, TOLERANCE };

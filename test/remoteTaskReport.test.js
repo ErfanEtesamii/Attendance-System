@@ -55,8 +55,12 @@ describe('گزارش تسک‌های پایان دورکاری', () => {
     const r = svc.endWithTasks(emp, [{ title: 'پاسخ به مشتری‌ها', minutes: '1:30' }, { title: 'تهیه‌ی گزارش', minutes: 120 }], { now: at(9, 0), source: 'bot' }); // ۴ ساعت = ۲۴۰ دقیقه
     assert.equal(r.ok, true, JSON.stringify(r));
     assert.equal(r.totalMinutes, 210);
-    assert.equal(r.planSynced, true);
-    const saved = repo.listSessionTasks(r.session.id);
+    assert.equal(r.planSynced, false, 'پیش از تأیید در برنامه نمی‌نشیند');
+    let saved = repo.listSessionTasks(r.session.id);
+    assert.ok(saved.every((t) => !t.plan_task_id), 'پیش از تأیید ادمین، تسکی در برنامه ساخته نمی‌شود');
+    const ap = require('../src/services/remoteWorkAdminService').approve(sup, r.session.id, {}, { now: at(12, 0) });
+    assert.equal(ap.ok, true, JSON.stringify(ap));
+    saved = repo.listSessionTasks(r.session.id);
     assert.deepEqual(saved.map((t) => [t.title, t.minutes]), [['پاسخ به مشتری‌ها', 90], ['تهیه‌ی گزارش', 120]]);
     assert.ok(saved.every((t) => t.plan_task_id));
     const t1 = plansRepo.findTask(saved[0].plan_task_id); const t2 = plansRepo.findTask(saved[1].plan_task_id);
@@ -72,7 +76,7 @@ describe('گزارش تسک‌های پایان دورکاری', () => {
 
   test('سرپرست در صف بررسی تسک‌ها را می‌بیند', () => {
     const adminSvc = require('../src/services/remoteWorkAdminService');
-    const q = adminSvc.listQueue(sup, { status: 'pending' });
+    const q = adminSvc.listQueue(sup, { status: 'all' });
     assert.equal(q.ok, true);
     const item = q.items.find((i) => i.employee && i.employee.id === emp.id);
     assert.ok(item, 'نشستِ کارمند در صف است');
@@ -116,8 +120,8 @@ describe('گزارش تسک‌های پایان دورکاری', () => {
     assert.equal(session.get(chat.id), null, 'مکالمه پاک شد');
     const rows = repo.listSessionTasks(st.session.id);
     assert.deepEqual(rows.map((t) => [t.title, t.minutes]), [['جلسه با مشتری', 90], ['پیگیری سفارش‌ها', 60]]);
-    assert.ok(rows.every((t) => t.plan_task_id));
-    assert.ok(sent.some((t) => /برنامه امروز/.test(t)), 'پیام نهایی ثبت در برنامه امروز را می‌گوید');
+    assert.ok(rows.every((t) => !t.plan_task_id), 'پیش از تأیید در برنامه نیست');
+    assert.ok(sent.some((t) => /پس از تأیید سرپرست/.test(t)), 'پیام نهایی می‌گوید پس از تأیید ثبت می‌شود');
   });
 
   test('مالک دورکاریِ خودش را تأیید می‌کند (audit: selfReview)؛ ادمین و سرپرست نه', () => {

@@ -494,6 +494,7 @@ function approve(...args) {
   let r;
   try { r = approveInner(...args); } catch (err) { if (err && err.fail) return err.fail; throw err; }
   if (r && r._rejected) { notifyRejected(r._rejected, args[2] && args[2].reviewNote, args[0]); delete r._rejected; }
+  if (r && r.ok && r.outcome !== 'rejected' && r.session) require('./remoteTaskReportService').mirrorApproved(r.session.id); // idempotent؛ فقط تسک‌های هنوز ثبت‌نشده
   if (r && r.ok && !r.alreadyApproved && r.outcome !== 'rejected' && !(args[3] && args[3].notify === false)) notifyApproved(r.session.id, args[2] && args[2].reviewNote, args[0]);
   return r;
 }
