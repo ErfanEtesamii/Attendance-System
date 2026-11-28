@@ -138,13 +138,61 @@ function mirrorApproved(sessionId) {
   } catch (err) { console.error('[remoteTasks] mirrorApproved:', err && err.message); return { synced: false, reason: 'ERROR' }; }
 }
 
+const ACCEPT_ACTION = 'remote_work_reject_accepted';
+const isRejectAccepted = (sessionId) => !!getDb().prepare("SELECT 1 FROM audit_log WHERE action = ? AND CAST(json_extract(details, '$.entityId') AS TEXT) = ? LIMIT 1").get(ACCEPT_ACTION, String(sessionId));
+
+/** پیش‌نمایش «کم کردن ساعت مفید»: پایان جدیدی که ساعت خالص را برابر جمع تسک‌ها می‌کند. ⇒ { newEndAt, fromNet, toNet } | fail */
+function previewTrim(user, sessionId) {
+  const row = repo.findSessionFull(Number(sessionId));
+  if (!row || row.user_id !== user.id) return fail(404, 'SESSION_NOT_FOUND', 'این دورکاری یافت نشد.');
+  if (row.status !== 'rejected' || !row.end_at) return fail(409, 'NOT_REJECTED', 'این دورکاری در وضعیت ردشده نیست.');
+  if (isRejectAccepted(row.id)) return fail(409, 'REJECT_ACCEPTED', 'رد شدن این دورکاری را پذیرفته‌ای و دیگر قابل ارسال مجدد نیست.');
+  const total = repo.listSessionTasks(row.id).reduce((n, t) => n + t.minutes, 0);
+  const brks = repo.listBreaks(row.id);
+  const startMs = new Date(row.start_at).getTime(); const endMs = new Date(row.end_at).getTime();
+  const netAt = (ms) => {
+    const gross = Math.floor((ms - startMs) / 60000);
+    const brk = brks.reduce((n, b) => { const bs = new Date(b.start_at).getTime(); const be = Math.min(b.end_at ? new Date(b.end_at).getTime() : ms, ms); return n + Math.max(0, Math.floor((be - bs) / 60000)); }, 0);
+    return Math.max(0, gross - Math.min(brk, gross));
+  };
+  const fromNet = netAt(endMs);
+  if (total < 1) return fail(409, 'NO_TASKS', 'تسکی ثبت نشده که ساعت با آن تطبیق داده شود.');
+  if (total >= fromNet) return fail(409, 'NOTHING_TO_TRIM', 'ساعت مفیدت از جمع تسک‌ها بیشتر نیست؛ به‌جایش تسک اضافه کن.');
+  let ms = endMs;
+  while (ms > startMs && netAt(ms) > total) ms -= 60000;
+  return { ok: true, newEndAt: new Date(ms).toISOString(), fromNet, toNet: netAt(ms), row };
+}
+
+/** «ساعت مفید را کم می‌کنم»: پایان دورکاری زودتر ثبت می‌شود تا ساعت خالص = جمع تسک‌ها؛ سپس دوباره برای ادمین ارسال می‌شود. */
+function trimToTasks(user, sessionId, { ip = null, now = new Date(), source = 'bot' } = {}) {
+  const p = previewTrim(user, sessionId);
+  if (!p.ok) return p;
+  const before = { endAt: p.row.end_at, net: p.fromNet };
+  repo.trimSessionEnd(p.row.id, p.newEndAt);
+  const r = reviseAfterReject(user, p.row.id, null, { ip, now, source, trimmed: { from: p.fromNet, to: p.toNet } });
+  if (!r.ok) { repo.trimSessionEnd(p.row.id, before.endAt); return r; } // برگرداندن (استراحت‌های حذف‌شده برنمی‌گردند؛ اعتبارسنجی با جمع=ساعت عملاً شکست نمی‌خورد)
+  try { auditRepository.logChange({ actor: user.id, action: 'remote_work_trim', entityType: 'remote_work_session', entityId: p.row.id, before: { endAt: before.endAt, netMinutes: before.net }, after: { endAt: p.newEndAt, netMinutes: p.toNet }, reason: 'کاهش ساعت مفید پس از رد', ip, meta: { source, targetUserId: user.id, sessionId: p.row.id } }); } catch (_) { /* نادیده */ }
+  return { ...r, fromNet: p.fromNet, toNet: p.toNet, newEndAt: p.newEndAt };
+}
+
+/** «می‌پذیرم دورکاری‌ام مفید نبوده»: نشست ردشده می‌ماند و دیگر قابل ارسال مجدد نیست. */
+function acceptRejection(user, sessionId, { ip = null } = {}) {
+  const row = repo.findSessionFull(Number(sessionId));
+  if (!row || row.user_id !== user.id) return fail(404, 'SESSION_NOT_FOUND', 'این دورکاری یافت نشد.');
+  if (row.status !== 'rejected') return fail(409, 'NOT_REJECTED', 'این دورکاری در وضعیت ردشده نیست.');
+  if (isRejectAccepted(row.id)) return { ok: true, already: true };
+  try { auditRepository.logChange({ actor: user.id, action: ACCEPT_ACTION, entityType: 'remote_work_session', entityId: row.id, before: { status: 'rejected' }, after: { status: 'rejected', accepted: true }, reason: row.review_note || null, ip, meta: { source: 'bot', targetUserId: user.id, sessionId: row.id, workDate: row.work_date } }); } catch (_) { /* نادیده */ }
+  return { ok: true, already: false };
+}
+
 /**
  * اصلاح و ارسال مجدد نشستِ ردشده. rawTasks = null ⇒ همان تسک‌های قبلی (کارمند رد شدن را پذیرفته و دوباره می‌فرستد).
  * ⇒ { ok, session, tasks, totalMinutes } | fail
  */
-function reviseAfterReject(user, sessionId, rawTasks, { ip = null, now = new Date(), source = 'bot' } = {}) {
+function reviseAfterReject(user, sessionId, rawTasks, { ip = null, now = new Date(), source = 'bot', trimmed = null } = {}) {
   const row = repo.findSessionFull(Number(sessionId));
   if (!row || row.user_id !== user.id) return fail(404, 'SESSION_NOT_FOUND', 'این دورکاری یافت نشد.');
+  if (isRejectAccepted(row.id)) return fail(409, 'REJECT_ACCEPTED', 'رد شدن این دورکاری را پذیرفته‌ای و دیگر قابل ارسال مجدد نیست.');
   if (row.status !== 'rejected' || !row.end_at) return fail(409, 'NOT_REJECTED', 'این دورکاری در وضعیت ردشده نیست (شاید قبلاً دوباره ارسال شده است).');
   if (monthClosuresRepository.findClosedOverlapping(row.work_date, row.work_date).length > 0) return fail(409, 'MONTH_CLOSED', 'ماهِ این دورکاری بسته شده است و دیگر قابل اصلاح نیست.');
   const settings = settingsRepository.getAll();
@@ -162,7 +210,7 @@ function reviseAfterReject(user, sessionId, rawTasks, { ip = null, now = new Dat
   })();
   if (!changed) return fail(409, 'NOT_REJECTED', 'این دورکاری در وضعیت ردشده نیست.');
   try { auditRepository.logChange({ actor: user.id, action: 'remote_work_resubmit', entityType: 'remote_work_session', entityId: row.id, before: { status: 'rejected', tasks: previous }, after: { status: 'pending', tasks: v.tasks }, reason: row.review_note || null, ip, meta: { source, targetUserId: user.id, sessionId: row.id, workDate: row.work_date, edited: Array.isArray(rawTasks), previousNote: row.review_note || null } }); } catch (_) { /* audit نباید ارسال مجدد را بشکند */ }
-  try { require('./notificationEvents').remoteWorkSubmitted(row.id, { resubmit: true, previousNote: row.review_note }).catch(() => {}); } catch (_) { /* اعلان best-effort */ }
+  try { require('./notificationEvents').remoteWorkSubmitted(row.id, { resubmit: true, previousNote: row.review_note, trimmed }).catch(() => {}); } catch (_) { /* اعلان best-effort */ }
   return { ok: true, session: repo.findSessionFull(row.id), tasks: v.tasks, totalMinutes: v.total };
 }
 
@@ -182,4 +230,4 @@ function endWithTasks(user, rawTasks, { ip = null, now = new Date(), source = 'm
   return { ...r, tasks: rows.map((t) => ({ title: t.title, minutes: t.minutes })), totalMinutes: v.total, planSynced: false };
 }
 
-module.exports = { reviseAfterReject, REMOTE_TASK_KEY, mirrorApproved, endWithTasks, validate, parseMinutes, netMinutes, requirements, faDuration, mirrorToPlan, MAX_TASKS, TOLERANCE };
+module.exports = { previewTrim, trimToTasks, acceptRejection, reviseAfterReject, REMOTE_TASK_KEY, mirrorApproved, endWithTasks, validate, parseMinutes, netMinutes, requirements, faDuration, mirrorToPlan, MAX_TASKS, TOLERANCE };

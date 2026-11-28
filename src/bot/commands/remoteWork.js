@@ -205,10 +205,26 @@ async function handleRemoteWorkCallback(bot, query) {
     if (!endId[1]) return replace(bot, query, { text: `🔴 پایان دورکاری\n${line}\nشروع: ${time(open.start_at)} | مدت: ${formatMinutes(duration(open.start_at, now))}\n${state.openBreak ? '☕ استراحت بازِ شما هم همین حالا بسته می‌شود.\n' : ''}پایان بدهم؟`, reply_markup: { inline_keyboard: [[button('✅ بله، پایان بده', `rw:e!:${open.id}`, 'danger')], [button('↩️ ادامه‌ی کار', 'rw:x')]] } });
     const r = remoteWork.end(user, { ip: null, now, source: 'bot' }); if (!r.ok) return show(); return show();
   }
-  const rv = /^rw:rv([ads]):(\d+)$/.exec(data);
+  const rv = /^rw:rv([adstTxXs]):(\d+)$/.exec(data);
   if (rv) {
     const row = require('../../repositories/remoteWorkRepository').findSessionFull(Number(rv[2]));
     if (!row || row.user_id !== user.id || row.status !== 'rejected') { await bot.sendMessage(chat.id, 'این دورکاری دیگر در وضعیت «ردشده» نیست (شاید قبلاً دوباره ارسال شده).'); return undefined; }
+    if (rv[1] === 't') {
+      const p = report.previewTrim(user, row.id);
+      if (!p.ok) { await bot.sendMessage(chat.id, `⛔️ ${p.error}`); return undefined; }
+      return replace(bot, query, { text: ['⏱ کم کردن ساعت مفید', line, `ساعت مفید ثبت‌شده: ${report.faDuration(p.fromNet)}`, `جمع تسک‌هایت: ${report.faDuration(p.toNet)}`, `پایان دورکاری از ${time(row.end_at)} به ${time(p.newEndAt)} تغییر می‌کند و دوباره برای ادمین ارسال می‌شود. ادامه بدهم؟`].join('\n'), reply_markup: { inline_keyboard: [[button('✅ بله، کم کن و ارسال کن', `rw:rvT:${row.id}`, 'success')], [button('↩️ انصراف', 'rw:o')]] } });
+    }
+    if (rv[1] === 'T') {
+      const r = report.trimToTasks(user, row.id, { ip: null, now, source: 'bot' });
+      if (!r.ok) { await bot.sendMessage(chat.id, `⛔️ ${r.error}`); return undefined; }
+      return replace(bot, query, { text: ['📨 دوباره برای ادمین ارسال شد', line, `ساعت مفید: ${report.faDuration(r.fromNet)} ← ${report.faDuration(r.toNet)}`, '⏳ منتظر بررسی ادمین بمان؛ نتیجه برایت اعلام می‌شود.'].join('\n'), reply_markup: { inline_keyboard: [[button('🏠 دورکاری', 'rw:o')]] } });
+    }
+    if (rv[1] === 'x') return replace(bot, query, { text: ['🚫 پذیرفتن رد شدن', line, 'یعنی قبول داری این دورکاری مفید نبوده. ساعت‌هایش در حضور و غیاب و حقوق حساب نمی‌شود و دیگر نمی‌توانی آن را دوباره بفرستی. مطمئنی؟'].join('\n'), reply_markup: { inline_keyboard: [[button('🚫 بله، می‌پذیرم', `rw:rvX:${row.id}`, 'danger')], [button('↩️ انصراف', 'rw:o')]] } });
+    if (rv[1] === 'X') {
+      const r = report.acceptRejection(user, row.id, { ip: null });
+      if (!r.ok) { await bot.sendMessage(chat.id, `⛔️ ${r.error}`); return undefined; }
+      return replace(bot, query, { text: '✅ ثبت شد؛ این دورکاری حساب نمی‌شود و ماجرا تمام است.', reply_markup: { inline_keyboard: [[button('🏠 دورکاری', 'rw:o')]] } });
+    }
     if (rv[1] === 's') {
       const r = report.reviseAfterReject(user, row.id, null, { ip: null, now, source: 'bot' });
       if (!r.ok) { await bot.sendMessage(chat.id, `⛔️ ${r.error}`); return undefined; }

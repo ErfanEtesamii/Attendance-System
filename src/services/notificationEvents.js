@@ -668,7 +668,7 @@ const roleWho = (actor) => (actor && isAdmin(actor) ? 'ادمین' : 'سرپرس
  * پایان یک نشست دورکاری ثبت شد (کارمند خودش، یا job شبانه بسته است) ⇒ پیام «برای بررسی» برای تأییدکننده‌ها.
  * فقط نشستِ بسته‌ی pending؛ غیر آن بی‌اثر. dedupe روی شناسه‌ی نشست ⇒ دوباره‌خوانی پیام تکراری نمی‌سازد.
  */
-function remoteWorkSubmitted(sessionId, { resubmit = false, previousNote = null } = {}) {
+function remoteWorkSubmitted(sessionId, { resubmit = false, previousNote = null, trimmed = null } = {}) {
   return guard('remoteWorkSubmitted', () => {
     const s = remoteRepo.findSessionFull(sessionId);
     if (!s || s.status !== 'pending' || !s.end_at) return [];
@@ -677,7 +677,7 @@ function remoteWorkSubmitted(sessionId, { resubmit = false, previousNote = null 
     const m = remoteMinutes(s);
     const lines = [
       REMOTE_LINE,
-      ...(resubmit ? ['🔁 کارمند پس از رد شدن، تسک‌ها را اصلاح/تأیید کرد و دوباره فرستاد.', ...(previousNote ? [`💬 دلیل رد قبلی: ${sanitizeText(previousNote, 200)}`] : [])] : []),
+      ...(resubmit ? ['🔁 کارمند پس از رد شدن، تسک‌ها را اصلاح/تأیید کرد و دوباره فرستاد.', ...(previousNote ? [`💬 دلیل رد قبلی: ${sanitizeText(previousNote, 200)}`] : []), ...(trimmed ? [`⏱ ساعت مفید از ${faDuration(trimmed.from)} به ${faDuration(trimmed.to)} کاهش یافت (برابر جمع تسک‌ها).`] : [])] : []),
       `👤 ${sanitizeText(employee.full_name, 100)}`,
       `📅 ${faDate(s.work_date)}`,
       `🕘 ${remoteRange(s, false)}`,
@@ -786,12 +786,13 @@ function remoteWorkRejected(session, { note = null, actor = null } = {}) {
     if (session.start_at && session.end_at) lines.push(`🕘 ${remoteRange(session, false)}`);
     if (note) lines.push(`💬 دلیل ${who}: ${sanitizeText(note, 300)}`);
     const hasTasks = remoteRepo.listSessionTasks(session.id).length > 0 && !session.auto_closed;
-    lines.push(REMOTE_LINE, `این ساعت‌ها در حضور و غیاب و حقوق حساب نمی‌شود. ${hasTasks ? 'یکی از گزینه‌های زیر را انتخاب کن تا دوباره برای بررسی ارسال شود.' : `اگر فکر می‌کنید اشتباهی شده، با ${who} صحبت کنید.`}`);
+    lines.push(REMOTE_LINE, `این ساعت‌ها در حضور و غیاب و حقوق حساب نمی‌شود. ${hasTasks ? 'می‌توانی یکی از این کارها را بکنی:\n\n⏱ ساعت مفیدم را کم می‌کنم — اگر ساعتی که ثبت کردی بیشتر از کارهای واقعی‌ات بود، پایان دورکاری زودتر ثبت می‌شود تا ساعت مفید دقیقاً به اندازه‌ی جمع تسک‌هایت شود.\n\n✂️ از تسک‌هایم کم می‌کنم — اگر مدتِ تسک‌ها را بیشتر نوشته‌ای، تسک اضافه را حذف کن (یا حذف کن و با مدت درست دوباره بنویس).\n\n➕ به تسک‌هایم اضافه می‌کنم — اگر کاری را جا انداخته‌ای، اضافه کن تا جمع تسک‌ها به ساعت دورکاری برسد.\n\n🚫 می‌پذیرم؛ مفید نبوده — قبول داری آن ساعت‌ها کار مفیدی نبوده؛ دورکاری ثبت نمی‌شود و ماجرا تمام است.\n\nسه گزینه‌ی اول پس از اصلاح دوباره برای ادمین ارسال می‌شوند.' : `اگر فکر می‌کنید اشتباهی شده، با ${who} صحبت کنید.`}`);
     const { cb } = require('../bot/ui/pickers');
     const kb = hasTasks ? [
-      [{ text: '➕ تسک اضافه می‌کنم', callback_data: cb(`rw:rva:${session.id}`), style: 'primary' }],
-      [{ text: '✂️ از تسک‌ها کم می‌کنم', callback_data: cb(`rw:rvd:${session.id}`), style: 'danger' }],
-      [{ text: '📨 قبول دارم؛ دوباره برای ادمین بفرست', callback_data: cb(`rw:rvs:${session.id}`), style: 'success' }],
+      [{ text: '⏱ ساعت مفیدم را کم می‌کنم', callback_data: cb(`rw:rvt:${session.id}`), style: 'primary' }],
+      [{ text: '✂️ از تسک‌هایم کم می‌کنم', callback_data: cb(`rw:rvd:${session.id}`), style: 'danger' }],
+      [{ text: '➕ به تسک‌هایم اضافه می‌کنم', callback_data: cb(`rw:rva:${session.id}`), style: 'success' }],
+      [{ text: '🚫 می‌پذیرم؛ مفید نبوده، ثبتش نکنید', callback_data: cb(`rw:rvx:${session.id}`) }],
     ] : undefined;
     return [
       send('remoteWorkRejected', session.user_id, {

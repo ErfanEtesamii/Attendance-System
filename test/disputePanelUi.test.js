@@ -32,7 +32,7 @@ function setup({ perms = ['disputes.read', 'disputes.resolve', 'users.read', 're
     esc,
     fmt: { num: (n) => String(n), dateLong: (d) => `J(${d})`, dateTime: (d) => `T(${d})`, date: (d) => d, clock: (d) => d, min: (m) => `${m}m` },
     icon: () => '',
-    badge: (cls, text) => `<span class="badge ${esc(cls)}">${esc(text)}</span>`, urgentBadge: (t, txt = '⚡ فوری') => `<span class="badge ${t && t.systemKey === 'remote_work' ? 'blue' : 'red'}">${esc(t && t.systemKey === 'remote_work' ? '🏠 دورکاری' : txt)}</span>`,
+    badge: (cls, text) => `<span class="badge ${esc(cls)}">${esc(text)}</span>`, isRemoteTask: (t) => !!t && t.systemKey === 'remote_work', urgentBadge: (t, txt = '⚡ فوری') => `<span class="badge ${t && t.systemKey === 'remote_work' ? 'blue' : 'red'}">${esc(t && t.systemKey === 'remote_work' ? '🏠 دورکاری' : txt)}</span>`,
     avatar: (name) => `<span class="avatar">${esc(name)}</span>`,
     view(id, def) { AP.views[id] = def; if (def.nav) AP.nav.push({ id, ...def.nav }); },
     go: (id, param) => goes.push([id, param]),

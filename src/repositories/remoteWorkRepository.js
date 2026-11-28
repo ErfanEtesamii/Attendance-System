@@ -282,11 +282,18 @@ function deleteSessionTasks(sessionId) {
 function markResubmitted(id) {
   return getDb().prepare("UPDATE remote_work_sessions SET status = 'pending', reviewed_by = NULL, reviewed_at = NULL, review_note = NULL WHERE id = ? AND status = 'rejected'").run(id).changes;
 }
+// کوتاه‌کردن پایانِ نشست: استراحت‌های بعد از پایان جدید حذف و استراحتِ عبورکننده بریده می‌شود
+function trimSessionEnd(id, newEndIso) {
+  const db = getDb();
+  db.prepare('UPDATE remote_work_sessions SET end_at = ? WHERE id = ?').run(newEndIso, id);
+  db.prepare('DELETE FROM remote_work_breaks WHERE session_id = ? AND start_at >= ?').run(id, newEndIso);
+  db.prepare('UPDATE remote_work_breaks SET end_at = ? WHERE session_id = ? AND end_at > ?').run(newEndIso, id, newEndIso);
+}
 function setSessionTaskPlanTask(id, planTaskId) {
   getDb().prepare('UPDATE remote_session_tasks SET plan_task_id = ? WHERE id = ?').run(planTaskId, id);
 }
 
-module.exports = { deleteSessionTasks, markResubmitted, insertSessionTasks, listSessionTasks, listTasksForSessions, setSessionTaskPlanTask,
+module.exports = { trimSessionEnd, deleteSessionTasks, markResubmitted, insertSessionTasks, listSessionTasks, listTasksForSessions, setSessionTaskPlanTask,
   listQueue, listBreaksForSessions,
   findSessionFull, listInRangeForRecords, listApprovedForDay, listApprovedInRange, listClosedInRange, findOfficialRecord, insertRemoteRecord, updateRemoteRecord, adoptPlaceholder, replaceRemoteBreaks, markApproved, markRejected, updateApprovedTimes, setOnsiteSpan, syncRecordSegments, updateRecordTimes, insertRemoteBreaks, pendingClosedByUser,
   findOpenSession, findSessionById, listForUserDate, listForUserRange, insertSession, insertClosedSession, closeSession, listStaleOpenSessions,

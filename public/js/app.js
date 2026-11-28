@@ -1386,7 +1386,7 @@
     if (!box) return;
     try {
       const d = await api('/daily-tasks');
-      const list = d && !d.fullDayOff && Array.isArray(d.tasks) ? d.tasks.filter((t) => t.isUrgent) : [];
+      const list = d && !d.fullDayOff && Array.isArray(d.tasks) ? d.tasks.filter((t) => t.isUrgent && t.systemKey !== 'remote_work') : []; // دورکاری فوری نیست
       if (!list.length) { box.classList.add('hidden'); return; }
       renderUrgentCard(box, list);
     } catch (_) { box.classList.add('hidden'); }

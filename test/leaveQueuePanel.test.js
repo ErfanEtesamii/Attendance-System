@@ -43,7 +43,7 @@ function setup({ queue, types = [{ id: 1, title: 'استحقاقی' }], users = 
     esc,
     fmt: { num: (n) => String(n), dateLong: (d) => `J(${d})`, dateTime: (d) => `T(${d})`, date: (d) => d, clock: (d) => d, min: (m) => `${m}m` },
     icon: () => '',
-    badge: (cls, text) => `<span class="badge ${esc(cls)}">${esc(text)}</span>`, urgentBadge: (t, txt = '⚡ فوری') => `<span class="badge ${t && t.systemKey === 'remote_work' ? 'blue' : 'red'}">${esc(t && t.systemKey === 'remote_work' ? '🏠 دورکاری' : txt)}</span>`,
+    badge: (cls, text) => `<span class="badge ${esc(cls)}">${esc(text)}</span>`, isRemoteTask: (t) => !!t && t.systemKey === 'remote_work', urgentBadge: (t, txt = '⚡ فوری') => `<span class="badge ${t && t.systemKey === 'remote_work' ? 'blue' : 'red'}">${esc(t && t.systemKey === 'remote_work' ? '🏠 دورکاری' : txt)}</span>`,
     avatar: (name) => `<span class="avatar">${esc(name)}</span>`,
     LEAVE_TYPE: { leave: 'مرخصی', mission: 'مأموریت' },
     LEAVE_STATUS: { pending: 'در انتظار', approved: 'تأییدشده', rejected: 'ردشده' },

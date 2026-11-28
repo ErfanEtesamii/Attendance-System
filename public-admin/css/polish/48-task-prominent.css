@@ -4,6 +4,7 @@
 .tk-group { --tk: var(--hint); margin-top: 10px; padding: 0; overflow: hidden; border-radius: 14px; border: 1.5px solid color-mix(in srgb, var(--tk) 45%, transparent);
   background: var(--card); box-shadow: none; }
 .tk-group:first-child { margin-top: 0; }
+.tk-remote { --tk: var(--blue); }
 .tk-urgent { --tk: var(--red); }
 .tk-daily { --tk: var(--purple); }
 .tk-routine { --tk: color-mix(in srgb, var(--blue) 55%, var(--green)); }

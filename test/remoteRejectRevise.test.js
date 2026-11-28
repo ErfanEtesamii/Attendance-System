@@ -60,6 +60,31 @@ describe('اصلاح و ارسال مجدد دورکاریِ ردشده', () => 
     assert.ok(repo.listSessionTasks(id).every((t) => t.plan_task_id), 'پس از تأیید در برنامه می‌نشیند');
   });
 
+  test('کم کردن ساعت مفید: پایان زودتر ثبت می‌شود تا ساعت خالص = جمع تسک‌ها؛ دوباره در صف؛ اگر چیزی برای کم‌کردن نباشد خطا', () => {
+    const emp = F.makeUser({ name: 'کارمند د', managerId: sup.id });
+    const id = rejected(emp, [{ title: 'الف', minutes: 120 }, { title: 'ب', minutes: 60 }]); // ۱۸۰ از ۲۴۰
+    const p = svc.previewTrim(emp, id);
+    assert.equal(p.ok, true, JSON.stringify(p)); assert.equal(p.fromNet, 240); assert.equal(p.toNet, 180);
+    const r = svc.trimToTasks(emp, id);
+    assert.equal(r.ok, true, JSON.stringify(r));
+    const s = repo.findSessionFull(id);
+    assert.equal(s.status, 'pending'); assert.equal(s.end_at, at(8, 0).toISOString());
+    assert.equal(svc.previewTrim(emp, id).code, 'NOT_REJECTED');
+    const emp2 = F.makeUser({ name: 'کارمند ه', managerId: sup.id });
+    const id2 = rejected(emp2, [{ title: 'الف', minutes: 240 }]); // برابر ساعت؛ چیزی برای کم‌کردن نیست
+    assert.equal(svc.previewTrim(emp2, id2).code, 'NOTHING_TO_TRIM');
+  });
+
+  test('پذیرفتن رد شدن: ردشده می‌ماند و دیگر نه ارسال مجدد نه کم‌کردن ممکن است', () => {
+    const emp = F.makeUser({ name: 'کارمند و', managerId: sup.id });
+    const id = rejected(emp);
+    assert.equal(svc.acceptRejection(emp, id).ok, true);
+    assert.equal(svc.acceptRejection(emp, id).already, true);
+    assert.equal(repo.findSessionFull(id).status, 'rejected');
+    assert.equal(svc.reviseAfterReject(emp, id, null).code, 'REJECT_ACCEPTED');
+    assert.equal(svc.previewTrim(emp, id).code, 'REJECT_ACCEPTED');
+  });
+
   test('بات: دکمه‌های «کم کردن» (حذف با شماره) و «اضافه» و «ارسال مجدد»', async () => {
     const bot = require('../src/bot/commands/remoteWork');
     const session = require('../src/bot/session');
@@ -89,7 +114,7 @@ describe('اصلاح و ارسال مجدد دورکاریِ ردشده', () => 
 });
 
 describe('اعلان ردِ دورکاری با دکمه‌های اصلاح', () => {
-  test('ردِ نشستِ دارای گزارش ⇒ اعلان با سه دکمه (telegramKeyboard)', async () => {
+  test('ردِ نشستِ دارای گزارش ⇒ اعلان با توضیح چهار گزینه', async () => {
     resetDb();
     const F = require('./helpers/factories');
     const notifSvc = require('../src/services/notificationService');
@@ -108,7 +133,7 @@ describe('اعلان ردِ دورکاری با دکمه‌های اصلاح', (
     await new Promise((res) => setTimeout(res, 50));
     const row = require('../src/db/connection').getDb().prepare("SELECT * FROM notifications WHERE user_id = ? AND type = 'remote_work_rejected'").get(emp.id);
     assert.ok(row, 'اعلان رد ساخته شد');
-    assert.match(row.body, /یکی از گزینه‌های زیر/);
+    assert.match(row.body, /ساعت مفیدم را کم می‌کنم/); assert.match(row.body, /مفید نبوده/);
     void notifSvc; void sentOpts; void ev;
     cleanup();
   });

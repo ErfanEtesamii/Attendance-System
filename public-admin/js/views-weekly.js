@@ -81,12 +81,14 @@
   // نوع تسک: فوری (ارجاعی/خودفوری) | واجب (سیستمی) | روزانه (برنامه‌ی همین روز، منتقل‌شده یا خارج از برنامه) | روتین (بدون تاریخ؛ هر روز کاری تکرار می‌شود)
   const KIND = {
     urgent: { icon: '⚡', title: 'تسک فوری', hint: 'ارجاع‌شده یا فوریِ خودِ کارمند' },
+    remote: { icon: '🏠', title: 'دورکاری', hint: 'تسک‌های گزارش‌شده‌ی دورکاریِ تأییدشده' },
     mandatory: { icon: '🔒', title: 'واجب', hint: 'تسک سیستمی' },
     daily: { icon: '📌', title: 'تسک روزانه', hint: 'برنامه‌ی همین روز' },
     routine: { icon: '🔁', title: 'روتین', hint: 'هر روز کاری تکرار می‌شود' },
   };
-  const KIND_ORDER = ['urgent', 'daily', 'routine', 'mandatory']; // واجب (بررسی گزارش تیم) مختصر در انتها
+  const KIND_ORDER = ['urgent', 'remote', 'daily', 'routine', 'mandatory']; // واجب (بررسی گزارش تیم) مختصر در انتها
   function taskKind(t) {
+    if (AP.isRemoteTask(t)) return 'remote'; // دورکاری فوری نیست: گروه و کادر آبیِ جدا
     if (t.isUrgent) return 'urgent';
     if (t.isSystem) return 'mandatory';
     return t.source === 'everyday' ? 'routine' : 'daily';
@@ -165,7 +167,7 @@
     ].filter(Boolean).join('');
     const kind = taskKind(t);
     const kindPill = kind === 'daily' && t.source === 'rescheduled' ? `<span class="tk-pill tk-pill-daily">↪ منتقل‌شده به این روز</span>` : '';
-        return `<li class="day-task dt-row tk-k-${kind} dt-${STATUS_CLS[t.status] || 'is-none'}${t.isUrgent ? ' is-urgent' : ''}">
+        return `<li class="day-task dt-row tk-k-${kind} dt-${STATUS_CLS[t.status] || 'is-none'}${t.isUrgent && !AP.isRemoteTask(t) ? ' is-urgent' : ''}">
       ${taskStatusCell(t.status)}
       <div class="dt-body">
       <div class="tk-top">${t.isUrgent ? AP.urgentBadge(t, t.selfAssigned ? '⚡ فوری (خودش)' : '⚡ فوری') : kindPill}${t.priority === 'high' && !t.isUrgent ? AP.badge('late', 'اولویت بالا') : ''}</div>

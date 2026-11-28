@@ -4,6 +4,7 @@
 .tk-group { --tk: var(--hint); margin-top: 14px; padding: 10px 10px 12px; border-radius: 18px;
   background: color-mix(in srgb, var(--tk) 7%, transparent); border: 1px solid color-mix(in srgb, var(--tk) 22%, transparent); }
 .tk-group:first-child { margin-top: 0; }
+.tk-remote { --tk: var(--blue); }
 .tk-urgent { --tk: var(--red); }
 .tk-mandatory { --tk: var(--blue); }
 .tk-daily { --tk: var(--purple); }

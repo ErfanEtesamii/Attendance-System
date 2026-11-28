@@ -55,7 +55,7 @@ function setup({ cur = WEEK(), next = NEXT, prev = null, nextFail = false, daily
   const AP = {
     views: {}, nav: [], state: { me: { id: 7, role: 'employee' } },
     can: (...p) => p.every((x) => perms.includes(x)),
-    esc, icon: () => '', badge: (cls, text) => `<span class="badge ${esc(cls)}">${esc(text)}</span>`, urgentBadge: (t, txt = '⚡ فوری') => `<span class="badge ${t && t.systemKey === 'remote_work' ? 'blue' : 'red'}">${esc(t && t.systemKey === 'remote_work' ? '🏠 دورکاری' : txt)}</span>`, avatar: (n) => `<span>${esc(n)}</span>`,
+    esc, icon: () => '', badge: (cls, text) => `<span class="badge ${esc(cls)}">${esc(text)}</span>`, isRemoteTask: (t) => !!t && t.systemKey === 'remote_work', urgentBadge: (t, txt = '⚡ فوری') => `<span class="badge ${t && t.systemKey === 'remote_work' ? 'blue' : 'red'}">${esc(t && t.systemKey === 'remote_work' ? '🏠 دورکاری' : txt)}</span>`, avatar: (n) => `<span>${esc(n)}</span>`,
     ROLE: { admin: 'ادمین', manager: 'سرپرست', employee: 'کارمند', hr: 'منابع انسانی' },
     fmt: { num: (n) => (n == null ? '—' : String(n)), min: (n) => `${n}د`, clock: (v) => `T:${v}`, date: (v) => `D:${v}`, dateLong: (v) => `L:${v}` },
     $: (s, r) => (r && r.querySelector ? r.querySelector(s) : null),
