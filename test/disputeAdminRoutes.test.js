@@ -18,6 +18,7 @@ describe('routeهای ادمین اعتراض (D3/D4)', { skip: hasDeps ? false 
 
   before(() => {
     db = resetDb();
+    db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('dispute_max_per_month', '0')").run(); // این تست‌ها اعتراض‌های زیادی برای یک کاربر می‌سازند؛ سقف ماهانه در disputeMonthlyCap.test.js
     const notifier = require('../src/bot/notifier');
     notifier.sendMessage = async (to, text) => { telegram.push({ to: String(to), text }); return true; };
     F = require('./helpers/factories');

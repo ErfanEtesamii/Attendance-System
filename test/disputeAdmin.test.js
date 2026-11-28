@@ -11,6 +11,7 @@ describe('disputeService — سمت ادمین (D3)', () => {
 
   before(() => {
     db = resetDb();
+    db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('dispute_max_per_month', '0')").run(); // این تست‌ها اعتراض‌های زیادی برای یک کاربر می‌سازند؛ سقف ماهانه در disputeMonthlyCap.test.js
     F = require('./helpers/factories');
     svc = require('../src/services/disputeService');
     repo = require('../src/repositories/disputeRepository');

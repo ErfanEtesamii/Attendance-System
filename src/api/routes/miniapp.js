@@ -886,7 +886,7 @@ const disputeMessageLimiter = createRateLimiter({
 
 const lastDisputeMessage = (r) => r.messages[r.messages.length - 1]; // پیامی که همین الان ثبت شد (آخرین پیام thread)
 
-const sendDisputeError = (res, r) => res.status(disputeService.statusOf(r.code)).json({ error: r.error, code: r.code, ...(r.maxReopens !== undefined ? { maxReopens: r.maxReopens } : {}) });
+const sendDisputeError = (res, r) => res.status(disputeService.statusOf(r.code)).json({ error: r.error, code: r.code, ...(r.maxReopens !== undefined ? { maxReopens: r.maxReopens } : {}), ...(r.maxPerMonth !== undefined ? { maxPerMonth: r.maxPerMonth } : {}) });
 
 // اصلاح خروجِ ثبت‌نشده: فقط هفت روز اخیر، فقط رکورد خودِ کارمند و فقط وقتی ماه باز است.
 // پیامِ ساخت‌یافته عمداً در همان مسیر اعتراض نگه داشته می‌شود تا چرخهٔ اعلان/بازگشایی موجود حفظ شود.

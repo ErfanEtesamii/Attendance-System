@@ -220,7 +220,12 @@ function listAll({ status } = {}) {
   return db.prepare('SELECT * FROM record_disputes ORDER BY created_at DESC').all();
 }
 
+/** تعداد اعتراض‌های جدیدِ یک کاربر در بازه‌ی تاریخیِ [from, to] (YYYY-MM-DD؛ بر اساس created_at). */
+function countCreatedByUserBetween(userId, from, to) {
+  return getDb().prepare("SELECT COUNT(*) AS c FROM record_disputes WHERE user_id = ? AND date(created_at, 'localtime') BETWEEN ? AND ?").get(userId, from, to).c;
+}
+
 module.exports = {
-  listAll, createDispute, findById, listByUser, listOpen, listOpenInRange, setStatus,
+  countCreatedByUserBetween, listAll, createDispute, findById, listByUser, listOpen, listOpenInRange, setStatus,
   addMessage, listMessages, getThread, reopenWithMessage, resolveWithMessage, incrementReopenCount, listByUserWithSummary, listAllWithSummary,
 };

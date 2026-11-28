@@ -19,6 +19,7 @@ const settingsRepository = require('../repositories/settingsRepository');
 const monthClosuresRepository = require('../repositories/monthClosuresRepository');
 const usersRepository = require('../repositories/usersRepository');
 const { sanitizeText } = require('../utils/sanitize');
+const { jalaliMonthRange } = require('../utils/jalali');
 
 const MESSAGE_MAX = 500;
 
@@ -29,6 +30,7 @@ const ERROR_STATUS = {
   DISPUTE_NOT_CLOSED: 409, // ادامه فقط برای اعتراضِ بسته‌شده
   DISPUTE_ALREADY_CLOSED: 409,
   REOPEN_LIMIT: 409,
+  NEW_DISPUTE_LIMIT: 409, // سقف اعتراض جدید در ماه (disputeMaxPerMonth)
   MONTH_CLOSED: 409,
 };
 const statusOf = (code) => ERROR_STATUS[code] || 400;
@@ -150,6 +152,14 @@ function create(user, { attendanceRecordId, message } = {}, { ip = null } = {}) 
   if (attendanceRecordId) {
     const record = attendanceRepository.findById(attendanceRecordId);
     if (!record || record.user_id !== user.id) return fail('NOT_FOUND', 'رکورد یافت نشد.');
+  }
+  // سقف اعتراض جدید در هر ماه شمسی (برای کارمند و سرپرست؛ ۰ = بدون سقف). ادامه‌ی اعتراض‌های قبلی به این سقف نمی‌شمارد.
+  const maxPerMonth = settingsRepository.getAll().disputeMaxPerMonth;
+  if (maxPerMonth > 0) {
+    const m = jalaliMonthRange();
+    if (disputeRepository.countCreatedByUserBetween(user.id, m.from, m.to) >= maxPerMonth) {
+      return fail('NEW_DISPUTE_LIMIT', `در هر ماه حداکثر ${maxPerMonth} اعتراض جدید می‌توانید ثبت کنید. برای ادامه‌ی اعتراض‌های قبلی از «ادامه‌ی اعتراض» استفاده کنید.`, { maxPerMonth });
+    }
   }
   const dispute = disputeRepository.createDispute({
     userId: user.id,
